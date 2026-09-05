@@ -7,6 +7,11 @@ on:
       - 'v[0-9]*.[0-9]*.[0-9]*'
       - '!v*-*'
   workflow_dispatch:
+    inputs:
+      cleanup_source_release:
+        description: 'Optional rollback source tag; defaults to the preceding published release and always requires compatibility verification'
+        required: false
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -349,6 +354,7 @@ jobs:
 
       - name: Install production archive with rootless Quadlet
         env:
+          CLEANUP_SOURCE_RELEASE: ${{ inputs.cleanup_source_release }}
           APP_RUNTIME_IMAGE_REF: ${{ env.APP_RUNTIME_CANDIDATE_REF }}
           APP_RUNTIME_OCI_ARCHIVE: ${{ env.APP_RUNTIME_CANDIDATE_ARTIFACT }}
           DB_JOB_IMAGE_REF: ${{ env.DB_JOB_CANDIDATE_REF }}
@@ -554,6 +560,7 @@ jobs:
             --metadata tmp/container-release-artifacts/metadata/release-metadata.json \
             --stack-lock container-stack.lock.json \
             --cleanup-contract tmp/production-smoke-evidence/cleanup-compatibility.json \
+            --cleanup-source tmp/production-smoke-evidence/cleanup-source.json \
             --hsa-integration-support-lock container-hsa-integration-support.lock.json \
             --test-support-lock container-test-support.lock.json \
             --build-json public/build.json \

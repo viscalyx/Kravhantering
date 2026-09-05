@@ -50,19 +50,53 @@ installation, removal, upgrade and rollback do not replace these files.
 Use an authenticated release archive that contains
 `cleanup-compatibility.json`. This contract binds the exact cleanup image ID
 and manifest digest to successful cleanup evidence for the target schema and
-all explicitly declared rollback source schemas. A source-release lock records
-the exact source release, database schema head, archive digest and image-lock
-digest. Retain the authenticated source archive and its lock with this record.
-A migration version range or an application version label alone is not evidence
-of compatibility. An undeclared source release is not an eligible rollback.
-The initial declared source is `0.7.0-preview.27`. Its source archive and
-attestation are verified before its archive, image-lock and migration identities
-are recorded in the release inputs. Release validation reproduces that exact
-source migration set in an isolated database; changed migration or dependency
-bytes fail verification.
+the selected rollback source schema. Normal release preparation automatically
+selects the preceding published release, including previews, using publication
+time. Drafts and the target release are excluded. A rerun of an already published
+target selects its predecessor rather than a later release. There is no source
+list or file per release to maintain in Git, and no PR or merge requires an
+update to the default.
+
+Release preparation downloads the selected archive and its attestation through
+public endpoints. It verifies the attestation against independently obtained
+trust roots and the expected repository, workflow, commit and release identity.
+Source preparation works without a GitHub token or cached login, including on
+fork PRs. The trusted release workflow retains its normal publication and signing
+permissions.
+
+The source database is built by that release's own image, verified against its
+image lock. The target image then runs cleanup against it. Source migrations and
+permission definitions are not reconstructed from the current checkout.
+Successful validation generates `cleanup-source.json` and
+`cleanup-compatibility.json` in the deployment bundle. Retain the authenticated
+source archive with these generated recovery records.
+
+### Explicit Source Override
+
+An operator who needs a different source can request it through the
+`cleanup_source_release` input on the trusted Container Release workflow:
+
+```bash
+gh workflow run container-release.yml --ref main \
+  -f cleanup_source_release=vSOURCE_VERSION
+```
+
+Leave the input empty for the automatic previous-release default. For local
+release preparation, set `CLEANUP_SOURCE_RELEASE=vSOURCE_VERSION` when running
+the production smoke workflow. The override selects a candidate; it does not
+approve rollback. The selected published release must pass artifact, schema,
+cleanup and scheduled-rollback verification before packaging. A missing source
+or failed check stops release preparation; it does not fall back to another
+release or silently omit source verification.
+
+Use only the resulting authenticated release and its generated compatibility
+contract. Changing a release pointer or editing a lock on an installed host
+does not make that release eligible. The retained manager's `verify-transition`
+command still requires the exact source archive and image-lock identity recorded
+by successful verification.
 
 Release validation runs `bin/kravhantering-cleanup-evidence.sh` against disposable
-copies of the target schema and each declared source schema. The command uses
+copies of the target schema and selected source schema. The command uses
 the verified cleanup image, runtime database identity, bounded cleanup runner
 and SQL Server UTC. Expired synthetic fixtures exercise every applicable deletion
 and forensic-update path; unexpired fixtures must remain. Its output contains
@@ -70,8 +104,8 @@ aggregate target outcomes, the schema head and a digest of the cleanup table
 definitions (columns, constraints, indexes, foreign keys and triggers). Every
 scheduled run compares live definitions with this verified digest before mutation.
 Release packaging rejects missing schema evidence, failed targets,
-missing target results and image identity mismatches. The source records and
-verification matrix travel inside the authenticated release archive.
+missing target results and image identity mismatches. The generated source lock
+and verification matrix travel inside the authenticated release archive.
 
 The same prerequisites apply to `app-node-tls`, `app-node-http` and
 `single-node`:

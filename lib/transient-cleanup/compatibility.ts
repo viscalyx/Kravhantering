@@ -16,9 +16,7 @@ export interface CleanupSchemaEvidence {
 
 export interface CleanupSourceReleaseLock {
   archiveSha256: string
-  migrationFiles?: { fileName: string; sha256: string }[]
   release: string
-  runtimePermissionManifestSha256?: string
   schemaVersion: string
   stackLockSha256: string
 }
@@ -86,25 +84,6 @@ export function parseCleanupCompatibilityContract(
         schemaVersion: identifier(source.schemaVersion),
         archiveSha256: digest(source.archiveSha256, false),
         stackLockSha256: digest(source.stackLockSha256, false),
-        ...(Array.isArray(source.migrationFiles)
-          ? {
-              migrationFiles: source.migrationFiles.map(value => {
-                const file = record(value)
-                const fileName = identifier(file.fileName)
-                if (!/^\d{4}_[a-z0-9_]+\.mjs$/.test(fileName))
-                  throw new Error('invalid cleanup source migration')
-                return { fileName, sha256: digest(file.sha256, false) }
-              }),
-            }
-          : {}),
-        ...(source.runtimePermissionManifestSha256 === undefined
-          ? {}
-          : {
-              runtimePermissionManifestSha256: digest(
-                source.runtimePermissionManifestSha256,
-                false,
-              ),
-            }),
       }
     }),
     verification: [],

@@ -3,7 +3,9 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
+import { CLEANUP_TARGET_KINDS } from '../../lib/transient-cleanup/compatibility'
 import buildMetadataTools from '../build-metadata.js'
+import { createCleanupCompatibilityContract } from '../release/cleanup-compatibility-contract.mjs'
 import {
   APP_RUNTIME_DESCRIPTION,
   APP_RUNTIME_PACKAGE,
@@ -1866,423 +1868,486 @@ describe('trusted container release helpers', () => {
     expect(releaseEnv).not.toContain('replace-with-release-digest')
   })
 
-  it('stages the production deployment bundle with manifest and templates', () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kh-release-bundle-'))
-    try {
-      const plan = createTestReleasePlan({
-        changedFiles: ['containers/app/Dockerfile'],
-        env: env({
-          GITHUB_REF: 'refs/tags/v1.2.3',
-          GITHUB_REF_NAME: 'v1.2.3',
-        }),
-        gitVersion,
-      })
-      const metadata = createReleaseMetadata(
-        plan,
-        buildxMetadata('sha256:app-manifest', 'sha256:app-image'),
-        buildxMetadata('sha256:dbjob-manifest', 'sha256:dbjob-image'),
-        buildxMetadata('sha256:hsa-manifest', 'sha256:hsa-image'),
-        undefined,
-        buildxMetadata('sha256:demo-manifest', 'sha256:demo-image'),
-      )
-      const stackLock = {
-        schemaVersion: 2,
-        releaseVersion: '1.2.3',
-        commitSha: 'deadbeef',
-        generatedAt: '2026-05-23T00:00:00.000Z',
-        generatedBy: 'scripts/containers/generate-stack-lock.mjs',
-        services: [
-          {
-            imageId: 'sha256:app-image',
-            image: 'ghcr.io/viscalyx/kravhantering-app-runtime',
-            manifestDigest: 'sha256:app-manifest',
-            name: 'app-runtime',
-            role: 'application',
-            source: 'ghcr-release',
-            tag: '1.2.3',
-          },
-          {
-            imageId: 'sha256:dbjob-image',
-            image: 'ghcr.io/viscalyx/kravhantering-db-job',
-            manifestDigest: 'sha256:dbjob-manifest',
-            name: 'db-job',
-            role: 'database-job',
-            source: 'ghcr-release',
-            tag: '1.2.3',
-          },
-          {
-            imageId: 'sha256:nginx-image',
-            image: 'docker.io/library/nginx',
-            manifestDigest: 'sha256:nginx-manifest',
-            name: 'nginx',
-            role: 'tls-proxy',
-            source: 'docker-hub',
-            tag: '1.31.5-alpine',
-          },
-          {
-            imageId: 'sha256:sql-image',
-            image: 'mcr.microsoft.com/mssql/server',
-            manifestDigest: 'sha256:sql-manifest',
-            name: 'sqlserver',
-            role: 'database',
-            source: 'mcr',
-            tag: '2025-CU8-ubuntu-24.04',
-          },
-          {
-            imageId: 'sha256:keycloak-image',
-            image: 'quay.io/keycloak/keycloak',
-            manifestDigest: 'sha256:keycloak-manifest',
-            name: 'keycloak',
-            role: 'identity-provider',
-            source: 'quay',
-            tag: '26.7.3-0',
-          },
-        ],
-      }
-      const testSupportLock = {
-        schemaVersion: 1,
-        services: [
-          {
-            imageId: 'sha256:hsa-image',
-            image: 'ghcr.io/viscalyx/kravhantering-hsa-directory-mock',
-            manifestDigest: 'sha256:hsa-manifest',
-            name: 'hsa-directory-mock',
-            role: 'hsa-directory-test-support',
-            source: 'ghcr-release',
-            tag: '1.2.3',
-          },
-        ],
-      }
-      const hsaIntegrationSupportLock = {
-        schemaVersion: 1,
-        services: [
-          {
-            imageId: 'sha256:kong-image',
-            image: 'docker.io/kong/kong-gateway',
-            manifestDigest: 'sha256:kong-manifest',
-            name: 'kong',
-            role: 'api-management',
-            source: 'docker-hub',
-            tag: '3.15.0.0-20260702-ubuntu',
-          },
-          {
-            imageId: 'sha256:adapter-image',
-            image: 'ghcr.io/viscalyx/kravhantering-hsa-person-lookup-adapter',
-            manifestDigest: 'sha256:adapter-manifest',
-            name: 'hsa-person-lookup-adapter',
-            role: 'hsa-person-lookup-adapter',
-            source: 'ghcr-release',
-            tag: '1.2.3',
-          },
-        ],
-      }
-      const stackLockPath = path.join(tmp, 'container-stack.lock.json')
-      const hsaIntegrationSupportLockPath = path.join(
-        tmp,
-        'container-hsa-integration-support.lock.json',
-      )
-      const testSupportLockPath = path.join(
-        tmp,
-        'container-test-support.lock.json',
-      )
-      const metadataPath = path.join(tmp, 'release-metadata.json')
-      const buildJsonPath = path.join(tmp, 'build.json')
-      const hashesPath = path.join(tmp, 'hashes.sha256')
-      const sbomDir = path.join(tmp, 'sbom')
-      fs.mkdirSync(sbomDir)
-      fs.writeFileSync(stackLockPath, JSON.stringify(stackLock))
-      fs.writeFileSync(
-        hsaIntegrationSupportLockPath,
-        JSON.stringify(hsaIntegrationSupportLock),
-      )
-      fs.writeFileSync(testSupportLockPath, JSON.stringify(testSupportLock))
-      fs.writeFileSync(metadataPath, JSON.stringify(metadata))
-      fs.writeFileSync(buildJsonPath, '{"version":"1.2.3"}\n')
-      fs.writeFileSync(hashesPath, 'abc123  container-stack.lock.json\n')
-      fs.writeFileSync(path.join(sbomDir, 'app-runtime.spdx.json'), '{}\n')
-      fs.writeFileSync(path.join(sbomDir, 'db-job.spdx.json'), '{}\n')
-      fs.writeFileSync(
-        path.join(sbomDir, 'hsa-person-lookup-adapter.spdx.json'),
-        '{}\n',
-      )
-      fs.writeFileSync(
-        path.join(sbomDir, 'hsa-directory-mock.spdx.json'),
-        '{}\n',
-      )
-
-      const result = stageProductionDeploymentBundle({
-        buildJsonPath,
-        generatedAt: '2026-05-23T00:00:00.000Z',
-        hashesPath,
-        hsaIntegrationSupportLock,
-        hsaIntegrationSupportLockPath,
-        metadata,
-        metadataPath,
-        outputDir: path.join(tmp, 'deployment'),
-        plan,
-        sbomDir,
-        stackLock,
-        stackLockPath,
-        testSupportLock,
-        testSupportLockPath,
-      })
-
-      expect(result.archiveName).toBe(deploymentBundleArchiveName('1.2.3'))
-      expect(
-        result.files.some(file =>
-          /(?:^|\/)(?:\.auth|\.codex|\.ssh)(?:\/|$)|auth\.json$/u.test(file),
-        ),
-      ).toBe(false)
-      for (const file of result.files) {
-        const content = fs.readFileSync(path.join(result.bundleRoot, file))
-        expect(content.toString()).not.toMatch(
-          /\b(?:CODEX_HOME|COPILOT_GITHUB_TOKEN|GH_TOKEN|SSH_AUTH_SOCK)\b/u,
-        )
-      }
-      expect(result.files).toContain(
-        'quadlet/templates/app-node-tls/kravhantering-nginx.container.template',
-      )
-      expect(result.files).toContain(
-        'quadlet/templates/app-node-http/kravhantering-app-node.target.template',
-      )
-      expect(result.files).toContain(
-        'quadlet/templates/single-node/kravhantering-sqlserver-data.volume.template',
-      )
-      expect(result.files).toContain('bin/kravhantering-cleanup.sh')
-      expect(result.files).toContain('bin/kravhantering-cleanup-evidence.sh')
-      expect(result.files).toContain('env/cleanup-release.env.template')
-      expect(result.files.some(file => file.startsWith('compose/'))).toBe(false)
-      expect(result.files).toContain(
-        'docs/operations/rhel10-production-deploy.md',
-      )
-      expect(result.files).toContain(
-        'docs/operations/api-docs-edge-verification.md',
-      )
-      expect(result.files).toContain(
-        'docs/operations/production-quadlet-containment.md',
-      )
-      expect(result.files).toContain(
-        'docs/operations/transient-state-cleanup.md',
-      )
-      expect(result.files).toContain('docs/operations/ai-connections.md')
-      expect(result.files).toContain(
-        'docs/operations/rhel10-production-disconnected.md',
-      )
-      expect(result.files).toContain(
-        'docs/operations/rhel10-production-upgrade.md',
-      )
-      expect(result.files).toContain(
-        'docs/operations/rhel10-production-uninstall.md',
-      )
-      expect(result.files).toContain(
-        'docs/operations/rhel10-production-single-node-self-contained-deploy.md',
-      )
-      expect(result.files).toContain(
-        'docs/operations/rhel10-production-single-node-self-contained-disconnected.md',
-      )
-      expect(result.files).toContain(
-        'docs/operations/rhel10-production-single-node-self-contained-upgrade.md',
-      )
-      expect(result.files).toContain(
-        'docs/operations/rhel10-production-single-node-self-contained-uninstall.md',
-      )
-      for (const deploymentGuide of [
-        'docs/operations/rhel10-production-deploy.md',
-        'docs/operations/rhel10-production-single-node-self-contained-deploy.md',
-      ]) {
-        const guide = fs.readFileSync(
-          path.join(result.bundleRoot, deploymentGuide),
-          'utf8',
-        )
-        expect(guide).toContain('kravhantering-quadlet.sh install --topology')
-        expect(guide).toContain('systemctl --user enable --now')
-        expect(guide).not.toContain('podman-compose')
-        expect(guide).not.toContain('podman compose')
-      }
-      expect(result.files).toContain(
-        'docs/images/infographic-production-access-and-service-flow.png',
-      )
-      expect(result.files).toContain(
-        'docs/images/infographic-single-node-access-flow.png',
-      )
-      expect(result.files).not.toContain(
-        'public/infographic-production-access-and-service-flow.png',
-      )
-      expect(result.files).not.toContain(
-        'public/infographic-single-node-access-flow.png',
-      )
-      expect(result.files).not.toContain(
-        'docs/adr/0001-produktionsdriftsattning-fran-releaseartefakt.md',
-      )
-      expect(result.files).toContain('env/app.env.template')
-      expect(result.files).toContain('env/release.env.template')
-      expect(result.files).toContain(
-        'container-hsa-integration-support.lock.json',
-      )
-      expect(result.files).toContain('container-test-support.lock.json')
-      expect(result.files).toContain('openapi/hsa-person-lookup.yaml')
-      expect(result.files).toContain('api-docs/hsa-person-lookup/index.html')
-      expect(result.files).toContain(
-        'api-docs/hsa-person-lookup/swagger-ui-bundle.js',
-      )
-      expect(result.files).toContain(
-        'api-docs/hsa-person-lookup/swagger-initializer.js',
-      )
-      expect(result.files).toContain(
-        'api-docs/hsa-person-lookup/swagger-ui-override.css',
-      )
-      expect(result.files).not.toContain(
-        'api-docs/hsa-person-lookup/swagger-ui-standalone-preset.js',
-      )
-      expect(result.files).toContain(
-        'nginx/templates/api-docs-security-headers.conf',
-      )
-      expect(result.files).toContain('kong/kong.strict.yml')
-      expect(result.files).toContain('kong/strict-app-client-subject.conf')
-      expect(result.files).toContain('bin/kravhantering-images.sh')
-      expect(result.files).toContain('bin/kravhantering-quadlet.sh')
-      expect(result.files).toContain('sqlserver/mssql.conf')
-      expect(result.files).toContain(
-        'keycloak/realm-kravhantering-production.template.json',
-      )
-      expect(result.files).toContain(
-        'keycloak/demo-users.not-for-production.json',
-      )
-      expect(result.files).not.toContain('demo-seed/seed.mjs')
-      expect(result.files).not.toContain('demo-seed/seed-dogfood.mjs')
-      expect(result.files).not.toContain('demo-seed/seed-dogfood-build.mjs')
-      expect(result.files).not.toContain(
-        'demo-seed/seed-archiving-retention-build.mjs',
-      )
-      expect(result.files).toContain('scripts/keycloak-demo-users.mjs')
-      expect(result.files).toContain('scripts/ai-deployment-gate.mjs')
-      expect(result.files).toContain('scripts/ai-staging-live-probe.mjs')
-      expect(result.files).toContain('sbom/hsa-directory-mock.spdx.json')
-      expect(result.files).toContain('sbom/hsa-person-lookup-adapter.spdx.json')
-      expect(result.files).toContain(
-        'nginx/templates/single-node-tls.conf.template',
-      )
-      expect(result.files).not.toContain('nginx/conf.d/single-node-tls.conf')
-      const quadletTemplates = result.files
-        .filter(file => file.startsWith('quadlet/templates/'))
-        .map(file =>
-          fs.readFileSync(path.join(result.bundleRoot, file), 'utf8'),
-        )
-        .join('\n')
-      expect(quadletTemplates).toContain('NGINX_RESOLVER')
-      expect(quadletTemplates).toContain(
-        'NetworkName=kravhantering-app-node_edge',
-      )
-      expect(quadletTemplates).toContain(
-        'NetworkName=kravhantering-app-node_egress',
-      )
-      expect(quadletTemplates).toContain(
-        'NetworkName=kravhantering-single-node_identity',
-      )
-      expect(quadletTemplates).toContain(
-        'NetworkName=kravhantering-single-node_database',
-      )
-      const statelessContainerTemplates = result.files.filter(file =>
-        /\/kravhantering-(?:app-runtime|nginx)\.container\.template$/u.test(
-          file,
-        ),
-      )
-      expect(statelessContainerTemplates).toHaveLength(6)
-      for (const file of statelessContainerTemplates) {
-        const template = fs.readFileSync(
-          path.join(result.bundleRoot, file),
-          'utf8',
-        )
-        expect(template).toContain('DropCapability=all')
-        expect(template).toContain('ReadOnlyTmpfs=false')
-        expect(template).toMatch(
-          /^MemoryMax=@@(?:APP_RUNTIME|NGINX)_MEMORY_LIMIT_MIB@@M$/mu,
-        )
-      }
-      expect(quadletTemplates).toContain(
-        '/api-docs:/usr/share/nginx/html/api-docs:ro',
-      )
-      expect(quadletTemplates).not.toContain('db-bootstrap')
-      expect(quadletTemplates).not.toContain('db-migrate')
-      expect(quadletTemplates).not.toContain('db-seed-required')
-      for (const file of [
-        'nginx/templates/app-node-http.conf.template',
-        'nginx/templates/app-node-tls.conf.template',
-        'nginx/templates/single-node-tls.conf.template',
-      ]) {
-        const template = fs.readFileSync(
-          path.join(result.bundleRoot, file),
-          'utf8',
-        )
-        expect(template).toContain('location /api-docs/')
-        expect(template).toContain('/usr/share/nginx/html')
-      }
-      const releaseEnv = fs.readFileSync(
-        path.join(result.bundleRoot, 'env/release.env.template'),
-        'utf8',
-      )
-      expect(releaseEnv).not.toContain('SQLSERVER_HOST_PORT')
-      expect(releaseEnv).not.toContain('DEMO_SEED_IMAGE_REF')
-      const bundledReleaseMetadata = JSON.parse(
-        fs.readFileSync(
-          path.join(result.bundleRoot, 'release-metadata.json'),
-          'utf8',
-        ),
-      )
-      expect(bundledReleaseMetadata.demoSeed).toBeUndefined()
-      const demoUsers = JSON.parse(
-        fs.readFileSync(
-          path.join(
-            result.bundleRoot,
-            'keycloak/demo-users.not-for-production.json',
-          ),
-          'utf8',
-        ),
-      )
-      expect(demoUsers.users).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            username: 'ada.admin',
+  it.each([false, true])(
+    'stages the production deployment bundle with generated cleanup proof=%s',
+    withCleanup => {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kh-release-bundle-'))
+      try {
+        const plan = createTestReleasePlan({
+          changedFiles: ['containers/app/Dockerfile'],
+          env: env({
+            GITHUB_REF: 'refs/tags/v1.2.3',
+            GITHUB_REF_NAME: 'v1.2.3',
           }),
-        ]),
-      )
-      expect(demoUsers.users[0]?.attributes).toHaveProperty(
-        'kravhanteringDemoUser',
-      )
-      expect(result.manifest).toMatchObject({
-        commitSha: plan.commitSha,
-        schemaVersion: 3,
-        database: {
-          expectedSchemaVersion: getExpectedDatabaseSchemaVersion(),
-        },
-        images: {
-          appRuntime:
-            'ghcr.io/viscalyx/kravhantering-app-runtime@sha256:app-manifest',
-          nginx: 'docker.io/library/nginx@sha256:nginx-manifest',
-        },
-        imageIds: {
-          appRuntime: 'sha256:app-image',
-          nginx: 'sha256:nginx-image',
-        },
-        supportedTopologies: ['app-node-tls', 'app-node-http', 'single-node'],
-        testSupportImages: {
-          hsaDirectoryMock:
-            'ghcr.io/viscalyx/kravhantering-hsa-directory-mock@sha256:hsa-manifest',
-        },
-        hsaIntegrationSupportImages: {
-          hsaPersonLookupAdapter:
-            'ghcr.io/viscalyx/kravhantering-hsa-person-lookup-adapter@sha256:adapter-manifest',
-          kong: 'docker.io/kong/kong-gateway@sha256:kong-manifest',
-        },
-        version: '1.2.3',
-      })
-      expect(
-        fs.existsSync(path.join(result.bundleRoot, 'DEPLOYMENT-MANIFEST.json')),
-      ).toBe(true)
-    } finally {
-      fs.rmSync(tmp, { force: true, recursive: true })
-    }
-  })
+          gitVersion,
+        })
+        const metadata = createReleaseMetadata(
+          plan,
+          buildxMetadata('sha256:app-manifest', 'sha256:app-image'),
+          buildxMetadata(
+            `sha256:${'a'.repeat(64)}`,
+            `sha256:${'b'.repeat(64)}`,
+          ),
+          buildxMetadata('sha256:hsa-manifest', 'sha256:hsa-image'),
+          undefined,
+          buildxMetadata('sha256:demo-manifest', 'sha256:demo-image'),
+        )
+        const stackLock = {
+          schemaVersion: 2,
+          releaseVersion: '1.2.3',
+          commitSha: 'deadbeef',
+          generatedAt: '2026-05-23T00:00:00.000Z',
+          generatedBy: 'scripts/containers/generate-stack-lock.mjs',
+          services: [
+            {
+              imageId: 'sha256:app-image',
+              image: 'ghcr.io/viscalyx/kravhantering-app-runtime',
+              manifestDigest: 'sha256:app-manifest',
+              name: 'app-runtime',
+              role: 'application',
+              source: 'ghcr-release',
+              tag: '1.2.3',
+            },
+            {
+              imageId: `sha256:${'b'.repeat(64)}`,
+              image: 'ghcr.io/viscalyx/kravhantering-db-job',
+              manifestDigest: `sha256:${'a'.repeat(64)}`,
+              name: 'db-job',
+              role: 'database-job',
+              source: 'ghcr-release',
+              tag: '1.2.3',
+            },
+            {
+              imageId: 'sha256:nginx-image',
+              image: 'docker.io/library/nginx',
+              manifestDigest: 'sha256:nginx-manifest',
+              name: 'nginx',
+              role: 'tls-proxy',
+              source: 'docker-hub',
+              tag: '1.31.5-alpine',
+            },
+            {
+              imageId: 'sha256:sql-image',
+              image: 'mcr.microsoft.com/mssql/server',
+              manifestDigest: 'sha256:sql-manifest',
+              name: 'sqlserver',
+              role: 'database',
+              source: 'mcr',
+              tag: '2025-CU8-ubuntu-24.04',
+            },
+            {
+              imageId: 'sha256:keycloak-image',
+              image: 'quay.io/keycloak/keycloak',
+              manifestDigest: 'sha256:keycloak-manifest',
+              name: 'keycloak',
+              role: 'identity-provider',
+              source: 'quay',
+              tag: '26.7.3-0',
+            },
+          ],
+        }
+        const testSupportLock = {
+          schemaVersion: 1,
+          services: [
+            {
+              imageId: 'sha256:hsa-image',
+              image: 'ghcr.io/viscalyx/kravhantering-hsa-directory-mock',
+              manifestDigest: 'sha256:hsa-manifest',
+              name: 'hsa-directory-mock',
+              role: 'hsa-directory-test-support',
+              source: 'ghcr-release',
+              tag: '1.2.3',
+            },
+          ],
+        }
+        const hsaIntegrationSupportLock = {
+          schemaVersion: 1,
+          services: [
+            {
+              imageId: 'sha256:kong-image',
+              image: 'docker.io/kong/kong-gateway',
+              manifestDigest: 'sha256:kong-manifest',
+              name: 'kong',
+              role: 'api-management',
+              source: 'docker-hub',
+              tag: '3.15.0.0-20260702-ubuntu',
+            },
+            {
+              imageId: 'sha256:adapter-image',
+              image: 'ghcr.io/viscalyx/kravhantering-hsa-person-lookup-adapter',
+              manifestDigest: 'sha256:adapter-manifest',
+              name: 'hsa-person-lookup-adapter',
+              role: 'hsa-person-lookup-adapter',
+              source: 'ghcr-release',
+              tag: '1.2.3',
+            },
+          ],
+        }
+        const stackLockPath = path.join(tmp, 'container-stack.lock.json')
+        const hsaIntegrationSupportLockPath = path.join(
+          tmp,
+          'container-hsa-integration-support.lock.json',
+        )
+        const testSupportLockPath = path.join(
+          tmp,
+          'container-test-support.lock.json',
+        )
+        const metadataPath = path.join(tmp, 'release-metadata.json')
+        const buildJsonPath = path.join(tmp, 'build.json')
+        const hashesPath = path.join(tmp, 'hashes.sha256')
+        const sbomDir = path.join(tmp, 'sbom')
+        fs.mkdirSync(sbomDir)
+        fs.writeFileSync(stackLockPath, JSON.stringify(stackLock))
+        fs.writeFileSync(
+          hsaIntegrationSupportLockPath,
+          JSON.stringify(hsaIntegrationSupportLock),
+        )
+        fs.writeFileSync(testSupportLockPath, JSON.stringify(testSupportLock))
+        fs.writeFileSync(metadataPath, JSON.stringify(metadata))
+        fs.writeFileSync(buildJsonPath, '{"version":"1.2.3"}\n')
+        fs.writeFileSync(hashesPath, 'abc123  container-stack.lock.json\n')
+        fs.writeFileSync(path.join(sbomDir, 'app-runtime.spdx.json'), '{}\n')
+        fs.writeFileSync(path.join(sbomDir, 'db-job.spdx.json'), '{}\n')
+        fs.writeFileSync(
+          path.join(sbomDir, 'hsa-person-lookup-adapter.spdx.json'),
+          '{}\n',
+        )
+        fs.writeFileSync(
+          path.join(sbomDir, 'hsa-directory-mock.spdx.json'),
+          '{}\n',
+        )
+
+        const cleanupSource = {
+          release: '1.2.2',
+          schemaVersion: 'Source123',
+          archiveSha256: 'c'.repeat(64),
+          stackLockSha256: 'd'.repeat(64),
+        }
+        const cleanupContractPath = path.join(tmp, 'cleanup-compatibility.json')
+        const cleanupSourcePath = path.join(tmp, 'cleanup-source.json')
+        if (withCleanup) {
+          const contract = createCleanupCompatibilityContract({
+            manifest: {
+              version: plan.version,
+              database: {
+                expectedSchemaVersion: plan.expectedDatabaseSchemaVersion,
+              },
+            },
+            stackLock,
+            sources: [cleanupSource],
+            evidence: [plan.expectedDatabaseSchemaVersion, 'Source123'].map(
+              schemaVersion => ({
+                schemaVersion,
+                schemaFingerprint: 'e'.repeat(64),
+                imageId: `sha256:${'b'.repeat(64)}`,
+                outcome: 'success',
+                targets: CLEANUP_TARGET_KINDS.map(kind => ({
+                  kind,
+                  outcome: 'success',
+                })),
+              }),
+            ),
+          })
+          fs.writeFileSync(cleanupSourcePath, JSON.stringify(cleanupSource))
+          fs.writeFileSync(cleanupContractPath, JSON.stringify(contract))
+        }
+        const result = stageProductionDeploymentBundle({
+          ...(withCleanup ? { cleanupContractPath, cleanupSourcePath } : {}),
+          buildJsonPath,
+          generatedAt: '2026-05-23T00:00:00.000Z',
+          hashesPath,
+          hsaIntegrationSupportLock,
+          hsaIntegrationSupportLockPath,
+          metadata,
+          metadataPath,
+          outputDir: path.join(tmp, 'deployment'),
+          plan,
+          sbomDir,
+          stackLock,
+          stackLockPath,
+          testSupportLock,
+          testSupportLockPath,
+        })
+
+        if (withCleanup) {
+          expect(result.manifest.files).toContain('cleanup-source.json')
+          expect(result.manifest.files).toContain('cleanup-compatibility.json')
+          expect(
+            JSON.parse(
+              fs.readFileSync(
+                path.join(result.bundleRoot, 'cleanup-source.json'),
+                'utf8',
+              ),
+            ),
+          ).toEqual(cleanupSource)
+          expect(result.manifest.cleanup).toMatchObject({
+            imageId: `sha256:${'b'.repeat(64)}`,
+            contract: 'cleanup-compatibility.json',
+          })
+        }
+        expect(result.archiveName).toBe(deploymentBundleArchiveName('1.2.3'))
+        expect(
+          result.files.some(file =>
+            /(?:^|\/)(?:\.auth|\.codex|\.ssh)(?:\/|$)|auth\.json$/u.test(file),
+          ),
+        ).toBe(false)
+        for (const file of result.files) {
+          const content = fs.readFileSync(path.join(result.bundleRoot, file))
+          expect(content.toString()).not.toMatch(
+            /\b(?:CODEX_HOME|COPILOT_GITHUB_TOKEN|GH_TOKEN|SSH_AUTH_SOCK)\b/u,
+          )
+        }
+        expect(result.files).toContain(
+          'quadlet/templates/app-node-tls/kravhantering-nginx.container.template',
+        )
+        expect(result.files).toContain(
+          'quadlet/templates/app-node-http/kravhantering-app-node.target.template',
+        )
+        expect(result.files).toContain(
+          'quadlet/templates/single-node/kravhantering-sqlserver-data.volume.template',
+        )
+        expect(result.files).toContain('bin/kravhantering-cleanup.sh')
+        expect(result.files).toContain('bin/kravhantering-cleanup-evidence.sh')
+        expect(result.files).toContain('env/cleanup-release.env.template')
+        expect(result.files.some(file => file.startsWith('compose/'))).toBe(
+          false,
+        )
+        expect(result.files).toContain(
+          'docs/operations/rhel10-production-deploy.md',
+        )
+        expect(result.files).toContain(
+          'docs/operations/api-docs-edge-verification.md',
+        )
+        expect(result.files).toContain(
+          'docs/operations/production-quadlet-containment.md',
+        )
+        expect(result.files).toContain(
+          'docs/operations/transient-state-cleanup.md',
+        )
+        expect(result.files).toContain('docs/operations/ai-connections.md')
+        expect(result.files).toContain(
+          'docs/operations/rhel10-production-disconnected.md',
+        )
+        expect(result.files).toContain(
+          'docs/operations/rhel10-production-upgrade.md',
+        )
+        expect(result.files).toContain(
+          'docs/operations/rhel10-production-uninstall.md',
+        )
+        expect(result.files).toContain(
+          'docs/operations/rhel10-production-single-node-self-contained-deploy.md',
+        )
+        expect(result.files).toContain(
+          'docs/operations/rhel10-production-single-node-self-contained-disconnected.md',
+        )
+        expect(result.files).toContain(
+          'docs/operations/rhel10-production-single-node-self-contained-upgrade.md',
+        )
+        expect(result.files).toContain(
+          'docs/operations/rhel10-production-single-node-self-contained-uninstall.md',
+        )
+        for (const deploymentGuide of [
+          'docs/operations/rhel10-production-deploy.md',
+          'docs/operations/rhel10-production-single-node-self-contained-deploy.md',
+        ]) {
+          const guide = fs.readFileSync(
+            path.join(result.bundleRoot, deploymentGuide),
+            'utf8',
+          )
+          expect(guide).toContain('kravhantering-quadlet.sh install --topology')
+          expect(guide).toContain('systemctl --user enable --now')
+          expect(guide).not.toContain('podman-compose')
+          expect(guide).not.toContain('podman compose')
+        }
+        expect(result.files).toContain(
+          'docs/images/infographic-production-access-and-service-flow.png',
+        )
+        expect(result.files).toContain(
+          'docs/images/infographic-single-node-access-flow.png',
+        )
+        expect(result.files).not.toContain(
+          'public/infographic-production-access-and-service-flow.png',
+        )
+        expect(result.files).not.toContain(
+          'public/infographic-single-node-access-flow.png',
+        )
+        expect(result.files).not.toContain(
+          'docs/adr/0001-produktionsdriftsattning-fran-releaseartefakt.md',
+        )
+        expect(result.files).toContain('env/app.env.template')
+        expect(result.files).toContain('env/release.env.template')
+        expect(result.files).toContain(
+          'container-hsa-integration-support.lock.json',
+        )
+        expect(result.files).toContain('container-test-support.lock.json')
+        expect(result.files).toContain('openapi/hsa-person-lookup.yaml')
+        expect(result.files).toContain('api-docs/hsa-person-lookup/index.html')
+        expect(result.files).toContain(
+          'api-docs/hsa-person-lookup/swagger-ui-bundle.js',
+        )
+        expect(result.files).toContain(
+          'api-docs/hsa-person-lookup/swagger-initializer.js',
+        )
+        expect(result.files).toContain(
+          'api-docs/hsa-person-lookup/swagger-ui-override.css',
+        )
+        expect(result.files).not.toContain(
+          'api-docs/hsa-person-lookup/swagger-ui-standalone-preset.js',
+        )
+        expect(result.files).toContain(
+          'nginx/templates/api-docs-security-headers.conf',
+        )
+        expect(result.files).toContain('kong/kong.strict.yml')
+        expect(result.files).toContain('kong/strict-app-client-subject.conf')
+        expect(result.files).toContain('bin/kravhantering-images.sh')
+        expect(result.files).toContain('bin/kravhantering-quadlet.sh')
+        expect(result.files).toContain('sqlserver/mssql.conf')
+        expect(result.files).toContain(
+          'keycloak/realm-kravhantering-production.template.json',
+        )
+        expect(result.files).toContain(
+          'keycloak/demo-users.not-for-production.json',
+        )
+        expect(result.files).not.toContain('demo-seed/seed.mjs')
+        expect(result.files).not.toContain('demo-seed/seed-dogfood.mjs')
+        expect(result.files).not.toContain('demo-seed/seed-dogfood-build.mjs')
+        expect(result.files).not.toContain(
+          'demo-seed/seed-archiving-retention-build.mjs',
+        )
+        expect(result.files).toContain('scripts/keycloak-demo-users.mjs')
+        expect(result.files).toContain('scripts/ai-deployment-gate.mjs')
+        expect(result.files).toContain('scripts/ai-staging-live-probe.mjs')
+        expect(result.files).toContain('sbom/hsa-directory-mock.spdx.json')
+        expect(result.files).toContain(
+          'sbom/hsa-person-lookup-adapter.spdx.json',
+        )
+        expect(result.files).toContain(
+          'nginx/templates/single-node-tls.conf.template',
+        )
+        expect(result.files).not.toContain('nginx/conf.d/single-node-tls.conf')
+        const quadletTemplates = result.files
+          .filter(file => file.startsWith('quadlet/templates/'))
+          .map(file =>
+            fs.readFileSync(path.join(result.bundleRoot, file), 'utf8'),
+          )
+          .join('\n')
+        expect(quadletTemplates).toContain('NGINX_RESOLVER')
+        expect(quadletTemplates).toContain(
+          'NetworkName=kravhantering-app-node_edge',
+        )
+        expect(quadletTemplates).toContain(
+          'NetworkName=kravhantering-app-node_egress',
+        )
+        expect(quadletTemplates).toContain(
+          'NetworkName=kravhantering-single-node_identity',
+        )
+        expect(quadletTemplates).toContain(
+          'NetworkName=kravhantering-single-node_database',
+        )
+        const statelessContainerTemplates = result.files.filter(file =>
+          /\/kravhantering-(?:app-runtime|nginx)\.container\.template$/u.test(
+            file,
+          ),
+        )
+        expect(statelessContainerTemplates).toHaveLength(6)
+        for (const file of statelessContainerTemplates) {
+          const template = fs.readFileSync(
+            path.join(result.bundleRoot, file),
+            'utf8',
+          )
+          expect(template).toContain('DropCapability=all')
+          expect(template).toContain('ReadOnlyTmpfs=false')
+          expect(template).toMatch(
+            /^MemoryMax=@@(?:APP_RUNTIME|NGINX)_MEMORY_LIMIT_MIB@@M$/mu,
+          )
+        }
+        expect(quadletTemplates).toContain(
+          '/api-docs:/usr/share/nginx/html/api-docs:ro',
+        )
+        expect(quadletTemplates).not.toContain('db-bootstrap')
+        expect(quadletTemplates).not.toContain('db-migrate')
+        expect(quadletTemplates).not.toContain('db-seed-required')
+        for (const file of [
+          'nginx/templates/app-node-http.conf.template',
+          'nginx/templates/app-node-tls.conf.template',
+          'nginx/templates/single-node-tls.conf.template',
+        ]) {
+          const template = fs.readFileSync(
+            path.join(result.bundleRoot, file),
+            'utf8',
+          )
+          expect(template).toContain('location /api-docs/')
+          expect(template).toContain('/usr/share/nginx/html')
+        }
+        const releaseEnv = fs.readFileSync(
+          path.join(result.bundleRoot, 'env/release.env.template'),
+          'utf8',
+        )
+        expect(releaseEnv).not.toContain('SQLSERVER_HOST_PORT')
+        expect(releaseEnv).not.toContain('DEMO_SEED_IMAGE_REF')
+        const bundledReleaseMetadata = JSON.parse(
+          fs.readFileSync(
+            path.join(result.bundleRoot, 'release-metadata.json'),
+            'utf8',
+          ),
+        )
+        expect(bundledReleaseMetadata.demoSeed).toBeUndefined()
+        const demoUsers = JSON.parse(
+          fs.readFileSync(
+            path.join(
+              result.bundleRoot,
+              'keycloak/demo-users.not-for-production.json',
+            ),
+            'utf8',
+          ),
+        )
+        expect(demoUsers.users).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              username: 'ada.admin',
+            }),
+          ]),
+        )
+        expect(demoUsers.users[0]?.attributes).toHaveProperty(
+          'kravhanteringDemoUser',
+        )
+        expect(result.manifest).toMatchObject({
+          commitSha: plan.commitSha,
+          schemaVersion: 3,
+          database: {
+            expectedSchemaVersion: getExpectedDatabaseSchemaVersion(),
+          },
+          images: {
+            appRuntime:
+              'ghcr.io/viscalyx/kravhantering-app-runtime@sha256:app-manifest',
+            nginx: 'docker.io/library/nginx@sha256:nginx-manifest',
+          },
+          imageIds: {
+            appRuntime: 'sha256:app-image',
+            nginx: 'sha256:nginx-image',
+          },
+          supportedTopologies: ['app-node-tls', 'app-node-http', 'single-node'],
+          testSupportImages: {
+            hsaDirectoryMock:
+              'ghcr.io/viscalyx/kravhantering-hsa-directory-mock@sha256:hsa-manifest',
+          },
+          hsaIntegrationSupportImages: {
+            hsaPersonLookupAdapter:
+              'ghcr.io/viscalyx/kravhantering-hsa-person-lookup-adapter@sha256:adapter-manifest',
+            kong: 'docker.io/kong/kong-gateway@sha256:kong-manifest',
+          },
+          version: '1.2.3',
+        })
+        expect(
+          fs.existsSync(
+            path.join(result.bundleRoot, 'DEPLOYMENT-MANIFEST.json'),
+          ),
+        ).toBe(true)
+      } finally {
+        fs.rmSync(tmp, { force: true, recursive: true })
+      }
+    },
+  )
 
   it('does not move an existing release tag to another commit', () => {
     const plan = createTestReleasePlan({

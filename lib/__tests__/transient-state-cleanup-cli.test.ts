@@ -174,12 +174,12 @@ describe('transient cleanup command', () => {
     })
   })
   it.each([
-    [],
-    [{ canViewDefinition: 0, metadata: '[]' }],
-    [{ canViewDefinition: 1 }],
+    { metadata: [] },
+    { metadata: [{ canViewDefinition: 0, metadata: '[]' }] },
+    { metadata: [{ canViewDefinition: 1 }] },
   ])(
     'rejects unavailable schema definitions before collecting evidence: %j',
-    async metadata => {
+    async ({ metadata }) => {
       const createTargets = vi.fn(() => [target(0)])
       expect(
         await runTransientCleanupCommand(['--compatibility-evidence'], {

@@ -325,6 +325,11 @@ function createDebugHost(runId) {
     '/usr/local/lib/node_modules/npm/bin/npm-cli.js',
     '/usr/local/bin/npm',
   ])
+  run('docker', [
+    'cp',
+    capture('which', ['gh']).trim(),
+    `${DEBUG_CONTAINER_NAME}:/usr/local/bin/gh`,
+  ])
   dockerExec(['node', '--version'])
   dockerExec(['npm', '--version'])
 }

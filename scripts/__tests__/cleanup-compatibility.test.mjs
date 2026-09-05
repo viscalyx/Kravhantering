@@ -132,8 +132,6 @@ describe('cleanup release compatibility contract', () => {
     'missing-schema',
     'invalid-record',
     'invalid-source-digest',
-    'invalid-migration-path',
-    'invalid-dependency',
   ])('rejects malformed %s contracts', reason => {
     const contract = createCleanupCompatibilityContract(input())
     if (reason === 'version') contract.schemaVersion = 2
@@ -150,25 +148,9 @@ describe('cleanup release compatibility contract', () => {
     if (reason === 'invalid-record') contract.target = null
     if (reason === 'invalid-source-digest')
       contract.sources[0].archiveSha256 = 'bad'
-    if (reason === 'invalid-migration-path')
-      contract.sources[0].migrationFiles = [
-        { fileName: 'wrong.mjs', sha256: 'a'.repeat(64) },
-      ]
-    if (reason === 'invalid-dependency')
-      contract.sources[0].runtimePermissionManifestSha256 = 'bad'
     expect(() => parseCleanupCompatibilityContract(contract)).toThrow()
   })
 
-  it('retains the exact source migration and dependency identities in the recovery contract', () => {
-    const args = input()
-    args.sources[0].migrationFiles = [
-      { fileName: '0001_initial.mjs', sha256: 'e'.repeat(64) },
-    ]
-    args.sources[0].runtimePermissionManifestSha256 = 'f'.repeat(64)
-    expect(createCleanupCompatibilityContract(args).sources).toEqual(
-      args.sources,
-    )
-  })
   it('binds the exact cleanup image to target and explicit rollback source evidence', () => {
     const result = createCleanupCompatibilityContract(input())
     expect(result.imageId).toBe(imageId)

@@ -154,10 +154,6 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
       'docs/operations/rhel10-production-single-node-self-contained-uninstall.md',
   },
   { source: 'containers/production/env', target: 'env' },
-  {
-    source: 'containers/production/cleanup-sources',
-    target: 'cleanup-sources',
-  },
   { source: 'containers/production/keycloak', target: 'keycloak' },
   { source: 'containers/kong/kong.strict.yml', target: 'kong/kong.strict.yml' },
   {
@@ -1240,20 +1236,19 @@ export function stageProductionDeploymentBundle(options = {}) {
       readJsonFile(path.resolve(cwd, options.cleanupContractPath), fsImpl),
       manifest,
       stackLock,
-      fsImpl
-        .readdirSync(path.join(bundleRoot, 'cleanup-sources'))
-        .filter(file => file.endsWith('.json'))
-        .sort()
-        .map(file =>
-          readJsonFile(path.join(bundleRoot, 'cleanup-sources', file), fsImpl),
-        ),
+      [readJsonFile(path.resolve(cwd, options.cleanupSourcePath), fsImpl)],
     )
     writeJsonFile(
       path.join(bundleRoot, 'cleanup-compatibility.json'),
       contract,
       fsImpl,
     )
-    manifest.files.push('cleanup-compatibility.json')
+    writeJsonFile(
+      path.join(bundleRoot, 'cleanup-source.json'),
+      contract.sources[0],
+      fsImpl,
+    )
+    manifest.files.push('cleanup-compatibility.json', 'cleanup-source.json')
     manifest.files.sort()
     manifest.cleanup = {
       imageId: contract.imageId,
@@ -1998,6 +1993,7 @@ export async function main(args, dependencies = {}) {
         : undefined
       const result = stageProductionDeploymentBundle({
         cleanupContractPath: options['cleanup-contract'],
+        cleanupSourcePath: options['cleanup-source'],
         buildJsonPath: options['build-json'],
         cwd: dependencies.cwd,
         fsImpl,
