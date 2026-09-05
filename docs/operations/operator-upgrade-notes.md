@@ -47,6 +47,12 @@ backlog. No new service, secret, or operator setting is required.
 After rollout, tell MCP consumers to treat advertised row limits as guidance. If an import reports a changed budget, validate it again before execution. Imports stop when settings cannot be read; restore settings availability before retrying.
 Monitor import delays and settings-save delays after rollout. Import validation, execution, and administrator budget changes can wait for each other across application nodes.
 <!-- operator-upgrade:source pr-1328 end -->
+
+<!-- operator-upgrade:source pr-1341 start -->
+- Plan for AI-assisted authoring to be unavailable after upgrade until an administrator verifies new AI connection model revisions and selects them in the run profiles. Existing verified revisions require replacement. Reasoning is mandatory for all run profiles. Where explicit control is available, the initial reasoning effort is High; otherwise the model default applies.
+- Create fresh AI deployment evidence with the upgraded release tools before you release the global AI guard. Earlier verification evidence is no longer accepted. Reversing the database schema change does not restore the previous model verification status.
+- Release maintainers must enable repository auto-merge for generated operator upgrade notes to merge automatically. Keep required checks and branch protections enabled. If the workflow cannot request auto-merge, review its warning and retry or merge the generated notes after the required checks pass.
+<!-- operator-upgrade:source pr-1341 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
