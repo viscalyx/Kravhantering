@@ -29,6 +29,8 @@ import type {
 import type { SqlServerDatabase } from '@/lib/db'
 
 const CAPABILITIES = {
+  reasoning: true,
+  reasoningControl: true,
   aiAnalysis: true,
   cost: true,
   imageInput: false,
@@ -87,6 +89,10 @@ function connection(
         revisionToken: crypto.randomUUID(),
         revisions: [
           {
+            reasoning: {
+              mode: 'explicit_control' as const,
+              effort: 'high' as const,
+            },
             agentRuntimeVersion: null,
             connectionConfigurationVersion: 1,
             declaredCapabilities: CAPABILITIES,
@@ -191,6 +197,80 @@ describe('AI administration provider composition', () => {
     vi.unstubAllEnvs()
   })
 
+  it.each([
+    ['controlled/rejected', 'explicit_control', 'high', 'not_verified', false],
+    [
+      'controlled/unavailable',
+      'explicit_control',
+      'high',
+      'inconclusive',
+      false,
+    ],
+    ['controlled/default-no-analysis', 'model_default', null, 'verified', true],
+    ['controlled/no-analysis', 'explicit_control', 'low', 'verified', true],
+    ['controlled/no-analysis', 'explicit_control', 'medium', 'verified', true],
+    ['controlled/no-analysis', 'explicit_control', 'high', 'verified', true],
+    [
+      'controlled/default-no-analysis',
+      'explicit_control',
+      'high',
+      'verified',
+      true,
+    ],
+    [
+      'controlled/default-no-reasoning',
+      'model_default',
+      null,
+      'inconclusive',
+      false,
+    ],
+    [
+      'controlled/no-reasoning',
+      'explicit_control',
+      'high',
+      'inconclusive',
+      false,
+    ],
+  ] as const)(
+    'verifies the configured reasoning path for %s / %s / %s',
+    async (externalModelId, mode, effort, outcome, saveable) => {
+      const external = createProductionAiAdminExternalOperations(
+        emptyDb,
+        () => ring,
+        { deployment: deployment() },
+      )
+      const reasoning =
+        mode === 'model_default'
+          ? ({ mode, effort: null } as const)
+          : ({ mode, effort: effort ?? 'high' } as const)
+      const result = await external.verifyModelCandidate(
+        connection(),
+        { externalModelId, externalModelVersion: null, reasoning },
+        { signal: new AbortController().signal },
+      )
+      expect(result).toMatchObject({
+        reasoning: externalModelId.startsWith('controlled/default')
+          ? { mode: 'model_default', effort: null }
+          : reasoning,
+        saveable,
+        capabilities: { reasoning: { outcome } },
+      })
+      if (saveable) {
+        expect(result.capabilities.aiAnalysis.outcome).toBe('not_verified')
+        expect(result.capabilities.reasoningControl.outcome).toBe(
+          externalModelId.startsWith('controlled/default')
+            ? 'not_verified'
+            : 'verified',
+        )
+        expect(
+          Object.values(result.profileCompatibility).every(
+            profile => profile.supported,
+          ),
+        ).toBe(true)
+      }
+    },
+  )
+
   it('reports exact adapter registration availability and rejects duplicates or unknowns', () => {
     const registry = createAiAdminConnectionAdapterRegistry([
       controlledTestAdminAdapterRegistration,
@@ -246,6 +326,10 @@ describe('AI administration provider composition', () => {
       external.verifyModelCandidate(
         current,
         {
+          reasoning: {
+            mode: 'explicit_control' as const,
+            effort: 'high' as const,
+          },
           externalModelId: revision.externalModelId,
           externalModelVersion: revision.externalModelVersion,
         },
@@ -265,7 +349,7 @@ describe('AI administration provider composition', () => {
       externalLiveCallMade: false,
       failureCategory: 'controlled_adapter_forbidden',
       outcome: 'failed',
-      testSuiteVersion: 'ai-admin-functional-probe-v1',
+      testSuiteVersion: 'ai-admin-functional-probe-v2',
     })
     await expect(
       external.verifySecretCandidate(
@@ -333,6 +417,10 @@ describe('AI administration provider composition', () => {
       external.verifyModelCandidate(
         current,
         {
+          reasoning: {
+            mode: 'explicit_control' as const,
+            effort: 'high' as const,
+          },
           externalModelId: revision.externalModelId,
           externalModelVersion: revision.externalModelVersion,
         },
@@ -403,6 +491,10 @@ describe('AI administration provider composition', () => {
     const result = await external.verifyModelCandidate(
       current,
       {
+        reasoning: {
+          mode: 'explicit_control' as const,
+          effort: 'high' as const,
+        },
         externalModelId: revision.externalModelId,
         externalModelVersion: revision.externalModelVersion,
       },
@@ -481,6 +573,10 @@ describe('AI administration provider composition', () => {
     const result = await external.verifyModelCandidate(
       current,
       {
+        reasoning: {
+          mode: 'explicit_control' as const,
+          effort: 'high' as const,
+        },
         externalModelId: revision.externalModelId,
         externalModelVersion: revision.externalModelVersion,
       },
@@ -512,6 +608,8 @@ describe('AI administration provider composition', () => {
                     ...probe,
                     selectedCapabilities: {
                       ...probe.selectedCapabilities,
+                      reasoning: true,
+                      reasoningControl: true,
                       aiAnalysis: false,
                     },
                   }
@@ -534,6 +632,10 @@ describe('AI administration provider composition', () => {
       external.verifyModelCandidate(
         current,
         {
+          reasoning: {
+            mode: 'explicit_control' as const,
+            effort: 'high' as const,
+          },
           externalModelId: revision.externalModelId,
           externalModelVersion: revision.externalModelVersion,
         },
@@ -594,6 +696,10 @@ describe('AI administration provider composition', () => {
     const result = await external.verifyModelCandidate(
       current,
       {
+        reasoning: {
+          mode: 'explicit_control' as const,
+          effort: 'high' as const,
+        },
         externalModelId: revision.externalModelId,
         externalModelVersion: revision.externalModelVersion,
       },
@@ -695,6 +801,7 @@ describe('AI administration provider composition', () => {
       },
     } satisfies Extract<AiRunEvent, { type: 'completed' }>
     const persisted = {
+      reasoning: { mode: 'explicit_control' as const, effort: 'high' as const },
       adapterType: selection.adapterType,
       adapterVersion: selection.adapterVersion,
       connectionAgentRuntimeVersion: null,
@@ -994,6 +1101,8 @@ describe('AI administration provider composition', () => {
     await expect(adapter.fetchCatalog(context)).resolves.toMatchObject([
       {
         capabilities: {
+          reasoning: false,
+          reasoningControl: false,
           aiAnalysis: false,
           imageInput: true,
           jsonSchemaSteering: true,
@@ -1079,6 +1188,8 @@ describe('AI administration provider composition', () => {
         abortSignal: new AbortController().signal,
         deadlineAt: new Date(Date.now() + 1_000).toISOString(),
         selectedCapabilities: {
+          reasoning: true,
+          reasoningControl: true,
           aiAnalysis: true,
           cost: false,
           imageInput: false,
@@ -1468,6 +1579,8 @@ describe('AI administration provider composition', () => {
         abortSignal: new AbortController().signal,
         deadlineAt: new Date(Date.now() + 1_000).toISOString(),
         selectedCapabilities: {
+          reasoning: true,
+          reasoningControl: true,
           aiAnalysis: false,
           cost: false,
           imageInput: false,
@@ -1601,7 +1714,7 @@ describe('AI administration provider composition', () => {
       executionId: expect.any(String),
       externalLiveCallMade: true,
       outcome: 'failed',
-      testSuiteVersion: 'ai-admin-functional-probe-v1',
+      testSuiteVersion: 'ai-admin-functional-probe-v2',
     })
     await expect(
       external.probeHealth(current, revision),

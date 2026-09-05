@@ -28,6 +28,8 @@ const attemptId = '00000000-0000-4000-8000-000000000001'
 
 const verifiedCapabilities = Object.fromEntries(
   [
+    'reasoning',
+    'reasoningControl',
     'aiAnalysis',
     'cost',
     'imageInput',
@@ -142,6 +144,7 @@ function modelRevision(
   overrides: Partial<ModelRevision> = {},
 ): ModelRevision {
   return {
+    reasoning: { mode: 'explicit_control' as const, effort: 'high' as const },
     agentRuntimeVersion: null,
     connectionConfigurationVersion: 1,
     declaredCapabilities: {} as never,
@@ -153,7 +156,7 @@ function modelRevision(
     revisionNumber: 1,
     revisionToken: `${id}-token`,
     status: 'verified',
-    testSuiteVersion: 'ai-admin-functional-probe-v1',
+    testSuiteVersion: 'ai-admin-functional-probe-v2',
     verifiedAt: '2026-08-22T12:00:00.000Z',
     verifiedCapabilities: {} as never,
     ...overrides,
@@ -186,6 +189,7 @@ function connectionWithRevisions(
 
 function verificationResponse(): Response {
   const result = {
+    reasoning: { mode: 'explicit_control' as const, effort: 'high' as const },
     attemptExpiresAt: '2026-08-22T12:15:00.000Z',
     attemptId,
     baseline: {
@@ -202,7 +206,7 @@ function verificationResponse(): Response {
     },
     profileCompatibility: compatibility,
     saveable: true,
-    testSuiteVersion: 'ai-admin-functional-probe-v1',
+    testSuiteVersion: 'ai-admin-functional-probe-v2',
   }
   const messages = [
     {
@@ -274,6 +278,7 @@ function rejectedBaselineVerificationResponse(): Response {
     outcome: 'not_verified',
   }
   const result = {
+    reasoning: { mode: 'explicit_control' as const, effort: 'high' as const },
     attemptExpiresAt: null,
     attemptId: null,
     baseline,
@@ -286,7 +291,7 @@ function rejectedBaselineVerificationResponse(): Response {
     },
     profileCompatibility: notCheckedProfiles,
     saveable: false,
-    testSuiteVersion: 'ai-admin-functional-probe-v1',
+    testSuiteVersion: 'ai-admin-functional-probe-v2',
   }
   return new Response(
     `${JSON.stringify({
@@ -390,7 +395,7 @@ describe('Admin AI model and stable-profile forms', () => {
       screen.getAllByText(
         'admin.aiConnections.modelVerification.outcomes.notChecked',
       ),
-    ).toHaveLength(7)
+    ).toHaveLength(9)
     await user.selectOptions(select, '')
     await user.click(
       screen.getByRole('button', {
@@ -424,11 +429,19 @@ describe('Admin AI model and stable-profile forms', () => {
       revisionToken: 'model-token',
       revisions: [
         modelRevision('newest', {
+          reasoning: {
+            mode: 'explicit_control' as const,
+            effort: 'high' as const,
+          },
           externalModelId: 'controlled/newest',
           externalModelVersion: '3',
           revisionNumber: 3,
         }),
         modelRevision('older', {
+          reasoning: {
+            mode: 'explicit_control' as const,
+            effort: 'high' as const,
+          },
           externalModelId: 'controlled/older',
           externalModelVersion: '1',
           revisionNumber: 1,
@@ -458,6 +471,73 @@ describe('Admin AI model and stable-profile forms', () => {
     ).toHaveValue('3')
   })
 
+  it('defaults to High and invalidates verification when effort or path changes', async () => {
+    fetchMock
+      .mockResolvedValueOnce(verificationResponse())
+      .mockResolvedValue(new Response('{}', { status: 200 }))
+    render(
+      <ModelForm
+        connection={connection()}
+        model={null}
+        onCancel={vi.fn()}
+        onComplete={vi.fn()}
+      />,
+    )
+    const user = userEvent.setup()
+    const effort = screen.getByRole('combobox', {
+      name: /^admin.aiConnections.fields.reasoningEffort.label/,
+    })
+    expect(effort).toHaveValue('high')
+    expect(effort).toHaveAttribute(
+      'data-developer-mode-name',
+      'AI model reasoning effort',
+    )
+    await user.type(
+      screen.getByLabelText(
+        /^admin.aiConnections.fields.externalModelId.label/,
+      ),
+      'controlled/model',
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.modelVerification.verify',
+      }),
+    )
+    const save = screen.getByRole('button', {
+      name: 'admin.aiConnections.modelVerification.saveRevision',
+    })
+    await waitFor(() => expect(save).toBeEnabled())
+    await user.selectOptions(effort, 'low')
+    expect(save).toBeDisabled()
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).reasoning).toEqual({
+      mode: 'explicit_control',
+      effort: 'high',
+    })
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        (await verificationResponse().text()).replace(
+          '"mode":"explicit_control","effort":"high"',
+          '"mode":"model_default","effort":null',
+        ),
+        { headers: { 'Content-Type': 'application/x-ndjson' } },
+      ),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.modelVerification.verify',
+      }),
+    )
+    await waitFor(() => expect(save).toBeEnabled())
+    expect(
+      screen.getAllByText('admin.aiConnections.reasoning.modelDefault').length,
+    ).toBeGreaterThan(0)
+    expect(
+      screen.queryByRole('combobox', {
+        name: /^admin.aiConnections.fields.reasoningEffort.label/,
+      }),
+    ).toBeNull()
+  })
+
   it('keeps capability truth read-only until one streamed verification is reviewed and saved', async () => {
     fetchMock
       .mockResolvedValueOnce(verificationResponse())
@@ -477,7 +557,7 @@ describe('Admin AI model and stable-profile forms', () => {
       screen.getAllByText(
         'admin.aiConnections.modelVerification.outcomes.notChecked',
       ),
-    ).toHaveLength(7)
+    ).toHaveLength(9)
     expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
     await user.type(
       screen.getByLabelText(/^admin\.aiConnections\.fields\.name\.label/),
@@ -840,6 +920,10 @@ describe('Admin AI model and stable-profile forms', () => {
         revisionToken: '00000000-0000-4000-8000-000000000005',
         revisions: [
           {
+            reasoning: {
+              mode: 'explicit_control' as const,
+              effort: 'high' as const,
+            },
             agentRuntimeVersion: null,
             connectionConfigurationVersion: 1,
             declaredCapabilities: Object.fromEntries(
@@ -853,13 +937,17 @@ describe('Admin AI model and stable-profile forms', () => {
             revisionNumber: 1,
             revisionToken: '00000000-0000-4000-8000-000000000007',
             status: 'verified',
-            testSuiteVersion: 'ai-admin-functional-probe-v1',
+            testSuiteVersion: 'ai-admin-functional-probe-v2',
             verifiedAt: '2026-08-22T12:00:00.000Z',
             verifiedCapabilities: Object.fromEntries(
               Object.keys(verifiedCapabilities).map(key => [key, true]),
             ) as never,
           },
           {
+            reasoning: {
+              mode: 'explicit_control' as const,
+              effort: 'high' as const,
+            },
             agentRuntimeVersion: null,
             connectionConfigurationVersion: 1,
             declaredCapabilities: {} as never,
@@ -871,7 +959,7 @@ describe('Admin AI model and stable-profile forms', () => {
             revisionNumber: 2,
             revisionToken: '00000000-0000-4000-8000-000000000009',
             status: 'ended',
-            testSuiteVersion: 'ai-admin-functional-probe-v1',
+            testSuiteVersion: 'ai-admin-functional-probe-v2',
             verifiedAt: '2026-08-22T12:00:00.000Z',
             verifiedCapabilities: {} as never,
           },

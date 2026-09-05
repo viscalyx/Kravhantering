@@ -39,7 +39,7 @@ innehållsfri sökvägsfil samt varje exakt avsedd adapter, anslutning och
 modellrevision. Därefter använder det den spärrkompatibla och icke-muterande
 Admin-åtgärden `verify_live_path`. Åtgärden avvisar kontrollerade offlineadaptrar
 och kör först den fasta syntetiska adaptersviten
-`ai-admin-functional-probe-v1`. Därefter laddar den den valda aktiva
+`ai-admin-functional-probe-v2`. Därefter laddar den den valda aktiva
 körprofilen och kör ett fast syntetiskt anrop genom dess resolver, hemlighet,
 tillitsgräns, kö-, retry- och deadlinekoordinator, integrationslager och exakta
 adapter. Inga sentinelprofiler, områdesval eller databasbaserade

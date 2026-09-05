@@ -49,7 +49,7 @@ export function describeAiConnectionAdapterContract(
         adapter.run(harness.completedRequest()),
       )
 
-      expect(events).toEqual([
+      expect(events).toMatchObject([
         { delta: 'partial analysis', type: 'analysis_delta' },
         {
           delta: '{"requirements"',

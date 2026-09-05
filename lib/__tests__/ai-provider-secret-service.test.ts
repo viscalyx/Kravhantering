@@ -209,6 +209,10 @@ describe('AI provider-secret service', () => {
       } as unknown as AiAdminConnectionDetail,
       { fetch: vi.fn() } as AiEgressTransport,
       {
+        reasoning: {
+          mode: 'explicit_control' as const,
+          effort: 'high' as const,
+        },
         externalModelId: 'controlled/verified-model',
         externalModelVersion: '2026-08-22',
       },
@@ -226,6 +230,8 @@ describe('AI provider-secret service', () => {
     expect(result.capabilities).toEqual(
       Object.fromEntries(
         [
+          'reasoning',
+          'reasoningControl',
           'aiAnalysis',
           'cost',
           'imageInput',
@@ -269,6 +275,8 @@ describe('AI provider-secret service', () => {
     expect(progress).toEqual([
       'connection_authentication',
       'baseline_model_access',
+      'capability:reasoning',
+      'capability:reasoningControl',
       'capability:aiAnalysis',
       'capability:cost',
       'capability:imageInput',

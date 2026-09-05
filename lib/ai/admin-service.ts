@@ -25,6 +25,7 @@ import type {
   AiProviderSecretVersionMetadata,
 } from './provider-secret-service'
 import { AI_ADMIN_FUNCTIONAL_PROBE_VERSION } from './provider-secret-service'
+import { requireAiReasoningConfiguration } from './reasoning'
 import { assertAiStagingLiveVerificationAllowed } from './staging-live-policy'
 
 export type {
@@ -99,6 +100,7 @@ export interface AiAdminModelRevisionRecord {
   profileCompatibility: Readonly<
     Record<AiRunProfileKey, AiAdminProfileCompatibility>
   > | null
+  reasoning: import('./reasoning').AiReasoningConfiguration | null
   revisionNumber: number
   revisionToken: string
   status: 'ended' | 'new_revision_required' | 'verified'
@@ -166,6 +168,7 @@ export interface AiAdminCapabilityVerification {
 export interface AiAdminModelVerificationCandidate {
   externalModelId: string
   externalModelVersion: string | null
+  reasoning: import('./reasoning').AiReasoningConfiguration
 }
 
 export interface AiAdminProfileCompatibility {
@@ -186,6 +189,7 @@ export interface AiAdminCandidateVerificationResult {
   profileCompatibility: Readonly<
     Record<AiRunProfileKey, AiAdminProfileCompatibility>
   >
+  reasoning: import('./reasoning').AiReasoningConfiguration
   saveable: boolean
   testSuiteVersion: string
 }
@@ -849,7 +853,11 @@ export class AiConnectionAdministrationService {
         endpointUrl: connection.endpointUrl,
         tlsPolicyKey: connection.tlsPolicyKey,
       },
-      model: input.candidate,
+      model: {
+        reasoning: requireAiReasoningConfiguration(result.reasoning),
+        externalModelId: input.candidate.externalModelId,
+        externalModelVersion: input.candidate.externalModelVersion,
+      },
       testSuiteVersion: result.testSuiteVersion,
     })
     const attempt = result.saveable
@@ -928,6 +936,9 @@ export class AiConnectionAdministrationService {
         tlsPolicyKey: connection.tlsPolicyKey,
       },
       model: {
+        reasoning: requireAiReasoningConfiguration(
+          input.modelRevision.reasoning,
+        ),
         externalModelId: input.modelRevision.externalModelId,
         externalModelVersion: input.modelRevision.externalModelVersion,
       },
@@ -960,7 +971,12 @@ export class AiConnectionAdministrationService {
       const saved = await this.#store.saveModelRevision({
         connection,
         connectionId: input.connectionId,
-        modelRevision: input.modelRevision,
+        modelRevision: {
+          ...input.modelRevision,
+          reasoning: requireAiReasoningConfiguration(
+            input.modelRevision.reasoning,
+          ),
+        },
         verification,
       })
       lease.commit()

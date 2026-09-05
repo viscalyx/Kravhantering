@@ -1,3 +1,4 @@
+import { parseAiReasoningConfiguration } from './reasoning'
 import type {
   AIConnectionAdapter,
   AiConnectionAdapterRegistration,
@@ -34,9 +35,9 @@ export interface OpenRouterAdapterConfiguration {
   }
 }
 
-export interface OpenRouterAdapterModelConfiguration {
-  reasoningEffort?: 'high' | 'low' | 'medium' | 'none'
-}
+export type OpenRouterAdapterModelConfiguration = Readonly<
+  Record<string, unknown>
+>
 
 interface OpenRouterUsage {
   completion_tokens?: unknown
@@ -175,16 +176,6 @@ function readModelConfiguration(
   value: unknown,
 ): OpenRouterAdapterModelConfiguration | null {
   if (!isRecord(value)) return null
-  const effort = value.reasoningEffort
-  if (
-    effort !== undefined &&
-    effort !== 'high' &&
-    effort !== 'medium' &&
-    effort !== 'low' &&
-    effort !== 'none'
-  ) {
-    return null
-  }
   return value as unknown as OpenRouterAdapterModelConfiguration
 }
 
@@ -276,16 +267,60 @@ function readUsage(
 }
 
 function readAnalysis(message: OpenRouterMessage): string | null {
-  if (typeof message.reasoning === 'string') return message.reasoning
-  if (typeof message.reasoning_content === 'string')
+  if (typeof message.reasoning === 'string' && message.reasoning.trim())
+    return message.reasoning
+  if (
+    typeof message.reasoning_content === 'string' &&
+    message.reasoning_content.trim()
+  )
     return message.reasoning_content
   if (!Array.isArray(message.reasoning_details)) return null
   const parts = message.reasoning_details.flatMap(detail => {
     if (!isRecord(detail)) return []
-    if (typeof detail.text === 'string') return [detail.text]
-    return typeof detail.summary === 'string' ? [detail.summary] : []
+    if (detail.type === 'reasoning.text' && typeof detail.text === 'string')
+      return [detail.text]
+    return detail.type === 'reasoning.summary' &&
+      typeof detail.summary === 'string'
+      ? [detail.summary]
+      : []
   })
-  return parts.length > 0 ? parts.join('') : null
+  const analysis = parts.join('')
+  return analysis.trim() ? analysis : null
+}
+
+function hasReasoningActivity(
+  message: OpenRouterMessage | undefined,
+  usage: unknown,
+): boolean {
+  if (isRecord(usage) && isRecord(usage.completion_tokens_details)) {
+    const count = usage.completion_tokens_details.reasoning_tokens
+    if (typeof count === 'number' && Number.isSafeInteger(count) && count > 0)
+      return true
+  }
+  if (!message) return false
+  if (readAnalysis(message)?.trim()) return true
+  return (
+    Array.isArray(message.reasoning_details) &&
+    message.reasoning_details.some(
+      detail =>
+        isRecord(detail) &&
+        (detail.type === 'reasoning.encrypted' ||
+          detail.type === 'reasoning.redacted') &&
+        typeof detail.data === 'string' &&
+        detail.data.trim().length > 0,
+    )
+  )
+}
+
+function reasoningEvidence(
+  request: AiConnectionAdapterRunRequest,
+  activity: boolean,
+) {
+  return {
+    activity,
+    control:
+      activity && request.modelRevision.reasoning.mode === 'explicit_control',
+  }
 }
 
 function hasProhibitedProtocolField(value: Record<string, unknown>): boolean {
@@ -465,7 +500,7 @@ function upstreamFailure(
 
 function requestBody(
   request: AiConnectionAdapterRunRequest,
-  modelConfiguration: OpenRouterAdapterModelConfiguration,
+  _modelConfiguration: OpenRouterAdapterModelConfiguration,
 ): Record<string, unknown> {
   const content = request.task.content.map(part =>
     part.type === 'text'
@@ -477,7 +512,7 @@ function requestBody(
           type: 'image_url',
         },
   )
-  const effort = modelConfiguration.reasoningEffort ?? 'high'
+  const reasoning = request.modelRevision.reasoning
   const provider: Record<string, unknown> = {
     // Keep the exact model fixed while allowing OpenRouter to select another
     // eligible endpoint for that model. The privacy filters below still apply
@@ -501,8 +536,9 @@ function requestBody(
   if (request.selectedCapabilities.jsonSchemaSteering) {
     provider.require_parameters = true
   }
-  if (request.selectedCapabilities.aiAnalysis) {
-    body.reasoning = { effort, exclude: false }
+  if (reasoning.mode === 'explicit_control') {
+    provider.require_parameters = true
+    body.reasoning = { effort: reasoning.effort, exclude: false }
   }
   if (request.selectedCapabilities.jsonSchemaSteering) {
     body.response_format = {
@@ -614,6 +650,10 @@ async function runNonStreaming(
       : null,
     identity: identity(request),
     rawOutput: message.content,
+    reasoningEvidence: reasoningEvidence(
+      request,
+      hasReasoningActivity(message, data.usage),
+    ),
     type: 'completed',
     usage: readUsage(data.usage, request),
   }
@@ -622,12 +662,14 @@ async function runNonStreaming(
 function readStreamDelta(value: unknown): {
   analysis: string | null
   output: string | null
+  activity: boolean
 } | null {
   if (!isRecord(value)) return null
   const choices = value.choices
   if (choices !== undefined && !Array.isArray(choices)) return null
   const choice = Array.isArray(choices) ? choices[0] : undefined
-  if (choice === undefined) return { analysis: null, output: null }
+  if (choice === undefined)
+    return { analysis: null, output: null, activity: false }
   if (
     !isRecord(choice) ||
     !isRecord(choice.delta) ||
@@ -645,6 +687,7 @@ function readStreamDelta(value: unknown): {
   const analysis = readAnalysis(delta as OpenRouterMessage)
   return {
     analysis,
+    activity: hasReasoningActivity(delta as OpenRouterMessage, undefined),
     output: typeof delta.content === 'string' ? delta.content : null,
   }
 }
@@ -711,6 +754,7 @@ async function* runStreaming(
   const encoder = new TextEncoder()
   let buffer = ''
   let analysis = ''
+  let activity = false
   let output = ''
   let accumulatedOutputBytes = 0
   let retainedOutputBytes = 0
@@ -808,6 +852,7 @@ async function* runStreaming(
           })
           return
         }
+        activity ||= delta.activity
         if (chunk.usage !== undefined) {
           usage = chunk.usage
           retainedUsageBytes = encoder.encode(JSON.stringify(usage)).byteLength
@@ -908,6 +953,10 @@ async function* runStreaming(
     identity: identity(request),
     rawOutput: output,
     type: 'completed',
+    reasoningEvidence: reasoningEvidence(
+      request,
+      activity || hasReasoningActivity(undefined, usage),
+    ),
     usage: readUsage(usage, request),
   }
 }
@@ -926,6 +975,7 @@ const openRouterAdapter: AIConnectionAdapter = {
       request.modelRevision.configuration,
     )
     if (
+      !parseAiReasoningConfiguration(request.modelRevision.reasoning) ||
       !configuration ||
       !modelConfiguration ||
       !isExternalModelId(request.modelRevision.externalModelId)

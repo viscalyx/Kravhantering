@@ -395,7 +395,7 @@ For `staging_live`, use `environment: "staging"` and
 complete document. `liveExecutionProof` is an array with one item per intended
 path. Each item contains all nine path fields plus `executionId`,
 `externalLiveCallMade: true`, `failureCategory: null`, `outcome: "passed"`,
-and `testSuiteVersion: "ai-admin-functional-probe-v1"`.
+and `testSuiteVersion: "ai-admin-functional-probe-v2"`.
 
 Run the gate from the unpacked bundle and retain its output with the release
 evidence:
@@ -473,7 +473,7 @@ version, and that the exact
 connection and model revision are active and verified. It then runs the
 guard-compatible, non-mutating Admin `verify_live_path` action. That action
 resolves the exact active connection/model/profile path, rejects controlled
-offline adapters, runs the fixed synthetic `ai-admin-functional-probe-v1`, and
+offline adapters, runs the fixed synthetic `ai-admin-functional-probe-v2`, and
 then executes a fixed synthetic request through the selected active profile's
 resolver, configured secret, trust boundary, queue/retry/deadline coordinator,
 integration layer, and exact live adapter. It does not select an area or send
@@ -482,24 +482,37 @@ revision tokens plus the stable profile token and configuration version
 after execution, so a concurrent Admin change emits no proof. Its response binds
 the current execution ID, suite version, outcome, observed adapter, exact path,
 and revision tokens; the script validates every field before emitting evidence.
-The v1 capability probe isolates provider-facing controls by capability.
-Keep that version stable while its introducing pull request is unmerged.
-Increment it only after an earlier suite version has been released or its
-persisted evidence must remain distinguishable from a changed suite contract.
-Baseline access and validatable JSON use only the fixed prompt plus local JSON
-validation. Reasoning controls are present only for the AI-analysis check. The
-OpenRouter adapter uses the runtime default `high` effort for that check so the
-verification exercises the same default as an ordinary generation run.
-JSON Schema controls only for strict schema steering, image content only for
-image input, and streaming only for the streaming check. Advertised parameters
-are not proof: AI analysis passes only when the normalized terminal contains a
-plaintext or summarized analysis value; absent or encrypted-only reasoning
-remains unverified.
+The v2 suite binds the immutable normalized reasoning configuration to the
+candidate fingerprint, every functional probe, and persisted evidence. Existing
+v1 evidence cannot establish mandatory reasoning; migration 0062 marks verified
+revisions as requiring a new revision. Administrators must verify and select new
+revisions before these profiles can admit runs. Required seed leaves AI
+unconfigured and does not manufacture reasoning evidence.
+
+The adapter resolves the applicable path per connection and model before
+functional verification; catalog claims guide resolution but never verify it.
+Every probe uses the selected explicit effort (`low`, `medium`, or `high`, with
+`high` as default) or model-default reasoning with no control parameter.
+OpenRouter explicit control uses its unified reasoning object and requires
+parameter-supporting routes. Model default does not require support for an
+unused control parameter. Both paths preserve privacy and exact-model routing.
+Positive reasoning-token usage or recognized nonempty reasoning metadata proves
+activity independently of visible analysis and optional usage display. Only
+content-free activity/control flags leave the adapter; encrypted and redacted
+payloads are neither retained nor displayed. This evidence does not attest exact
+internal effort. Catalog claims, successful output and echoed requests alone do
+not verify activity. Missing evidence or technical failure is inconclusive;
+explicit rejection is not verified. Neither permits a usable revision.
+
+JSON Schema controls remain specific to schema steering, image content to image
+input, and streaming to the streaming check. Separate plaintext or summarized
+analysis can verify optional AI analysis; encrypted-only activity cannot.
 The baseline is a gate: when it fails, later live capability and profile probes
 remain not tested. Failed rows may expose only the adapter's sanitized technical
 code and normalized HTTP status, never the provider error body.
-After the baseline passes, at least one verified fixed run profile makes the
-model saveable. An inconclusive optional capability remains unavailable for
+After the baseline and mandatory reasoning pass, at least one verified fixed
+run profile makes the model saveable. Explicit control is additionally required
+for the explicit path. An inconclusive optional capability remains unavailable for
 profile selection but does not block a separately verified run profile.
 Adapter authors must follow the capability-isolation and dialect-selection
 rules in the

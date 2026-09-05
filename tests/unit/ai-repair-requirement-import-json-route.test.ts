@@ -123,7 +123,7 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
     ]
   })
 
-  it.each(['model', 'providerPreferences', 'reasoningEffort'])(
+  it.each(['model', 'providerPreferences', 'reasoningEffort', 'reasoning'])(
     'rejects caller-selected provider configuration in %s',
     async field => {
       const response = await POST(request(validBody({ [field]: 'legacy' })))

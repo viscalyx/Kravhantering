@@ -6,6 +6,7 @@ describe('SQL Server AI run profile source', () => {
   it('loads one exact stable profile configuration and its persisted model revision', async () => {
     const query = vi.fn().mockResolvedValue([
       {
+        reasoningJson: '{"mode":"explicit_control","effort":"high"}',
         adapterType: 'controlled_test',
         adapterVersion: '1',
         agentRuntimeKey: 'controlled_runtime',
@@ -51,6 +52,10 @@ describe('SQL Server AI run profile source', () => {
 
     await expect(source.findProfile('generation_with_images')).resolves.toEqual(
       {
+        reasoning: {
+          mode: 'explicit_control' as const,
+          effort: 'high' as const,
+        },
         adapterType: 'controlled_test',
         adapterVersion: '1',
         connectionAgentRuntimeVersion: 'runtime-v2',

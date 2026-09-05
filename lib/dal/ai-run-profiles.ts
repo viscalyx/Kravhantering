@@ -6,6 +6,8 @@ import type {
   AiRunProfileOperationalStatus,
   AiRunProfileSource,
 } from '@/lib/ai/profile-resolver'
+import { parseAiReasoningConfiguration } from '@/lib/ai/reasoning'
+import { AI_ADMIN_FUNCTIONAL_PROBE_VERSION } from '@/lib/ai/verification-contract'
 import type { SqlServerDatabase } from '@/lib/db'
 
 interface AiRunProfileRow {
@@ -44,6 +46,7 @@ interface AiRunProfileRow {
   profileConfigurationVersion: number
   profileId: string
   queueCapacity: number
+  reasoningJson: string | null
   tlsPolicyKey: string
   totalTimeBudgetSeconds: number
   verifiedCapabilitiesJson: string | null
@@ -67,6 +70,7 @@ const RUN_PROFILE_QUERY = `
     [model_revision].[status] AS [modelRevisionStatus],
     [model_revision].[connection_configuration_version]
       AS [modelRevisionConnectionConfigurationVersion],
+    [model_revision].[reasoning_json] AS [reasoningJson],
     [model_revision].[external_model_id] AS [externalModelId],
     [model_revision].[external_model_version] AS [externalModelVersion],
     [model_revision].[agent_runtime_version]
@@ -110,6 +114,15 @@ const RUN_PROFILE_QUERY = `
     AND ([attestation].[review_due_at] IS NULL
       OR [attestation].[review_due_at] > SYSUTCDATETIME())
   WHERE [profile].[profile_key] = @0
+    AND EXISTS (
+      SELECT 1 FROM [ai_connection_model_verification_evidence] AS [evidence]
+      WHERE [evidence].[ai_connection_model_revision_id] = [model_revision].[id]
+        AND [evidence].[outcome] = N'passed'
+        AND [evidence].[test_suite_version] = N'${AI_ADMIN_FUNCTIONAL_PROBE_VERSION}'
+        AND JSON_VALUE([evidence].[verified_capabilities_json], '$.reasoning') = N'true'
+        AND JSON_QUERY([evidence].[details_json], '$.reasoning') = [model_revision].[reasoning_json]
+        AND JSON_VALUE([evidence].[profile_compatibility_json], CONCAT('$.', @0, '.supported')) = N'true'
+    )
 `
 
 function stringArray(value: string): readonly string[] | null {
@@ -128,6 +141,9 @@ function mapRow(row: AiRunProfileRow): AiPersistedRunProfile {
   const processingRegions = stringArray(row.attestationProcessingRegionsJson)
   const subprocessors = stringArray(row.attestationSubprocessorsJson)
   return {
+    reasoning: row.reasoningJson
+      ? parseAiReasoningConfiguration(JSON.parse(row.reasoningJson))
+      : null,
     adapterType: row.adapterType,
     adapterVersion: row.adapterVersion,
     connectionAgentRuntimeVersion: row.connectionAgentRuntimeVersion,

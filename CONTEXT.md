@@ -588,14 +588,43 @@ _Avoid_: Konfigurationsstatus, driftstatus, flera samtidiga statusar,
 leverantörshälsa.
 
 **AI-analys**:
-Modellens stödjande resonemang som visas tillsammans med förslag i
-AI-assisterat författande. AI-analys är granskningsstöd och blir inte
-auktoritativ kravtext eller sparat kravinnehåll.
+Separat, visningsbar klartext eller sammanfattning av modellens stödjande
+resonemang tillsammans med förslag i AI-assisterat författande. AI-analys är
+granskningsstöd och blir inte auktoritativ kravtext eller sparat kravinnehåll.
 
 - `en`: AI analysis
 
 _Avoid_: Råresultat, kravtext, kravkandidat, AI-logg, resonemangskedja,
 fullständig tankekedja, beslutsmotivering, granskningsprotokoll.
+
+**Styrning av resonemangsnivå**:
+Förmågan att begära en bestämd resonemangsnivå för en anslutningsmodellrevision
+genom dess AI-anslutning. Förmågan är skild från om modellen lämnar visningsbar
+AI-analys.
+
+- `en`: Reasoning control
+
+_Avoid_: AI-analys när styrningen avses, visning av resonemang.
+
+**Resonemangsförmåga**:
+Förmågan hos en anslutningsmodellrevision att använda resonemang genom sin
+AI-anslutning, antingen som standard eller genom uttrycklig styrning.
+Förmågan är skild från både styrning av resonemangsnivå och visningsbar
+AI-analys.
+
+- `en`: Reasoning capability
+
+_Avoid_: Styrning av resonemangsnivå när själva resonemanget avses, AI-analys.
+
+**Resonemangsnivå**:
+Den administratörsvalda, oföränderliga nivån för en anslutningsmodellrevisions
+begärda resonemang när nivån kan styras: Låg, Medel eller Hög. Nivån uttrycker
+begärd ansträngning, inte en uppmätt mängd resonemang eller en garanti om
+kvalitet; utan nivåstyrning används Modellens standard.
+
+- `en`: Reasoning effort; Low, Medium, High; Model default
+
+_Avoid_: Analysnivå, körprofilsinställning, kvalitetsgaranti.
 
 **Råresultat**:
 Systemnära output från AI-assisterat författande eller kravbiblioteksimport som

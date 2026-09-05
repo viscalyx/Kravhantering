@@ -19,6 +19,8 @@ import {
   deriveAiRunProfileAdministrativeStatus,
 } from '@/lib/ai/admin-service'
 import type { AiRunProfileKey } from '@/lib/ai/profile-resolver'
+import { parseAiReasoningConfiguration } from '@/lib/ai/reasoning'
+import { AI_ADMIN_FUNCTIONAL_PROBE_VERSION } from '@/lib/ai/verification-contract'
 import type { SqlServerDatabase, SqlServerEntityManager } from '@/lib/db'
 import { conflictError } from '@/lib/requirements/errors'
 
@@ -83,6 +85,7 @@ interface ModelRow {
   modelRevisionToken: string
   modelToken: string
   profileCompatibilityJson: string | null
+  reasoningJson: string | null
   revisionId: string
   revisionNumber: number | string
   status: AiAdminModelRevisionRecord['status']
@@ -326,6 +329,9 @@ function models(rows: readonly ModelRow[]): AiAdminModelRecord[] {
       connectionConfigurationVersion: Number(
         row.connectionConfigurationVersion,
       ),
+      reasoning: row.reasoningJson
+        ? parseAiReasoningConfiguration(JSON.parse(row.reasoningJson))
+        : null,
       declaredCapabilities:
         jsonCapability(row.declaredCapabilitiesJson) ?? emptyCapabilities(),
       discoveredCapabilities: jsonCapability(row.discoveredCapabilitiesJson),
@@ -350,6 +356,8 @@ function models(rows: readonly ModelRow[]): AiAdminModelRecord[] {
 
 function emptyCapabilities(): AiCapability {
   return {
+    reasoning: false,
+    reasoningControl: false,
     aiAnalysis: false,
     cost: false,
     imageInput: false,
@@ -420,6 +428,7 @@ async function loadConnections(
          [revision].[external_model_id] AS [externalModelId],
          [revision].[external_model_version] AS [externalModelVersion],
          [revision].[agent_runtime_version] AS [agentRuntimeVersion],
+         [revision].[reasoning_json] AS [reasoningJson],
          [revision].[declared_capabilities_json] AS [declaredCapabilitiesJson],
          [revision].[discovered_capabilities_json]
            AS [discoveredCapabilitiesJson],
@@ -647,6 +656,9 @@ async function loadProfiles(
        FROM [ai_connection_model_verification_evidence] AS [candidate]
        WHERE [candidate].[ai_connection_model_revision_id] = [revision].[id]
          AND [candidate].[outcome] = N'passed'
+         AND [candidate].[test_suite_version] = N'${AI_ADMIN_FUNCTIONAL_PROBE_VERSION}'
+         AND JSON_VALUE([candidate].[verified_capabilities_json], '$.reasoning') = N'true'
+         AND [revision].[reasoning_json] IS NOT NULL
          AND JSON_VALUE([candidate].[profile_compatibility_json],
            CONCAT('$.', [profile].[profile_key], '.supported')) = N'true'
        ORDER BY [candidate].[verified_at] DESC
@@ -1013,6 +1025,12 @@ export function createSqlServerAiAdminStore(
         ) as AiCapability
         if (
           !input.verification.saveable ||
+          !verifiedCapabilities.reasoning ||
+          !parseAiReasoningConfiguration(value.reasoning) ||
+          (value.reasoning.mode === 'explicit_control' &&
+            !verifiedCapabilities.reasoningControl) ||
+          JSON.stringify(value.reasoning) !==
+            JSON.stringify(input.verification.reasoning) ||
           !Object.values(input.verification.profileCompatibility).some(
             result => result.supported,
           )
@@ -1085,6 +1103,7 @@ export function createSqlServerAiAdminStore(
           input.verification.profileCompatibility,
         )
         const detailsJson = JSON.stringify({
+          reasoning: input.verification.reasoning,
           baseline: input.verification.baseline,
           capabilities: input.verification.capabilities,
           connection: input.verification.connection,
@@ -1098,6 +1117,7 @@ export function createSqlServerAiAdminStore(
                 input.connection.configurationVersion,
               externalModelId: value.externalModelId,
               externalModelVersion: value.externalModelVersion,
+              reasoning: value.reasoning,
               suite: input.verification.testSuiteVersion,
             }),
           )
@@ -1131,11 +1151,11 @@ export function createSqlServerAiAdminStore(
              [external_model_id], [external_model_version],
              [agent_runtime_version], [declared_capabilities_json],
              [discovered_capabilities_json], [verified_capabilities_json],
-             [verified_at], [created_at], [updated_at]
+             [verified_at], [created_at], [updated_at], [reasoning_json]
            )
            SELECT @2, @1, @revision_number, @configuration_version,
              N'verified', @3, COALESCE(@5, @4), [agent_runtime_version],
-             @6, NULL, @6, SYSUTCDATETIME(), SYSUTCDATETIME(), SYSUTCDATETIME()
+             @6, NULL, @6, SYSUTCDATETIME(), SYSUTCDATETIME(), SYSUTCDATETIME(), @19
            FROM [ai_connections] WHERE [id] = @0;
            INSERT INTO [ai_connection_model_verification_evidence] (
              [id], [ai_connection_model_revision_id],
@@ -1170,6 +1190,7 @@ export function createSqlServerAiAdminStore(
             compatibilityJson,
             evidenceFingerprint,
             detailsJson,
+            JSON.stringify(value.reasoning),
           ],
         )
         const loaded = await loadConnection(manager, input.connectionId)
@@ -1500,6 +1521,9 @@ export function createSqlServerAiAdminStore(
                  SELECT 1 FROM [ai_connection_model_verification_evidence] AS [evidence]
                  WHERE [evidence].[ai_connection_model_revision_id] = [revision].[id]
                    AND [evidence].[outcome] = N'passed'
+                   AND [evidence].[test_suite_version] = N'${AI_ADMIN_FUNCTIONAL_PROBE_VERSION}'
+                   AND JSON_VALUE([evidence].[verified_capabilities_json], '$.reasoning') = N'true'
+                   AND [revision].[reasoning_json] IS NOT NULL
                    AND JSON_VALUE([evidence].[profile_compatibility_json], @1) = N'true'
                )
                AND EXISTS (

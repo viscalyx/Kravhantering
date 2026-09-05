@@ -2034,6 +2034,10 @@
         "queueCapacity": {
           "label": "Kapacitet i kön",
           "help": "Ange hur många körningar som får vänta för profilen, från 0 till 100."
+        },
+        "reasoningEffort": {
+          "label": "Resonemangsnivå",
+          "help": "Hög är standard. Vald nivå verifieras och sparas på denna oföränderliga modellrevision. Körprofiler och anrop kan inte ändra den. Verifieringen observerar aktivitet och accepterad styrning, inte leverantörens exakta interna nivå."
         }
       },
       "secret": {
@@ -2187,7 +2191,9 @@
         "jsonSchemaSteering": "Styrning med JSON-schema",
         "streaming": "Strömning",
         "tokenUsage": "Användning av token",
-        "validatableJson": "Validerbar JSON"
+        "validatableJson": "Validerbar JSON",
+        "reasoning": "Resonemangsaktivitet",
+        "reasoningControl": "Uttrycklig resonemangsstyrning"
       },
       "capabilityHelp": {
         "aiAnalysis": "Ange om revisionen returnerar separata uppgifter om AI-analys.",
@@ -2233,10 +2239,12 @@
           "suspended": "Suspenderad"
         }
       },
-      "connections": { "title": "AI-anslutningar" },
+      "connections": {
+        "title": "AI-anslutningar"
+      },
       "modelVerification": {
         "capabilities": "Verifierade förmågor",
-        "capabilitiesHelp": "Verifieringen avgör vilka förmågor som är tillgängliga för körprofiler. Uppgifter i modellkatalogen räknas inte som bevis.",
+        "capabilitiesHelp": "Resonemangsaktivitet är obligatorisk. Uttrycklig styrning krävs endast för den uttryckliga vägen. Visningsbar AI-analys och andra valfria förmågor kan saknas eller vara oavgjorda.",
         "cancelVerification": "Avbryt verifiering",
         "checks": {
           "baseline_model_access": "Grundläggande modellåtkomst",
@@ -2247,7 +2255,9 @@
             "jsonSchemaSteering": "Förmåga: styrning med JSON-schema",
             "streaming": "Förmåga: strömning",
             "tokenUsage": "Förmåga: tokenanvändning",
-            "validatableJson": "Förmåga: validerbar JSON"
+            "validatableJson": "Förmåga: validerbar JSON",
+            "reasoning": "Resonemangsaktivitet",
+            "reasoningControl": "Uttrycklig resonemangsstyrning"
           },
           "connection_authentication": "Anslutning och autentisering",
           "profile": {
@@ -2392,6 +2402,12 @@
           "label": "Validerbar JSON",
           "help": "Styr om slutresultatet måste vara validerbar JSON."
         }
+      },
+      "reasoning": {
+        "low": "Låg",
+        "medium": "Medel",
+        "high": "Hög",
+        "modelDefault": "Modellens standard"
       }
     },
     "applicationSettings": {

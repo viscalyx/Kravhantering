@@ -1,6 +1,8 @@
 import type { AiCapability } from './admin-contracts'
 
 export const AI_CAPABILITY_KEYS = [
+  'reasoning',
+  'reasoningControl',
   'aiAnalysis',
   'cost',
   'imageInput',

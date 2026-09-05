@@ -197,7 +197,7 @@ describe('AI deployment gate', () => {
             externalLiveCallMade: true,
             failureCategory: null,
             outcome: 'passed',
-            testSuiteVersion: 'ai-admin-functional-probe-v1',
+            testSuiteVersion: 'ai-admin-functional-probe-v2',
           },
         ],
         syntheticProbe: {
@@ -237,7 +237,7 @@ describe('AI deployment gate', () => {
         externalLiveCallMade: true,
         failureCategory: null,
         outcome: 'passed',
-        testSuiteVersion: 'ai-admin-functional-probe-v1',
+        testSuiteVersion: 'ai-admin-functional-probe-v2',
       },
     ]
     expect(assessAiDeploymentGate(staging).blockers).toEqual(
@@ -546,7 +546,7 @@ describe('AI deployment gate', () => {
         externalLiveCallMade: true,
         failureCategory: null,
         outcome: 'passed',
-        testSuiteVersion: 'ai-admin-functional-probe-v1',
+        testSuiteVersion: 'ai-admin-functional-probe-v2',
       })),
       syntheticProbe: {
         ...paths[0],

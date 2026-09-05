@@ -34,6 +34,7 @@ import {
   AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
   AiProviderSecretAdminService,
 } from './provider-secret-service'
+import { requireAiReasoningConfiguration } from './reasoning'
 import type {
   AiEgressTransport,
   AiRunIdentity,
@@ -348,6 +349,7 @@ export function createProductionAiAdminExternalOperations(
         connection,
         observedEgress,
         {
+          reasoning: requireAiReasoningConfiguration(revision.reasoning),
           externalModelId: revision.externalModelId,
           externalModelVersion: revision.externalModelVersion,
         },
@@ -356,15 +358,17 @@ export function createProductionAiAdminExternalOperations(
         },
       )
       assertAiStagingLiveVerificationAllowed(selection.expectedEnvironmentId)
-      const exactResult = result.saveable
-        ? await exactLivePathRunner.run(selection)
-        : {
-            failureCategory:
-              result.baseline.failureCategory ??
-              result.connection.failureCategory ??
-              'capability_mismatch',
-            outcome: 'failed' as const,
-          }
+      const exactResult =
+        result.saveable &&
+        JSON.stringify(result.reasoning) === JSON.stringify(revision.reasoning)
+          ? await exactLivePathRunner.run(selection)
+          : {
+              failureCategory:
+                result.baseline.failureCategory ??
+                result.connection.failureCategory ??
+                'capability_mismatch',
+              outcome: 'failed' as const,
+            }
       return {
         adapterType: registration.adapterType,
         adapterVersion: registration.adapterVersion,

@@ -2034,6 +2034,10 @@
         "queueCapacity": {
           "label": "Queue capacity",
           "help": "Set how many runs may wait for this profile, from 0 to 100."
+        },
+        "reasoningEffort": {
+          "label": "Reasoning effort",
+          "help": "High is the default. The selected effort is verified and saved on this immutable model revision. Profiles and runs cannot override it. Verification observes activity and accepted control, not the provider’s exact internal effort."
         }
       },
       "secret": {
@@ -2187,7 +2191,9 @@
         "jsonSchemaSteering": "JSON schema steering",
         "streaming": "Streaming",
         "tokenUsage": "Token usage",
-        "validatableJson": "Validatable JSON"
+        "validatableJson": "Validatable JSON",
+        "reasoning": "Reasoning activity",
+        "reasoningControl": "Explicit reasoning control"
       },
       "capabilityHelp": {
         "aiAnalysis": "Declare whether this revision returns separate AI analysis metadata.",
@@ -2233,10 +2239,12 @@
           "suspended": "Suspended"
         }
       },
-      "connections": { "title": "AI connections" },
+      "connections": {
+        "title": "AI connections"
+      },
       "modelVerification": {
         "capabilities": "Verified capabilities",
-        "capabilitiesHelp": "Verification determines which capabilities are available to run profiles. Catalog claims are not treated as proof.",
+        "capabilitiesHelp": "Reasoning activity is mandatory. Explicit control is required only for the explicit path. Visible AI analysis and other optional capabilities may be unavailable or inconclusive.",
         "cancelVerification": "Cancel verification",
         "checks": {
           "baseline_model_access": "Baseline model access",
@@ -2247,7 +2255,9 @@
             "jsonSchemaSteering": "Capability: JSON Schema steering",
             "streaming": "Capability: streaming",
             "tokenUsage": "Capability: token usage",
-            "validatableJson": "Capability: validatable JSON"
+            "validatableJson": "Capability: validatable JSON",
+            "reasoning": "Reasoning activity",
+            "reasoningControl": "Explicit reasoning control"
           },
           "connection_authentication": "Connection and authentication",
           "profile": {
@@ -2392,6 +2402,12 @@
           "label": "Validatable JSON",
           "help": "Control whether the final output must be validatable JSON."
         }
+      },
+      "reasoning": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "modelDefault": "Model default"
       }
     },
     "applicationSettings": {

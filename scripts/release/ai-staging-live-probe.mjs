@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 
-const ADMIN_FUNCTIONAL_PROBE_VERSION = 'ai-admin-functional-probe-v1'
+const ADMIN_FUNCTIONAL_PROBE_VERSION = 'ai-admin-functional-probe-v2'
 const MAX_RESPONSE_BYTES = 1_048_576
 const REQUEST_TIMEOUT_MS = 120_000
 const SAFE_PATH_VALUE = /^[A-Za-z0-9._:-]{1,160}$/u

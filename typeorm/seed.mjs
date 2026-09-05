@@ -319,8 +319,9 @@ const SEED_DATA = {
     pk: ['id'],
     rows: [],
   },
+  // AI stays unconfigured: seed must not manufacture reasoning evidence.
   ai_connection_model_revisions: {
-    columns: ['id'],
+    columns: ['id', 'reasoning_json'],
     identity: false,
     pk: ['id'],
     rows: [],

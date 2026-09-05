@@ -1,3 +1,4 @@
+import { parseAiReasoningConfiguration } from './reasoning'
 import { SAFE_AI_TECHNICAL_CODE } from './requirement-prompt'
 import type {
   AIConnectionAdapter,
@@ -24,6 +25,7 @@ export interface ControlledTestCompletedScenario {
   analysisDeltas?: readonly string[]
   output: string
   outputDeltas?: readonly string[]
+  reasoningEvidence?: import('./reasoning').AiReasoningEvidence
   type: 'completed'
   usage: AiRunUsage
 }
@@ -219,7 +221,10 @@ const controlledTestAdapter: AIConnectionAdapter = {
       return
     }
     const configuration = readConfiguration(request.connection.configuration)
-    if (!configuration) {
+    if (
+      !configuration ||
+      !parseAiReasoningConfiguration(request.modelRevision.reasoning)
+    ) {
       yield {
         failure: {
           category: 'adapter_failure',
@@ -250,6 +255,40 @@ const controlledTestAdapter: AIConnectionAdapter = {
       return
     }
 
+    if (
+      request.modelRevision.externalModelId ===
+        'controlled/default-no-analysis' &&
+      request.modelRevision.reasoning.mode === 'explicit_control'
+    ) {
+      yield {
+        type: 'failed',
+        identity: identity(request),
+        failure: {
+          category: 'request_rejected',
+          diagnosticCode: 'controlled_reasoning_control_rejected',
+          retryable: false,
+        },
+      }
+      return
+    }
+    if (
+      request.modelRevision.externalModelId === 'controlled/rejected' ||
+      request.modelRevision.externalModelId === 'controlled/unavailable'
+    ) {
+      yield {
+        type: 'failed',
+        identity: identity(request),
+        failure: {
+          category:
+            request.modelRevision.externalModelId === 'controlled/rejected'
+              ? 'request_rejected'
+              : 'connection_unavailable',
+          diagnosticCode: 'controlled_reasoning_failed',
+          retryable: false,
+        },
+      }
+      return
+    }
     const scenario = configuration.scenario
     if (scenario.type === 'read_error') {
       throw new Error('controlled test stream read failure')
@@ -277,14 +316,19 @@ const controlledTestAdapter: AIConnectionAdapter = {
       yield { failure, identity: identity(request), type: 'failed' }
       return
     }
-    for (const delta of scenario.analysisDeltas ?? []) {
+    for (const delta of request.selectedCapabilities.aiAnalysis
+      ? (scenario.analysisDeltas ?? [])
+      : []) {
       yield { delta, type: 'analysis_delta' }
     }
     for (const delta of scenario.outputDeltas ?? []) {
       yield { delta, type: 'output_delta', visibility: 'internal' }
     }
     yield {
-      analysis: scenario.analysis ?? null,
+      analysis: request.selectedCapabilities.aiAnalysis
+        ? (scenario.analysis ?? null)
+        : null,
+      reasoningEvidence: scenario.reasoningEvidence,
       identity: identity(request),
       rawOutput: scenario.output,
       type: 'completed',

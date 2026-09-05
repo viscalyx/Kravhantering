@@ -95,7 +95,7 @@ describe('Admin AI stable-profile and model-verification routes', () => {
         return {
           attemptId,
           saveable: true,
-          testSuiteVersion: 'ai-admin-functional-probe-v1',
+          testSuiteVersion: 'ai-admin-functional-probe-v2',
         }
       },
     )
@@ -106,9 +106,35 @@ describe('Admin AI stable-profile and model-verification routes', () => {
     })
   })
 
+  it.each([
+    { mode: 'explicit_control', effort: 'none' },
+    { mode: 'explicit_control', effort: 'max' },
+    { mode: 'model_default', effort: 'high' },
+    { mode: 'off', effort: null },
+  ])(
+    'rejects disabled or inconsistent reasoning before verification: %j',
+    async reasoning => {
+      const response = await connectionAction(
+        mutationRequest({
+          action: 'verify_model_candidate',
+          externalModelId: 'controlled/model',
+          externalModelVersion: null,
+          reasoning,
+        }),
+        { params: Promise.resolve({ connectionId }) },
+      )
+      expect(response.status).toBe(400)
+      expect(routeState.service.verifyModelCandidate).not.toHaveBeenCalled()
+    },
+  )
+
   it('streams named verification progress and one reviewable final attempt', async () => {
     const response = await connectionAction(
       mutationRequest({
+        reasoning: {
+          mode: 'explicit_control' as const,
+          effort: 'high' as const,
+        },
         action: 'verify_model_candidate',
         externalModelId: 'controlled/model',
         externalModelVersion: null,
@@ -139,6 +165,10 @@ describe('Admin AI stable-profile and model-verification routes', () => {
     expect(routeState.service.verifyModelCandidate).toHaveBeenCalledWith(
       expect.objectContaining({
         candidate: {
+          reasoning: {
+            mode: 'explicit_control' as const,
+            effort: 'high' as const,
+          },
           externalModelId: 'controlled/model',
           externalModelVersion: null,
         },
@@ -167,6 +197,10 @@ describe('Admin AI stable-profile and model-verification routes', () => {
     )
     const response = await connectionAction(
       mutationRequest({
+        reasoning: {
+          mode: 'explicit_control' as const,
+          effort: 'high' as const,
+        },
         action: 'verify_model_candidate',
         externalModelId: 'controlled/model',
         externalModelVersion: null,
@@ -279,6 +313,31 @@ describe('Admin AI stable-profile and model-verification routes', () => {
       revisionToken,
       totalTimeBudgetSeconds: 1200,
     }
+    for (const overrides of [
+      { reasoning: { mode: 'model_default', effort: null } },
+      { reasoningEffort: 'low' },
+    ]) {
+      const rejected = await saveProfile(
+        new NextRequest(
+          'https://example.test/api/admin/ai-run-profiles/generation_without_images',
+          {
+            body: JSON.stringify({ ...profile, ...overrides }),
+            headers: {
+              origin: 'https://example.test',
+              'x-requested-with': 'XMLHttpRequest',
+            },
+            method: 'PATCH',
+          },
+        ),
+        {
+          params: Promise.resolve({
+            profileKey: 'generation_without_images' as const,
+          }),
+        },
+      )
+      expect(rejected.status).toBe(400)
+      expect(routeState.service.saveRunProfile).not.toHaveBeenCalled()
+    }
     const response = await saveProfile(
       new NextRequest(
         'https://example.test/api/admin/ai-run-profiles/generation_without_images',
@@ -312,6 +371,10 @@ describe('Admin AI stable-profile and model-verification routes', () => {
     })
     const response = await connectionAction(
       mutationRequest({
+        reasoning: {
+          mode: 'explicit_control' as const,
+          effort: 'high' as const,
+        },
         action: 'verify_model_candidate',
         externalModelId: 'controlled/model',
         externalModelVersion: null,

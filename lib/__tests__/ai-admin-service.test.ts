@@ -11,6 +11,16 @@ import {
 import { createAiModelVerificationAttemptStore } from '@/lib/ai/model-verification-attempts'
 
 const capabilities = {
+  reasoning: {
+    diagnosticCode: null,
+    failureCategory: null,
+    outcome: 'verified' as const,
+  },
+  reasoningControl: {
+    diagnosticCode: null,
+    failureCategory: null,
+    outcome: 'verified' as const,
+  },
   aiAnalysis: {
     diagnosticCode: null,
     failureCategory: null,
@@ -49,6 +59,7 @@ const capabilities = {
 }
 
 const verification: AiAdminCandidateVerificationResult = {
+  reasoning: { mode: 'explicit_control' as const, effort: 'high' as const },
   baseline: {
     diagnosticCode: null,
     failureCategory: null,
@@ -85,7 +96,7 @@ const verification: AiAdminCandidateVerificationResult = {
     },
   },
   saveable: true,
-  testSuiteVersion: 'ai-admin-functional-probe-v1',
+  testSuiteVersion: 'ai-admin-functional-probe-v2',
 }
 
 function connection(): AiAdminStoredConnectionDetail {
@@ -169,6 +180,10 @@ describe('AI administration model verification attempts', () => {
     await expect(
       service.verifyModelCandidate({
         candidate: {
+          reasoning: {
+            mode: 'explicit_control' as const,
+            effort: 'high' as const,
+          },
           externalModelId: 'controlled/model',
           externalModelVersion: null,
         },
@@ -191,14 +206,16 @@ describe('AI administration model verification attempts', () => {
     const { audit, connection: current, service } = harness(save)
     const attempt = await service.verifyModelCandidate({
       candidate: {
-        externalModelId: 'controlled/model',
         externalModelVersion: '2026-08-22',
+        externalModelId: 'controlled/model',
+        reasoning: { effort: 'high', mode: 'explicit_control' },
       },
       connectionId: current.id,
       signal: new AbortController().signal,
     })
 
     const modelRevision = {
+      reasoning: { mode: 'explicit_control' as const, effort: 'high' as const },
       attemptId: attempt.attemptId as string,
       description: 'Edited description',
       externalModelId: 'controlled/model',
@@ -242,6 +259,10 @@ describe('AI administration model verification attempts', () => {
     const { connection: current, service } = harness(save)
     const attempt = await service.verifyModelCandidate({
       candidate: {
+        reasoning: {
+          mode: 'explicit_control' as const,
+          effort: 'high' as const,
+        },
         externalModelId: 'controlled/model',
         externalModelVersion: null,
       },
@@ -251,6 +272,10 @@ describe('AI administration model verification attempts', () => {
     const input = {
       connectionId: current.id,
       modelRevision: {
+        reasoning: {
+          mode: 'explicit_control' as const,
+          effort: 'high' as const,
+        },
         attemptId: attempt.attemptId as string,
         description: null,
         externalModelId: 'controlled/model',
@@ -271,6 +296,10 @@ describe('AI administration model verification attempts', () => {
     const { connection: current, service } = harness(vi.fn())
     const attempt = await service.verifyModelCandidate({
       candidate: {
+        reasoning: {
+          mode: 'explicit_control' as const,
+          effort: 'high' as const,
+        },
         externalModelId: 'controlled/model',
         externalModelVersion: null,
       },
@@ -278,6 +307,7 @@ describe('AI administration model verification attempts', () => {
       signal: new AbortController().signal,
     })
     const changed = {
+      reasoning: { mode: 'explicit_control' as const, effort: 'high' as const },
       attemptId: attempt.attemptId as string,
       description: null,
       externalModelId: 'controlled/other-model',
@@ -293,7 +323,23 @@ describe('AI administration model verification attempts', () => {
         modelRevision: changed,
       }),
     ).rejects.toMatchObject({ status: 409 })
+    for (const reasoning of [
+      { mode: 'explicit_control', effort: 'low' },
+      { mode: 'model_default', effort: null },
+    ] as const) {
+      await expect(
+        service.saveModelRevision({
+          connectionId: current.id,
+          modelRevision: {
+            ...changed,
+            externalModelId: 'controlled/model',
+            reasoning,
+          },
+        }),
+      ).rejects.toMatchObject({ status: 409 })
+    }
     service.discardModelVerification(attempt.attemptId as string)
+
     await expect(
       service.saveModelRevision({
         connectionId: current.id,

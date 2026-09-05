@@ -967,10 +967,28 @@ test.describe('Admin settings', () => {
             await dialog.getByLabel(/^Extern modellversion/).fill('2026-08-22')
             await expect(
               dialog.getByText('Inte testad', { exact: true }),
-            ).toHaveCount(7)
+            ).toHaveCount(9)
             await expect(
               dialog.getByRole('button', { name: 'Spara modellrevision' }),
             ).toBeDisabled()
+
+            await dialog
+              .getByLabel(/^Externt modell-id/)
+              .fill('controlled/default-no-analysis')
+            await dialog.getByRole('button', { name: 'Verifiera' }).click()
+            await expect(
+              dialog.getByText('Modellens standard', { exact: true }),
+            ).toBeVisible()
+            await expect(
+              dialog.getByRole('button', { name: 'Spara modellrevision' }),
+            ).toBeEnabled()
+            await expect(dialog.getByLabel(/^Resonemangsnivå/)).toHaveCount(0)
+            await dialog
+              .getByLabel(/^Externt modell-id/)
+              .fill('controlled/model')
+            await expect(dialog.getByLabel(/^Resonemangsnivå/)).toHaveValue(
+              'high',
+            )
 
             const verificationRoute = '**/api/admin/ai-connections/*/actions'
             let releaseFirstVerification: () => void = () => undefined
@@ -1020,7 +1038,7 @@ test.describe('Admin settings', () => {
             ).toBeVisible()
             await expect(
               dialog.getByText('Verifierad', { exact: true }),
-            ).toHaveCount(9)
+            ).toHaveCount(11)
             await expect(
               dialog.getByText('Kravgenerering utan bilder: Stöds'),
             ).toBeVisible()
@@ -1031,6 +1049,8 @@ test.describe('Admin settings', () => {
             ).toHaveText([
               /Anslutning och autentisering — Verifierad/,
               /Grundläggande modellåtkomst — Verifierad/,
+              /Resonemangsaktivitet — Verifierad/,
+              /Uttrycklig resonemangsstyrning — Verifierad/,
               /Förmåga: AI-analys — Verifierad/,
               /Förmåga: kostnad — Verifierad/,
               /Förmåga: bildindata — Verifierad/,
@@ -1056,20 +1076,21 @@ test.describe('Admin settings', () => {
             .fill(`${modelName} presentation`)
           await expect(saveModelRevision).toBeEnabled()
           await modelDialog.getByLabel(/^Modellnamn/).fill(modelName)
-          await modelDialog
-            .getByLabel(/^Extern modellversion/)
-            .fill('2026-08-22-technical-change')
+          await modelDialog.getByLabel(/^Resonemangsnivå/).selectOption('low')
           await expect(saveModelRevision).toBeDisabled()
           await expect(
             modelDialog.getByText('Inte testad', { exact: true }),
-          ).toHaveCount(7)
+          ).toHaveCount(9)
           await modelDialog
-            .getByLabel(/^Extern modellversion/)
-            .fill('2026-08-22')
+            .getByLabel(/^Resonemangsnivå/)
+            .selectOption('medium')
           await modelDialog.getByRole('button', { name: 'Verifiera' }).click()
           await expect(saveModelRevision).toBeEnabled()
           await saveModelRevision.click()
           await expect(modelDialog).toHaveCount(0)
+          await expect(
+            connectionCard.getByText('Resonemangsnivå: Medel', { exact: true }),
+          ).toBeVisible()
         })
 
         await test.step('connection activation', async () => {

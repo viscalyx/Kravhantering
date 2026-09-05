@@ -13,8 +13,12 @@ fel och har en gemensam tidsgräns på 60 sekunder.
 Resultatet binds server-side i högst 15 minuter till aktör, anslutning och ett
 fingeravtryck över tekniska fält. Namn och beskrivning får ändras utan ny
 verifiering. Försöket förbrukas först när modellrevisionen och dess append-only
-verifieringsbevis har sparats atomiskt. Endast lyckad grundkontroll, avgjorda
-förmågor och minst en kompatibel körprofil gör försöket sparbart.
+verifieringsbevis har sparats atomiskt. Lyckad grundkontroll, verifierat
+resonemang och minst en kompatibel körprofil gör försöket sparbart.
+Uttrycklig nivåstyrning krävs bara för den uttryckliga
+vägen. Oavgjorda valfria förmågor hindrar inte sparande men förblir otillgängliga.
+Resonemangets separata bevisgräns beskrivs i
+[ADR 0059](./0059-separat-styrning-av-resonemangsniva.md).
 
 ## Stabila körprofiler
 

@@ -873,6 +873,30 @@ export default function AiConnectionsPanel() {
                                               <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
                                                 {revision.externalModelId}
                                               </p>
+                                              {revision.reasoning ? (
+                                                <p
+                                                  className="mt-1 text-xs text-secondary-600 dark:text-secondary-300"
+                                                  {...devMarker({
+                                                    context:
+                                                      'AI connection model revision',
+                                                    name: 'AI model saved reasoning',
+                                                    priority: 310,
+                                                  })}
+                                                >
+                                                  {t(
+                                                    'fields.reasoningEffort.label',
+                                                  )}
+                                                  :{' '}
+                                                  {revision.reasoning.mode ===
+                                                  'model_default'
+                                                    ? t(
+                                                        'reasoning.modelDefault',
+                                                      )
+                                                    : t(
+                                                        `reasoning.${revision.reasoning.effort}`,
+                                                      )}
+                                                </p>
+                                              ) : null}
                                             </div>
                                             <StatusBadge
                                               tone={revisionTone(

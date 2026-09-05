@@ -766,3 +766,17 @@ If you change any of the following, update this document:
 
 If you add a new requirement column or property, also update
 [.github/instructions/add-requirement-column.instructions.md](../../.github/instructions/add-requirement-column.instructions.md).
+
+The model revision form separates mandatory reasoning activity, explicit
+effort control, and optional visible AI analysis. Explicit control offers Low,
+Medium and High (default). Model default has no effort selector and sends no
+control parameter. The adapter resolves the path for the exact connection and
+model, then must verify activity for that configuration before saving. The
+form adopts the resolved path and does not let the administrator assert model-
+default activity. Changing path or effort cancels pending verification and
+invalidates its attempt. Both verification and runtime use the immutable saved
+configuration. Profiles select revisions and budgets without overriding
+reasoning. Missing activity or technical failure is inconclusive; explicit
+rejection is not verified. Either blocks saving a usable revision even when
+ordinary JSON generation succeeds. Encrypted or redacted metadata can prove
+activity, but never visible analysis.

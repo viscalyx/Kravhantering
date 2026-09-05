@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { AI_CONNECTION_AUTHENTICATION_TYPES } from './connection-trust'
 import { AI_RUN_PROFILE_KEYS } from './profile-resolver'
+import { aiReasoningConfigurationSchema } from './reasoning'
 
 export const aiIdentifierSchema = z.string().uuid()
 export const aiRevisionTokenSchema = z.string().uuid()
@@ -12,6 +13,8 @@ const optionalText = (maximum: number): z.ZodNullable<z.ZodString> =>
 
 export const aiCapabilitySchema = z
   .object({
+    reasoning: z.boolean(),
+    reasoningControl: z.boolean(),
     aiAnalysis: z.boolean(),
     cost: z.boolean(),
     imageInput: z.boolean(),
@@ -101,6 +104,7 @@ export const saveAiAttestationSchema = z
 export const saveAiModelRevisionSchema = z
   .object({
     attemptId: aiIdentifierSchema,
+    reasoning: aiReasoningConfigurationSchema,
     description: optionalText(20_000).optional().default(null),
     externalModelId: boundedText(450),
     externalModelVersion: optionalText(200).optional().default(null),
@@ -233,6 +237,7 @@ export const aiConnectionActionSchema = z.discriminatedUnion('action', [
   z
     .object({
       action: z.literal('verify_model_candidate'),
+      reasoning: aiReasoningConfigurationSchema,
       externalModelId: boundedText(450),
       externalModelVersion: optionalText(200),
     })

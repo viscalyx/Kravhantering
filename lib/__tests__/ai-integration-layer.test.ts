@@ -48,6 +48,7 @@ function profile(
   adapterVersion = '3',
 ): AiPersistedRunProfile {
   return {
+    reasoning: { mode: 'explicit_control' as const, effort: 'high' as const },
     adapterType,
     adapterVersion,
     connectionAgentRuntimeVersion: null,
@@ -88,6 +89,8 @@ function profile(
     queueCapacity: 10,
     totalTimeBudgetSeconds: 1_200,
     verifiedCapabilitiesJson: JSON.stringify({
+      reasoning: true,
+      reasoningControl: true,
       aiAnalysis: false,
       cost: false,
       imageInput: false,
@@ -282,6 +285,8 @@ describe('AI integration layer', () => {
 
       const stored = profile()
       stored.verifiedCapabilitiesJson = JSON.stringify({
+        reasoning: true,
+        reasoningControl: true,
         aiAnalysis: true,
         cost: false,
         imageInput: true,
@@ -706,6 +711,10 @@ describe('AI integration layer', () => {
         maxRetainedMemoryBytes: 8_388_608,
       },
       modelRevision: {
+        reasoning: {
+          mode: 'explicit_control' as const,
+          effort: 'high' as const,
+        },
         configuration: { opaque: 'model-configuration' },
         externalModelId: 'external-model-v1',
         id: 'model-revision-23',
@@ -713,6 +722,8 @@ describe('AI integration layer', () => {
       runProfileConfigurationVersion: 1,
       runProfileId: 'profile-31',
       selectedCapabilities: {
+        reasoning: true,
+        reasoningControl: true,
         aiAnalysis: false,
         cost: false,
         imageInput: false,
@@ -1101,6 +1112,8 @@ describe('AI integration layer', () => {
     }
     const stored = profile()
     stored.verifiedCapabilitiesJson = JSON.stringify({
+      reasoning: true,
+      reasoningControl: true,
       aiAnalysis: false,
       cost: false,
       imageInput: false,
@@ -1275,7 +1288,7 @@ describe('AI integration layer', () => {
       },
     ])
     expect(layer.takeSafeInvalidOutput(events[0])).toEqual({
-      analysis: 'screened analysis',
+      analysis: null,
       issues: [
         {
           code: 'required',

@@ -141,6 +141,7 @@ export const POST = secureMutationRoute({
             try {
               const result = await service.verifyModelCandidate({
                 candidate: {
+                  reasoning: body.reasoning,
                   externalModelId: body.externalModelId,
                   externalModelVersion: body.externalModelVersion,
                 },

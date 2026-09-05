@@ -6,7 +6,7 @@ import {
   stagingLiveProbeConfiguration,
 } from '../release/ai-staging-live-probe.mjs'
 
-const ADMIN_PROBE_VERSION = 'ai-admin-functional-probe-v1'
+const ADMIN_PROBE_VERSION = 'ai-admin-functional-probe-v2'
 const PATH = Object.freeze({
   adapterType: 'openrouter',
   aiConnectionId: '10000000-0000-4000-8000-000000000001',

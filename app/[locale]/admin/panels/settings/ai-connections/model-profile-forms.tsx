@@ -31,6 +31,7 @@ import type {
 } from '@/lib/ai/admin-service'
 import { AI_CAPABILITY_KEYS } from '@/lib/ai/capability-keys'
 import { AI_RUN_PROFILE_KEYS } from '@/lib/ai/profile-resolver'
+import type { AiReasoningConfiguration } from '@/lib/ai/reasoning'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
@@ -163,6 +164,9 @@ export function ModelForm({
   const [externalModelVersion, setExternalModelVersion] = useState(
     latest?.externalModelVersion ?? '',
   )
+  const [reasoning, setReasoning] = useState<AiReasoningConfiguration>(
+    latest?.reasoning ?? { mode: 'explicit_control', effort: 'high' },
+  )
   const [selectedCatalogKey, setSelectedCatalogKey] = useState('')
   const [progress, setProgress] = useState<AiAdminVerificationProgress[]>([])
   const [verification, setVerification] =
@@ -219,6 +223,7 @@ export function ModelForm({
 
   function technicalChange(update: () => void): void {
     const attemptId = verification?.attemptId
+    verificationAbort.current?.abort()
     update()
     setVerification(null)
     setProgress([])
@@ -234,6 +239,11 @@ export function ModelForm({
       setName(item.name)
       setExternalModelId(item.externalModelId)
       setExternalModelVersion(item.externalModelVersion ?? '')
+      setReasoning(
+        item.capabilitySupport?.reasoningControl === 'unsupported'
+          ? { mode: 'model_default', effort: null }
+          : { mode: 'explicit_control', effort: 'high' },
+      )
     })
   }
 
@@ -250,6 +260,7 @@ export function ModelForm({
         {
           body: JSON.stringify({
             action: 'verify_model_candidate',
+            reasoning,
             externalModelId: externalModelId.trim(),
             externalModelVersion: nullable(externalModelVersion),
           }),
@@ -271,6 +282,10 @@ export function ModelForm({
       let buffer = ''
       while (true) {
         const chunk = await reader.read()
+        if (abortController.signal.aborted) {
+          await reader.cancel()
+          return
+        }
         buffer += decoder.decode(chunk.value, { stream: !chunk.done })
         const lines = buffer.split('\n')
         buffer = lines.pop() ?? ''
@@ -288,7 +303,10 @@ export function ModelForm({
               message.progress as AiAdminVerificationProgress,
             ])
           }
-          if (message.result) setVerification(message.result)
+          if (message.result) {
+            setReasoning(message.result.reasoning ?? reasoning)
+            setVerification(message.result)
+          }
           if (message.error) throw new Error(message.error)
         }
         if (chunk.done) break
@@ -312,6 +330,7 @@ export function ModelForm({
     setError(null)
     const modelRevision: SaveAiModelRevision = {
       attemptId: verification.attemptId,
+      reasoning,
       description: nullable(description),
       externalModelId: externalModelId.trim(),
       externalModelVersion: nullable(externalModelVersion),
@@ -437,7 +456,10 @@ export function ModelForm({
           maxLength={450}
           onChange={event => {
             setSelectedCatalogKey('')
-            technicalChange(() => setExternalModelId(event.target.value))
+            technicalChange(() => {
+              setExternalModelId(event.target.value)
+              setReasoning({ mode: 'explicit_control', effort: 'high' })
+            })
           }}
           required
           value={externalModelId}
@@ -454,11 +476,56 @@ export function ModelForm({
           maxLength={200}
           onChange={event => {
             setSelectedCatalogKey('')
-            technicalChange(() => setExternalModelVersion(event.target.value))
+            technicalChange(() => {
+              setExternalModelVersion(event.target.value)
+              setReasoning({ mode: 'explicit_control', effort: 'high' })
+            })
           }}
           value={externalModelVersion}
         />
       </Field>
+      {reasoning.mode === 'explicit_control' ? (
+        <Field
+          help={t('fields.reasoningEffort.help')}
+          id="ai-model-reasoning-effort"
+          label={t('fields.reasoningEffort.label')}
+        >
+          <select
+            className={inputClassName()}
+            id="ai-model-reasoning-effort"
+            value={reasoning.effort}
+            {...devMarker({
+              context: 'AI model form',
+              name: 'AI model reasoning effort',
+              priority: 430,
+            })}
+            onChange={event =>
+              technicalChange(() =>
+                setReasoning({
+                  mode: 'explicit_control',
+                  effort: event.target.value as 'low' | 'medium' | 'high',
+                }),
+              )
+            }
+          >
+            {(['low', 'medium', 'high'] as const).map(effort => (
+              <option key={effort} value={effort}>
+                {t(`reasoning.${effort}`)}
+              </option>
+            ))}
+          </select>
+        </Field>
+      ) : (
+        <p
+          {...devMarker({
+            context: 'AI model form',
+            name: 'AI model default reasoning',
+            priority: 430,
+          })}
+        >
+          {t('reasoning.modelDefault')}
+        </p>
+      )}
       <Field
         help={t('fields.modelDescription.help')}
         id="ai-model-description"

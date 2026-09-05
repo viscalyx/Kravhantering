@@ -2088,8 +2088,12 @@ bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
    personuppgifter, ingen leverantörsträning, aktuell granskningstid och ett
    framtida granskningsdatum.
 3. Välj `Lägg till modell`. Ange namn, `controlled/model` och en fast extern
-   version. Kontrollera att samtliga sju förmågor först visas skrivskyddade som
-   `Inte testad` och att modellrevisionen inte kan sparas.
+   version. Kontrollera att samtliga nio förmågor först visas skrivskyddade som
+   `Inte testad` och att modellrevisionen inte kan sparas. Prova sedan
+   `controlled/default-no-analysis`, verifiera och kontrollera att adaptern
+   väljer `Modellens standard`, utan nivåväljare, samt att sparande tillåts
+   även utan visningsbar AI-analys. Byt tillbaka till `controlled/model` och
+   kontrollera att `Hög` förväljs inför den nya verifieringen.
 4. Välj `Verifiera`. Kontrollera att förloppet strömmas i ordningen anslutning,
    grundläggande modellåtkomst, varje förmåga, de tre fasta körprofilerna och
    slutsammanfattningen. Kontrollera att `Avbryt verifiering` visas medan
@@ -2097,9 +2101,10 @@ bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
    kompatibiliteten per körprofil visas och `Spara modellrevision` aktiveras.
    Om en förmåga inte kan observeras i leverantörssvaret ska orsaken beskriva
    just detta och inte påstå att leverantören uttryckligen avvisade förmågan.
-5. Ändra modellnamnet och kontrollera att resultatet finns kvar. Ändra ett
-   tekniskt fält och kontrollera att resultatet rensas och att ny verifiering
-   krävs. Verifiera igen och spara revisionen. Kontrollera statusen
+5. Ändra modellnamnet och kontrollera att resultatet finns kvar. Kontrollera
+   att resonemangsnivån är `Hög`. Välj `Låg` och kontrollera att resultatet
+   rensas och att ny verifiering krävs. Välj `Medel`, verifiera igen och spara
+   revisionen. Kontrollera `Resonemangsnivå: Medel` och statusen
    `Verifierad` och att inget separat modellutkast eller separat
    aktiveringssteg visas.
 6. Aktivera anslutningen. Redigera `Kravgenerering utan bilder`. Kontrollera att

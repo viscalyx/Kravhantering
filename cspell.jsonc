@@ -3,6 +3,7 @@
   "language": "en,sv",
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
+    "förväljs",
     "acceptenv",
     "airun",
     "anonymization",
@@ -69,6 +70,7 @@
     "anslutningsmodellrevision",
     "anslutningsmodellrevisionen",
     "anslutningsmodellrevisioner",
+    "anslutningsmodellrevisions",
     "anslutningsvyn",
     "adapterpull",
     "auditeras",
@@ -282,6 +284,7 @@
     "verktygskedjeindata",
     "livscykelmetadata",
     "leverantörsnyckelbyte",
+    "leverantörsroutningen",
     "läsbegäran",
     "läsbehörigheten",
     "läsregel",
@@ -1638,6 +1641,7 @@
     {
       "filename": "tests/guide/generate-guide.spec.ts",
       "words": [
+        "förväljs",
         "annot",
         "domcontentloaded",
         "framenavigated",

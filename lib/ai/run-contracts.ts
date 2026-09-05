@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import type { AiReasoningConfiguration, AiReasoningEvidence } from './reasoning'
 
 export const AI_RUN_TYPES = [
   'generate_without_images',
@@ -60,6 +61,8 @@ export interface AiCapabilitySelection {
   cost: boolean
   imageInput: boolean
   jsonSchemaSteering: boolean
+  reasoning: boolean
+  reasoningControl: boolean
   streaming: boolean
   tokenUsage: boolean
   validatableJson: boolean
@@ -119,6 +122,7 @@ export interface AiResolvedConnectionModelRevision {
   configuration: unknown
   externalModelId: string
   id: AiConnectionModelRevisionId
+  reasoning: AiReasoningConfiguration
   verifiedCapabilities: Readonly<AiCapabilitySelection>
 }
 
@@ -248,6 +252,7 @@ export type AiRunEvent =
       analysis: string | null
       identity: AiRunIdentity
       rawOutput: string
+      reasoningEvidence?: AiReasoningEvidence
       type: 'completed'
       usage: AiRunUsage
     }

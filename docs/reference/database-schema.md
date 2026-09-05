@@ -295,6 +295,7 @@ erDiagram
         text status
         text external_model_id
         text external_model_version
+        text reasoning_json
         integer maximum_concurrency
         text agent_runtime_version
         text declared_capabilities_json
@@ -1933,7 +1934,11 @@ succeeded. Their technical configuration and verified capabilities are
 immutable. Changing the external model identity or connection configuration
 requires a newly verified row. The trigger
 `trg_ai_connection_model_revisions_immutable` enforces the technical boundary
-while allowing those evidence-fenced lifecycle transitions.
+while allowing those evidence-fenced lifecycle transitions. `reasoning_json`
+is protected by the same trigger and a JSON check constraint. Migration 0062
+invalidates verified revisions lacking mandatory reasoning evidence; it does not
+backfill capability claims. Version 2 evidence includes content-free capability
+assessments and the exact reasoning configuration in `details_json`.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -1945,6 +1950,7 @@ while allowing those evidence-fenced lifecycle transitions.
 | `status` | nvarchar(40) | `verified`, `new_revision_required`, or irreversible `ended` |
 | `external_model_id` | nvarchar(450) | Adapter-facing model identifier; never an internal key |
 | `external_model_version` | nvarchar(200), nullable | Adapter-facing model version |
+| `reasoning_json` | nvarchar(200), nullable | Immutable normalized reasoning mode and applicable effort; null requires a newly verified revision |
 | `agent_runtime_version` | nvarchar(100), nullable | Exact agent runtime version |
 | `declared_capabilities_json` | nvarchar(max) | Administrator-approved declared capabilities |
 | `discovered_capabilities_json` | nvarchar(max), nullable | Last explicitly approved discovery result |

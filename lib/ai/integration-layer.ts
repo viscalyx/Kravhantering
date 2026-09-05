@@ -633,7 +633,9 @@ export function createAiIntegrationLayer(
               } as const
               pendingSafeInvalidOutput = {
                 output: Object.freeze({
-                  analysis: event.analysis,
+                  analysis: profile.selectedCapabilities.aiAnalysis
+                    ? event.analysis
+                    : null,
                   issues: approval.issues,
                   rawOutput: event.rawOutput,
                   usage: event.usage,
@@ -642,7 +644,9 @@ export function createAiIntegrationLayer(
               }
               return terminal
             }
-            return event
+            return profile.selectedCapabilities.aiAnalysis
+              ? event
+              : { ...event, analysis: null }
           } catch {
             return trustBoundaryFailure(identity, 'final_safety_gate_blocked')
           }

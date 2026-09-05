@@ -226,6 +226,7 @@ function fixtures(): {
   profile: AiAdminRunProfileRecord
 } {
   const verified = {
+    reasoning: { mode: 'explicit_control' as const, effort: 'high' as const },
     agentRuntimeVersion: null,
     connectionConfigurationVersion: 1,
     declaredCapabilities: {} as never,

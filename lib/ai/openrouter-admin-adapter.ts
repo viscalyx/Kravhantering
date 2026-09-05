@@ -18,6 +18,7 @@ import {
   OPENROUTER_ADAPTER_VERSION,
   openRouterAdapterRegistration,
 } from './openrouter-adapter'
+import { requireAiReasoningConfiguration } from './reasoning'
 import type {
   AiConnectionId,
   AiConnectionModelRevisionId,
@@ -202,6 +203,8 @@ function capabilities(model: CatalogModel): AiCapability {
     parameters.includes('response_format') ||
     parameters.includes('structured_outputs')
   return {
+    reasoning: false,
+    reasoningControl: false,
     aiAnalysis: false,
     cost: true,
     imageInput: modality.includes('image'),
@@ -228,6 +231,12 @@ function capabilitySupport(
       model.reasoning !== null &&
       !Array.isArray(model.reasoning))
   return {
+    reasoning: 'unknown',
+    reasoningControl: parameters.includes('reasoning')
+      ? 'supported'
+      : Array.isArray(model.supported_parameters)
+        ? 'unsupported'
+        : 'unknown',
     aiAnalysis: reasoningAdvertised ? 'unknown' : 'unsupported',
     cost: value.cost ? 'supported' : 'unsupported',
     imageInput: value.imageInput ? 'supported' : 'unsupported',
@@ -259,11 +268,8 @@ function runOpenRouterAdminProbe(
     },
     limits: AI_ADMIN_PROBE_LIMITS,
     modelRevision: {
-      configuration: {
-        reasoningEffort: probe.selectedCapabilities.aiAnalysis
-          ? 'high'
-          : 'none',
-      },
+      configuration: {},
+      reasoning: requireAiReasoningConfiguration(revision.reasoning),
       externalModelId: revision.externalModelId,
       id: revision.id as AiConnectionModelRevisionId,
       verifiedCapabilities: revision.declaredCapabilities,
@@ -364,6 +370,21 @@ function pricePerMillionTokens(
 }
 
 const openRouterAdminAdapter: AiAdminConnectionAdapter = {
+  async resolveReasoningConfiguration(context, candidate, probe) {
+    const models = await fetchModels(context, probe)
+    const model = models.find(item => item.id === candidate.externalModelId)
+    const parameters = model?.supported_parameters
+    // Catalog guides the path; only subsequent activity observations verify it.
+    const controllable =
+      Array.isArray(parameters) && parameters.includes('reasoning')
+    return controllable
+      ? {
+          mode: 'explicit_control',
+          effort: candidate.reasoning.effort ?? 'high',
+        }
+      : { mode: 'model_default', effort: null }
+  },
+
   async fetchCatalog(context) {
     return (await fetchModels(context)).flatMap(model => {
       const item = catalogItem(model)

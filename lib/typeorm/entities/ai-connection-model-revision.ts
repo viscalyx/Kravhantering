@@ -18,6 +18,7 @@ export interface AiConnectionModelRevisionEntity {
   id: string
   maximumConcurrency: number | null
   model: AiConnectionModelEntity
+  reasoningJson: string | null
   revisionNumber: number
   revisionToken: string
   status: AiConnectionModelRevisionStatus
@@ -64,6 +65,12 @@ export const aiConnectionModelRevisionEntity =
         name: 'agent_runtime_version',
         nullable: true,
         type: 'nvarchar',
+      },
+      reasoningJson: {
+        name: 'reasoning_json',
+        type: 'nvarchar',
+        length: 200,
+        nullable: true,
       },
       declaredCapabilitiesJson: {
         length: 'MAX',
@@ -130,6 +137,10 @@ export const aiConnectionModelRevisionEntity =
       },
     ],
     checks: [
+      {
+        name: 'chk_ai_connection_model_revisions_reasoning_json',
+        expression: '[reasoning_json] IS NULL OR ISJSON([reasoning_json]) = 1',
+      },
       {
         expression:
           '[maximum_concurrency] IS NULL OR [maximum_concurrency] BETWEEN 1 AND 100',

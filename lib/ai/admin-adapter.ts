@@ -58,6 +58,13 @@ export interface AiAdminConnectionAdapter {
     context: Readonly<AiAdminAdapterContext>,
     probe?: Readonly<AiAdminConnectionProbe>,
   ): Promise<Readonly<AiAdminConnectionProbeResult>>
+  resolveReasoningConfiguration(
+    context: Readonly<AiAdminAdapterContext>,
+    candidate: Readonly<
+      import('./admin-service').AiAdminModelVerificationCandidate
+    >,
+    probe: Readonly<AiAdminConnectionProbe>,
+  ): Promise<import('./reasoning').AiReasoningConfiguration>
   runActivationCancellationProbe(
     context: Readonly<AiAdminAdapterContext>,
     revision: Readonly<AiAdminModelRevisionRecord>,

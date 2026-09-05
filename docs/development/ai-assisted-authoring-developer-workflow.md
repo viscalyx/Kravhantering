@@ -84,13 +84,13 @@ normalization into the shared event contract.
 Use the following probe sequence:
 
 1. Verify connection and authentication without assuming model capabilities.
-2. Run baseline model access with no optional provider control fields. The
-   fixed response is parsed and validated locally. A failed baseline stops the
+2. Run baseline model access with the intended revision reasoning configuration.
+   The fixed response is parsed and validated locally. A failed baseline stops the
    suite; later capabilities and profiles remain not tested.
 3. Probe every capability independently. Include only fields and content that
    are necessary for the selected capability. In particular, ordinary
-   validatable JSON must not require JSON Schema steering, reasoning controls
-   belong only to the AI-analysis probe, image content belongs only to image
+   validatable JSON must not require JSON Schema steering. Every probe uses the
+   saved reasoning path and applicable effort; image content belongs only to image
    input, and streaming is enabled only for the streaming probe.
 4. Run each stable profile's combined required-capability probe only after the
    independent probes. Combined support must not turn an independently failed
@@ -288,7 +288,18 @@ for authoring, quarantine, repair, cancellation, and profile availability.
 The opt-in staging-live procedure is an operator verification, not a normal
 developer or CI test. It uses only the fixed synthetic payload and prints
 content-free evidence from the non-mutating `verify_live_path` operation. The
-operation rejects `controlled_test` and binds the just-completed fixed-v1 run
+operation rejects `controlled_test` and binds the just-completed fixed-v2 run
 to its exact active connection/model revision and stable profile configuration;
 see
 [AI Connections Operations](../operations/ai-connections.md#staging-live-synthetic-probe).
+
+Reasoning activity is mandatory for all three profiles. The `reasoning` revision
+configuration is
+`{ mode: 'explicit_control', effort: 'low' | 'medium' | 'high' }`
+or `{ mode: 'model_default', effort: null }`. The adapter translates it for the
+provider and observes activity independently of `aiAnalysis` and token display.
+The controlled adapter includes `controlled/default-no-analysis` (rejects
+explicit control), `controlled/no-analysis`, and `controlled/no-reasoning`
+(valid output without activity evidence). Use these synthetic models to exercise
+mandatory reasoning without live provider calls. No profile or run may override
+the revision, disable reasoning, or silently switch paths after a failure.

@@ -11,6 +11,7 @@ import {
   CONTROLLED_TEST_ADAPTER_VERSION,
   controlledTestAdapterRegistration,
 } from './controlled-test-adapter'
+import { requireAiReasoningConfiguration } from './reasoning'
 import type {
   AiConnectionId,
   AiConnectionModelRevisionId,
@@ -26,6 +27,8 @@ function capabilitySupport(
   value: Readonly<AiCapability>,
 ): AiAdminCapabilitySupportMap {
   return {
+    reasoning: value.reasoning ? 'supported' : 'unsupported',
+    reasoningControl: value.reasoningControl ? 'supported' : 'unsupported',
     aiAnalysis: value.aiAnalysis ? 'supported' : 'unsupported',
     cost: value.cost ? 'supported' : 'unsupported',
     imageInput: value.imageInput ? 'supported' : 'unsupported',
@@ -37,6 +40,15 @@ function capabilitySupport(
 }
 
 const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
+  async resolveReasoningConfiguration(_context, candidate) {
+    return candidate.externalModelId.startsWith('controlled/default')
+      ? { mode: 'model_default', effort: null }
+      : {
+          mode: 'explicit_control',
+          effort: candidate.reasoning.effort ?? 'high',
+        }
+  },
+
   async fetchCatalog(context) {
     return context.connection.models.flatMap(model => {
       const revision = model.revisions.reduce<
@@ -83,9 +95,17 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
       connection: {
         configuration: {
           scenario: {
-            analysis: probe.selectedCapabilities.aiAnalysis
-              ? 'Probe analysis'
-              : null,
+            reasoningEvidence: {
+              activity: !revision.externalModelId.endsWith('no-reasoning'),
+              control:
+                !revision.externalModelId.endsWith('no-reasoning') &&
+                revision.reasoning?.mode === 'explicit_control',
+            },
+            analysis:
+              probe.selectedCapabilities.aiAnalysis &&
+              !revision.externalModelId.endsWith('no-analysis')
+                ? 'Probe analysis'
+                : null,
             output: probe.selectedCapabilities.imageInput
               ? '{"probe":"black-pixel"}'
               : '{"probe":"ok"}',
@@ -117,6 +137,7 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
       },
       limits: AI_ADMIN_PROBE_LIMITS,
       modelRevision: {
+        reasoning: requireAiReasoningConfiguration(revision.reasoning),
         configuration: {},
         externalModelId: revision.externalModelId,
         id: revision.id as AiConnectionModelRevisionId,
@@ -143,6 +164,7 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
       },
       limits: AI_ADMIN_PROBE_LIMITS,
       modelRevision: {
+        reasoning: requireAiReasoningConfiguration(revision.reasoning),
         configuration: {},
         externalModelId: revision.externalModelId,
         id: revision.id as AiConnectionModelRevisionId,
@@ -179,6 +201,7 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
       },
       limits: AI_ADMIN_PROBE_LIMITS,
       modelRevision: {
+        reasoning: requireAiReasoningConfiguration(revision.reasoning),
         configuration: {},
         externalModelId: revision.externalModelId,
         id: revision.id as AiConnectionModelRevisionId,

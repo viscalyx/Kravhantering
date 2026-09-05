@@ -8,6 +8,8 @@ import {
 import type { AiRunType } from '@/lib/ai/run-contracts'
 
 const VERIFIED_CAPABILITIES = {
+  reasoning: true,
+  reasoningControl: true,
   aiAnalysis: true,
   cost: false,
   imageInput: true,
@@ -19,6 +21,7 @@ const VERIFIED_CAPABILITIES = {
 
 function persistedProfile(): AiPersistedRunProfile {
   return {
+    reasoning: { mode: 'explicit_control' as const, effort: 'high' as const },
     adapterType: 'controlled_test',
     adapterVersion: '1',
     connectionAgentRuntimeVersion: null,
@@ -79,6 +82,69 @@ function setup(profile: AiPersistedRunProfile | null) {
 
 describe('AI run profile resolver', () => {
   it.each([
+    'generate_without_images',
+    'generate_with_images',
+    'repair_invalid_import_json',
+  ] as const)(
+    'requires reasoning evidence for %s while allowing model default without control',
+    async type => {
+      const profile = persistedProfile()
+      profile.reasoning = { mode: 'model_default', effort: null }
+      profile.verifiedCapabilitiesJson = JSON.stringify({
+        ...VERIFIED_CAPABILITIES,
+        reasoning: true,
+        reasoningControl: false,
+        aiAnalysis: false,
+      })
+      const { resolver } = setup(profile)
+      const resolved = await resolver.resolve(type)
+      await resolved.withAdapterConfiguration(async ready => {
+        expect(ready.modelRevision.reasoning).toEqual({
+          mode: 'model_default',
+          effort: null,
+        })
+      })
+      profile.verifiedCapabilitiesJson = JSON.stringify({
+        ...VERIFIED_CAPABILITIES,
+        reasoning: false,
+      })
+      await expect(resolver.resolve(type)).rejects.toMatchObject({
+        code: 'profile_blocked',
+      })
+    },
+  )
+
+  it('freezes admitted reasoning even when the stored profile is subsequently changed', async () => {
+    const profile = persistedProfile()
+    profile.reasoning = { mode: 'explicit_control', effort: 'low' }
+    const { resolver } = setup(profile)
+    const admitted = await resolver.resolve('generate_without_images')
+    profile.reasoning.effort = 'high'
+    await admitted.withAdapterConfiguration(async ready => {
+      expect(ready.modelRevision.reasoning).toEqual({
+        mode: 'explicit_control',
+        effort: 'low',
+      })
+      expect(Object.isFrozen(ready.modelRevision.reasoning)).toBe(true)
+    })
+  })
+
+  it.each([
+    null,
+    { mode: 'explicit_control', effort: 'none' },
+    { mode: 'model_default', effort: 'high' },
+  ])(
+    'blocks a revision with missing or invalid reasoning %j',
+    async reasoning => {
+      const profile = persistedProfile()
+      profile.reasoning = reasoning as never
+      await expect(
+        setup(profile).resolver.resolve('generate_without_images'),
+      ).rejects.toMatchObject({ code: 'profile_blocked' })
+    },
+  )
+
+  it.each([
     ['generate_without_images', 'generation_without_images'],
     ['generate_with_images', 'generation_with_images'],
     ['repair_invalid_import_json', 'invalid_json_repair'],
@@ -138,6 +204,8 @@ describe('AI run profile resolver', () => {
       resolver.resolve('generate_without_images'),
     ).resolves.toMatchObject({
       selectedCapabilities: {
+        reasoning: true,
+        reasoningControl: true,
         aiAnalysis: true,
         cost: false,
         imageInput: false,
@@ -152,6 +220,8 @@ describe('AI run profile resolver', () => {
     const profile = persistedProfile()
     profile.verifiedCapabilitiesJson = JSON.stringify({
       ...VERIFIED_CAPABILITIES,
+      reasoning: true,
+      reasoningControl: true,
       aiAnalysis: false,
       jsonSchemaSteering: false,
       tokenUsage: false,
@@ -162,6 +232,8 @@ describe('AI run profile resolver', () => {
       resolver.resolve('generate_without_images'),
     ).resolves.toMatchObject({
       selectedCapabilities: {
+        reasoning: true,
+        reasoningControl: true,
         aiAnalysis: false,
         jsonSchemaSteering: false,
         tokenUsage: false,

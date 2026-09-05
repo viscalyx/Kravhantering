@@ -95,6 +95,7 @@ let keyringPath = ''
 
 function persistedProfileRow() {
   return {
+    reasoningJson: '{"mode":"explicit_control","effort":"high"}',
     adapterType: 'controlled_test',
     adapterVersion: '1',
     agentRuntimeKey: null,
@@ -133,6 +134,8 @@ function persistedProfileRow() {
     tlsPolicyKey: 'acceptance-pki',
     totalTimeBudgetSeconds: 600,
     verifiedCapabilitiesJson: JSON.stringify({
+      reasoning: true,
+      reasoningControl: true,
       aiAnalysis: true,
       cost: false,
       imageInput: false,

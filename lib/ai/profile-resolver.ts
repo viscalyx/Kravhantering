@@ -1,4 +1,9 @@
+import { AI_CAPABILITY_KEYS } from './capability-keys'
 import type { AiConnectionTrustConfiguration } from './connection-trust'
+import {
+  type AiReasoningConfiguration,
+  parseAiReasoningConfiguration,
+} from './reasoning'
 import type {
   AiCapabilitySelection,
   AiConnectionId,
@@ -55,6 +60,7 @@ export interface AiPersistedRunProfile {
   profileConfigurationVersion: number
   profileId: string
   queueCapacity: number
+  reasoning: AiReasoningConfiguration | null
   totalTimeBudgetSeconds: number
   trustConfiguration: Readonly<AiConnectionTrustConfiguration> | null
   verifiedCapabilitiesJson: string | null
@@ -167,15 +173,7 @@ interface AiVerifiedCapabilities extends AiCapabilitySelection {
   validatableJson: boolean
 }
 
-const VERIFIED_CAPABILITY_KEYS = [
-  'aiAnalysis',
-  'cost',
-  'imageInput',
-  'jsonSchemaSteering',
-  'streaming',
-  'tokenUsage',
-  'validatableJson',
-] as const satisfies readonly (keyof AiVerifiedCapabilities)[]
+const VERIFIED_CAPABILITY_KEYS = AI_CAPABILITY_KEYS
 
 const PROFILE_KEY_BY_RUN_TYPE = {
   generate_with_images: 'generation_with_images',
@@ -217,6 +215,7 @@ function selectCapabilities(
   const requiresImages = type === 'generate_with_images'
   const requiresStreaming = type !== 'repair_invalid_import_json'
   if (
+    !verified.reasoning ||
     !verified.validatableJson ||
     (requiresImages && !verified.imageInput) ||
     (requiresStreaming && !verified.streaming)
@@ -224,6 +223,8 @@ function selectCapabilities(
     return null
   }
   return {
+    reasoning: true,
+    reasoningControl: verified.reasoningControl,
     aiAnalysis:
       type === 'repair_invalid_import_json' ? false : verified.aiAnalysis,
     cost: verified.cost,
@@ -301,6 +302,9 @@ function freezePersistedProfile(
 ): Readonly<AiPersistedRunProfile> {
   return Object.freeze({
     ...profile,
+    reasoning: profile.reasoning
+      ? Object.freeze({ ...profile.reasoning })
+      : null,
     connectionConfiguration: profile.connectionConfiguration
       ? Object.freeze({ ...profile.connectionConfiguration })
       : undefined,
@@ -344,7 +348,13 @@ export function createAiRunProfileResolver(
       const verified = readVerifiedCapabilities(
         profile.verifiedCapabilitiesJson,
       )
-      if (!verified) throw blocked(profile)
+      const reasoning = parseAiReasoningConfiguration(profile.reasoning)
+      if (
+        !verified ||
+        !reasoning ||
+        (reasoning.mode === 'explicit_control' && !verified.reasoningControl)
+      )
+        throw blocked(profile)
       const selectedCapabilities = selectCapabilities(type, verified)
       if (!selectedCapabilities) throw blocked(profile)
 
@@ -355,6 +365,8 @@ export function createAiRunProfileResolver(
       const trustConfiguration = profileSnapshot.trustConfiguration
       if (!trustConfiguration) throw blocked(profileSnapshot)
       const verifiedCapabilities = Object.freeze({
+        reasoning: verified.reasoning,
+        reasoningControl: verified.reasoningControl,
         aiAnalysis: verified.aiAnalysis,
         cost: verified.cost,
         imageInput: verified.imageInput,
@@ -396,6 +408,7 @@ export function createAiRunProfileResolver(
                     id: connectionId,
                   }),
                   modelRevision: Object.freeze({
+                    reasoning: Object.freeze({ ...reasoning }),
                     configuration: configuration.modelRevision,
                     externalModelId: profileSnapshot.externalModelId,
                     id: modelRevisionId,

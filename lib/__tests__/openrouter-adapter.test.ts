@@ -55,10 +55,13 @@ function request(
       maxRetainedMemoryBytes: 8_388_608,
     },
     modelRevision: {
-      configuration: { reasoningEffort: 'high' },
+      reasoning: { mode: 'explicit_control' as const, effort: 'high' as const },
+      configuration: {},
       externalModelId: 'provider/model-v1',
       id: 'model-revision-23' as AiConnectionModelRevisionId,
       verifiedCapabilities: {
+        reasoning: true,
+        reasoningControl: true,
         aiAnalysis: true,
         cost: true,
         imageInput: true,
@@ -72,6 +75,8 @@ function request(
     runProfileConfigurationVersion: 1,
     runProfileId: 'profile-31' as AiRunProfileId,
     selectedCapabilities: {
+      reasoning: true,
+      reasoningControl: true,
       aiAnalysis: true,
       cost: true,
       imageInput: false,
@@ -205,6 +210,156 @@ describeAiConnectionAdapterContract('OpenRouter adapter', () => ({
 }))
 
 describe('OpenRouter AI connection adapter', () => {
+  it('requests saved reasoning independently of visible analysis and usage display', async () => {
+    const value = request()
+    value.modelRevision = {
+      ...value.modelRevision,
+      reasoning: { mode: 'explicit_control', effort: 'low' },
+    }
+    value.selectedCapabilities = {
+      ...value.selectedCapabilities,
+      reasoning: true,
+      reasoningControl: true,
+      aiAnalysis: false,
+      tokenUsage: false,
+    }
+    mockFetch.mockResolvedValueOnce(
+      nonStreamingResponse({
+        choices: [
+          {
+            message: {
+              content: '{"requirements":[]}',
+              reasoning_details: [
+                { type: 'reasoning.encrypted', data: 'private' },
+              ],
+            },
+          },
+        ],
+        usage: {},
+      }),
+    )
+    const events = await collectEvents(adapter().run(value))
+    expect(
+      JSON.parse(String(mockFetch.mock.calls[0]?.[1]?.body)),
+    ).toMatchObject({
+      reasoning: { effort: 'low' },
+      provider: { require_parameters: true },
+    })
+    expect(events.at(-1)).toMatchObject({
+      type: 'completed',
+      analysis: null,
+      reasoningEvidence: { activity: true, control: true },
+    })
+    expect(JSON.stringify(events)).not.toContain('private')
+  })
+
+  it.each([
+    [
+      { reasoning_details: [{ type: 'reasoning.text', text: 'safe text' }] },
+      {},
+      true,
+      'safe text',
+    ],
+    [
+      {
+        reasoning_details: [
+          { type: 'reasoning.summary', summary: 'safe summary' },
+        ],
+      },
+      {},
+      true,
+      'safe summary',
+    ],
+    [
+      {
+        reasoning_details: [
+          { type: 'reasoning.encrypted', data: 'private', text: 'private' },
+        ],
+      },
+      {},
+      true,
+      null,
+    ],
+    [
+      {
+        reasoning_details: [
+          { type: 'reasoning.redacted', data: 'private', summary: 'private' },
+        ],
+      },
+      {},
+      true,
+      null,
+    ],
+    [
+      { reasoning_details: [{ type: 'arbitrary', text: 'private' }] },
+      {},
+      false,
+      null,
+    ],
+    [{}, { completion_tokens_details: { reasoning_tokens: 2 } }, true, null],
+    [{}, { completion_tokens_details: { reasoning_tokens: 0 } }, false, null],
+    [{}, { reasoning: true }, false, null],
+  ] as const)(
+    'normalizes activity independently of safe analysis for %j',
+    async (message, usage, activity, analysis) => {
+      const value = request()
+      value.modelRevision = {
+        ...value.modelRevision,
+        reasoning: { mode: 'model_default', effort: null },
+      }
+      value.selectedCapabilities = {
+        ...value.selectedCapabilities,
+        jsonSchemaSteering: false,
+        tokenUsage: false,
+        reasoningControl: false,
+      }
+      mockFetch.mockResolvedValueOnce(
+        nonStreamingResponse({
+          choices: [
+            {
+              message: {
+                content: '{"reasoning":"final answer is not evidence"}',
+                ...message,
+              },
+            },
+          ],
+          usage,
+        }),
+      )
+      const events = await collectEvents(adapter().run(value))
+      const body = JSON.parse(String(mockFetch.mock.calls[0]?.[1]?.body))
+      expect(body).not.toHaveProperty('reasoning')
+      expect(body.provider).toEqual({
+        allow_fallbacks: true,
+        data_collection: 'deny',
+        zdr: true,
+      })
+      expect(events.at(-1)).toMatchObject({
+        type: 'completed',
+        analysis,
+        reasoningEvidence: { activity, control: false },
+      })
+      expect(JSON.stringify(events)).not.toContain('private')
+    },
+  )
+
+  it('normalizes encrypted streaming activity without exposing the payload', async () => {
+    const value = enableStreaming(request())
+    mockFetch.mockResolvedValueOnce(
+      new Response(
+        'data: {"choices":[{"delta":{"reasoning_details":[{"type":"reasoning.encrypted","data":"private"}],"content":"{}"}}]}\n\ndata: [DONE]\n\n',
+        { headers: { 'content-type': 'text/event-stream' } },
+      ),
+    )
+    const events = await collectEvents(adapter().run(value))
+    expect(events.at(-1)).toMatchObject({
+      type: 'completed',
+      analysis: null,
+      reasoningEvidence: { activity: true, control: true },
+    })
+    expect(JSON.stringify(events)).not.toContain('private')
+  })
+
   it('force-closes the exact active transport by opaque external run ID', async () => {
     let transportSignal: AbortSignal | undefined
     let markStarted = (): void => undefined
@@ -244,6 +399,7 @@ describe('OpenRouter AI connection adapter', () => {
 
     await expect(collectEvents(adapter().run(request()))).resolves.toEqual([
       {
+        reasoningEvidence: { activity: true, control: true },
         analysis: 'complete analysis',
         identity: {
           aiConnectionId: 'connection-17',
@@ -568,9 +724,15 @@ describe('OpenRouter AI connection adapter', () => {
       }),
     )
     const adapterRequest = request()
+    adapterRequest.modelRevision = {
+      ...adapterRequest.modelRevision,
+      reasoning: { mode: 'model_default', effort: null },
+    }
     adapterRequest.connection.configuration = { apiKey: 'secret' }
-    adapterRequest.modelRevision.configuration = { reasoningEffort: 'none' }
+    adapterRequest.modelRevision.configuration = {}
     adapterRequest.selectedCapabilities = {
+      reasoning: true,
+      reasoningControl: true,
       aiAnalysis: false,
       cost: false,
       imageInput: false,
@@ -611,7 +773,13 @@ describe('OpenRouter AI connection adapter', () => {
   it('does not require provider parameters for usage-only capabilities', async () => {
     mockFetch.mockResolvedValueOnce(nonStreamingResponse())
     const adapterRequest = request()
+    adapterRequest.modelRevision = {
+      ...adapterRequest.modelRevision,
+      reasoning: { mode: 'model_default', effort: null },
+    }
     adapterRequest.selectedCapabilities = {
+      reasoning: true,
+      reasoningControl: true,
       aiAnalysis: false,
       cost: true,
       imageInput: false,
@@ -629,10 +797,12 @@ describe('OpenRouter AI connection adapter', () => {
     expect(body).not.toHaveProperty('response_format')
   })
 
-  it('requests analysis without requiring endpoint-native parameter support', async () => {
+  it('requires parameter-supporting routes for explicit reasoning control', async () => {
     mockFetch.mockResolvedValueOnce(nonStreamingResponse())
     const adapterRequest = request()
     adapterRequest.selectedCapabilities = {
+      reasoning: true,
+      reasoningControl: true,
       aiAnalysis: true,
       cost: false,
       imageInput: false,
@@ -650,7 +820,7 @@ describe('OpenRouter AI connection adapter', () => {
     })
     const body = JSON.parse(String(mockFetch.mock.calls[0][1]?.body))
     expect(body.reasoning).toEqual({ effort: 'high', exclude: false })
-    expect(body.provider).not.toHaveProperty('require_parameters')
+    expect(body.provider.require_parameters).toBe(true)
     expect(body).not.toHaveProperty('response_format')
   })
 
@@ -688,8 +858,8 @@ describe('OpenRouter AI connection adapter', () => {
               content: '{}',
               reasoning_details: [
                 null,
-                { text: 'first' },
-                { summary: ' second' },
+                { type: 'reasoning.text', text: 'first' },
+                { type: 'reasoning.summary', summary: ' second' },
                 { ignored: true },
               ],
             },
@@ -801,7 +971,7 @@ describe('OpenRouter AI connection adapter', () => {
     },
   )
 
-  it.each([null, { reasoningEffort: 'extreme' }])(
+  it.each([null, 'invalid'])(
     'rejects invalid model configuration before transport',
     async configuration => {
       const adapterRequest = request()

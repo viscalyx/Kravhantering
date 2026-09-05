@@ -277,6 +277,7 @@ function profile(
   limits: AiRunLimits,
 ): AiPersistedRunProfile {
   return {
+    reasoning: { mode: 'explicit_control' as const, effort: 'high' as const },
     adapterType: harness.registration.adapterType,
     adapterVersion: harness.registration.adapterVersion,
     connectionAgentRuntimeVersion: null,
@@ -317,6 +318,8 @@ function profile(
       tlsPolicyKey: 'public_web_pki',
     },
     verifiedCapabilitiesJson: JSON.stringify({
+      reasoning: true,
+      reasoningControl: true,
       aiAnalysis: true,
       cost: true,
       imageInput: false,

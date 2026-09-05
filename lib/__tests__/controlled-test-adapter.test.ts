@@ -52,6 +52,8 @@ const MIXED_USAGE: AiRunUsage = {
 }
 
 const ALL_CAPABILITIES = {
+  reasoning: true,
+  reasoningControl: true,
   aiAnalysis: true,
   cost: true,
   imageInput: true,
@@ -105,6 +107,7 @@ function request(
       maxRetainedMemoryBytes: 8_388_608,
     },
     modelRevision: {
+      reasoning: { mode: 'explicit_control' as const, effort: 'high' as const },
       configuration: {},
       externalModelId: 'controlled/model-v1',
       id: MODEL_REVISION_ID,
