@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { resetAuthConfigForTests } from '@/lib/auth/config'
 import {
   getMcpRuntimeSettings,
   patchAiGenerationSettings,
@@ -85,6 +86,29 @@ async function expectDatabaseLockWait(
 
 describe('MCP import-validation quotas against SQL Server', () => {
   const appDb = useSqlIntegrationDatabase()
+
+  beforeEach(() => {
+    // The real import service fingerprints sessions with the auth cookie secret.
+    // SQL tests do not load the unit suite's authentication setup.
+    resetAuthConfigForTests()
+    vi.stubEnv('AUTH_OIDC_CLIENT_ID', 'sql-integration-client')
+    vi.stubEnv('AUTH_OIDC_CLIENT_SECRET', 'sql-integration-client-secret')
+    vi.stubEnv('AUTH_OIDC_ISSUER_URL', 'https://idp.example.test')
+    vi.stubEnv('AUTH_OIDC_POST_LOGOUT_REDIRECT_URI', 'https://example.test/')
+    vi.stubEnv(
+      'AUTH_OIDC_REDIRECT_URI',
+      'https://example.test/api/auth/callback',
+    )
+    vi.stubEnv(
+      'AUTH_SESSION_COOKIE_PASSWORD',
+      'sql-integration-cookie-password-at-least-32-characters',
+    )
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    resetAuthConfigForTests()
+  })
 
   it.each(['global', 'ai'] as const)(
     'orders a concurrent %s reduction after locked session admission',
