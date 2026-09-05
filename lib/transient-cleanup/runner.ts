@@ -4,9 +4,13 @@ import type {
 } from './requirement-import-validation-sessions'
 
 export type TransientCleanupOutcome = 'failure' | 'success'
+export type TransientCleanupTargetOutcome =
+  | TransientCleanupOutcome
+  | 'not_applicable'
 
 export interface TransientCleanupTarget {
   inspect(): Promise<ExpiredTransientStateBacklog>
+  isApplicable?(): Promise<boolean>
   kind: string
   purgeBatch(limit: number): Promise<TransientCleanupBatchResult>
 }
@@ -23,7 +27,7 @@ export interface TransientCleanupLogEvent {
   kind: string
   oldestExpiredAgeMs: number | null
   operation: 'transient_state_cleanup'
-  outcome: TransientCleanupOutcome
+  outcome: TransientCleanupTargetOutcome
   remainingExpiredRowCount: number | null
 }
 
@@ -35,7 +39,7 @@ export interface TransientCleanupTargetResult {
   initialExpiredStoredBytes: number | null
   initialOldestExpiredAgeMs: number | null
   kind: string
-  outcome: TransientCleanupOutcome
+  outcome: TransientCleanupTargetOutcome
   remainingExpiredRowCount: number | null
 }
 
@@ -106,29 +110,33 @@ export async function runTransientStateCleanup(
     let deletedRows = 0
     let initial: ExpiredTransientStateBacklog | null = null
     let current: ExpiredTransientStateBacklog | null = null
-    let outcome: TransientCleanupOutcome = 'success'
+    let outcome: TransientCleanupTargetOutcome = 'success'
     let failureCode: 'target_execution_failed' | undefined
 
     try {
-      initial = await target.inspect()
-      current = initial
-      let estimatedExpiredRowCount = current.expiredRowCount
-      let attemptedPurge = false
-      while (remainingWork > 0 && estimatedExpiredRowCount > backlogTarget) {
-        const limit = Math.min(
-          batchSize,
-          remainingWork,
-          estimatedExpiredRowCount - backlogTarget,
-        )
-        attemptedPurge = true
-        const batch = await target.purgeBatch(limit)
-        const boundedDeletedRows = boundedInteger(batch.deletedRows, 0, limit)
-        deletedRows += boundedDeletedRows
-        remainingWork -= boundedDeletedRows
-        estimatedExpiredRowCount -= boundedDeletedRows
-        if (boundedDeletedRows === 0) break
+      if (target.isApplicable && !(await target.isApplicable())) {
+        outcome = 'not_applicable'
+      } else {
+        initial = await target.inspect()
+        current = initial
+        let estimatedExpiredRowCount = current.expiredRowCount
+        let attemptedPurge = false
+        while (remainingWork > 0 && estimatedExpiredRowCount > backlogTarget) {
+          const limit = Math.min(
+            batchSize,
+            remainingWork,
+            estimatedExpiredRowCount - backlogTarget,
+          )
+          attemptedPurge = true
+          const batch = await target.purgeBatch(limit)
+          const boundedDeletedRows = boundedInteger(batch.deletedRows, 0, limit)
+          deletedRows += boundedDeletedRows
+          remainingWork -= boundedDeletedRows
+          estimatedExpiredRowCount -= boundedDeletedRows
+          if (boundedDeletedRows === 0) break
+        }
+        if (attemptedPurge) current = await target.inspect()
       }
-      if (attemptedPurge) current = await target.inspect()
     } catch {
       outcome = 'failure'
       failureCode = 'target_execution_failed'

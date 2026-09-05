@@ -17,7 +17,7 @@ usage() {
 Usage:
   kravhantering-quadlet.sh render --topology <app-node-tls|app-node-http|single-node> [--output-dir <path>]
   kravhantering-quadlet.sh install --topology <app-node-tls|app-node-http|single-node>
-  kravhantering-quadlet.sh verify-host --topology <app-node-tls|app-node-http|single-node>
+  kravhantering-quadlet.sh verify-host --topology <app-node-tls|app-node-http|single-node> [--additional-units <path>]
   kravhantering-quadlet.sh status --topology <app-node-tls|app-node-http|single-node>
   kravhantering-quadlet.sh remove --topology <app-node-tls|app-node-http|single-node>
   kravhantering-quadlet.sh print-network --topology <app-node-tls|app-node-http|single-node> --purpose <edge|identity|database|egress>
@@ -894,6 +894,7 @@ shift
 TOPOLOGY=''
 OUTPUT_DIR=''
 PURPOSE=''
+ADDITIONAL_UNITS=''
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --topology)
@@ -904,6 +905,12 @@ while [[ $# -gt 0 ]]; do
     --output-dir)
       [[ $# -ge 2 ]] || fail 'missing value for --output-dir'
       OUTPUT_DIR="$2"
+      shift 2
+      ;;
+    --additional-units)
+      [[ $# -ge 2 ]] || fail 'missing value for --additional-units'
+      [[ "$COMMAND" == verify-host ]] || fail '--additional-units requires verify-host'
+      ADDITIONAL_UNITS="$2"
       shift 2
       ;;
     --purpose)
@@ -943,6 +950,10 @@ case "$COMMAND" in
     temporary_dir="$(mktemp -d)"
     trap 'rm -rf -- "$temporary_dir"' EXIT
     render_units "$temporary_dir"
+    if [[ -n "$ADDITIONAL_UNITS" ]]; then
+      [[ -d "$ADDITIONAL_UNITS" ]] || fail 'additional unit directory is missing'
+      cp -- "$ADDITIONAL_UNITS"/* "$temporary_dir/"
+    fi
     verify_host_enforcement "$temporary_dir"
     printf '%s\n' 'Host can enforce the rendered Quadlet contract.'
     ;;
@@ -950,7 +961,7 @@ case "$COMMAND" in
     [[ -z "$OUTPUT_DIR" ]] || fail '--output-dir is only valid with render'
     [[ -z "$PURPOSE" ]] || fail '--purpose is only valid with print-network'
     systemctl --user status "$(topology_target "$TOPOLOGY")" \
-      kravhantering-transient-cleanup.timer
+      kravhantering-host-cleanup.timer
     ;;
   remove)
     [[ -z "$OUTPUT_DIR" ]] || fail '--output-dir is only valid with render'

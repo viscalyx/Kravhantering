@@ -8,6 +8,7 @@ import {
   inspectExpiredHsaVerificationQuotaBuckets,
   purgeExpiredHsaVerificationQuotaBuckets,
 } from '@/lib/transient-cleanup/hsa-verification-quota-buckets'
+import { createTransientCleanupTargets } from '@/lib/transient-cleanup/registry'
 import {
   inspectExpiredRequirementImportValidationRateBuckets,
   purgeExpiredRequirementImportValidationRateBuckets,
@@ -16,6 +17,8 @@ import {
   inspectExpiredRequirementImportValidationSessions,
   purgeExpiredRequirementImportValidationSessions,
 } from '@/lib/transient-cleanup/requirement-import-validation-sessions'
+import { runTransientStateCleanup } from '@/lib/transient-cleanup/runner'
+import { cleanupSchemaFingerprint } from '@/lib/transient-cleanup/schema'
 import { useSqlIntegrationDatabase } from './helpers/sql-test-database'
 
 async function insertSessions(db: SqlServerDatabase): Promise<void> {
@@ -54,6 +57,153 @@ async function insertSessions(db: SqlServerDatabase): Promise<void> {
 
 describe('transient cleanup against SQL Server', () => {
   const appDb = useSqlIntegrationDatabase()
+
+  it('reports a schema without the HSA target as not applicable without request traffic', async () => {
+    const connection = appDb().createQueryRunner()
+    await connection.connect()
+    await connection.startTransaction()
+    try {
+      await connection.query('DROP TABLE dbo.hsa_verification_quota_buckets')
+      const target = createTransientCleanupTargets(connection).filter(
+        target => target.kind === 'hsa_verification_quota_buckets',
+      )
+      const result = await runTransientStateCleanup(target, {
+        batchSize: 2,
+        workLimit: 2,
+        backlogTarget: 0,
+      })
+      expect(result).toMatchObject({
+        outcome: 'success',
+        deletedRows: 0,
+        targets: [
+          { outcome: 'not_applicable', remainingExpiredRowCount: null },
+        ],
+      })
+    } finally {
+      await connection.rollbackTransaction()
+      await connection.release()
+    }
+  })
+
+  it('fails an existing target with incompatible columns and keeps diagnostics aggregate', async () => {
+    const connection = appDb().createQueryRunner()
+    await connection.connect()
+    await connection.startTransaction()
+    try {
+      await connection.query(
+        'SET XACT_ABORT OFF; DROP TABLE dbo.hsa_verification_quota_buckets; CREATE TABLE dbo.hsa_verification_quota_buckets (id int NOT NULL PRIMARY KEY)',
+      )
+      const target = createTransientCleanupTargets(connection).filter(
+        target => target.kind === 'hsa_verification_quota_buckets',
+      )
+      const result = await runTransientStateCleanup(target, {
+        batchSize: 2,
+        workLimit: 2,
+        backlogTarget: 0,
+      })
+      expect(result).toMatchObject({
+        outcome: 'failure',
+        deletedRows: 0,
+        targets: [
+          { outcome: 'failure', failureCode: 'target_execution_failed' },
+        ],
+      })
+      expect(JSON.stringify(result)).not.toMatch(
+        /incompatible_expiry|Invalid column|SELECT/,
+      )
+    } finally {
+      try {
+        await connection.rollbackTransaction()
+      } catch (error) {
+        // SQL Server may already have rolled back the fixture on query failure.
+        expect(error).toMatchObject({ code: 'EABORT' })
+      }
+      await connection.release()
+    }
+  })
+
+  it('detects incompatible update constraints in an empty schema', async () => {
+    const connection = appDb().createQueryRunner()
+    await connection.connect()
+    await connection.startTransaction()
+    try {
+      const before = await cleanupSchemaFingerprint(connection)
+      await connection.query(
+        'ALTER TABLE dbo.ai_forensic_capture_windows ADD CONSTRAINT cleanup_incompatible_constraint CHECK (purged_at IS NULL)',
+      )
+      expect(await cleanupSchemaFingerprint(connection)).not.toBe(before)
+    } finally {
+      await connection.rollbackTransaction()
+      await connection.release()
+    }
+  })
+
+  it('rejects missing purge-only columns in an empty forensic schema', async () => {
+    const connection = appDb().createQueryRunner()
+    await connection.connect()
+    await connection.startTransaction()
+    try {
+      await connection.query(
+        'ALTER TABLE dbo.ai_forensic_capture_windows DROP CONSTRAINT chk_ai_forensic_capture_windows_operation; ALTER TABLE dbo.ai_forensic_capture_windows DROP COLUMN operation',
+      )
+      const result = await runTransientStateCleanup(
+        createTransientCleanupTargets(connection).filter(
+          target => target.kind === 'ai_forensic_evidence',
+        ),
+        { batchSize: 2, workLimit: 2, backlogTarget: 0 },
+      )
+      expect(result).toMatchObject({ outcome: 'failure', deletedRows: 0 })
+    } finally {
+      try {
+        await connection.rollbackTransaction()
+      } catch (error) {
+        expect(error).toMatchObject({ code: 'EABORT' })
+      }
+      await connection.release()
+    }
+  })
+
+  it('does not mistake metadata hidden by missing permissions for an absent target', async () => {
+    await appDb().query('CREATE USER cleanup_no_permissions WITHOUT LOGIN')
+    try {
+      const executor = {
+        query: <T = unknown[]>(
+          sql: string,
+          parameters?: unknown[],
+        ): Promise<T> =>
+          appDb().query(
+            `
+          EXECUTE AS USER = N'cleanup_no_permissions';
+          BEGIN TRY
+            ${sql};
+            REVERT;
+          END TRY
+          BEGIN CATCH
+            REVERT;
+            THROW;
+          END CATCH
+        `,
+            parameters,
+          ),
+      }
+      const target = createTransientCleanupTargets(executor).filter(
+        target => target.kind === 'hsa_verification_quota_buckets',
+      )
+      const result = await runTransientStateCleanup(target, {
+        batchSize: 2,
+        workLimit: 2,
+        backlogTarget: 0,
+      })
+      expect(result).toMatchObject({
+        outcome: 'failure',
+        targets: [
+          { outcome: 'failure', failureCode: 'target_execution_failed' },
+        ],
+      })
+    } finally {
+      await appDb().query('DROP USER cleanup_no_permissions')
+    }
+  })
 
   it('bounds overlapping batches and preserves unexpired sessions', async () => {
     await insertSessions(appDb())

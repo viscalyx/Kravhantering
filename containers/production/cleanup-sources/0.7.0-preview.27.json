@@ -1,0 +1,253 @@
+{
+  "release": "0.7.0-preview.27",
+  "schemaVersion": "HsaVerificationQuota1720800000000",
+  "archiveSha256": "5e3eb6f9aa7d5d56db1dfecccdc0cad35c78d518f0be19e25a338641f0472d69",
+  "stackLockSha256": "2cb57999cc9ef9097bfc341dfcc6913b050f35af382bc77428fa0bc5aebef8e3",
+  "migrationFiles": [
+    {
+      "fileName": "0001_initial_sqlserver.mjs",
+      "sha256": "77dd3686db53b19b137374598ad9a5fc5a8202234a1726dfc1cce53ef63c4cbc"
+    },
+    {
+      "fileName": "0002_requirement_version_revision_token.mjs",
+      "sha256": "bf3a4d25a1abda6585cdaae8e4305bc446b435b2176da487f699bd4e1b8cc363"
+    },
+    {
+      "fileName": "0003_explicit_fk_actions.mjs",
+      "sha256": "7d6ec5c956076bba1b498604a8a47f4067f69161d554a4aa7db97f92f2da7f15"
+    },
+    {
+      "fileName": "0004_specification_needs_reference_cascade.mjs",
+      "sha256": "a2d919082ae8a5b80d0ec9fd93288fcf2f1a826d406c225c7f1c010bee45854f"
+    },
+    {
+      "fileName": "0005_privacy_identity_fields.mjs",
+      "sha256": "a4340c347d4929b6e629635413a0fe96d2f5fea07ae1b4bab5c10944f64253a0"
+    },
+    {
+      "fileName": "0006_quality_characteristics_chapter_id.mjs",
+      "sha256": "a30af9f71705145bb4a9234e7737d769691f7239074655b85a0fb866be56a7d0"
+    },
+    {
+      "fileName": "0007_co_author_creator_display_names.mjs",
+      "sha256": "2c935fd3753c7c3a52ddade0443587f78a0fa7b13675d557732d973b769477a0"
+    },
+    {
+      "fileName": "0008_access_review_runs.mjs",
+      "sha256": "c48bbf3281e41729b470641553a6330d6b72dd827ab5ae08ec57c9b647a1e455"
+    },
+    {
+      "fileName": "0009_archiving_retention.mjs",
+      "sha256": "5095a8677fa28c2e27030f263488e36de823731e023ad2bce5102a8338ff6cb2"
+    },
+    {
+      "fileName": "0010_archiving_retention_candidates.mjs",
+      "sha256": "cea5d297f51217311d4b8880539f34ea616573e83de9f5723d6c92ae556ee929"
+    },
+    {
+      "fileName": "0011_remove_historical_actor_archiving_policy.mjs",
+      "sha256": "aee365859f3f5264b23652b9b8f17078dd64aeb313522be6e3a6b177755cb393"
+    },
+    {
+      "fileName": "0012_action_audit_events.mjs",
+      "sha256": "64bdfa1c6511713b76139885c372c0e3c84babd824a77303df13a9b53f4ce046"
+    },
+    {
+      "fileName": "0013_requirement_version_lifecycle_unique_indexes.mjs",
+      "sha256": "b683bfee47f4c1bcfb656c6f441843a44a25f33afbd9e7f8ec8c3d87da8f0310"
+    },
+    {
+      "fileName": "0014_status_and_risk_icons.mjs",
+      "sha256": "a2aa962f25bdb22abd523efe41ea327de7eaf36935a27b0720491ba0e1fbbe10"
+    },
+    {
+      "fileName": "0015_require_specification_item_status.mjs",
+      "sha256": "95a6e0972311a67b7fe9a47b650b888756e746e316349150c17918e9057ec0af"
+    },
+    {
+      "fileName": "0016_remove_specification_local_requirement_area.mjs",
+      "sha256": "714d11abdc81a0074d9ad264c1c9bf2c6a42a0ec8870d107d24753a4a27ea14b"
+    },
+    {
+      "fileName": "0017_specification_needs_reference_description.mjs",
+      "sha256": "80448ee5f0d949985a067c0d69ad058dc5a3b437ee0a4e0cc8394db27c89fd31"
+    },
+    {
+      "fileName": "0018_governance_object_types.mjs",
+      "sha256": "6ef9fc615dc2f43216a513b44be01e327fe4836ebe996b34165327812eff139f"
+    },
+    {
+      "fileName": "0019_requirement_area_terminology.mjs",
+      "sha256": "64a07f3166ef4c8933664882e793dd312b04dc14cfd978639e0fa83d9433f032"
+    },
+    {
+      "fileName": "0020_requirement_version_status_terminology.mjs",
+      "sha256": "5a5e7336970fae0bfea6b79552f2b09fbc818c2b0a34649134fd13e581a7ea2e"
+    },
+    {
+      "fileName": "0021_requirement_selection_questions.mjs",
+      "sha256": "679370c8fd89bd52104ffa9dc00ed53695135f4f5790110c25a43b1bdf0a5599"
+    },
+    {
+      "fileName": "0022_requirement_selection_retention.mjs",
+      "sha256": "40460dc60d5791d6606d0c3c811be3cfe184787343029a8d19e9eb136a0ef582"
+    },
+    {
+      "fileName": "0023_requirement_selection_saved_answer_history_flag.mjs",
+      "sha256": "71a685293e0d4b8547c348c7377652bc31dcf16fd856522924dfbc5742cce0a8"
+    },
+    {
+      "fileName": "0024_remove_ui_terminology.mjs",
+      "sha256": "281118816c28450873bd3a8aad84ce79fd636b8f6705b29285e653ebf4bc9d48"
+    },
+    {
+      "fileName": "0025_norm_references_archived.mjs",
+      "sha256": "0ece716ba8e2ddeea54bd0ea82796bd44c6fa2945a99e9d025776a52fe76bc86"
+    },
+    {
+      "fileName": "0026_requirement_area_owner_hsa_id.mjs",
+      "sha256": "9e19fa4fdd6d16dde3d15ab8952fad05217d8cf5a23e3d31998d4da55ad6112c"
+    },
+    {
+      "fileName": "0027_requirement_selection_question_visibility.mjs",
+      "sha256": "577e23d5c6cf1373f38808066c09ef35d5a3a2e8b35da9aef9f748b8f59f14d6"
+    },
+    {
+      "fileName": "0028_requirement_responsibility_people.mjs",
+      "sha256": "8da8b932f6b348431bb1c79124b93eefc2bfed1e3c2c2d57b505f4a554c2b7c0"
+    },
+    {
+      "fileName": "0029_remove_ai_permission_flags.mjs",
+      "sha256": "0614603542fc81350e0765338bc127514f284a64c839a4e8044d66d90f67ad18"
+    },
+    {
+      "fileName": "0030_remove_requirements_specification_items_unused_column.mjs",
+      "sha256": "872113698ddf202a76f2d89902db3e87393da2beda8a5be398357bb2184c24ec"
+    },
+    {
+      "fileName": "0031_require_specification_responsible_hsa_id.mjs",
+      "sha256": "348a5c110fb84af8e0f86ba4ce4ba5747f71ad4a3be005168854fec5a2b8c216"
+    },
+    {
+      "fileName": "0032_hsa_id_prefixes.mjs",
+      "sha256": "3865b7a79e12c9e748c5fca1bc4ecd3b15be26c14a2185cf1bda16032b1d473d"
+    },
+    {
+      "fileName": "0033_requirement_responsibility_people_protected_personal_data.mjs",
+      "sha256": "771e6b687138dc2169114796c75368c56922378cd5aa986373a890cc9666017a"
+    },
+    {
+      "fileName": "0034_require_specification_lifecycle_status.mjs",
+      "sha256": "4443eca14f1018448749a18aef0b69fa2df391abbeaf6071dc46eee62aeb4308"
+    },
+    {
+      "fileName": "0035_rfi_questions.mjs",
+      "sha256": "e7889be3c6d1e7c9c90475a3e930bea6a4fa5a9057e202934bdb58c953e95c59"
+    },
+    {
+      "fileName": "0036_rfi_question_retention_policy.mjs",
+      "sha256": "9588a9a62640fbea3150d063454ee9226757c33048b24075c9c7884041cab9b0"
+    },
+    {
+      "fileName": "0037_ai_settings.mjs",
+      "sha256": "620e0e20285476d24cb35d6f0f0d168617a2b626298fd6385df58f2613c0f1be"
+    },
+    {
+      "fileName": "0038_priority_levels.mjs",
+      "sha256": "ceccfa34713473010a8a5a673a3d9f4186f3dc4b24292c25a78cd21f0830e58e"
+    },
+    {
+      "fileName": "0039_requirement_package_purpose_and_scope.mjs",
+      "sha256": "bb99b3fa2464a332513d800b61866ee4597248cf4f3c007e2eb894be8b69f298"
+    },
+    {
+      "fileName": "0040_drop_specification_local_requirement_packages.mjs",
+      "sha256": "a336a045ed9b431512c458e9bef4e221f19c20146f6c0239ac1fae45725a0049"
+    },
+    {
+      "fileName": "0041_ai_mcp_payload_limit.mjs",
+      "sha256": "fa48dfdbcf4addca7a8dcc2b1549a99dbe10061d762970ca32245a165615029f"
+    },
+    {
+      "fileName": "0042_ai_safety_rules.mjs",
+      "sha256": "4efc006d0190721c5cf91c0157e30f36e9bdda6616c9c33dbfc506f6b73a06dc"
+    },
+    {
+      "fileName": "0043_verifiable_requirement_field.mjs",
+      "sha256": "fc1629ed4f4a33a62fe17e8e10188989657622b025438e3c84122abb5899a554"
+    },
+    {
+      "fileName": "0044_mcp_import_validation_sessions.mjs",
+      "sha256": "505441d2fc3b1d4382b71c0a779956fa512e8952f3bdf513111184a4bede7dad"
+    },
+    {
+      "fileName": "0045_ai_safety_forensic_logging.mjs",
+      "sha256": "f4ac8d1200b95404d9d2d2793887ee3873c00c75544a119debb7c393dc88407e"
+    },
+    {
+      "fileName": "0046_specification_code.mjs",
+      "sha256": "e3a60fab4acab1889466f1d2fbcb6c4643f6a2b15870abc3fa496a330b69dd41"
+    },
+    {
+      "fileName": "0047_access_review_period_order.mjs",
+      "sha256": "42c87d9c59dc319fd8049dcf9d92b486fd2298127da2470ab6b76ecd6b505c03"
+    },
+    {
+      "fileName": "0048_application_settings.mjs",
+      "sha256": "e0251137c8f429a2c70b287fbf0f3796b7249433a71cd593256da1b194acabdf"
+    },
+    {
+      "fileName": "0049_rfi_question_suggestion_lifecycle.mjs",
+      "sha256": "f3972b36b8a7baddf10890d730300c246ab97519309cf871d90fbc249795ada3"
+    },
+    {
+      "fileName": "0050_repair_invalid_priority_colors.mjs",
+      "sha256": "5733111bf90c6338a27e9596b84f5847d87dac3f00e377535ea7608278255459"
+    },
+    {
+      "fileName": "0051_action_log_csv_export.mjs",
+      "sha256": "6c58f78ea248add3764a27bf0c647904042292088b100dfaf5e56b696ad6095e"
+    },
+    {
+      "fileName": "0052_improvement_suggestion_lifecycle.mjs",
+      "sha256": "2feb9237993eae1a15aaaa069cd865d4bb4d25bfec7b9ed57ddd5c90370a6725"
+    },
+    {
+      "fileName": "0053_repair_invalid_status_colors.mjs",
+      "sha256": "3d115bd23c9ac6b7d50d78d215b9d26055a7f1c87946f46eea69924a4573bf48"
+    },
+    {
+      "fileName": "0054_runtime_role.mjs",
+      "sha256": "9be6bb11fe2f7a50202b33ece26a0b4b33b937773cdcc9fa7b86704d2e9343ad"
+    },
+    {
+      "fileName": "0055_requirement_import_budget.mjs",
+      "sha256": "468a5383a066f61ffd5894aed5b4f40f93c37ff4b39dbc6b0e30c960b65e30fe"
+    },
+    {
+      "fileName": "0056_mcp_import_validation_ownership_quotas.mjs",
+      "sha256": "ee786b58399f66aa23f10c51b0bfa3a4f236a2ec0231c8ad9f70baec6401e7a1"
+    },
+    {
+      "fileName": "0057_ai_safety_forensic_default.mjs",
+      "sha256": "e525938c13a84edbe82448c6fb6d77b0bce160855d7edd5aa2d0b6b4fa894727"
+    },
+    {
+      "fileName": "0058_ai_forensic_evidence_store.mjs",
+      "sha256": "1c76feca14393a049eef0764c12dc5ed7aae4314622c1fffc0f5e27d133cce96"
+    },
+    {
+      "fileName": "0059_rfi_question_suggestion_page_indexes.mjs",
+      "sha256": "e22d5d6d37c2ed7fb0c9007f7743b40700059370389b4916b54d1e9ae95a3581"
+    },
+    {
+      "fileName": "0060_ai_connections_data_model.mjs",
+      "sha256": "8e305c2de6b3d3f95f5c814148c29895af1c27b862884de4c16dc4b16b6d684a"
+    },
+    {
+      "fileName": "0061_hsa_verification_quota.mjs",
+      "sha256": "4800e369a5d8168207c4e352fd8a42b5c414fe98db6084d7d3cbc7f6b2e14c92"
+    }
+  ],
+  "runtimePermissionManifestSha256": "b73b8d7be1c1f0a04dcb819d35e24274f521ac01d858a449cf721e7916e6804f"
+}

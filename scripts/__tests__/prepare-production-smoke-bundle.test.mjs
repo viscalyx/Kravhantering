@@ -221,8 +221,8 @@ describe('production smoke bundle preparation', () => {
         'DEPLOYMENT-MANIFEST.json',
         'bin/kravhantering-quadlet.sh',
         'quadlet/templates/single-node/kravhantering-app-runtime.container.template',
-        'quadlet/templates/single-node/kravhantering-transient-cleanup.container.template',
-        'quadlet/templates/single-node/kravhantering-transient-cleanup.timer.template',
+        'bin/kravhantering-cleanup.sh',
+        'bin/kravhantering-cleanup-evidence.sh',
         'release-metadata.json',
       ]) {
         expect(archiveEntries).toContain(`${result.bundleName}/${entry}`)

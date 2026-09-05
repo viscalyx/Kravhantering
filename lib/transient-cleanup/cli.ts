@@ -1,5 +1,7 @@
 import 'reflect-metadata'
+import { readFile } from 'node:fs/promises'
 import { createSqlServerDataSource } from '../typeorm/sqlserver-config'
+import { parseCleanupCompatibilityContract } from './compatibility'
 import { createTransientCleanupTargets } from './registry'
 import type { TransientCleanupQueryExecutor } from './requirement-import-validation-sessions'
 import {
@@ -7,6 +9,7 @@ import {
   type TransientCleanupLogEvent,
   type TransientCleanupTarget,
 } from './runner'
+import { cleanupSchemaFingerprint } from './schema'
 
 const DEFAULT_BACKLOG_TARGET = 0
 const DEFAULT_BATCH_SIZE = 100
@@ -25,6 +28,7 @@ export interface TransientCleanupCommandDependencies {
     executor: TransientCleanupQueryExecutor,
   ) => TransientCleanupTarget[]
   env?: CleanupEnv
+  readContract?: (path: string) => Promise<unknown>
   write?: (line: string) => void
 }
 
@@ -48,7 +52,7 @@ interface SafeCommandEvent {
   level: 'error' | 'info'
   oldest_expired_age_ms: number | null
   operation: 'transient_state_cleanup'
-  outcome: 'failure' | 'success'
+  outcome: 'failure' | 'success' | 'not_applicable'
   remaining_expired_row_count: number | null
   timestamp: string
 }
@@ -146,10 +150,34 @@ export async function runTransientCleanupCommand(
 ): Promise<number> {
   const write = dependencies.write ?? (line => console.info(line))
   if (args.length === 1 && args[0] === '--help') {
-    write('Usage: node transient-cleanup/lib/transient-cleanup/cli.js')
+    write(
+      'Usage: node transient-cleanup/lib/transient-cleanup/cli.js [--contract <path> | --validate-contract <path> | --compatibility-evidence]',
+    )
     return 0
   }
-  if (args.length > 0) {
+  const readContract =
+    dependencies.readContract ??
+    (async (file: string) => JSON.parse(await readFile(file, 'utf8')))
+  if (args.length === 2 && args[0] === '--validate-contract') {
+    try {
+      parseCleanupCompatibilityContract(await readContract(args[1]))
+      write(
+        JSON.stringify({
+          event: 'transient_cleanup.contract.verified',
+          outcome: 'success',
+        }),
+      )
+      return 0
+    } catch {
+      write(JSON.stringify(runnerFailureEvent()))
+      return 1
+    }
+  }
+  const collectingEvidence =
+    args.length === 1 && args[0] === '--compatibility-evidence'
+  const contractPath =
+    args.length === 2 && args[0] === '--contract' ? args[1] : undefined
+  if (args.length > 0 && !collectingEvidence && !contractPath) {
     write(JSON.stringify(runnerFailureEvent()))
     return 1
   }
@@ -159,14 +187,67 @@ export async function runTransientCleanupCommand(
   try {
     const config = readConfig(dependencies.env ?? process.env)
     connection = await (dependencies.connect ?? connect)()
+    let schemaVersion: string | undefined
+    let schemaFingerprint: string | undefined
+    if (collectingEvidence || contractPath) {
+      const rows = await connection.executor.query<{ name: string }[]>(
+        'SELECT TOP (1) name FROM dbo.migrations ORDER BY id DESC',
+      )
+      schemaVersion = rows[0]?.name
+      if (!schemaVersion || !/^[a-zA-Z0-9]{1,200}$/.test(schemaVersion)) {
+        throw new Error('unknown cleanup schema')
+      }
+      schemaFingerprint = await cleanupSchemaFingerprint(connection.executor)
+    }
+    const contract = contractPath
+      ? parseCleanupCompatibilityContract(await readContract(contractPath))
+      : undefined
+    const verifiedSchema = contract?.verification.find(
+      schema => schema.schemaVersion === schemaVersion,
+    )
+    if (
+      contract &&
+      (!verifiedSchema ||
+        verifiedSchema.schemaFingerprint !== schemaFingerprint)
+    )
+      throw new Error('unverified cleanup schema')
     const targets = (
       dependencies.createTargets ?? createTransientCleanupTargets
     )(connection.executor)
+    if (verifiedSchema) {
+      for (const target of targets) {
+        const isApplicable = target.isApplicable
+        const expected = verifiedSchema.targets.find(
+          item => item.kind === target.kind,
+        )
+        target.isApplicable = async () => {
+          const applicable = isApplicable ? await isApplicable() : true
+          if (!expected || applicable !== (expected.outcome === 'success')) {
+            throw new Error('cleanup schema differs from verified release')
+          }
+          return applicable
+        }
+      }
+    }
     const result = await runTransientStateCleanup(targets, {
       ...config,
       record: event => write(JSON.stringify(safeEvent(event))),
     })
     exitCode = result.outcome === 'success' ? 0 : 1
+    if (collectingEvidence && exitCode === 0) {
+      write(
+        JSON.stringify({
+          event: 'transient_cleanup.schema.verified',
+          schemaVersion,
+          schemaFingerprint,
+          outcome: result.outcome,
+          targets: result.targets.map(target => ({
+            kind: target.kind,
+            outcome: target.outcome,
+          })),
+        }),
+      )
+    }
   } catch {
     write(JSON.stringify(runnerFailureEvent()))
     exitCode = 1

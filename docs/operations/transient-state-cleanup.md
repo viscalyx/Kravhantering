@@ -1,4 +1,4 @@
-# Scheduled Transient-State Cleanup
+# Release-Independent Transient-State Cleanup
 
 Kravhantering removes expired operational state independently of MCP request
 traffic. Every supported production topology installs one generic systemd timer
@@ -17,7 +17,7 @@ after manual stop or expiry.
 
 ## Work Bounds and Safety
 
-Configure these values in `/etc/kravhantering/app.env`:
+Configure these values in `/etc/kravhantering/cleanup.env`:
 
 - `TRANSIENT_CLEANUP_BATCH_SIZE` limits one SQL deletion and accepts `1` through
   `500`; the default is `100`.
@@ -40,114 +40,237 @@ actors reduces the target-row count. Size the cleanup work limit above the
 expected authenticated actor volume multiplied by this worst-case bound, and
 monitor backlog rather than treating the bound as expected traffic.
 
-## Activation
+## Release Contract and Prerequisites
 
-Use the release's Quadlet helper for `app-node-tls`, `app-node-http`, or
-`single-node`. Installation renders both cleanup units. Starting or restarting
-the topology target starts its timer:
+The host owns cleanup independently of the active application release. Its
+selected database-job image, image lock, compatibility contract and manager
+remain in the service account's private data directory. Application topology
+installation, removal, upgrade and rollback do not replace these files.
+
+Use an authenticated release archive that contains
+`cleanup-compatibility.json`. This contract binds the exact cleanup image ID
+and manifest digest to successful cleanup evidence for the target schema and
+all explicitly declared rollback source schemas. A source-release lock records
+the exact source release, database schema head, archive digest and image-lock
+digest. Retain the authenticated source archive and its lock with this record.
+A migration version range or an application version label alone is not evidence
+of compatibility. An undeclared source release is not an eligible rollback.
+The initial declared source is `0.7.0-preview.27`. Its source archive and
+attestation are verified before its archive, image-lock and migration identities
+are recorded in the release inputs. Release validation reproduces that exact
+source migration set in an isolated database; changed migration or dependency
+bytes fail verification.
+
+Release validation runs `bin/kravhantering-cleanup-evidence.sh` against disposable
+copies of the target schema and each declared source schema. The command uses
+the verified cleanup image, runtime database identity, bounded cleanup runner
+and SQL Server UTC. Expired synthetic fixtures exercise every applicable deletion
+and forensic-update path; unexpired fixtures must remain. Its output contains
+aggregate target outcomes, the schema head and a digest of the cleanup table
+definitions (columns, constraints, indexes, foreign keys and triggers). Every
+scheduled run compares live definitions with this verified digest before mutation.
+Release packaging rejects missing schema evidence, failed targets,
+missing target results and image identity mismatches. The source records and
+verification matrix travel inside the authenticated release archive.
+
+The same prerequisites apply to `app-node-tls`, `app-node-http` and
+`single-node`:
+
+- Run the retained manager as the rootless `kravhantering` service account with
+  lingering enabled and the normal cgroup and journal limits in force.
+- Prepare `/etc/kravhantering/cleanup.env` from the released template. Set only
+  the runtime database connection and cleanup bounds. Use the application
+  runtime database identity; do not use the migration identity or copy OIDC,
+  MCP or other application secrets into this file.
+- Keep SQL encryption enabled and certificate verification enabled. Both
+  app-node topologies use the existing app egress network and the trusted SQL
+  endpoint. Single-node uses the existing database and egress networks, the
+  internal SQL hostname and the mounted `/etc/kravhantering/tls/ca.crt`.
+- The database identity needs the current runtime manifest's `SELECT`, `DELETE`
+  and forensic-update permissions. It also needs database `VIEW DEFINITION`
+  to verify the released schema definitions and prove absent targets. Without
+  that visibility, cleanup fails safely instead of treating an invisible
+  object as absent. Arrange this reviewed metadata grant during source-schema
+  permission preparation; do not elevate the cleanup connection to a database
+  owner.
+- Prepare `/etc/kravhantering/cleanup-release.env` from its released template.
+  Select `TRANSIENT_CLEANUP_IMAGE_REF` independently of the application's
+  `DB_JOB_IMAGE_REF`. It must resolve to the cleanup release's locked database
+  job image. Site mirror tags are allowed only when they resolve to that exact
+  identity.
+- Keep both configuration files root-owned, service-group-readable and mode
+  `0640`. Retain the cleanup image locally, including during application image
+  pruning and disconnected recovery.
+
+An administrator must apply the metadata grant in the application database after
+migration or restore and before `resume`. Runtime permission reconciliation may
+remove role grants during migrations; reapply this prerequisite explicitly:
+
+```sql
+GRANT VIEW DEFINITION TO [kravhantering_runtime];
+```
+
+The release smoke test also activates each authenticated source application's
+units and exact image against its isolated source database. With ingress stopped,
+it expires a fixture after `resume` and waits for the ordinary five-minute timer
+to delete it. No manual cleanup invocation or application request can satisfy
+that assertion.
+
+## Installation and Explicit Image Update
+
+Set `CLEANUP_RELEASE` to the extracted, authenticated cleanup release directory
+and `TOPOLOGY` to the installed topology. Complete the normal topology host
+verification and install its networks before cleanup activation.
 
 ```bash
 sudo -iu kravhantering
-cd /opt/kravhantering/current
+CLEANUP_RELEASE=/opt/kravhantering/releases/RELEASE_DIRECTORY
+TOPOLOGY=app-node-tls
 
-bin/kravhantering-quadlet.sh install --topology "$TOPOLOGY"
-systemctl --user daemon-reload
-systemctl --user restart "$TARGET"
+"$CLEANUP_RELEASE/bin/kravhantering-cleanup.sh" install \
+  --bundle "$CLEANUP_RELEASE" --topology "$TOPOLOGY"
+MANAGER="$HOME/.local/share/kravhantering/cleanup/current/manager.sh"
+"$MANAGER" resume
+"$MANAGER" status
 ```
 
-Use `kravhantering-app-node.target` as `TARGET` for either app-node topology and
-`kravhantering-single-node.target` for `single-node`. The scheduled container
-uses `DB_JOB_IMAGE_REF` for its released command surface, but reads
-`/etc/kravhantering/app.env` and therefore connects with the least-privilege
-runtime database identity.
+`install` preserves an existing installation. For a reviewed image update, set
+the independent image selection to the new locked image, then run `update`
+from that release with the same bundle and topology arguments. Verification
+runs before installed units change. The rendered container pins the image ID
+and uses `Pull=never`; subsequent movement of a tag cannot change scheduled
+code. Prior generations remain available until full uninstall.
+
+Installation and update leave activation to `resume`. It verifies the retained
+image selection, starts the one-shot service, checks its successful result and
+only then enables the five-minute timer. A failure blocks operational handoff.
+
+When moving from application-owned cleanup, stop and disable the old timer and
+wait for its one-shot service before migration. Use the current application
+helper to install its topology; it removes stale application-owned unit files.
+The independent host units have distinct names, so an older application helper
+cannot delete or replace them.
 
 ## Verification and Monitoring
 
-Verify installation and the next scheduled execution:
-
 ```bash
-systemctl --user status kravhantering-transient-cleanup.timer --no-pager
-systemctl --user list-timers kravhantering-transient-cleanup.timer --all
-systemctl --user status kravhantering-transient-cleanup.service --no-pager
-journalctl --user -u kravhantering-transient-cleanup.service \
+"$MANAGER" status
+journalctl --user -u kravhantering-host-cleanup.service \
   --since=-30min --no-pager
 ```
 
-Each target emits one JSON journal event with `kind`, `outcome`,
-`expired_row_count`, `expired_stored_bytes`, `oldest_expired_age_ms`,
-`deleted_rows`, `remaining_expired_row_count` and `duration_ms`. A failure emits
-the stable `failure_code` value `target_execution_failed`; a connection,
-configuration or runner failure emits `runner_execution_failed`. Events never
-contain session tokens, hashes, destinations, submitted payloads, validation or
-execution results, forensic evidence, identities, or raw database errors.
+Each target emits `kind`, `outcome`, `expired_row_count`,
+`expired_stored_bytes`, `oldest_expired_age_ms`, `deleted_rows`,
+`remaining_expired_row_count` and `duration_ms`. An absent target reports
+`not_applicable` with zero deletions and null backlog values. All of its tables
+must be absent; partial schemas, views in place of tables, hidden metadata,
+missing columns, permission errors and connection errors remain failures.
+The observed applicability must also match the released schema evidence.
 
-A nonzero expired-row count may be normal while a run is respecting its work
-limit. Track `remaining_expired_row_count` as the backlog after each run. This
-field should decrease over successive schedules. A backlog that does not
-decrease, a growing oldest age, or a failure outcome requires investigation.
+A target failure emits `target_execution_failed`. A connection, configuration,
+contract or runner failure emits `runner_execution_failed`. Events do not
+contain stored tokens, hashes, destinations, payloads, validation or execution
+results, forensic evidence, identities or raw database errors. The schema
+verification command adds only a schema head and aggregate outcomes.
 
-## Manual Retry
+A successful bounded run can leave a backlog. Check that the remaining count
+and oldest age decrease over successive schedules and that the next timer
+execution is scheduled. Investigate a growing backlog or any failure. No MCP
+or other request traffic is needed for scheduled progress.
 
-A failed target remains retryable. Correct the configuration, image, network,
-TLS or database-permission problem, then invoke the same one-shot service:
+## Upgrade, Rollback and Recovery Set
 
-```bash
-systemctl --user reset-failed kravhantering-transient-cleanup.service
-systemctl --user start kravhantering-transient-cleanup.service
-systemctl --user status kravhantering-transient-cleanup.service --no-pager
-```
+Before downtime, verify that the selected cleanup release covers both the
+source schema and the target schema. Preserve its installed generation,
+configuration, image, authenticated archive, source-release locks and complete
+compatibility evidence alongside the application recovery set. Do not prune
+these assets when changing the active application release.
 
-Manual execution is idempotent and may overlap another host's scheduled run.
-The next timer execution also retries without a repair or data-recovery step.
-
-## Troubleshooting
-
-Check these boundaries in order:
-
-1. Confirm `DB_JOB_IMAGE_REF` resolves to the installed release and that the
-   image is present locally on disconnected hosts.
-2. Confirm `/etc/kravhantering/app.env` contains the runtime database connection
-   and valid numeric cleanup bounds.
-3. Confirm the app runtime identity retains `SELECT` and `DELETE` access to the
-   registered transient tables, including AI run coordination, HSA verification
-   quota, and the forensic capture/evidence tables, by running the release's
-   normal runtime permission verification.
-4. For app-node topologies, verify the egress network reaches SQL Server. For
-   `single-node`, verify the database network, SQL Server service and mounted CA
-   certificate.
-5. Inspect only the structured cleanup events. Do not copy raw transient table
-   contents into operational evidence.
-
-One target's failure does not erase or falsely fail another target's successful
-outcome. The overall service exits unsuccessfully when any target fails so
-systemd and monitoring can alert on the run.
-
-## Upgrade and Rollback
-
-During upgrade, copy the new `app.env` cleanup defaults or set reviewed site
-values, install the new Quadlet units, reload systemd and restart the topology
-target. Verify the timer is active and run the one-shot service once before
-restoring traffic. No schema migration is introduced by the scheduler itself.
-
-Before rolling back to a release that does not contain scheduled cleanup, use
-the newer release helper to remove its units, or remove the two cleanup units
-explicitly before switching `/opt/kravhantering/current`:
+After installing the compatible cleanup release, verify the exact authenticated
+source artifacts before downtime:
 
 ```bash
-systemctl --user disable --now kravhantering-transient-cleanup.timer
-systemctl --user stop "$TARGET"
-rm -f /home/kravhantering/.config/containers/systemd/kravhantering-transient-cleanup.container
-rm -f /home/kravhantering/.config/systemd/user/kravhantering-transient-cleanup.timer
-systemctl --user daemon-reload
+"$MANAGER" verify-transition \
+  --source-bundle "$SOURCE_RELEASE" --source-archive "$SOURCE_ARCHIVE"
 ```
 
-Then install and start the previous release using its normal rollback
-procedure. Rollback stops scheduled deletion; it does not restore already
-expired rows. Remaining expired MCP rows are harmless to active-session lookup
-and quota accounting. Expired forensic evidence is sensitive and must not
-remain without an equivalent site-managed purge; do not roll back the cleanup
-timer while forensic rows exist. Active unexpired sessions, rate buckets, and
-capture windows are not removed by the cleanup upgrade or rollback. A schema
-rollback across the MCP ownership/quota migration is different: it deliberately
-deletes all validation sessions first so older code cannot accept a session
-under weaker ownership rules.
+`SOURCE_RELEASE` is the extracted, authenticated source release directory.
+`SOURCE_ARCHIVE` is its retained authenticated archive. This check rejects an
+undeclared source or a mismatched archive or image lock.
+
+After traffic is quiesced, stop scheduled and in-flight cleanup before any
+migration, restore or other persistent-state mutation:
+
+```bash
+"$MANAGER" pause
+```
+
+Pause also stops any application-owned cleanup from an eligible older release.
+It disables the host timer and stops the current run, so a host restart
+does not silently release quiescence. Apply the normal application transition
+or restore procedure. Application removal and activation leave the cleanup
+selection intact. If an explicit compatible cleanup update is required, keep
+traffic blocked while performing it.
+
+Before normal traffic and operational handoff, run:
+
+```bash
+"$MANAGER" resume
+"$MANAGER" status
+```
+
+Require a successful one-shot result and an active next schedule on the
+restored or migrated database. An unsupported schema or a target whose
+applicability differs from the evidence fails before that target can mutate
+state. Do not release quiescence after a failure.
+
+After an eligible rollback to an application without its own cleanup command,
+the retained host service continues on its normal schedule. Do not remove its
+timer, select the older application's database-job image or arrange recurring
+manual purges. Deleted expired rows are not restored by changing the cleanup
+image. Normal schema rollback and application retention rules still apply.
+
+## Failure Recovery
+
+Correct the image, configuration, metadata visibility, runtime permissions,
+network or TLS fault using the retained cleanup release. Inspect aggregate
+outcomes; do not inspect or copy transient table contents. A failed update
+before unit installation preserves the active units. If installation fails
+partway through, keep traffic quiesced and repeat the explicit update from the
+retained compatible release and image lock, then run `resume`.
+
+For an isolated failed scheduled run:
+
+```bash
+"$MANAGER" retry
+```
+
+Retry uses the same verified service and work limits. Completed batches remain
+committed, and subsequent runs continue from the remaining backlog. Overlapping
+hosts and manual retry remain idempotent and concurrency-safe. Do not repair
+this condition with unbounded SQL deletion.
+
+## Disconnected Hosts
+
+On a connected preparation host, pull the exact cleanup release image and use
+its retained image helper with `--topology cleanup`, its image lock and
+`cleanup-release.env` to export an image bundle. Transfer that bundle with the
+authenticated cleanup release and source recovery artifacts. On the production
+host use the same helper selection to `load`, then `verify` before installation
+or update. Export and load use the independent cleanup reference; they do not
+select the active application's database-job image. Keep the verified local
+image available after application rollback.
+
+## Full Uninstall
+
+Full host removal explicitly removes cleanup before database or network
+removal. Application release rollback must never use this command.
+
+```bash
+"$MANAGER" uninstall
+```
+
+This disables the timer, stops the one-shot service, removes the host units and
+retained manager generations, and reloads systemd. Shared images and application
+data remain under the normal host uninstall procedure. Remove the two protected
+cleanup configuration files and retained transport artifacts under site policy.

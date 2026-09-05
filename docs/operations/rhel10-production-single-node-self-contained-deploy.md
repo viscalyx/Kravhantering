@@ -2790,5 +2790,14 @@ do not attempt an in-place repair without preserving recoverable evidence.
 
 The single-node topology installs the same bounded cleanup timer as both
 app-node topologies. Follow
-[Scheduled Transient-State Cleanup](transient-state-cleanup.md) for activation,
+[Release-Independent Transient-State Cleanup](transient-state-cleanup.md) for activation,
 monitoring, manual retry and troubleshooting.
+
+## Independent Cleanup Installation Gate
+
+Install the host cleanup service with its separate image configuration and
+verified release compatibility contract before opening normal traffic. Follow
+[Release-Independent Transient-State Cleanup](transient-state-cleanup.md)
+for the runtime identity, topology network, TLS, first successful run and active
+schedule requirements. Application target activation alone does not install or
+start this host service.

@@ -265,6 +265,27 @@ afterEach(() => {
 })
 
 describe('production image helper', () => {
+  it('verifies an independently selected cleanup image against the released database-job identity', () => {
+    const dir = makeTempDir()
+    const lockFile = writeLockFile(dir)
+    const envFile = writeEnvFile(dir, {
+      TRANSIENT_CLEANUP_IMAGE_REF: 'registry.example/db-job:1.2.3',
+      DB_JOB_IMAGE_REF: 'registry.example/db-job:older-application',
+    })
+    const result = runHelper(dir, [
+      '--topology',
+      'cleanup',
+      '--lock-file',
+      lockFile,
+      '--env-file',
+      envFile,
+      'verify',
+    ])
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('Verified transient-cleanup')
+    expect(result.log).not.toContain('older-application')
+  })
+
   it('verifies only app-node images for the selected topology', () => {
     const dir = makeTempDir()
     const lockFile = writeLockFile(dir)

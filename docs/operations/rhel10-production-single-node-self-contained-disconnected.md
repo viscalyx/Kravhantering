@@ -784,3 +784,14 @@ In step 7, choose the disconnected image-reference path that reads
 `offline-manifest.json`; the images are already loaded, so run verification
 without pulling from a registry. Then continue with the single-node database
 job and stack-start sequence from the regular guide.
+
+## Independent Cleanup Image and Recovery Artifacts
+
+Transfer the authenticated cleanup release, its compatibility evidence and all
+source recovery artifacts independently of the application release. Use that
+release's image helper with `--topology cleanup`, its image lock and the separate
+`cleanup-release.env` for export, load and verification. Retain this image when
+pruning or rolling back application images. Complete installation or explicit
+update, then require a successful run and active schedule before handoff. See
+[Release-Independent Transient-State Cleanup](transient-state-cleanup.md)
+for the complete lifecycle and recovery procedure.

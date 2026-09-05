@@ -2048,15 +2048,9 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain(
         'quadlet/templates/single-node/kravhantering-sqlserver-data.volume.template',
       )
-      expect(result.files).toContain(
-        'quadlet/templates/app-node-tls/kravhantering-transient-cleanup.timer.template',
-      )
-      expect(result.files).toContain(
-        'quadlet/templates/app-node-http/kravhantering-transient-cleanup.container.template',
-      )
-      expect(result.files).toContain(
-        'quadlet/templates/single-node/kravhantering-transient-cleanup.container.template',
-      )
+      expect(result.files).toContain('bin/kravhantering-cleanup.sh')
+      expect(result.files).toContain('bin/kravhantering-cleanup-evidence.sh')
+      expect(result.files).toContain('env/cleanup-release.env.template')
       expect(result.files.some(file => file.startsWith('compose/'))).toBe(false)
       expect(result.files).toContain(
         'docs/operations/rhel10-production-deploy.md',
@@ -2208,11 +2202,6 @@ describe('trusted container release helpers', () => {
       expect(quadletTemplates).toContain(
         '/api-docs:/usr/share/nginx/html/api-docs:ro',
       )
-      expect(quadletTemplates).toContain('DB_JOB_IMAGE_REF')
-      expect(quadletTemplates).toContain(
-        '/workspace/transient-cleanup/lib/transient-cleanup/cli.js',
-      )
-      expect(quadletTemplates).toContain('OnCalendar=*:0/5')
       expect(quadletTemplates).not.toContain('db-bootstrap')
       expect(quadletTemplates).not.toContain('db-migrate')
       expect(quadletTemplates).not.toContain('db-seed-required')
