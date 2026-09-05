@@ -331,8 +331,23 @@ The Operator Upgrade gate and merged-pull-request workflow both skip pull
 requests authored by `dependabot[bot]` whose title starts with `build(deps):`;
 dependency-only updates therefore do not require or persist operator notes.
 Instead of pushing directly to protected `main`, the workflow opens or updates
-the `automation/operator-upgrade-notes` PR. A human reviewer must approve the
-generated notes before merge. Configure an `OPERATOR_UPGRADE_NOTES_TOKEN`
+the `automation/operator-upgrade-notes` PR and requests auto-merge. The
+maintainer approves the notes by reviewing and merging the source PR. GitHub
+merges the generated PR after required checks and branch protection
+requirements are satisfied; no second approval review is needed under the
+current repository review policy.
+
+Enable **Allow auto-merge** in the repository's pull request settings, or run
+`gh repo edit viscalyx/Kravhantering --enable-auto-merge` as a repository
+administrator. Keep required status checks and branch protections enabled.
+The workflow does not submit approval reviews or use an administrator bypass.
+If requesting auto-merge fails, it emits a warning and leaves the PR for
+maintainer attention. Check repository auto-merge settings and token
+permissions, then retry the request or merge after required checks pass.
+Enabling the repository setting also allows the stable-release archive
+workflow's existing auto-merge request to succeed.
+
+Configure an `OPERATOR_UPGRADE_NOTES_TOKEN`
 secret from a fine-scoped PAT or GitHub App token for the `Viscalyxbot` machine
 user that can push branches and create pull requests so the normal PR checks
 run for that automation PR. The workflow commits those documentation changes as
@@ -373,8 +388,9 @@ sequenceDiagram
     par Persist notes through PR
         Notes->>Notes: Append PR notes under Unreleased
         Notes->>AutomationPR: Open or update automation PR
-        AutomationPR->>AutomationPR: Human review and merge after required checks
-        AutomationPR-->>Main: Persist Unreleased notes
+        Notes->>AutomationPR: Request auto-merge
+        AutomationPR->>AutomationPR: Wait for required checks and protections
+        AutomationPR-->>Main: Auto-merge
     and Prepare release
         Release->>Release: Compute release plan
         Release->>Release: Best-effort sync for merge commit PR
