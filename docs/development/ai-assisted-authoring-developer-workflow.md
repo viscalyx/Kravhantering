@@ -96,6 +96,19 @@ Use the following probe sequence:
    independent probes. Combined support must not turn an independently failed
    capability into verified evidence.
 
+Reasoning activity and control probes include a fixed arithmetic task, as do
+combined profiles that require reasoning. A request to echo a literal JSON
+object can produce valid output with zero reasoning tokens even when explicit
+effort is enabled. The model must return the calculated integer in an `answer`
+field. Only local validation contains the expected answer; the prompt and
+provider-facing schema do not supply it. Correct arithmetic alone does not
+establish reasoning activity: separate provider evidence remains mandatory.
+Visible analysis remains optional: only its own probe asks
+for a summary. Image profiles retain their image-observation task, and strict
+schema probes retain the deliberately conflicting extra property.
+Valid JSON without observed reasoning is inconclusive capability evidence;
+it does not indicate malformed output and must not produce a usable revision.
+
 Catalog metadata and advertised parameters guide what can be attempted; they
 are never proof of support. A provider rejection caused by an isolated optional
 control is evidence about that capability, not about unrelated capabilities.

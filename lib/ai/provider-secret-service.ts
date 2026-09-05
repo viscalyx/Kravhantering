@@ -324,15 +324,23 @@ function selectedCapabilities(
 
 function probeTask(capabilities: AiCapability): AiTaskEnvelope {
   const analysisProbe = capabilities.aiAnalysis
+  // A literal JSON echo can report zero reasoning tokens even at high effort.
+  const reasoningProbe =
+    capabilities.reasoning || capabilities.reasoningControl || analysisProbe
   const expectedProbe = capabilities.imageInput ? 'black-pixel' : 'ok'
   return {
     content: [
       {
-        text: analysisProbe
-          ? 'Determine whether 19 multiplied by 23 equals 437, then return the required probe object.'
-          : capabilities.imageInput
+        text: [
+          ...(reasoningProbe
+            ? [
+                'Calculate 137 multiplied by 283. Subtract 97 multiplied by 149 from that result, then divide by 6. Return the final integer in the answer field.',
+              ]
+            : []),
+          capabilities.imageInput
             ? 'Inspect the attached one-pixel image. Return the image result only if you observed the black pixel.'
             : 'Return the required probe object.',
+        ].join(' '),
         type: 'text',
       },
       ...(capabilities.imageInput
@@ -345,21 +353,40 @@ function probeTask(capabilities: AiCapability): AiTaskEnvelope {
           ] as const)
         : []),
     ],
-    instructions: analysisProbe
-      ? `This is a fixed administrative capability probe. Use the provider reasoning mode for the arithmetic check. Do not put reasoning in the JSON response or expose a private chain of thought. If supported, return a concise visible analysis summary only through the provider analysis field. Return exactly {"probe":"${expectedProbe}"}.`
-      : capabilities.jsonSchemaSteering
-        ? `This is a fixed administrative capability probe. Return exactly {"probe":"${expectedProbe}","schemaMustRemoveThis":true}.`
-        : `This is a fixed administrative capability probe. Return exactly {"probe":"${expectedProbe}"}.`,
+    instructions: [
+      'This is a fixed administrative capability probe.',
+      ...(reasoningProbe
+        ? [
+            'Use the provider reasoning mode for the arithmetic check. Do not put reasoning in the JSON response or expose a private chain of thought.',
+          ]
+        : []),
+      ...(analysisProbe
+        ? [
+            'If supported, return a concise visible analysis summary only through the provider analysis field.',
+          ]
+        : []),
+      reasoningProbe
+        ? `Return one JSON object with "probe":"${expectedProbe}" and "answer" set to the computed integer.${capabilities.jsonSchemaSteering ? ' Also include "schemaMustRemoveThis":true.' : ''}`
+        : capabilities.jsonSchemaSteering
+          ? `Return exactly {"probe":"${expectedProbe}","schemaMustRemoveThis":true}.`
+          : `Return exactly {"probe":"${expectedProbe}"}.`,
+    ].join(' '),
     responseSchema: {
       additionalProperties: false,
-      properties: { probe: { const: expectedProbe, type: 'string' } },
-      required: ['probe'],
+      properties: {
+        probe: { const: expectedProbe, type: 'string' },
+        ...(reasoningProbe ? { answer: { type: 'integer' } } : {}),
+      },
+      required: reasoningProbe ? ['probe', 'answer'] : ['probe'],
       type: 'object',
     },
     validationSchema: {
       additionalProperties: false,
-      properties: { probe: { const: expectedProbe, type: 'string' } },
-      required: ['probe'],
+      properties: {
+        probe: { const: expectedProbe, type: 'string' },
+        ...(reasoningProbe ? { answer: { const: 4053, type: 'integer' } } : {}),
+      },
+      required: reasoningProbe ? ['probe', 'answer'] : ['probe'],
       type: 'object',
     },
   }
@@ -371,11 +398,16 @@ function validProbeOutput(
 ): boolean {
   try {
     const parsed: unknown = JSON.parse(rawOutput)
+    const reasoningProbe =
+      capabilities.reasoning ||
+      capabilities.reasoningControl ||
+      capabilities.aiAnalysis
     return (
       typeof parsed === 'object' &&
       parsed !== null &&
       !Array.isArray(parsed) &&
-      Object.keys(parsed).length === 1 &&
+      Object.keys(parsed).length === (reasoningProbe ? 2 : 1) &&
+      (!reasoningProbe || (parsed as { answer?: unknown }).answer === 4053) &&
       (parsed as { probe?: unknown }).probe ===
         (capabilities.imageInput ? 'black-pixel' : 'ok')
     )
@@ -668,6 +700,20 @@ function capabilityAssessment(
       diagnosticCode: null,
       failureCategory: null,
       outcome: 'verified',
+    }
+  }
+  if (
+    result.completed &&
+    result.schemaValid &&
+    (capability === 'reasoning' || capability === 'reasoningControl')
+  ) {
+    return {
+      diagnosticCode:
+        capability === 'reasoning'
+          ? 'reasoning_activity_not_observed'
+          : 'reasoning_control_not_observed',
+      failureCategory: 'capability_mismatch',
+      outcome: 'inconclusive',
     }
   }
   if (

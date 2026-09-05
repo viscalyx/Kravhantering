@@ -875,6 +875,23 @@ grundläggande modellåtkomsten fungerar.
 
 ### Övriga fel
 
+Om AI-analys verifieras men resonemangsaktivitet inte kan avgöras kommer
+resultaten från olika prov. Ett enkelt prov som bara begär ett färdigt
+JSON-objekt kan ge noll resonemangstoken även med hög resonemangsnivå.
+Resonemangsproven och körprofilernas kombinerade prov innehåller därför en
+fast räkneuppgift. Uppdatera appen om den använder de enklare proven och kör
+verifieringen igen med samma modell.
+
+Modellen måste lämna sitt beräknade resultat i JSON-fältet `answer`. Appen
+kontrollerar resultatet lokalt utan att skicka facit till leverantören.
+Ett korrekt resultat ersätter inte kravet på observerade resonemangsbevis.
+
+Koderna `reasoning_activity_not_observed` och
+`reasoning_control_not_observed` betyder att provet gav giltig JSON men saknade
+de resonemangsbevis som behövs. Utfallet är oavgjort och blockerar användbara
+modellrevisioner. Det betyder inte att JSON-svaret var ogiltigt, och synlig
+AI-analys från ett annat prov ersätter inte de saknade bevisen.
+
 <!-- markdownlint-disable MD013 -->
 | Meddelande eller symptom | Trolig orsak | Kontrollera |
 | --- | --- | --- |

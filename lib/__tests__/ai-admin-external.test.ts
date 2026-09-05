@@ -261,6 +261,20 @@ describe('AI administration provider composition', () => {
         saveable,
         capabilities: { reasoning: { outcome } },
       })
+      if (externalModelId.endsWith('no-reasoning')) {
+        expect(result.capabilities.reasoning).toMatchObject({
+          outcome: 'inconclusive',
+          failureCategory: 'capability_mismatch',
+          diagnosticCode: 'reasoning_activity_not_observed',
+        })
+        if (mode === 'explicit_control') {
+          expect(result.capabilities.reasoningControl).toMatchObject({
+            outcome: 'inconclusive',
+            failureCategory: 'capability_mismatch',
+            diagnosticCode: 'reasoning_control_not_observed',
+          })
+        }
+      }
       if (saveable) {
         expect(result.capabilities.aiAnalysis.outcome).toBe('not_verified')
         expect(result.capabilities.reasoningControl.outcome).toBe(
@@ -274,6 +288,116 @@ describe('AI administration provider composition', () => {
           ),
         ).toBe(true)
       }
+    },
+  )
+
+  it.each([
+    ['explicit_control', true],
+    ['model_default', true],
+    ['explicit_control', false],
+    ['model_default', false],
+  ] as const)(
+    'requires a computed answer and observed activity in %s mode (correct answer=%s)',
+    async (mode, correctAnswer) => {
+      const base = controlledTestAdminAdapterRegistration.adapter
+      const registry = createAiAdminConnectionAdapterRegistry([
+        {
+          ...controlledTestAdminAdapterRegistration,
+          adapter: {
+            ...base,
+            async *runFunctionalProbe(context, revision, probe) {
+              const arithmetic = probe.task.content.some(
+                part =>
+                  part.type === 'text' &&
+                  /\d+ multiplied by \d+/.test(part.text),
+              )
+              if (arithmetic) {
+                // The provider must calculate the answer; only local validation knows it.
+                expect(
+                  JSON.stringify({
+                    instructions: probe.task.instructions,
+                    content: probe.task.content.filter(
+                      part => part.type === 'text',
+                    ),
+                    schema: probe.task.responseSchema,
+                  }),
+                ).not.toContain('4053')
+              }
+              for await (const event of base.runFunctionalProbe(
+                context,
+                revision,
+                probe,
+              )) {
+                yield event.type === 'completed'
+                  ? {
+                      ...event,
+                      rawOutput:
+                        arithmetic && !correctAnswer
+                          ? JSON.stringify({
+                              ...JSON.parse(event.rawOutput),
+                              answer: 0,
+                            })
+                          : event.rawOutput,
+                      reasoningEvidence: {
+                        activity: arithmetic,
+                        control:
+                          arithmetic &&
+                          revision.reasoning?.mode === 'explicit_control',
+                      },
+                    }
+                  : event
+              }
+            },
+          },
+        },
+      ])
+      const external = createProductionAiAdminExternalOperations(
+        emptyDb,
+        () => ring,
+        {
+          deployment: deployment(),
+          registry,
+        },
+      )
+      const result = await external.verifyModelCandidate(
+        connection(),
+        {
+          externalModelId:
+            mode === 'model_default'
+              ? 'controlled/default-no-analysis'
+              : 'controlled/no-analysis',
+          externalModelVersion: null,
+          reasoning:
+            mode === 'model_default'
+              ? { mode, effort: null }
+              : { mode, effort: 'high' },
+        },
+        { signal: new AbortController().signal },
+      )
+      if (!correctAnswer) {
+        expect(result.capabilities.reasoning).toMatchObject({
+          outcome: 'inconclusive',
+          failureCategory: 'invalid_response',
+        })
+        expect(
+          Object.values(result.profileCompatibility).every(
+            profile => !profile.supported,
+          ),
+        ).toBe(true)
+        expect(result.saveable).toBe(false)
+        return
+      }
+      expect(result.capabilities.reasoning.outcome).toBe('verified')
+      expect(result.capabilities.aiAnalysis.outcome).toBe('not_verified')
+      expect(result.capabilities.reasoningControl.outcome).toBe(
+        mode === 'explicit_control' ? 'verified' : 'not_verified',
+      )
+      expect(
+        Object.values(result.profileCompatibility).every(
+          profile => profile.supported,
+        ),
+      ).toBe(true)
+      expect(result.saveable).toBe(true)
     },
   )
 

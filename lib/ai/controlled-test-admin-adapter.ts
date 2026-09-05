@@ -91,6 +91,14 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
     }
   },
   runFunctionalProbe(context, revision, probe) {
+    const reasoningProbe =
+      probe.selectedCapabilities.reasoning ||
+      probe.selectedCapabilities.reasoningControl ||
+      probe.selectedCapabilities.aiAnalysis
+    const output = JSON.stringify({
+      probe: probe.selectedCapabilities.imageInput ? 'black-pixel' : 'ok',
+      ...(reasoningProbe ? { answer: 4053 } : {}),
+    })
     return controlledTestAdapterRegistration.adapter.run({
       connection: {
         configuration: {
@@ -106,13 +114,9 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
               !revision.externalModelId.endsWith('no-analysis')
                 ? 'Probe analysis'
                 : null,
-            output: probe.selectedCapabilities.imageInput
-              ? '{"probe":"black-pixel"}'
-              : '{"probe":"ok"}',
+            output,
             outputDeltas: probe.selectedCapabilities.streaming
-              ? probe.selectedCapabilities.imageInput
-                ? ['{"probe":', '"black-pixel"}']
-                : ['{"probe":', '"ok"}']
+              ? [output.slice(0, 9), output.slice(9)]
               : undefined,
             type: 'completed',
             usage: {
