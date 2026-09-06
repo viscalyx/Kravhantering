@@ -45,6 +45,7 @@ function compatibilityContract() {
         imageId,
         outcome: 'success',
         targets: [
+          'ai_model_verification_attempts',
           'ai_run_coordination_entries',
           'ai_forensic_evidence',
           'hsa_verification_quota_buckets',
@@ -248,10 +249,10 @@ describe('transient cleanup command', () => {
     expect(code).toBe(0)
     const events = output.map(line => JSON.parse(line))
     expect(events.slice(0, -1).map(event => event.outcome)).toEqual(
-      Array(5).fill('not_applicable'),
+      Array(6).fill('not_applicable'),
     )
     expect(events.at(-1)).toMatchObject({ outcome: 'success', deleted_rows: 0 })
-    expect(query).toHaveBeenCalledTimes(5)
+    expect(query).toHaveBeenCalledTimes(6)
   })
 
   it.each([
@@ -315,7 +316,7 @@ describe('transient cleanup command', () => {
         write: vi.fn(),
       }),
     ).resolves.toBe(0)
-    expect(query).toHaveBeenCalledTimes(16)
+    expect(query).toHaveBeenCalledTimes(19)
   })
 
   it('fails missing purge permissions even when every backlog is empty', async () => {

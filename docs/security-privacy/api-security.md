@@ -115,7 +115,9 @@ Deferred from this contract:
   `/api/admin/ai-connections` and `/api/admin/ai-run-profiles` remain outside
   the OpenAPI/Schemathesis v1 contract. They are Admin-only, sensitive,
   `no-store` state-machine APIs whose useful assertions cover model
-  verification followed by an explicit save, direct stable-profile saves,
+  verification followed by an explicit save, authorized discovery of shared
+  completed candidates in connection detail, connection-scoped discard,
+  atomic consumption, direct stable-profile saves,
   connection and provider-secret activation, encrypted write-only secrets,
   external probes, optimistic concurrency, dependency invalidation, and
   redacted privileged audit. Mutations use same-origin CSRF enforcement and

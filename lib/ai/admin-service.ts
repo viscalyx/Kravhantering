@@ -14,11 +14,14 @@ import type {
   SaveAiRunProfile,
 } from './admin-contracts'
 import {
+  type AiModelVerificationAttempt,
   AiModelVerificationAttemptError,
-  type AiModelVerificationAttemptLease,
   type AiModelVerificationAttemptStore,
-  createAiModelVerificationAttemptStore,
 } from './model-verification-attempts'
+import {
+  type AiModelVerificationPayload,
+  aiModelVerificationSnapshotSchema,
+} from './model-verification-payload'
 import type { AiRunProfileKey } from './profile-resolver'
 import type {
   AiProviderSecretAvailability,
@@ -80,6 +83,7 @@ export interface AiAdminStoredConnectionDetail
 
 export interface AiAdminConnectionDetail extends AiAdminStoredConnectionDetail {
   adapterAvailability: AiAdminAdapterAvailability
+  pendingVerifications?: readonly AiModelVerificationAttempt<AiModelVerificationPayload>[]
 }
 
 export interface AiAdminAttestationRecord extends SaveAiAttestation {
@@ -418,7 +422,9 @@ export interface AiAdminStore {
     connection: AiAdminStoredConnectionDetail
     connectionId: string
     modelRevision: SaveAiModelRevision
-    verification: Readonly<AiAdminCandidateVerificationResult>
+    verification(
+      manager: SqlServerEntityManager,
+    ): Promise<Readonly<AiAdminCandidateVerificationResult>>
   }): Promise<AiAdminModelRecord>
   saveRunProfile(input: {
     profileKey: AiRunProfileKey
@@ -592,32 +598,31 @@ function isCurrentLivePathActivation(
   )
 }
 
-const aiModelVerificationAttempts =
-  createAiModelVerificationAttemptStore<AiAdminCandidateVerificationResult>()
-
 export class AiConnectionAdministrationService {
-  readonly #actorKey: string
   readonly #audit: AiAdminAudit
   readonly #external: AiAdminExternalOperations
   readonly #secrets: AiAdminSecretOperations
   readonly #store: AiAdminStore
-  readonly #verificationAttempts: AiModelVerificationAttemptStore<AiAdminCandidateVerificationResult>
+  readonly #verificationAttempts: AiModelVerificationAttemptStore<
+    AiModelVerificationPayload,
+    SqlServerEntityManager
+  >
 
   constructor(input: {
-    actorKey: string
     audit: AiAdminAudit
     external: AiAdminExternalOperations
     secrets: AiAdminSecretOperations
     store: AiAdminStore
-    verificationAttempts?: AiModelVerificationAttemptStore<AiAdminCandidateVerificationResult>
+    verificationAttempts: AiModelVerificationAttemptStore<
+      AiModelVerificationPayload,
+      SqlServerEntityManager
+    >
   }) {
-    this.#actorKey = input.actorKey
     this.#audit = input.audit
     this.#external = input.external
     this.#secrets = input.secrets
     this.#store = input.store
-    this.#verificationAttempts =
-      input.verificationAttempts ?? aiModelVerificationAttempts
+    this.#verificationAttempts = input.verificationAttempts
   }
 
   async #withSecretAvailability(
@@ -696,7 +701,10 @@ export class AiConnectionAdministrationService {
   async getConnection(connectionId: string): Promise<AiAdminConnectionDetail> {
     const connection = await this.#store.getConnection(connectionId)
     if (!connection) throw notFoundError('AI connection not found.')
-    return this.#withSecretAvailability(connection)
+    return {
+      ...(await this.#withSecretAvailability(connection)),
+      pendingVerifications: await this.#verificationAttempts.list(connectionId),
+    }
   }
 
   async createConnection(
@@ -826,18 +834,39 @@ export class AiConnectionAdministrationService {
   }
 
   async verifyModelCandidate(input: {
-    candidate: AiAdminModelVerificationCandidate
+    candidate: AiAdminModelVerificationCandidate &
+      Partial<
+        Pick<
+          AiModelVerificationPayload['candidate'],
+          'name' | 'description' | 'modelId' | 'modelToken'
+        >
+      >
     connectionId: string
     onProgress?: (
       progress: Readonly<AiAdminVerificationProgress>,
     ) => Promise<void> | void
     signal: AbortSignal
   }): Promise<AiAdminCandidateVerificationAttemptResult> {
+    const candidate = aiModelVerificationSnapshotSchema.parse(input.candidate)
     const connection = await this.getConnection(input.connectionId)
+    if (
+      candidate.modelId &&
+      !connection.models.some(
+        model =>
+          model.id.toLowerCase() === candidate.modelId?.toLowerCase() &&
+          model.revisionToken.toLowerCase() ===
+            candidate.modelToken?.toLowerCase(),
+      )
+    )
+      activationConflict()
     await this.#assertAuthorizedTarget(connection)
     const result = await this.#external.verifyModelCandidate(
       connection,
-      input.candidate,
+      {
+        externalModelId: candidate.externalModelId,
+        externalModelVersion: candidate.externalModelVersion,
+        reasoning: candidate.reasoning,
+      },
       { onProgress: input.onProgress, signal: input.signal },
     )
     input.signal.throwIfAborted()
@@ -854,18 +883,22 @@ export class AiConnectionAdministrationService {
         tlsPolicyKey: connection.tlsPolicyKey,
       },
       model: {
+        modelId: candidate.modelId?.toLowerCase() ?? null,
+        modelToken: candidate.modelToken?.toLowerCase() ?? null,
         reasoning: requireAiReasoningConfiguration(result.reasoning),
-        externalModelId: input.candidate.externalModelId,
-        externalModelVersion: input.candidate.externalModelVersion,
+        externalModelId: candidate.externalModelId,
+        externalModelVersion: candidate.externalModelVersion,
       },
       testSuiteVersion: result.testSuiteVersion,
     })
     const attempt = result.saveable
-      ? this.#verificationAttempts.create({
-          actorKey: this.#actorKey,
+      ? await this.#verificationAttempts.create({
           connectionId: connection.id,
           fingerprint: verificationFingerprint,
-          result,
+          result: {
+            candidate,
+            verification: result,
+          },
         })
       : null
     await this.#audit({
@@ -880,10 +913,15 @@ export class AiConnectionAdministrationService {
     }
   }
 
-  discardModelVerification(attemptId: string): void {
-    this.#verificationAttempts.discard({
-      actorKey: this.#actorKey,
-      attemptId,
+  async discardModelVerification(
+    connectionId: string,
+    attemptId: string,
+  ): Promise<void> {
+    await this.#verificationAttempts.discard({ connectionId, attemptId })
+    await this.#audit({
+      operation: 'discard',
+      resourceId: connectionId,
+      resourceType: 'ai_connection',
     })
   }
 
@@ -936,6 +974,8 @@ export class AiConnectionAdministrationService {
         tlsPolicyKey: connection.tlsPolicyKey,
       },
       model: {
+        modelId: input.modelRevision.modelId?.toLowerCase() ?? null,
+        modelToken: input.modelRevision.modelToken?.toLowerCase() ?? null,
         reasoning: requireAiReasoningConfiguration(
           input.modelRevision.reasoning,
         ),
@@ -944,45 +984,29 @@ export class AiConnectionAdministrationService {
       },
       testSuiteVersion: AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
     })
-    let lease: AiModelVerificationAttemptLease<AiAdminCandidateVerificationResult>
     try {
-      lease = this.#verificationAttempts.reserve({
-        actorKey: this.#actorKey,
-        attemptId: input.modelRevision.attemptId,
-        connectionId: connection.id,
-        fingerprint: verificationFingerprint,
+      return await this.#store.saveModelRevision({
+        connection,
+        connectionId: input.connectionId,
+        modelRevision: input.modelRevision,
+        verification: async manager => {
+          const attempt = await this.#verificationAttempts.consume(
+            {
+              attemptId: input.modelRevision.attemptId,
+              connectionId: connection.id,
+              fingerprint: verificationFingerprint,
+            },
+            manager,
+          )
+          return attempt.result.verification
+        },
       })
     } catch (error) {
       if (error instanceof AiModelVerificationAttemptError) {
-        throw conflictError(
-          error.code === 'attempt_expired'
-            ? 'The model verification attempt expired. Verify again.'
-            : 'The connection or model configuration changed. Verify again.',
-          { blocker: error.code },
-        )
+        throw conflictError('The model verification cannot be used.', {
+          blocker: error.code,
+        })
       }
-      throw error
-    }
-    try {
-      const verification = lease.attempt.result
-      if (!verification.saveable) {
-        throw validationError('The AI model verification is not saveable.')
-      }
-      const saved = await this.#store.saveModelRevision({
-        connection,
-        connectionId: input.connectionId,
-        modelRevision: {
-          ...input.modelRevision,
-          reasoning: requireAiReasoningConfiguration(
-            input.modelRevision.reasoning,
-          ),
-        },
-        verification,
-      })
-      lease.commit()
-      return saved
-    } catch (error) {
-      lease.release()
       throw error
     }
   }

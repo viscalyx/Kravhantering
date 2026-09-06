@@ -58,32 +58,35 @@ async function insertSessions(db: SqlServerDatabase): Promise<void> {
 describe('transient cleanup against SQL Server', () => {
   const appDb = useSqlIntegrationDatabase()
 
-  it('reports a schema without the HSA target as not applicable without request traffic', async () => {
-    const connection = appDb().createQueryRunner()
-    await connection.connect()
-    await connection.startTransaction()
-    try {
-      await connection.query('DROP TABLE dbo.hsa_verification_quota_buckets')
-      const target = createTransientCleanupTargets(connection).filter(
-        target => target.kind === 'hsa_verification_quota_buckets',
-      )
-      const result = await runTransientStateCleanup(target, {
-        batchSize: 2,
-        workLimit: 2,
-        backlogTarget: 0,
-      })
-      expect(result).toMatchObject({
-        outcome: 'success',
-        deletedRows: 0,
-        targets: [
-          { outcome: 'not_applicable', remainingExpiredRowCount: null },
-        ],
-      })
-    } finally {
-      await connection.rollbackTransaction()
-      await connection.release()
-    }
-  })
+  it.each(['hsa_verification_quota_buckets', 'ai_model_verification_attempts'])(
+    'reports a schema without %s as not applicable without request traffic',
+    async kind => {
+      const connection = appDb().createQueryRunner()
+      await connection.connect()
+      await connection.startTransaction()
+      try {
+        await connection.query(`DROP TABLE dbo.${kind}`)
+        const target = createTransientCleanupTargets(connection).filter(
+          target => target.kind === kind,
+        )
+        const result = await runTransientStateCleanup(target, {
+          batchSize: 2,
+          workLimit: 2,
+          backlogTarget: 0,
+        })
+        expect(result).toMatchObject({
+          outcome: 'success',
+          deletedRows: 0,
+          targets: [
+            { outcome: 'not_applicable', remainingExpiredRowCount: null },
+          ],
+        })
+      } finally {
+        await connection.rollbackTransaction()
+        await connection.release()
+      }
+    },
+  )
 
   it('fails an existing target with incompatible columns and keeps diagnostics aggregate', async () => {
     const connection = appDb().createQueryRunner()

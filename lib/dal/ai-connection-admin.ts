@@ -1017,18 +1017,20 @@ export function createSqlServerAiAdminStore(
 
     async saveModelRevision(input) {
       return db.transaction('SERIALIZABLE', async manager => {
+        const verification = await input.verification(manager)
         const value = input.modelRevision
         const verifiedCapabilities = Object.fromEntries(
-          Object.entries(input.verification.capabilities).map(
-            ([key, result]) => [key, result.outcome === 'verified'],
-          ),
+          Object.entries(verification.capabilities).map(([key, result]) => [
+            key,
+            result.outcome === 'verified',
+          ]),
         ) as AiCapability
         const reasoning = parseAiReasoningConfiguration(value.reasoning)
         const verifiedReasoning = parseAiReasoningConfiguration(
-          input.verification.reasoning,
+          verification.reasoning,
         )
         if (
-          !input.verification.saveable ||
+          !verification.saveable ||
           !verifiedCapabilities.reasoning ||
           !reasoning ||
           !verifiedReasoning ||
@@ -1036,7 +1038,7 @@ export function createSqlServerAiAdminStore(
             !verifiedCapabilities.reasoningControl) ||
           reasoning.mode !== verifiedReasoning.mode ||
           reasoning.effort !== verifiedReasoning.effort ||
-          !Object.values(input.verification.profileCompatibility).some(
+          !Object.values(verification.profileCompatibility).some(
             result => result.supported,
           )
         ) {
@@ -1105,25 +1107,25 @@ export function createSqlServerAiAdminStore(
         const capabilitiesJson = JSON.stringify(verifiedCapabilities)
         const connectionEvidenceId = randomUUID()
         const compatibilityJson = JSON.stringify(
-          input.verification.profileCompatibility,
+          verification.profileCompatibility,
         )
         const detailsJson = JSON.stringify({
-          reasoning: input.verification.reasoning,
-          baseline: input.verification.baseline,
-          capabilities: input.verification.capabilities,
-          connection: input.verification.connection,
+          reasoning: verification.reasoning,
+          baseline: verification.baseline,
+          capabilities: verification.capabilities,
+          connection: verification.connection,
         })
         const evidenceFingerprint = createHash('sha256')
           .update(
             JSON.stringify({
               capabilities: verifiedCapabilities,
-              compatibility: input.verification.profileCompatibility,
+              compatibility: verification.profileCompatibility,
               connectionConfigurationVersion:
                 input.connection.configurationVersion,
               externalModelId: value.externalModelId,
               externalModelVersion: value.externalModelVersion,
               reasoning: value.reasoning,
-              suite: input.verification.testSuiteVersion,
+              suite: verification.testSuiteVersion,
             }),
           )
           .digest('hex')
@@ -1181,16 +1183,16 @@ export function createSqlServerAiAdminStore(
             modelRevisionId,
             value.externalModelId,
             value.externalModelVersion,
-            input.verification.canonicalExternalModelVersion,
+            verification.canonicalExternalModelVersion,
             capabilitiesJson,
             input.connection.configurationVersion,
             input.connection.revisionToken,
             connectionEvidenceId,
-            input.verification.testSuiteVersion,
+            verification.testSuiteVersion,
             input.connection.adapterVersion,
             input.connection.agentRuntimeVersion,
             configurationFingerprint(input.connection),
-            JSON.stringify({ baseline: input.verification.baseline }),
+            JSON.stringify({ baseline: verification.baseline }),
             randomUUID(),
             compatibilityJson,
             evidenceFingerprint,

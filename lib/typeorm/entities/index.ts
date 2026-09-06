@@ -10,6 +10,7 @@ import { aiConnectionModelVerificationEvidenceEntity } from '@/lib/typeorm/entit
 import { aiConnectionVerificationEvidenceEntity } from '@/lib/typeorm/entities/ai-connection-verification-evidence'
 import { aiForensicCaptureWindowEntity } from '@/lib/typeorm/entities/ai-forensic-capture-window'
 import { aiForensicEvidenceEventEntity } from '@/lib/typeorm/entities/ai-forensic-evidence-event'
+import { aiModelVerificationAttemptEntity } from '@/lib/typeorm/entities/ai-model-verification-attempt'
 import { aiProviderSecretVersionEntity } from '@/lib/typeorm/entities/ai-provider-secret-version'
 import { aiRunCoordinationEntity } from '@/lib/typeorm/entities/ai-run-coordination'
 import { aiRunProfileEntity } from '@/lib/typeorm/entities/ai-run-profile'
@@ -73,6 +74,7 @@ import { specificationRfiListEntity } from '@/lib/typeorm/entities/specification
 import { specificationRfiQuestionItemEntity } from '@/lib/typeorm/entities/specification-rfi-question-item'
 
 export const sqlServerEntities = [
+  aiModelVerificationAttemptEntity,
   actionAuditEventEntity,
   aiConnectionEntity,
   aiConnectionAttestationEntity,
@@ -221,7 +223,10 @@ export type { SpecificationNeedsReferenceEntity } from '@/lib/typeorm/entities/s
 export type { SpecificationRequirementSelectionAnswerEntity } from '@/lib/typeorm/entities/specification-requirement-selection-answer'
 export type { SpecificationRfiListEntity } from '@/lib/typeorm/entities/specification-rfi-list'
 export type { SpecificationRfiQuestionItemEntity } from '@/lib/typeorm/entities/specification-rfi-question-item'
-
+export {
+  type AiModelVerificationAttemptEntity,
+  aiModelVerificationAttemptEntity,
+} from './ai-model-verification-attempt'
 export {
   accessReviewItemEntity,
   accessReviewRunEntity,

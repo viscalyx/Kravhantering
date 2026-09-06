@@ -1,4 +1,5 @@
 import { createAiForensicEvidenceCleanupTarget } from './ai-forensic-evidence'
+import { createAiModelVerificationAttemptCleanupTarget } from './ai-model-verification-attempts'
 import { createAiRunCoordinationCleanupTarget } from './ai-run-coordination-entries'
 import { createHsaVerificationQuotaBucketCleanupTarget } from './hsa-verification-quota-buckets'
 import { createRequirementImportValidationRateBucketCleanupTarget } from './requirement-import-validation-rate-buckets'
@@ -63,6 +64,7 @@ export function createTransientCleanupTargets(
   executor: TransientCleanupQueryExecutor,
 ): TransientCleanupTarget[] {
   return [
+    createAiModelVerificationAttemptCleanupTarget(executor),
     createAiRunCoordinationCleanupTarget(executor),
     createAiForensicEvidenceCleanupTarget(executor),
     createHsaVerificationQuotaBucketCleanupTarget(executor),

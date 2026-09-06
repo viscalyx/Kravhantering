@@ -1,5 +1,6 @@
 import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import { createSqlServerAiAdminStore } from '@/lib/dal/ai-connection-admin'
+import { createSqlServerAiModelVerificationAttemptStore } from '@/lib/dal/ai-model-verification-attempts'
 import type { SqlServerDatabase } from '@/lib/db'
 import type { RequestContext } from '@/lib/requirements/auth'
 import { createProductionAiAdminExternalOperations } from './admin-external'
@@ -7,6 +8,7 @@ import {
   type AiAdminExternalOperations,
   AiConnectionAdministrationService,
 } from './admin-service'
+import { parseAiModelVerificationPayload } from './model-verification-payload'
 import {
   type AiProviderSecretKeyring,
   AiProviderSecretKeyringError,
@@ -42,9 +44,16 @@ export function createAiConnectionAdministrationRuntime(
     detail: Parameters<typeof recordAdminPrivilegedActionSucceeded>[1],
     executor?: Parameters<typeof recordAdminPrivilegedActionSucceeded>[2],
   ): Promise<void> =>
-    recordAdminPrivilegedActionSucceeded(context, detail, executor)
+    recordAdminPrivilegedActionSucceeded(
+      context,
+      detail,
+      executor ?? db.manager,
+    )
   return new AiConnectionAdministrationService({
-    actorKey: context.actor.hsaId ?? context.actor.id ?? context.requestId,
+    verificationAttempts: createSqlServerAiModelVerificationAttemptStore(
+      db,
+      parseAiModelVerificationPayload,
+    ),
     audit,
     external,
     secrets: {

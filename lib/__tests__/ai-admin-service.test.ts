@@ -8,7 +8,7 @@ import {
   type AiAdminStoredConnectionDetail,
   AiConnectionAdministrationService,
 } from '@/lib/ai/admin-service'
-import { createAiModelVerificationAttemptStore } from '@/lib/ai/model-verification-attempts'
+import { createTestAiVerificationAttemptStore } from '@/tests/helpers/ai-verification-attempt-store'
 
 const capabilities = {
   reasoning: {
@@ -138,9 +138,16 @@ function harness(
   service: AiConnectionAdministrationService
 } {
   const current = connection()
+  const verificationAttempts = createTestAiVerificationAttemptStore()
   const store = {
     getConnection: vi.fn(async () => current),
-    saveModelRevision,
+    saveModelRevision: (
+      input: Parameters<AiAdminStore['saveModelRevision']>[0],
+    ) =>
+      verificationAttempts.transaction(async manager => {
+        const verification = await input.verification(manager)
+        return saveModelRevision({ ...input, verification })
+      }),
   } as unknown as AiAdminStore
   const external = {
     adapterAvailability: vi.fn(() => ({ available: true })),
@@ -154,12 +161,11 @@ function harness(
     connection: current,
     saveModelRevision,
     service: new AiConnectionAdministrationService({
-      actorKey: 'administrator-1',
       audit,
       external,
       secrets,
       store,
-      verificationAttempts: createAiModelVerificationAttemptStore(),
+      verificationAttempts,
     }),
   }
 }
@@ -338,7 +344,21 @@ describe('AI administration model verification attempts', () => {
         }),
       ).rejects.toMatchObject({ status: 409 })
     }
-    service.discardModelVerification(attempt.attemptId as string)
+    await expect(
+      service.saveModelRevision({
+        connectionId: current.id,
+        modelRevision: {
+          ...changed,
+          externalModelId: 'controlled/model',
+          modelId: randomUUID(),
+          modelToken: randomUUID(),
+        },
+      }),
+    ).rejects.toMatchObject({ details: { blocker: 'attempt_mismatch' } })
+    await service.discardModelVerification(
+      current.id,
+      attempt.attemptId as string,
+    )
 
     await expect(
       service.saveModelRevision({
@@ -366,12 +386,11 @@ describe('AI run profile authorization', () => {
       setRunProfileOperationalStatus,
     } as unknown as AiAdminStore
     const service = new AiConnectionAdministrationService({
-      actorKey: 'administrator-1',
       audit: vi.fn(async () => undefined),
       external: {} as AiAdminExternalOperations,
       secrets: {} as AiAdminSecretOperations,
       store,
-      verificationAttempts: createAiModelVerificationAttemptStore(),
+      verificationAttempts: createTestAiVerificationAttemptStore(),
     })
 
     await expect(
@@ -402,12 +421,11 @@ describe('AI run profile authorization', () => {
       authorizeRunProfile,
     } as unknown as AiAdminExternalOperations
     const service = new AiConnectionAdministrationService({
-      actorKey: 'administrator-1',
       audit: vi.fn(async () => undefined),
       external,
       secrets: {} as AiAdminSecretOperations,
       store,
-      verificationAttempts: createAiModelVerificationAttemptStore(),
+      verificationAttempts: createTestAiVerificationAttemptStore(),
     })
     const profile = {
       inactivityTimeBudgetSeconds: 300,
