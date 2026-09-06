@@ -7,11 +7,14 @@ import {
 import {
   createGeneratedOutputTerminalRecorder,
   createGenerationDeadline,
+  type GeneratedOutputOperation,
+  type GeneratedOutputTerminalMetrics,
   throwIfGenerationAborted,
 } from '@/lib/generated-output/operation'
 import {
   acquireGeneratedOutputSpool,
   createGeneratedOutputFileResponse,
+  type GeneratedOutputAdmissionOptions,
   type GeneratedOutputSpool,
   generatedOutputCapacitySnapshot,
   writeBoundedFile,
@@ -60,129 +63,134 @@ export async function generateDataSubjectExport(
   return generateJsonDataSubjectExport(options, settings)
 }
 
+interface BoundedDataSubjectExportConfiguration
+  extends GeneratedOutputAdmissionOptions {
+  additionalMetrics?: Pick<
+    GeneratedOutputTerminalMetrics,
+    'workerMemoryLimitBytes'
+  >
+  capacityField: 'activePdf' | 'activeCsv'
+  createItemLimitError: (limit: number) => GeneratedOutputError
+  generate: (
+    payload: DataSubjectExportV1,
+    filePath: string,
+    signal: AbortSignal,
+  ) => Promise<number>
+  maxItems: number
+  operation: GeneratedOutputOperation
+  output: DataSubjectExportDelivery
+  responseHeaders: (payload: DataSubjectExportV1) => HeadersInit
+  streamErrorMessage: string
+  timeoutSeconds: number
+}
+
 async function generatePdfDataSubjectExport(
   options: GenerateDataSubjectExportOptions,
   settings: Awaited<ReturnType<typeof getApplicationSettings>>,
 ): Promise<GeneratedDataSubjectExport> {
-  const terminal = createGeneratedOutputTerminalRecorder(
-    'privacy.data_subject_pdf_export',
-    options.context,
-  )
-  let spool: GeneratedOutputSpool | undefined
-  let deadline: ReturnType<typeof createGenerationDeadline> | undefined
-  let byteCount = 0
-  let itemCount = 0
-  const terminalMetrics = () => ({
-    activeCount: generatedOutputCapacitySnapshot().activePdf,
-    byteCount,
+  return generateBoundedDataSubjectExport(options, {
+    operation: 'privacy.data_subject_pdf_export',
+    output: 'pdf',
+    capacityField: 'activePdf',
     concurrencyLimit: settings.pdfReportConcurrencyPerNode,
-    itemCount,
-    itemLimit: settings.pdfReportMaxRequirements,
-    timeoutMs: settings.pdfReportTimeoutSeconds * 1000,
-    workerMemoryLimitBytes: settings.pdfWorkerMemoryMib * 1024 * 1024,
+    maxFileBytes: settings.pdfReportMaxFileBytes,
+    maxItems: settings.pdfReportMaxRequirements,
+    timeoutSeconds: settings.pdfReportTimeoutSeconds,
+    additionalMetrics: {
+      workerMemoryLimitBytes: settings.pdfWorkerMemoryMib * 1024 * 1024,
+    },
+    createItemLimitError: createPdfItemLimitError,
+    generate: (payload, filePath, signal) =>
+      renderDataSubjectExportInWorker({
+        exportData: payload,
+        locale: options.locale,
+        maxBytes: settings.pdfReportMaxFileBytes,
+        memoryLimitMib: settings.pdfWorkerMemoryMib,
+        outputPath: filePath,
+        signal,
+      }),
+    responseHeaders: payload => ({
+      'Content-Disposition': pdfContentDisposition(
+        dataSubjectExportFilename(payload, 'pdf', options.locale),
+      ),
+      'Content-Type': 'application/pdf',
+    }),
+    streamErrorMessage: 'Privacy PDF response stream failed',
   })
-
-  try {
-    spool = await acquireGeneratedOutputSpool({
-      concurrencyLimit: settings.pdfReportConcurrencyPerNode,
-      maxFileBytes: settings.pdfReportMaxFileBytes,
-      output: 'pdf',
-    })
-    deadline = createGenerationDeadline(
-      settings.pdfReportTimeoutSeconds,
-      options.requestSignal,
-    )
-    const payload = await collectDataSubjectExport(options.db, options.input, {
-      createItemLimitError: createPdfItemLimitError,
-      maxItems: settings.pdfReportMaxRequirements,
-      signal: deadline.signal,
-    })
-    itemCount = payload.summary.itemCount
-    throwIfGenerationAborted(deadline.signal)
-    byteCount = await renderDataSubjectExportInWorker({
-      exportData: payload,
-      locale: options.locale,
-      maxBytes: settings.pdfReportMaxFileBytes,
-      memoryLimitMib: settings.pdfWorkerMemoryMib,
-      outputPath: spool.filePath,
-      signal: deadline.signal,
-    })
-    throwIfGenerationAborted(deadline.signal)
-    deadline.dispose()
-    deadline = undefined
-    const response = await createGeneratedOutputFileResponse(
-      spool,
-      {
-        'Content-Disposition': pdfContentDisposition(
-          dataSubjectExportFilename(payload, 'pdf', options.locale),
-        ),
-        'Content-Type': 'application/pdf',
-      },
-      {
-        onCancel: () => terminal.cancelled(terminalMetrics()),
-        onComplete: () => terminal.completed(terminalMetrics()),
-        onError: () =>
-          terminal.failed(
-            new Error('Privacy PDF response stream failed'),
-            terminalMetrics(),
-          ),
-      },
-    )
-    spool = undefined
-    return { payload, response }
-  } catch (error) {
-    itemCount = observedItemCount(error, itemCount)
-    terminal.failed(error, terminalMetrics())
-    throw error
-  } finally {
-    deadline?.dispose()
-    spool?.releaseGeneration()
-    await spool?.releaseSpool()
-  }
 }
 
 async function generateJsonDataSubjectExport(
   options: GenerateDataSubjectExportOptions,
   settings: Awaited<ReturnType<typeof getApplicationSettings>>,
 ): Promise<GeneratedDataSubjectExport> {
+  return generateBoundedDataSubjectExport(options, {
+    operation: 'privacy.data_subject_json_export',
+    output: 'json',
+    capacityField: 'activeCsv',
+    concurrencyLimit: settings.csvExportConcurrencyPerNode,
+    maxFileBytes: settings.csvExportMaxFileBytes,
+    maxItems: settings.csvExportMaxItems,
+    timeoutSeconds: settings.csvExportTimeoutSeconds,
+    createItemLimitError: jsonItemLimitError,
+    generate: (payload, filePath, signal) =>
+      writeBoundedJson(
+        filePath,
+        payload,
+        settings.csvExportMaxFileBytes,
+        signal,
+      ),
+    responseHeaders: payload => ({
+      'Content-Disposition': jsonContentDisposition(
+        dataSubjectExportFilename(payload, 'json', options.locale),
+      ),
+      'Content-Type': 'application/json;charset=utf-8',
+    }),
+    streamErrorMessage: 'Privacy JSON response stream failed',
+  })
+}
+
+async function generateBoundedDataSubjectExport(
+  options: GenerateDataSubjectExportOptions,
+  configuration: BoundedDataSubjectExportConfiguration,
+): Promise<GeneratedDataSubjectExport> {
   const terminal = createGeneratedOutputTerminalRecorder(
-    'privacy.data_subject_json_export',
+    configuration.operation,
     options.context,
   )
   let spool: GeneratedOutputSpool | undefined
   let deadline: ReturnType<typeof createGenerationDeadline> | undefined
   let byteCount = 0
   let itemCount = 0
-  const terminalMetrics = () => ({
-    activeCount: generatedOutputCapacitySnapshot().activeCsv,
+  const terminalMetrics = (): GeneratedOutputTerminalMetrics => ({
+    activeCount: generatedOutputCapacitySnapshot()[configuration.capacityField],
     byteCount,
-    concurrencyLimit: settings.csvExportConcurrencyPerNode,
+    concurrencyLimit: configuration.concurrencyLimit,
     itemCount,
-    itemLimit: settings.csvExportMaxItems,
-    timeoutMs: settings.csvExportTimeoutSeconds * 1000,
+    itemLimit: configuration.maxItems,
+    timeoutMs: configuration.timeoutSeconds * 1000,
+    ...configuration.additionalMetrics,
   })
 
   try {
     spool = await acquireGeneratedOutputSpool({
-      concurrencyLimit: settings.csvExportConcurrencyPerNode,
-      maxFileBytes: settings.csvExportMaxFileBytes,
-      output: 'json',
+      concurrencyLimit: configuration.concurrencyLimit,
+      maxFileBytes: configuration.maxFileBytes,
+      output: configuration.output,
     })
     deadline = createGenerationDeadline(
-      settings.csvExportTimeoutSeconds,
+      configuration.timeoutSeconds,
       options.requestSignal,
     )
     const payload = await collectDataSubjectExport(options.db, options.input, {
-      createItemLimitError: limit => jsonItemLimitError(limit),
-      maxItems: settings.csvExportMaxItems,
+      createItemLimitError: configuration.createItemLimitError,
+      maxItems: configuration.maxItems,
       signal: deadline.signal,
     })
     itemCount = payload.summary.itemCount
     throwIfGenerationAborted(deadline.signal)
-    byteCount = await writeBoundedJson(
-      spool.filePath,
+    byteCount = await configuration.generate(
       payload,
-      settings.csvExportMaxFileBytes,
+      spool.filePath,
       deadline.signal,
     )
     throwIfGenerationAborted(deadline.signal)
@@ -190,22 +198,18 @@ async function generateJsonDataSubjectExport(
     deadline = undefined
     const response = await createGeneratedOutputFileResponse(
       spool,
-      {
-        'Content-Disposition': jsonContentDisposition(
-          dataSubjectExportFilename(payload, 'json', options.locale),
-        ),
-        'Content-Type': 'application/json;charset=utf-8',
-      },
+      configuration.responseHeaders(payload),
       {
         onCancel: () => terminal.cancelled(terminalMetrics()),
         onComplete: () => terminal.completed(terminalMetrics()),
         onError: () =>
           terminal.failed(
-            new Error('Privacy JSON response stream failed'),
+            new Error(configuration.streamErrorMessage),
             terminalMetrics(),
           ),
       },
     )
+    // The response stream now owns spool cleanup and terminal recording.
     spool = undefined
     return { payload, response }
   } catch (error) {
