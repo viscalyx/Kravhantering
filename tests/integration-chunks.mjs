@@ -824,7 +824,7 @@ export function createRunPlan({
     commands.push({ ...buildCommand, kind: 'build' })
   }
 
-  for (const [index, chunk] of chunks.entries()) {
+  for (const chunk of chunks) {
     if (!externalServer) {
       commands.push({
         ...killPortCommand(suite),
@@ -839,8 +839,7 @@ export function createRunPlan({
     }
 
     const forceAuthSetup =
-      index === 0 &&
-      (!externalServer || Boolean(env.PLAYWRIGHT_FORCE_AUTH_SETUP))
+      !externalServer || Boolean(env.PLAYWRIGHT_FORCE_AUTH_SETUP)
     commands.push({
       ...chunkPlaywrightCommand({
         chunk,

@@ -487,6 +487,10 @@ test.describe('Admin settings', () => {
     page,
     request,
   }) => {
+    // Compile the cold development route before the timed browser navigation.
+    await expect(
+      await page.request.get('/sv/requirements', { timeout: 45_000 }),
+    ).toBeOK()
     const original = await getAiSettings(request)
     let shouldRestoreSettings = false
 

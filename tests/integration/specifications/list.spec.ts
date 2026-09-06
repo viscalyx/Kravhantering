@@ -112,7 +112,13 @@ for (const viewport of viewports) {
         const deleteActionBox = await deleteAction.boundingBox()
         const requirementAreasHeaderBox =
           await requirementAreasHeader.boundingBox()
-        const tableBox = await tableSurface.boundingBox()
+        let tableBox = await tableSurface.boundingBox()
+        await expect
+          .poll(async () => {
+            tableBox = await tableSurface.boundingBox()
+            return tableBox
+          })
+          .not.toBeNull()
         const viewportSize = page.viewportSize()
 
         expect(buttonBox).not.toBeNull()

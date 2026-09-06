@@ -62,6 +62,11 @@ risks: navigation and Admin tab reachability, column resizing and persistence,
 column-picker geometry, removal and filter targets, and AI settings geometry.
 Archive, deviation, creation, package, and specification workflows run once.
 
+Owned chunk runs obtain fresh role sessions before every chunk so long runs do
+not reuse an expiring login. External-server runs refresh sessions only when
+`PLAYWRIGHT_FORCE_AUTH_SETUP=1` is explicitly selected. Cold requirements routes
+are prepared before timed browser navigation in the affected scenarios.
+
 The scheduled isolated-chunk workflow uses the same browser-functional manifest
 with a fresh runner and seed per chunk. It complements the shared-database PR
 run. Developer Mode retains its dedicated dev-server smoke. Security MCP is the

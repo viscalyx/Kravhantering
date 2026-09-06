@@ -173,6 +173,10 @@ test('REQ-15: AI-assisted authoring hands library candidates to requirement impo
     'library-preview',
   )
 
+  // Compile the cold development route before the timed browser navigation.
+  await expect(
+    await page.request.get('/sv/requirements', { timeout: 45_000 }),
+  ).toBeOK()
   await page.goto('/sv/requirements')
   const aiTrigger = page.getByRole('button', { name: 'AI-assistera' }).first()
   await aiTrigger.click()

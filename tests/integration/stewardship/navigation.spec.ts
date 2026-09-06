@@ -113,6 +113,10 @@ test.describe('Stewardship navigation memory', () => {
     page,
   }) => {
     await test.step('browse to the question stewardship tab', async () => {
+      // Compile the cold development route before the timed browser navigation.
+      await expect(
+        await page.request.get('/sv/requirements', { timeout: 45_000 }),
+      ).toBeOK()
       await page.goto('/sv/requirements')
       await page.evaluate(() =>
         localStorage.removeItem('requirements.stewardship.tab'),

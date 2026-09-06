@@ -397,6 +397,34 @@ describe('integration chunk command planning', () => {
     )
   })
 
+  it('refreshes role sessions for every owned chunk in long-running suites', () => {
+    const manifest = buildManifestFromSpecs(fixtureSpecs, { targetSpecs: 1 })
+    const plan = createRunPlan({ env: {}, manifest, suite: 'dev' })
+    const chunks = plan.commands.filter(
+      entry => entry.kind === 'playwright-chunk',
+    )
+
+    expect(chunks.length).toBeGreaterThan(1)
+    for (const chunk of chunks) {
+      expect(chunk.env.PLAYWRIGHT_FORCE_AUTH_SETUP).toBe('1')
+    }
+  })
+
+  it('preserves cached sessions for an external server without auth setup opt-in', () => {
+    const manifest = buildManifestFromSpecs(fixtureSpecs, { targetSpecs: 1 })
+    const plan = createRunPlan({
+      env: { PLAYWRIGHT_SKIP_WEBSERVER: '1' },
+      manifest,
+      suite: 'dev',
+    })
+
+    for (const chunk of plan.commands.filter(
+      entry => entry.kind === 'playwright-chunk',
+    )) {
+      expect(chunk.env.PLAYWRIGHT_FORCE_AUTH_SETUP).toBeUndefined()
+    }
+  })
+
   it('does not kill or start servers in external-server chunk mode', () => {
     const manifest = buildManifestFromSpecs(fixtureSpecs, { targetSpecs: 1 })
     const plan = createRunPlan({
@@ -416,7 +444,7 @@ describe('integration chunk command planning', () => {
     )
     expect(chunkCommands.length).toBeGreaterThan(1)
     expect(chunkCommands[0].env.PLAYWRIGHT_FORCE_AUTH_SETUP).toBe('1')
-    expect(chunkCommands[1].env.PLAYWRIGHT_FORCE_AUTH_SETUP).toBeUndefined()
+    expect(chunkCommands[1].env.PLAYWRIGHT_FORCE_AUTH_SETUP).toBe('1')
   })
 })
 
