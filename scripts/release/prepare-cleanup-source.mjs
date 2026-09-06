@@ -48,6 +48,10 @@ export function prepareCleanupSource(args, dependencies = {}) {
       '--location',
       '--retry',
       '3',
+      '--connect-timeout',
+      '10',
+      '--max-time',
+      '120',
       ...(file ? ['--output', file] : []),
       url,
     ])

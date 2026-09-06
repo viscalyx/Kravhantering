@@ -55,6 +55,10 @@ extracted bundle into a private directory under the service account's
 the copied archive and stack-lock digests before rollback, so verification
 does not depend on service-account access to the runner's workspace.
 
+Cleanup source metadata and artifact downloads use a 10-second connection
+timeout and a 120-second transfer timeout per attempt, with up to three
+retries. Each curl process remains bounded by the 300-second subprocess limit.
+
 The initial stack must pass full readiness before cleanup rollback verification
 can stop its services. This lets Keycloak finish its first database migration.
 Full readiness is checked again after restoring the candidate release.

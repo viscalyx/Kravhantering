@@ -189,7 +189,19 @@ describe('cleanup source preparation', () => {
         commands.push({ command, args })
         if (command === 'curl') {
           const url = args.at(-1)
-          expect(args[0]).toBe('--disable')
+          expect(args.slice(0, 11)).toEqual([
+            '--disable',
+            '--fail',
+            '--silent',
+            '--show-error',
+            '--location',
+            '--retry',
+            '3',
+            '--connect-timeout',
+            '10',
+            '--max-time',
+            '120',
+          ])
           if (url.includes('/releases?'))
             return JSON.stringify(
               releases.map(release => ({
