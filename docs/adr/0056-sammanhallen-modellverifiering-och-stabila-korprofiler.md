@@ -2,6 +2,10 @@
 
 Status: Antagen 2026-08-22.
 
+Aktörsbindningen för modellverifieringsförsök ersätts av
+[ADR 0060](./0060-delade-modellverifieringsforsok.md), som även preciserar
+överlämning, kassering och giltighet vid pågående sparande.
+
 Admin Center sparar en anslutningsmodell först efter en enda avbrytbar,
 strömmande verifieringssvit. Administratören anger modellens tekniska
 identitet, och sviten kontrollerar i fast ordning anslutning och autentisering,

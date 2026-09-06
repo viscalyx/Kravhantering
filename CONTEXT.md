@@ -566,6 +566,15 @@ anslutningsmodellrevision.
 
 _Avoid_: Anslutningsmodell när en bestämd revision avses, leverantörsmodell.
 
+**Modellverifieringsförsök**:
+En avgränsad verifiering av en anslutningsmodells tekniska konfiguration inför
+sparande som anslutningsmodellrevision. Ett giltigt, sparbart resultat får
+användas av en annan behörig administratör för att slutföra sparandet.
+
+- `en`: AI model verification attempt
+
+_Avoid_: Personligt modellutkast, verifieringsbevis för en sparad revision.
+
 **Körprofil**:
 En stabil, applikationsägd konfiguration som anger vilken
 anslutningsmodellrevision och vilka driftbudgetar som gäller för en bestämd
