@@ -1,3 +1,4 @@
+import { DESKTOP_VIEWPORT } from '../helpers/desktop-viewport'
 /**
  * Kravhantering — automatisk guidegenerering
  *
@@ -1006,7 +1007,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         hasTouch: false,
         isMobile: false,
         storageState: 'test-results/auth/reviewer.json',
-        viewport: { width: 1440, height: 1200 },
+        viewport: DESKTOP_VIEWPORT,
       })
       reviewerPage = await reviewerContext.newPage()
       attachGuideDiagnostics(reviewerPage)

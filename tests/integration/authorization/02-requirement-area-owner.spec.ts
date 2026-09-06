@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { escapeRegExp } from '@/tests/helpers/common'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import {
   type AuthorizationFixture,
   createAuthorizationFixture,
@@ -19,7 +20,7 @@ let fixture: AuthorizationFixture
 test.describe.configure({ mode: 'serial' })
 test.use({
   storageState: ROLE_STORAGE_STATE.areaOwner,
-  viewport: { height: 720, width: 1280 },
+  viewport: DESKTOP_VIEWPORT,
 })
 
 test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
@@ -109,7 +110,7 @@ test('AUTHZ-02/AUTH-10/AUTH-11/ADMIN-13: requirement area owners can manage thei
       await expect(coAuthorCell).toHaveText('Cora CoAuthor')
       await expect(row).toContainText('Olle AreaOwner')
       await expect(row).toContainText(HSA.areaOwner)
-      await page.setViewportSize({ height: 720, width: 1280 })
+      await page.setViewportSize(DESKTOP_VIEWPORT)
     })
 
     await row.getByRole('button', { name: 'Redigera' }).click()

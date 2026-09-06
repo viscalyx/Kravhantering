@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 // Keep this in sync with getRequirementColumnWidthsStorageKey('sv')
 // in lib/requirements/list-view.ts.
@@ -11,7 +12,7 @@ const viewportVariants = [
   },
   {
     name: 'desktop',
-    viewport: { height: 720, width: 1280 },
+    viewport: DESKTOP_VIEWPORT,
   },
 ] as const
 

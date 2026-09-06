@@ -11,6 +11,7 @@ import {
   MCP_REQUEST_PAYLOAD_MIN_BYTES,
 } from '@/lib/ai/generation-availability'
 import type { AdminApplicationSettings } from '@/lib/application-settings'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { getAiSettings, putAiSettings } from '../ai-settings-test-helpers'
 import {
   ADMIN_20_CONNECTION_NAME,
@@ -75,7 +76,7 @@ async function patchApplicationSetting(
 }
 
 test.describe('Admin settings', () => {
-  test.use({ viewport: { height: 760, width: 1280 } })
+  test.use({ viewport: DESKTOP_VIEWPORT })
 
   test('ADMIN-15: Settings exposes limits and autosaves one application setting', async ({
     page,
@@ -646,9 +647,7 @@ test.describe('Admin settings', () => {
     })
   })
 
-  for (const viewport of [
-    { height: 760, name: 'desktop', width: 1280 },
-  ] as const) {
+  for (const viewport of [{ ...DESKTOP_VIEWPORT, name: 'desktop' }] as const) {
     test(`ADMIN-20 (${viewport.name}): Admin verifies a model and controls a stable AI profile`, async ({
       page,
     }) => {

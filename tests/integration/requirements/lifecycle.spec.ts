@@ -9,6 +9,7 @@ import {
 } from '@playwright/test'
 import { extractText } from 'unpdf'
 import { delay, escapeRegExp } from '@/tests/helpers/common'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { expectApiResponseOk } from '../api-response-assertions'
 import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
 import {
@@ -208,7 +209,7 @@ async function newRolePage(
   const context = await browser.newContext({
     baseURL: resolveIntegrationBaseUrl(testInfo),
     storageState: ROLE_STORAGE_STATE[role],
-    viewport: { height: 720, width: 1280 },
+    viewport: DESKTOP_VIEWPORT,
   })
   const page = await context.newPage()
 
@@ -367,7 +368,7 @@ async function confirmDialog(page: Page) {
 
 test.describe('Requirement lifecycle manual cases', () => {
   test.setTimeout(180_000)
-  test.use({ viewport: { height: 720, width: 1280 } })
+  test.use({ viewport: DESKTOP_VIEWPORT })
 
   test('LIFE-02: incomplete requirement creation stays client-side invalid', async ({
     page,

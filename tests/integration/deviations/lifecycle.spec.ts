@@ -8,6 +8,7 @@ import {
   test,
 } from '@playwright/test'
 import { delay, escapeRegExp } from '@/tests/helpers/common'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { expectApiResponseStatus } from '../api-response-assertions'
 import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
 import {
@@ -31,7 +32,7 @@ const SPECIFICATION_HEADING = 'Playwright lifecycle fixtures'
 const MANUAL_SPECIFICATION_ID = 920001
 const MANUAL_SPECIFICATION_HEADING = 'PWT-MANUAL redigerbart kravunderlag'
 
-const viewports = [{ height: 720, name: 'desktop', width: 1280 }] as const
+const viewports = [{ ...DESKTOP_VIEWPORT, name: 'desktop' }] as const
 
 const deviationCases = [
   {

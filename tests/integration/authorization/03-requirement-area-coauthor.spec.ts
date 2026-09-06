@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
 import {
   type AuthorizationFixture,
@@ -17,7 +18,7 @@ let fixture: AuthorizationFixture
 test.describe.configure({ mode: 'serial' })
 test.use({
   storageState: ROLE_STORAGE_STATE.areaCoauthor,
-  viewport: { height: 720, width: 1280 },
+  viewport: DESKTOP_VIEWPORT,
 })
 
 test.beforeAll(async ({ browserName: _browserName }, testInfo) => {

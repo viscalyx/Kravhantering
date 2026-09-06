@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 test.describe('Requirements Library list recovery', () => {
-  test.use({ viewport: { height: 720, width: 1280 } })
+  test.use({ viewport: DESKTOP_VIEWPORT })
 
   test('REQ-19: initial failure suppresses the empty state and Retry confirms an empty result', async ({
     page,

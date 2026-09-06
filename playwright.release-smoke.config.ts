@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from './tests/helpers/desktop-viewport'
 import {
   RELEASE_SMOKE_AUTHOR,
   RELEASE_SMOKE_USER,
@@ -10,7 +11,7 @@ const desktopChromium = {
   deviceScaleFactor: 1,
   hasTouch: false,
   isMobile: false,
-  viewport: { width: 1440, height: 1200 },
+  viewport: DESKTOP_VIEWPORT,
 }
 
 const readTimeout = (envVar: string, fallbackMs: number): number => {

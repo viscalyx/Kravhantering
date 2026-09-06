@@ -2145,7 +2145,7 @@ bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
    säger att revisionen och verifieringsbeviset raderas, att åtgärden inte kan
    ångras och att modellbehållaren också tas bort när detta är sista revisionen.
    Bekräfta och kontrollera att modellen försvinner.
-10. Upprepa huvudflödet vid både 1280 × 760 och 375 × 812. Kontrollera att
+10. Upprepa huvudflödet vid både 1440 × 1200 och 375 × 812. Kontrollera att
     formulär, verifieringsförlopp, bekräftelser och profilkort kan användas med
     tangentbord och ryms i aktuell viewport.
 

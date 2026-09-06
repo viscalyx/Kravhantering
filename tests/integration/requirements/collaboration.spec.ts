@@ -5,6 +5,7 @@ import {
   type Route,
   test,
 } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { expectApiResponseOk } from '../api-response-assertions'
 import { newRoleContext } from '../authorization/authorization-test-helpers'
 import {
@@ -162,7 +163,7 @@ async function mockSuggestions(
 }
 
 test.describe('Requirement collaboration', () => {
-  test.use({ viewport: { height: 760, width: 1280 } })
+  test.use({ viewport: DESKTOP_VIEWPORT })
 
   test('COL-01: adds a requirement to a selected kravunderlag', async ({
     page,

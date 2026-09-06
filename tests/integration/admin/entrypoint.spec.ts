@@ -11,11 +11,12 @@ import {
   DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS,
   type RequirementListColumnDefault,
 } from '../../../lib/requirements/list-view'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 const viewportVariants = [
   {
     name: 'desktop',
-    viewport: { height: 720, width: 1280 },
+    viewport: DESKTOP_VIEWPORT,
   },
   {
     name: 'mobile',

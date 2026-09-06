@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from './tests/helpers/desktop-viewport'
 
 const desktopChromium = {
   ...devices['Desktop Chrome'],
@@ -6,6 +7,7 @@ const desktopChromium = {
   deviceScaleFactor: 1,
   hasTouch: false,
   isMobile: false,
+  viewport: DESKTOP_VIEWPORT,
 }
 
 /**
@@ -42,7 +44,6 @@ export default defineConfig({
     storageState: 'test-results/auth/admin.json',
     trace: 'retain-on-failure',
     screenshot: 'on',
-    viewport: { width: 1440, height: 1200 },
   },
   projects: [
     {

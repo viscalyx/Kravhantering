@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'requirements.visibleColumns.v5'
 const COLUMN_WIDTHS_STORAGE_KEY = 'requirements.columnWidths.v5.sv'
@@ -47,7 +48,7 @@ async function expectHydratedTable(page: Page) {
 for (const viewportConfig of [
   {
     name: 'desktop',
-    viewport: { height: 720, width: 1280 },
+    viewport: DESKTOP_VIEWPORT,
   },
   {
     name: 'mobile',

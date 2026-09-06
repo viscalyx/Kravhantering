@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import {
   type AuthorizationFixture,
   createAuthorizationFixture,
@@ -100,7 +101,7 @@ test('AUTHZ-08/AUTH-06/AUTH-10/AUTH-11/ADMIN-10: Admin keeps admin powers withou
 test.describe('AUTHZ-08/AUTH-11: Admin users with PrivacyOfficer can reach both Admin and privacy surfaces', () => {
   test.use({
     storageState: ROLE_STORAGE_STATE.admin,
-    viewport: { height: 720, width: 1280 },
+    viewport: DESKTOP_VIEWPORT,
   })
 
   test('AUTHZ-08/AUTH-11: Ada can use Admin tabs and PrivacyOfficer-only tabs', async ({
@@ -170,7 +171,7 @@ test.describe('AUTHZ-08/AUTH-11: Admin users with PrivacyOfficer can reach both 
 test.describe('AUTHZ-08/AUTH-06/AUTH-11: Admin Center tab permissions for Admin-only users', () => {
   test.use({
     storageState: ROLE_STORAGE_STATE.adminOnly,
-    viewport: { height: 720, width: 1280 },
+    viewport: DESKTOP_VIEWPORT,
   })
 
   test('AUTHZ-08/AUTH-06/AUTH-11: shows Admin tabs while PrivacyOfficer-only tabs stay hidden', async ({

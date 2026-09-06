@@ -94,7 +94,9 @@ expect(result).toEqual([{ slug: 'post-1' }, { slug: 'post-2' }])
 ## Responsive Awareness
 
 - When testing components with layout-dependent behavior, consider viewport edge cases (e.g., mobile menu vs desktop nav, collapsed vs expanded layouts)
-- For Playwright/E2E tests: test at mobile (375px) and desktop (1280px) viewports
+- Use `DESKTOP_VIEWPORT` from `tests/helpers/desktop-viewport.ts` for desktop
+  Playwright/E2E runs (1440 × 1200). Keep mobile (375px wide) and explicit
+  responsive-boundary dimensions where those sizes are the subject of the test.
 
 ## Coverage Policy
 

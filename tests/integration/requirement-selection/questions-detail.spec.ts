@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 test.describe('Requirement selection question detail preview', () => {
-  test.use({ viewport: { height: 720, width: 1280 } })
+  test.use({ viewport: DESKTOP_VIEWPORT })
 
   test('REQ-14c: opens a read-only requirement detail from the answer modal', async ({
     page,
@@ -70,7 +71,7 @@ test.describe('Requirement selection question detail preview', () => {
     page,
   }) => {
     for (const viewport of [
-      { height: 720, name: 'desktop', width: 1280 },
+      { ...DESKTOP_VIEWPORT, name: 'desktop' },
       { height: 812, name: 'mobile', width: 375 },
     ]) {
       await test.step(`open the seeded answer at ${viewport.name} size`, async () => {

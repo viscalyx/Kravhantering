@@ -1,4 +1,5 @@
 import { expect, type Page, type Route, test } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 const pwtRfiArea = {
   id: 920001,
@@ -106,7 +107,7 @@ async function assertWorkspaceNavigation({
 }
 
 test.describe('Stewardship navigation memory', () => {
-  test.use({ viewport: { height: 720, width: 1280 } })
+  test.use({ viewport: DESKTOP_VIEWPORT })
 
   test('REQ-14b: remembers and navigates stewardship workspaces', async ({
     page,

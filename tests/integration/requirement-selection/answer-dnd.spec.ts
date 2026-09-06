@@ -1,4 +1,5 @@
 import { type APIRequestContext, expect, test } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { expectApiResponseOk } from '../api-response-assertions'
 import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
 
@@ -89,7 +90,7 @@ async function resetDriftAnswerOrder(request: APIRequestContext) {
 test.describe('Requirement selection answer drag and drop', () => {
   test.describe.configure({ mode: 'serial' })
   test.setTimeout(180_000)
-  test.use({ viewport: { height: 900, width: 1280 } })
+  test.use({ viewport: DESKTOP_VIEWPORT })
 
   test('REQ-14b: reorders collapsed requirement-selection questions by dragging the question handle', async ({
     page,

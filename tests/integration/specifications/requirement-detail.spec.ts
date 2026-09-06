@@ -9,6 +9,7 @@ import {
   test,
 } from '@playwright/test'
 import { delay } from '@/tests/helpers/common'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { expectApiResponseOk } from '../api-response-assertions'
 import { newRoleContext } from '../authorization/authorization-test-helpers'
 import { deferRoute } from '../deferred-route'
@@ -280,7 +281,7 @@ function requirementSelectionQuestions(answerIds: number[]) {
   ]
 }
 
-const viewports = [{ name: 'desktop', width: 1280, height: 720 }]
+const viewports = [{ ...DESKTOP_VIEWPORT, name: 'desktop' }]
 
 function rfiListResponse(options?: {
   isLocked?: boolean
@@ -1267,7 +1268,7 @@ for (const viewport of viewports) {
 
 test.describe('Requirements specification deterministic manual cases', () => {
   test.setTimeout(180_000)
-  test.use({ viewport: { height: 720, width: 1280 } })
+  test.use({ viewport: DESKTOP_VIEWPORT })
 
   test('SPEC-21: intent prefetch reuses one main request in both requirement lists', async ({
     page,

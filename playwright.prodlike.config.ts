@@ -1,4 +1,5 @@
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from './tests/helpers/desktop-viewport'
 import integrationManifest from './tests/integration-chunks.manifest.json'
 import integrationServerEnv from './tests/integration-server-env.json'
 
@@ -7,7 +8,7 @@ const desktopChromium = {
   deviceScaleFactor: 1,
   hasTouch: false,
   isMobile: false,
-  viewport: devices['Desktop Chrome'].viewport,
+  viewport: DESKTOP_VIEWPORT,
 }
 
 /**

@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { expectApiResponseOk } from '../api-response-assertions'
 
 test.describe('Requirement creation', () => {
-  for (const viewport of [{ width: 1280, height: 800, label: 'desktop' }]) {
+  for (const viewport of [{ ...DESKTOP_VIEWPORT, label: 'desktop' }]) {
     test(`LIFE-01: form submit redirects to list with inline detail open (${viewport.label})`, async ({
       page,
       request,

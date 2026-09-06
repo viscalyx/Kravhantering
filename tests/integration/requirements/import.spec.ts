@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { expect, type Route, test } from '@playwright/test'
 import { buildRequirementsImportJsonSchema } from '@/lib/requirements/import-schema'
 import { escapeRegExp } from '@/tests/helpers/common'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 const importedDescription =
   '=Playwright importerat krav ska kunna granskas och importeras.'
@@ -41,7 +42,7 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
 }
 
 test.describe('Requirements import', () => {
-  test.use({ viewport: { height: 760, width: 1280 } })
+  test.use({ viewport: DESKTOP_VIEWPORT })
 
   test('REQ-17: imports a reviewed requirement JSON into a selected requirement area', async ({
     page,

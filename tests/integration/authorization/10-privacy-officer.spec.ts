@@ -1,5 +1,6 @@
 // cSpell:ignore linneab
 import { expect, type Page, test } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import {
   expectOk,
   expectStatus,
@@ -114,7 +115,7 @@ test('AUTHZ-10/AUTH-07/AUTH-11: PrivacyOfficer users can use privacy and access 
 test.describe('AUTHZ-10/AUTH-07/AUTH-11: PrivacyOfficer users can run the cross-user privacy flow', () => {
   test.use({
     storageState: ROLE_STORAGE_STATE.privacyOfficer,
-    viewport: { height: 720, width: 1280 },
+    viewport: DESKTOP_VIEWPORT,
   })
 
   test('AUTHZ-10/AUTH-07/AUTH-11: previews and exports another person from Admin Center privacy', async ({
@@ -168,7 +169,7 @@ test.describe('AUTHZ-10/AUTH-07/AUTH-11: PrivacyOfficer users can run the cross-
 test.describe('AUTHZ-10/AUTH-07/AUTH-11: Admin Center tab permissions for PrivacyOfficer users', () => {
   test.use({
     storageState: ROLE_STORAGE_STATE.privacyOfficer,
-    viewport: { height: 720, width: 1280 },
+    viewport: DESKTOP_VIEWPORT,
   })
 
   test('AUTHZ-10/AUTH-07/AUTH-11: shows privacy tabs while Admin-only tabs stay hidden', async ({

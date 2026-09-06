@@ -1,5 +1,6 @@
 import { expect, type Page, type TestInfo, test } from '@playwright/test'
 import { escapeRegExp } from '@/tests/helpers/common'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import {
   type AuthorizationFixture,
   createAuthorizationFixture,
@@ -23,7 +24,7 @@ test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
 test.describe('AUTHZ-00/AUTH-11: authorization fixture seed', () => {
   test.use({
     storageState: ROLE_STORAGE_STATE.admin,
-    viewport: { height: 720, width: 1280 },
+    viewport: DESKTOP_VIEWPORT,
   })
   test.setTimeout(120_000)
 
@@ -228,7 +229,7 @@ async function assertReadOnlyRequirementDetail(page: Page): Promise<void> {
 test.describe('AUTHZ-01/AUTH-10/AUTH-11: forbidden requirement specification surface', () => {
   test.use({
     storageState: ROLE_STORAGE_STATE.noRoles,
-    viewport: { height: 720, width: 1280 },
+    viewport: DESKTOP_VIEWPORT,
   })
 
   test('AUTHZ-01/AUTH-10/AUTH-11: shows responsible contact without content on desktop', async ({

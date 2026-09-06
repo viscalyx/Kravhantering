@@ -52,7 +52,11 @@ The real bounded PDF and CSV export path remains in this owner.
 mode. It owns browser navigation, downloads, focus, keyboard and pointer
 behavior, layout, and mutations spanning UI, authorization, and persistence.
 The visible role matrix remains here. Ordinary business journeys use desktop
-Chromium at 1280 pixels once. One 375-pixel smoke signs in, opens navigation,
+Chromium at 1440 × 1200 once. Playwright configurations, guide generation, and
+desktop scenarios share `DESKTOP_VIEWPORT` from
+`tests/helpers/desktop-viewport.ts`. Explicit mobile and constrained-height
+cases retain their dimensions to exercise responsive boundaries.
+One 375-pixel smoke signs in, opens navigation,
 and accesses the requirements library. Additional responsive checks own named
 risks: navigation and Admin tab reachability, column resizing and persistence,
 column-picker geometry, removal and filter targets, and AI settings geometry.

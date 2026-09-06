@@ -1,8 +1,9 @@
 import { expect, type Page, test } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 const viewports = [
   { name: 'mobile', width: 375, height: 812 },
-  { name: 'desktop', width: 1280, height: 720 },
+  { ...DESKTOP_VIEWPORT, name: 'desktop' },
 ]
 
 async function gotoRequirementsWhenReady(page: Page) {

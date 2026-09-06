@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test'
 import { delay, escapeRegExp } from '@/tests/helpers/common'
 import { referenceManualCases } from '@/tests/integration/authorization/authorization-test-helpers'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { deferRoute } from '../deferred-route'
 import { countDetailRequests } from '../detail-request-counter'
 
@@ -116,7 +117,7 @@ async function expectRequirementDetailRoute(
 
 test.describe('Requirements library', () => {
   test.setTimeout(120_000)
-  test.use({ viewport: { height: 720, width: 1280 } })
+  test.use({ viewport: DESKTOP_VIEWPORT })
 
   test('REQ-01: requirements library loads seeded requirements and opens detail metadata', async ({
     page,
@@ -658,7 +659,7 @@ test.describe('Requirements library', () => {
     page,
   }) => {
     for (const viewport of [
-      { height: 720, width: 1280 },
+      DESKTOP_VIEWPORT,
       { height: 720, width: 375 },
       { height: 320, width: 375 },
     ]) {

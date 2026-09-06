@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'requirements.visibleColumns.v5'
 
@@ -9,7 +10,7 @@ const viewportVariants = [
   },
   {
     name: 'desktop',
-    viewport: { height: 720, width: 1280 },
+    viewport: DESKTOP_VIEWPORT,
   },
 ] as const
 

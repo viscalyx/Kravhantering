@@ -14,13 +14,14 @@ import {
   getSqlServerDatabaseUrl,
   type SqlServerRuntimeEnv,
 } from '../../../lib/typeorm/sqlserver-config'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 const STATUS_REVIEW = 2
 const STATUS_PUBLISHED = 3
 const STATUS_ARCHIVED = 4
 const REVIEWER_STORAGE_STATE = 'test-results/auth/reviewer.json'
 
-const viewports = [{ height: 720, name: 'desktop', width: 1280 }] as const
+const viewports = [{ ...DESKTOP_VIEWPORT, name: 'desktop' }] as const
 
 const archiveFixtures = {
   approve: {

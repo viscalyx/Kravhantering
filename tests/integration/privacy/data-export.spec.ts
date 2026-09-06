@@ -7,6 +7,7 @@ import {
   getSqlServerDatabaseUrl,
   type SqlServerRuntimeEnv,
 } from '../../../lib/typeorm/sqlserver-config'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 // cspell:ignore kalle linneab retentionorphan pwtprivacy
 
@@ -544,7 +545,7 @@ test('PRIV-08: privacy erasure anonymizes a disposable row and records the actio
 
   const privacyContext = await browser.newContext({
     storageState: PRIVACY_OFFICER_STORAGE_STATE,
-    viewport: { height: 720, width: 1280 },
+    viewport: DESKTOP_VIEWPORT,
   })
   const privacyPage = await privacyContext.newPage()
   try {
