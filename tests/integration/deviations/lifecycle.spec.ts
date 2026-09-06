@@ -603,9 +603,11 @@ for (const viewport of viewports) {
               specificationId: MANUAL_SPECIFICATION_ID,
             },
           )
-          await detailPane
-            .getByRole('button', { name: 'Granskning ↗' })
-            .first()
+          const deviationActions = detailPane
+            .getByRole('button', { name: 'Redigera avsteg', exact: true })
+            .locator('..')
+          await deviationActions
+            .getByRole('button', { name: 'Granskning ↗', exact: true })
             .click()
           await expectLatestDeviationState(coauthorRequest, fixture.itemRef, {
             decision: null,

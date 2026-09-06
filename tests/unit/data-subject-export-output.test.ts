@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { GeneratedOutputError } from '@/lib/generated-output/errors'
+import { createGenerationDeadline } from '@/lib/generated-output/operation'
 import type { GeneratedOutputStreamLifecycle } from '@/lib/generated-output/spool'
+import { collectDataSubjectExport } from '@/lib/privacy/data-subject-export'
 import type { DataSubjectExportV1 } from '@/lib/privacy/data-subject-export-types'
 
 const outputState = vi.hoisted(() => ({
@@ -27,7 +30,7 @@ vi.mock('@/lib/dal/application-settings', () => ({
     csvExportTimeoutSeconds: 30,
     pdfReportConcurrencyPerNode: 1,
     pdfReportMaxFileBytes: 8192,
-    pdfReportMaxRequirements: 100,
+    pdfReportMaxRequirements: 200,
     pdfReportTimeoutSeconds: 60,
     pdfWorkerMemoryMib: 256,
   })),
@@ -58,7 +61,7 @@ vi.mock('@/lib/generated-output/spool', () => ({
   createGeneratedOutputFileResponse: outputState.createFileResponse,
   generatedOutputCapacitySnapshot: vi.fn(() => ({
     activeCsv: 1,
-    activePdf: 1,
+    activePdf: 2,
     reservedBytes: 0,
   })),
   writeBoundedFile: outputState.writeFile,
@@ -131,6 +134,9 @@ describe('data-subject export output orchestration', () => {
     outputState.operations.length = 0
     outputState.payload = payload()
     outputState.serializedJson = ''
+    vi.mocked(collectDataSubjectExport).mockImplementation(
+      async () => outputState.payload ?? payload(),
+    )
     outputState.acquireSpool.mockResolvedValue({
       directoryPath: '/tmp/export',
       filePath: '/tmp/export/output',
@@ -153,21 +159,215 @@ describe('data-subject export output orchestration', () => {
     })
   })
 
-  it.each(['json', 'pdf'] as const)(
-    'records %s response cancellation and stream errors',
-    async delivery => {
-      await generateDataSubjectExport(options(delivery))
+  describe.each(['json', 'pdf'] as const)('%s lifecycle', delivery => {
+    const isPdf = delivery === 'pdf'
+    const itemLimit = isPdf ? 200 : 100
+    const maxFileBytes = isPdf ? 8192 : 4096
+    const metrics = {
+      activeCount: isPdf ? 2 : 1,
+      byteCount: 0,
+      concurrencyLimit: isPdf ? 1 : 2,
+      itemCount: 0,
+      itemLimit,
+      timeoutMs: isPdf ? 60_000 : 30_000,
+      ...(isPdf ? { workerMemoryLimitBytes: 268_435_456 } : {}),
+    }
+    const generator = () =>
+      isPdf ? outputState.renderPdf : outputState.writeFile
 
-      outputState.lifecycle?.onCancel?.()
-      outputState.lifecycle?.onError?.()
+    it.each(['onComplete', 'onCancel', 'onError'] as const)(
+      'transfers the spool to the response and records %s metrics',
+      async callback => {
+        const input = options(delivery)
+        const result = await generateDataSubjectExport(input)
+        const byteCount = isPdf
+          ? 4
+          : Buffer.byteLength(outputState.serializedJson)
 
-      expect(outputState.cancelled).toHaveBeenCalledOnce()
-      expect(outputState.failed).toHaveBeenCalledOnce()
-      expect(outputState.operations).toEqual([
-        `privacy.data_subject_${delivery}_export`,
-      ])
-    },
-  )
+        expect(result.payload).toBe(outputState.payload)
+        expect(outputState.acquireSpool).toHaveBeenCalledWith({
+          concurrencyLimit: metrics.concurrencyLimit,
+          maxFileBytes,
+          output: delivery,
+        })
+        expect(createGenerationDeadline).toHaveBeenCalledWith(
+          isPdf ? 60 : 30,
+          input.requestSignal,
+        )
+        expect(collectDataSubjectExport).toHaveBeenCalledWith(
+          input.db,
+          input.input,
+          {
+            createItemLimitError: expect.any(Function),
+            maxItems: itemLimit,
+            signal: input.requestSignal,
+          },
+        )
+        expect(outputState.disposeDeadline).toHaveBeenCalledOnce()
+        expect(outputState.releaseGeneration).not.toHaveBeenCalled()
+        expect(outputState.releaseSpool).not.toHaveBeenCalled()
+        expect(outputState.completed).not.toHaveBeenCalled()
+        expect(outputState.lifecycle?.[callback]).toBeTypeOf('function')
+        outputState.lifecycle?.[callback]?.()
+        if (callback === 'onError') {
+          expect(outputState.failed).toHaveBeenCalledWith(
+            new Error(
+              `Privacy ${delivery.toUpperCase()} response stream failed`,
+            ),
+            { ...metrics, byteCount },
+          )
+        } else {
+          expect(
+            callback === 'onComplete'
+              ? outputState.completed
+              : outputState.cancelled,
+          ).toHaveBeenCalledWith({ ...metrics, byteCount })
+        }
+        expect(outputState.operations).toEqual([
+          `privacy.data_subject_${delivery}_export`,
+        ])
+      },
+    )
+
+    it('rejects capacity before collection without allocating a deadline', async () => {
+      const error = new GeneratedOutputError(
+        'capacity_busy',
+        'concurrency_limit',
+        {
+          output: delivery,
+          retryAfterSeconds: 5,
+        },
+      )
+      outputState.acquireSpool.mockRejectedValueOnce(error)
+      await expect(generateDataSubjectExport(options(delivery))).rejects.toBe(
+        error,
+      )
+      expect(collectDataSubjectExport).not.toHaveBeenCalled()
+      expect(createGenerationDeadline).not.toHaveBeenCalled()
+      expect(outputState.releaseSpool).not.toHaveBeenCalled()
+      expect(outputState.failed).toHaveBeenCalledWith(error, metrics)
+    })
+
+    it.each(['collection', 'generation', 'response'] as const)(
+      'cleans up after a %s failure',
+      async stage => {
+        const error = new Error(`${stage} failed`)
+        const operation =
+          stage === 'collection'
+            ? vi.mocked(collectDataSubjectExport)
+            : stage === 'generation'
+              ? generator()
+              : outputState.createFileResponse
+        operation.mockRejectedValueOnce(error)
+        await expect(generateDataSubjectExport(options(delivery))).rejects.toBe(
+          error,
+        )
+        expect(outputState.disposeDeadline).toHaveBeenCalledOnce()
+        expect(outputState.releaseGeneration).toHaveBeenCalledOnce()
+        expect(outputState.releaseSpool).toHaveBeenCalledOnce()
+        expect(outputState.failed).toHaveBeenCalledWith(error, {
+          ...metrics,
+          byteCount:
+            stage === 'response'
+              ? isPdf
+                ? 4
+                : Buffer.byteLength(outputState.serializedJson)
+              : 0,
+        })
+      },
+    )
+
+    it('records observed item overflow using the delivery-specific error', async () => {
+      vi.mocked(collectDataSubjectExport).mockImplementationOnce(
+        async (_db, _input, limits) => {
+          throw limits?.createItemLimitError?.(itemLimit)
+        },
+      )
+      await expect(
+        generateDataSubjectExport(options(delivery)),
+      ).rejects.toMatchObject({
+        capacityReason: 'item_limit_exceeded',
+        details: { limit: itemLimit, limitKind: 'items', output: delivery },
+        status: 422,
+      })
+      expect(outputState.failed).toHaveBeenCalledWith(
+        expect.any(GeneratedOutputError),
+        {
+          ...metrics,
+          itemCount: itemLimit + 1,
+        },
+      )
+      expect(generator()).not.toHaveBeenCalled()
+      expect(outputState.disposeDeadline).toHaveBeenCalledOnce()
+      expect(outputState.releaseGeneration).toHaveBeenCalledOnce()
+      expect(outputState.releaseSpool).toHaveBeenCalledOnce()
+    })
+
+    it('preserves byte-limit mapping and configured limit metrics', async () => {
+      generator().mockRejectedValueOnce(
+        new GeneratedOutputError(
+          'output_limit_exceeded',
+          'byte_limit_exceeded',
+          {
+            limit: isPdf ? maxFileBytes : maxFileBytes - 3,
+            limitKind: 'bytes',
+            output: delivery,
+          },
+        ),
+      )
+      await expect(
+        generateDataSubjectExport(options(delivery)),
+      ).rejects.toMatchObject({
+        capacityReason: 'byte_limit_exceeded',
+        details: { limit: maxFileBytes, limitKind: 'bytes', output: delivery },
+        status: 422,
+      })
+      expect(outputState.failed).toHaveBeenCalledWith(
+        expect.any(GeneratedOutputError),
+        metrics,
+      )
+      expect(outputState.disposeDeadline).toHaveBeenCalledOnce()
+      expect(outputState.releaseGeneration).toHaveBeenCalledOnce()
+      expect(outputState.releaseSpool).toHaveBeenCalledOnce()
+    })
+
+    it.each([
+      'before collection',
+      'after collection',
+      'during generation',
+      'after generation',
+    ] as const)('cleans up an abort %s', async timing => {
+      const controller = new AbortController()
+      const error = new Error('request aborted')
+      const input = { ...options(delivery), requestSignal: controller.signal }
+      if (timing === 'before collection') controller.abort(error)
+      if (timing === 'after collection') {
+        vi.mocked(collectDataSubjectExport).mockImplementationOnce(async () => {
+          controller.abort(error)
+          return payload()
+        })
+      }
+      if (timing === 'during generation' || timing === 'after generation') {
+        generator().mockImplementationOnce(async (...args: unknown[]) => {
+          const signal = isPdf
+            ? (args[0] as { signal: AbortSignal }).signal
+            : (args[4] as AbortSignal)
+          controller.abort(error)
+          if (timing === 'during generation') signal.throwIfAborted()
+          return 4
+        })
+      }
+      await expect(generateDataSubjectExport(input)).rejects.toBe(error)
+      expect(outputState.failed).toHaveBeenCalledWith(error, {
+        ...metrics,
+        byteCount: timing === 'after generation' ? 4 : 0,
+      })
+      expect(outputState.createFileResponse).not.toHaveBeenCalled()
+      expect(outputState.disposeDeadline).toHaveBeenCalledOnce()
+      expect(outputState.releaseGeneration).toHaveBeenCalledOnce()
+      expect(outputState.releaseSpool).toHaveBeenCalledOnce()
+    })
+  })
 
   it('serializes JSON with native array and undefined-value semantics', async () => {
     outputState.payload = {
