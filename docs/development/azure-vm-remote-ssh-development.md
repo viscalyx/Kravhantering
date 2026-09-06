@@ -990,7 +990,11 @@ configuration already exists.
 
 The profile grants workspace access, including write access to `.git` so Codex
 can stage and commit changes and to `.codex` so it can maintain repository-local
-configuration. It also grants write access specifically to `~/.codex/skills`
+configuration. It grants write access to
+`/mnt/krav-azure-dev-data/.worktrees` for linked Git worktrees on the data disk.
+Smoke validation checks this access with a temporary directory and file inside
+the Codex sandbox. Host filesystem ownership alone does not grant sandbox
+access. It also grants write access specifically to `~/.codex/skills`
 so repository skills can be synchronized without opening the rest of the
 user-level Codex state. The inherited workspace protection for `.agents`
 remains read-only. The profile also grants network access to the loopback

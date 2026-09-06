@@ -12,6 +12,7 @@ extends = ":workspace"
 
 [permissions.kravhantering-development.filesystem]
 "~/.codex/skills" = "write"
+"/mnt/krav-azure-dev-data/.worktrees" = "write"
 
 [permissions.kravhantering-development.filesystem.":workspace_roots"]
 ".codex" = "write"

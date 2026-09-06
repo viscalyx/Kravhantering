@@ -976,7 +976,13 @@ preserves unrelated user keys and tables, replaces Azure-owned root settings,
 updates `/workspace` trust, removes a legacy devcontainer profile if one was
 previously copied onto the VM, and writes the managed Azure permission profile.
 That profile limits user-level writes to `~/.codex/skills` while retaining the
-workspace grants. Repeated merges produce the same configuration.
+workspace grants and allowing writes to `/mnt/krav-azure-dev-data/.worktrees`.
+The merger preserves this Azure-specific grant; the devcontainer template does
+not grant access to the Azure data disk. Smoke validation checks the grant in
+the installed configuration and creates a temporary directory and file through
+`codex sandbox` using the managed profile from `/workspace`. This checks sandbox
+access in addition to the host write probe in `worktree-storage validate`.
+Repeated merges produce the same configuration.
 
 Do not move bootstrap into Azure `customData`. Azure does not allow changing
 `customData` on an existing VM, while this workflow must be able to rerun the
