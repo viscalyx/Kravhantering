@@ -67,10 +67,10 @@ jobs:
           open_notes_pr="$(
             gh pr list --repo "${GITHUB_REPOSITORY}" \
               --base main \
-              --head "${GITHUB_REPOSITORY%%/*}:${NOTES_BRANCH}" \
+              --head "${NOTES_BRANCH}" \
               --state open \
-              --json number \
-              --jq '.[0].number // empty'
+              --json number,isCrossRepository \
+              --jq '[.[] | select(.isCrossRepository == false)][0].number // empty'
           )"
           if [ -n "${open_notes_pr}" ]; then
             if ! git show-ref --verify --quiet \
@@ -144,10 +144,10 @@ jobs:
           pr_number="$(
             gh pr list --repo "${GITHUB_REPOSITORY}" \
               --base main \
-              --head "${GITHUB_REPOSITORY%%/*}:${NOTES_BRANCH}" \
+              --head "${NOTES_BRANCH}" \
               --state open \
-              --json number \
-              --jq '.[0].number // empty'
+              --json number,isCrossRepository \
+              --jq '[.[] | select(.isCrossRepository == false)][0].number // empty'
           )"
           if [ -z "${pr_number}" ]; then
             render_pr_body | \
@@ -159,10 +159,10 @@ jobs:
             pr_number="$(
               gh pr list --repo "${GITHUB_REPOSITORY}" \
                 --base main \
-                --head "${GITHUB_REPOSITORY%%/*}:${NOTES_BRANCH}" \
+                --head "${NOTES_BRANCH}" \
                 --state open \
-                --json number \
-                --jq '.[0].number // empty'
+                --json number,isCrossRepository \
+                --jq '[.[] | select(.isCrossRepository == false)][0].number // empty'
             )"
           else
             render_pr_body | \

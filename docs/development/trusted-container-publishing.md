@@ -337,6 +337,11 @@ merges the generated PR after required checks and branch protection
 requirements are satisfied; no second approval review is needed under the
 current repository review policy.
 
+The workflow looks up the automation PR by its branch name and excludes PRs
+from forks. `gh pr list --head` requires the branch name alone; the
+`owner:branch` form is only used when creating the PR. A failed lookup stops
+the workflow before it requests auto-merge, even if PR creation succeeds.
+
 Enable **Allow auto-merge** in the repository's pull request settings, or run
 `gh repo edit viscalyx/Kravhantering --enable-auto-merge` as a repository
 administrator. Keep required status checks and branch protections enabled.
