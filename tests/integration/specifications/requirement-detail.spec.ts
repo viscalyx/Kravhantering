@@ -1309,7 +1309,22 @@ test.describe('Requirements specification deterministic manual cases', () => {
       .first()
     const libraryRow = libraryButton.locator('xpath=ancestor::tr[1]')
     const reloadAndWaitForSpecificationItems = async () => {
+      // SSR rows appear before hydration; wait for the client list requests
+      // before testing an immediate click without a preceding intent event.
+      const initializedLists = ['items', 'available-requirements'].map(list =>
+        page.waitForResponse(response => {
+          const url = new URL(response.url())
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname ===
+              `/api/requirements-specifications/${specificationId}/${list}`
+          )
+        }),
+      )
       await page.reload()
+      for (const response of await Promise.all(initializedLists)) {
+        expect(response.ok()).toBe(true)
+      }
       await expect(localMarker).toBeVisible()
       await expect(leftLibraryButton).toBeVisible()
       await expect(libraryButton).toBeVisible()

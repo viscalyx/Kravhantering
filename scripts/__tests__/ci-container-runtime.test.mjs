@@ -183,6 +183,10 @@ function createToolchainFixture({ toolchain = 'package' } = {}) {
       GITHUB_PATH: githubPathFile,
       GITHUB_REPOSITORY: '',
       GITHUB_RUN_ID: '',
+      GITHUB_STEP_SUMMARY: '',
+      // Each fixture owns its evidence routing, independent of the CI job.
+      CI_RUNTIME_EVIDENCE_DIR: '',
+      CI_RUNTIME_RELATED_EVIDENCE_DIR: '',
       CI_FAKE_PODMAN_LOG: commandLog,
       CI_FAKE_SUDO_LOG: sudoLog,
       CI_FAKE_FALLBACK_CONMON_PATH: packageToolchain.conmonPath,
