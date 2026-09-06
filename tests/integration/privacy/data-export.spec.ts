@@ -918,10 +918,14 @@ test('PRIV-12: saturated structured-export capacity can be retried', async ({
   page,
 }) => {
   let exportRequests = 0
+  let capacityBusy = true
+  const dialog = page.getByRole('alertdialog', {
+    name: 'Nedladdningen misslyckades',
+  })
   await test.step('set up a saturated structured-export response', async () => {
     await page.route('**/api/privacy/data-subject-export', async route => {
       exportRequests += 1
-      if (exportRequests === 1) {
+      if (capacityBusy) {
         await route.fulfill({
           contentType: 'application/json',
           headers: {
@@ -948,16 +952,14 @@ test('PRIV-12: saturated structured-export capacity can be retried', async ({
     await page.goto('/sv/privacy')
     await expect(async () => {
       await page.getByRole('button', { name: 'Exportera JSON' }).click()
-      await expect
-        .poll(() => exportRequests, { timeout: 1_000 })
-        .toBeGreaterThan(0)
+      await expect(dialog).toContainText(
+        'Så många strukturerade exporter som tillåts samtidigt pågår redan.',
+        { timeout: 1_000 },
+      )
     }).toPass({ timeout: 15_000 })
   })
 
   await test.step('retry safely after the capacity delay', async () => {
-    const dialog = page.getByRole('alertdialog', {
-      name: 'Nedladdningen misslyckades',
-    })
     await expect(dialog).toContainText(
       'Så många strukturerade exporter som tillåts samtidigt pågår redan.',
     )
@@ -969,8 +971,10 @@ test('PRIV-12: saturated structured-export capacity can be retried', async ({
       name: 'Försök igen',
     })
     await expect(retry).toBeEnabled()
+    const requestsBeforeRetry = exportRequests
+    capacityBusy = false
     await retry.click()
-    await expect.poll(() => exportRequests).toBe(2)
+    await expect.poll(() => exportRequests).toBe(requestsBeforeRetry + 1)
     await expect(dialog).toHaveCount(0)
   })
 })
