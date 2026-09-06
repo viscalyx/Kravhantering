@@ -4,6 +4,7 @@ import {
   InvalidSpecificationEditorCursorError,
   type SpecificationEditorWorkflowQuery,
 } from '@/app/[locale]/specifications/[specificationId]/specification-editor-workflow'
+import { DetailResourceCache } from '@/lib/requirements/detail-prefetch'
 import type {
   SpecificationListItem,
   SpecificationRequirementPackageCatalogPageData,
@@ -623,6 +624,61 @@ describe('specification editor workflow', () => {
     expect(adapter.availableRequirementsRefreshes).toBe(1)
     expect(adapter.needsReferencesRefreshes).toBe(1)
     expect(adapter.itemPageRequests).toHaveLength(1)
+  })
+
+  it('refreshes returned requirement details after removal while retaining failed-removal cache entries', async () => {
+    const first = item(1, 'lib:1', 'FIRST')
+    const second = item(2, 'lib:2', 'SECOND')
+    let firstSpecificationCount = 2
+    const context = {
+      resource: 'library-requirement',
+      surface: 'specification-right',
+    } as const
+    const cache = new DetailResourceCache<
+      number,
+      { specificationCount: number }
+    >({
+      fetchDetail: async id => ({
+        specificationCount: id === 1 ? firstSpecificationCount : 2,
+      }),
+      keyOf: String,
+    })
+    await cache.load(1, 'activate', context)
+    const retainedDetail = await cache.load(2, 'activate', context)
+    const adapter = new InMemorySpecificationEditorAdapter({
+      failedRemovalItemRefs: ['lib:2'],
+      items: [first, second],
+    })
+    const removeItems = adapter.removeItems.bind(adapter)
+    adapter.removeItems = async refs => {
+      const result = await removeItems(refs)
+      firstSpecificationCount = 1
+      return result
+    }
+    let returnedDetail: { specificationCount: number } | undefined
+    adapter.refreshAvailableRequirements = async () => {
+      returnedDetail = await cache.load(1, 'activate', context)
+    }
+    const workflow = createSpecificationEditorWorkflow({
+      adapter,
+      initialItems: page([first, second]),
+      initialPackageCatalog: emptyPackageCatalog(),
+      onItemsRemoved: (items: SpecificationListItem[]) => {
+        for (const removed of items) cache.invalidate(removed.id, context)
+      },
+      query: defaultQuery,
+    })
+    workflow.actions.selectLoadedItems(new Set([1, 2]))
+
+    try {
+      await workflow.actions.removeItems()
+
+      expect(returnedDetail).toEqual({ specificationCount: 1 })
+      expect(await cache.load(2, 'activate', context)).toBe(retainedDetail)
+    } finally {
+      cache.dispose()
+      workflow.dispose()
+    }
   })
 })
 

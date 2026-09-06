@@ -143,6 +143,7 @@ interface SpecificationEditorWorkflowOptions {
   initialItems: SpecificationItemsPageData
   initialPackageCatalog: SpecificationRequirementPackageCatalogPageData
   initialPackageCatalogFailed?: boolean
+  onItemsRemoved?: (items: SpecificationListItem[]) => void
   query: SpecificationEditorWorkflowQuery
 }
 
@@ -195,6 +196,7 @@ export function createSpecificationEditorWorkflow({
   initialItems,
   initialPackageCatalog,
   initialPackageCatalogFailed = false,
+  onItemsRemoved,
   query,
 }: SpecificationEditorWorkflowOptions): SpecificationEditorWorkflow {
   let currentQuery = query
@@ -722,6 +724,11 @@ export function createSpecificationEditorWorkflow({
     }
     const removedRefs = requestedRefs.filter(
       itemRef => !remainingRefs.has(itemRef),
+    )
+    // Refreshed rows may immediately reopen their detail. Invalidate those
+    // resources before publishing any state or refreshing the lists.
+    onItemsRemoved?.(
+      items.filter(item => item.itemRef && removedRefs.includes(item.itemRef)),
     )
     const nextSelected = new Set(state.selectedItemRefs)
     for (const itemRef of removedRefs) nextSelected.delete(itemRef)

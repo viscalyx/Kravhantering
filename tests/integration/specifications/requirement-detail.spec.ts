@@ -1273,6 +1273,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
   test('SPEC-21: intent prefetch reuses one main request in both requirement lists', async ({
     page,
   }) => {
+    await page.clock.install()
     const libraryDetailRequests = await countDetailRequests(
       page,
       /\/api\/requirements\/\d+$/u,
@@ -1284,8 +1285,6 @@ test.describe('Requirements specification deterministic manual cases', () => {
         'u',
       ),
     )
-    await gotoSpecificationDetail(page)
-
     const leftPanel = page.locator(
       '[data-specification-detail-list-panel="items"]',
     )
@@ -1309,7 +1308,9 @@ test.describe('Requirements specification deterministic manual cases', () => {
       .getByRole('button')
       .first()
     const libraryRow = libraryButton.locator('xpath=ancestor::tr[1]')
-    const reloadAndWaitForSpecificationItems = async () => {
+    const navigateAndWaitForSpecificationItems = async (
+      navigate: () => Promise<unknown>,
+    ) => {
       // SSR rows appear before hydration; wait for the client list requests
       // before testing an immediate click without a preceding intent event.
       const initializedLists = ['items', 'available-requirements'].map(list =>
@@ -1322,7 +1323,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
           )
         }),
       )
-      await page.reload()
+      await navigate()
       for (const response of await Promise.all(initializedLists)) {
         expect(response.ok()).toBe(true)
       }
@@ -1334,15 +1335,23 @@ test.describe('Requirements specification deterministic manual cases', () => {
       )
     }
 
+    await navigateAndWaitForSpecificationItems(() =>
+      gotoSpecificationDetail(page),
+    )
+
     await test.step('pointer hover cancels short intent and reuses held prefetches', async () => {
       await expect(localMarker).toBeVisible()
+      // Control the intent timer so runner latency cannot turn a short hover
+      // into a held hover while Playwright completes its mouse actions.
+      await page.clock.pauseAt(Date.now() + 1_000)
       await localRow.hover()
       await page.mouse.move(0, 0)
-      await delay(200)
+      await page.clock.runFor(200)
       expect(localDetailRequests.count).toBe(0)
 
       const heldLocalRequest = localDetailRequests.holdNext()
       await localRow.hover()
+      await page.clock.runFor(200)
       await heldLocalRequest.started
       await localButton.click()
       expect(localDetailRequests.count).toBe(1)
@@ -1354,11 +1363,12 @@ test.describe('Requirements specification deterministic manual cases', () => {
 
       await leftLibraryRow.hover()
       await page.mouse.move(0, 0)
-      await delay(200)
+      await page.clock.runFor(200)
       expect(libraryDetailRequests.count).toBe(0)
 
       const heldLeftLibraryRequest = libraryDetailRequests.holdNext()
       await leftLibraryRow.hover()
+      await page.clock.runFor(200)
       await heldLeftLibraryRequest.started
       await leftLibraryButton.click()
       expect(libraryDetailRequests.count).toBe(1)
@@ -1370,11 +1380,12 @@ test.describe('Requirements specification deterministic manual cases', () => {
 
       await libraryRow.hover()
       await page.mouse.move(0, 0)
-      await delay(200)
+      await page.clock.runFor(200)
       expect(libraryDetailRequests.count).toBe(1)
 
       const heldRightLibraryRequest = libraryDetailRequests.holdNext()
       await libraryRow.hover()
+      await page.clock.runFor(200)
       await heldRightLibraryRequest.started
       await libraryButton.click()
       expect(libraryDetailRequests.count).toBe(2)
@@ -1383,12 +1394,13 @@ test.describe('Requirements specification deterministic manual cases', () => {
         libraryRow.locator('xpath=following-sibling::tr[1]'),
       ).toContainText('Kravtext')
       expect(libraryDetailRequests.count).toBe(2)
+      await page.clock.resume()
     })
 
     await test.step('keyboard focus prefetches each supported detail resource', async () => {
       libraryDetailRequests.reset()
       localDetailRequests.reset()
-      await reloadAndWaitForSpecificationItems()
+      await navigateAndWaitForSpecificationItems(() => page.reload())
 
       const heldLocalRequest = localDetailRequests.holdNext()
       await localButton.focus()
@@ -1427,7 +1439,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await test.step('immediate clicks load each detail once without delayed duplicates', async () => {
       libraryDetailRequests.reset()
       localDetailRequests.reset()
-      await reloadAndWaitForSpecificationItems()
+      await navigateAndWaitForSpecificationItems(() => page.reload())
 
       await localButton.click()
       await expect(
@@ -1508,26 +1520,36 @@ test.describe('Requirements specification deterministic manual cases', () => {
             `/api/requirements-specifications/${specificationId}/available-requirements`
         )
       })
-      await page
-        .getByRole('alertdialog', { name: 'Ta bort valda (1)' })
-        .getByRole('button', { name: 'Ta bort' })
-        .click()
-      await Promise.all([refreshedItems, refreshedAvailableRequirements])
+      // Available rows can return before the auxiliary package refresh finishes.
+      // Their preserved expansion must already read freshly invalidated detail.
+      const packageRefresh = await deferRoute(
+        page,
+        `**/api/requirements-specifications/${specificationId}/requirement-packages?**`,
+        route => route.continue(),
+      )
+      try {
+        await page
+          .getByRole('alertdialog', { name: 'Ta bort valda (1)' })
+          .getByRole('button', { name: 'Ta bort' })
+          .click()
+        await Promise.all([refreshedItems, refreshedAvailableRequirements])
 
-      const movedRightRow = rightPanel
-        .locator('tbody tr')
-        .filter({ hasText: libraryRequirementUniqueId })
-        .first()
-      await expect(movedLeftRow).toHaveCount(0)
-      await expect(movedRightRow).toBeVisible()
-      const movedRightButton = movedRightRow.getByRole('button').first()
-      if ((await movedRightButton.getAttribute('aria-expanded')) !== 'true') {
-        await movedRightButton.click()
+        const movedRightRow = rightPanel
+          .locator('tbody tr')
+          .filter({ hasText: libraryRequirementUniqueId })
+          .first()
+        await expect(movedLeftRow).toHaveCount(0)
+        await expect(movedRightRow).toBeVisible()
+        const movedRightButton = movedRightRow.getByRole('button').first()
+        await expect(movedRightButton).toHaveAttribute('aria-expanded', 'true')
+        await expect
+          .poll(() => libraryDetailRequests.count)
+          .toBe(requestsBeforeAdd + 2)
+        expect(await readSpecificationCount(movedRightRow)).toBe(baselineCount)
+      } finally {
+        packageRefresh.fulfill()
+        await packageRefresh.cleanup()
       }
-      await expect
-        .poll(() => libraryDetailRequests.count)
-        .toBe(requestsBeforeAdd + 2)
-      expect(await readSpecificationCount(movedRightRow)).toBe(baselineCount)
     })
   })
 

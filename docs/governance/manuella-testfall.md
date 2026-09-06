@@ -1742,7 +1742,8 @@ samtidiga förfrågningar innan den hållna förfrågan släpps. Upprepa med fok
 vänster lista för båda typerna samt i höger lista för ett bibliotekskrav. Prova
 sedan direktklick utan att hålla förfrågan. Lägg till bibliotekskravet från
 höger lista, öppna detaljen i vänster lista, ta bort det och öppna detaljen igen
-i höger lista.
+i höger lista. Upprepa med detaljen fortsatt expanderad i höger lista när
+kravet återkommer efter borttagningen.
 
 **Förväntat resultat:** Vänster och höger lista följer samma avsiktspolicy.
 Klick efter hovring eller fokus återanvänder det pågående anropet från
@@ -1750,6 +1751,8 @@ förhämtningen. Direktklick startar en vanlig detaljförfrågan om inget svar r
 finns och orsakar inte ett fördröjt duplicerat anrop. Ett krav som läggs till
 eller tas bort byter lista och läses om efter ändringen; det återanvänder inte
 detaljdata med ett inaktuellt antal kravunderlag.
+Det gäller även när detaljen öppnas automatiskt genom den bevarade
+expanderingen; ingen extra stängning och öppning ska behövas.
 
 ## Avsteg
 

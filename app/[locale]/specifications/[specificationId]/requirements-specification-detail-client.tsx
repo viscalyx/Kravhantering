@@ -833,6 +833,9 @@ export default function KravunderlagDetailClient({
           error.key ===
           SPECIFICATION_PRELOAD_ERROR_KEYS.specificationRequirementPackages,
       ),
+      onItemsRemoved: items => {
+        for (const item of items) invalidateItemDetail(item)
+      },
       query: specificationItemsQuery,
     })
   })
@@ -2007,11 +2010,6 @@ export default function KravunderlagDetailClient({
         const outcome = await editorWorkflow.actions.removeItems()
         const failedIds = new Set(outcome.failedUniqueIds)
         const removedItems = items.filter(item => !failedIds.has(item.uniqueId))
-        for (const item of items) {
-          if (removedItems.includes(item)) {
-            invalidateItemDetail(item)
-          }
-        }
         setLeftExpandedItemRef(current =>
           current != null && removedItems.some(item => item.itemRef === current)
             ? null
@@ -2021,7 +2019,7 @@ export default function KravunderlagDetailClient({
         // The workflow exposes the failure through its observable state.
       }
     },
-    [confirm, editorWorkflow, invalidateItemDetail, t, tc],
+    [confirm, editorWorkflow, t, tc],
   )
 
   const handleRemoveSelected = useCallback(
