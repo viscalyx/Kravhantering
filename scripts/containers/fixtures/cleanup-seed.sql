@@ -44,6 +44,13 @@ INSERT INTO [ai_run_coordination_entries] (
            NULL, SYSUTCDATETIME(),
            DATEADD(hour, -1, SYSUTCDATETIME()), DATEADD(hour, -2, SYSUTCDATETIME()),
            SYSUTCDATETIME())');
+IF OBJECT_ID(N'dbo.ai_model_verification_attempts', N'U') IS NOT NULL
+EXEC(N'DECLARE @now datetime2 = SYSUTCDATETIME();
+  INSERT INTO ai_model_verification_attempts
+    (id, ai_connection_id, fingerprint, payload_json, created_at, expires_at)
+  SELECT NEWID(), id, REPLICATE(N''a'', 64), N''{}'',
+    DATEADD(minute, -16, @now), DATEADD(minute, -1, @now)
+  FROM ai_connections;');
 IF OBJECT_ID(N'dbo.requirement_import_validation_sessions', N'U') IS NOT NULL
 EXEC(N'
     DECLARE @now datetime2(3) = SYSUTCDATETIME();

@@ -412,3 +412,12 @@ non-required data set by `npm run db:seed:demo`.
 Put new system or lookup rows that the app needs to boot in the required
 profile. Put examples, screenshots, privacy exercises, Playwright fixtures,
 dogfood Krav and other disposable data in the demo profile.
+
+### Shared Model Verification Persistence
+
+Completed model verifications use SQL Server across app instances. Migrate the
+worktree database and reconcile runtime permissions before testing handover.
+Clean setup seeds no verification attempts; only a completed server verification
+can create proof. Run the model-verification SQL integration tests for concurrent
+save/discard, rollback, process loss, admission expiry, capacity, and cleanup.
+The test database is disposable and distinct from the developer browse database.

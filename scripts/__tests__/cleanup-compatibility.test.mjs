@@ -16,6 +16,7 @@ afterEach(() => {
 })
 
 const kinds = [
+  'ai_model_verification_attempts',
   'ai_run_coordination_entries',
   'ai_forensic_evidence',
   'hsa_verification_quota_buckets',

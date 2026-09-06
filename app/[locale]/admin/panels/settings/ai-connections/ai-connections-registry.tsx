@@ -17,7 +17,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import AutoDismissStatusToast from '@/components/AutoDismissStatusToast'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FormModal from '@/components/FormModal'
@@ -32,6 +32,7 @@ import type {
 } from '@/lib/ai/admin-service'
 import type { AiRunProfileKey } from '@/lib/ai/profile-resolver'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 import { AttestationForm, ConnectionForm, SecretForm } from './connection-forms'
 import { ModelForm, ProfileForm } from './model-profile-forms'
 import {
@@ -56,6 +57,9 @@ type DialogState =
   | {
       connection: AiAdminConnectionDetail
       kind: 'model'
+      pending?: NonNullable<
+        AiAdminConnectionDetail['pendingVerifications']
+      >[number]
       model: AiAdminModelRecord | null
     }
   | { kind: 'profile'; profile: AiAdminRunProfileRecord }
@@ -179,6 +183,103 @@ function RequestErrorAlert({
         </button>
       ) : null}
     </div>
+  )
+}
+
+function PendingModelVerifications({
+  connection,
+  disabled,
+  onOpen,
+  onUnavailable,
+}: {
+  connection: AiAdminConnectionDetail
+  disabled: boolean
+  onOpen(
+    connection: AiAdminConnectionDetail,
+    pending: NonNullable<
+      AiAdminConnectionDetail['pendingVerifications']
+    >[number],
+  ): void
+  onUnavailable(): void
+}) {
+  const t = useTranslations('admin.aiConnections')
+  const [now, setNow] = useState(Date.now)
+  const [opening, setOpening] = useState(false)
+  const attempts = connection.pendingVerifications
+  useEffect(() => {
+    const deadlines = (attempts ?? [])
+      .map(attempt => Date.parse(attempt.expiresAt))
+      .filter(deadline => deadline > now)
+    if (!deadlines.length) return
+    const timer = setTimeout(
+      () => setNow(Date.now()),
+      Math.min(...deadlines) - now + 1,
+    )
+    return () => clearTimeout(timer)
+  }, [attempts, now])
+
+  async function open(attemptId: string): Promise<void> {
+    setOpening(true)
+    try {
+      const response = await apiFetch(
+        `/api/admin/ai-connections/${connection.id}`,
+      )
+      if (!response.ok) throw new Error('pending_unavailable')
+      const current: AiAdminConnectionDetail = await response.json()
+      const pending = current.pendingVerifications?.find(
+        attempt =>
+          attempt.id === attemptId &&
+          Date.parse(attempt.expiresAt) > Date.now(),
+      )
+      if (!pending) {
+        onUnavailable()
+        return
+      }
+      onOpen(current, pending)
+    } catch {
+      onUnavailable()
+    } finally {
+      setOpening(false)
+    }
+  }
+
+  return (
+    <section
+      className="mt-4 space-y-2"
+      {...devMarker({
+        name: 'Pending AI model verifications',
+        context: 'AI connection models',
+      })}
+    >
+      <h6 className="font-semibold">{t('pending.title')}</h6>
+      <p className="text-sm text-secondary-600 dark:text-secondary-300">
+        {t('pending.description')}
+      </p>
+      {(attempts ?? [])
+        .filter(attempt => Date.parse(attempt.expiresAt) > now)
+        .map(attempt => (
+          <button
+            className="btn-secondary min-h-9 w-full px-3! py-2! text-left text-sm"
+            disabled={disabled || opening}
+            key={attempt.id}
+            onClick={() => void open(attempt.id)}
+            title={disabled || opening ? t('pending.busy') : undefined}
+            type="button"
+            {...devMarker({
+              name: 'Open pending AI verification',
+              context: 'AI connection models',
+            })}
+          >
+            {opening
+              ? t('pending.opening')
+              : t('pending.open', {
+                  name:
+                    attempt.result.candidate.name ||
+                    attempt.result.candidate.externalModelId,
+                })}
+          </button>
+        ))}
+    </section>
   )
 }
 
@@ -808,6 +909,22 @@ export default function AiConnectionsPanel() {
                             {t('actions.addModel')}
                           </button>
                         </div>
+                        <PendingModelVerifications
+                          connection={detail}
+                          disabled={busy}
+                          onOpen={(connection, pending) =>
+                            openDialog({
+                              connection,
+                              pending,
+                              kind: 'model',
+                              model: null,
+                            })
+                          }
+                          onUnavailable={() => {
+                            setMessage(t('pending.unavailable'))
+                            void loadRegistry()
+                          }}
+                        />
                         <div className="mt-4 space-y-3">
                           {detail.models.length === 0 ? (
                             <p className="rounded-xl border border-dashed border-secondary-300 p-4 text-sm text-secondary-600 dark:border-secondary-700 dark:text-secondary-300">
@@ -1364,7 +1481,10 @@ export default function AiConnectionsPanel() {
             }
             connection={dialog.connection}
             model={dialog.model}
-            onCancel={resetDialog}
+            onCancel={() => {
+              resetDialog()
+              void loadRegistry()
+            }}
             onComplete={async () => {
               resetDialog()
               await loadRegistry()
@@ -1372,6 +1492,7 @@ export default function AiConnectionsPanel() {
             }}
             onRefreshCatalog={() => fetchCatalog(dialog.connection, false)}
             onRegisterClose={registerModelClose}
+            pending={dialog.pending}
           />
         ) : null}
       </FormModal>

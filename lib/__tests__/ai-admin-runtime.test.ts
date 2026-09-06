@@ -159,7 +159,7 @@ const metadata = {
 
 describe('AI administration runtime composition', () => {
   const db = {
-    query: vi.fn(),
+    query: vi.fn(async () => []),
     transaction: vi.fn(),
   } as unknown as SqlServerDatabase
   const context = { actor: { id: 'admin' } } as unknown as RequestContext

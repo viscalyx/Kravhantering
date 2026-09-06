@@ -5,6 +5,7 @@ import {
   type Route,
   test,
 } from '@playwright/test'
+import { VERIFICATION } from '@/lib/__tests__/fixtures/ai-model-verification'
 import {
   addMcpMaxRequestBytesSteps,
   MCP_REQUEST_PAYLOAD_MAX_BYTES,
@@ -651,9 +652,273 @@ test.describe('Admin settings', () => {
     })
   })
 
+  for (const locale of ['sv', 'en'] as const) {
+    test(`ADMIN-20 (${locale}): shared verification review, editing, discard and uncertain save recovery`, async ({
+      page,
+    }) => {
+      const copy =
+        locale === 'sv'
+          ? {
+              open: 'Granska Shared model',
+              mutationError:
+                'Den administrativa AI-åtgärden kunde inte slutföras.',
+              name: /^Modellnamn/,
+              version: /^Extern modellversion/,
+              save: 'Spara modellrevision',
+              close: 'Avbryt',
+              discard: 'Kassera verifiering',
+              everyone: /alla administratörer/,
+              expired: /Verifieringen har gått ut/,
+              changed:
+                /Modellens eller anslutningens konfiguration har ändrats/,
+              unavailable: /Verifieringen är inte längre tillgänglig/,
+              uncertain:
+                'Sparandet kan ha lyckats. Ladda om modellistan och kontrollera om revisionen finns innan du försöker igen.',
+            }
+          : {
+              open: 'Review Shared model',
+              mutationError:
+                'The AI administration action could not be completed.',
+              name: /^Model name/,
+              version: /^External model version/,
+              save: 'Save model revision',
+              close: 'Cancel',
+              discard: 'Discard verification',
+              everyone: /every administrator/,
+              expired: /This verification has expired/,
+              changed: /The model or connection configuration has changed/,
+              unavailable: /The verification is no longer available/,
+              uncertain:
+                'Saving may have succeeded. Reload the model list and check whether the revision exists before trying again.',
+            }
+      const connectionId = '00000000-0000-4000-8000-000000000091'
+      const attemptId = '00000000-0000-4000-8000-000000000092'
+      const attempt = {
+        id: attemptId,
+        connectionId,
+        fingerprint: 'a'.repeat(64),
+        expiresAt: new Date(Date.now() + 900_000).toISOString(),
+        result: {
+          candidate: {
+            name: 'Shared model',
+            description: 'Synthetic shared snapshot',
+            externalModelId: 'controlled/shared',
+            externalModelVersion: null,
+            modelId: null,
+            modelToken: null,
+            reasoning: VERIFICATION.reasoning,
+          },
+          verification: VERIFICATION,
+        },
+      }
+      const connection = {
+        id: connectionId,
+        revisionToken: '00000000-0000-4000-8000-000000000093',
+        configurationVersion: 1,
+        administrationName: 'Shared verification connection',
+        publicName: 'Shared verification',
+        description: null,
+        adapterKey: 'controlled_test',
+        adapterVersion: '1',
+        adapterAvailability: { available: true },
+        authenticationType: 'none',
+        activeSecret: { available: false, reason: 'secret_missing' },
+        agentRuntimeKey: null,
+        agentRuntimeVersion: null,
+        attestation: null,
+        attestationDraft: null,
+        connectionEvidenceId: null,
+        dataPolicySummary: 'Synthetic data',
+        endpointUrl: 'https://controlled.invalid',
+        egressPolicyKey: 'controlled',
+        tlsPolicyKey: 'controlled',
+        maximumConcurrency: 1,
+        lifecycleStatus: 'draft',
+        operationalHealth: 'unknown',
+        blockers: [],
+        models: [],
+      }
+      let pending = true
+      let saveCount = 0
+      await page.route('**/api/admin/ai-run-profiles', route =>
+        route.fulfill({ json: [] }),
+      )
+      await page.route('**/api/admin/ai-connections', route =>
+        route.fulfill({ json: [connection] }),
+      )
+      await page.route(`**/api/admin/ai-connections/${connectionId}`, route =>
+        route.fulfill({
+          json: {
+            ...connection,
+            pendingVerifications: pending ? [attempt] : [],
+          },
+        }),
+      )
+      await page.route(
+        `**/api/admin/ai-connections/${connectionId}/actions`,
+        async route => {
+          const body = route.request().postDataJSON()
+          if (body.action === 'discard_model_verification') {
+            expect(body.attemptId).toBe(attemptId)
+            pending = false
+            await route.fulfill({ status: 204 })
+          } else if (body.action === 'save_model_revision') {
+            expect(body.modelRevision.attemptId).toBe(attemptId)
+            saveCount++
+            if (saveCount === 1) await route.abort('failed')
+            else if (saveCount >= 5)
+              await route.fulfill({
+                status: 409,
+                json: {
+                  code: 'conflict',
+                  error:
+                    saveCount === 5
+                      ? 'A model with this name already exists.'
+                      : 'The model verification is incomplete.',
+                },
+              })
+            else
+              await route.fulfill({
+                status: 409,
+                json: {
+                  code: 'conflict',
+                  details: {
+                    blocker:
+                      saveCount === 3
+                        ? 'attempt_expired'
+                        : saveCount === 4
+                          ? 'attempt_mismatch'
+                          : 'attempt_unavailable',
+                  },
+                  error: 'Unavailable',
+                },
+              })
+          } else await route.fulfill({ json: [] })
+        },
+      )
+      const dialog = page.getByRole('dialog').filter({
+        has: page.getByRole('button', { name: copy.save, exact: true }),
+      })
+      await test.step('editing the shared candidate', async () => {
+        await page.goto(`/${locale}/admin?tab=settings`)
+        await page
+          .getByRole('button', { name: /Shared verification connection/ })
+          .click()
+        await page.getByRole('button', { name: copy.open, exact: true }).click()
+        await expect(dialog.getByLabel(copy.name)).toHaveValue('Shared model')
+        await dialog.getByLabel(copy.name).fill('Local presentation edit')
+        await expect(
+          dialog.getByRole('button', { name: copy.save }),
+        ).toBeEnabled()
+        await dialog.getByLabel(copy.version).fill('edited-version')
+        await expect(
+          dialog.getByRole('button', { name: copy.save }),
+        ).toBeDisabled()
+        await dialog
+          .getByRole('button', { name: copy.close, exact: true })
+          .click()
+        await page.getByRole('button', { name: copy.open, exact: true }).click()
+        await expect(dialog.getByLabel(copy.name)).toHaveValue('Shared model')
+        await expect(dialog.getByLabel(copy.version)).toHaveValue('')
+      })
+      await test.step('uncertain-save recovery', async () => {
+        await dialog.getByRole('button', { name: copy.save }).click()
+        await expect(dialog.getByRole('alert')).toHaveText(copy.uncertain)
+        await dialog.getByRole('button', { name: copy.save }).click()
+        await expect(dialog.getByRole('alert')).toHaveText(copy.uncertain)
+        const refreshed = page.waitForResponse(response =>
+          response.url().endsWith(`/api/admin/ai-connections/${connectionId}`),
+        )
+        await dialog
+          .getByRole('button', { name: copy.close, exact: true })
+          .click()
+        await refreshed
+        await expect(
+          page.getByRole('button', { name: copy.open, exact: true }),
+        ).toBeVisible()
+      })
+      await test.step('unavailable shared verification', async () => {
+        pending = false
+        await page.getByRole('button', { name: copy.open, exact: true }).click()
+        await expect(page.getByText(copy.unavailable)).toBeVisible()
+        await expect(dialog).toHaveCount(0)
+        pending = true
+        await page.reload()
+        await page
+          .getByRole('button', { name: /Shared verification connection/ })
+          .click()
+      })
+      for (const [stepName, expectedError] of [
+        ['expired verification', copy.expired],
+        ['configuration mismatch', copy.changed],
+      ] as const) {
+        await test.step(stepName, async () => {
+          await page
+            .getByRole('button', { name: copy.open, exact: true })
+            .click()
+          await dialog.getByRole('button', { name: copy.save }).click()
+          await expect(dialog.getByRole('alert')).toHaveText(expectedError)
+          await expect(
+            dialog.getByRole('button', { name: copy.save }),
+          ).toBeDisabled()
+          await dialog
+            .getByRole('button', { name: copy.close, exact: true })
+            .click()
+        })
+      }
+      await test.step('known save rejections', async () => {
+        await page.getByRole('button', { name: copy.open, exact: true }).click()
+        for (const rejection of [
+          'duplicate model',
+          'incomplete verification',
+        ]) {
+          await test.step(rejection, async () => {
+            await dialog.getByRole('button', { name: copy.save }).click()
+            await expect(dialog.getByRole('alert')).toHaveText(
+              copy.mutationError,
+            )
+            await expect(
+              dialog.getByRole('button', { name: copy.save }),
+            ).toBeEnabled()
+          })
+        }
+        await dialog
+          .getByRole('button', { name: copy.close, exact: true })
+          .click()
+      })
+      await test.step('discarding verification for every administrator', async () => {
+        await page.getByRole('button', { name: copy.open, exact: true }).click()
+        await dialog
+          .getByRole('button', { name: copy.discard, exact: true })
+          .click()
+        const confirmation = page.getByRole('alertdialog', {
+          name: copy.discard,
+          exact: true,
+        })
+        await expect(confirmation.getByText(copy.everyone)).toBeVisible()
+        await confirmation
+          .getByRole('button', { name: copy.close, exact: true })
+          .click()
+        await expect(
+          dialog.getByRole('button', { name: copy.save }),
+        ).toBeEnabled()
+        await dialog
+          .getByRole('button', { name: copy.discard, exact: true })
+          .click()
+        await confirmation
+          .getByRole('button', { name: copy.discard, exact: true })
+          .click()
+        await expect(
+          page.getByRole('button', { name: copy.open, exact: true }),
+        ).toHaveCount(0)
+      })
+    })
+  }
+
   for (const viewport of [{ ...DESKTOP_VIEWPORT, name: 'desktop' }] as const) {
     test(`ADMIN-20 (${viewport.name}): Admin verifies a model and controls a stable AI profile`, async ({
       page,
+      browser,
     }) => {
       test.setTimeout(180_000)
       const cleanup = await prepareAdmin20Fixture()
@@ -904,6 +1169,97 @@ test.describe('Admin settings', () => {
               /Körprofil: reparation av ogiltig JSON — Verifierad/,
               /Slutsammanfattning — Verifierad/,
             ])
+            await test.step('ADMIN-20: closing preserves the shared snapshot for review', async () => {
+              await dialog
+                .getByRole('button', { name: 'Avbryt', exact: true })
+                .click()
+              await expect(dialog).toHaveCount(0)
+              const otherAdmin = await browser.newContext({
+                baseURL: new URL(page.url()).origin,
+                storageState: 'test-results/auth/admin-only.json',
+              })
+              try {
+                const reviewPage = await otherAdmin.newPage()
+                for (const locale of ['sv', 'en']) {
+                  await reviewPage.goto(`/${locale}/admin?tab=settings`)
+                  await reviewPage
+                    .getByRole('button', {
+                      name: new RegExp(administrationName),
+                    })
+                    .click()
+                  await reviewPage
+                    .getByRole('button', {
+                      name: `${locale === 'sv' ? 'Granska' : 'Review'} ${modelName}`,
+                      exact: true,
+                    })
+                    .last()
+                    .click()
+                  const review = reviewPage.getByRole('dialog')
+                  await expect(
+                    review.getByLabel(
+                      locale === 'sv'
+                        ? /^Externt modell-id/
+                        : /^External model ID/,
+                    ),
+                  ).toHaveValue('controlled/model')
+                  await expect(
+                    review.getByText(
+                      locale === 'sv'
+                        ? /Giltig i ytterligare/
+                        : /Valid for another/,
+                    ),
+                  ).toBeVisible()
+                  await expect(
+                    review.getByRole('button', {
+                      name:
+                        locale === 'sv'
+                          ? 'Spara modellrevision'
+                          : 'Save model revision',
+                    }),
+                  ).toBeEnabled()
+                }
+              } finally {
+                await otherAdmin.close()
+              }
+              await connectionCard
+                .getByRole('button', {
+                  name: `Granska ${modelName}`,
+                  exact: true,
+                })
+                .last()
+                .click()
+              await expect(dialog.getByLabel(/^Modellnamn/)).toHaveValue(
+                modelName,
+              )
+              await expect(dialog.getByLabel(/^Externt modell-id/)).toHaveValue(
+                'controlled/model',
+              )
+              await expect(
+                dialog.getByText(/Giltig i ytterligare/),
+              ).toBeVisible()
+              await expect(
+                dialog.getByRole('button', { name: 'Spara modellrevision' }),
+              ).toBeEnabled()
+              await dialog
+                .getByRole('button', {
+                  name: 'Kassera verifiering',
+                  exact: true,
+                })
+                .click()
+              const confirmation = page.getByRole('alertdialog', {
+                name: 'Kassera verifiering',
+                exact: true,
+              })
+              await expect(
+                confirmation.getByText(/alla administratörer/),
+              ).toBeVisible()
+              await confirmation
+                .getByRole('button', { name: 'Avbryt', exact: true })
+                .click()
+              await expect(
+                dialog.getByRole('button', { name: 'Spara modellrevision' }),
+              ).toBeEnabled()
+            })
             return {
               modelDialog: dialog,
               saveModelRevision: dialog.getByRole('button', {

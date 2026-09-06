@@ -1,77 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
-import type { AiCapability } from '@/lib/ai/admin-contracts'
-import type {
-  AiAdminAuditDetail,
-  AiAdminCandidateVerificationResult,
-} from '@/lib/ai/admin-service'
+import { VERIFICATION } from '@/lib/__tests__/fixtures/ai-model-verification'
+import type { AiAdminAuditDetail } from '@/lib/ai/admin-service'
 import { createSqlServerAiAdminStore } from '@/lib/dal/ai-connection-admin'
 import { createSqlServerAiRunProfileSource } from '@/lib/dal/ai-run-profiles'
 import { useSqlIntegrationDatabase } from './helpers/sql-test-database'
-
-const CAPABILITIES: AiCapability = {
-  reasoning: true,
-  reasoningControl: true,
-  aiAnalysis: true,
-  cost: true,
-  imageInput: true,
-  jsonSchemaSteering: true,
-  streaming: true,
-  tokenUsage: true,
-  validatableJson: true,
-}
-
-const VERIFICATION: AiAdminCandidateVerificationResult = {
-  reasoning: { mode: 'explicit_control' as const, effort: 'high' as const },
-  baseline: {
-    diagnosticCode: null,
-    failureCategory: null,
-    outcome: 'verified',
-  },
-  canonicalExternalModelVersion: '2026-08-22',
-  capabilities: Object.fromEntries(
-    Object.keys(CAPABILITIES).map(key => [
-      key,
-      key === 'aiAnalysis' || key === 'jsonSchemaSteering'
-        ? {
-            diagnosticCode: 'upstream_unavailable_http_404',
-            failureCategory: 'connection_unavailable',
-            outcome: 'inconclusive',
-          }
-        : { diagnosticCode: null, failureCategory: null, outcome: 'verified' },
-    ]),
-  ) as AiAdminCandidateVerificationResult['capabilities'],
-  connection: {
-    diagnosticCode: null,
-    failureCategory: null,
-    outcome: 'verified',
-  },
-  profileCompatibility: {
-    generation_with_images: {
-      diagnosticCode: null,
-      failureCategory: null,
-      missingCapabilities: [],
-      outcome: 'verified',
-      supported: true,
-    },
-    generation_without_images: {
-      diagnosticCode: null,
-      failureCategory: null,
-      missingCapabilities: [],
-      outcome: 'verified',
-      supported: true,
-    },
-    invalid_json_repair: {
-      diagnosticCode: null,
-      failureCategory: null,
-      missingCapabilities: [],
-      outcome: 'verified',
-      supported: true,
-    },
-  },
-  saveable: true,
-  testSuiteVersion: 'ai-admin-functional-probe-v2',
-}
 
 describe('AI connection administration transactions against SQL Server', () => {
   const appDb = useSqlIntegrationDatabase()
@@ -153,7 +86,7 @@ describe('AI connection administration transactions against SQL Server', () => {
           modelToken: null,
           name: 'Verified model',
         },
-        verification,
+        verification: async () => verification,
       }
       for (const mismatchedReasoning of [
         { mode: 'explicit_control', effort: 'low' },
@@ -164,7 +97,10 @@ describe('AI connection administration transactions against SQL Server', () => {
         await expect(
           store.saveModelRevision({
             ...saveInput,
-            verification: { ...verification, reasoning: mismatchedReasoning },
+            verification: async () => ({
+              ...verification,
+              reasoning: mismatchedReasoning,
+            }),
           }),
         ).rejects.toThrow('AI model verification is incomplete.')
       }
@@ -255,7 +191,7 @@ describe('AI connection administration transactions against SQL Server', () => {
           modelToken: model.revisionToken,
           name: model.name,
         },
-        verification,
+        verification: async () => verification,
       })
       const secondRevision = secondRevisionModel.revisions.at(-1)
       if (!secondRevision) throw new Error('Second model revision missing')
@@ -286,7 +222,7 @@ describe('AI connection administration transactions against SQL Server', () => {
           modelToken: secondRevisionModel.revisionToken,
           name: model.name,
         },
-        verification,
+        verification: async () => verification,
       })
       const reusedRevision = reusedRevisionModel.revisions.at(-1)
       if (!reusedRevision) throw new Error('Reused model revision missing')

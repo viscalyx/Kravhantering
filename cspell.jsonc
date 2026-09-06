@@ -3,6 +3,10 @@
   "language": "en,sv",
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
+    "arbetsmetadata",
+    "modellmetadata",
+    "NOWAIT",
+    "samtidighetstoken",
     "rollösa",
     "arbetsvyer",
     "desktopfönster",

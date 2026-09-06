@@ -791,3 +791,25 @@ revision on a stable profile, or restoring a verified provider-secret revision.
 No automatic fallback or direct OpenRouter path exists. A release rollback that
 restores the database must restore the matching external root-key versions at
 the same time, then repeat the pre-deployment gate before AI is enabled.
+
+## Shared Verification Handover
+
+Apply the database upgrade and runtime permission reconciliation before the
+new application starts. Completed model verification attempts are shared
+between authorized administrators for 15 minutes. Existing unsaved attempts
+held only in an older application process cannot be migrated; verify those
+candidates again after rollout. Closing a form preserves completed shared work.
+Explicit discard removes it for every administrator.
+
+The admission deadline uses SQL Server UTC. An admitted save can finish after
+expiry; a crashed process relies on SQL transaction resolution, not a detached
+lease timer. If a save response is lost, reload the model list and check for the
+revision before trying again. An unavailable attempt does not prove that saving
+failed. Monitor the bounded transient cleanup target after rollout; retain the
+release-independent cleanup deployment and its compatibility evidence during
+application rollback.
+
+Completed model-verification snapshots and their model-save transactions are
+excluded from SQL query, parameter, slow-query, and error-text logging, including
+when database error logging is enabled. Safe application conflicts and aggregate
+transient-cleanup telemetry remain available.

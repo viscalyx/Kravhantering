@@ -1,4 +1,5 @@
 import { createAiForensicEvidenceCleanupTarget } from './ai-forensic-evidence'
+import { createAiModelVerificationAttemptCleanupTarget } from './ai-model-verification-attempts'
 import { createAiRunCoordinationCleanupTarget } from './ai-run-coordination-entries'
 import { createHsaVerificationQuotaBucketCleanupTarget } from './hsa-verification-quota-buckets'
 import { createRequirementImportValidationRateBucketCleanupTarget } from './requirement-import-validation-rate-buckets'
@@ -46,9 +47,11 @@ async function tablesAreApplicable(
       const columns =
         table === 'ai_forensic_capture_windows'
           ? 'id, operation, direction, is_open'
-          : table === 'ai_run_coordination_entries'
-            ? 'id, queue_sequence'
-            : 'id'
+          : table === 'ai_model_verification_attempts'
+            ? 'id, expires_at'
+            : table === 'ai_run_coordination_entries'
+              ? 'id, queue_sequence'
+              : 'id'
       await executor.query(`SELECT TOP (0) ${columns} FROM dbo.${table}`)
     }
     return true
@@ -63,6 +66,7 @@ export function createTransientCleanupTargets(
   executor: TransientCleanupQueryExecutor,
 ): TransientCleanupTarget[] {
   return [
+    createAiModelVerificationAttemptCleanupTarget(executor),
     createAiRunCoordinationCleanupTarget(executor),
     createAiForensicEvidenceCleanupTarget(executor),
     createHsaVerificationQuotaBucketCleanupTarget(executor),

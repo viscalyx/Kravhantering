@@ -276,6 +276,14 @@ erDiagram
         datetime2 expires_at
     }
 
+    ai_model_verification_attempts {
+        uniqueidentifier id PK
+        uniqueidentifier ai_connection_id FK
+        nvarchar fingerprint
+        nvarchar payload_json
+        datetime2 created_at
+        datetime2 expires_at
+    }
     ai_connection_models {
         uniqueidentifier id PK
         uniqueidentifier ai_connection_id FK
@@ -908,6 +916,7 @@ erDiagram
     ai_connections ||--o{ ai_connection_attestations : "has attestations"
     ai_connections ||--o{ ai_provider_secret_versions : "has encrypted secret revisions"
     ai_connections ||--o{ ai_connection_verification_evidence : "has connection evidence"
+    ai_connections ||--o{ ai_model_verification_attempts : "shares completed verifications"
     ai_connections ||--o{ ai_connection_models : "registers models"
     ai_connection_models ||--o{ ai_connection_model_revisions : "has immutable revisions"
     ai_connection_model_revisions ||--o{ ai_connection_model_verification_evidence : "has capability evidence"
@@ -1902,6 +1911,49 @@ invalidating row together with connection/model lifecycle state.
 <!-- markdownlint-enable MD013 -->
 
 **Index:** `idx_ai_connection_verification_evidence_connection_version`.
+
+### `ai_model_verification_attempts`
+
+Shared completed verification candidates. Migration 0063 adds this transient
+information asset; it has no creator identity or independently committed lease.
+
+| Column | Type | Meaning |
+| :--- | :--- | :--- |
+| `id` | `uniqueidentifier` PK | Opaque, server-generated attempt ID |
+| `ai_connection_id` | `uniqueidentifier` FK | Owning connection |
+| `fingerprint` | `nvarchar(64)` | SHA-256 technical binding |
+| `payload_json` | `nvarchar(max)` | Candidate and server evidence |
+| `created_at` | `datetime2` | SQL Server UTC completion time |
+| `expires_at` | `datetime2` | 15-minute admission deadline |
+
+The fingerprint binds connection configuration, exact technical candidate,
+target model and token, and verification suite.
+The serialized payload is limited to **65,536 UTF-16 bytes**, enforced both in
+SQL and before insertion. Candidate limits are name 300 characters, description
+20,000, external model ID 450, external version 200, UUID target references,
+and the existing reasoning configuration. Evidence has exactly nine capability
+assessments and three profile assessments, bounded diagnostic/category codes
+(160 characters), a suite identifier (100), and canonical model version (200).
+Unknown fields and incomplete target references are rejected. No prompts,
+images, endpoints, credentials, raw provider responses, or free error text are
+accepted. Administrative names and descriptions are never copied to telemetry.
+
+Admission is serialized across instances with a transaction-owned capacity
+lock and a maximum of 512 unexpired attempts. Accepted work is never evicted.
+Consumption obtains exclusive row access and checks SQL UTC before deleting
+within the same transaction as revision/evidence saving. Rollback restores the
+row. No second commit or lease timeout exists. Physical deletion makes committed
+consumption and explicit discard permanent. Cleanup skips locked rows and
+removes expired attempts in batches of at most 500. Missing tables in supported
+older schemas are reported as `not_applicable` by the cleanup registry.
+
+**Seed policy:** no rows. Seed must not manufacture successful verification.
+SQL integration fixtures cover valid, expired, consumed, and rolled-back work.
+**Permissions:** runtime SELECT, INSERT, DELETE; no UPDATE. Cleanup uses SELECT
+and DELETE plus the existing metadata inspection permission.
+**Constraints:** `chk_ai_model_verification_attempts_payload` and
+`chk_ai_model_verification_attempts_ttl`; connection deletion uses NO ACTION.
+**Indexes:** connection/deadline for discovery, deadline for bounded cleanup.
 
 ### `ai_connection_models`
 
@@ -3432,6 +3484,8 @@ its purpose and the table/column(s) it covers.
 | `idx_ai_provider_secret_versions_root_key_version` | `ai_provider_secret_versions` | `root_key_version` where `ciphertext IS NOT NULL` | Find encrypted rows that still depend on a root-key version |
 | `idx_ai_connection_attestations_review_due_at` | `ai_connection_attestations` | `review_due_at` | Find attestations approaching or past review |
 | `idx_ai_connection_verification_evidence_connection_version` | `ai_connection_verification_evidence` | `(ai_connection_id, connection_configuration_version, verified_at)` | Resolve current connection verification evidence |
+| `idx_ai_model_verification_attempts_expires_at` | `ai_model_verification_attempts` | `expires_at` | Bounded expiry cleanup |
+| `idx_ai_model_verification_attempts_ai_connection_id` | `ai_model_verification_attempts` | `(ai_connection_id, expires_at)` | Discover completed candidates within a connection |
 | `idx_ai_connection_models_ai_connection_id` | `ai_connection_models` | `ai_connection_id` | List stable models under a connection |
 | `idx_ai_connection_model_revisions_status` | `ai_connection_model_revisions` | `status` | Filter model revisions by lifecycle |
 | `idx_ai_connection_model_verification_evidence_revision` | `ai_connection_model_verification_evidence` | `(ai_connection_model_revision_id, verified_at)` | Resolve latest capability evidence for an exact revision |
@@ -3484,6 +3538,7 @@ The following table lists every named FK constraint:
 | `fk_ai_connection_attestations_ai_connection_id` | `ai_connection_attestations` | `ai_connection_id` | `ai_connections.id` | NO ACTION | NO ACTION |
 | `fk_ai_provider_secret_versions_ai_connection_id` | `ai_provider_secret_versions` | `ai_connection_id` | `ai_connections.id` | NO ACTION | NO ACTION |
 | `fk_ai_connection_verification_evidence_ai_connection_id` | `ai_connection_verification_evidence` | `ai_connection_id` | `ai_connections.id` | NO ACTION | NO ACTION |
+| `fk_ai_model_verification_attempts_ai_connection_id` | `ai_model_verification_attempts` | `ai_connection_id` | `ai_connections.id` | NO ACTION | NO ACTION |
 | `fk_ai_connection_models_ai_connection_id` | `ai_connection_models` | `ai_connection_id` | `ai_connections.id` | NO ACTION | NO ACTION |
 | `fk_ai_connection_model_revisions_ai_connection_model_id` | `ai_connection_model_revisions` | `ai_connection_model_id` | `ai_connection_models.id` | NO ACTION | NO ACTION |
 | `fk_ai_connection_model_verification_evidence_ai_connection_model_revision_id` | `ai_connection_model_verification_evidence` | `ai_connection_model_revision_id` | `ai_connection_model_revisions.id` | NO ACTION | NO ACTION |
@@ -3593,6 +3648,8 @@ graph LR
         AIPSV[ai_provider_secret_versions]
         AICA[ai_connection_attestations]
         AICVE[ai_connection_verification_evidence]
+        AIMVA[ai_model_verification_attempts]
+        AIMVA -->|connection and expiry| AIC
         AICM[ai_connection_models]
         AICMR[ai_connection_model_revisions]
         AICMVE[ai_connection_model_verification_evidence]

@@ -1017,18 +1017,35 @@ export function createSqlServerAiAdminStore(
 
     async saveModelRevision(input) {
       return db.transaction('SERIALIZABLE', async manager => {
+        if (manager.queryRunner)
+          manager.queryRunner.data.aiModelVerification = true
+        const verification = await input.verification(manager)
+        const current = await manager.query<Array<{ id: string }>>(
+          `SELECT [id] FROM [ai_connections] WITH (UPDLOCK, HOLDLOCK)
+           WHERE [id] = @0 AND [configuration_version] = @1 AND [revision_token] = @2`,
+          [
+            input.connectionId,
+            input.connection.configurationVersion,
+            input.connection.revisionToken,
+          ],
+        )
+        if (!current[0])
+          throw conflictError('AI connection changed before model save.', {
+            blocker: 'attempt_mismatch',
+          })
         const value = input.modelRevision
         const verifiedCapabilities = Object.fromEntries(
-          Object.entries(input.verification.capabilities).map(
-            ([key, result]) => [key, result.outcome === 'verified'],
-          ),
+          Object.entries(verification.capabilities).map(([key, result]) => [
+            key,
+            result.outcome === 'verified',
+          ]),
         ) as AiCapability
         const reasoning = parseAiReasoningConfiguration(value.reasoning)
         const verifiedReasoning = parseAiReasoningConfiguration(
-          input.verification.reasoning,
+          verification.reasoning,
         )
         if (
-          !input.verification.saveable ||
+          !verification.saveable ||
           !verifiedCapabilities.reasoning ||
           !reasoning ||
           !verifiedReasoning ||
@@ -1036,7 +1053,7 @@ export function createSqlServerAiAdminStore(
             !verifiedCapabilities.reasoningControl) ||
           reasoning.mode !== verifiedReasoning.mode ||
           reasoning.effort !== verifiedReasoning.effort ||
-          !Object.values(input.verification.profileCompatibility).some(
+          !Object.values(verification.profileCompatibility).some(
             result => result.supported,
           )
         ) {
@@ -1099,43 +1116,37 @@ export function createSqlServerAiAdminStore(
           if (!models[0]) {
             throw conflictError(
               'AI connection model changed. Reload and try again.',
+              { blocker: 'attempt_mismatch' },
             )
           }
         }
         const capabilitiesJson = JSON.stringify(verifiedCapabilities)
         const connectionEvidenceId = randomUUID()
         const compatibilityJson = JSON.stringify(
-          input.verification.profileCompatibility,
+          verification.profileCompatibility,
         )
         const detailsJson = JSON.stringify({
-          reasoning: input.verification.reasoning,
-          baseline: input.verification.baseline,
-          capabilities: input.verification.capabilities,
-          connection: input.verification.connection,
+          reasoning: verification.reasoning,
+          baseline: verification.baseline,
+          capabilities: verification.capabilities,
+          connection: verification.connection,
         })
         const evidenceFingerprint = createHash('sha256')
           .update(
             JSON.stringify({
               capabilities: verifiedCapabilities,
-              compatibility: input.verification.profileCompatibility,
+              compatibility: verification.profileCompatibility,
               connectionConfigurationVersion:
                 input.connection.configurationVersion,
               externalModelId: value.externalModelId,
               externalModelVersion: value.externalModelVersion,
               reasoning: value.reasoning,
-              suite: input.verification.testSuiteVersion,
+              suite: verification.testSuiteVersion,
             }),
           )
           .digest('hex')
         await manager.query(
-          `DECLARE @configuration_version int;
-           SELECT @configuration_version = [configuration_version]
-           FROM [ai_connections] WITH (UPDLOCK, HOLDLOCK)
-           WHERE [id] = @0
-             AND [configuration_version] = @7
-             AND [revision_token] = @8;
-           IF @configuration_version IS NULL
-             THROW 51230, 'AI connection changed before model save.', 1;
+          `DECLARE @configuration_version int = @7;
            INSERT INTO [ai_connection_verification_evidence] (
              [id], [ai_connection_id], [connection_configuration_version],
              [outcome], [test_suite_version], [adapter_version],
@@ -1181,16 +1192,16 @@ export function createSqlServerAiAdminStore(
             modelRevisionId,
             value.externalModelId,
             value.externalModelVersion,
-            input.verification.canonicalExternalModelVersion,
+            verification.canonicalExternalModelVersion,
             capabilitiesJson,
             input.connection.configurationVersion,
             input.connection.revisionToken,
             connectionEvidenceId,
-            input.verification.testSuiteVersion,
+            verification.testSuiteVersion,
             input.connection.adapterVersion,
             input.connection.agentRuntimeVersion,
             configurationFingerprint(input.connection),
-            JSON.stringify({ baseline: input.verification.baseline }),
+            JSON.stringify({ baseline: verification.baseline }),
             randomUUID(),
             compatibilityJson,
             evidenceFingerprint,

@@ -1,86 +1,70 @@
+import { VERIFICATION } from '@/lib/__tests__/fixtures/ai-model-verification'
 import {
-  type AiModelVerificationAttemptError,
-  createAiModelVerificationAttemptStore,
-} from '@/lib/ai/model-verification-attempts'
+  aiModelVerificationSnapshotSchema,
+  parseAiModelVerificationPayload,
+} from '@/lib/ai/model-verification-payload'
 
-describe('AI model verification attempts', () => {
-  it('consumes an exact verified attempt only after the save commits', () => {
-    let now = Date.parse('2026-08-22T10:00:00Z')
-    const store = createAiModelVerificationAttemptStore({ now: () => now })
-    const created = store.create({
-      actorKey: 'admin-1',
-      connectionId: 'connection-1',
-      fingerprint: 'fingerprint-1',
-      result: { saveable: true },
+describe('Completed verification candidate snapshots', () => {
+  const candidate = {
+    externalModelId: 'controlled/model',
+    externalModelVersion: null,
+    reasoning: { mode: 'model_default', effort: null },
+  }
+  it('allows verification before a final presentation name is supplied', () => {
+    expect(aiModelVerificationSnapshotSchema.parse(candidate)).toMatchObject({
+      name: '',
+      description: null,
+      modelId: null,
+      modelToken: null,
     })
-
-    const firstLease = store.reserve({
-      actorKey: 'admin-1',
-      attemptId: created.id,
-      connectionId: 'connection-1',
-      fingerprint: 'fingerprint-1',
-    })
-    firstLease.release()
-
-    const retryLease = store.reserve({
-      actorKey: 'admin-1',
-      attemptId: created.id,
-      connectionId: 'connection-1',
-      fingerprint: 'fingerprint-1',
-    })
-    retryLease.commit()
-
-    expect(() =>
-      store.reserve({
-        actorKey: 'admin-1',
-        attemptId: created.id,
-        connectionId: 'connection-1',
-        fingerprint: 'fingerprint-1',
-      }),
-    ).toThrowError(
-      expect.objectContaining<Partial<AiModelVerificationAttemptError>>({
-        code: 'attempt_unavailable',
-      }),
-    )
-
-    now += 15 * 60 * 1000
   })
-
-  it('rejects stale or mismatched evidence without exposing another attempt', () => {
-    let now = Date.parse('2026-08-22T10:00:00Z')
-    const store = createAiModelVerificationAttemptStore({ now: () => now })
-    const created = store.create({
-      actorKey: 'admin-1',
-      connectionId: 'connection-1',
-      fingerprint: 'fingerprint-1',
-      result: { saveable: true },
-    })
-
-    expect(() =>
-      store.reserve({
-        actorKey: 'admin-2',
-        attemptId: created.id,
-        connectionId: 'connection-1',
-        fingerprint: 'fingerprint-1',
-      }),
-    ).toThrowError(
-      expect.objectContaining<Partial<AiModelVerificationAttemptError>>({
-        code: 'attempt_mismatch',
-      }),
+  it('rejects incomplete target references and fields outside the administrative snapshot', () => {
+    expect(
+      aiModelVerificationSnapshotSchema.safeParse({
+        ...candidate,
+        modelId: '00000000-0000-4000-8000-000000000001',
+      }).success,
+    ).toBe(false)
+    for (const field of [
+      'prompt',
+      'image',
+      'endpointUrl',
+      'secret',
+      'response',
+    ]) {
+      expect(
+        aiModelVerificationSnapshotSchema.safeParse({
+          ...candidate,
+          [field]: 'sensitive',
+        }).success,
+      ).toBe(false)
+    }
+  })
+  it('persists only bounded administrative fields and structured saveable evidence', () => {
+    const payload = { candidate, verification: VERIFICATION }
+    expect(parseAiModelVerificationPayload(payload).verification).toEqual(
+      VERIFICATION,
     )
-
-    now += 15 * 60 * 1000 + 1
+    for (const verification of [
+      { ...VERIFICATION, saveable: false },
+      { ...VERIFICATION, rawResponse: 'secret' },
+      {
+        ...VERIFICATION,
+        connection: {
+          ...VERIFICATION.connection,
+          diagnosticCode: 'free error text with secret',
+        },
+      },
+      { ...VERIFICATION, canonicalExternalModelVersion: 'x'.repeat(201) },
+    ])
+      expect(() =>
+        parseAiModelVerificationPayload({ candidate, verification }),
+      ).toThrow('Invalid model verification payload.')
     expect(() =>
-      store.reserve({
-        actorKey: 'admin-1',
-        attemptId: created.id,
-        connectionId: 'connection-1',
-        fingerprint: 'fingerprint-1',
+      parseAiModelVerificationPayload({
+        ...payload,
+        candidate: { ...candidate, description: 'x'.repeat(20_001) },
       }),
-    ).toThrowError(
-      expect.objectContaining<Partial<AiModelVerificationAttemptError>>({
-        code: 'attempt_expired',
-      }),
-    )
+    ).toThrow('Invalid model verification payload.')
   })
 })

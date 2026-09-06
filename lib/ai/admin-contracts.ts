@@ -237,6 +237,10 @@ export const aiConnectionActionSchema = z.discriminatedUnion('action', [
   z
     .object({
       action: z.literal('verify_model_candidate'),
+      name: z.string().trim().max(300).optional().default(''),
+      description: optionalText(20_000).optional().default(null),
+      modelId: aiIdentifierSchema.nullable().optional().default(null),
+      modelToken: aiRevisionTokenSchema.nullable().optional().default(null),
       reasoning: aiReasoningConfigurationSchema,
       externalModelId: boundedText(450),
       externalModelVersion: optionalText(200),

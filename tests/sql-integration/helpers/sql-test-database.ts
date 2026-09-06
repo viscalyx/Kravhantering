@@ -27,6 +27,7 @@ import { createAppDataSource } from '@/lib/typeorm/data-source'
 import { tryGetSqlServerDatabaseUrl } from '@/lib/typeorm/sqlserver-config'
 
 const TRANSACTIONAL_TABLES = [
+  'ai_model_verification_attempts',
   'ai_run_coordination_entries',
   'ai_connection_model_operational_states',
   'ai_run_profiles',

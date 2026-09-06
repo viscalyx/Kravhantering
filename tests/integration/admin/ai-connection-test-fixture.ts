@@ -173,6 +173,7 @@ async function removeFixtureConnections(db: DataSource) {
       )
     }
     for (const table of [
+      'ai_model_verification_attempts',
       'ai_connection_models',
       'ai_connection_attestations',
       'ai_connection_verification_evidence',

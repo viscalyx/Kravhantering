@@ -16,6 +16,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useConfirmModal } from '@/components/ConfirmModal'
 import type {
   SaveAiModelRevision,
   SaveAiRunProfile,
@@ -48,6 +49,7 @@ type ModelFormProps = {
   catalogStatus?: 'idle' | 'loaded' | 'loading' | 'unavailable'
   connection: AiAdminConnectionDetail
   model: AiAdminModelRecord | null
+  pending?: NonNullable<AiAdminConnectionDetail['pendingVerifications']>[number]
   onCancel(): void
   onComplete(): Promise<void> | void
   onRefreshCatalog?(): Promise<readonly AiAdminCatalogItem[] | null>
@@ -149,30 +151,58 @@ export function ModelForm({
   catalogStatus = 'idle',
   connection,
   model,
+  pending,
   onCancel,
   onComplete,
   onRefreshCatalog,
   onRegisterClose,
 }: ModelFormProps) {
   const t = useTranslations('admin.aiConnections')
+  const { confirm } = useConfirmModal()
+  const snapshot = pending?.result.candidate
   const latest = model ? highestRevision(model.revisions) : undefined
-  const [name, setName] = useState(model?.name ?? '')
-  const [description, setDescription] = useState(model?.description ?? '')
+  const [name, setName] = useState(snapshot?.name ?? model?.name ?? '')
+  const [description, setDescription] = useState(
+    snapshot?.description ?? model?.description ?? '',
+  )
   const [externalModelId, setExternalModelId] = useState(
-    latest?.externalModelId ?? '',
+    snapshot?.externalModelId ?? latest?.externalModelId ?? '',
   )
   const [externalModelVersion, setExternalModelVersion] = useState(
-    latest?.externalModelVersion ?? '',
+    snapshot
+      ? (snapshot.externalModelVersion ?? '')
+      : (latest?.externalModelVersion ?? ''),
   )
   const [reasoning, setReasoning] = useState<AiReasoningConfiguration>(
-    latest?.reasoning ?? { mode: 'explicit_control', effort: 'high' },
+    pending?.result.verification.reasoning ??
+      snapshot?.reasoning ??
+      latest?.reasoning ?? { mode: 'explicit_control', effort: 'high' },
   )
   const [selectedCatalogKey, setSelectedCatalogKey] = useState('')
   const [progress, setProgress] = useState<AiAdminVerificationProgress[]>([])
   const [verification, setVerification] =
-    useState<AiAdminCandidateVerificationAttemptResult | null>(null)
+    useState<AiAdminCandidateVerificationAttemptResult | null>(
+      pending
+        ? {
+            ...pending.result.verification,
+            attemptId: pending.id,
+            attemptExpiresAt: pending.expiresAt,
+          }
+        : null,
+    )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+  const remainingSeconds = verification?.attemptExpiresAt
+    ? Math.max(
+        0,
+        Math.ceil((Date.parse(verification.attemptExpiresAt) - now) / 1000),
+      )
+    : 0
   const verificationAbort = useRef<AbortController | null>(null)
   const catalogGroups = useMemo(() => {
     const groups = new Map<string, AiAdminCatalogItem[]>()
@@ -195,26 +225,48 @@ export function ModelForm({
     (connection.authenticationType === 'none' ||
       connection.activeSecret.available)
 
-  const discardAttempt = useCallback(
-    async (attemptId?: string | null): Promise<void> => {
-      if (!attemptId) return
-      await apiFetch(`/api/admin/ai-connections/${connection.id}/actions`, {
-        body: JSON.stringify({
-          action: 'discard_model_verification',
-          attemptId,
-        }),
-        headers: { 'Content-Type': 'application/json' },
-        method: 'POST',
-      })
-    },
-    [connection.id],
-  )
+  async function discardAttempt(anchorEl: HTMLElement): Promise<void> {
+    const attemptId = verification?.attemptId
+    if (
+      !attemptId ||
+      !(await confirm({
+        anchorEl,
+        title: t('pending.discard'),
+        message: t('pending.discardConfirm'),
+        confirmText: t('pending.discard'),
+        variant: 'danger',
+        icon: 'caution',
+      }))
+    )
+      return
+    setBusy(true)
+    setError(null)
+    try {
+      const response = await apiFetch(
+        `/api/admin/ai-connections/${connection.id}/actions`,
+        {
+          body: JSON.stringify({
+            action: 'discard_model_verification',
+            attemptId,
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        },
+      )
+      if (!response.ok) throw new Error('discard_failed')
+      setVerification(null)
+      onCancel()
+    } catch {
+      setError(t('mutationError'))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const cancelAndClose = useCallback((): void => {
     verificationAbort.current?.abort()
-    if (verification?.attemptId) void discardAttempt(verification.attemptId)
     onCancel()
-  }, [discardAttempt, onCancel, verification?.attemptId])
+  }, [onCancel])
 
   useEffect(() => {
     onRegisterClose?.(cancelAndClose)
@@ -222,12 +274,10 @@ export function ModelForm({
   }, [cancelAndClose, onRegisterClose])
 
   function technicalChange(update: () => void): void {
-    const attemptId = verification?.attemptId
     verificationAbort.current?.abort()
     update()
     setVerification(null)
     setProgress([])
-    if (attemptId) void discardAttempt(attemptId)
   }
 
   function selectCatalogItem(key: string): void {
@@ -260,6 +310,10 @@ export function ModelForm({
         {
           body: JSON.stringify({
             action: 'verify_model_candidate',
+            name: name.trim(),
+            description: nullable(description),
+            modelId: snapshot?.modelId ?? model?.id ?? null,
+            modelToken: snapshot?.modelToken ?? model?.revisionToken ?? null,
             reasoning,
             externalModelId: externalModelId.trim(),
             externalModelVersion: nullable(externalModelVersion),
@@ -311,9 +365,9 @@ export function ModelForm({
         }
         if (chunk.done) break
       }
-    } catch (cause) {
+    } catch {
       if (!abortController.signal.aborted) {
-        setError(cause instanceof Error ? cause.message : t('mutationError'))
+        setError(t('mutationError'))
       }
     } finally {
       if (verificationAbort.current === abortController) {
@@ -334,8 +388,10 @@ export function ModelForm({
       description: nullable(description),
       externalModelId: externalModelId.trim(),
       externalModelVersion: nullable(externalModelVersion),
-      modelId: model?.id ?? null,
-      modelToken: model?.revisionToken ?? null,
+      modelId: snapshot ? snapshot.modelId : (model?.id ?? null),
+      modelToken: snapshot
+        ? snapshot.modelToken
+        : (model?.revisionToken ?? null),
       name: name.trim(),
     }
     try {
@@ -351,13 +407,32 @@ export function ModelForm({
         },
       )
       if (!response.ok) {
-        throw new Error(
-          (await readResponseMessage(response)) ?? t('mutationError'),
+        const body: unknown = await response.json().catch(() => null)
+        const blocker =
+          typeof body === 'object' &&
+          body !== null &&
+          'details' in body &&
+          typeof body.details === 'object' &&
+          body.details !== null &&
+          'blocker' in body.details
+            ? body.details.blocker
+            : null
+        if (blocker === 'attempt_expired' || blocker === 'attempt_mismatch')
+          setVerification(null)
+        setError(
+          blocker === 'attempt_expired'
+            ? t('pending.expired')
+            : blocker === 'attempt_mismatch'
+              ? t('pending.configurationChanged')
+              : response.status >= 500 || blocker === 'attempt_unavailable'
+                ? t('pending.saveUncertain')
+                : t('mutationError'),
         )
+        return
       }
       await onComplete()
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t('mutationError'))
+    } catch {
+      setError(t('pending.saveUncertain'))
     } finally {
       setBusy(false)
     }
@@ -715,6 +790,18 @@ export function ModelForm({
               )
             })}
           </ul>
+          {verification.attemptId ? (
+            <p
+              {...devMarker({
+                name: 'AI verification validity',
+                context: 'AI model form',
+              })}
+            >
+              {remainingSeconds > 0
+                ? t('pending.remaining', { seconds: remainingSeconds })
+                : t('pending.expired')}
+            </p>
+          ) : null}
           <p className="font-medium">
             {verification.saveable
               ? t('modelVerification.saveable')
@@ -743,12 +830,27 @@ export function ModelForm({
             : t('modelVerification.verify')}
         </button>
       </div>
+      {verification?.attemptId ? (
+        <button
+          {...devMarker({
+            name: 'Discard shared AI verification',
+            context: 'AI model form',
+          })}
+          className="btn-secondary min-h-9 px-3! py-1.5! text-sm"
+          disabled={busy}
+          onClick={event => void discardAttempt(event.currentTarget)}
+          title={busy ? t('pending.busy') : undefined}
+          type="button"
+        >
+          {busy ? t('pending.busy') : t('pending.discard')}
+        </button>
+      ) : null}
       <DialogActions
         busy={busy}
         cancel={t('actions.cancel')}
         onCancel={cancelAndClose}
         save={t('modelVerification.saveRevision')}
-        saveDisabled={!verification?.saveable}
+        saveDisabled={!verification?.saveable || remainingSeconds === 0}
       />
     </form>
   )

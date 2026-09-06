@@ -102,6 +102,7 @@ interface SafePrivacyErasureHttpDetails {
 }
 
 type SafeHttpErrorDetails =
+  | { blocker: 'attempt_expired' | 'attempt_mismatch' | 'attempt_unavailable' }
   | SafeAiAdminBlockerHttpDetails
   | SafeAiAdminModelDependencyHttpDetails
   | SafeImprovementSuggestionConflictHttpDetails
@@ -218,6 +219,13 @@ function toSafeHttpErrorDetails(
   }
 
   if (code === 'conflict' && safeDetails === 'ai_admin_model_dependencies') {
+    const blocker = details?.blocker
+    if (
+      blocker === 'attempt_expired' ||
+      blocker === 'attempt_mismatch' ||
+      blocker === 'attempt_unavailable'
+    )
+      return { blocker }
     return toSafeAiAdminModelDependencies(details) ?? undefined
   }
 

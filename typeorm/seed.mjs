@@ -106,6 +106,7 @@ const TABLE_ORDER = [
   'ai_connection_model_verification_evidence',
   'ai_run_profiles',
   'ai_run_coordination_entries',
+  'ai_model_verification_attempts',
   'ai_connection_model_operational_states',
   'ai_forensic_capture_windows',
   'ai_forensic_evidence_events',
@@ -333,6 +334,13 @@ const SEED_DATA = {
     rows: [],
   },
   ai_run_profiles: {
+    columns: ['id'],
+    identity: false,
+    pk: ['id'],
+    rows: [],
+  },
+  // Completed attempts are produced only by real verification; seed no proof.
+  ai_model_verification_attempts: {
     columns: ['id'],
     identity: false,
     pk: ['id'],

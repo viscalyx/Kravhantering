@@ -2408,6 +2408,20 @@
         "medium": "Medium",
         "high": "High",
         "modelDefault": "Model default"
+      },
+      "pending": {
+        "title": "Pending verifications",
+        "opening": "Opening verification…",
+        "busy": "An operation is in progress. Please wait.",
+        "description": "Completed verifications are shared with all administrators for 15 minutes. Open a candidate to review and save it.",
+        "open": "Review {name}",
+        "remaining": "Valid for another {seconds} seconds.",
+        "expired": "This verification has expired. Verify again.",
+        "configurationChanged": "The model or connection configuration has changed. Verify again.",
+        "discard": "Discard verification",
+        "discardConfirm": "Discard this verification? This removes the pending work for every administrator.",
+        "saveUncertain": "Saving may have succeeded. Reload the model list and check whether the revision exists before trying again.",
+        "unavailable": "The verification is no longer available. Reload the model list and check whether it has already been saved."
       }
     },
     "applicationSettings": {

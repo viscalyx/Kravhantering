@@ -62,7 +62,7 @@ export const POST = secureMutationRoute({
         })
         return new NextResponse(null, { status: 204 })
       case 'discard_model_verification':
-        service.discardModelVerification(body.attemptId)
+        await service.discardModelVerification(connectionId, body.attemptId)
         return new NextResponse(null, { status: 204 })
       case 'discard_attestation_draft':
         await service.discardAttestationDraft({
@@ -141,6 +141,10 @@ export const POST = secureMutationRoute({
             try {
               const result = await service.verifyModelCandidate({
                 candidate: {
+                  name: body.name,
+                  description: body.description,
+                  modelId: body.modelId,
+                  modelToken: body.modelToken,
                   reasoning: body.reasoning,
                   externalModelId: body.externalModelId,
                   externalModelVersion: body.externalModelVersion,

@@ -2120,10 +2120,18 @@ bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
    kompatibiliteten per körprofil visas och `Spara modellrevision` aktiveras.
    Om en förmåga inte kan observeras i leverantörssvaret ska orsaken beskriva
    just detta och inte påstå att leverantören uttryckligen avvisade förmågan.
-5. Ändra modellnamnet och kontrollera att resultatet finns kvar. Kontrollera
-   att resonemangsnivån är `Hög`. Välj `Låg` och kontrollera att resultatet
-   rensas och att ny verifiering krävs. Välj `Medel`, verifiera igen och spara
-   revisionen. Kontrollera `Resonemangsnivå: Medel` och statusen
+5. Stäng formuläret med `Avbryt`. Öppna kandidaten under `Väntande verifieringar`
+   på samma anslutning och kontrollera inskickade fält, verifieringsutfall och
+   återstående giltighetstid. Kandidaten ska också kunna öppnas av en annan
+   behörig Admin efter omladdning. Öppning får inte förlänga giltigheten.
+   Välj `Kassera verifiering`, kontrollera att bekräftelsen säger att arbetet
+   tas bort för alla administratörer och avbryt kasseringen. Resultatet ska
+   finnas kvar. Ändra modellnamnet och kontrollera att resultatet finns kvar.
+   Kontrollera att resonemangsnivån är `Hög`. Välj `Låg` och kontrollera att
+   resultatet
+   rensas och att ny verifiering krävs för de redigerade fälten; det delade
+   originalet ska finnas kvar. Välj `Medel`, verifiera igen och spara revisionen.
+   Kontrollera `Resonemangsnivå: Medel` och statusen
    `Verifierad` och att inget separat modellutkast eller separat
    aktiveringssteg visas.
 6. Aktivera anslutningen. Redigera `Kravgenerering utan bilder`. Kontrollera att
@@ -2161,6 +2169,18 @@ En använd
 modellrevision kan inte avslutas eller raderas; avslut är irreversibelt och
 permanent radering kräver en separat bekräftelse. Ingen automatisk fallback
 sker.
+
+**Kompletterande överlämning och felåterhämtning (svenska och engelska):**
+Öppna en väntande verifiering, ändra namn och en teknisk parameter och stäng
+formuläret. Originalets inskickade fält ska återställas vid återöppning.
+Simulera ett förlorat sparsvar i den isolerade testmiljön. Gränssnittet ska
+förklara att sparandet kan ha lyckats och att modellistan måste laddas om och
+kontrolleras före nytt försök. Samma vägledning gäller när återförsöket får
+konflikt för ett otillgängligt försök. Bekräfta sedan uttrycklig kassering och
+kontrollera att kandidaten försvinner för alla administratörer. Ett känt
+utgånget eller konfigurationsändrat resultat ska i stället kräva ny verifiering.
+En avvisning för dubblettmodell eller ofullständig verifiering ska visa det
+vanliga åtgärdsfelet, utan att påstå att sparandet kan ha lyckats.
 
 ### ADMIN-21: Misslyckad AI-åtgärd visar åtgärd och serverfel i viewporten
 

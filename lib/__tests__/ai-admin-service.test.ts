@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
+import { createTestAiVerificationAttemptStore } from '@/lib/__tests__/fixtures/ai-verification-attempt-store'
 import type { AiAdminSecretOperations } from '@/lib/ai/admin-service'
 import {
   type AiAdminCandidateVerificationResult,
@@ -8,7 +9,7 @@ import {
   type AiAdminStoredConnectionDetail,
   AiConnectionAdministrationService,
 } from '@/lib/ai/admin-service'
-import { createAiModelVerificationAttemptStore } from '@/lib/ai/model-verification-attempts'
+import { AiModelVerificationAttemptError } from '@/lib/ai/model-verification-attempts'
 
 const capabilities = {
   reasoning: {
@@ -136,35 +137,201 @@ function harness(
   connection: AiAdminStoredConnectionDetail
   saveModelRevision: ReturnType<typeof vi.fn>
   service: AiConnectionAdministrationService
+  store: AiAdminStore
+  external: AiAdminExternalOperations
+  secrets: AiAdminSecretOperations
+  verificationAttempts: ReturnType<typeof createTestAiVerificationAttemptStore>
 } {
   const current = connection()
+  const verificationAttempts = createTestAiVerificationAttemptStore()
   const store = {
     getConnection: vi.fn(async () => current),
-    saveModelRevision,
+    activateConnection: vi.fn(async () => current),
+    recordHealth: vi.fn(async () => current),
+    saveModelRevision: (
+      input: Parameters<AiAdminStore['saveModelRevision']>[0],
+    ) =>
+      verificationAttempts.transaction(async manager => {
+        const verification = await input.verification(manager)
+        return saveModelRevision({ ...input, verification })
+      }),
   } as unknown as AiAdminStore
   const external = {
     adapterAvailability: vi.fn(() => ({ available: true })),
     authorizeConnectionTarget: vi.fn(async () => true),
     verifyModelCandidate,
+    fetchCatalog: vi.fn(async () => []),
+    probeHealth: vi.fn(async () => ({
+      health: 'healthy',
+      invalidationScope: 'none',
+    })),
   } as unknown as AiAdminExternalOperations
-  const secrets = {} as AiAdminSecretOperations
+  const secrets = {
+    availability: vi.fn(async () => ({
+      available: true,
+      secretVersionId: 'active-secret',
+    })),
+    activateCandidate: vi.fn(),
+  } as unknown as AiAdminSecretOperations
   const audit = vi.fn(async () => undefined)
   return {
     audit,
     connection: current,
+    store,
+    external,
+    secrets,
+    verificationAttempts,
     saveModelRevision,
     service: new AiConnectionAdministrationService({
-      actorKey: 'administrator-1',
       audit,
       external,
       secrets,
       store,
-      verificationAttempts: createAiModelVerificationAttemptStore(),
+      verificationAttempts,
     }),
   }
 }
 
 describe('AI administration model verification attempts', () => {
+  it('keeps non-verification operations available when pending verification loading fails', async () => {
+    const {
+      connection: current,
+      service,
+      store,
+      external,
+      secrets,
+      verificationAttempts,
+    } = harness()
+    current.authenticationType = 'static_secret'
+    current.connectionEvidenceId = randomUUID()
+    current.attestation = {
+      id: randomUUID(),
+      revisionToken: randomUUID(),
+      revisionNumber: 1,
+      status: 'valid',
+      decisionReference: 'Approved',
+      incidentResponseReference: randomUUID(),
+      isPersonalDataProcessed: false,
+      isTrainingAllowed: false,
+      maximumInformationClass: 'internal',
+      maximumRetentionDays: 0,
+      processingRegions: ['SE'],
+      providerName: 'Controlled',
+      purpose: 'Synthetic tests',
+      responsibleOrganizationUnitReference: randomUUID(),
+      reviewDueAt: null,
+      reviewedAt: new Date().toISOString(),
+      subprocessors: [],
+    }
+    const revision = {
+      agentRuntimeVersion: null,
+      connectionConfigurationVersion: current.configurationVersion,
+      declaredCapabilities: {
+        reasoning: true,
+        reasoningControl: true,
+        aiAnalysis: true,
+        cost: true,
+        imageInput: true,
+        jsonSchemaSteering: true,
+        streaming: true,
+        tokenUsage: true,
+        validatableJson: true,
+      },
+      discoveredCapabilities: null,
+      externalModelId: 'controlled/model',
+      externalModelVersion: null,
+      id: randomUUID(),
+      profileCompatibility: verification.profileCompatibility,
+      reasoning: verification.reasoning,
+      revisionNumber: 1,
+      revisionToken: randomUUID(),
+      status: 'verified' as const,
+      testSuiteVersion: verification.testSuiteVersion,
+      verifiedAt: new Date().toISOString(),
+      verifiedCapabilities: null,
+    }
+    current.models = [
+      {
+        id: randomUUID(),
+        name: 'Controlled',
+        description: null,
+        revisionToken: randomUUID(),
+        revisions: [revision],
+      },
+    ]
+    const unavailable = new AiModelVerificationAttemptError(
+      'attempt_unavailable',
+    )
+    const list = vi
+      .spyOn(verificationAttempts, 'list')
+      .mockRejectedValue(unavailable)
+
+    await service.activateSecret({
+      connectionId: current.id,
+      connectionConfigurationVersion: current.configurationVersion,
+      connectionRevisionToken: current.revisionToken,
+      secretVersionId: 'candidate-secret',
+    })
+    expect(secrets.activateCandidate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connection: expect.objectContaining({
+          activeSecret: { available: true, secretVersionId: 'active-secret' },
+          adapterAvailability: { available: true },
+        }),
+      }),
+    )
+    await expect(service.fetchCatalog(current.id)).resolves.toEqual([])
+    expect(external.fetchCatalog).toHaveBeenCalledOnce()
+    await service.probeHealth({
+      connectionId: current.id,
+      modelRevisionId: revision.id,
+      revisionToken: revision.revisionToken,
+    })
+    expect(store.recordHealth).toHaveBeenCalledWith(
+      expect.objectContaining({ health: 'healthy' }),
+    )
+    await expect(
+      service.setConnectionLifecycle({
+        connectionId: current.id,
+        revisionToken: current.revisionToken,
+        status: 'active',
+      }),
+    ).resolves.toEqual(current)
+    expect(store.activateConnection).toHaveBeenCalledWith(
+      expect.objectContaining({ secretVersionId: 'active-secret' }),
+    )
+    expect(list).not.toHaveBeenCalled()
+
+    await expect(service.getConnection(current.id)).rejects.toBe(unavailable)
+    await expect(
+      service.verifyModelCandidate({
+        connectionId: current.id,
+        candidate: {
+          externalModelId: revision.externalModelId,
+          externalModelVersion: null,
+          reasoning: verification.reasoning,
+        },
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBe(unavailable)
+    expect(external.verifyModelCandidate).not.toHaveBeenCalled()
+    await expect(
+      service.saveModelRevision({
+        connectionId: current.id,
+        modelRevision: {
+          attemptId: randomUUID(),
+          name: 'Controlled',
+          description: null,
+          modelId: null,
+          modelToken: null,
+          externalModelId: revision.externalModelId,
+          externalModelVersion: null,
+          reasoning: verification.reasoning,
+        },
+      }),
+    ).rejects.toBe(unavailable)
+  })
+
   it('does not persist a successful result returned after cancellation', async () => {
     const abortController = new AbortController()
     const verifyModelCandidate = vi.fn(async () => {
@@ -286,9 +453,10 @@ describe('AI administration model verification attempts', () => {
       },
     }
 
-    await expect(service.saveModelRevision(input)).rejects.toThrow(
-      'database unavailable',
-    )
+    await expect(service.saveModelRevision(input)).rejects.toMatchObject({
+      message: 'The model save outcome is unavailable.',
+      details: { blocker: 'attempt_unavailable' },
+    })
     await expect(service.saveModelRevision(input)).resolves.toBe(savedModel)
   })
 
@@ -338,7 +506,21 @@ describe('AI administration model verification attempts', () => {
         }),
       ).rejects.toMatchObject({ status: 409 })
     }
-    service.discardModelVerification(attempt.attemptId as string)
+    await expect(
+      service.saveModelRevision({
+        connectionId: current.id,
+        modelRevision: {
+          ...changed,
+          externalModelId: 'controlled/model',
+          modelId: randomUUID(),
+          modelToken: randomUUID(),
+        },
+      }),
+    ).rejects.toMatchObject({ details: { blocker: 'attempt_mismatch' } })
+    await service.discardModelVerification(
+      current.id,
+      attempt.attemptId as string,
+    )
 
     await expect(
       service.saveModelRevision({
@@ -366,12 +548,11 @@ describe('AI run profile authorization', () => {
       setRunProfileOperationalStatus,
     } as unknown as AiAdminStore
     const service = new AiConnectionAdministrationService({
-      actorKey: 'administrator-1',
       audit: vi.fn(async () => undefined),
       external: {} as AiAdminExternalOperations,
       secrets: {} as AiAdminSecretOperations,
       store,
-      verificationAttempts: createAiModelVerificationAttemptStore(),
+      verificationAttempts: createTestAiVerificationAttemptStore(),
     })
 
     await expect(
@@ -402,12 +583,11 @@ describe('AI run profile authorization', () => {
       authorizeRunProfile,
     } as unknown as AiAdminExternalOperations
     const service = new AiConnectionAdministrationService({
-      actorKey: 'administrator-1',
       audit: vi.fn(async () => undefined),
       external,
       secrets: {} as AiAdminSecretOperations,
       store,
-      verificationAttempts: createAiModelVerificationAttemptStore(),
+      verificationAttempts: createTestAiVerificationAttemptStore(),
     })
     const profile = {
       inactivityTimeBudgetSeconds: 300,

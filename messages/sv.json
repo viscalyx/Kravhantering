@@ -2408,6 +2408,20 @@
         "medium": "Medel",
         "high": "Hög",
         "modelDefault": "Modellens standard"
+      },
+      "pending": {
+        "title": "Väntande verifieringar",
+        "opening": "Öppnar verifieringen…",
+        "busy": "En åtgärd pågår. Vänta tills den är klar.",
+        "description": "Färdiga verifieringar delas med alla administratörer i 15 minuter. Öppna en kandidat för att granska och spara den.",
+        "open": "Granska {name}",
+        "remaining": "Giltig i ytterligare {seconds} sekunder.",
+        "expired": "Verifieringen har gått ut. Verifiera igen.",
+        "configurationChanged": "Modellens eller anslutningens konfiguration har ändrats. Verifiera igen.",
+        "discard": "Kassera verifiering",
+        "discardConfirm": "Kassera verifieringen? Det väntande arbetet tas bort för alla administratörer.",
+        "saveUncertain": "Sparandet kan ha lyckats. Ladda om modellistan och kontrollera om revisionen finns innan du försöker igen.",
+        "unavailable": "Verifieringen är inte längre tillgänglig. Ladda om modellistan och kontrollera om den redan har sparats."
       }
     },
     "applicationSettings": {
