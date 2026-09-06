@@ -59,6 +59,12 @@ Install the independent cleanup service before operational handoff. Prepare its 
 The preceding published release is the default rollback source. No routine source-list maintenance is required. To select another published release, request an explicit source during release preparation and use the resulting authenticated release only after compatibility verification succeeds.
 Pause cleanup before migration or restore. Reapply metadata permissions and complete a successful cleanup run before restoring traffic. Confirm that the next scheduled run is active. Remove the independent service explicitly during full host removal.
 <!-- operator-upgrade:source pr-1343 end -->
+
+<!-- operator-upgrade:source pr-1368 start -->
+Apply the database upgrade and reconcile runtime and cleanup permissions before starting the new application. Verify scheduled cleanup after rollout. Retain the independent cleanup deployment and its compatibility evidence during application rollback.
+Completed verifications are shared with all authorized administrators for 15 minutes. Closing a form preserves this work; explicit discard removes it for everyone. Candidates held only in an older application process must be verified again after rollout.
+If a save response is lost, reload the model list and check whether the revision exists before trying again. Candidate snapshots and their save transactions are excluded from SQL query and error-text logging; safe application outcomes and aggregate cleanup telemetry remain available.
+<!-- operator-upgrade:source pr-1368 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
