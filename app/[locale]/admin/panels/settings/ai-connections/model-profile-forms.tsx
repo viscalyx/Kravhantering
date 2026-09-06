@@ -424,7 +424,7 @@ export function ModelForm({
             ? t('pending.expired')
             : blocker === 'attempt_mismatch'
               ? t('pending.configurationChanged')
-              : response.status >= 500 || response.status === 409
+              : response.status >= 500 || blocker === 'attempt_unavailable'
                 ? t('pending.saveUncertain')
                 : t('mutationError'),
         )

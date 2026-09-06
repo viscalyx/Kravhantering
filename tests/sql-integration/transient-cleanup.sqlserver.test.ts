@@ -125,6 +125,30 @@ describe('transient cleanup against SQL Server', () => {
     }
   })
 
+  it('rejects verification cleanup applicability when expires_at is missing', async () => {
+    const connection = appDb().createQueryRunner()
+    await connection.connect()
+    await connection.startTransaction()
+    try {
+      await connection.query(
+        'SET XACT_ABORT OFF; DROP TABLE dbo.ai_model_verification_attempts; CREATE TABLE dbo.ai_model_verification_attempts (id uniqueidentifier NOT NULL PRIMARY KEY)',
+      )
+      const target = createTransientCleanupTargets(connection).find(
+        target => target.kind === 'ai_model_verification_attempts',
+      )
+      expect(target?.isApplicable).toBeDefined()
+      await expect(target?.isApplicable?.()).rejects.toThrow()
+    } finally {
+      try {
+        await connection.rollbackTransaction()
+      } catch (error) {
+        // SQL Server may already have rolled back the fixture on query failure.
+        expect(error).toMatchObject({ code: 'EABORT' })
+      }
+      await connection.release()
+    }
+  })
+
   it('detects incompatible update constraints in an empty schema', async () => {
     const connection = appDb().createQueryRunner()
     await connection.connect()

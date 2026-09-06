@@ -660,6 +660,8 @@ test.describe('Admin settings', () => {
         locale === 'sv'
           ? {
               open: 'Granska Shared model',
+              mutationError:
+                'Den administrativa AI-åtgärden kunde inte slutföras.',
               name: /^Modellnamn/,
               version: /^Extern modellversion/,
               save: 'Spara modellrevision',
@@ -675,6 +677,8 @@ test.describe('Admin settings', () => {
             }
           : {
               open: 'Review Shared model',
+              mutationError:
+                'The AI administration action could not be completed.',
               name: /^Model name/,
               version: /^External model version/,
               save: 'Save model revision',
@@ -762,6 +766,17 @@ test.describe('Admin settings', () => {
             expect(body.modelRevision.attemptId).toBe(attemptId)
             saveCount++
             if (saveCount === 1) await route.abort('failed')
+            else if (saveCount >= 5)
+              await route.fulfill({
+                status: 409,
+                json: {
+                  code: 'conflict',
+                  error:
+                    saveCount === 5
+                      ? 'A model with this name already exists.'
+                      : 'The model verification is incomplete.',
+                },
+              })
             else
               await route.fulfill({
                 status: 409,
@@ -781,87 +796,122 @@ test.describe('Admin settings', () => {
           } else await route.fulfill({ json: [] })
         },
       )
-      await page.goto(`/${locale}/admin?tab=settings`)
-      await page
-        .getByRole('button', { name: /Shared verification connection/ })
-        .click()
-      await page.getByRole('button', { name: copy.open, exact: true }).click()
       const dialog = page.getByRole('dialog').filter({
         has: page.getByRole('button', { name: copy.save, exact: true }),
       })
-      await expect(dialog.getByLabel(copy.name)).toHaveValue('Shared model')
-      await dialog.getByLabel(copy.name).fill('Local presentation edit')
-      await expect(
-        dialog.getByRole('button', { name: copy.save }),
-      ).toBeEnabled()
-      await dialog.getByLabel(copy.version).fill('edited-version')
-      await expect(
-        dialog.getByRole('button', { name: copy.save }),
-      ).toBeDisabled()
-      await dialog
-        .getByRole('button', { name: copy.close, exact: true })
-        .click()
-      await page.getByRole('button', { name: copy.open, exact: true }).click()
-      await expect(dialog.getByLabel(copy.name)).toHaveValue('Shared model')
-      await expect(dialog.getByLabel(copy.version)).toHaveValue('')
-      await dialog.getByRole('button', { name: copy.save }).click()
-      await expect(dialog.getByRole('alert')).toHaveText(copy.uncertain)
-      await dialog.getByRole('button', { name: copy.save }).click()
-      await expect(dialog.getByRole('alert')).toHaveText(copy.uncertain)
-      const refreshed = page.waitForResponse(response =>
-        response.url().endsWith(`/api/admin/ai-connections/${connectionId}`),
-      )
-      await dialog
-        .getByRole('button', { name: copy.close, exact: true })
-        .click()
-      await refreshed
-      await expect(
-        page.getByRole('button', { name: copy.open, exact: true }),
-      ).toBeVisible()
-      pending = false
-      await page.getByRole('button', { name: copy.open, exact: true }).click()
-      await expect(page.getByText(copy.unavailable)).toBeVisible()
-      await expect(dialog).toHaveCount(0)
-      pending = true
-      await page.reload()
-      await page
-        .getByRole('button', { name: /Shared verification connection/ })
-        .click()
-      for (const expectedError of [copy.expired, copy.changed]) {
+      await test.step('editing the shared candidate', async () => {
+        await page.goto(`/${locale}/admin?tab=settings`)
+        await page
+          .getByRole('button', { name: /Shared verification connection/ })
+          .click()
         await page.getByRole('button', { name: copy.open, exact: true }).click()
-        await dialog.getByRole('button', { name: copy.save }).click()
-        await expect(dialog.getByRole('alert')).toHaveText(expectedError)
+        await expect(dialog.getByLabel(copy.name)).toHaveValue('Shared model')
+        await dialog.getByLabel(copy.name).fill('Local presentation edit')
+        await expect(
+          dialog.getByRole('button', { name: copy.save }),
+        ).toBeEnabled()
+        await dialog.getByLabel(copy.version).fill('edited-version')
         await expect(
           dialog.getByRole('button', { name: copy.save }),
         ).toBeDisabled()
         await dialog
           .getByRole('button', { name: copy.close, exact: true })
           .click()
-      }
-      await page.getByRole('button', { name: copy.open, exact: true }).click()
-      await dialog
-        .getByRole('button', { name: copy.discard, exact: true })
-        .click()
-      const confirmation = page.getByRole('alertdialog', {
-        name: copy.discard,
-        exact: true,
+        await page.getByRole('button', { name: copy.open, exact: true }).click()
+        await expect(dialog.getByLabel(copy.name)).toHaveValue('Shared model')
+        await expect(dialog.getByLabel(copy.version)).toHaveValue('')
       })
-      await expect(confirmation.getByText(copy.everyone)).toBeVisible()
-      await confirmation
-        .getByRole('button', { name: copy.close, exact: true })
-        .click()
-      await expect(
-        dialog.getByRole('button', { name: copy.save }),
-      ).toBeEnabled()
-      await dialog
-        .getByRole('button', { name: copy.discard, exact: true })
-        .click()
-      await confirmation
-        .getByRole('button', { name: copy.discard, exact: true })
-        .click()
-      await expect(
-        page.getByRole('button', { name: copy.open, exact: true }),
-      ).toHaveCount(0)
+      await test.step('uncertain-save recovery', async () => {
+        await dialog.getByRole('button', { name: copy.save }).click()
+        await expect(dialog.getByRole('alert')).toHaveText(copy.uncertain)
+        await dialog.getByRole('button', { name: copy.save }).click()
+        await expect(dialog.getByRole('alert')).toHaveText(copy.uncertain)
+        const refreshed = page.waitForResponse(response =>
+          response.url().endsWith(`/api/admin/ai-connections/${connectionId}`),
+        )
+        await dialog
+          .getByRole('button', { name: copy.close, exact: true })
+          .click()
+        await refreshed
+        await expect(
+          page.getByRole('button', { name: copy.open, exact: true }),
+        ).toBeVisible()
+      })
+      await test.step('unavailable shared verification', async () => {
+        pending = false
+        await page.getByRole('button', { name: copy.open, exact: true }).click()
+        await expect(page.getByText(copy.unavailable)).toBeVisible()
+        await expect(dialog).toHaveCount(0)
+        pending = true
+        await page.reload()
+        await page
+          .getByRole('button', { name: /Shared verification connection/ })
+          .click()
+      })
+      for (const [stepName, expectedError] of [
+        ['expired verification', copy.expired],
+        ['configuration mismatch', copy.changed],
+      ] as const) {
+        await test.step(stepName, async () => {
+          await page
+            .getByRole('button', { name: copy.open, exact: true })
+            .click()
+          await dialog.getByRole('button', { name: copy.save }).click()
+          await expect(dialog.getByRole('alert')).toHaveText(expectedError)
+          await expect(
+            dialog.getByRole('button', { name: copy.save }),
+          ).toBeDisabled()
+          await dialog
+            .getByRole('button', { name: copy.close, exact: true })
+            .click()
+        })
+      }
+      await test.step('known save rejections', async () => {
+        await page.getByRole('button', { name: copy.open, exact: true }).click()
+        for (const rejection of [
+          'duplicate model',
+          'incomplete verification',
+        ]) {
+          await test.step(rejection, async () => {
+            await dialog.getByRole('button', { name: copy.save }).click()
+            await expect(dialog.getByRole('alert')).toHaveText(
+              copy.mutationError,
+            )
+            await expect(
+              dialog.getByRole('button', { name: copy.save }),
+            ).toBeEnabled()
+          })
+        }
+        await dialog
+          .getByRole('button', { name: copy.close, exact: true })
+          .click()
+      })
+      await test.step('discarding verification for every administrator', async () => {
+        await page.getByRole('button', { name: copy.open, exact: true }).click()
+        await dialog
+          .getByRole('button', { name: copy.discard, exact: true })
+          .click()
+        const confirmation = page.getByRole('alertdialog', {
+          name: copy.discard,
+          exact: true,
+        })
+        await expect(confirmation.getByText(copy.everyone)).toBeVisible()
+        await confirmation
+          .getByRole('button', { name: copy.close, exact: true })
+          .click()
+        await expect(
+          dialog.getByRole('button', { name: copy.save }),
+        ).toBeEnabled()
+        await dialog
+          .getByRole('button', { name: copy.discard, exact: true })
+          .click()
+        await confirmation
+          .getByRole('button', { name: copy.discard, exact: true })
+          .click()
+        await expect(
+          page.getByRole('button', { name: copy.open, exact: true }),
+        ).toHaveCount(0)
+      })
     })
   }
 

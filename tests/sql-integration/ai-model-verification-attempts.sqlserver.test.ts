@@ -497,62 +497,68 @@ describe('Shared completed model verifications', () => {
     }
   })
 
-  it('allows retry only after SQL resolves a crashed process transaction', async () => {
-    const db = database()
-    const store = createSqlServerAiModelVerificationAttemptStore(db, parse)
-    const connectionId = await createConnection()
-    const attempt = await store.create({
-      connectionId,
-      fingerprint: 'a'.repeat(64),
-      result: { saveable: true },
-    })
-    const input = {
-      connectionId,
-      attemptId: attempt.id,
-      fingerprint: 'a'.repeat(64),
-    }
-    const child = fork(
-      new URL('./helpers/verification-crash-worker.mjs', import.meta.url),
-      [],
-      { stdio: ['ignore', 'ignore', 'ignore', 'ipc'], execArgv: [] },
-    )
-    try {
-      const ready = once(child, 'message')
-      child.send({
-        options: {
-          ...db.options,
-          entities: [],
-          migrations: [],
-          subscribers: [],
-        },
-        attemptId: attempt.id,
+  it.each(['parent kill', 'watchdog'] as const)(
+    'allows retry only after SQL resolves a crashed process transaction (%s)',
+    async termination => {
+      const db = database()
+      const store = createSqlServerAiModelVerificationAttemptStore(db, parse)
+      const connectionId = await createConnection()
+      const attempt = await store.create({
+        connectionId,
+        fingerprint: 'a'.repeat(64),
+        result: { saveable: true },
       })
-      expect((await ready)[0]).toBe('reserved')
-      await expect(
-        db.transaction(manager => store.consume(input, manager)),
-      ).rejects.toMatchObject({ code: 'attempt_unavailable' })
-      const exited = once(child, 'exit')
-      child.kill('SIGKILL')
-      await exited
-      await expect
-        .poll(
-          async () => {
-            try {
-              await db.transaction(manager => store.consume(input, manager))
-              return 'consumed'
-            } catch {
-              return 'unavailable'
-            }
+      const input = {
+        connectionId,
+        attemptId: attempt.id,
+        fingerprint: 'a'.repeat(64),
+      }
+      const child = fork(
+        new URL('./helpers/verification-crash-worker.mjs', import.meta.url),
+        [],
+        { stdio: ['ignore', 'ignore', 'ignore', 'ipc'], execArgv: [] },
+      )
+      try {
+        const ready = once(child, 'message')
+        child.send({
+          options: {
+            ...db.options,
+            entities: [],
+            migrations: [],
+            subscribers: [],
           },
-          { timeout: 5000 },
+          attemptId: attempt.id,
+        })
+        expect((await ready)[0]).toBe('reserved')
+        await expect(
+          db.transaction(manager => store.consume(input, manager)),
+        ).rejects.toMatchObject({ code: 'attempt_unavailable' })
+        const exited = once(child, 'exit')
+        if (termination === 'parent kill') child.kill('SIGKILL')
+        else child.disconnect()
+        expect(await exited).toEqual(
+          termination === 'parent kill' ? [null, 'SIGKILL'] : [1, null],
         )
-        .toBe('consumed')
-      expect(await store.list(connectionId)).toEqual([])
-    } finally {
-      if (child.exitCode === null && child.signalCode === null)
-        child.kill('SIGKILL')
-    }
-  })
+        await expect
+          .poll(
+            async () => {
+              try {
+                await db.transaction(manager => store.consume(input, manager))
+                return 'consumed'
+              } catch {
+                return 'unavailable'
+              }
+            },
+            { timeout: 5000 },
+          )
+          .toBe('consumed')
+        expect(await store.list(connectionId)).toEqual([])
+      } finally {
+        if (child.exitCode === null && child.signalCode === null)
+          child.kill('SIGKILL')
+      }
+    },
+  )
   it('rejects serialized payload overflow before accepting any shared work', async () => {
     const db = database()
     const store = createSqlServerAiModelVerificationAttemptStore(

@@ -7,6 +7,7 @@ import {
 import type { SqlServerDatabase, SqlServerEntityManager } from '@/lib/db'
 
 export const AI_VERIFICATION_PAYLOAD_MAX_BYTES = 65_536
+const AI_VERIFICATION_MAX_PENDING_ATTEMPTS = 512
 
 interface AttemptRow {
   connectionId: string
@@ -60,7 +61,7 @@ export function createSqlServerAiModelVerificationAttemptStore<TResult>(
         const counts = await manager.query<{ count: number }[]>(`
           SELECT COUNT(*) AS count FROM [ai_model_verification_attempts] WITH (READCOMMITTEDLOCK)
           WHERE [expires_at] > SYSUTCDATETIME()`)
-        if (counts[0].count >= 512)
+        if (counts[0].count >= AI_VERIFICATION_MAX_PENDING_ATTEMPTS)
           throw new AiModelVerificationAttemptError('attempt_capacity')
         const rows = await manager.query<AttemptRow[]>(
           `
@@ -77,7 +78,7 @@ export function createSqlServerAiModelVerificationAttemptStore<TResult>(
     async list(connectionId) {
       const rows = await db.query<AttemptRow[]>(
         `
-        SELECT TOP (512) ${COLUMNS} FROM [ai_model_verification_attempts]
+        SELECT TOP (${AI_VERIFICATION_MAX_PENDING_ATTEMPTS}) ${COLUMNS} FROM [ai_model_verification_attempts]
         WHERE [ai_connection_id] = @0 AND [expires_at] > SYSUTCDATETIME()
         ORDER BY [expires_at], [id]`,
         [connectionId],

@@ -915,6 +915,9 @@ describe('Admin AI model and stable-profile forms', () => {
     ['attempt_mismatch', 'pending.configurationChanged'],
     ['attempt_unavailable', 'pending.saveUncertain'],
     ['transport', 'pending.saveUncertain'],
+    ['server_error', 'pending.saveUncertain'],
+    ['duplicate_model', 'mutationError'],
+    ['incomplete_verification', 'mutationError'],
   ])(
     'restores shared evidence and gives safe recovery for %s',
     async (blocker, message) => {
@@ -942,8 +945,18 @@ describe('Admin AI model and stable-profile forms', () => {
       else
         fetchMock.mockResolvedValueOnce(
           Response.json(
-            { error: 'secret database text', details: { blocker } },
-            { status: 409 },
+            {
+              error: 'secret database text',
+              details: {
+                blocker: [
+                  'duplicate_model',
+                  'incomplete_verification',
+                ].includes(blocker)
+                  ? undefined
+                  : blocker,
+              },
+            },
+            { status: blocker === 'server_error' ? 503 : 409 },
           ),
         )
       render(

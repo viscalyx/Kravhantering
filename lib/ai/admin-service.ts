@@ -734,11 +734,17 @@ export class AiConnectionAdministrationService {
     return this.#store.listRunProfiles()
   }
 
-  async getConnection(connectionId: string): Promise<AiAdminConnectionDetail> {
+  async #getConnectionDetail(
+    connectionId: string,
+  ): Promise<AiAdminConnectionDetail> {
     const connection = await this.#store.getConnection(connectionId)
     if (!connection) throw notFoundError('AI connection not found.')
+    return this.#withSecretAvailability(connection)
+  }
+
+  async getConnection(connectionId: string): Promise<AiAdminConnectionDetail> {
     return {
-      ...(await this.#withSecretAvailability(connection)),
+      ...(await this.#getConnectionDetail(connectionId)),
       pendingVerifications: await this.#verificationAttempts.list(connectionId),
     }
   }
@@ -816,7 +822,7 @@ export class AiConnectionAdministrationService {
     connectionRevisionToken: string
     secretVersionId: string
   }): Promise<AiProviderSecretVersionMetadata> {
-    const connection = await this.getConnection(input.connectionId)
+    const connection = await this.#getConnectionDetail(input.connectionId)
     if (
       connection.configurationVersion !==
         input.connectionConfigurationVersion ||
@@ -858,7 +864,7 @@ export class AiConnectionAdministrationService {
   async fetchCatalog(
     connectionId: string,
   ): Promise<readonly AiAdminCatalogItem[]> {
-    const connection = await this.getConnection(connectionId)
+    const connection = await this.#getConnectionDetail(connectionId)
     await this.#assertAuthorizedTarget(connection)
     const catalog = await this.#external.fetchCatalog(connection)
     await this.#audit({
@@ -950,7 +956,7 @@ export class AiConnectionAdministrationService {
     modelRevisionId: string
     revisionToken: string
   }): Promise<AiAdminConnectionDetail> {
-    const connection = await this.getConnection(input.connectionId)
+    const connection = await this.#getConnectionDetail(input.connectionId)
     const modelRevision = connection.models
       .flatMap(model => model.revisions)
       .find(revision => revision.id === input.modelRevisionId)
@@ -1129,7 +1135,7 @@ export class AiConnectionAdministrationService {
       if (!updated) activationConflict()
       return updated
     }
-    const connection = await this.getConnection(input.connectionId)
+    const connection = await this.#getConnectionDetail(input.connectionId)
     assertNoBlockers(connectionBlockers(connection))
     const modelRevision = connection.models
       .flatMap(model => model.revisions)

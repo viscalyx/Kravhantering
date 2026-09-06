@@ -21,7 +21,9 @@ process.once('message', async ({ options, attemptId }) => {
       [attemptId],
     )
     process.send?.('reserved')
-    // The parent kills this process while its SQL transaction is still open.
+    // Bound the open transaction even if the parent disappears before killing us.
+    setTimeout(() => process.exit(1), 30_000).unref()
+    // The parent normally kills this process while its SQL transaction is open.
   } catch {
     process.send?.('failed')
     process.exitCode = 1

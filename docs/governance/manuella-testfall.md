@@ -2179,6 +2179,8 @@ kontrolleras före nytt försök. Samma vägledning gäller när återförsöket
 konflikt för ett otillgängligt försök. Bekräfta sedan uttrycklig kassering och
 kontrollera att kandidaten försvinner för alla administratörer. Ett känt
 utgånget eller konfigurationsändrat resultat ska i stället kräva ny verifiering.
+En avvisning för dubblettmodell eller ofullständig verifiering ska visa det
+vanliga åtgärdsfelet, utan att påstå att sparandet kan ha lyckats.
 
 ### ADMIN-21: Misslyckad AI-åtgärd visar åtgärd och serverfel i viewporten
 
