@@ -2243,7 +2243,7 @@
         "title": "AI connections"
       },
       "modelVerification": {
-        "capabilities": "Verified capabilities",
+        "capabilities": "Capabilities",
         "capabilitiesHelp": "Reasoning activity is mandatory. Explicit control is required only for the explicit path. Visible AI analysis and other optional capabilities may be unavailable or inconclusive.",
         "cancelVerification": "Cancel verification",
         "checks": {
@@ -2282,7 +2282,7 @@
           "request_rejected": "The provider rejected the verification request."
         },
         "missingSecret": "Verification could not run because the connection has no usable secret.",
-        "notSaveable": "The model cannot be saved. Resolve inconclusive checks and verify again.",
+        "notSaveable": "The model revision cannot be saved. Review the checks above and verify again.",
         "outcomes": {
           "inconclusive": "Could not determine",
           "notChecked": "Not tested",
@@ -2299,7 +2299,30 @@
         "supported": "Supported",
         "technicalCode": "Technical code: {code}",
         "unsupported": "Unsupported – missing {capabilities}",
-        "verify": "Verify"
+        "verify": "Verify",
+        "title": "Model verification",
+        "intro": "Verify the model’s capabilities and compatibility with run profiles.",
+        "basicChecks": "Basic checks",
+        "unknownCompatibility": "Unknown compatibility",
+        "compatible": "Compatible",
+        "incompatible": "Not compatible",
+        "missingCapabilities": "Missing verified capabilities: {capabilities}.",
+        "running": "Verifying",
+        "waiting": "Waiting",
+        "verifyAgain": "Verify again",
+        "startSummary": "Start verification to see whether the model revision can be saved.",
+        "runningSummary": "Verification is in progress. Wait for the final result before saving.",
+        "interruptedSummary": "Verification did not finish. Completed checks are shown above. Verify again before saving the model revision.",
+        "incompleteStream": "The connection closed before verification finished.",
+        "phases": {
+          "idle": "Not started",
+          "running": "Verification in progress",
+          "completed": "Verification complete",
+          "cancelled": "Verification cancelled",
+          "failed": "Verification interrupted"
+        },
+        "enterModelId": "Enter the external model ID to start verification.",
+        "saveInProgress": "Wait until the model revision has finished saving."
       },
       "directProfile": {
         "activeChangeNotice": "Saved changes take effect immediately for new runs. Runs already in progress keep the configuration captured when they started.",

@@ -651,10 +651,13 @@ test.describe('Admin settings', () => {
     })
   })
 
-  for (const viewport of [{ ...DESKTOP_VIEWPORT, name: 'desktop' }] as const) {
+  for (const viewport of [
+    { ...DESKTOP_VIEWPORT, name: 'desktop' },
+    { ...DESKTOP_VIEWPORT, name: 'desktop dark' },
+  ] as const) {
     test(`ADMIN-20 (${viewport.name}): Admin verifies a model and controls a stable AI profile`, async ({
       page,
-    }) => {
+    }, testInfo) => {
       test.setTimeout(180_000)
       const cleanup = await prepareAdmin20Fixture()
       const administrationName = ADMIN_20_CONNECTION_NAME
@@ -663,6 +666,19 @@ test.describe('Admin settings', () => {
       try {
         await page.setViewportSize(viewport)
         await page.goto('/sv/admin?tab=settings')
+        if (viewport.name === 'desktop dark') {
+          const themeToggle = page.getByRole('button', { name: /^Växla tema/ })
+          for (let clicks = 0; clicks < 3; clicks++) {
+            if (
+              await page
+                .locator('html')
+                .evaluate(el => el.classList.contains('dark'))
+            )
+              break
+            await themeToggle.click()
+          }
+          await expect(page.locator('html')).toHaveClass(/dark/)
+        }
         const settings = page.locator('#settings-panel')
         await expect(
           settings.locator(':scope > div[aria-busy]').first(),
@@ -808,10 +824,76 @@ test.describe('Admin settings', () => {
             await dialog.getByLabel(/^Extern modellversion/).fill('2026-08-22')
             await expect(
               dialog.getByText('Inte testad', { exact: true }),
-            ).toHaveCount(9)
+            ).toHaveCount(11)
             await expect(
               dialog.getByRole('button', { name: 'Spara modellrevision' }),
             ).toBeDisabled()
+
+            const initialPanel = dialog.getByRole('region', {
+              name: 'Modellverifiering',
+            })
+            await expect(initialPanel.getByRole('group')).toHaveCount(3)
+            await expect(
+              initialPanel.getByText('Okänd kompatibilitet', { exact: true }),
+            ).toHaveCount(3)
+            await expect(
+              initialPanel
+                .getByRole('button', { name: 'Verifiera', exact: true })
+                .locator('svg'),
+            ).toHaveClass(/lucide-play/)
+            await expect(initialPanel).toHaveAttribute(
+              'data-developer-mode-name',
+              'AI model verification panel',
+            )
+            await expect(
+              initialPanel.locator(
+                '[data-developer-mode-name="AI model verification summary"]',
+              ),
+            ).toHaveCount(1)
+            const layout = dialog.locator('form')
+            await expect(layout).toHaveCSS(
+              'grid-template-columns',
+              /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px$/,
+            )
+            const fields = dialog.locator(
+              '[data-developer-mode-name="AI model fields"]',
+            )
+            const actions = dialog.locator(
+              '[data-developer-mode-name="AI model form actions"]',
+            )
+            const fieldsBox = await fields.boundingBox()
+            const panelBox = await initialPanel.boundingBox()
+            const actionsBox = await actions.boundingBox()
+            if (!fieldsBox || !panelBox || !actionsBox)
+              throw new Error('Model layout is missing')
+            expect(panelBox.x).toBeGreaterThan(fieldsBox.x + fieldsBox.width)
+            expect(actionsBox.y).toBeLessThan(panelBox.y + panelBox.height)
+            await dialog.screenshot({
+              path: testInfo.outputPath('model-verification-desktop.png'),
+            })
+            for (const width of [375, 320]) {
+              await page.setViewportSize({ width, height: 900 })
+              await expect(layout).toHaveCSS(
+                'grid-template-columns',
+                /^\d+(?:\.\d+)?px$/,
+              )
+              await expect
+                .poll(() =>
+                  dialog.evaluate(el => el.scrollWidth <= el.clientWidth),
+                )
+                .toBe(true)
+              await expect
+                .poll(() =>
+                  page.evaluate(
+                    () => document.documentElement.scrollWidth <= innerWidth,
+                  ),
+                )
+                .toBe(true)
+            }
+            await dialog.screenshot({
+              path: testInfo.outputPath('model-verification-narrow.png'),
+            })
+            await page.setViewportSize(viewport)
 
             await dialog
               .getByLabel(/^Externt modell-id/)
@@ -860,6 +942,11 @@ test.describe('Admin settings', () => {
               await expect(
                 dialog.getByRole('button', { name: 'Avbryt verifiering' }),
               ).toBeVisible()
+              await expect(
+                dialog
+                  .getByRole('button', { name: 'Avbryt verifiering' })
+                  .locator('svg'),
+              ).toHaveClass(/lucide-square/)
               await dialog
                 .getByRole('button', { name: 'Avbryt verifiering' })
                 .click()
@@ -868,42 +955,159 @@ test.describe('Admin settings', () => {
               await page.unroute(verificationRoute, delayedVerification)
             }
             await expect(
-              dialog.getByRole('button', { name: 'Verifiera' }),
-            ).toBeVisible()
-
-            await dialog.getByRole('button', { name: 'Verifiera' }).click()
+              dialog.getByRole('button', {
+                name: 'Verifiera igen',
+                exact: true,
+              }),
+            ).toBeEnabled()
+            const panel = dialog.getByRole('region', {
+              name: 'Modellverifiering',
+            })
             await expect(
-              dialog.getByText(
+              panel.getByText('Verifieringen avbröts', { exact: true }),
+            ).toHaveCount(1)
+            await expect(panel.locator('.animate-spin')).toHaveCount(0)
+            await expect(
+              panel.getByText('Okänd kompatibilitet', { exact: true }),
+            ).toHaveCount(3)
+            await test.step('interrupted transport and mixed profile evidence', async () => {
+              const failedTransport = async (route: Route) => {
+                if (
+                  route.request().postDataJSON().action !==
+                  'verify_model_candidate'
+                )
+                  return route.continue()
+                await route.abort('failed')
+              }
+              await page.route(verificationRoute, failedTransport)
+              try {
+                await panel
+                  .getByRole('button', { name: 'Verifiera igen', exact: true })
+                  .click()
+                await expect(
+                  panel.getByText('Verifieringen avbröts av ett fel', {
+                    exact: true,
+                  }),
+                ).toHaveCount(1)
+                await expect(panel.locator('.animate-spin')).toHaveCount(0)
+                await expect(
+                  dialog.getByRole('button', { name: 'Spara modellrevision' }),
+                ).toBeDisabled()
+              } finally {
+                await page.unroute(verificationRoute, failedTransport)
+              }
+              const mixedResult = async (route: Route) => {
+                if (
+                  route.request().postDataJSON().action !==
+                  'verify_model_candidate'
+                )
+                  return route.continue()
+                const response = await route.fetch()
+                const messages = (await response.text())
+                  .trim()
+                  .split('\n')
+                  .map(line => JSON.parse(line))
+                const completed = messages.find(message => message.result)
+                if (!completed)
+                  throw new Error('Missing model verification result')
+                const result = completed.result
+                result.saveable = false
+                result.attemptId = null
+                result.capabilities.aiAnalysis = {
+                  outcome: 'inconclusive',
+                  failureCategory: 'rate_limited',
+                  diagnosticCode: 'upstream_rate_limited_http_429',
+                }
+                result.capabilities.imageInput = {
+                  outcome: 'not_verified',
+                  failureCategory: 'capability_mismatch',
+                  diagnosticCode: 'image_input_not_observed',
+                }
+                result.profileCompatibility.generation_without_images = {
+                  outcome: 'inconclusive',
+                  supported: false,
+                  missingCapabilities: [],
+                  failureCategory: 'rate_limited',
+                  diagnosticCode: 'upstream_rate_limited_http_429',
+                }
+                result.profileCompatibility.generation_with_images = {
+                  outcome: 'not_verified',
+                  supported: false,
+                  missingCapabilities: ['imageInput'],
+                  failureCategory: null,
+                  diagnosticCode: null,
+                }
+                result.profileCompatibility.invalid_json_repair = {
+                  outcome: 'not_checked',
+                  supported: false,
+                  missingCapabilities: [],
+                  failureCategory: null,
+                  diagnosticCode: null,
+                }
+                await route.fulfill({
+                  response,
+                  body: `${messages.map(message => JSON.stringify(message)).join('\n')}\n`,
+                })
+              }
+              await page.route(verificationRoute, mixedResult)
+              try {
+                await panel
+                  .getByRole('button', { name: 'Verifiera igen', exact: true })
+                  .click()
+                const profiles = panel.getByRole('group', {
+                  name: 'Kompatibilitet med körprofiler',
+                })
+                await expect(
+                  profiles.getByText('Kunde inte avgöras', { exact: true }),
+                ).toHaveCount(1)
+                await expect(
+                  profiles.getByText('Inte kompatibel', { exact: true }),
+                ).toHaveCount(1)
+                await expect(
+                  profiles.getByText('Okänd kompatibilitet', { exact: true }),
+                ).toHaveCount(1)
+                await expect(profiles).toContainText(
+                  'Saknar verifierade förmågor: Bildindata.',
+                )
+                await expect(profiles).toContainText(
+                  'upstream_rate_limited_http_429',
+                )
+                await expect(panel.locator('dt')).toHaveCount(14)
+                await expect(panel.locator('.animate-spin')).toHaveCount(0)
+                await expect(
+                  panel.getByRole('button', {
+                    name: 'Verifiera igen',
+                    exact: true,
+                  }),
+                ).toBeFocused()
+                await expect(
+                  dialog.getByRole('button', { name: 'Spara modellrevision' }),
+                ).toBeDisabled()
+              } finally {
+                await page.unroute(verificationRoute, mixedResult)
+              }
+            })
+            await panel
+              .getByRole('button', { name: 'Verifiera igen', exact: true })
+              .click()
+            await expect(
+              panel.getByText(
                 'Verifieringen är klar. Granska resultatet och spara modellrevisionen separat.',
               ),
-            ).toBeVisible()
+            ).toHaveCount(1)
             await expect(
-              dialog.getByText('Verifierad', { exact: true }),
+              panel.getByText('Verifierad', { exact: true }),
             ).toHaveCount(11)
             await expect(
-              dialog.getByText('Kravgenerering utan bilder: Stöds'),
-            ).toBeVisible()
+              panel.getByText('Kompatibel', { exact: true }),
+            ).toHaveCount(3)
+            await expect(panel.locator('dt')).toHaveCount(14)
             await expect(
-              dialog
-                .getByRole('group', { name: 'Verifieringsförlopp' })
-                .getByRole('listitem'),
-            ).toHaveText([
-              /Anslutning och autentisering — Verifierad/,
-              /Grundläggande modellåtkomst — Verifierad/,
-              /Resonemangsaktivitet — Verifierad/,
-              /Uttrycklig resonemangsstyrning — Verifierad/,
-              /Förmåga: AI-analys — Verifierad/,
-              /Förmåga: kostnad — Verifierad/,
-              /Förmåga: bildindata — Verifierad/,
-              /Förmåga: styrning med JSON-schema — Verifierad/,
-              /Förmåga: strömning — Verifierad/,
-              /Förmåga: tokenanvändning — Verifierad/,
-              /Förmåga: validerbar JSON — Verifierad/,
-              /Körprofil: generering utan bilder — Verifierad/,
-              /Körprofil: generering med bilder — Verifierad/,
-              /Körprofil: reparation av ogiltig JSON — Verifierad/,
-              /Slutsammanfattning — Verifierad/,
-            ])
+              panel.getByRole('button', {
+                name: 'Verifiera igen',
+                exact: true,
+              }),
+            ).toBeFocused()
             return {
               modelDialog: dialog,
               saveModelRevision: dialog.getByRole('button', {
@@ -916,12 +1120,16 @@ test.describe('Admin settings', () => {
             .getByLabel(/^Modellnamn/)
             .fill(`${modelName} presentation`)
           await expect(saveModelRevision).toBeEnabled()
+          await modelDialog
+            .getByLabel(/^Modellbeskrivning/)
+            .fill('Beskrivning för modellverifiering')
+          await expect(saveModelRevision).toBeEnabled()
           await modelDialog.getByLabel(/^Modellnamn/).fill(modelName)
           await modelDialog.getByLabel(/^Resonemangsnivå/).selectOption('low')
           await expect(saveModelRevision).toBeDisabled()
           await expect(
             modelDialog.getByText('Inte testad', { exact: true }),
-          ).toHaveCount(9)
+          ).toHaveCount(11)
           await modelDialog
             .getByLabel(/^Resonemangsnivå/)
             .selectOption('medium')

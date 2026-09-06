@@ -2243,7 +2243,7 @@
         "title": "AI-anslutningar"
       },
       "modelVerification": {
-        "capabilities": "Verifierade förmågor",
+        "capabilities": "Förmågor",
         "capabilitiesHelp": "Resonemangsaktivitet är obligatorisk. Uttrycklig styrning krävs endast för den uttryckliga vägen. Visningsbar AI-analys och andra valfria förmågor kan saknas eller vara oavgjorda.",
         "cancelVerification": "Avbryt verifiering",
         "checks": {
@@ -2282,7 +2282,7 @@
           "request_rejected": "Leverantören avvisade verifieringsanropet."
         },
         "missingSecret": "Kunde inte verifieras eftersom anslutningen saknar en användbar hemlighet.",
-        "notSaveable": "Modellen kan inte sparas. Åtgärda oavgjorda kontroller och verifiera igen.",
+        "notSaveable": "Modellrevisionen kan inte sparas. Granska kontrollerna ovan och verifiera igen.",
         "outcomes": {
           "inconclusive": "Kunde inte avgöras",
           "notChecked": "Inte testad",
@@ -2299,7 +2299,30 @@
         "supported": "Stöds",
         "technicalCode": "Teknisk kod: {code}",
         "unsupported": "Stöds inte – saknar {capabilities}",
-        "verify": "Verifiera"
+        "verify": "Verifiera",
+        "title": "Modellverifiering",
+        "intro": "Verifiera modellens förmågor och kompatibilitet med körprofiler.",
+        "basicChecks": "Grundkontroller",
+        "unknownCompatibility": "Okänd kompatibilitet",
+        "compatible": "Kompatibel",
+        "incompatible": "Inte kompatibel",
+        "missingCapabilities": "Saknar verifierade förmågor: {capabilities}.",
+        "running": "Verifierar",
+        "waiting": "Väntar",
+        "verifyAgain": "Verifiera igen",
+        "startSummary": "Starta verifieringen för att se om modellrevisionen kan sparas.",
+        "runningSummary": "Verifieringen pågår. Vänta på slutresultatet innan du sparar.",
+        "interruptedSummary": "Verifieringen slutfördes inte. Slutförda kontroller visas ovan. Verifiera igen innan du sparar modellrevisionen.",
+        "incompleteStream": "Anslutningen stängdes innan verifieringen slutfördes.",
+        "phases": {
+          "idle": "Inte startad",
+          "running": "Verifiering pågår",
+          "completed": "Verifieringen är klar",
+          "cancelled": "Verifieringen avbröts",
+          "failed": "Verifieringen avbröts av ett fel"
+        },
+        "enterModelId": "Ange externt modell-id för att starta verifieringen.",
+        "saveInProgress": "Vänta tills modellrevisionen har sparats."
       },
       "directProfile": {
         "activeChangeNotice": "Sparade ändringar börjar gälla direkt för nya körningar. Pågående körningar behåller konfigurationen som togs när de startade.",

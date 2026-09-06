@@ -2106,26 +2106,39 @@ bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
    region `SE`, informationsklass `internal`, noll dagars lagring, inga
    personuppgifter, ingen leverantörsträning, aktuell granskningstid och ett
    framtida granskningsdatum.
-3. Välj `Lägg till modell`. Ange namn, `controlled/model` och en fast extern
-   version. Kontrollera att samtliga nio förmågor först visas skrivskyddade som
-   `Inte testad` och att modellrevisionen inte kan sparas. Prova sedan
+3. Välj `Lägg till modell`. Kontrollera att panelen `Modellverifiering` är
+   expanderad med grundkontroller, nio förmågor och tre körprofiler. De elva
+   grund- och förmågekontrollerna visar `Inte testad`; profilerna visar
+   `Okänd kompatibilitet`. Ange namn, `controlled/model` och en fast extern
+   version. Modellrevisionen kan ännu inte sparas. Prova sedan
    `controlled/default-no-analysis`, verifiera och kontrollera att adaptern
    väljer `Modellens standard`, utan nivåväljare, samt att sparande tillåts
    även utan visningsbar AI-analys. Byt tillbaka till `controlled/model` och
    kontrollera att `Hög` förväljs inför den nya verifieringen.
-4. Välj `Verifiera`. Kontrollera att förloppet strömmas i ordningen anslutning,
-   grundläggande modellåtkomst, varje förmåga, de tre fasta körprofilerna och
-   slutsammanfattningen. Kontrollera att `Avbryt verifiering` visas medan
-   arbetet pågår. Efter lyckat resultat ska varje förmåga ha ett tydligt utfall,
-   kompatibiliteten per körprofil visas och `Spara modellrevision` aktiveras.
-   Om en förmåga inte kan observeras i leverantörssvaret ska orsaken beskriva
-   just detta och inte påstå att leverantören uttryckligen avvisade förmågan.
-5. Ändra modellnamnet och kontrollera att resultatet finns kvar. Kontrollera
-   att resonemangsnivån är `Hög`. Välj `Låg` och kontrollera att resultatet
-   rensas och att ny verifiering krävs. Välj `Medel`, verifiera igen och spara
-   revisionen. Kontrollera `Resonemangsnivå: Medel` och statusen
-   `Verifierad` och att inget separat modellutkast eller separat
-   aktiveringssteg visas.
+4. Välj `Verifiera` med Play-ikon i panelens rubrikrad. Samma rader uppdateras
+   i ordningen anslutning, grundläggande modellåtkomst, förmågor och profiler.
+   Återstående kontroller visar `Väntar`, aktiv kontroll `Verifierar` med
+   snurrande ikon. Profiler behåller okänd kompatibilitet tills de avgjorts.
+   Välj `Avbryt verifiering` med Square-ikon. Inga kontroller är längre
+   pågående; slutförda delresultat bevaras och sparande är spärrat. Knappen
+   heter `Verifiera igen`. Prova även ett transportfel och ett blandat
+   slutresultat med oavgjord, inkompatibel och ej kontrollerad profil.
+   Kontrollera `Kunde inte avgöras`, `Inte kompatibel` respektive
+   `Okänd kompatibilitet`, med felorsak, teknisk kod och saknade förmågor vid
+   rätt rad. Oobserverad förmåga får inte beskrivas som uttryckligen avvisad.
+   Verifiera igen med lyckat resultat: elva kontroller visar `Verifierad`,
+   tre profiler `Kompatibel` och en enda slutsammanfattning anger att
+   modellrevisionen kan sparas separat. Raderna finns kvar på samma plats.
+   Använd tangentbordet och kontrollera att fokus ligger kvar på knappen
+   och att hjälpmedel får statusuppdateringar utan fokusflytt.
+5. Ändra modellnamn och beskrivning och kontrollera att resultatet finns kvar.
+   Kontrollera att resonemangsnivån är `Hög`. Välj `Låg`: resultatet rensas,
+   panelen behåller alla startstatusar och ny verifiering krävs. Tekniskt
+   modell-id och extern modellversion återställer också verifieringen.
+   Välj `Medel`, verifiera igen och spara revisionen med
+   `Spara modellrevision` vid `Avbryt` under fälten. Kontrollera
+   `Resonemangsnivå: Medel` och statusen `Verifierad` och att inget separat
+   modellutkast eller separat aktiveringssteg visas.
 6. Aktivera anslutningen. Redigera `Kravgenerering utan bilder`. Kontrollera att
    inkompatibla, avslutade eller ersättningskrävande revisioner visas
    inaktiverade med orsak, att den senaste användbara revisionen per modell är

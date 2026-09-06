@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -313,6 +314,207 @@ describe('Admin AI model and stable-profile forms', () => {
     vi.stubGlobal('fetch', fetchMock)
   })
 
+  it('opens one expanded verification panel with every check and unknown profile compatibility', () => {
+    render(
+      <ModelForm
+        connection={connection()}
+        model={null}
+        onCancel={vi.fn()}
+        onComplete={vi.fn()}
+      />,
+    )
+    const panel = screen.getByRole('region', {
+      name: 'admin.aiConnections.modelVerification.title',
+    })
+    expect(
+      within(panel).getAllByText(
+        'admin.aiConnections.modelVerification.outcomes.notChecked',
+      ),
+    ).toHaveLength(11)
+    expect(
+      within(panel).getAllByText(
+        'admin.aiConnections.modelVerification.unknownCompatibility',
+      ),
+    ).toHaveLength(3)
+    expect(within(panel).getAllByRole('group')).toHaveLength(3)
+    expect(
+      within(panel).getByRole('button', {
+        name: 'admin.aiConnections.modelVerification.verify',
+      }),
+    ).toBeDisabled()
+    expect(
+      within(panel).getByRole('button', {
+        name: 'admin.aiConnections.modelVerification.verify',
+      }),
+    ).toHaveAttribute(
+      'title',
+      'admin.aiConnections.modelVerification.enterModelId',
+    )
+    expect(panel).toHaveAttribute(
+      'data-developer-mode-name',
+      'AI model verification panel',
+    )
+    expect(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.modelVerification.saveRevision',
+      }),
+    ).toBeDisabled()
+  })
+
+  it('updates stable rows from streamed checks and distinguishes inconclusive and unknown profiles', async () => {
+    let stream!: ReadableStreamDefaultController<Uint8Array>
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            stream = controller
+          },
+        }),
+      ),
+    )
+    render(
+      <ModelForm
+        connection={connection()}
+        model={null}
+        onCancel={vi.fn()}
+        onComplete={vi.fn()}
+      />,
+    )
+    const user = userEvent.setup()
+    await user.type(
+      screen.getByLabelText(
+        /^admin.aiConnections.fields.externalModelId.label/,
+      ),
+      'controlled/model',
+    )
+    const panel = screen.getByRole('region', {
+      name: 'admin.aiConnections.modelVerification.title',
+    })
+    const reasoningRow = within(panel)
+      .getByText('admin.aiConnections.capabilities.reasoning')
+      .closest('div')
+    await user.click(
+      within(panel).getByRole('button', {
+        name: 'admin.aiConnections.modelVerification.verify',
+      }),
+    )
+    const send = async (message: unknown) => {
+      await act(async () =>
+        stream.enqueue(
+          new TextEncoder().encode(`${JSON.stringify(message)}\n`),
+        ),
+      )
+    }
+    await send({
+      type: 'progress',
+      progress: {
+        check: 'capability:reasoning',
+        state: 'running',
+        outcome: 'not_checked',
+        diagnosticCode: null,
+        failureCategory: null,
+      },
+    })
+    expect(reasoningRow).toHaveTextContent(
+      'admin.aiConnections.modelVerification.running',
+    )
+    expect(panel.querySelectorAll('.animate-spin')).toHaveLength(1)
+    expect(
+      within(panel).getAllByText(
+        'admin.aiConnections.modelVerification.unknownCompatibility',
+      ),
+    ).toHaveLength(3)
+    await send({
+      type: 'progress',
+      progress: {
+        check: 'capability:reasoning',
+        state: 'completed',
+        outcome: 'verified',
+        diagnosticCode: null,
+        failureCategory: null,
+      },
+    })
+    expect(reasoningRow).toHaveTextContent(
+      'admin.aiConnections.modelVerification.outcomes.verified',
+    )
+    await send({
+      type: 'progress',
+      progress: {
+        check: 'profile:generation_without_images',
+        state: 'completed',
+        outcome: 'verified',
+        diagnosticCode: null,
+        failureCategory: null,
+      },
+    })
+    const profiles = within(panel).getByRole('group', {
+      name: 'admin.aiConnections.modelVerification.compatibility',
+    })
+    expect(
+      within(profiles).getAllByText(
+        'admin.aiConnections.modelVerification.compatible',
+      ),
+    ).toHaveLength(1)
+    const messages = (await verificationResponse().text()).trim().split('\n')
+    const final = JSON.parse(messages.at(-1) ?? '')
+    final.result.profileCompatibility = {
+      generation_without_images: {
+        ...compatibility.generation_without_images,
+        supported: false,
+        outcome: 'inconclusive',
+        failureCategory: 'rate_limited',
+        diagnosticCode: 'upstream_rate_limited_http_429',
+      },
+      generation_with_images: {
+        ...compatibility.generation_with_images,
+        supported: false,
+        outcome: 'not_verified',
+        missingCapabilities: ['imageInput'],
+      },
+      invalid_json_repair: {
+        ...compatibility.invalid_json_repair,
+        supported: false,
+        outcome: 'not_checked',
+      },
+    }
+    final.result.saveable = false
+    await send(final)
+    await act(async () => stream.close())
+    expect(
+      within(panel)
+        .getByText('admin.aiConnections.capabilities.reasoning')
+        .closest('div'),
+    ).toBe(reasoningRow)
+    expect(profiles).toHaveTextContent(
+      'admin.aiConnections.modelVerification.outcomes.inconclusive',
+    )
+    expect(profiles).toHaveTextContent('upstream_rate_limited_http_429')
+    expect(
+      within(profiles).getAllByText(
+        'admin.aiConnections.modelVerification.incompatible',
+      ),
+    ).toHaveLength(1)
+    expect(profiles).toHaveTextContent(
+      'admin.aiConnections.modelVerification.missingCapabilities admin.aiConnections.capabilities.imageInput',
+    )
+    expect(
+      within(profiles).getAllByText(
+        'admin.aiConnections.modelVerification.unknownCompatibility',
+      ),
+    ).toHaveLength(1)
+    expect(panel.querySelectorAll('.animate-spin')).toHaveLength(0)
+    expect(
+      within(panel).getByRole('button', {
+        name: 'admin.aiConnections.modelVerification.verifyAgain',
+      }),
+    ).toHaveFocus()
+    expect(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.modelVerification.saveRevision',
+      }),
+    ).toBeDisabled()
+  })
+
   it('restores catalog discovery without treating catalog claims as verification', async () => {
     const catalog = [
       catalogItem({
@@ -346,9 +548,9 @@ describe('Admin AI model and stable-profile forms', () => {
     const user = userEvent.setup()
 
     expect(
-      screen.getByRole('status', {
-        name: '',
-      }),
+      screen
+        .getByText('admin.aiConnections.catalog.selectionReady')
+        .closest('[role="status"]'),
     ).toHaveTextContent('admin.aiConnections.catalog.selectionReady')
     expect(
       screen.getByText(
@@ -395,7 +597,7 @@ describe('Admin AI model and stable-profile forms', () => {
       screen.getAllByText(
         'admin.aiConnections.modelVerification.outcomes.notChecked',
       ),
-    ).toHaveLength(9)
+    ).toHaveLength(11)
     await user.selectOptions(select, '')
     await user.click(
       screen.getByRole('button', {
@@ -410,14 +612,18 @@ describe('Admin AI model and stable-profile forms', () => {
         name: 'admin.aiConnections.actions.fetchCatalog',
       }),
     ).toBeDisabled()
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'admin.aiConnections.catalog.loading',
-    )
+    expect(
+      screen
+        .getByText('admin.aiConnections.catalog.loading')
+        .closest('[role="status"]'),
+    ).toBeInTheDocument()
 
     rerender(<ModelForm {...props} catalog={[]} catalogStatus="unavailable" />)
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'admin.aiConnections.catalog.unavailableManual',
-    )
+    expect(
+      screen
+        .getByText('admin.aiConnections.catalog.unavailableManual')
+        .closest('[role="status"]'),
+    ).toBeInTheDocument()
   })
 
   it('prefills model fields from the highest revision number', () => {
@@ -557,7 +763,7 @@ describe('Admin AI model and stable-profile forms', () => {
       screen.getAllByText(
         'admin.aiConnections.modelVerification.outcomes.notChecked',
       ),
-    ).toHaveLength(9)
+    ).toHaveLength(11)
     expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
     await user.type(
       screen.getByLabelText(/^admin\.aiConnections\.fields\.name\.label/),
@@ -582,20 +788,19 @@ describe('Admin AI model and stable-profile forms', () => {
         ).length,
       ).toBeGreaterThanOrEqual(7),
     )
-    const progress = screen.getByRole('group', {
-      name: 'admin.aiConnections.modelVerification.progress',
+    const panel = screen.getByRole('region', {
+      name: 'admin.aiConnections.modelVerification.title',
     })
-    expect(progress).toHaveTextContent(
-      'admin.aiConnections.modelVerification.outcomes.inconclusive',
-    )
-    expect(progress).toHaveTextContent(
-      'admin.aiConnections.modelVerification.failureCategories.rate_limited',
-    )
-    expect(progress).toHaveTextContent(
-      'admin.aiConnections.modelVerification.technicalCode upstream_rate_limited_http_429',
-    )
-    expect(screen.getByText(/resultLabels\.connection/)).toBeInTheDocument()
-    expect(screen.getByText(/resultLabels\.baseline/)).toBeInTheDocument()
+    expect(
+      within(panel).getAllByText(
+        'admin.aiConnections.modelVerification.outcomes.verified',
+      ),
+    ).toHaveLength(11)
+    expect(
+      within(panel).getAllByText(
+        'admin.aiConnections.modelVerification.compatible',
+      ),
+    ).toHaveLength(3)
     const save = screen.getByRole('button', {
       name: 'admin.aiConnections.modelVerification.saveRevision',
     })
@@ -705,21 +910,19 @@ describe('Admin AI model and stable-profile forms', () => {
       }),
     )
 
-    const resultHeading = await screen.findByRole('heading', {
+    await screen.findByText('admin.aiConnections.modelVerification.notSaveable')
+    const panel = screen.getByRole('region', {
+      name: 'admin.aiConnections.modelVerification.title',
+    })
+    const profiles = within(panel).getByRole('group', {
       name: 'admin.aiConnections.modelVerification.compatibility',
     })
-    const result = resultHeading.closest('section')
-    if (!result) throw new Error('Verification result section missing.')
     expect(
-      within(result).getAllByText(
-        'admin.aiConnections.modelVerification.outcomes.notChecked',
-        { exact: false },
+      within(profiles).getAllByText(
+        'admin.aiConnections.modelVerification.unknownCompatibility',
       ),
     ).toHaveLength(3)
-    expect(result).not.toHaveTextContent(
-      'admin.aiConnections.modelVerification.unsupported',
-    )
-    expect(result).toHaveTextContent(
+    expect(panel).toHaveTextContent(
       'admin.aiConnections.modelVerification.technicalCode upstream_request_rejected_http_400',
     )
   })
@@ -777,17 +980,167 @@ describe('Admin AI model and stable-profile forms', () => {
     const cancelVerification = await screen.findByRole('button', {
       name: 'admin.aiConnections.modelVerification.cancelVerification',
     })
-    expect(
-      screen.getByRole('listitem', {
-        current: 'step',
-      }),
-    ).toBeInTheDocument()
+    const panel = screen.getByRole('region', {
+      name: 'admin.aiConnections.modelVerification.title',
+    })
+    expect(panel.querySelectorAll('[aria-current="step"]')).toHaveLength(1)
     await user.click(cancelVerification)
     await waitFor(() => expect(requestSignal?.aborted).toBe(true))
-    await screen.findByRole('button', {
-      name: 'admin.aiConnections.modelVerification.verify',
-    })
+    expect(
+      await screen.findByRole('button', {
+        name: 'admin.aiConnections.modelVerification.verifyAgain',
+      }),
+    ).toBeEnabled()
+    expect(panel.querySelectorAll('.animate-spin')).toHaveLength(0)
+    expect(panel).toHaveTextContent(
+      'admin.aiConnections.modelVerification.phases.cancelled',
+    )
+    expect(panel).toHaveTextContent(
+      'admin.aiConnections.modelVerification.interruptedSummary',
+    )
   })
+
+  it.each(['cancel', 'transport', 'truncated', 'technical'] as const)(
+    'preserves only completed checks after %s and isolates a new verification',
+    async stop => {
+      let stream!: ReadableStreamDefaultController<Uint8Array>
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              stream = controller
+            },
+          }),
+        ),
+      )
+      render(
+        <ModelForm
+          connection={connection()}
+          model={null}
+          onCancel={vi.fn()}
+          onComplete={vi.fn()}
+        />,
+      )
+      const user = userEvent.setup()
+      const modelId = screen.getByLabelText(
+        /^admin.aiConnections.fields.externalModelId.label/,
+      )
+      await user.type(modelId, 'controlled/model')
+      await user.click(
+        screen.getByRole('button', {
+          name: 'admin.aiConnections.modelVerification.verify',
+        }),
+      )
+      await act(async () => {
+        stream.enqueue(
+          new TextEncoder().encode(
+            `${[
+              {
+                type: 'progress',
+                progress: {
+                  check: 'connection_authentication',
+                  state: 'completed',
+                  outcome: 'verified',
+                  diagnosticCode: null,
+                  failureCategory: null,
+                },
+              },
+              {
+                type: 'progress',
+                progress: {
+                  check: 'capability:reasoning',
+                  state: 'running',
+                  outcome: 'not_checked',
+                  diagnosticCode: null,
+                  failureCategory: null,
+                },
+              },
+            ]
+              .map(message => JSON.stringify(message))
+              .join('\n')}\n`,
+          ),
+        )
+      })
+      if (stop === 'cancel')
+        await user.click(
+          screen.getByRole('button', {
+            name: 'admin.aiConnections.modelVerification.cancelVerification',
+          }),
+        )
+      if (stop === 'transport')
+        await act(async () => stream.error(new Error('connection lost')))
+      if (stop === 'truncated') await act(async () => stream.close())
+      if (stop === 'technical') await user.type(modelId, '-changed')
+      const panel = screen.getByRole('region', {
+        name: 'admin.aiConnections.modelVerification.title',
+      })
+      expect(panel.querySelectorAll('.animate-spin')).toHaveLength(0)
+      const save = screen.getByRole('button', {
+        name: 'admin.aiConnections.modelVerification.saveRevision',
+      })
+      expect(save).toBeDisabled()
+      if (stop === 'technical') {
+        expect(
+          within(panel).getAllByText(
+            'admin.aiConnections.modelVerification.outcomes.notChecked',
+          ),
+        ).toHaveLength(11)
+      } else {
+        expect(
+          within(panel).getAllByText(
+            'admin.aiConnections.modelVerification.outcomes.verified',
+          ),
+        ).toHaveLength(1)
+        expect(panel).toHaveTextContent(
+          'admin.aiConnections.modelVerification.outcomes.inconclusive',
+        )
+        expect(panel).toHaveTextContent(
+          'admin.aiConnections.modelVerification.interruptedSummary',
+        )
+      }
+      let retryStream!: ReadableStreamDefaultController<Uint8Array>
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              retryStream = controller
+            },
+          }),
+        ),
+      )
+      const retry = within(panel).getByRole('button', {
+        name: `admin.aiConnections.modelVerification.${stop === 'technical' ? 'verify' : 'verifyAgain'}`,
+      })
+      expect(retry).toBeEnabled()
+      await user.click(retry)
+      expect(
+        within(panel).getAllByText(
+          'admin.aiConnections.modelVerification.waiting',
+          { exact: false },
+        ),
+      ).toHaveLength(14)
+      // A late result from the stopped request cannot settle the new attempt.
+      if (stop === 'cancel' || stop === 'technical') {
+        const late = await verificationResponse().text()
+        await act(async () => {
+          stream.enqueue(new TextEncoder().encode(late))
+          stream.close()
+        })
+      }
+      expect(
+        within(panel).getByRole('button', {
+          name: 'admin.aiConnections.modelVerification.cancelVerification',
+        }),
+      ).toBeEnabled()
+      expect(save).toBeDisabled()
+      const result = await verificationResponse().text()
+      await act(async () => {
+        retryStream.enqueue(new TextEncoder().encode(result))
+        retryStream.close()
+      })
+      expect(save).toBeEnabled()
+    },
+  )
 
   it('shows exact verification and save failures and blocks missing credentials', async () => {
     fetchMock

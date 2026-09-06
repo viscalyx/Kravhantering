@@ -1,12 +1,6 @@
 'use client'
 
-import {
-  CheckCircle2,
-  CircleHelp,
-  Info,
-  LoaderCircle,
-  XCircle,
-} from 'lucide-react'
+import { Info, LoaderCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import {
   type FormEvent,
@@ -26,11 +20,8 @@ import type {
   AiAdminConnectionDetail,
   AiAdminModelRecord,
   AiAdminRunProfileRecord,
-  AiAdminVerificationOutcome,
   AiAdminVerificationProgress,
 } from '@/lib/ai/admin-service'
-import { AI_CAPABILITY_KEYS } from '@/lib/ai/capability-keys'
-import { AI_RUN_PROFILE_KEYS } from '@/lib/ai/profile-resolver'
 import type { AiReasoningConfiguration } from '@/lib/ai/reasoning'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -42,6 +33,11 @@ import {
   nullable,
   textareaClassName,
 } from './form-controls'
+
+import {
+  ModelVerificationPanel,
+  type VerificationPhase,
+} from './model-verification-panel'
 
 type ModelFormProps = {
   catalog?: readonly AiAdminCatalogItem[]
@@ -137,13 +133,6 @@ function setNumericInput(
   setter(Number.isNaN(value) ? '' : value)
 }
 
-const outcomeKey: Record<AiAdminVerificationOutcome, string> = {
-  inconclusive: 'inconclusive',
-  not_checked: 'notChecked',
-  not_verified: 'notVerified',
-  verified: 'verified',
-}
-
 export function ModelForm({
   catalog = [],
   catalogStatus = 'idle',
@@ -168,6 +157,7 @@ export function ModelForm({
     latest?.reasoning ?? { mode: 'explicit_control', effort: 'high' },
   )
   const [selectedCatalogKey, setSelectedCatalogKey] = useState('')
+  const [phase, setPhase] = useState<VerificationPhase>('idle')
   const [progress, setProgress] = useState<AiAdminVerificationProgress[]>([])
   const [verification, setVerification] =
     useState<AiAdminCandidateVerificationAttemptResult | null>(null)
@@ -189,11 +179,14 @@ export function ModelForm({
     )
   }, [catalog, t])
 
-  const canVerify =
-    !busy &&
-    externalModelId.trim().length > 0 &&
-    (connection.authenticationType === 'none' ||
-      connection.activeSecret.available)
+  const verifyDisabledReason = busy
+    ? t('modelVerification.saveInProgress')
+    : !externalModelId.trim()
+      ? t('modelVerification.enterModelId')
+      : connection.authenticationType !== 'none' &&
+          !connection.activeSecret.available
+        ? t('modelVerification.missingSecret')
+        : undefined
 
   const discardAttempt = useCallback(
     async (attemptId?: string | null): Promise<void> => {
@@ -223,11 +216,23 @@ export function ModelForm({
 
   function technicalChange(update: () => void): void {
     const attemptId = verification?.attemptId
-    verificationAbort.current?.abort()
+    cancelVerification()
     update()
     setVerification(null)
     setProgress([])
+    setPhase('idle')
+    setError(null)
     if (attemptId) void discardAttempt(attemptId)
+  }
+
+  function cancelVerification(): void {
+    const controller = verificationAbort.current
+    if (!controller) return
+    verificationAbort.current = null
+    controller.abort()
+    setPhase('cancelled')
+    setVerification(null)
+    setBusy(false)
   }
 
   function selectCatalogItem(key: string): void {
@@ -251,9 +256,11 @@ export function ModelForm({
     const abortController = new AbortController()
     verificationAbort.current = abortController
     setBusy(true)
+    setPhase('running')
     setError(null)
     setProgress([])
     setVerification(null)
+    let result: AiAdminCandidateVerificationAttemptResult | null = null
     try {
       const response = await apiFetch(
         `/api/admin/ai-connections/${connection.id}/actions`,
@@ -289,6 +296,7 @@ export function ModelForm({
         buffer += decoder.decode(chunk.value, { stream: !chunk.done })
         const lines = buffer.split('\n')
         buffer = lines.pop() ?? ''
+        if (chunk.done && buffer) lines.push(buffer)
         for (const line of lines) {
           if (!line) continue
           const message = JSON.parse(line) as {
@@ -304,22 +312,31 @@ export function ModelForm({
             ])
           }
           if (message.result) {
-            setReasoning(message.result.reasoning ?? reasoning)
-            setVerification(message.result)
+            result = message.result
           }
           if (message.error) throw new Error(message.error)
         }
-        if (chunk.done) break
+        if (chunk.done) {
+          if (!result) throw new Error(t('modelVerification.incompleteStream'))
+          setReasoning(result.reasoning ?? reasoning)
+          setVerification(result)
+          setPhase('completed')
+          break
+        }
       }
     } catch (cause) {
-      if (!abortController.signal.aborted) {
+      if (
+        verificationAbort.current === abortController &&
+        !abortController.signal.aborted
+      ) {
+        setPhase('failed')
         setError(cause instanceof Error ? cause.message : t('mutationError'))
       }
     } finally {
       if (verificationAbort.current === abortController) {
         verificationAbort.current = null
+        setBusy(false)
       }
-      setBusy(false)
     }
   }
 
@@ -364,392 +381,236 @@ export function ModelForm({
   }
 
   return (
-    <form className="space-y-5" onSubmit={save}>
+    <form
+      className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:grid-rows-[auto_1fr]"
+      onSubmit={save}
+      {...devMarker({
+        context: 'AI model form',
+        name: 'AI model form layout',
+        priority: 420,
+      })}
+    >
       <div
-        aria-atomic="true"
-        className="flex items-start justify-between gap-3 rounded-2xl border border-secondary-200 bg-secondary-50 p-4 text-sm text-secondary-700 dark:border-secondary-700 dark:bg-secondary-950/50 dark:text-secondary-200"
-        role="status"
-      >
-        <span className="flex min-w-0 items-start gap-2">
-          {catalogStatus === 'loading' ? (
-            <LoaderCircle
-              aria-hidden="true"
-              className="mt-0.5 h-4 w-4 shrink-0 animate-spin"
-            />
-          ) : (
-            <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-          )}
-          <span>
-            {catalogStatus === 'loading'
-              ? t('catalog.loading')
-              : catalogStatus === 'loaded' && catalog.length > 0
-                ? t('catalog.selectionReady')
-                : catalogStatus === 'unavailable'
-                  ? t('catalog.unavailableManual')
-                  : t('catalog.selectionIntro')}
-          </span>
-        </span>
-        {onRefreshCatalog ? (
-          <button
-            className="btn-secondary shrink-0 px-3! py-1.5! text-xs"
-            disabled={busy || catalogStatus === 'loading'}
-            onClick={() => void onRefreshCatalog()}
-            type="button"
-          >
-            {t('actions.fetchCatalog')}
-          </button>
-        ) : null}
-      </div>
-      {catalog.length > 0 ? (
-        <Field
-          help={t('catalog.selectionHelp')}
-          id="ai-model-catalog-selection"
-          label={t('catalog.selectionLabel')}
-        >
-          <select
-            className={inputClassName()}
-            id="ai-model-catalog-selection"
-            onChange={event => selectCatalogItem(event.target.value)}
-            value={selectedCatalogKey}
-          >
-            <option value="">{t('catalog.manualOption')}</option>
-            {catalogGroups.map(([provider, items]) => (
-              <optgroup key={provider} label={provider}>
-                {items.map(item => (
-                  <option
-                    key={catalogItemKey(item)}
-                    value={catalogItemKey(item)}
-                  >
-                    {item.name} · {item.externalModelId}
-                    {catalogPriceSuffix(item, t)}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </Field>
-      ) : null}
-      <Field
-        help={t('fields.name.help')}
-        id="ai-model-name"
-        label={t('fields.name.label')}
-        required
-      >
-        <input
-          className={inputClassName()}
-          id="ai-model-name"
-          maxLength={300}
-          onChange={event => setName(event.target.value)}
-          required
-          value={name}
-        />
-      </Field>
-      <Field
-        help={t('fields.externalModelId.help')}
-        id="ai-model-external-id"
-        label={t('fields.externalModelId.label')}
-        required
-      >
-        <input
-          className={inputClassName()}
-          id="ai-model-external-id"
-          maxLength={450}
-          onChange={event => {
-            setSelectedCatalogKey('')
-            technicalChange(() => {
-              setExternalModelId(event.target.value)
-              setReasoning({ mode: 'explicit_control', effort: 'high' })
-            })
-          }}
-          required
-          value={externalModelId}
-        />
-      </Field>
-      <Field
-        help={t('fields.externalModelVersion.help')}
-        id="ai-model-external-version"
-        label={t('fields.externalModelVersion.label')}
-      >
-        <input
-          className={inputClassName()}
-          id="ai-model-external-version"
-          maxLength={200}
-          onChange={event => {
-            setSelectedCatalogKey('')
-            technicalChange(() => {
-              setExternalModelVersion(event.target.value)
-              setReasoning({ mode: 'explicit_control', effort: 'high' })
-            })
-          }}
-          value={externalModelVersion}
-        />
-      </Field>
-      {reasoning.mode === 'explicit_control' ? (
-        <Field
-          help={t('fields.reasoningEffort.help')}
-          id="ai-model-reasoning-effort"
-          label={t('fields.reasoningEffort.label')}
-        >
-          <select
-            className={inputClassName()}
-            id="ai-model-reasoning-effort"
-            value={reasoning.effort}
-            {...devMarker({
-              context: 'AI model form',
-              name: 'AI model reasoning effort',
-              priority: 430,
-            })}
-            onChange={event =>
-              technicalChange(() =>
-                setReasoning({
-                  mode: 'explicit_control',
-                  effort: event.target.value as 'low' | 'medium' | 'high',
-                }),
-              )
-            }
-          >
-            {(['low', 'medium', 'high'] as const).map(effort => (
-              <option key={effort} value={effort}>
-                {t(`reasoning.${effort}`)}
-              </option>
-            ))}
-          </select>
-        </Field>
-      ) : (
-        <p
-          {...devMarker({
-            context: 'AI model form',
-            name: 'AI model default reasoning',
-            priority: 430,
-          })}
-        >
-          {t('reasoning.modelDefault')}
-        </p>
-      )}
-      <Field
-        help={t('fields.modelDescription.help')}
-        id="ai-model-description"
-        label={t('fields.modelDescription.label')}
-      >
-        <textarea
-          className={textareaClassName()}
-          id="ai-model-description"
-          maxLength={20_000}
-          onChange={event => setDescription(event.target.value)}
-          value={description}
-        />
-      </Field>
-
-      {!connection.activeSecret.available &&
-      connection.authenticationType !== 'none' ? (
-        <p className="text-sm text-amber-800 dark:text-amber-200">
-          {t('modelVerification.missingSecret')}
-        </p>
-      ) : null}
-
-      <fieldset
-        className="rounded-2xl border border-secondary-200 p-4 dark:border-secondary-700"
+        className="min-w-0 space-y-5"
         {...devMarker({
           context: 'AI model form',
-          name: 'AI model capability assessment',
-          priority: 430,
+          name: 'AI model fields',
+          priority: 420,
         })}
       >
-        <legend className="px-1 text-sm font-semibold text-secondary-950 dark:text-secondary-50">
-          {t('modelVerification.capabilities')}
-        </legend>
-        <p className="mb-3 text-xs leading-5 text-secondary-600 dark:text-secondary-300">
-          {t('modelVerification.capabilitiesHelp')}
-        </p>
-        <dl className="grid gap-2 sm:grid-cols-2">
-          {AI_CAPABILITY_KEYS.map(capability => {
-            const outcome =
-              verification?.capabilities[capability].outcome ?? 'not_checked'
-            const failureCategory =
-              verification?.capabilities[capability].failureCategory
-            const OutcomeIcon =
-              outcome === 'verified'
-                ? CheckCircle2
-                : outcome === 'not_verified'
-                  ? XCircle
-                  : CircleHelp
-            return (
-              <div
-                className="min-h-14 rounded-xl bg-secondary-50 px-3 py-2 dark:bg-secondary-950/50"
-                key={capability}
-              >
-                <dt className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
-                  {t(`capabilities.${capability}`)}
-                </dt>
-                <dd className="mt-1 flex items-start gap-1.5 text-xs text-secondary-600 dark:text-secondary-300">
-                  <OutcomeIcon
-                    aria-hidden="true"
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0"
-                  />
-                  <span>
-                    {t(`modelVerification.outcomes.${outcomeKey[outcome]}`)}
-                    {outcome === 'inconclusive' && failureCategory
-                      ? ` — ${t(`modelVerification.failureCategories.${failureCategory}`)}`
-                      : ''}
-                    {verification?.capabilities[capability].diagnosticCode
-                      ? ` — ${t('modelVerification.technicalCode', {
-                          code: verification.capabilities[capability]
-                            .diagnosticCode,
-                        })}`
-                      : ''}
-                  </span>
-                </dd>
-              </div>
-            )
-          })}
-        </dl>
-      </fieldset>
-
-      {busy || progress.length > 0 ? (
-        <fieldset
-          aria-busy={busy}
-          aria-label={t('modelVerification.progress')}
-          aria-live="polite"
-          className="rounded-2xl border border-primary-200 bg-primary-50/50 p-4 dark:border-primary-900 dark:bg-primary-950/20"
-        >
-          <ul className="space-y-1 text-sm">
-            {progress.map(item => {
-              const failureCategory = item.failureCategory
-              return (
-                <li
-                  aria-current={item.state === 'running' ? 'step' : undefined}
-                  key={item.check}
-                >
-                  {item.state === 'running' ? (
-                    <LoaderCircle
-                      aria-hidden="true"
-                      className="mr-1 inline h-4 w-4 animate-spin"
-                    />
-                  ) : null}
-                  {t(
-                    `modelVerification.checks.${item.check.replace(':', '.')}`,
-                  )}
-                  {item.state === 'completed'
-                    ? ` — ${t(`modelVerification.outcomes.${outcomeKey[item.outcome]}`)}`
-                    : ''}
-                  {failureCategory
-                    ? ` — ${t(`modelVerification.failureCategories.${failureCategory}`)}`
-                    : ''}
-                  {item.diagnosticCode
-                    ? ` — ${t('modelVerification.technicalCode', {
-                        code: item.diagnosticCode,
-                      })}`
-                    : ''}
-                </li>
-              )
-            })}
-          </ul>
-        </fieldset>
-      ) : null}
-
-      {verification ? (
-        <section
-          aria-live="polite"
-          className="space-y-2 rounded-2xl border border-secondary-200 p-4 dark:border-secondary-700"
+        <div
+          aria-atomic="true"
+          className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-secondary-200 bg-secondary-50 p-4 text-sm text-secondary-700 dark:border-secondary-700 dark:bg-secondary-950/50 dark:text-secondary-200"
           role="status"
         >
-          <h3 className="font-semibold">
-            {t('modelVerification.compatibility')}
-          </h3>
-          <dl className="space-y-1 text-sm">
-            {[
-              ['connection', verification.connection],
-              ['baseline', verification.baseline],
-            ].map(([key, assessment]) => {
-              if (typeof key !== 'string' || typeof assessment === 'string')
-                return null
-              return (
-                <div key={key}>
-                  <dt className="inline font-medium">
-                    {t(`modelVerification.resultLabels.${key}`)}:{' '}
-                  </dt>
-                  <dd className="inline">
-                    {t(
-                      `modelVerification.outcomes.${outcomeKey[assessment.outcome]}`,
-                    )}
-                    {assessment.failureCategory
-                      ? ` — ${t(`modelVerification.failureCategories.${assessment.failureCategory}`)}`
-                      : ''}
-                    {assessment.diagnosticCode
-                      ? ` — ${t('modelVerification.technicalCode', {
-                          code: assessment.diagnosticCode,
-                        })}`
-                      : ''}
-                  </dd>
-                </div>
-              )
-            })}
-          </dl>
-          <ul className="space-y-1 text-sm">
-            {AI_RUN_PROFILE_KEYS.map(key => {
-              const result = verification.profileCompatibility[key]
-              const profileOutcome =
-                result.outcome ??
-                (result.supported ? 'verified' : 'not_verified')
-              return (
-                <li key={key}>
-                  {t(`profiles.${key}`)}:{' '}
-                  {profileOutcome === 'not_checked'
-                    ? t('modelVerification.outcomes.notChecked')
-                    : result.supported
-                      ? t('modelVerification.supported')
-                      : t('modelVerification.unsupported', {
-                          capabilities: result.missingCapabilities
-                            .map(capability => t(`capabilities.${capability}`))
-                            .join(', '),
-                        })}
-                  {!result.supported && result.failureCategory
-                    ? ` — ${t(`modelVerification.failureCategories.${result.failureCategory}`)}`
-                    : ''}
-                  {result.diagnosticCode
-                    ? ` — ${t('modelVerification.technicalCode', {
-                        code: result.diagnosticCode,
-                      })}`
-                    : ''}
-                </li>
-              )
-            })}
-          </ul>
-          <p className="font-medium">
-            {verification.saveable
-              ? t('modelVerification.saveable')
-              : t('modelVerification.notSaveable')}
-          </p>
-        </section>
-      ) : null}
-
-      {error ? (
-        <p className="text-sm text-red-700 dark:text-red-300" role="alert">
-          {error}
-        </p>
-      ) : null}
-      <div className="flex flex-wrap gap-2">
-        <button
-          className="btn-secondary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
-          disabled={!busy && !canVerify}
-          onClick={() => {
-            if (busy) verificationAbort.current?.abort()
-            else void verify()
-          }}
-          type="button"
+          <span className="flex w-full min-w-0 items-start gap-2 sm:w-auto sm:flex-1">
+            {catalogStatus === 'loading' ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="mt-0.5 h-4 w-4 shrink-0 animate-spin"
+              />
+            ) : (
+              <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+            )}
+            <span>
+              {catalogStatus === 'loading'
+                ? t('catalog.loading')
+                : catalogStatus === 'loaded' && catalog.length > 0
+                  ? t('catalog.selectionReady')
+                  : catalogStatus === 'unavailable'
+                    ? t('catalog.unavailableManual')
+                    : t('catalog.selectionIntro')}
+            </span>
+          </span>
+          {onRefreshCatalog ? (
+            <button
+              className="btn-secondary shrink-0 px-3! py-1.5! text-xs"
+              disabled={busy || catalogStatus === 'loading'}
+              onClick={() => void onRefreshCatalog()}
+              type="button"
+            >
+              {t('actions.fetchCatalog')}
+            </button>
+          ) : null}
+        </div>
+        {catalog.length > 0 ? (
+          <Field
+            help={t('catalog.selectionHelp')}
+            id="ai-model-catalog-selection"
+            label={t('catalog.selectionLabel')}
+          >
+            <select
+              className={inputClassName()}
+              id="ai-model-catalog-selection"
+              onChange={event => selectCatalogItem(event.target.value)}
+              value={selectedCatalogKey}
+            >
+              <option value="">{t('catalog.manualOption')}</option>
+              {catalogGroups.map(([provider, items]) => (
+                <optgroup key={provider} label={provider}>
+                  {items.map(item => (
+                    <option
+                      key={catalogItemKey(item)}
+                      value={catalogItemKey(item)}
+                    >
+                      {item.name} · {item.externalModelId}
+                      {catalogPriceSuffix(item, t)}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </Field>
+        ) : null}
+        <Field
+          help={t('fields.name.help')}
+          id="ai-model-name"
+          label={t('fields.name.label')}
+          required
         >
-          {busy
-            ? t('modelVerification.cancelVerification')
-            : t('modelVerification.verify')}
-        </button>
+          <input
+            className={inputClassName()}
+            id="ai-model-name"
+            maxLength={300}
+            onChange={event => setName(event.target.value)}
+            required
+            value={name}
+          />
+        </Field>
+        <Field
+          help={t('fields.externalModelId.help')}
+          id="ai-model-external-id"
+          label={t('fields.externalModelId.label')}
+          required
+        >
+          <input
+            className={inputClassName()}
+            id="ai-model-external-id"
+            maxLength={450}
+            onChange={event => {
+              setSelectedCatalogKey('')
+              technicalChange(() => {
+                setExternalModelId(event.target.value)
+                setReasoning({ mode: 'explicit_control', effort: 'high' })
+              })
+            }}
+            required
+            value={externalModelId}
+          />
+        </Field>
+        <Field
+          help={t('fields.externalModelVersion.help')}
+          id="ai-model-external-version"
+          label={t('fields.externalModelVersion.label')}
+        >
+          <input
+            className={inputClassName()}
+            id="ai-model-external-version"
+            maxLength={200}
+            onChange={event => {
+              setSelectedCatalogKey('')
+              technicalChange(() => {
+                setExternalModelVersion(event.target.value)
+                setReasoning({ mode: 'explicit_control', effort: 'high' })
+              })
+            }}
+            value={externalModelVersion}
+          />
+        </Field>
+        {reasoning.mode === 'explicit_control' ? (
+          <Field
+            help={t('fields.reasoningEffort.help')}
+            id="ai-model-reasoning-effort"
+            label={t('fields.reasoningEffort.label')}
+          >
+            <select
+              className={inputClassName()}
+              id="ai-model-reasoning-effort"
+              value={reasoning.effort}
+              {...devMarker({
+                context: 'AI model form',
+                name: 'AI model reasoning effort',
+                priority: 430,
+              })}
+              onChange={event =>
+                technicalChange(() =>
+                  setReasoning({
+                    mode: 'explicit_control',
+                    effort: event.target.value as 'low' | 'medium' | 'high',
+                  }),
+                )
+              }
+            >
+              {(['low', 'medium', 'high'] as const).map(effort => (
+                <option key={effort} value={effort}>
+                  {t(`reasoning.${effort}`)}
+                </option>
+              ))}
+            </select>
+          </Field>
+        ) : (
+          <p
+            {...devMarker({
+              context: 'AI model form',
+              name: 'AI model default reasoning',
+              priority: 430,
+            })}
+          >
+            {t('reasoning.modelDefault')}
+          </p>
+        )}
+        <Field
+          help={t('fields.modelDescription.help')}
+          id="ai-model-description"
+          label={t('fields.modelDescription.label')}
+        >
+          <textarea
+            className={textareaClassName()}
+            id="ai-model-description"
+            maxLength={20_000}
+            onChange={event => setDescription(event.target.value)}
+            value={description}
+          />
+        </Field>
+
+        {!connection.activeSecret.available &&
+        connection.authenticationType !== 'none' ? (
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            {t('modelVerification.missingSecret')}
+          </p>
+        ) : null}
       </div>
-      <DialogActions
-        busy={busy}
-        cancel={t('actions.cancel')}
-        onCancel={cancelAndClose}
-        save={t('modelVerification.saveRevision')}
-        saveDisabled={!verification?.saveable}
-      />
+      <div className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+        <ModelVerificationPanel
+          onCancel={cancelVerification}
+          onVerify={() => void verify()}
+          phase={phase}
+          progress={progress}
+          verification={verification}
+          verifyDisabledReason={verifyDisabledReason}
+        />
+      </div>
+      <div
+        className="min-w-0 space-y-3 border-t border-secondary-200 pt-4 lg:col-start-1 lg:row-start-2 dark:border-secondary-700"
+        {...devMarker({
+          context: 'AI model form',
+          name: 'AI model form actions',
+          priority: 420,
+        })}
+      >
+        {error ? (
+          <p className="text-sm text-red-700 dark:text-red-300" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <DialogActions
+          busy={busy}
+          cancel={t('actions.cancel')}
+          onCancel={cancelAndClose}
+          save={t('modelVerification.saveRevision')}
+          saveDisabled={!verification?.saveable}
+        />
+      </div>
     </form>
   )
 }
