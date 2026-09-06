@@ -14,7 +14,9 @@ python3 -m http.server 3108 --bind 0.0.0.0
 
 Öppna sedan <http://localhost:3108>.
 
-Tryck **Verifiera** för ett simulerat förlopp på cirka tolv sekunder. Prova
+Tryck **Verifiera** i verifieringspanelens rubrikrad för ett simulerat
+förlopp på cirka tolv sekunder. Knappen blir **Avbryt verifiering** under
+körning och **Verifiera igen** efter resultat eller avbrott. Prova
 även avbrott, nya tekniska modelluppgifter eller **Visa slutresultat**.
 Resultatväljaren erbjuder full kompatibilitet, saknat bildstöd och oavgjort
 resonemang. **Återställ** visar startläget igen. Temaknappen växlar mellan
@@ -23,6 +25,10 @@ ljust och mörkt tema. En smal webbläsare visar en kolumn.
 Designen använder appens färgkoder, teckensnittsordning, fältstorlekar och
 rundade ytor. En enda design demonstrerar det överenskomna förslaget.
 Panelens slutliga utseende ska bedömas av användaren innan implementation.
+
+Användaren väljer placeringen i verifieringspanelens rubrikrad. Panelens
+inledning förklarar åtgärden; separat hjälptext under formuläret tas bort.
+**Avbryt** och **Spara modellrevision** ligger tillsammans under formuläret.
 
 Detta är engångskod på grenen `prototype/issue-1098-verification-panel`.
 Alla resultat är simulerade och allt tillstånd finns enbart i minnet.

@@ -49,13 +49,13 @@
   .button.primary { background:#4338ca; border-color:#4338ca; color:white; }
   .dark .button.primary { background:#4f46e5; border-color:#4f46e5; }
   .button.primary:hover:not(:disabled) { background:#3730a3; }
-  .save-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:10px; margin-top:20px; }
-  .action-hint { font-size:12px; color:var(--muted); margin:8px 0 0; }
+  .save-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:10px; }
   .panel { min-width:0; border:1px solid var(--border); border-radius:16px; padding:20px; }
   .panel-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
   h2 { font-size:17px; font-weight:600; margin:0; }
   .count { font-size:12px; color:var(--muted); background:var(--soft); padding:3px 9px; border-radius:20px; }
-  .panel-intro { color:var(--muted); font-size:12px; margin:6px 0 16px; }
+  .panel-meta { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin:8px 0 16px; }
+  .panel-intro { color:var(--muted); font-size:12px; margin:0; }
   .group + .group { margin-top:18px; }
   h3 { margin:0 0 8px; font-size:13px; font-weight:600; }
   .rows { display:grid; gap:6px; }
@@ -119,14 +119,12 @@
           <div class="field"><div class="field-head"><label for="description">Beskrivning <span class="optional">(valfritt)</span></label><details class="help"><summary aria-label="Hjälp om beskrivning"><svg aria-hidden="true"><use href="#i-unknown"/></svg></summary><p>Beskriv vad modellen ska användas till. Beskrivningen påverkar inte verifieringen.</p></details></div><textarea id="description" placeholder="Beskriv modellens användning"></textarea></div>
         </form>
         <div class="actions">
-          <button class="button" id="verify"><svg aria-hidden="true"><use href="#i-check"/></svg><span>Verifiera</span></button>
-          <p class="action-hint">Verifiera modellen och granska resultatet innan du sparar.</p>
           <div class="save-actions"><button class="button" id="cancel">Avbryt</button><button class="button primary" id="save" disabled>Spara modellrevision</button></div>
         </div>
       </div>
       <section class="panel" aria-labelledby="verification-title">
-        <div class="panel-heading"><h2 id="verification-title">Modellverifiering</h2><span class="count" id="count">Inte startad</span></div>
-        <p class="panel-intro">Kontrollerna uppdateras här när du verifierar modellen.</p>
+        <div class="panel-heading"><h2 id="verification-title">Modellverifiering</h2><button class="button" id="verify"><svg aria-hidden="true"><use href="#i-check"/></svg><span>Verifiera</span></button></div>
+        <div class="panel-meta"><p class="panel-intro">Verifiera modellens förmågor och kompatibilitet med körprofiler.</p><span class="count" id="count">Inte startad</span></div>
         <div class="group" role="group" aria-labelledby="base-title"><h3 id="base-title">Grundkontroller</h3><div class="rows" id="base"></div></div>
         <div class="group" role="group" aria-labelledby="cap-title"><h3 id="cap-title">Förmågor</h3><div class="rows capabilities" id="capabilities"></div><p class="group-help">Resonemangsaktivitet krävs. Uttrycklig styrning krävs bara när modellen använder den. AI-analys och övriga förmågor kan saknas eller vara oavgjorda.</p></div>
         <div class="group" role="group" aria-labelledby="profiles-title"><h3 id="profiles-title">Kompatibilitet med körprofiler</h3><div class="rows" id="profiles"></div></div>
@@ -183,7 +181,7 @@
   function summary(title, text, state = '') { $('summary-title').textContent=title; $('summary-text').textContent=text; $('summary').dataset.state=state; $('announcement').textContent=text; }
   function syncControls() {
     const busy=phase==='running';
-    $('verify').innerHTML=icon(busy?'x':'check')+`<span>${busy?'Avbryt verifiering':'Verifiera'}</span>`;
+    $('verify').innerHTML=icon(busy?'x':'check')+`<span>${busy?'Avbryt verifiering':phase==='idle'?'Verifiera':'Verifiera igen'}</span>`;
     $('verify').disabled=!busy&&!$('model-id').value.trim();
     $('scenario').disabled=busy;
     $('save').disabled=phase!=='done'||$('scenario').value==='inconclusive'||!$('name').value.trim();
