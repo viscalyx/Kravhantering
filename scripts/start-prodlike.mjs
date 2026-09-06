@@ -61,6 +61,9 @@ export function stageProdlikeStandaloneAssets(
       }
       if (ancestor === path.dirname(ancestor)) break
     }
+    if (fs.readdirSync(destination).length > 0) {
+      throw new Error('Isolated runtime must be empty before staging')
+    }
     fs.cpSync(source.standaloneRoot, paths.standaloneRoot, {
       recursive: true,
       dereference: true,

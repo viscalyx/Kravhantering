@@ -183,7 +183,7 @@ describe('authorization fixture evidence', () => {
       },
     } as unknown as APIRequestContext
     const originalSecret = process.env.AUTH_SESSION_COOKIE_PASSWORD
-    delete process.env.AUTH_SESSION_COOKIE_PASSWORD
+    process.env.AUTH_SESSION_COOKIE_PASSWORD = secret
     try {
       const evidence = await verifyResponsibilityPerson(request, {
         hsaId: HSA.areaOwner,

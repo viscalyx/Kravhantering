@@ -78,6 +78,24 @@ describe('prodlike standalone runtime', () => {
     expect(fs.existsSync(dependency)).toBe(true)
   })
 
+  it('rejects a runtime destination containing an untraced module', () => {
+    const root = createRuntimeFixture()
+    const isolated = fs.mkdtempSync(path.join(os.tmpdir(), 'stale-runtime-'))
+    temporaryRoots.push(isolated)
+    const dependency = path.join(isolated, 'node_modules', 'untraced-fixture')
+    fs.mkdirSync(dependency, { recursive: true })
+    fs.writeFileSync(path.join(dependency, 'index.js'), 'module.exports = 1')
+    const server = path.join(isolated, 'server.js')
+    expect(createRequire(server).resolve('untraced-fixture')).toBe(
+      path.join(dependency, 'index.js'),
+    )
+
+    expect(() => stageProdlikeStandaloneAssets(root, isolated)).toThrow(
+      'Isolated runtime must be empty before staging',
+    )
+    expect(fs.existsSync(server)).toBe(false)
+  })
+
   it('stages public and static assets beside the generated server', () => {
     const root = createRuntimeFixture()
 
