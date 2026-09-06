@@ -79,11 +79,17 @@ Use [dependency workflow](docs/development/dependency-workflow.md) for
 
 ## Integration Test Chunks
 
+`npm run test:integration` owns browser-functional development-server chunks.
+`npm run test:integration:prodlike` owns the fixed five-specification,
+17-test runtime contract. See
+[CI integration ownership](docs/development/ci-integration-ownership.md) for
+coverage moves, responsive risks, and required result names.
+
 Integration tests run in deterministic chunks by default to reduce memory
 pressure. To run a single prodlike chunk:
 
 ```sh
-npm run test:integration:prodlike -- --chunk prodlike-requirements
+npm run test:integration:prodlike -- --chunk prodlike-runtime-contract
 ```
 
 Use the matching dev chunk when testing against the development server:

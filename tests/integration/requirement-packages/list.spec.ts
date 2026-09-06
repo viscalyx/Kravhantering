@@ -1,9 +1,6 @@
 import { expect, type Locator, test } from '@playwright/test'
 
-const viewports = [
-  { height: 812, name: 'mobile', width: 375 },
-  { height: 720, name: 'desktop', width: 1280 },
-]
+const viewports = [{ height: 720, name: 'desktop', width: 1280 }]
 
 function splitHsaId(hsaId: string): { prefix: string; suffix: string } {
   const separatorIndex = hsaId.indexOf('-')

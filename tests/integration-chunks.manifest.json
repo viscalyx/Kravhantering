@@ -14,7 +14,7 @@
         {
           "id": "dev-00-report-pdf",
           "paths": ["tests/integration/00-report-pdf"],
-          "specCount": 2
+          "specCount": 1
         },
         {
           "id": "dev-admin",
@@ -27,19 +27,9 @@
           "specCount": 1
         },
         {
-          "id": "dev-authentication",
-          "paths": ["tests/integration/authentication"],
-          "specCount": 2
-        },
-        {
           "id": "dev-authorization",
           "paths": ["tests/integration/authorization"],
-          "specCount": 11
-        },
-        {
-          "id": "dev-developer-mode",
-          "paths": ["tests/integration/developer-mode"],
-          "specCount": 1
+          "specCount": 10
         },
         {
           "id": "dev-deviations",
@@ -49,11 +39,6 @@
         {
           "id": "dev-navigation",
           "paths": ["tests/integration/navigation"],
-          "specCount": 1
-        },
-        {
-          "id": "dev-platform",
-          "paths": ["tests/integration/platform"],
           "specCount": 2
         },
         {
@@ -87,89 +72,76 @@
           "specCount": 1
         }
       ],
-      "ignoredSpecs": ["tests/integration/mcp/seeded-scan.spec.ts"],
-      "includedSpecCount": 46
+      "ignoredSpecs": [
+        "tests/integration/00-report-pdf/authorization-boundaries.spec.ts",
+        "tests/integration/authentication/login.spec.ts",
+        "tests/integration/authentication/security.spec.ts",
+        "tests/integration/developer-mode/overlay.spec.ts",
+        "tests/integration/mcp/seeded-scan.spec.ts",
+        "tests/integration/platform/error-boundary-smoke.spec.ts",
+        "tests/integration/platform/smoke.spec.ts"
+      ],
+      "includedSpecCount": 40
     },
     "prodlike": {
       "chunks": [
         {
-          "id": "prodlike-00-report-pdf",
-          "paths": ["tests/integration/00-report-pdf"],
-          "specCount": 2
-        },
-        {
-          "id": "prodlike-admin",
-          "paths": ["tests/integration/admin"],
-          "specCount": 8
-        },
-        {
-          "id": "prodlike-archiving",
-          "paths": ["tests/integration/archiving"],
-          "specCount": 1
-        },
-        {
-          "id": "prodlike-authentication",
-          "paths": ["tests/integration/authentication"],
-          "specCount": 2
-        },
-        {
-          "id": "prodlike-authorization",
-          "paths": ["tests/integration/authorization"],
-          "specCount": 11
-        },
-        {
-          "id": "prodlike-deviations",
-          "paths": ["tests/integration/deviations"],
-          "specCount": 1
-        },
-        {
-          "id": "prodlike-navigation",
-          "paths": ["tests/integration/navigation"],
-          "specCount": 1
-        },
-        {
-          "id": "prodlike-platform",
-          "paths": ["tests/integration/platform"],
-          "specCount": 2
-        },
-        {
-          "id": "prodlike-privacy",
-          "paths": ["tests/integration/privacy"],
-          "specCount": 1
-        },
-        {
-          "id": "prodlike-requirement-packages",
-          "paths": ["tests/integration/requirement-packages"],
-          "specCount": 1
-        },
-        {
-          "id": "prodlike-requirement-selection",
-          "paths": ["tests/integration/requirement-selection"],
-          "specCount": 2
-        },
-        {
-          "id": "prodlike-requirements",
-          "paths": ["tests/integration/requirements"],
-          "specCount": 10
-        },
-        {
-          "id": "prodlike-specifications",
-          "paths": ["tests/integration/specifications"],
-          "specCount": 2
-        },
-        {
-          "id": "prodlike-stewardship",
-          "paths": ["tests/integration/stewardship"],
-          "specCount": 1
-        },
-        {
-          "id": "prodlike-mcp-seeded-scan",
-          "paths": ["tests/integration/mcp/seeded-scan.spec.ts"],
-          "specCount": 1
+          "id": "prodlike-runtime-contract",
+          "paths": [
+            "tests/integration/00-report-pdf/authorization-boundaries.spec.ts",
+            "tests/integration/authentication/login.spec.ts",
+            "tests/integration/authentication/security.spec.ts",
+            "tests/integration/platform/error-boundary-smoke.spec.ts",
+            "tests/integration/platform/smoke.spec.ts"
+          ],
+          "specCount": 5
         }
       ],
-      "ignoredSpecs": ["tests/integration/developer-mode/overlay.spec.ts"],
-      "includedSpecCount": 46
+      "ignoredSpecs": [
+        "tests/integration/00-report-pdf/collaboration-report.spec.ts",
+        "tests/integration/admin/access-review.spec.ts",
+        "tests/integration/admin/ai-settings.spec.ts",
+        "tests/integration/admin/audit-log.spec.ts",
+        "tests/integration/admin/entrypoint.spec.ts",
+        "tests/integration/admin/norm-reference-create-layout.spec.ts",
+        "tests/integration/admin/permissions.spec.ts",
+        "tests/integration/admin/requirement-types-recovery.spec.ts",
+        "tests/integration/admin/statuses.spec.ts",
+        "tests/integration/archiving/lifecycle.spec.ts",
+        "tests/integration/authorization/01-no-global-roles-no-assignments.spec.ts",
+        "tests/integration/authorization/02-requirement-area-owner.spec.ts",
+        "tests/integration/authorization/03-requirement-area-coauthor.spec.ts",
+        "tests/integration/authorization/04-specification-responsible.spec.ts",
+        "tests/integration/authorization/05-specification-coauthor.spec.ts",
+        "tests/integration/authorization/06-requirement-package-lead.spec.ts",
+        "tests/integration/authorization/07-requirement-package-coauthor.spec.ts",
+        "tests/integration/authorization/08-admin.spec.ts",
+        "tests/integration/authorization/09-reviewer.spec.ts",
+        "tests/integration/authorization/10-privacy-officer.spec.ts",
+        "tests/integration/developer-mode/overlay.spec.ts",
+        "tests/integration/deviations/lifecycle.spec.ts",
+        "tests/integration/mcp/seeded-scan.spec.ts",
+        "tests/integration/navigation/global-navigation.spec.ts",
+        "tests/integration/navigation/mobile-smoke.spec.ts",
+        "tests/integration/privacy/data-export.spec.ts",
+        "tests/integration/requirement-packages/list.spec.ts",
+        "tests/integration/requirement-selection/answer-dnd.spec.ts",
+        "tests/integration/requirement-selection/questions-detail.spec.ts",
+        "tests/integration/requirements/ai-assisted-authoring-import-review.spec.ts",
+        "tests/integration/requirements/collaboration.spec.ts",
+        "tests/integration/requirements/create.spec.ts",
+        "tests/integration/requirements/import.spec.ts",
+        "tests/integration/requirements/library.spec.ts",
+        "tests/integration/requirements/lifecycle.spec.ts",
+        "tests/integration/requirements/list-recovery.spec.ts",
+        "tests/integration/requirements/table-column-picker.spec.ts",
+        "tests/integration/requirements/table-hydration.spec.ts",
+        "tests/integration/requirements/table-resize.spec.ts",
+        "tests/integration/specifications/list.spec.ts",
+        "tests/integration/specifications/requirement-detail.spec.ts",
+        "tests/integration/stewardship/navigation.spec.ts"
+      ],
+      "includedSpecCount": 5
     }
   }
 }

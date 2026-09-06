@@ -290,9 +290,10 @@ används behöver motsvarande pipelines finnas där.
   `app-runtime` och `db-job`, skapar SBOM, attesterar artefakter och kör
   release-smoke.
 - `Container PR Smoke` (`.github/workflows/container-pr-smoke.yml`) körs på
-  pull requests. Den bygger containerstacken, installerar produktionsarkivet
-  med rootless Quadlet och verifierar produktionsstacken innan ändringen slås
-  ihop.
+  pull requests. Varje kandidat får ett oberoende bygg- och
+  sårbarhetsresultat. `Production Assembly Acceptance` installerar de två
+  kärnkandidaternas produktionsarkiv med rootless Quadlet på en separat runner.
+  Djup livscykel- och återställningsverifiering ägs av trusted release.
 - `Dependency Drift` (`.github/workflows/dependency-drift.yml`) körs
   schemalagt och manuellt. Den kontrollerar npm-verktygskedjan och samordnade
   produktionsavbildningar och underhåller åtgärdsärenden.
@@ -307,9 +308,10 @@ används behöver motsvarande pipelines finnas där.
   samlade lint- och formatpipelinen. Den kör formatkontroll, stavningskontroll,
   Biome-lint, Markdown-lint, TypeScript-kontroll, Pyright och dotenv-lint.
 - `Integration Tests` (`.github/workflows/integration-tests.yml`) körs på pull
-  requests och huvudgrenen. Den kör en kanonisk full Playwright-svit mot
-  produktionslik server utan utvecklingsberoenden och en liten Developer
-  Mode-kontroll mot utvecklingsservern.
+  requests och huvudgrenen. Den kör `Pruned Runtime Contract` mot ett
+  isolerat produktionsbygge och `Browser Functional Integration` mot
+  utvecklingsservern. Developer Mode har en separat kontroll. Se
+  [CI integration ownership](ci-integration-ownership.md).
 - `Requirement List Performance`
   (`.github/workflows/requirements-list-performance.yml`) körs på pull requests
   och huvudgrenen. Den verifierar SQL Server-baslinjen för kravlistans

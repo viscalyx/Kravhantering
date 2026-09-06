@@ -10,7 +10,11 @@ serviceanvändarens `~/.config/containers/systemd/` samt topologimålet i
 `~/.config/systemd/user/`. Compose används fortsatt för lokal utveckling, men
 PR- och releasevalidering installerar och provar produktionspaketets rootless
 Quadlet-resurser. Compose ingår inte i nya produktionspaket eller i deras
-releasebevis.
+releasebevis. PR-resultatet `Production Assembly Acceptance` använder bara
+kärnstacken och en tunn webbläsarresa. Trusted release äger djup verifiering av
+livscykel, återställning, gränsöverträdelser, samtidighet och HSA-stödtjänster.
+Kärnkandidater byggs en gång och överförs oförändrade till PR-installationen.
+Se [CI integration ownership](../development/ci-integration-ownership.md).
 Varje publicerat driftsättningspaket har också en identitetsbunden attestering
 med ett projekthanterat predikat samt en nedladdningsbar Sigstore-bunt och
 aktuellt betrott rotmaterial. Attesteringsverifiering är ett obligatoriskt

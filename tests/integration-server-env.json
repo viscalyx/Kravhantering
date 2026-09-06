@@ -1,0 +1,7 @@
+{
+  "AI_CONNECTION_DATA_POLICIES_JSON": "{\"generate_with_images\":{\"allowedProcessingRegions\":[\"SE\"],\"informationClassOrder\":[\"public\",\"internal\",\"confidential\"],\"maximumInformationClass\":\"internal\",\"maximumRetentionDays\":0,\"personalDataAllowed\":false,\"requireTrainingProhibited\":true},\"generate_without_images\":{\"allowedProcessingRegions\":[\"SE\"],\"informationClassOrder\":[\"public\",\"internal\",\"confidential\"],\"maximumInformationClass\":\"internal\",\"maximumRetentionDays\":0,\"personalDataAllowed\":false,\"requireTrainingProhibited\":true},\"repair_invalid_import_json\":{\"allowedProcessingRegions\":[\"SE\"],\"informationClassOrder\":[\"public\",\"internal\",\"confidential\"],\"maximumInformationClass\":\"internal\",\"maximumRetentionDays\":0,\"personalDataAllowed\":false,\"requireTrainingProhibited\":true}}",
+  "AI_CONNECTION_DEVELOPMENT_LOCAL_ORIGIN": "https://localhost:4443",
+  "AI_CONNECTION_EGRESS_POLICIES_JSON": "{\"controlled_test\":{\"allowedOrigins\":[],\"privateSidecarAddresses\":[\"127.0.0.1\",\"::1\"],\"privateSidecarOrigins\":[\"https://localhost:4443\"]}}",
+  "AI_CONNECTION_TLS_POLICIES_JSON": "{\"controlled_test\":\"public_web_pki\"}",
+  "ENABLE_ERROR_BOUNDARY_TEST_ROUTE": "1"
+}

@@ -11,6 +11,7 @@ import {
 import type { DataSource } from 'typeorm'
 import { upsertRequirementResponsibilityPerson } from '@/lib/dal/requirement-responsibility-people'
 import type { RequirementResponsibilityPersonRecord } from '@/lib/requirements/responsibility-person'
+import { createRequirementResponsibilityPersonVerificationEvidence } from '@/lib/requirements/responsibility-person-verification'
 import { SPECIFICATION_LIFECYCLE_STATUS_MANAGEMENT_ID } from '@/lib/specifications/lifecycle-status-constants'
 import {
   createSqlServerDataSource,
@@ -416,22 +417,36 @@ export async function verifyResponsibilityPerson(
     scopeId?: number
   },
 ): Promise<string> {
+  const person = AUTHORIZATION_RESPONSIBILITY_PEOPLE[input.hsaId]
+  if (!person)
+    throw new Error(`Unknown authorization fixture person: ${input.hsaId}`)
   const response = await expectOk(
-    await request.post('/api/requirement-responsibility-people/verify', {
-      data: {
-        hsaId: input.hsaId,
-        mode: input.mode ?? 'reuse_local',
-        purpose: input.purpose,
-        ...(input.scopeId ? { scopeId: input.scopeId } : {}),
-      },
-    }),
-    `verify ${input.purpose} ${input.hsaId}`,
+    await request.get('/api/auth/me'),
+    'read fixture actor',
   )
-  const payload = (await response.json()) as { evidence?: unknown }
-  if (typeof payload.evidence !== 'string' || !payload.evidence) {
-    throw new Error(`Verification did not return evidence for ${input.purpose}`)
+  const actor = (await response.json()) as {
+    authenticated: boolean
+    sub: string
+    hsaId: string
   }
-  return payload.evidence
+  if (!actor.authenticated)
+    throw new Error('Authorization fixture requires a signed-in actor')
+  const env = {
+    ...readEnvFile('.env.development'),
+    ...readEnvFile('.env.local'),
+    ...readEnvFile('.env.development.local'),
+    ...process.env,
+  }
+
+  return createRequirementResponsibilityPersonVerificationEvidence(
+    {
+      actor: { id: actor.sub, hsaId: actor.hsaId, source: 'oidc' },
+      person,
+      purpose: input.purpose,
+      scopeId: input.scopeId,
+    },
+    { secret: env.AUTH_SESSION_COOKIE_PASSWORD },
+  ).evidence
 }
 
 function stamp(): string {

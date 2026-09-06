@@ -1,5 +1,12 @@
 # RHEL 10 Production Deployment From Release Artifacts
 
+CI acceptance distinguishes `Production Assembly Acceptance` (the exact core
+production archive, rootless Quadlet containment, HTTPS, and one author browser
+journey) from trusted-release lifecycle, recovery, boundary, concurrency, and
+HSA qualification. Operator installation and upgrade procedures use the same
+release artifacts and supported production contracts. See
+[CI integration ownership](../development/ci-integration-ownership.md).
+
 <!-- cSpell:words coreutils datawriter firewalld fullchain nameserver privkey -->
 <!-- cSpell:words ipv4 resolv -->
 

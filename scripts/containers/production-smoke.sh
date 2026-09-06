@@ -9,6 +9,8 @@ CONFIG_ROOT="${PRODUCTION_SMOKE_CONFIG_ROOT:-/etc/kravhantering}"
 EVIDENCE_DIR="${PRODUCTION_SMOKE_EVIDENCE_DIR:-$PWD/tmp/production-smoke-evidence}"
 HSA_INTEGRATION_LOCK_FILE="${PRODUCTION_SMOKE_HSA_INTEGRATION_LOCK_FILE:-$PWD/container-hsa-integration-support.lock.json}"
 TOPOLOGY=single-node
+SMOKE_SCOPE="${PRODUCTION_SMOKE_SCOPE:-release}"
+[[ "$SMOKE_SCOPE" == core || "$SMOKE_SCOPE" == release ]] || { echo "Unknown smoke scope: $SMOKE_SCOPE" >&2; exit 1; }
 CONFIG_TEMP_DIR=''
 RECOVERY_TEMP_DIR=''
 HSA_STALE_TEMP_DIR=''
@@ -189,6 +191,10 @@ configure_smoke_app_env() {
     -e '/^HSA_PERSON_LOOKUP_CLIENT_KEY_PATH=/d' \
     -e '/^HSA_PERSON_LOOKUP_TLS_SERVER_NAME=/d' \
     "$app_env"
+  if [[ "$SMOKE_SCOPE" == core ]]; then
+    sed -i '/^HSA_PERSON_LOOKUP_URL=/d' "$app_env"
+    return
+  fi
   printf '%s\n' \
     'HSA_PERSON_LOOKUP_CA_PATH=/run/secrets/kravhantering/hsa-mtls/kong-server-ca.crt' \
     'HSA_PERSON_LOOKUP_CLIENT_CERT_PATH=/run/secrets/kravhantering/hsa-mtls/app-client.crt' \
@@ -354,33 +360,35 @@ prepare_images() {
   local kong_image_id
   load_project_image "$APP_RUNTIME_IMAGE_REF" "${APP_RUNTIME_OCI_ARCHIVE-}"
   load_project_image "$DB_JOB_IMAGE_REF" "${DB_JOB_OCI_ARCHIVE-}"
-  load_project_image "$DEMO_SEED_IMAGE_REF" "${DEMO_SEED_OCI_ARCHIVE-}"
-  load_project_image "$HSA_DIRECTORY_MOCK_IMAGE_REF" \
-    "${HSA_DIRECTORY_MOCK_OCI_ARCHIVE-}"
-  load_project_image "$HSA_MTLS_PROVISIONER_IMAGE_REF" \
-    "${HSA_MTLS_PROVISIONER_OCI_ARCHIVE-}"
-  load_project_image "$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF" \
-    "${HSA_PERSON_LOOKUP_ADAPTER_OCI_ARCHIVE-}"
   as_service podman pull "$NGINX_IMAGE_REF"
   as_service podman pull "$SQLSERVER_IMAGE_REF"
   as_service podman pull "$KEYCLOAK_IMAGE_REF"
-  as_service podman pull "$KONG_IMAGE_REF"
   verify_project_image_id "$APP_RUNTIME_IMAGE_REF" "$APP_RUNTIME_IMAGE_ID"
   verify_project_image_id "$DB_JOB_IMAGE_REF" "$DB_JOB_IMAGE_ID"
-  verify_project_image_id "$DEMO_SEED_IMAGE_REF" "$DEMO_SEED_IMAGE_ID"
-  verify_project_image_id \
-    "$HSA_DIRECTORY_MOCK_IMAGE_REF" "$HSA_DIRECTORY_MOCK_IMAGE_ID"
-  verify_project_image_id \
-    "$HSA_MTLS_PROVISIONER_IMAGE_REF" "$HSA_MTLS_PROVISIONER_IMAGE_ID"
-  verify_project_image_id \
-    "$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF" \
-    "$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_ID"
-  kong_image_id="$(jq -r \
-    '.services[] | select(.name == "kong") | .imageId' \
-    "$HSA_INTEGRATION_LOCK_FILE")"
-  [[ "$kong_image_id" != null && -n "$kong_image_id" ]] || \
-    fail 'HSA integration support lock has no Kong image ID'
-  verify_project_image_id "$KONG_IMAGE_REF" "$kong_image_id"
+  if [[ "$SMOKE_SCOPE" == release ]]; then
+    load_project_image "$DEMO_SEED_IMAGE_REF" "${DEMO_SEED_OCI_ARCHIVE-}"
+    load_project_image "$HSA_DIRECTORY_MOCK_IMAGE_REF" \
+      "${HSA_DIRECTORY_MOCK_OCI_ARCHIVE-}"
+    load_project_image "$HSA_MTLS_PROVISIONER_IMAGE_REF" \
+      "${HSA_MTLS_PROVISIONER_OCI_ARCHIVE-}"
+    load_project_image "$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF" \
+      "${HSA_PERSON_LOOKUP_ADAPTER_OCI_ARCHIVE-}"
+    as_service podman pull "$KONG_IMAGE_REF"
+    verify_project_image_id "$DEMO_SEED_IMAGE_REF" "$DEMO_SEED_IMAGE_ID"
+    verify_project_image_id \
+      "$HSA_DIRECTORY_MOCK_IMAGE_REF" "$HSA_DIRECTORY_MOCK_IMAGE_ID"
+    verify_project_image_id \
+      "$HSA_MTLS_PROVISIONER_IMAGE_REF" "$HSA_MTLS_PROVISIONER_IMAGE_ID"
+    verify_project_image_id \
+      "$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF" \
+      "$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_ID"
+    kong_image_id="$(jq -r \
+      '.services[] | select(.name == "kong") | .imageId' \
+      "$HSA_INTEGRATION_LOCK_FILE")"
+    [[ "$kong_image_id" != null && -n "$kong_image_id" ]] || \
+      fail 'HSA integration support lock has no Kong image ID'
+    verify_project_image_id "$KONG_IMAGE_REF" "$kong_image_id"
+  fi
   as_service "$INSTALL_ROOT/current/bin/kravhantering-images.sh" \
     --topology single-node \
     --lock-file "$INSTALL_ROOT/current/container-stack.lock.json" \
@@ -389,6 +397,7 @@ prepare_images() {
 }
 
 render_ci_overlay() {
+  [[ "$SMOKE_SCOPE" == release ]] || return 0
   local quadlet_dir systemd_dir template output
   quadlet_dir="$SERVICE_HOME/.config/containers/systemd"
   systemd_dir="$SERVICE_HOME/.config/systemd/user"
@@ -1312,6 +1321,7 @@ verify_network_contract() {
   [[ "$(container_networks kravhantering-sqlserver)" == \
     'kravhantering-single-node_database' ]]
 
+  [[ "$SMOKE_SCOPE" == release ]] || return 0
   if as_service podman exec kravhantering-nginx getent hosts sqlserver; then
     fail 'nginx unexpectedly resolves the database peer'
   fi
@@ -1404,24 +1414,26 @@ verify_containment() {
       )' >/dev/null ||
       fail "$name unexpectedly published a host port"
   done
-  as_service podman exec kravhantering-app-runtime \
-    sh -c 'touch /tmp/allowed && rm /tmp/allowed'
-  if as_service podman exec kravhantering-app-runtime \
-    sh -c 'touch /app/containment-must-fail' >/dev/null 2>&1; then
-    fail 'application read-only root probe unexpectedly succeeded'
-  fi
-  printf '%s\n' \
-    'Filesystem containment check passed: app-runtime application directory is read-only.'
-  for name in kravhantering-keycloak kravhantering-sqlserver; do
-    as_service podman exec "$name" sh -c \
-      'touch /tmp/containment-allowed && rm /tmp/containment-allowed'
-    if as_service podman exec "$name" sh -c \
-      'touch /containment-must-fail' >/dev/null 2>&1; then
-      fail "$name read-only root probe unexpectedly succeeded"
+  if [[ "$SMOKE_SCOPE" == release ]]; then
+    as_service podman exec kravhantering-app-runtime \
+      sh -c 'touch /tmp/allowed && rm /tmp/allowed'
+    if as_service podman exec kravhantering-app-runtime \
+      sh -c 'touch /app/containment-must-fail' >/dev/null 2>&1; then
+      fail 'application read-only root probe unexpectedly succeeded'
     fi
     printf '%s\n' \
-      "Filesystem containment check passed: $name root filesystem is read-only."
-  done
+      'Filesystem containment check passed: app-runtime application directory is read-only.'
+    for name in kravhantering-keycloak kravhantering-sqlserver; do
+      as_service podman exec "$name" sh -c \
+        'touch /tmp/containment-allowed && rm /tmp/containment-allowed'
+      if as_service podman exec "$name" sh -c \
+        'touch /containment-must-fail' >/dev/null 2>&1; then
+        fail "$name read-only root probe unexpectedly succeeded"
+      fi
+      printf '%s\n' \
+        "Filesystem containment check passed: $name root filesystem is read-only."
+    done
+  fi
   verify_network_contract
   assert_service_property kravhantering-app-runtime.service MemoryMax 4294967296
   assert_service_property kravhantering-app-runtime.service TasksMax 544
@@ -1439,6 +1451,7 @@ verify_containment() {
     3221225472 544 '100000 100000'
   verify_service_cgroup kravhantering-sqlserver.service \
     4294967296 1056 '200000 100000'
+  [[ "$SMOKE_SCOPE" == release ]] || return 0
   as_service podman exec kravhantering-app-runtime sh -ec '
     i=1
     while [ "$i" -le 5 ]; do
@@ -1715,18 +1728,23 @@ verify_cleanup_rollback_schedule() {
 
 up() {
   local archive="$1"
-  required_env DEMO_SEED_IMAGE_REF HSA_DIRECTORY_MOCK_IMAGE_REF \
-    HSA_MTLS_PROVISIONER_IMAGE_REF HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF KONG_IMAGE_REF \
-    APP_RUNTIME_IMAGE_ID DB_JOB_IMAGE_ID DEMO_SEED_IMAGE_ID \
-    HSA_DIRECTORY_MOCK_IMAGE_ID HSA_MTLS_PROVISIONER_IMAGE_ID \
-    HSA_PERSON_LOOKUP_ADAPTER_IMAGE_ID
+  required_env APP_RUNTIME_IMAGE_ID DB_JOB_IMAGE_ID
+  if [[ "$SMOKE_SCOPE" == release ]]; then
+    required_env DEMO_SEED_IMAGE_REF HSA_DIRECTORY_MOCK_IMAGE_REF \
+      HSA_MTLS_PROVISIONER_IMAGE_REF HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF KONG_IMAGE_REF \
+      APP_RUNTIME_IMAGE_ID DB_JOB_IMAGE_ID DEMO_SEED_IMAGE_ID \
+      HSA_DIRECTORY_MOCK_IMAGE_ID HSA_MTLS_PROVISIONER_IMAGE_ID \
+      HSA_PERSON_LOOKUP_ADAPTER_IMAGE_ID
+  fi
   prepare_service_user
   install_archive "$archive"
-  local target_release
-  target_release="$(jq -er '.version' "$INSTALL_ROOT/current/DEPLOYMENT-MANIFEST.json")"
-  local source_args=("${GITHUB_REPOSITORY:-viscalyx/Kravhantering}" "v$target_release" "$EVIDENCE_DIR")
-  [[ -z "${CLEANUP_SOURCE_RELEASE:-}" ]] || source_args+=("$CLEANUP_SOURCE_RELEASE")
-  node scripts/release/prepare-cleanup-source.mjs "${source_args[@]}"
+  if [[ "$SMOKE_SCOPE" == release ]]; then
+    local target_release
+    target_release="$(jq -er '.version' "$INSTALL_ROOT/current/DEPLOYMENT-MANIFEST.json")"
+    local source_args=("${GITHUB_REPOSITORY:-viscalyx/Kravhantering}" "v$target_release" "$EVIDENCE_DIR")
+    [[ -z "${CLEANUP_SOURCE_RELEASE:-}" ]] || source_args+=("$CLEANUP_SOURCE_RELEASE")
+    node scripts/release/prepare-cleanup-source.mjs "${source_args[@]}"
+  fi
   render_runtime_configuration
   prepare_images
   as_service "$INSTALL_ROOT/current/bin/kravhantering-quadlet.sh" \
@@ -1739,21 +1757,35 @@ up() {
   service_systemctl start kravhantering-keycloak.service
   configure_nginx_resolvers
   database_job wait
-  verify_sqlserver_identity_rejection
+  if [[ "$SMOKE_SCOPE" == release ]]; then verify_sqlserver_identity_rejection; fi
   database_job bootstrap
   database_job migration-status >"$EVIDENCE_DIR/migration-before.json"
   database_job migrate >"$EVIDENCE_DIR/migration.json"
   database_job migration-status >"$EVIDENCE_DIR/migration-after.json"
   database_job permission-status >"$EVIDENCE_DIR/permissions.json"
   database_job seed:required
-  local database_network
-  database_network="$(as_service "$INSTALL_ROOT/current/bin/kravhantering-quadlet.sh" \
-    print-network --topology single-node --purpose database)"
-  as_service podman run --rm --pull=never --network "$database_network" \
-    --env-file "$CONFIG_ROOT/db-job.env" \
-    --volume "$CONFIG_ROOT/tls/ca.crt:/run/kravhantering/sqlserver-ca.crt:ro" \
-    "$DEMO_SEED_IMAGE_REF"
-  service_systemctl start kravhantering-ci-hsa.target
+  if [[ "$SMOKE_SCOPE" == core ]]; then
+    local fixture_database
+    fixture_database="$(sudo sed -n 's/^DB_NAME=//p' "$CONFIG_ROOT/app.env")"
+    [[ "$fixture_database" =~ ^[a-zA-Z0-9_]+$ ]] || fail 'invalid fixture database name'
+    sqlserver_query kravhantering-sqlserver "USE [$fixture_database];
+      INSERT INTO requirement_responsibility_people
+        (hsa_id, given_name, surname, created_at, updated_at)
+        VALUES ('SE5560000001-areaowner1', 'Olle', 'AreaOwner', SYSUTCDATETIME(), SYSUTCDATETIME());
+      INSERT INTO requirement_areas
+        (prefix, name, owner_hsa_id, created_at, updated_at)
+        VALUES ('AUTHZ', 'Assembly author fixture', 'SE5560000001-areaowner1', SYSUTCDATETIME(), SYSUTCDATETIME());"
+  fi
+  if [[ "$SMOKE_SCOPE" == release ]]; then
+    local database_network
+    database_network="$(as_service "$INSTALL_ROOT/current/bin/kravhantering-quadlet.sh" \
+      print-network --topology single-node --purpose database)"
+    as_service podman run --rm --pull=never --network "$database_network" \
+      --env-file "$CONFIG_ROOT/db-job.env" \
+      --volume "$CONFIG_ROOT/tls/ca.crt:/run/kravhantering/sqlserver-ca.crt:ro" \
+      "$DEMO_SEED_IMAGE_REF"
+    service_systemctl start kravhantering-ci-hsa.target
+  fi
   service_systemctl enable kravhantering-single-node.target
   service_systemctl start kravhantering-single-node.target || \
     report_target_failure 'single-node target failed to start'
@@ -1762,6 +1794,10 @@ up() {
     'initial application process health'
   wait_for_url https://kravhantering.test/api/ready \
     'initial full-stack readiness'
+  if [[ "$SMOKE_SCOPE" == core ]]; then
+    verify_containment
+    return
+  fi
   local cleanup_database
   cleanup_database="$(sudo sed -n 's/^DB_NAME=//p' "$CONFIG_ROOT/app.env")"
   [[ "$cleanup_database" =~ ^[a-zA-Z0-9_]+$ ]] || fail 'invalid cleanup database name'
@@ -2073,6 +2109,10 @@ boundaries() {
 
 verify() {
   bash .devcontainer/trust-container-ca.sh
+  if [[ "$SMOKE_SCOPE" == core ]]; then
+    CI=true npm run test:release-smoke -- --grep 'proves HTTPS, auth, SQL Server reads and writes, assets, and build metadata' --retries=0
+    return
+  fi
   CI=true npm run test:release-smoke
   boundaries
   verify_secret_safe_journal

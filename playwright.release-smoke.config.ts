@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
-import { RELEASE_SMOKE_USER } from './tests/release-smoke/auth-roles'
+import {
+  RELEASE_SMOKE_AUTHOR,
+  RELEASE_SMOKE_USER,
+} from './tests/release-smoke/auth-roles'
 
 const desktopChromium = {
   ...devices['Desktop Chrome'],
@@ -60,7 +63,10 @@ export default defineConfig({
       Origin: originHeader,
       'X-Requested-With': 'XMLHttpRequest',
     },
-    storageState: RELEASE_SMOKE_USER.filePath,
+    storageState:
+      process.env.PRODUCTION_SMOKE_SCOPE === 'core'
+        ? RELEASE_SMOKE_AUTHOR.filePath
+        : RELEASE_SMOKE_USER.filePath,
     actionTimeout: actionTimeoutMs,
     navigationTimeout: navigationTimeoutMs,
     trace: 'on',

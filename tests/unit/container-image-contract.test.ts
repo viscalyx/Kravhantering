@@ -402,12 +402,20 @@ describe('container image contract', () => {
 
   it('exports HSA topology candidates as archives Docker can load', () => {
     const workflow = readWorkspaceFile(
-      '.github/workflows/hsa-mtls-topology.yml',
+      '.github/workflows/container-pr-smoke.yml',
     )
 
-    expect(workflow.match(/--output type=docker,dest=/gu)).toHaveLength(4)
+    expect(workflow.match(/--output type=docker,dest=/gu)).toHaveLength(2)
     expect(workflow).not.toContain('--output type=oci,dest=')
     expect(workflow.match(/docker load --input/gu)).toHaveLength(2)
+    expect(workflow.match(/skopeo copy/gu)).toHaveLength(2)
+    expect(workflow.match(/test "\$actual" = "\$expected"/gu)).toHaveLength(2)
+    expect(workflow).not.toContain(
+      '--file containers/hsa-directory-mock/Dockerfile .',
+    )
+    expect(workflow).not.toContain(
+      '--file containers/hsa-person-lookup-adapter/Dockerfile .',
+    )
   })
 
   it('keeps Codex devcontainer permissions in the user config template', () => {

@@ -101,6 +101,9 @@ export function findMissingRoleFiles(
 }
 
 export default async function globalSetup(config: FullConfig): Promise<void> {
+  const roles = config.metadata?.authRoles
+    ? ROLES.filter(role => config.metadata.authRoles.includes(role.role))
+    : ROLES
   if (process.env.PLAYWRIGHT_SKIP_AUTH_SETUP) {
     console.warn(
       '[playwright global-setup] PLAYWRIGHT_SKIP_AUTH_SETUP is set; not seeding storageState. Specs that require auth will fail.',
@@ -117,8 +120,7 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   // exist; otherwise fail fast with an actionable message.
   //
   // CI flows that intentionally start their own server (e.g. the
-  // `test-prodlike-pruned` job, which boots `start:prodlike-pruned` after
-  // `npm prune --omit=dev`) can opt into seeding against that running
+  // pruned runtime job, which boots an isolated standalone server) can opt into seeding against that running
   // server by also setting `PLAYWRIGHT_FORCE_AUTH_SETUP=1`. The seed
   // then runs against `PLAYWRIGHT_BASE_URL` instead of bailing out.
   if (process.env.PLAYWRIGHT_SKIP_WEBSERVER) {
@@ -127,7 +129,7 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
         '[playwright global-setup] PLAYWRIGHT_SKIP_WEBSERVER is set and PLAYWRIGHT_FORCE_AUTH_SETUP is set — seeding storageState against the externally-managed server.',
       )
     } else {
-      const missing = findMissingRoleFiles()
+      const missing = findMissingRoleFiles(roles)
       if (missing.length === 0) {
         console.info(
           '[playwright global-setup] PLAYWRIGHT_SKIP_WEBSERVER is set and all role storageStates already exist — reusing cached cookies; skipping Keycloak login.',
@@ -141,7 +143,7 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   }
 
   const baseUrl = getPlaywrightBaseUrl(config, 'http://localhost:3000')
-  for (const spec of ROLES) {
+  for (const spec of roles) {
     try {
       await loginAndSaveStorageState(baseUrl, spec, {
         ignoreHTTPSErrors: true,

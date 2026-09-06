@@ -46,8 +46,9 @@ function digestFromImageId(imageId) {
   return imageId
 }
 
-function imageMetadata(reference, imageId) {
-  const manifestDigest = digestFromImageId(imageId)
+function imageMetadata(reference, imageId, manifest) {
+  digestFromImageId(imageId)
+  const manifestDigest = digestFromImageId(manifest ?? imageId)
   return {
     imageId,
     manifestDigest,
@@ -61,11 +62,19 @@ export function buildSmokeBundleInputs(values, options = {}) {
   const build = JSON.parse(fsImpl.readFileSync(buildJsonPath, 'utf8'))
   return {
     metadata: {
-      appRuntime: imageMetadata(values['app-ref'], values['app-image-id']),
+      appRuntime: imageMetadata(
+        values['app-ref'],
+        values['app-image-id'],
+        values['app-manifest-digest'],
+      ),
       database: {
         expectedSchemaVersion: build.expectedDatabaseSchemaVersion,
       },
-      dbJob: imageMetadata(values['db-job-ref'], values['db-job-image-id']),
+      dbJob: imageMetadata(
+        values['db-job-ref'],
+        values['db-job-image-id'],
+        values['db-job-manifest-digest'],
+      ),
     },
     plan: {
       commitSha: values['commit-sha'],

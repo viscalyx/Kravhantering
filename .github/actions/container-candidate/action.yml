@@ -1,0 +1,104 @@
+name: Build and evaluate one container candidate
+description: Build one immutable OCI archive and retain its policy evidence.
+inputs:
+  candidate:
+    description: Candidate artifact name.
+    required: true
+  dockerfile:
+    description: Dockerfile to build.
+    required: true
+  target:
+    description: Optional Dockerfile target.
+    required: false
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Prepare candidate metadata
+      shell: bash
+      env:
+        CANDIDATE: ${{ inputs.candidate }}
+      run: |
+        set -euo pipefail
+        mkdir -p tmp/container-candidate
+        image_tag="pr-${GITHUB_RUN_ID}-${GITHUB_SHA::12}"
+        package_version="$(node -p "require('./package.json').version")"
+        {
+          echo "BUILD_VERSION=${package_version}-pr.${GITHUB_RUN_ID}"
+          echo "BUILD_COMMIT_SHA=${GITHUB_SHA}"
+          echo "BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%S.000Z')"
+          echo "BUILD_IMAGE_TAG=localhost/kravhantering/app-runtime:${image_tag}"
+          echo "APP_RUNTIME_TAG=${image_tag}"
+          echo "APP_RUNTIME_IMAGE_REF=localhost/kravhantering/app-runtime:${image_tag}"
+          echo "DB_JOB_TAG=${image_tag}"
+          echo "DB_JOB_IMAGE_REF=localhost/kravhantering/db-job:${image_tag}"
+          echo "CONTAINER_STACK_RUN_ID=${GITHUB_RUN_ID}"
+          echo "RELEASE_SMOKE_RUN_ID=${GITHUB_RUN_ID}"
+        } > tmp/container-candidate/build.env
+        cat tmp/container-candidate/build.env >> "$GITHUB_ENV"
+        echo "CANDIDATE_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
+
+    - name: Build exact candidate OCI archive
+      id: build
+      shell: bash
+      env:
+        CANDIDATE: ${{ inputs.candidate }}
+        DOCKERFILE: ${{ inputs.dockerfile }}
+        TARGET: ${{ inputs.target }}
+      run: |
+        set -euo pipefail
+        node scripts/prebuild.js
+        cp public/build.json tmp/container-candidate/build.json
+        docker buildx create --name candidate-builder --use
+        docker buildx inspect --bootstrap
+        target_args=()
+        if [[ -n "$TARGET" ]]; then target_args=(--target "$TARGET"); fi
+        docker buildx build --file "$DOCKERFILE" "${target_args[@]}" \
+          --platform linux/amd64 \
+          --metadata-file "tmp/container-candidate/${CANDIDATE}-buildx.json" \
+          --tag "localhost/kravhantering/${CANDIDATE}:${APP_RUNTIME_TAG}" \
+          --build-arg BUILD_VERSION="$BUILD_VERSION" \
+          --build-arg BUILD_COMMIT_SHA="$BUILD_COMMIT_SHA" \
+          --build-arg BUILD_TIME="$BUILD_TIME" \
+          --build-arg BUILD_IMAGE_TAG="$BUILD_IMAGE_TAG" \
+          --build-arg NEXT_PUBLIC_SITE_URL=https://kravhantering.test \
+          --provenance=false \
+          --output "type=oci,dest=tmp/container-candidate/${CANDIDATE}.oci.tar" .
+        jq -e '."containerimage.config.digest", ."containerimage.digest"' \
+          "tmp/container-candidate/${CANDIDATE}-buildx.json"
+        echo "manifest-digest=$(jq -er '."containerimage.digest"' "tmp/container-candidate/${CANDIDATE}-buildx.json")" >> "$GITHUB_OUTPUT"
+        sha256sum "tmp/container-candidate/${CANDIDATE}.oci.tar" \
+          > tmp/container-candidate/archive.sha256
+
+    - name: Evaluate candidate vulnerability policy
+      id: policy
+      uses: ./.github/actions/container-vulnerability-gate
+      with:
+        candidate: ${{ inputs.candidate }}
+        candidate-manifest-digest: ${{ steps.build.outputs.manifest-digest }}
+        source: oci-archive:tmp/container-candidate/${{ inputs.candidate }}.oci.tar
+        artifact-prefix: tmp/container-candidate/vulnerability
+
+    - name: Record candidate outcome
+      if: always()
+      shell: bash
+      env:
+        CANDIDATE: ${{ inputs.candidate }}
+        BUILD_OUTCOME: ${{ steps.build.outcome }}
+        POLICY_OUTCOME: ${{ steps.policy.outcome }}
+      run: |
+        mkdir -p tmp/container-candidate
+        {
+          echo "Candidate: ${CANDIDATE}"
+          echo "Build: ${BUILD_OUTCOME}"
+          echo "Vulnerability policy: ${POLICY_OUTCOME}"
+          if [[ "$POLICY_OUTCOME" == failure ]]; then
+            decision=tmp/container-candidate/vulnerability/metadata/vulnerability-policy-decision.json
+            if [[ -f "$decision" ]] && jq -e '.summary' "$decision" >/dev/null; then
+              echo "Failure category: committed vulnerability policy"
+            else
+              echo "Failure category: scanner/tool or evidence failure (see step logs)"
+            fi
+          fi
+          echo "Runtime: $(($(date +%s) - ${CANDIDATE_STARTED_AT:-$(date +%s)}))s"
+        } | tee tmp/container-candidate/outcome.txt >> "$GITHUB_STEP_SUMMARY"

@@ -1,9 +1,9 @@
 # Debugging the production smoke stack locally
 
-Use this workflow when the **Container PR Smoke** job fails after producing
-its OCI and runtime artifacts. It recreates the Ubuntu 24.04, systemd, rootless
-Podman, and Quadlet environment inside one privileged Docker container, then
-runs the real production archive installation and release-smoke suite.
+Use this workflow when **Production Assembly Acceptance** fails after producing
+its core candidate and assembly evidence artifacts. It recreates Ubuntu 24.04,
+systemd, rootless Podman, and Quadlet inside one privileged Docker container,
+then runs production archive installation and the thin assembly browser path.
 
 This is developer and CI diagnostic tooling. It does not change the supported
 production deployment procedure or replace either production deploy guide.
@@ -42,28 +42,18 @@ It then:
 3. installs the production archive with the existing `production-smoke.sh`
    entry point;
 4. calls its canonical `verify` command to trust the generated CA, run the real
-   Playwright release-smoke tests, and probe containment boundaries; and
+   thin core Playwright journey with zero retries; and
 5. writes redacted evidence below
    `tmp/production-smoke-debug/<run-id>/evidence/`.
 
 The debug host remains running after both success and failure so its state is
 available for inspection.
 
-Cleanup rollback verification copies the authenticated source archive and
-extracted bundle into a private directory under the service account's
-`cleanup-source-verification` directory. The retained cleanup manager verifies
-the copied archive and stack-lock digests before rollback, so verification
-does not depend on service-account access to the runner's workspace.
-
-Cleanup source metadata and artifact downloads use a 10-second connection
-timeout and a 120-second transfer timeout per attempt, with up to three
-retries. Each curl process remains bounded by the 300-second subprocess limit.
-
-The initial stack must pass full readiness before cleanup rollback verification
-can stop its services. This lets Keycloak finish its first database migration.
-Full readiness is checked again after restoring the candidate release.
-Reads of the staged manifest and execution of its installer also run as the
-service account because the staged directory is private to that account.
+The debug command selects `PRODUCTION_SMOKE_SCOPE=core`, matching PR assembly.
+It downloads `container-candidate-app-runtime`, `container-candidate-db-job`,
+and `production-assembly-evidence`. Deep cleanup, recovery, restart, concurrency,
+and HSA overlay qualification belong to trusted release. See
+[CI integration ownership](ci-integration-ownership.md).
 
 ## Inspect a failure
 
@@ -128,13 +118,13 @@ separate directories. For PR smoke runs:
 
 ```bash
 gh run download <failed-run-id> \
-  --name container-pr-runtime-<failed-run-id> \
+  --name production-assembly-evidence \
   --dir tmp/production-smoke-comparison/failed
 gh run download <failed-run-id> \
   --name container-pr-runner-metadata-<failed-run-id> \
   --dir tmp/production-smoke-comparison/failed/runner-metadata
 gh run download <successful-run-id> \
-  --name container-pr-runtime-<successful-run-id> \
+  --name production-assembly-evidence \
   --dir tmp/production-smoke-comparison/successful
 gh run download <successful-run-id> \
   --name container-pr-runner-metadata-<successful-run-id> \
@@ -146,17 +136,17 @@ Start with these comparisons:
 <!-- markdownlint-disable MD013 -->
 ```bash
 diff -u \
-  tmp/production-smoke-comparison/successful/runtime-diagnostics/runner.json \
-  tmp/production-smoke-comparison/failed/runtime-diagnostics/runner.json
+  tmp/production-smoke-comparison/successful/tmp/container-pr-artifacts/runtime-diagnostics/runner.json \
+  tmp/production-smoke-comparison/failed/tmp/container-pr-artifacts/runtime-diagnostics/runner.json
 diff -u \
   tmp/production-smoke-comparison/successful/runner-metadata/github-runner-metadata.txt \
   tmp/production-smoke-comparison/failed/runner-metadata/github-runner-metadata.txt
 diff -u \
-  tmp/production-smoke-comparison/successful/runtime-diagnostics/runtime-components.txt \
-  tmp/production-smoke-comparison/failed/runtime-diagnostics/runtime-components.txt
+  tmp/production-smoke-comparison/successful/tmp/container-pr-artifacts/runtime-diagnostics/runtime-components.txt \
+  tmp/production-smoke-comparison/failed/tmp/container-pr-artifacts/runtime-diagnostics/runtime-components.txt
 diff -u \
-  tmp/production-smoke-comparison/successful/runtime-diagnostics/service-cgroups.txt \
-  tmp/production-smoke-comparison/failed/runtime-diagnostics/service-cgroups.txt
+  tmp/production-smoke-comparison/successful/tmp/container-pr-artifacts/runtime-diagnostics/service-cgroups.txt \
+  tmp/production-smoke-comparison/failed/tmp/container-pr-artifacts/runtime-diagnostics/service-cgroups.txt
 ```
 <!-- markdownlint-enable MD013 -->
 
@@ -197,17 +187,12 @@ Docker network.
 
 ## What this proves
 
-This workflow exercises the same production archive installer, rootless
-service user, Quadlet generator, systemd lifecycle, network boundaries,
-resource limits, HTTPS route, Keycloak realm, SQL Server setup, HSA test
-overlay, Playwright suite, and disposable boundary probes as CI.
-
-The HSA overlay is strict-only. The provisioner selects isolated App, Kong,
-Adapter, and mock bundles into separate named volumes; every runtime mount is
-read-only. Smoke verification authenticates readiness, rotates one trust
-domain by stopping clients before servers and restarting servers before
-clients, and then repeats that lifecycle after rollback. A failed generation
-change, readiness check, or restored-generation check fails the smoke run.
+This workflow exercises the PR production archive installer, rootless service
+user, Quadlet generator, core containment inspection, HTTPS route, Keycloak,
+SQL Server migrations and required seed, and one author browser journey.
+Candidate application images are imported unchanged. Trusted release owns the
+additional recovery, lifecycle, concurrency, containment-violation, and strict
+HSA overlay checks.
 
 It is not an exact copy of the hosted runner itself. Docker supplies the outer
 kernel and cgroup hierarchy, and the checked-out scripts may be newer than the

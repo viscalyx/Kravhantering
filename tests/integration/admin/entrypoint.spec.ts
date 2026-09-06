@@ -290,60 +290,62 @@ for (const { name, viewport } of viewportVariants) {
       ).toContainText('Kravversionsstatusar')
     })
 
-    test(`ADMIN-01: persists column changes through library reloads (${name})`, async ({
-      page,
-    }) => {
-      await page.goto('/sv/admin')
+    if (name === 'desktop') {
+      test(`ADMIN-01: persists column changes through library reloads (${name})`, async ({
+        page,
+      }) => {
+        await page.goto('/sv/admin')
 
-      await expect
-        .poll(() => getAdminColumnOrder(page))
-        .toHaveLength(DEFAULT_COLUMN_PAYLOAD.length)
-      const originalOrder = await getAdminColumnOrder(page)
-      const targetOrder = swapColumns(originalOrder, 'area', 'category')
-      await expect(page.getByRole('button', { name: 'Spara' })).toBeDisabled()
+        await expect
+          .poll(() => getAdminColumnOrder(page))
+          .toHaveLength(DEFAULT_COLUMN_PAYLOAD.length)
+        const originalOrder = await getAdminColumnOrder(page)
+        const targetOrder = swapColumns(originalOrder, 'area', 'category')
+        await expect(page.getByRole('button', { name: 'Spara' })).toBeDisabled()
 
-      await setAdminColumnOrder(page, targetOrder)
-      await page.getByRole('button', { name: 'Spara' }).click()
-      await expect(page.getByText('Sparat')).toBeVisible()
+        await setAdminColumnOrder(page, targetOrder)
+        await page.getByRole('button', { name: 'Spara' }).click()
+        await expect(page.getByText('Sparat')).toBeVisible()
 
-      await page.goto('/sv/requirements')
-      await expect(
-        page.locator(VISIBLE_REQUIREMENTS_HEADER_SELECTOR),
-      ).toContainText('Kategori')
+        await page.goto('/sv/requirements')
+        await expect(
+          page.locator(VISIBLE_REQUIREMENTS_HEADER_SELECTOR),
+        ).toContainText('Kategori')
 
-      const readHeaderTexts = async () =>
-        page
-          .locator(VISIBLE_REQUIREMENTS_HEADER_CELL_SELECTOR)
-          .evaluateAll(nodes =>
-            nodes.map(
-              node => node.textContent?.replace(/\s+/g, ' ').trim() ?? '',
-            ),
-          )
+        const readHeaderTexts = async () =>
+          page
+            .locator(VISIBLE_REQUIREMENTS_HEADER_CELL_SELECTOR)
+            .evaluateAll(nodes =>
+              nodes.map(
+                node => node.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+              ),
+            )
 
-      const headerTexts = await readHeaderTexts()
-      const categoryIndex = headerTexts.findIndex(text =>
-        text.includes('Kategori'),
-      )
-      const areaIndex = headerTexts.findIndex(text =>
-        text.includes('Kravområde'),
-      )
+        const headerTexts = await readHeaderTexts()
+        const categoryIndex = headerTexts.findIndex(text =>
+          text.includes('Kategori'),
+        )
+        const areaIndex = headerTexts.findIndex(text =>
+          text.includes('Kravområde'),
+        )
 
-      expect(categoryIndex).toBeGreaterThanOrEqual(0)
-      expect(areaIndex).toBeGreaterThanOrEqual(0)
-      expect(categoryIndex < areaIndex).toBe(
-        targetOrder.indexOf('category') < targetOrder.indexOf('area'),
-      )
+        expect(categoryIndex).toBeGreaterThanOrEqual(0)
+        expect(areaIndex).toBeGreaterThanOrEqual(0)
+        expect(categoryIndex < areaIndex).toBe(
+          targetOrder.indexOf('category') < targetOrder.indexOf('area'),
+        )
 
-      await page.reload()
-      await expect(
-        page.locator(VISIBLE_REQUIREMENTS_HEADER_SELECTOR),
-      ).toContainText('Kategori')
+        await page.reload()
+        await expect(
+          page.locator(VISIBLE_REQUIREMENTS_HEADER_SELECTOR),
+        ).toContainText('Kategori')
 
-      await page.goto('/sv/admin')
-      await expect
-        .poll(async () => getAdminColumnOrder(page))
-        .toEqual(targetOrder)
-    })
+        await page.goto('/sv/admin')
+        await expect
+          .poll(async () => getAdminColumnOrder(page))
+          .toEqual(targetOrder)
+      })
+    }
 
     if (name === 'desktop') {
       test.describe('admin-only permissions', () => {

@@ -170,87 +170,119 @@ describe('GitHub Actions workflow security', () => {
     expect(observeCommand).toContain('dotenv-linter --version')
   })
 
-  it('keeps Playwright integration CI consolidated on the pruned prodlike gate', () => {
-    const workflow = readWorkflowYaml('integration-tests.yml')
-    const jobs = workflow.jobs ?? {}
-    const devSmoke = jobs['dev-server-smoke']
-    const prodlikePruned = jobs['test-prodlike-pruned']
-
-    expect(workflow.on).toHaveProperty('pull_request')
-    expect(workflow.on).toHaveProperty('push')
-    expect(jobs).not.toHaveProperty('test-server')
-
-    expect(devSmoke?.name).toBe('Dev Server Smoke (Developer Mode)')
-    expect(devSmoke?.strategy).toBeUndefined()
-    const devSmokeCommand = stepRunText(
-      devSmoke,
-      'Run Developer Mode smoke against dev server',
+  it('reports independent runtime and browser-functional results with early validation', () => {
+    const jobs = readWorkflowYaml('integration-tests.yml').jobs ?? {}
+    expect(jobs['dev-server-smoke']?.name).toBe(
+      'Dev Server Smoke (Developer Mode)',
     )
-    expect(devSmokeCommand).toContain('npm run test:integration --')
-    expect(devSmokeCommand).toContain(
-      'tests/integration/developer-mode/overlay.spec.ts',
-    )
-    expect(devSmokeCommand).toContain(
-      '--grep "DEVTOOLS-01: shows chip on hover and copies a contextual reference"',
-    )
-    expect(devSmokeCommand).not.toMatch(/npm run test:integration\s*$/mu)
-    expect(devSmokeCommand).not.toContain('npm run test:integration:prodlike')
-    expect(
-      devSmoke?.steps?.some(
+    for (const [id, name] of [
+      ['test-prodlike-pruned', 'Pruned Runtime Contract'],
+      ['browser-functional', 'Browser Functional Integration'],
+    ]) {
+      const job = jobs[id]
+      expect(job?.name).toBe(name)
+      expect(job?.needs).toBeUndefined()
+      expect(job?.strategy).toBeUndefined()
+      const steps = job?.steps ?? []
+      const manifestIndex = steps.findIndex(
         step => step.run === 'npm run test:integration:chunks:check',
-      ),
-    ).toBe(false)
-
-    expect(prodlikePruned?.name).toBe(
-      'Canonical Playwright Gate (Prod-like, Pruned Dependencies)',
-    )
+      )
+      const serviceIndex = steps.findIndex(step => step.run === 'npm run db:up')
+      expect(manifestIndex).toBeGreaterThanOrEqual(0)
+      expect(manifestIndex).toBeLessThan(serviceIndex)
+      expect(
+        steps.find(step => step.name === 'Capture owned service diagnostics')
+          ?.if,
+      ).toBe('always()')
+    }
     expect(
-      stepRunText(prodlikePruned, 'Check integration chunk manifest'),
-    ).toBe('npm run test:integration:chunks:check')
-    const prodlikeStartCommand = stepRunText(
-      prodlikePruned,
-      'Start pruned prod-like server',
+      stepRunText(
+        jobs['test-prodlike-pruned'],
+        'Start pruned prod-like server',
+      ),
+    ).toContain('mktemp -d /tmp/krav-pruned-XXXXXX')
+    expect(
+      stepRunText(jobs['browser-functional'], 'Run browser-functional chunks'),
+    ).toContain('npm run test:integration')
+  })
+
+  it('keeps support candidate failures independent of core assembly acceptance', () => {
+    const jobs = readWorkflowYaml('container-pr-smoke.yml').jobs ?? {}
+    expect(jobs['production-assembly']?.needs).toEqual(['core-candidate'])
+    expect(jobs['production-assembly']?.name).toBe(
+      'Production Assembly Acceptance',
     )
-    expect(prodlikeStartCommand).toContain('npm run start:prodlike-pruned')
-    expect(prodlikeStartCommand).toContain(
-      'server_log_path="test-results/prodlike-pruned/server.log"',
-    )
-    expect(prodlikeStartCommand).toContain(
-      'Writing prod-like production server console log to ',
-    )
-    const prodlikeRunCommand = stepRunText(
-      prodlikePruned,
-      'Run Playwright tests against pruned prod-like server',
-    )
-    expect(prodlikeRunCommand).toContain('npm run test:integration:prodlike')
-    expect(prodlikeRunCommand).toContain(
-      'prodlike_server_log="test-results/prodlike-pruned/server.log"',
-    )
-    expect(prodlikeRunCommand).toContain(
-      'Prod-like production server console log: ',
-    )
-    expect(prodlikeRunCommand).toContain('- Production server console log: \\`')
-    expect(prodlikeRunCommand).toContain(
-      '- Server log artifact: \\`prodlike-pruned-server-log\\`',
-    )
-    const prodlikeRunStep = prodlikePruned?.steps?.find(
-      step =>
-        step.name === 'Run Playwright tests against pruned prod-like server',
-    )
-    expect(prodlikeRunStep?.env).toMatchObject({
-      PLAYWRIGHT_BASE_URL: 'http://localhost:3001',
-      PLAYWRIGHT_FORCE_AUTH_SETUP: '1',
-      PLAYWRIGHT_SKIP_WEBSERVER: '1',
+    expect(readWorkflowYaml('container-pr-smoke.yml').on).toEqual({
+      pull_request: null,
     })
-    const prodlikeLogUploadStep = prodlikePruned?.steps?.find(
-      step => step.name === 'Upload pruned server log',
+    expect(jobs['hsa-required']).toMatchObject({
+      name: 'HSA mTLS topology required',
+      needs: ['hsa-build', 'hsa-topology', 'hsa-rotation'],
+    })
+    for (const id of ['hsa-topology', 'hsa-rotation']) {
+      expect(jobs[id]).toMatchObject({
+        needs: ['hsa-build', 'support-candidate'],
+        if: [
+          '${{',
+          "!cancelled() && needs.hsa-build.result == 'success'",
+          '}}',
+        ].join(' '),
+      })
+      const artifacts = jobs[id]?.steps
+        ?.filter(step =>
+          String(step.uses).startsWith('actions/download-artifact@'),
+        )
+        .map(step => step.with?.name)
+      expect(artifacts).toEqual([
+        'hsa-mtls-current-commit-oci',
+        'container-candidate-hsa-directory-mock',
+        'container-candidate-hsa-person-lookup-adapter',
+      ])
+    }
+    for (const id of ['core-candidate', 'support-candidate']) {
+      expect(jobs[id]?.name).toBe(
+        [
+          'Candidate Build and Vulnerability Policy (${{',
+          'matrix.label',
+          '}})',
+        ].join(' '),
+      )
+      expect(jobs[id]?.strategy).toMatchObject({ 'fail-fast': false })
+      expect(jobs[id]?.needs).toBeUndefined()
+      expect(jobs[id]?.permissions).toEqual({ contents: 'read' })
+      expect(
+        jobs[id]?.steps?.find(
+          step => step.name === 'Upload candidate and evidence',
+        )?.if,
+      ).toBe('always()')
+    }
+    expect(jobs['core-candidate']?.strategy).toMatchObject({
+      matrix: {
+        include: [
+          { candidate: 'app-runtime', label: 'app-runtime' },
+          { candidate: 'db-job', label: 'db-job' },
+        ],
+      },
+    })
+    expect(jobs['support-candidate']?.strategy).toMatchObject({
+      matrix: {
+        include: [
+          { candidate: 'demo-seed', label: 'demo-seed' },
+          { candidate: 'hsa-directory-mock', label: 'HSA directory mock' },
+          {
+            candidate: 'hsa-person-lookup-adapter',
+            label: 'HSA person lookup adapter',
+          },
+        ],
+      },
+    })
+    const downloads = jobs['production-assembly']?.steps?.filter(step =>
+      String(step.uses).startsWith('actions/download-artifact@'),
     )
-    expect(String(prodlikeLogUploadStep?.with?.path)).toContain(
-      'test-results/prodlike-pruned/server.log',
-    )
-    expect(String(prodlikeLogUploadStep?.with?.path)).toContain(
-      'test-results/server-logs/prodlike/**',
-    )
+    expect(downloads?.map(step => step.with?.name)).toEqual([
+      'container-candidate-app-runtime',
+      'container-candidate-db-job',
+    ])
   })
 
   it('keeps localhost-only ZAP warnings non-blocking', () => {
@@ -385,11 +417,8 @@ describe('GitHub Actions workflow security', () => {
 
   it('gates PR and release candidates with the same vulnerability policy', () => {
     const workflow = readWorkflowYaml('container-release.yml')
-    const prWorkflow = readWorkflowYaml('container-pr-smoke.yml')
     const releaseJob = workflow.jobs?.['trusted-release']
-    const prJob = prWorkflow.jobs?.['container-smoke']
     const steps = releaseJob?.steps ?? []
-    const prSteps = prJob?.steps ?? []
     const stepNames = steps.map(step => step.name)
     const indexOf = (name: string) => {
       const index = stepNames.indexOf(name)
@@ -397,9 +426,6 @@ describe('GitHub Actions workflow security', () => {
       return index
     }
     const candidateBuilds = steps.filter(step =>
-      String(step.name).match(/^Build .+ candidate OCI artifact$/u),
-    )
-    const prCandidateBuilds = prSteps.filter(step =>
       String(step.name).match(/^Build .+ candidate OCI artifact$/u),
     )
     const gateAction = yaml.load(
@@ -414,8 +440,7 @@ describe('GitHub Actions workflow security', () => {
     )
 
     expect(candidateBuilds).toHaveLength(6)
-    expect(prCandidateBuilds).toHaveLength(6)
-    expect(candidateSbomSteps).toHaveLength(6)
+    expect(candidateSbomSteps).toHaveLength(7)
     for (const step of candidateSbomSteps) {
       expect(step.with?.format).toBe('spdx-json')
       expect(step.with?.['upload-artifact']).toBe(false)
@@ -440,21 +465,6 @@ describe('GitHub Actions workflow security', () => {
       'hsa-person-lookup-adapter',
     ]) {
       expect(releaseGate?.with?.[inputName]).toMatch(/^oci-archive:/u)
-    }
-
-    const prGate = prSteps.find(
-      step =>
-        step.name === 'Gate PR images against release vulnerability policy',
-    )
-    expect(prGate?.uses).toBe('./.github/actions/container-vulnerability-gate')
-    for (const inputName of [
-      'app-runtime',
-      'db-job',
-      'demo-seed',
-      'hsa-directory-mock',
-      'hsa-person-lookup-adapter',
-    ]) {
-      expect(prGate?.with?.[inputName]).toMatch(/^oci-archive:/u)
     }
 
     const scanStep = gateSteps.find(
@@ -522,21 +532,6 @@ describe('GitHub Actions workflow security', () => {
       "success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'",
     )
 
-    const prGateIndex = prSteps.findIndex(
-      step =>
-        step.name === 'Gate PR images against release vulnerability policy',
-    )
-    const prStartIndex = prSteps.findIndex(
-      step => step.name === 'Install production archive with rootless Quadlet',
-    )
-    expect(prGateIndex).toBeGreaterThanOrEqual(0)
-    expect(prGateIndex).toBeLessThan(prStartIndex)
-    expect(prGate?.uses).toBe('./.github/actions/container-vulnerability-gate')
-    expect(prGate?.with?.metadata).toBeUndefined()
-    expect(prGate?.with?.['artifact-prefix']).toBe(
-      'tmp/container-pr-artifacts/vulnerability',
-    )
-
     const uploadEvidence = steps.find(
       step => step.name === 'Upload release metadata artifacts',
     )
@@ -551,7 +546,7 @@ describe('GitHub Actions workflow security', () => {
 
   it('runs PR and main smoke through the same Ubuntu production Quadlet seam', () => {
     for (const [fileName, jobId] of [
-      ['container-pr-smoke.yml', 'container-smoke'],
+      ['container-pr-smoke.yml', 'production-assembly'],
       ['container-release.yml', 'trusted-release'],
     ]) {
       const workflow = readWorkflowYaml(fileName)
@@ -590,7 +585,7 @@ describe('GitHub Actions workflow security', () => {
 
   it('uses the production deployment as the PR container acceptance boundary', () => {
     const workflow = readWorkflowYaml('container-pr-smoke.yml')
-    const steps = workflow.jobs?.['container-smoke']?.steps ?? []
+    const steps = workflow.jobs?.['production-assembly']?.steps ?? []
     const stepNames = steps.map(step => step.name)
 
     expect(stepNames).not.toContain('Verify OCI archives')
@@ -614,7 +609,7 @@ describe('GitHub Actions workflow security', () => {
     const cases = [
       {
         fileName: 'container-pr-smoke.yml',
-        jobId: 'container-smoke',
+        jobId: 'production-assembly',
         permissions: { actions: 'read', contents: 'read' },
       },
       {
@@ -649,10 +644,20 @@ describe('GitHub Actions workflow security', () => {
     }
 
     const prWorkflow = readWorkflowYaml('container-pr-smoke.yml')
+    for (const name of [
+      'Collect production Quadlet evidence',
+      'Remove production Quadlet stack',
+    ]) {
+      const step = prWorkflow.jobs?.['production-assembly']?.steps?.find(
+        step => step.name === name,
+      )
+      expect(step).toMatchObject({ if: 'always()', 'timeout-minutes': 3 })
+      expect(step?.run).toMatch(/^timeout --kill-after=10s 120s /)
+    }
     expect(prWorkflow.jobs?.['runner-metadata']?.if).toBe(
       [
         '${{',
-        "always() && needs.container-smoke.result != 'skipped'",
+        "always() && needs.production-assembly.result != 'skipped'",
         '}}',
       ].join(' '),
     )

@@ -1,5 +1,12 @@
-import type { FullConfig } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import { parseEnv } from 'node:util'
+import type { APIRequestContext, FullConfig } from '@playwright/test'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
+import {
+  HSA,
+  verifyResponsibilityPerson,
+} from '@/tests/integration/authorization/authorization-test-helpers'
 import {
   getPlaywrightBaseUrl,
   loginAndSaveStorageState,
@@ -152,5 +159,51 @@ describe('playwright auth helpers', () => {
       baseURL: 'http://localhost:3000',
       ignoreHTTPSErrors: true,
     })
+  })
+})
+
+describe('authorization fixture evidence', () => {
+  it('uses the development runtime secret without consuming the HSA route quota', async () => {
+    const actor = {
+      hsaId: HSA.admin,
+      id: 'fixture-oidc-sub',
+      source: 'oidc' as const,
+    }
+    const secret = parseEnv(
+      readFileSync('.env.development', 'utf8'),
+    ).AUTH_SESSION_COOKIE_PASSWORD
+    const request = {
+      get: vi.fn(async () =>
+        response({
+          json: { authenticated: true, sub: actor.id, hsaId: actor.hsaId },
+        }),
+      ),
+      post: () => {
+        throw new Error('Fixture setup must not consume HSA verification quota')
+      },
+    } as unknown as APIRequestContext
+    const originalSecret = process.env.AUTH_SESSION_COOKIE_PASSWORD
+    delete process.env.AUTH_SESSION_COOKIE_PASSWORD
+    try {
+      const evidence = await verifyResponsibilityPerson(request, {
+        hsaId: HSA.areaOwner,
+        purpose: 'requirement_area_owner',
+      })
+      expect(
+        resolveVerifiedRequirementResponsibilityPerson(
+          evidence,
+          {
+            actor,
+            hsaId: HSA.areaOwner,
+            purpose: 'requirement_area_owner',
+          },
+          { secret },
+        ),
+      ).toMatchObject({ hsaId: HSA.areaOwner, givenName: 'Olle' })
+    } finally {
+      if (originalSecret === undefined)
+        delete process.env.AUTH_SESSION_COOKIE_PASSWORD
+      else process.env.AUTH_SESSION_COOKIE_PASSWORD = originalSecret
+    }
   })
 })

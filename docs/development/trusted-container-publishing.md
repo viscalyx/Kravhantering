@@ -6,6 +6,15 @@ tags such as `vX.Y.Z-preview.N` are created by the `main` run and are excluded
 from the tag trigger so the preview tag push does not start a second container
 release workflow.
 
+Pull requests report five independent candidate build and vulnerability results
+and `Production Assembly Acceptance`. Assembly consumes only successful
+app-runtime and db-job artifacts on a separate Ubuntu runner. It inspects core
+containment and runs one author browser journey through HTTPS. Trusted release
+retains deep lifecycle, recovery, boundary, concurrency, cleanup, and HSA
+qualification, including the mTLS provisioner candidate. See
+[CI integration ownership](ci-integration-ownership.md) for exact check names,
+artifact relationships, and the owner-managed branch-protection update.
+
 The workflow builds the production `app-runtime` and `db-job` images, the
 optional `kravhantering-demo-seed` image, the HSA person lookup adapter and the
 one-shot strict-PKI provisioner, and the test-only `hsa-directory-mock` image

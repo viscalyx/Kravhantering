@@ -29,10 +29,6 @@ const CONTAINERFILE = 'scripts/containers/production-smoke-debug.Containerfile'
 const OCI_ARCHIVES = {
   'app-runtime': 'app-runtime.oci.tar',
   'db-job': 'db-job.oci.tar',
-  'demo-seed': 'demo-seed.oci.tar',
-  'hsa-directory-mock': 'hsa-directory-mock.oci.tar',
-  'hsa-mtls-provisioner': 'hsa-mtls-provisioner.oci.tar',
-  'hsa-person-lookup-adapter': 'hsa-person-lookup-adapter.oci.tar',
 }
 
 function run(command, args, options = {}) {
@@ -149,12 +145,21 @@ function downloadRunArtifacts({ repository, runId }) {
   const root = runRoot(runId)
   const ociDirectory = path.join(root, 'artifacts', 'oci')
   const runtimeDirectory = path.join(root, 'artifacts', 'runtime')
-  downloadArtifact(repository, runId, artifacts.oci, ociDirectory)
+  for (const candidate of Object.keys(OCI_ARCHIVES)) {
+    downloadArtifact(
+      repository,
+      runId,
+      artifacts[candidate],
+      path.join(ociDirectory, candidate),
+    )
+  }
   downloadArtifact(repository, runId, artifacts.runtime, runtimeDirectory)
 
   const requiredPaths = [
-    ...Object.values(OCI_ARCHIVES).map(file => path.join(ociDirectory, file)),
-    path.join(runtimeDirectory, 'build.json'),
+    ...Object.entries(OCI_ARCHIVES).map(([name, file]) =>
+      path.join(ociDirectory, name, file),
+    ),
+    path.join(ociDirectory, 'app-runtime', 'build.json'),
     path.join(runtimeDirectory, 'container-stack.lock.json'),
   ]
   validateDownloadedArtifactCache({
@@ -180,20 +185,21 @@ function readOciMetadata(archivePath) {
 }
 
 function prepareInputs(downloads, runId) {
-  const buildPath = path.join(downloads.runtimeDirectory, 'build.json')
+  const buildPath = path.join(
+    downloads.ociDirectory,
+    'app-runtime',
+    'build.json',
+  )
   const stackLockPath = path.join(
     downloads.runtimeDirectory,
     'container-stack.lock.json',
   )
   const build = JSON.parse(fs.readFileSync(buildPath, 'utf8'))
   const stackLock = JSON.parse(fs.readFileSync(stackLockPath, 'utf8'))
-  const supportLock = JSON.parse(
-    fs.readFileSync('container-hsa-integration-support.lock.json', 'utf8'),
-  )
   const imageArchives = {}
   const imageMetadata = {}
   for (const [name, file] of Object.entries(OCI_ARCHIVES)) {
-    const archivePath = path.join(downloads.ociDirectory, file)
+    const archivePath = path.join(downloads.ociDirectory, name, file)
     imageArchives[name] = archivePath
     imageMetadata[name] = readOciMetadata(archivePath)
   }
@@ -209,8 +215,10 @@ function prepareInputs(downloads, runId) {
       'run-id': runId,
       'app-ref': app.reference,
       'app-image-id': app.imageId,
+      'app-manifest-digest': app.descriptor.digest,
       'db-job-ref': database.reference,
       'db-job-image-id': database.imageId,
+      'db-job-manifest-digest': database.descriptor.digest,
       'stack-lock': stackLockPath,
       'output-dir': outputDirectory,
     },
@@ -219,14 +227,18 @@ function prepareInputs(downloads, runId) {
   const evidenceDirectory = path.join(downloads.root, 'evidence')
   return {
     archivePath: bundle.archivePath,
-    environment: buildSmokeEnvironment({
-      evidenceDirectory,
-      imageArchives,
-      imageMetadata,
-      runId,
-      stackLock,
-      supportLock,
-    }),
+    environment: {
+      BUILD_COMMIT_SHA: build.commitSha,
+      BUILD_VERSION: build.version,
+      BUILD_IMAGE_TAG: build.imageTag,
+      ...buildSmokeEnvironment({
+        evidenceDirectory,
+        imageArchives,
+        imageMetadata,
+        runId,
+        stackLock,
+      }),
+    },
   }
 }
 
@@ -382,7 +394,7 @@ function runDebug(values) {
       { environment: inputs.environment },
     )
     dockerExec(['scripts/containers/production-smoke.sh', 'verify'], {
-      environment: existingEnvironment(),
+      environment: inputs.environment,
     })
     collectEvidence(inputs.environment)
   } catch (error) {
@@ -398,6 +410,7 @@ function existingEnvironment() {
   return {
     PRODUCTION_SMOKE_EVIDENCE_DIR: path.join(runRoot(runId), 'evidence'),
     RELEASE_SMOKE_RUN_ID: runId,
+    PRODUCTION_SMOKE_SCOPE: 'core',
   }
 }
 

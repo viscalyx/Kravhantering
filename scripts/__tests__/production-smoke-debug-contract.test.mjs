@@ -64,22 +64,23 @@ describe('production smoke debug contract', () => {
     expect(
       selectRunArtifacts(
         [
-          { expired: false, name: 'container-pr-oci-123' },
-          { expired: false, name: 'container-pr-runtime-123' },
-          { expired: false, name: 'container-pr-playwright-123' },
+          { expired: false, name: 'container-candidate-app-runtime' },
+          { expired: false, name: 'production-assembly-evidence' },
+          { expired: false, name: 'container-candidate-db-job' },
         ],
         '123',
       ),
     ).toEqual({
-      oci: 'container-pr-oci-123',
-      runtime: 'container-pr-runtime-123',
+      'app-runtime': 'container-candidate-app-runtime',
+      'db-job': 'container-candidate-db-job',
+      runtime: 'production-assembly-evidence',
     })
     expect(() => selectRunArtifacts([], '123')).toThrow('found 0')
     expect(() =>
       selectRunArtifacts(
         [
-          { expired: true, name: 'container-pr-oci-123' },
-          { expired: false, name: 'container-pr-runtime-123' },
+          { expired: true, name: 'container-candidate-app-runtime' },
+          { expired: false, name: 'production-assembly-evidence' },
         ],
         '123',
       ),
@@ -244,11 +245,9 @@ describe('production smoke debug contract', () => {
       APP_RUNTIME_IMAGE_ID: digest('0'),
       APP_RUNTIME_IMAGE_REF: 'localhost/app-runtime:tag',
       APP_RUNTIME_OCI_ARCHIVE: '/artifacts/app-runtime.tar',
-      HSA_MTLS_PROVISIONER_IMAGE_ID: digest('4'),
-      HSA_MTLS_PROVISIONER_IMAGE_REF: 'localhost/hsa-mtls-provisioner:tag',
-      HSA_MTLS_PROVISIONER_OCI_ARCHIVE: '/artifacts/hsa-mtls-provisioner.tar',
+      DB_JOB_IMAGE_REF: 'localhost/db-job:tag',
+      PRODUCTION_SMOKE_SCOPE: 'core',
       KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:candidate',
-      KONG_IMAGE_REF: 'registry.example/kong:candidate',
       PRODUCTION_SMOKE_EVIDENCE_DIR: '/evidence',
       RELEASE_SMOKE_RUN_ID: '123',
     })

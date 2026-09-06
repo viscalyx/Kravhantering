@@ -223,115 +223,69 @@ jobs:
         run: npm run db:down
 
   test-prodlike-pruned:
-    name: Canonical Playwright Gate (Prod-like, Pruned Dependencies)
+    name: Pruned Runtime Contract
     runs-on: ubuntu-latest
-    timeout-minutes: 150
-
+    timeout-minutes: 60
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: .nvmrc
           package-manager-cache: false
-
       - name: Install repository npm
         run: node scripts/install-repository-npm.mjs
-
       - name: Restore npm cache
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
-
+          node-version-file: .nvmrc
+          cache: npm
       - name: Install dependencies
         run: npm ci
-
       - name: Check integration chunk manifest
         run: npm run test:integration:chunks:check
-
       - name: Clean server and database state
         run: npm run clean:all
-
       - name: Prepare SQL Server env file
         run: cp .env.sqlserver.ci .env.sqlserver
-
       - name: Start local database service
         run: npm run db:up
-
       - name: Setup local SQL Server database
         run: npm run db:setup
-
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
-
       - name: Start and wait for local IdP service
         run: npm run idp:up
-
-      # Build with the full devDependency tree so Tailwind can resolve
-      # `@import "@viscalyx/developer-mode-react/safelist.css"` from
-      # `app/globals.css`. The published `safelist.css` artifact has no
-      # JavaScript runtime surface – its `@source inline(...)` declarations
-      # are inlined into the emitted CSS bundle, so the package is no
-      # longer needed after the build completes.
       - name: Build prod-like bundle (full deps)
         run: npm run build:local-prod
         env:
-          ENABLE_ERROR_BOUNDARY_TEST_ROUTE: '1'
-
-      # Snapshot the dev-dep tree, then install a prod-only one in its
-      # place. The snapshot is restored after the server is started so the
-      # Playwright runner (a devDependency) can execute against the
-      # already-running pruned server. Renaming `node_modules` is safe
-      # while Node holds open handles to the old tree on Linux.
-      - name: Snapshot full node_modules
-        run: mv node_modules node_modules.full
-
-      - name: Install production-only dependencies
-        run: npm ci --omit=dev
-
+          ENABLE_ERROR_BOUNDARY_TEST_ROUTE: "1"
       - name: Provision local AI provider-secret keyring
         run: node scripts/provision-ai-provider-secret-keyring.mjs
-
       - name: Start pruned prod-like server
         run: |
           mkdir -p test-results/prodlike-pruned
           server_log_path="test-results/prodlike-pruned/server.log"
           echo "Writing prod-like production server console log to ${server_log_path}"
-          nohup npm run start:prodlike-pruned \
+          runtime_dir="$(mktemp -d /tmp/krav-pruned-XXXXXX)"
+          echo "PRODLIKE_RUNTIME_DIR=${runtime_dir}" >> "$GITHUB_ENV"
+          PRODLIKE_RUNTIME_DIR="${runtime_dir}" nohup npm run start:prodlike-pruned \
             > "${server_log_path}" 2>&1 &
           echo "$!" > test-results/prodlike-pruned/server.pid
         env:
           AI_CONNECTION_DATA_POLICIES_JSON: '{"generate_with_images":{"allowedProcessingRegions":["SE"],"informationClassOrder":["public","internal","confidential"],"maximumInformationClass":"internal","maximumRetentionDays":0,"personalDataAllowed":false,"requireTrainingProhibited":true},"generate_without_images":{"allowedProcessingRegions":["SE"],"informationClassOrder":["public","internal","confidential"],"maximumInformationClass":"internal","maximumRetentionDays":0,"personalDataAllowed":false,"requireTrainingProhibited":true},"repair_invalid_import_json":{"allowedProcessingRegions":["SE"],"informationClassOrder":["public","internal","confidential"],"maximumInformationClass":"internal","maximumRetentionDays":0,"personalDataAllowed":false,"requireTrainingProhibited":true}}'
           AI_CONNECTION_EGRESS_POLICIES_JSON: '{"controlled_test":{"allowedOrigins":[],"privateSidecarAddresses":["127.0.0.1","::1"],"privateSidecarOrigins":["https://localhost:4443"]}}'
           AI_CONNECTION_TLS_POLICIES_JSON: '{"controlled_test":"public_web_pki"}'
-          ENABLE_ERROR_BOUNDARY_TEST_ROUTE: '1'
-
+          ENABLE_ERROR_BOUNDARY_TEST_ROUTE: "1"
       - name: Wait for pruned server to respond
         run: |
-          echo "Waiting for prod-like server on http://localhost:3001 ..."
-          for i in $(seq 1 60); do
-            if curl -sf --max-time 5 -o /dev/null http://localhost:3001/; then
-              echo "Pruned server is responding."
-              exit 0
-            fi
-            echo "Attempt $i/60 – not responding yet, retrying in 2s..."
-            sleep 2
-          done
-          echo "Pruned server did not become ready in time."
-          echo "----- server.log -----"
-          cat test-results/prodlike-pruned/server.log || true
-          exit 1
-
-      - name: Restore full node_modules for the test runner
-        run: |
-          mv node_modules node_modules.prod
-          mv node_modules.full node_modules
-
+          node --input-type=module - <<'NODE'
+          import { waitForHttpReady } from './tests/integration-chunks.mjs'
+          await waitForHttpReady('http://localhost:3001/api/auth/login', { expectedStatuses: [302, 303, 307, 308] })
+          NODE
       - name: Run Playwright tests against pruned prod-like server
         run: |
           set -euo pipefail
@@ -361,18 +315,24 @@ jobs:
           exit "${test_exit}"
         env:
           CI: true
-          ENABLE_ERROR_BOUNDARY_TEST_ROUTE: '1'
-          PLAYWRIGHT_SKIP_WEBSERVER: '1'
-          PLAYWRIGHT_FORCE_AUTH_SETUP: '1'
-          PLAYWRIGHT_BASE_URL: 'http://localhost:3001'
-
+          ENABLE_ERROR_BOUNDARY_TEST_ROUTE: "1"
+          PLAYWRIGHT_SKIP_WEBSERVER: "1"
+          PLAYWRIGHT_FORCE_AUTH_SETUP: "1"
+          PLAYWRIGHT_BASE_URL: http://localhost:3001
       - name: Stop pruned prod-like server
         if: always()
         run: |
           if [ -f test-results/prodlike-pruned/server.pid ]; then
             kill "$(cat test-results/prodlike-pruned/server.pid)" || true
           fi
-
+          npm run kill:port -- --port 3001 || true
+          if [[ -n "${PRODLIKE_RUNTIME_DIR:-}" ]]; then rm -rf -- "${PRODLIKE_RUNTIME_DIR}"; fi
+      - name: Capture owned service diagnostics
+        if: always()
+        run: |
+          mkdir -p test-results/services
+          docker compose --env-file .env.sqlserver -f docker-compose.sqlserver.yml logs --no-color > test-results/services/sqlserver.log 2>&1 || true
+          docker compose -f docker-compose.idp.yml logs --no-color > test-results/services/keycloak.log 2>&1 || true
       - name: Upload pruned server log
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -383,15 +343,18 @@ jobs:
             test-results/server-logs/prodlike/**
             test-results/hsa-person-lookup/prodlike-pruned.log
           retention-days: 7
-
       - name: Upload test results (prodlike-pruned)
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: playwright-report-prodlike-pruned
-          path: playwright-report-prodlike/
+          path: |
+            playwright-report-prodlike/
+            test-results/prodlike/
+            test-results/prodlike-pruned/
+            test-results/server-logs/prodlike/
+            test-results/services/
           retention-days: 7
-
       - name: Upload test results XML (prodlike-pruned)
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -399,11 +362,82 @@ jobs:
           name: playwright-junit-prodlike-pruned
           path: test-results/prodlike/playwright-junit.xml
           retention-days: 7
-
       - name: Stop local IdP service
         if: always()
         run: npm run idp:down
-
+      - name: Stop local database service
+        if: always()
+        run: npm run db:down
+  browser-functional:
+    name: Browser Functional Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install repository npm
+        run: node scripts/install-repository-npm.mjs
+      - name: Restore npm cache
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Check integration chunk manifest
+        run: npm run test:integration:chunks:check
+      - name: Provision local AI provider-secret keyring
+        run: node scripts/provision-ai-provider-secret-keyring.mjs
+      - name: Clean server and database state
+        run: npm run clean:all
+      - name: Prepare SQL Server env file
+        run: cp .env.sqlserver.ci .env.sqlserver
+      - name: Start local database service
+        run: npm run db:up
+      - name: Setup local SQL Server database
+        run: npm run db:setup
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+      - name: Start and wait for local IdP service
+        run: npm run idp:up
+      - name: Run browser-functional chunks
+        run: |
+          start_epoch="$(date +%s)"
+          set +e
+          npm run test:integration
+          test_exit=$?
+          set -e
+          echo "Browser functional runtime: $(($(date +%s) - start_epoch))s; result: ${test_exit}" >> "$GITHUB_STEP_SUMMARY"
+          exit "$test_exit"
+        env:
+          CI: true
+      - name: Capture owned service diagnostics
+        if: always()
+        run: |
+          mkdir -p test-results/services
+          docker compose --env-file .env.sqlserver -f docker-compose.sqlserver.yml logs --no-color > test-results/services/sqlserver.log 2>&1 || true
+          docker compose -f docker-compose.idp.yml logs --no-color > test-results/services/keycloak.log 2>&1 || true
+      - name: Upload browser-functional evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: browser-functional-evidence
+          path: |
+            playwright-report-dev/
+            test-results/dev/
+            test-results/server-logs/dev/
+            test-results/services/
+          retention-days: 7
+      - name: Stop local IdP service
+        if: always()
+        run: npm run idp:down
       - name: Stop local database service
         if: always()
         run: npm run db:down

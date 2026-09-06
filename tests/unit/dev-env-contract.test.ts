@@ -128,7 +128,6 @@ describe('development environment contract', () => {
     const synchronizedPaths = [
       '.devcontainer/docker-compose.yml',
       '.devcontainer/elevated/docker-compose.yml',
-      '.github/workflows/container-pr-smoke.yml',
       '.github/workflows/container-release.yml',
       'containers/hsa-mtls-topology/compose.yml',
       'containers/production/env/release.env.template',

@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -36,6 +37,47 @@ afterEach(() => {
 })
 
 describe('prodlike standalone runtime', () => {
+  it('rejects repository destinations, including symlink aliases', () => {
+    const root = createRuntimeFixture()
+    const aliasRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'runtime-alias-'))
+    temporaryRoots.push(aliasRoot)
+    const alias = path.join(aliasRoot, 'repository')
+    fs.symlinkSync(root, alias, 'dir')
+    for (const destination of [root, path.join(root, 'public'), alias]) {
+      expect(() => stageProdlikeStandaloneAssets(root, destination)).toThrow(
+        'Isolated runtime must be outside the repository',
+      )
+    }
+  })
+
+  it('rejects external destinations with ancestor dependencies', () => {
+    const root = createRuntimeFixture()
+    const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'runtime-parent-'))
+    temporaryRoots.push(parent)
+    const isolated = path.join(parent, 'runtime')
+    fs.mkdirSync(isolated)
+    fs.mkdirSync(path.join(parent, 'node_modules'))
+    expect(() => stageProdlikeStandaloneAssets(root, isolated)).toThrow(
+      'Isolated runtime has dependency ancestry',
+    )
+  })
+
+  it('isolates traced dependencies from repository fallback resolution', () => {
+    const root = createRuntimeFixture()
+    const isolated = fs.mkdtempSync(path.join(os.tmpdir(), 'isolated-runtime-'))
+    temporaryRoots.push(isolated)
+    const dependency = path.join(root, 'node_modules', 'untraced-fixture')
+    fs.mkdirSync(dependency, { recursive: true })
+    fs.writeFileSync(path.join(dependency, 'index.js'), 'module.exports = 1')
+    const paths = stageProdlikeStandaloneAssets(root, isolated)
+    expect(paths.standaloneRoot).toBe(isolated)
+    expect(fs.existsSync(paths.server)).toBe(true)
+    expect(() =>
+      createRequire(paths.server).resolve('untraced-fixture'),
+    ).toThrow()
+    expect(fs.existsSync(dependency)).toBe(true)
+  })
+
   it('stages public and static assets beside the generated server', () => {
     const root = createRuntimeFixture()
 

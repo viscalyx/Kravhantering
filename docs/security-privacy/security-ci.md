@@ -1,5 +1,13 @@
 # Security CI
 
+The integration and container PR responsibilities are defined in
+[CI integration ownership](../development/ci-integration-ownership.md).
+Security MCP exclusively owns the seeded MCP scan. Each project candidate has
+an independent build and vulnerability-policy result; core assembly consumes
+only successful app-runtime and db-job artifacts. Complete trusted-release
+policy evaluation and operational qualification remain required before
+publishing.
+
 Continuous-integration security checks specific to this repository. The
 canonical scanner choice and rationale, plus instructions for tuning,
 extending, and replicating the scan locally.
@@ -539,11 +547,14 @@ redirect, HTML, JavaScript, YAML and 404 paths, exact single-value headers,
 rendered specification and absence of CSP console violations.
 
 The stable required context is
-`HSA mTLS topology / HSA mTLS topology required`. Its primary seam invokes the
-current-commit production App image and authenticated responsibility-person
-route through the production Quadlet smoke topology. The subordinate transport
-jobs build the provisioner, mock, Adapter, and exact App transport contract
-from the tested commit. They reject unauthenticated clients, cross-leg
+`Container PR Smoke / HSA mTLS topology required`. Its transport jobs build
+the provisioner and exact App transport contract from the tested commit and
+reuse the mock and Adapter archives from the candidate-policy jobs. Docker
+archive conversion preserves the candidate image identity, which is checked
+after loading. The jobs run independently of production assembly and retain
+the existing pull-request trigger scope. Trusted release owns the production
+App image and authenticated responsibility-person route through Quadlet.
+The transport jobs reject unauthenticated clients, cross-leg
 credentials, and a same-CA leaf with the wrong stable identity on App-to-Kong,
 Kong-to-Adapter, and Adapter-to-HSA. Same-domain wrong server leaves are
 installed one runtime bundle at a time and rejected by the corresponding

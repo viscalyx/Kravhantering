@@ -100,6 +100,7 @@ function originHeader(baseUrl: string) {
 }
 
 const RELEASE_SMOKE_AREA_PREFIX = 'AUTHZ'
+const coreAssembly = process.env.PRODUCTION_SMOKE_SCOPE === 'core'
 
 test.describe('Release smoke container flow', () => {
   test('proves HTTPS, auth, SQL Server reads and writes, assets, and build metadata', async ({
@@ -123,9 +124,11 @@ test.describe('Release smoke container flow', () => {
       const me = (await meResponse.json()) as AuthMeResponse
 
       expect(me.authenticated).toBe(true)
-      expect(me.hsaId).toBe('SE5560000001-reviewer1')
-      expect(me.name).toBe('Rita Reviewer')
-      expect(me.roles).toEqual(['Reviewer'])
+      expect(me.hsaId).toBe(
+        coreAssembly ? 'SE5560000001-areaowner1' : 'SE5560000001-reviewer1',
+      )
+      expect(me.name).toBe(coreAssembly ? 'Olle AreaOwner' : 'Rita Reviewer')
+      expect(me.roles).toEqual(coreAssembly ? [] : ['Reviewer'])
     })
 
     await test.step('open the requirements library and capture page evidence', async () => {
@@ -143,10 +146,17 @@ test.describe('Release smoke container flow', () => {
         requirement => requirement.uniqueId && requirement.version?.description,
       )
 
-      expect(firstRequirement).toBeDefined()
-      await expect(page.locator('body')).toContainText(
-        firstRequirement?.uniqueId ?? '',
-      )
+      if (coreAssembly) {
+        expect(requirementsPayload.requirements).toEqual([])
+        await expect(
+          page.getByRole('heading', { name: 'Kravbibliotek', exact: true }),
+        ).toHaveCount(1)
+      } else {
+        expect(firstRequirement).toBeDefined()
+        await expect(page.locator('body')).toContainText(
+          firstRequirement?.uniqueId ?? '',
+        )
+      }
 
       await expect
         .poll(() => staticResourceUrls.length, {
@@ -165,6 +175,11 @@ test.describe('Release smoke container flow', () => {
       expect(buildResponse.ok()).toBe(true)
       const metadata = (await buildResponse.json()) as BuildMetadataResponse
 
+      if (coreAssembly) {
+        expect(metadata.commitSha).toBe(process.env.BUILD_COMMIT_SHA)
+        expect(metadata.version).toBe(process.env.BUILD_VERSION)
+        expect(metadata.imageTag).toBe(process.env.BUILD_IMAGE_TAG)
+      }
       expectNonEmptyString(metadata.version, 'version')
       expectNonEmptyString(metadata.commitSha, 'commitSha')
       expectNonEmptyString(metadata.builtAt, 'builtAt')

@@ -1,4 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
+import integrationManifest from './tests/integration-chunks.manifest.json'
+import integrationServerEnv from './tests/integration-server-env.json'
 
 const desktopChromium = {
   ...devices['Desktop Chrome'],
@@ -6,7 +8,7 @@ const desktopChromium = {
   deviceScaleFactor: 1,
   hasTouch: false,
   isMobile: false,
-  viewport: { width: 1440, height: 1200 },
+  viewport: { width: 1280, height: 720 },
 }
 
 /**
@@ -53,34 +55,14 @@ function deriveOrigin(input: string): string {
 }
 const originHeader = deriveOrigin(baseUrl)
 
-const controlledTestDataPolicy = {
-  allowedProcessingRegions: ['SE'],
-  informationClassOrder: ['public', 'internal', 'confidential'],
-  maximumInformationClass: 'internal',
-  maximumRetentionDays: 0,
-  personalDataAllowed: false,
-  requireTrainingProhibited: true,
-}
-
-const controlledTestDataPolicies = JSON.stringify({
-  generate_with_images: controlledTestDataPolicy,
-  generate_without_images: controlledTestDataPolicy,
-  repair_invalid_import_json: controlledTestDataPolicy,
-})
-
-const controlledTestEgressPolicies = JSON.stringify({
-  controlled_test: {
-    allowedOrigins: [],
-    privateSidecarAddresses: ['127.0.0.1', '::1'],
-    privateSidecarOrigins: ['https://localhost:4443'],
-  },
-})
-
 export default defineConfig({
   testDir: './tests/integration',
-  // The MCP seeded scan is the prodlike security gate. It intentionally
-  // refuses the dev-server base URL and is run by playwright.prodlike.config.ts.
-  testIgnore: ['**/mcp/seeded-scan.spec.ts'],
+  testIgnore: [
+    '**/mcp/seeded-scan.spec.ts',
+    ...integrationManifest.suites.prodlike.chunks
+      .flatMap(chunk => chunk.paths)
+      .map(spec => `**/${spec.split('/').slice(2).join('/')}`),
+  ],
   globalSetup: './tests/integration/global-setup.ts',
   outputDir: 'test-results/dev',
   fullyParallel: true,
@@ -151,13 +133,7 @@ export default defineConfig({
           reuseExistingServer: !process.env.CI,
           timeout: 120_000,
           env: {
-            AI_CONNECTION_DATA_POLICIES_JSON: controlledTestDataPolicies,
-            AI_CONNECTION_DEVELOPMENT_LOCAL_ORIGIN: 'https://localhost:4443',
-            AI_CONNECTION_EGRESS_POLICIES_JSON: controlledTestEgressPolicies,
-            AI_CONNECTION_TLS_POLICIES_JSON: JSON.stringify({
-              controlled_test: 'public_web_pki',
-            }),
-            ENABLE_ERROR_BOUNDARY_TEST_ROUTE: '1',
+            ...integrationServerEnv,
             NODE_ENV: 'development',
           },
         },

@@ -1,160 +1,178 @@
 name: Container PR Smoke
-
 on:
-  workflow_call:
-  pull_request:
-    branches: [main]
-
+  pull_request: null
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
-
 jobs:
-  container-smoke:
-    name: Build and Smoke Test Container Stack
+  core-candidate:
+    name: Candidate Build and Vulnerability Policy (${{ matrix.label }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - candidate: app-runtime
+            label: app-runtime
+            dockerfile: containers/app/Dockerfile
+            target: app-runtime
+          - candidate: db-job
+            label: db-job
+            dockerfile: containers/app/Dockerfile
+            target: db-job
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install repository npm
+        run: node scripts/install-repository-npm.mjs
+      - name: Restore npm cache
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate candidate and vulnerability contracts
+        run: npm run test -- scripts/__tests__/container-vulnerability-policy.test.mjs tests/unit/container-image-contract.test.ts
+      - name: Build and evaluate candidate
+        id: candidate
+        uses: ./.github/actions/container-candidate
+        with:
+          candidate: ${{ matrix.candidate }}
+          dockerfile: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
+      - name: Upload candidate and evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: container-candidate-${{ matrix.candidate }}
+          path: tmp/container-candidate/
+          retention-days: 2
+  support-candidate:
+    name: Candidate Build and Vulnerability Policy (${{ matrix.label }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - candidate: demo-seed
+            label: demo-seed
+            dockerfile: containers/app/Dockerfile
+            target: demo-seed
+          - candidate: hsa-directory-mock
+            label: HSA directory mock
+            dockerfile: containers/hsa-directory-mock/Dockerfile
+            target: ""
+          - candidate: hsa-person-lookup-adapter
+            label: HSA person lookup adapter
+            dockerfile: containers/hsa-person-lookup-adapter/Dockerfile
+            target: ""
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install repository npm
+        run: node scripts/install-repository-npm.mjs
+      - name: Restore npm cache
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate candidate and vulnerability contracts
+        run: npm run test -- scripts/__tests__/container-vulnerability-policy.test.mjs tests/unit/container-image-contract.test.ts
+      - name: Build and evaluate candidate
+        id: candidate
+        uses: ./.github/actions/container-candidate
+        with:
+          candidate: ${{ matrix.candidate }}
+          dockerfile: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
+      - name: Upload candidate and evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: container-candidate-${{ matrix.candidate }}
+          path: tmp/container-candidate/
+          retention-days: 2
+  production-assembly:
+    name: Production Assembly Acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     permissions:
       actions: read
       contents: read
-
     env:
       APP_RUNTIME_IMAGE: localhost/kravhantering/app-runtime
-      APP_RUNTIME_OCI_ARCHIVE: tmp/container-pr-artifacts/oci/app-runtime.oci.tar
+      APP_RUNTIME_OCI_ARCHIVE: tmp/candidates/app-runtime/app-runtime.oci.tar
       DB_JOB_IMAGE: localhost/kravhantering/db-job
-      DB_JOB_OCI_ARCHIVE: tmp/container-pr-artifacts/oci/db-job.oci.tar
-      DEMO_SEED_IMAGE: localhost/kravhantering/demo-seed
-      DEMO_SEED_OCI_ARCHIVE: tmp/container-pr-artifacts/oci/demo-seed.oci.tar
-      HSA_DIRECTORY_MOCK_IMAGE: localhost/kravhantering/hsa-directory-mock
-      HSA_DIRECTORY_MOCK_OCI_ARCHIVE: tmp/container-pr-artifacts/oci/hsa-directory-mock.oci.tar
-      HSA_MTLS_PROVISIONER_IMAGE: localhost/kravhantering/hsa-mtls-provisioner
-      HSA_MTLS_PROVISIONER_OCI_ARCHIVE: tmp/container-pr-artifacts/oci/hsa-mtls-provisioner.oci.tar
-      HSA_PERSON_LOOKUP_ADAPTER_IMAGE: localhost/kravhantering/hsa-person-lookup-adapter
-      HSA_PERSON_LOOKUP_ADAPTER_OCI_ARCHIVE: tmp/container-pr-artifacts/oci/hsa-person-lookup-adapter.oci.tar
+      DB_JOB_OCI_ARCHIVE: tmp/candidates/db-job/db-job.oci.tar
       KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.3-0
-      KONG_IMAGE_REF: docker.io/kong/kong-gateway:3.15.0.5-20260824-ubuntu
       NEXT_PUBLIC_SITE_URL: https://kravhantering.test
       NGINX_IMAGE_REF: docker.io/library/nginx:1.31.5-alpine
       SQLSERVER_IMAGE_REF: mcr.microsoft.com/mssql/server:2025-CU8-ubuntu-24.04
       CI_RUNTIME_EVIDENCE_DIR: tmp/container-pr-artifacts/runtime-diagnostics
       CI_RUNTIME_RELATED_EVIDENCE_DIR: tmp/production-smoke-evidence
-
+      PRODUCTION_SMOKE_SCOPE: core
     steps:
-      - name: Report initial disk layout
-        run: |
-          set -euo pipefail
-          cat > "${RUNNER_TEMP}/report-disk-layout.sh" <<'REPORT_DISK_LAYOUT'
-          #!/usr/bin/env bash
-          set -euo pipefail
-
-          label="${1:-disk layout}"
-          verify_root="/tmp/kh-oci-${CONTAINER_STACK_RUN_ID:-${GITHUB_RUN_ID}}"
-          mkdir -p "${verify_root}" "${GITHUB_WORKSPACE}/tmp/container-pr-artifacts/oci"
-
-          echo "::group::${label}: mounted filesystems"
-          df -hT
-          df -ihT
-          echo "::endgroup::"
-
-          echo "::group::${label}: target mounts"
-          for target in \
-            "${GITHUB_WORKSPACE}" \
-            "${RUNNER_TEMP:-/tmp}" \
-            / \
-            /tmp \
-            /var/tmp \
-            "${GITHUB_WORKSPACE}/tmp/container-pr-artifacts/oci" \
-            "${verify_root}"; do
-            printf '\nTarget: %s\n' "${target}"
-            df -hT "${target}"
-            df -ihT "${target}"
-            findmnt -T "${target}" || true
-          done
-          echo "::endgroup::"
-
-          echo "::group::${label}: container storage usage"
-          if command -v docker >/dev/null 2>&1; then
-            docker system df || true
-          else
-            echo "docker not available"
-          fi
-          if [[ -f "${RUNNER_TEMP}/kravhantering-ci-runtime-ready" ]] && \
-            command -v podman >/dev/null 2>&1; then
-            podman system df || true
-          else
-            echo "podman storage report deferred until runtime bootstrap"
-          fi
-          du -sh \
-            "${GITHUB_WORKSPACE}/tmp/container-pr-artifacts/oci" \
-            "${verify_root}" \
-            /tmp \
-            /var/tmp \
-            /var/lib/docker \
-            "${HOME}/.local/share/containers" 2>/dev/null || true
-          echo "::endgroup::"
-          REPORT_DISK_LAYOUT
-
-          chmod +x "${RUNNER_TEMP}/report-disk-layout.sh"
-          "${RUNNER_TEMP}/report-disk-layout.sh" "initial"
-
-      - name: Remove unused pre-installed runner toolchains
-        run: |
-          set -euo pipefail
-
-          unused_toolchains=(
-            /home/linuxbrew
-            /usr/local/lib/android
-            /usr/local/.ghcup
-            /usr/local/share/vcpkg
-            /opt/ghc
-            /opt/hostedtoolcache/CodeQL
-            /opt/hostedtoolcache/go
-            /opt/hostedtoolcache/ghc
-            /opt/hostedtoolcache/PyPy
-            /opt/hostedtoolcache/Python
-            /opt/hostedtoolcache/Ruby
-            /usr/share/dotnet
-            /usr/share/miniconda
-            /usr/share/swift
-          )
-
-          for toolchain in "${unused_toolchains[@]}"; do
-            if sudo test -e "${toolchain}"; then
-              sudo du -sh "${toolchain}" || true
-              sudo rm -rf -- "${toolchain}"
-            fi
-          done
-
-          sudo apt-get clean
-          docker image prune --all --force
-          "${RUNNER_TEMP}/report-disk-layout.sh" "after runner toolchain cleanup"
-
+      - name: Record assembly start
+        run: echo "ASSEMBLY_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: .nvmrc
           package-manager-cache: false
-
       - name: Install repository npm
         run: node scripts/install-repository-npm.mjs
-
       - name: Restore npm cache
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
-
+          node-version-file: .nvmrc
+          cache: npm
       - name: Install dependencies
         run: npm ci
-
+      - name: Validate production archive and runtime contracts
+        run: npm run test -- scripts/__tests__/production-smoke-startup.test.mjs scripts/__tests__/prepare-production-smoke-bundle.test.mjs scripts/__tests__/container-release.test.mjs scripts/__tests__/ci-container-runtime.test.mjs
+      - name: Download app-runtime candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: container-candidate-app-runtime
+          path: tmp/candidates/app-runtime
+      - name: Download db-job candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: container-candidate-db-job
+          path: tmp/candidates/db-job
+      - name: Restore exact candidate build metadata
+        run: |
+          cat tmp/candidates/app-runtime/build.env >> "$GITHUB_ENV"
+          cp tmp/candidates/app-runtime/build.json public/build.json
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
-
       - name: Install container runtime tools
         run: |
           set -euo pipefail
@@ -167,171 +185,22 @@ jobs:
           docker buildx version
           docker info
           docker buildx ls
-
       - name: Restore repository npm after container runtime setup
         run: node scripts/install-repository-npm.mjs
-
       - name: Preflight rootless Podman journald logging
         run: scripts/containers/ci-container-runtime.sh preflight
-
-      - name: Prepare Docker Buildx builder
-        run: |
-          set -euo pipefail
-          docker buildx create --name kravhantering-pr-builder --use ||
-            docker buildx use kravhantering-pr-builder
-          docker buildx inspect --bootstrap
-
-      - name: Prepare candidate artifact directories
-        run: mkdir -p tmp/container-pr-artifacts/oci
-
-      - name: Compute PR image metadata
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          set -euo pipefail
-          short_sha="${GITHUB_SHA::12}"
-          image_tag="pr-${PR_NUMBER}-${GITHUB_RUN_ID}-${short_sha}"
-          package_version="$(node -p "require('./package.json').version")"
-          build_time="$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")"
-
-          {
-            echo "APP_RUNTIME_SOURCE=pr-build"
-            echo "APP_RUNTIME_TAG=${image_tag}"
-            echo "APP_RUNTIME_IMAGE_REF=${APP_RUNTIME_IMAGE}:${image_tag}"
-            echo "BUILD_COMMIT_SHA=${GITHUB_SHA}"
-            echo "BUILD_IMAGE_TAG=${APP_RUNTIME_IMAGE}:${image_tag}"
-            echo "BUILD_TIME=${build_time}"
-            echo "BUILD_VERSION=${package_version}-pr.${PR_NUMBER}.${GITHUB_RUN_ID}"
-            echo "CONTAINER_STACK_RUN_ID=${GITHUB_RUN_ID}"
-            echo "DB_JOB_SOURCE=pr-build"
-            echo "DB_JOB_TAG=${image_tag}"
-            echo "DB_JOB_IMAGE_REF=${DB_JOB_IMAGE}:${image_tag}"
-            echo "DEMO_SEED_SOURCE=pr-build"
-            echo "DEMO_SEED_TAG=${image_tag}"
-            echo "DEMO_SEED_IMAGE_REF=${DEMO_SEED_IMAGE}:${image_tag}"
-            echo "HSA_DIRECTORY_MOCK_SOURCE=pr-build"
-            echo "HSA_DIRECTORY_MOCK_TAG=${image_tag}"
-            echo "HSA_DIRECTORY_MOCK_IMAGE_REF=${HSA_DIRECTORY_MOCK_IMAGE}:${image_tag}"
-            echo "HSA_MTLS_PROVISIONER_TAG=${image_tag}"
-            echo "HSA_MTLS_PROVISIONER_IMAGE_REF=${HSA_MTLS_PROVISIONER_IMAGE}:${image_tag}"
-            echo "HSA_PERSON_LOOKUP_ADAPTER_SOURCE=pr-build"
-            echo "HSA_PERSON_LOOKUP_ADAPTER_TAG=${image_tag}"
-            echo "HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF=${HSA_PERSON_LOOKUP_ADAPTER_IMAGE}:${image_tag}"
-            echo "RELEASE_SMOKE_RUN_ID=${GITHUB_RUN_ID}"
-          } >> "${GITHUB_ENV}"
-
-      - name: Write host build metadata artifact
-        run: node scripts/prebuild.js
-
-      - name: Build app-runtime candidate OCI artifact
-        run: |
-          set -euo pipefail
-          docker buildx build \
-            --file containers/app/Dockerfile \
-            --target app-runtime \
-            --platform linux/amd64 \
-            --metadata-file tmp/container-pr-artifacts/oci/app-runtime-buildx.json \
-            --tag "${APP_RUNTIME_IMAGE}:${APP_RUNTIME_TAG}" \
-            --build-arg BUILD_VERSION="${BUILD_VERSION}" \
-            --build-arg BUILD_COMMIT_SHA="${BUILD_COMMIT_SHA}" \
-            --build-arg BUILD_TIME="${BUILD_TIME}" \
-            --build-arg BUILD_IMAGE_TAG="${BUILD_IMAGE_TAG}" \
-            --build-arg NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL}" \
-            --provenance=false \
-            --output "type=oci,dest=${APP_RUNTIME_OCI_ARCHIVE}" \
-            .
-
-      - name: Build db-job candidate OCI artifact
-        run: |
-          set -euo pipefail
-          docker buildx build \
-            --file containers/app/Dockerfile \
-            --target db-job \
-            --platform linux/amd64 \
-            --metadata-file tmp/container-pr-artifacts/oci/db-job-buildx.json \
-            --tag "${DB_JOB_IMAGE}:${DB_JOB_TAG}" \
-            --provenance=false \
-            --output "type=oci,dest=${DB_JOB_OCI_ARCHIVE}" \
-            .
-
-      - name: Build demo seed candidate OCI artifact
-        run: |
-          set -euo pipefail
-          docker buildx build \
-            --file containers/app/Dockerfile \
-            --target demo-seed \
-            --platform linux/amd64 \
-            --metadata-file tmp/container-pr-artifacts/oci/demo-seed-buildx.json \
-            --tag "${DEMO_SEED_IMAGE}:${DEMO_SEED_TAG}" \
-            --provenance=false \
-            --output "type=oci,dest=${DEMO_SEED_OCI_ARCHIVE}" \
-            .
-
-      - name: Build HSA directory mock candidate OCI artifact
-        run: |
-          set -euo pipefail
-          docker buildx build \
-            --file containers/hsa-directory-mock/Dockerfile \
-            --platform linux/amd64 \
-            --metadata-file tmp/container-pr-artifacts/oci/hsa-directory-mock-buildx.json \
-            --tag "${HSA_DIRECTORY_MOCK_IMAGE}:${HSA_DIRECTORY_MOCK_TAG}" \
-            --provenance=false \
-            --output "type=oci,dest=${HSA_DIRECTORY_MOCK_OCI_ARCHIVE}" \
-            .
-
-      - name: Build HSA person lookup adapter candidate OCI artifact
-        run: |
-          set -euo pipefail
-          docker buildx build \
-            --file containers/hsa-person-lookup-adapter/Dockerfile \
-            --platform linux/amd64 \
-            --metadata-file tmp/container-pr-artifacts/oci/hsa-person-lookup-adapter-buildx.json \
-            --tag "${HSA_PERSON_LOOKUP_ADAPTER_IMAGE}:${HSA_PERSON_LOOKUP_ADAPTER_TAG}" \
-            --provenance=false \
-            --output "type=oci,dest=${HSA_PERSON_LOOKUP_ADAPTER_OCI_ARCHIVE}" \
-            .
-
-      - name: Build HSA mTLS provisioner candidate OCI artifact
-        run: |
-          set -euo pipefail
-          docker buildx build \
-            --file containers/hsa-mtls-provisioner/Dockerfile \
-            --platform linux/amd64 \
-            --metadata-file tmp/container-pr-artifacts/oci/hsa-mtls-provisioner-buildx.json \
-            --tag "${HSA_MTLS_PROVISIONER_IMAGE}:${HSA_MTLS_PROVISIONER_TAG}" \
-            --provenance=false \
-            --output "type=oci,dest=${HSA_MTLS_PROVISIONER_OCI_ARCHIVE}" \
-            .
-
-      - name: Gate PR images against release vulnerability policy
-        uses: ./.github/actions/container-vulnerability-gate
-        with:
-          app-runtime: oci-archive:${{ env.APP_RUNTIME_OCI_ARCHIVE }}
-          artifact-prefix: tmp/container-pr-artifacts/vulnerability
-          db-job: oci-archive:${{ env.DB_JOB_OCI_ARCHIVE }}
-          demo-seed: oci-archive:${{ env.DEMO_SEED_OCI_ARCHIVE }}
-          hsa-directory-mock: oci-archive:${{ env.HSA_DIRECTORY_MOCK_OCI_ARCHIVE }}
-          hsa-mtls-provisioner: oci-archive:${{ env.HSA_MTLS_PROVISIONER_OCI_ARCHIVE }}
-          hsa-person-lookup-adapter: oci-archive:${{ env.HSA_PERSON_LOOKUP_ADAPTER_OCI_ARCHIVE }}
-
       - name: Create per-container local env files
         run: npm run container:env:local
-
       - name: Generate production-smoke TLS
         run: node scripts/containers/generate-tls.mjs --output-dir tmp/container-tls
-
       - name: Prepare exact PR stack lock
         run: |
           set -euo pipefail
 
-          app_image_id="$(jq -er '."containerimage.config.digest"' tmp/container-pr-artifacts/oci/app-runtime-buildx.json)"
-          app_manifest_digest="$(jq -er '."containerimage.digest"' tmp/container-pr-artifacts/oci/app-runtime-buildx.json)"
-          db_job_image_id="$(jq -er '."containerimage.config.digest"' tmp/container-pr-artifacts/oci/db-job-buildx.json)"
-          db_job_manifest_digest="$(jq -er '."containerimage.digest"' tmp/container-pr-artifacts/oci/db-job-buildx.json)"
-          demo_seed_image_id="$(jq -er '."containerimage.config.digest"' tmp/container-pr-artifacts/oci/demo-seed-buildx.json)"
-          hsa_directory_mock_image_id="$(jq -er '."containerimage.config.digest"' tmp/container-pr-artifacts/oci/hsa-directory-mock-buildx.json)"
-          hsa_mtls_provisioner_image_id="$(jq -er '."containerimage.config.digest"' tmp/container-pr-artifacts/oci/hsa-mtls-provisioner-buildx.json)"
-          hsa_adapter_image_id="$(jq -er '."containerimage.config.digest"' tmp/container-pr-artifacts/oci/hsa-person-lookup-adapter-buildx.json)"
+          app_image_id="$(jq -er '."containerimage.config.digest"' tmp/candidates/app-runtime/app-runtime-buildx.json)"
+          app_manifest_digest="$(jq -er '."containerimage.digest"' tmp/candidates/app-runtime/app-runtime-buildx.json)"
+          db_job_image_id="$(jq -er '."containerimage.config.digest"' tmp/candidates/db-job/db-job-buildx.json)"
+          db_job_manifest_digest="$(jq -er '."containerimage.digest"' tmp/candidates/db-job/db-job-buildx.json)"
           node scripts/containers/generate-stack-lock.mjs generate \
             --app-image "${APP_RUNTIME_IMAGE}" \
             --app-tag "${APP_RUNTIME_TAG}" \
@@ -346,20 +215,11 @@ jobs:
           node scripts/containers/generate-stack-lock.mjs check
 
           {
+            echo "APP_RUNTIME_MANIFEST_DIGEST=${app_manifest_digest}"
+            echo "DB_JOB_MANIFEST_DIGEST=${db_job_manifest_digest}"
             echo "APP_RUNTIME_IMAGE_ID=${app_image_id}"
             echo "DB_JOB_IMAGE_ID=${db_job_image_id}"
-            echo "DEMO_SEED_IMAGE_ID=${demo_seed_image_id}"
-            echo "HSA_DIRECTORY_MOCK_IMAGE_ID=${hsa_directory_mock_image_id}"
-            echo "HSA_MTLS_PROVISIONER_IMAGE_ID=${hsa_mtls_provisioner_image_id}"
-            echo "HSA_PERSON_LOOKUP_ADAPTER_IMAGE_ID=${hsa_adapter_image_id}"
           } >> "${GITHUB_ENV}"
-
-      - name: Prune BuildKit cache before production smoke
-        run: |
-          set -euo pipefail
-          docker buildx prune --all --force
-          "${RUNNER_TEMP}/report-disk-layout.sh" "before production smoke"
-
       - name: Build production deployment archive for PR
         run: |
           node scripts/containers/prepare-production-smoke-bundle.mjs \
@@ -368,127 +228,63 @@ jobs:
             --run-id "${GITHUB_RUN_ID}" \
             --app-ref "${APP_RUNTIME_IMAGE_REF}" \
             --app-image-id "${APP_RUNTIME_IMAGE_ID}" \
+            --app-manifest-digest "${APP_RUNTIME_MANIFEST_DIGEST}" \
             --db-job-ref "${DB_JOB_IMAGE_REF}" \
             --db-job-image-id "${DB_JOB_IMAGE_ID}" \
+            --db-job-manifest-digest "${DB_JOB_MANIFEST_DIGEST}" \
             --stack-lock container-stack.lock.json \
             --output-dir tmp/container-pr-artifacts/deployment
-
       - name: Install production archive with rootless Quadlet
         run: |
           scripts/containers/production-smoke.sh up --archive \
             "tmp/container-pr-artifacts/kravhantering-production-deploy-${BUILD_VERSION}.tar.gz"
-
       - name: Verify production stack
         run: scripts/containers/production-smoke.sh verify
-
       - name: Collect production Quadlet evidence
         if: always()
-        run: scripts/containers/production-smoke.sh evidence || true
-
+        continue-on-error: true
+        timeout-minutes: 3
+        run: timeout --kill-after=10s 120s scripts/containers/production-smoke.sh evidence
       - name: Collect container runtime diagnostics
         if: ${{ !cancelled() }}
         continue-on-error: true
         timeout-minutes: 2
         run: scripts/containers/ci-container-runtime.sh collect
-
       - name: Remove production Quadlet stack
         if: always()
-        run: scripts/containers/production-smoke.sh down
-
-      - name: Write artifact hashes
+        timeout-minutes: 3
+        run: timeout --kill-after=10s 120s scripts/containers/production-smoke.sh down
+      - name: Upload assembly evidence
         if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: production-assembly-evidence
+          path: |
+            tmp/production-smoke-evidence/
+            tmp/container-pr-artifacts/runtime-diagnostics/
+            tmp/container-pr-artifacts/deployment/DEPLOYMENT-MANIFEST.json
+            container-stack.lock.json
+            public/build.json
+            playwright-report-release-smoke/
+            test-results/release-smoke/
+          retention-days: 7
+      - name: Summarize assembly runtime
+        if: always()
+        env:
+          ASSEMBLY_RESULT: ${{ job.status }}
         run: |
-          node scripts/containers/write-hashes.mjs \
-            --output hashes.sha256 \
-            container-stack.lock.json \
-            public/build.json \
-            tmp/container-pr-artifacts/kravhantering-production-deploy-${BUILD_VERSION}.tar.gz \
-            "${APP_RUNTIME_OCI_ARCHIVE}" \
-            "${DB_JOB_OCI_ARCHIVE}" \
-            "${DEMO_SEED_OCI_ARCHIVE}" \
-            "${HSA_DIRECTORY_MOCK_OCI_ARCHIVE}" \
-            "${HSA_MTLS_PROVISIONER_OCI_ARCHIVE}" \
-            "${HSA_PERSON_LOOKUP_ADAPTER_OCI_ARCHIVE}" || true
-
-      - name: Stage runtime artifacts
-        if: always()
-        run: |
-          set -euo pipefail
-          mkdir -p \
-            tmp/container-pr-artifacts/runtime \
-            tmp/container-pr-artifacts/playwright
-
-          for file in \
-            container-stack.lock.json \
-            public/build.json \
-            hashes.sha256; do
-            if [ -f "${file}" ]; then
-              cp "${file}" tmp/container-pr-artifacts/runtime/
-            fi
-          done
-
-          if [ -d tmp/production-smoke-evidence ]; then
-            cp -R \
-              tmp/production-smoke-evidence \
-              tmp/container-pr-artifacts/runtime/production-smoke-evidence
-          fi
-          if [ -d "${CI_RUNTIME_EVIDENCE_DIR}" ]; then
-            cp -R \
-              "${CI_RUNTIME_EVIDENCE_DIR}" \
-              tmp/container-pr-artifacts/runtime/runtime-diagnostics
-          fi
-
-          if [ -d playwright-report-release-smoke ]; then
-            cp -R \
-              playwright-report-release-smoke \
-              tmp/container-pr-artifacts/playwright/html
-          fi
-          if [ -d test-results/release-smoke ]; then
-            cp -R \
-              test-results/release-smoke \
-              tmp/container-pr-artifacts/playwright/test-results
-          fi
-
-      - name: Upload runtime artifacts
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: container-pr-runtime-${{ github.run_id }}
-          path: tmp/container-pr-artifacts/runtime/
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Upload Playwright artifacts
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: container-pr-playwright-${{ github.run_id }}
-          path: tmp/container-pr-artifacts/playwright/
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Upload vulnerability evidence
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: container-pr-vulnerability-${{ github.run_id }}
-          path: tmp/container-pr-artifacts/vulnerability/
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Upload OCI archives
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: container-pr-oci-${{ github.run_id }}
-          path: tmp/container-pr-artifacts/oci/*.oci.tar
-          if-no-files-found: ignore
-          retention-days: 2
-
+          {
+            echo "### Production Assembly Acceptance"
+            echo "Outcome: ${ASSEMBLY_RESULT}"
+            echo "Runtime: $(( $(date +%s) - ASSEMBLY_STARTED_AT )) seconds"
+            echo "Evidence: production-assembly-evidence"
+          } >> "$GITHUB_STEP_SUMMARY"
+    needs:
+      - core-candidate
   runner-metadata:
     name: Capture Container Smoke Runner Metadata
-    needs: container-smoke
-    if: ${{ always() && needs.container-smoke.result != 'skipped' }}
+    needs: production-assembly
+    if: ${{ always() && needs.production-assembly.result != 'skipped' }}
     permissions:
       actions: read
       contents: read
@@ -497,4 +293,214 @@ jobs:
       artifact-name: container-pr-runner-metadata-${{ github.run_id }}
       evidence-directory: tmp/container-pr-runner-metadata
       retention-days: 7
-      target-job: Build and Smoke Test Container Stack
+      target-job: Production Assembly Acceptance
+
+  hsa-build:
+    name: Build current-commit OCI candidates
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+    timeout-minutes: 30
+    steps:
+      - name: Check out current commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - name: Prepare Docker Buildx builder
+        run: |
+          set -euo pipefail
+          docker buildx create --name kravhantering-hsa-topology-builder --use ||
+            docker buildx use kravhantering-hsa-topology-builder
+          docker buildx inspect --bootstrap
+      - name: Build shared OCI candidates
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/hsa-oci
+          docker buildx build --provenance=false \
+            --tag localhost/kravhantering/hsa-transport-contract-test:topology \
+            --output type=docker,dest=/tmp/hsa-oci/transport-test.tar \
+            --file containers/hsa-mtls-topology/Dockerfile .
+          docker buildx build --provenance=false \
+            --tag localhost/kravhantering/hsa-mtls-provisioner:topology \
+            --output type=docker,dest=/tmp/hsa-oci/provisioner.tar \
+            --file containers/hsa-mtls-provisioner/Dockerfile .
+      - name: Upload exact OCI candidates
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: hsa-mtls-current-commit-oci
+          path: /tmp/hsa-oci
+          retention-days: 1
+
+  hsa-topology:
+    name: Authenticated topology and isolation
+    needs: [hsa-build, support-candidate]
+    if: ${{ !cancelled() && needs.hsa-build.result == 'success' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+    timeout-minutes: 30
+    steps:
+      - name: Check out current commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - name: Download exact OCI candidates
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: hsa-mtls-current-commit-oci
+          path: /tmp/hsa-oci
+      - name: Download HSA mock candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: container-candidate-hsa-directory-mock
+          path: /tmp/hsa-oci/candidates/hsa-directory-mock
+      - name: Download HSA adapter candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: container-candidate-hsa-person-lookup-adapter
+          path: /tmp/hsa-oci/candidates/hsa-person-lookup-adapter
+      - name: Convert shared OCI candidates for Docker
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes skopeo
+          for candidate in hsa-directory-mock hsa-person-lookup-adapter; do
+            skopeo copy \
+              "oci-archive:/tmp/hsa-oci/candidates/${candidate}/${candidate}.oci.tar" \
+              "docker-archive:/tmp/hsa-oci/${candidate}.tar:localhost/kravhantering/${candidate}:topology"
+          done
+      - name: Load exact OCI candidates
+        run: |
+          set -euo pipefail
+          for archive in /tmp/hsa-oci/*.tar; do docker load --input "$archive"; done
+          for candidate in hsa-directory-mock hsa-person-lookup-adapter; do
+            expected="$(jq -er '."containerimage.config.digest"' "/tmp/hsa-oci/candidates/${candidate}/${candidate}-buildx.json")"
+            actual="$(docker image inspect --format '{{.Id}}' "localhost/kravhantering/${candidate}:topology")"
+            test "$actual" = "$expected"
+          done
+      - name: Start loaded candidates and verify strict topology
+        run: |
+          set -euo pipefail
+          compose=(docker compose -f containers/hsa-mtls-topology/compose.yml)
+          "${compose[@]}" up --no-build provisioner
+          "${compose[@]}" up --no-build -d --wait mock adapter kong
+          "${compose[@]}" run --rm --no-deps test | tee /tmp/hsa-topology.log
+      - name: Verify correlation continuity and exactly-once terminal handling
+        run: |
+          set -euo pipefail
+          correlation="$(grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}' /tmp/hsa-topology.log | tail -1)"
+          test -n "$correlation"
+          docker compose -f containers/hsa-mtls-topology/compose.yml logs --no-color kong adapter mock > /tmp/hsa-runtime.log
+          test "$(grep -Ec "hsa_app_lookup_started.*$correlation|$correlation.*hsa_app_lookup_started" /tmp/hsa-topology.log)" -eq 1
+          test "$(grep -ac "kong.*$correlation" /tmp/hsa-runtime.log)" -eq 1
+          test "$(grep -aEc "adapter.*(hsa_adapter_lookup_forwarded.*$correlation|$correlation.*hsa_adapter_lookup_forwarded)" /tmp/hsa-runtime.log)" -eq 1
+          test "$(grep -aEc "mock.*(hsa_mock_lookup_handled.*$correlation|$correlation.*hsa_mock_lookup_handled)" /tmp/hsa-runtime.log)" -eq 1
+          grep -a "mock.*$correlation" /tmp/hsa-runtime.log | grep '"handling_count":1'
+      - name: Inspect runtime isolation
+        run: |
+          set -euo pipefail
+          docker compose -f containers/hsa-mtls-topology/compose.yml config > /tmp/hsa-compose.txt
+          if grep -E '(:rw|ca-signing|HSA_MOCK_AUTH_MODE|NODE_TLS_REJECT_UNAUTHORIZED)' /tmp/hsa-compose.txt; then
+            exit 1
+          fi
+          containers/hsa-mtls-topology/runtime-inspection.sh
+          docker compose -f containers/hsa-mtls-topology/compose.yml run --rm provisioner inspect
+      - name: Reject foreign material in every runtime leaf role
+        run: containers/hsa-mtls-topology/runtime-substitution-test.sh
+      - name: Reject same-domain wrong servers through deployed clients
+        run: containers/hsa-mtls-topology/runtime-wrong-server-test.sh
+      - name: Remove ephemeral PKI material
+        if: always()
+        run: docker compose -f containers/hsa-mtls-topology/compose.yml down --volumes --remove-orphans
+
+  hsa-rotation:
+    name: Rotation and rollback (${{ matrix.trust-domain }})
+    needs: [hsa-build, support-candidate]
+    if: ${{ !cancelled() && needs.hsa-build.result == 'success' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        trust-domain: [app-to-kong, kong-to-adapter, adapter-to-hsa]
+    steps:
+      - name: Check out current commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - name: Download exact OCI candidates
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: hsa-mtls-current-commit-oci
+          path: /tmp/hsa-oci
+      - name: Download HSA mock candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: container-candidate-hsa-directory-mock
+          path: /tmp/hsa-oci/candidates/hsa-directory-mock
+      - name: Download HSA adapter candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: container-candidate-hsa-person-lookup-adapter
+          path: /tmp/hsa-oci/candidates/hsa-person-lookup-adapter
+      - name: Convert shared OCI candidates for Docker
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes skopeo
+          for candidate in hsa-directory-mock hsa-person-lookup-adapter; do
+            skopeo copy \
+              "oci-archive:/tmp/hsa-oci/candidates/${candidate}/${candidate}.oci.tar" \
+              "docker-archive:/tmp/hsa-oci/${candidate}.tar:localhost/kravhantering/${candidate}:topology"
+          done
+      - name: Load exact OCI candidates
+        run: |
+          set -euo pipefail
+          for archive in /tmp/hsa-oci/*.tar; do docker load --input "$archive"; done
+          for candidate in hsa-directory-mock hsa-person-lookup-adapter; do
+            expected="$(jq -er '."containerimage.config.digest"' "/tmp/hsa-oci/candidates/${candidate}/${candidate}-buildx.json")"
+            actual="$(docker image inspect --format '{{.Id}}' "localhost/kravhantering/${candidate}:topology")"
+            test "$actual" = "$expected"
+          done
+      - name: Start and verify current generation
+        run: |
+          set -euo pipefail
+          compose=(docker compose -f containers/hsa-mtls-topology/compose.yml)
+          "${compose[@]}" up --no-build provisioner
+          "${compose[@]}" up --no-build -d --wait mock adapter kong
+          "${compose[@]}" run --rm --no-deps test
+      - name: Rotate, authenticate, and finalize successful generation
+        env:
+          HSA_MTLS_LIFETIME: ephemeral
+        run: containers/hsa-mtls-topology/lifecycle.sh rotate '${{ matrix.trust-domain }}'
+      - name: Inject failure, roll back, and authenticate prior generation
+        env:
+          HSA_MTLS_LIFETIME: ephemeral
+        run: containers/hsa-mtls-topology/lifecycle.sh rollback-verification '${{ matrix.trust-domain }}'
+      - name: Remove ephemeral PKI material
+        if: always()
+        run: docker compose -f containers/hsa-mtls-topology/compose.yml down --volumes --remove-orphans
+
+  hsa-required:
+    name: HSA mTLS topology required
+    if: always()
+    needs: [hsa-build, hsa-topology, hsa-rotation]
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Report stable required result
+        env:
+          ROTATION_RESULT: ${{ needs.hsa-rotation.result }}
+          TOPOLOGY_RESULT: ${{ needs.hsa-topology.result }}
+          BUILD_RESULT: ${{ needs.hsa-build.result }}
+        run: |
+          test "$BUILD_RESULT" = success
+          test "$TOPOLOGY_RESULT" = success
+          test "$ROTATION_RESULT" = success

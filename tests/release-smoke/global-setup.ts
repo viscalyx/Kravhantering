@@ -3,7 +3,7 @@ import {
   getPlaywrightBaseUrl,
   loginAndSaveStorageState,
 } from '@/tests/support/playwright-auth'
-import { RELEASE_SMOKE_ROLES } from './auth-roles'
+import { RELEASE_SMOKE_AUTHOR, RELEASE_SMOKE_ROLES } from './auth-roles'
 
 export default async function globalSetup(config: FullConfig): Promise<void> {
   if (process.env.PLAYWRIGHT_SKIP_AUTH_SETUP) {
@@ -15,7 +15,9 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
 
   const baseUrl = getPlaywrightBaseUrl(config, 'https://kravhantering.test')
   try {
-    for (const role of RELEASE_SMOKE_ROLES) {
+    for (const role of process.env.PRODUCTION_SMOKE_SCOPE === 'core'
+      ? [RELEASE_SMOKE_AUTHOR]
+      : RELEASE_SMOKE_ROLES) {
       await loginAndSaveStorageState(baseUrl, role)
       console.info(
         `[release-smoke global-setup] Stored ${role.role} session at ${role.filePath}`,

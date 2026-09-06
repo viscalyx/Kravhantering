@@ -1,3 +1,7 @@
+import { spawnSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   buildManifestFromSpecs,
@@ -11,6 +15,7 @@ import {
   formatHttpReadinessWaitLine,
   formatRecursiveRemoveRetryLine,
   isRetriableRemoveError,
+  PRUNED_RUNTIME_SPECS,
   parseArgs,
   readSystemMemorySnapshot,
   removePathRecursivelyWithRetries,
@@ -51,42 +56,25 @@ async function captureError(action) {
 }
 
 describe('integration chunk manifest generation', () => {
-  it('keeps suite-specific ignore rules explicit', () => {
-    expect(
-      shouldIgnoreSpec('dev', 'tests/integration/mcp/seeded-scan.spec.ts'),
-    ).toBe(true)
-    expect(
-      shouldIgnoreSpec(
-        'prodlike',
-        'tests/integration/developer-mode/overlay.spec.ts',
-      ),
-    ).toBe(true)
+  it('allocates the fixed runtime contract separately from browser journeys', () => {
+    const manifest = buildManifestFromSpecs(fixtureSpecs)
     expect(
       shouldIgnoreSpec('prodlike', 'tests/integration/mcp/seeded-scan.spec.ts'),
-    ).toBe(false)
-  })
-
-  it('generates deterministic chunks and keeps prodlike MCP last', () => {
-    const manifest = buildManifestFromSpecs(fixtureSpecs)
-
-    expect(manifest.$comment).toBe(
-      'Generated file. Do not manually edit; run npm run test:integration:chunks:generate.',
-    )
-    expect(manifest.chunkPolicy.areasPerChunk).toBe(1)
-    expect(manifest.suites.dev.ignoredSpecs).toEqual([
-      'tests/integration/mcp/seeded-scan.spec.ts',
-    ])
-    expect(manifest.suites.prodlike.ignoredSpecs).toEqual([
-      'tests/integration/developer-mode/overlay.spec.ts',
-    ])
-    expect(manifest.suites.prodlike.chunks.at(-1)).toEqual({
-      id: 'prodlike-mcp-seeded-scan',
-      paths: ['tests/integration/mcp/seeded-scan.spec.ts'],
-      specCount: 1,
-    })
-    expect(
-      manifest.suites.dev.chunks.every(chunk => chunk.paths.length === 1),
     ).toBe(true)
+    expect(
+      shouldIgnoreSpec('dev', 'tests/integration/authentication/login.spec.ts'),
+    ).toBe(true)
+    expect(manifest.suites.prodlike.chunks).toEqual([
+      {
+        id: 'prodlike-runtime-contract',
+        paths: [
+          'tests/integration/00-report-pdf/authorization-boundaries.spec.ts',
+          'tests/integration/authentication/login.spec.ts',
+        ],
+        specCount: 2,
+      },
+    ])
+    expect(manifest.suites.dev.includedSpecCount).toBe(5)
   })
 })
 
@@ -130,11 +118,11 @@ describe('integration chunk manifest validation', () => {
     const manifest = buildManifestFromSpecs(fixtureSpecs)
     const broken = structuredClone(manifest)
     const mcpChunk = broken.suites.prodlike.chunks.find(
-      chunk => chunk.id === 'prodlike-mcp-seeded-scan',
+      chunk => chunk.id === 'prodlike-runtime-contract',
     )
     if (!mcpChunk) {
       throw new Error(
-        'Expected the prodlike MCP chunk in the fixture manifest.',
+        'Expected the pruned runtime chunk in the fixture manifest.',
       )
     }
     mcpChunk.paths = ['tests/integration/mcp/missing.spec.ts']
@@ -145,10 +133,10 @@ describe('integration chunk manifest validation', () => {
     expect(result.errors).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          'suite prodlike chunk prodlike-mcp-seeded-scan matches no specs',
+          'suite prodlike chunk prodlike-runtime-contract matches no specs',
         ),
         expect.stringContaining(
-          'suite prodlike chunk prodlike-mcp-seeded-scan specCount is 1, expected 0',
+          'suite prodlike chunk prodlike-runtime-contract specCount is 2, expected 0',
         ),
       ]),
     )
@@ -299,12 +287,15 @@ describe('integration chunk command planning', () => {
     const manifest = buildManifestFromSpecs(fixtureSpecs)
 
     expect(
-      selectChunks(manifest, 'prodlike', 'prodlike-mcp-seeded-scan'),
+      selectChunks(manifest, 'prodlike', 'prodlike-runtime-contract'),
     ).toEqual([
       {
-        id: 'prodlike-mcp-seeded-scan',
-        paths: ['tests/integration/mcp/seeded-scan.spec.ts'],
-        specCount: 1,
+        id: 'prodlike-runtime-contract',
+        paths: [
+          'tests/integration/00-report-pdf/authorization-boundaries.spec.ts',
+          'tests/integration/authentication/login.spec.ts',
+        ],
+        specCount: 2,
       },
     ])
     expect(() => selectChunks(manifest, 'prodlike', 'prodlike-nope')).toThrow(
@@ -353,10 +344,10 @@ describe('integration chunk command planning', () => {
         '--suite',
         'prodlike',
         '--chunk',
-        'prodlike-mcp-seeded-scan',
+        'prodlike-runtime-contract',
       ]),
     ).toMatchObject({
-      chunkId: 'prodlike-mcp-seeded-scan',
+      chunkId: 'prodlike-runtime-contract',
       command: 'run',
       passthroughArgs: [],
       suite: 'prodlike',
@@ -366,7 +357,7 @@ describe('integration chunk command planning', () => {
   it('plans an owned prodlike chunk with build, fresh server, and auth setup', () => {
     const manifest = buildManifestFromSpecs(fixtureSpecs)
     const plan = createRunPlan({
-      chunkId: 'prodlike-mcp-seeded-scan',
+      chunkId: 'prodlike-runtime-contract',
       env: {},
       manifest,
       suite: 'prodlike',
@@ -388,12 +379,16 @@ describe('integration chunk command planning', () => {
       'test',
       '--config=playwright.prodlike.config.ts',
       '--reporter=blob,list',
-      'tests/integration/mcp/seeded-scan.spec.ts',
+      '--retries=0',
+      '--trace=retain-on-failure',
+      '--output=test-results/prodlike/prodlike-runtime-contract',
+      'tests/integration/00-report-pdf/authorization-boundaries.spec.ts',
+      'tests/integration/authentication/login.spec.ts',
     ])
     expect(playwright.env).toMatchObject({
       PLAYWRIGHT_BASE_URL: 'http://localhost:3001',
       PLAYWRIGHT_BLOB_OUTPUT_DIR: 'test-results/playwright-blob-prodlike',
-      PLAYWRIGHT_BLOB_OUTPUT_NAME: 'prodlike-mcp-seeded-scan.zip',
+      PLAYWRIGHT_BLOB_OUTPUT_NAME: 'prodlike-runtime-contract.zip',
       PLAYWRIGHT_FORCE_AUTH_SETUP: '1',
       PLAYWRIGHT_SKIP_WEBSERVER: '1',
     })
@@ -542,5 +537,64 @@ describe('integration chunk app readiness probe', () => {
     expect(error.message).toContain(
       'Last fetch error: connect ECONNREFUSED 127.0.0.1:3000',
     )
+  })
+})
+
+describe('integration chunk CLI continuation', () => {
+  it('reports later browser chunks after a failed chunk and preserves a failed aggregate', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'chunk-cli-'))
+    try {
+      const specs = [
+        ...PRUNED_RUNTIME_SPECS,
+        'tests/integration/admin/statuses.spec.ts',
+        'tests/integration/requirements/library.spec.ts',
+      ]
+      for (const spec of specs) {
+        fs.mkdirSync(path.dirname(path.join(root, spec)), { recursive: true })
+        fs.writeFileSync(path.join(root, spec), '')
+      }
+      fs.writeFileSync(
+        path.join(root, 'tests/integration-chunks.manifest.json'),
+        JSON.stringify(buildManifestFromSpecs(specs)),
+      )
+      fs.mkdirSync(path.join(root, 'bin'))
+      fs.writeFileSync(
+        path.join(root, 'bin/npx'),
+        [
+          '#!/bin/sh',
+          'echo "$PLAYWRIGHT_BLOB_OUTPUT_NAME:$2" >> outcomes',
+          'if [ "$PLAYWRIGHT_BLOB_OUTPUT_NAME" = dev-admin.zip ]; then exit 1; fi',
+          'exit 0',
+        ]
+          .join('\n')
+          .replaceAll('\\n', '\n'),
+        { mode: 0o755 },
+      )
+      const result = spawnSync(
+        process.execPath,
+        [path.resolve('tests/integration-chunks.mjs'), 'run', '--suite', 'dev'],
+        {
+          cwd: root,
+          encoding: 'utf8',
+          timeout: 15_000,
+          env: {
+            ...process.env,
+            PATH: path.join(root, 'bin') + path.delimiter + process.env.PATH,
+            PLAYWRIGHT_SKIP_WEBSERVER: '1',
+          },
+        },
+      )
+      expect(result.status, result.stderr).toBe(1)
+      expect(
+        fs.readFileSync(path.join(root, 'outcomes'), 'utf8').trim().split('\n'),
+      ).toEqual([
+        'dev-admin.zip:test',
+        'dev-requirements.zip:test',
+        ':merge-reports',
+      ])
+      expect(result.stderr).toContain('Failed chunks: dev-admin')
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
   })
 })

@@ -652,11 +652,17 @@ The GitHub Actions integration-test workflow in
 brings up a local Keycloak realm before running Playwright. The
 `Dev Server Smoke (Developer Mode)` job runs a focused dev-server smoke
 through `npm run test:integration`, while
-`Canonical Playwright Gate (Prod-like, Pruned Dependencies)` runs the full
-prodlike suite through `npm run test:integration:prodlike` against the pruned
-server. Both jobs use the same `npm run idp:up` start step and
-`npm run idp:down` cleanup step. `npm run idp:up` waits for the realm OIDC
-discovery and JWKS endpoints before returning.
+`Pruned Runtime Contract` runs five fixed specifications (17 tests) through
+`npm run test:integration:prodlike`. Its standalone server is staged outside
+repository dependency ancestry; Playwright retains full dependencies. Only
+admin and no-role stored sessions are prepared for that contract.
+`Browser Functional Integration` runs the remaining browser journeys through
+`npm run test:integration`, in sequential development-server chunks with a
+shared seed and a process restart between chunks. Failed chunks do not suppress
+later results. Both jobs use `npm run idp:up` and `npm run idp:down`; startup
+waits for OIDC discovery and JWKS. See
+[CI integration ownership](ci-integration-ownership.md) for the complete risk
+allocation and required branch-protection contexts.
 
 Because CI imports
 [`dev/keycloak/realm-kravhantering-dev.json`](../../dev/keycloak/realm-kravhantering-dev.json),

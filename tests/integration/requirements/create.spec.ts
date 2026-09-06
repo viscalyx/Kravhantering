@@ -2,10 +2,7 @@ import { expect, test } from '@playwright/test'
 import { expectApiResponseOk } from '../api-response-assertions'
 
 test.describe('Requirement creation', () => {
-  for (const viewport of [
-    { width: 375, height: 812, label: 'mobile' },
-    { width: 1280, height: 800, label: 'desktop' },
-  ]) {
+  for (const viewport of [{ width: 1280, height: 800, label: 'desktop' }]) {
     test(`LIFE-01: form submit redirects to list with inline detail open (${viewport.label})`, async ({
       page,
       request,

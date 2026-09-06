@@ -5,9 +5,14 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 describe('production smoke startup readiness', () => {
-  it.each([true, false])(
-    'allows cleanup verification only after full readiness: ready=%s',
-    ready => {
+  it.each([
+    ['release', true],
+    ['release', false],
+    ['core', true],
+    ['core', false],
+  ])(
+    'allows cleanup verification only after full readiness: scope=%s ready=%s',
+    (scope, ready) => {
       const evidence = fs.mkdtempSync(path.join(os.tmpdir(), 'smoke-startup-'))
       try {
         const result = spawnSync(
@@ -29,6 +34,7 @@ describe('production smoke startup readiness', () => {
               assert_generated_quadlet_service() { :; }
               configure_nginx_resolvers() { :; }
               database_job() { :; }
+              verify_containment() { printf 'containment-inspected\n' >&2; }
               verify_sqlserver_identity_rejection() { :; }
               wait_for_url() {
                 printf 'probe=%s\n' "$1"
@@ -38,6 +44,7 @@ describe('production smoke startup readiness', () => {
               }
               sudo() { printf 'fixture_database\n'; }
               sqlserver_query() {
+                [[ "$SMOKE_SCOPE" == core ]] && return 0
                 printf 'cleanup-verification-started\n' >&2
                 exit 0
               }
@@ -54,6 +61,7 @@ describe('production smoke startup readiness', () => {
               PRODUCTION_SMOKE_EVIDENCE_DIR: evidence,
               DEMO_SEED_IMAGE_REF: 'fixture',
               READY: String(ready),
+              PRODUCTION_SMOKE_SCOPE: scope,
             },
           },
         )
@@ -64,7 +72,11 @@ describe('production smoke startup readiness', () => {
           'probe=https://kravhantering.test/api/ready',
         ])
         expect(result.stderr).toBe(
-          ready ? 'cleanup-verification-started\n' : '',
+          ready
+            ? scope === 'core'
+              ? 'containment-inspected\n'
+              : 'cleanup-verification-started\n'
+            : '',
         )
       } finally {
         fs.rmSync(evidence, { recursive: true, force: true })

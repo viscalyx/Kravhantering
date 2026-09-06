@@ -20,10 +20,7 @@ const STATUS_PUBLISHED = 3
 const STATUS_ARCHIVED = 4
 const REVIEWER_STORAGE_STATE = 'test-results/auth/reviewer.json'
 
-const viewports = [
-  { height: 812, name: 'mobile', width: 375 },
-  { height: 720, name: 'desktop', width: 1280 },
-] as const
+const viewports = [{ height: 720, name: 'desktop', width: 1280 }] as const
 
 const archiveFixtures = {
   approve: {

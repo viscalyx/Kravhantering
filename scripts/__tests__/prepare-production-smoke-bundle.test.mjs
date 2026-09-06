@@ -11,14 +11,18 @@ import {
 } from '../containers/prepare-production-smoke-bundle.mjs'
 
 const IMAGE_ID = `sha256:${'a'.repeat(64)}`
+const APP_MANIFEST = `sha256:${'c'.repeat(64)}`
+const DB_MANIFEST = `sha256:${'d'.repeat(64)}`
 const DB_IMAGE_ID = `sha256:${'b'.repeat(64)}`
 
 function values(overrides = {}) {
   return {
     'app-image-id': IMAGE_ID,
+    'app-manifest-digest': APP_MANIFEST,
     'app-ref': 'localhost/kravhantering/app-runtime:pr-42',
     'commit-sha': '1234567890abcdef',
     'db-job-image-id': DB_IMAGE_ID,
+    'db-job-manifest-digest': DB_MANIFEST,
     'db-job-ref': 'localhost/kravhantering/db-job:pr-42',
     'output-dir': 'tmp/production-smoke/deployment',
     'run-id': '42',
@@ -83,14 +87,14 @@ describe('production smoke bundle preparation', () => {
     expect(result.metadata).toEqual({
       appRuntime: {
         imageId: IMAGE_ID,
-        manifestDigest: IMAGE_ID,
-        manifestRef: `localhost/kravhantering/app-runtime:pr-42@${IMAGE_ID}`,
+        manifestDigest: APP_MANIFEST,
+        manifestRef: `localhost/kravhantering/app-runtime:pr-42@${APP_MANIFEST}`,
       },
       database: { expectedSchemaVersion: 'Schema123' },
       dbJob: {
         imageId: DB_IMAGE_ID,
-        manifestDigest: DB_IMAGE_ID,
-        manifestRef: `localhost/kravhantering/db-job:pr-42@${DB_IMAGE_ID}`,
+        manifestDigest: DB_MANIFEST,
+        manifestRef: `localhost/kravhantering/db-job:pr-42@${DB_MANIFEST}`,
       },
     })
   })

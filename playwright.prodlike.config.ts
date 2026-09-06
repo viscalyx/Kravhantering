@@ -1,4 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
+import integrationManifest from './tests/integration-chunks.manifest.json'
+import integrationServerEnv from './tests/integration-server-env.json'
 
 const desktopChromium = {
   browserName: 'chromium' as const,
@@ -44,42 +46,17 @@ function deriveOrigin(input: string): string {
 }
 const originHeader = deriveOrigin(baseUrl)
 
-const controlledTestDataPolicy = {
-  allowedProcessingRegions: ['SE'],
-  informationClassOrder: ['public', 'internal', 'confidential'],
-  maximumInformationClass: 'internal',
-  maximumRetentionDays: 0,
-  personalDataAllowed: false,
-  requireTrainingProhibited: true,
-}
-
-const controlledTestDataPolicies = JSON.stringify({
-  generate_with_images: controlledTestDataPolicy,
-  generate_without_images: controlledTestDataPolicy,
-  repair_invalid_import_json: controlledTestDataPolicy,
-})
-
-const controlledTestEgressPolicies = JSON.stringify({
-  controlled_test: {
-    allowedOrigins: [],
-    privateSidecarAddresses: ['127.0.0.1', '::1'],
-    privateSidecarOrigins: ['https://localhost:4443'],
-  },
-})
-
 export default defineConfig({
   testDir: './tests/integration',
-  // Developer Mode is aliased to no-op entrypoints in non-dev builds (see
-  // `enableDeveloperMode` in next.config.ts), so the overlay badge/chip/toast
-  // surfaces those specs assert on are intentionally absent in prodlike. Skip
-  // the spec here instead of forcing ENABLE_DEVELOPER_MODE=true on the
-  // prodlike build, which is meant to mirror real production.
-  testIgnore: ['**/developer-mode/overlay.spec.ts'],
+  testMatch: integrationManifest.suites.prodlike.chunks
+    .flatMap(chunk => chunk.paths)
+    .map(spec => `**/${spec.split('/').slice(2).join('/')}`),
+  metadata: { authRoles: ['admin', 'no-roles'] },
   globalSetup: './tests/integration/global-setup.ts',
   outputDir: 'test-results/prodlike',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: 0,
   /* Keep integration tests serialized to avoid overwhelming shared services */
   workers: 1,
   timeout: testTimeoutMs,
@@ -108,7 +85,7 @@ export default defineConfig({
     actionTimeout: actionTimeoutMs,
     navigationTimeout: navigationTimeoutMs,
 
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
@@ -133,12 +110,7 @@ export default defineConfig({
           reuseExistingServer: !process.env.CI,
           env: {
             ...process.env,
-            AI_CONNECTION_DATA_POLICIES_JSON: controlledTestDataPolicies,
-            AI_CONNECTION_EGRESS_POLICIES_JSON: controlledTestEgressPolicies,
-            AI_CONNECTION_TLS_POLICIES_JSON: JSON.stringify({
-              controlled_test: 'public_web_pki',
-            }),
-            ENABLE_ERROR_BOUNDARY_TEST_ROUTE: '1',
+            ...integrationServerEnv,
             NODE_ENV: 'production',
           },
         },

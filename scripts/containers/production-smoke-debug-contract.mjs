@@ -44,8 +44,9 @@ export function parseDebugArgs(args) {
 
 export function selectRunArtifacts(artifacts, runId) {
   const expectedNames = {
-    oci: `container-pr-oci-${runId}`,
-    runtime: `container-pr-runtime-${runId}`,
+    'app-runtime': 'container-candidate-app-runtime',
+    'db-job': 'container-candidate-db-job',
+    runtime: 'production-assembly-evidence',
   }
   const selected = {}
   for (const [kind, name] of Object.entries(expectedNames)) {
@@ -138,20 +139,15 @@ export function buildSmokeEnvironment({
   imageMetadata,
   runId,
   stackLock,
-  supportLock,
 }) {
   const projectImages = {
     APP_RUNTIME: 'app-runtime',
     DB_JOB: 'db-job',
-    DEMO_SEED: 'demo-seed',
-    HSA_DIRECTORY_MOCK: 'hsa-directory-mock',
-    HSA_MTLS_PROVISIONER: 'hsa-mtls-provisioner',
-    HSA_PERSON_LOOKUP_ADAPTER: 'hsa-person-lookup-adapter',
   }
   const environment = {
     CONTAINER_STACK_RUN_ID: runId,
+    PRODUCTION_SMOKE_SCOPE: 'core',
     KEYCLOAK_IMAGE_REF: serviceImageReference(stackLock, 'keycloak'),
-    KONG_IMAGE_REF: serviceImageReference(supportLock, 'kong'),
     NGINX_IMAGE_REF: serviceImageReference(stackLock, 'nginx'),
     PRODUCTION_SMOKE_EVIDENCE_DIR: evidenceDirectory,
     RELEASE_SMOKE_RUN_ID: runId,

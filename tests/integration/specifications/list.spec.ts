@@ -3,10 +3,7 @@ import { escapeRegExp } from '@/tests/helpers/common'
 import { expectApiResponseOk } from '../api-response-assertions'
 import { seedAuthorizationResponsibilityPeople } from '../authorization/authorization-test-helpers'
 
-const viewports = [
-  { name: 'mobile', width: 375, height: 812 },
-  { name: 'desktop', width: 1280, height: 720 },
-]
+const viewports = [{ name: 'desktop', width: 1280, height: 720 }]
 
 function splitHsaId(hsaId: string): { prefix: string; suffix: string } {
   const separatorIndex = hsaId.indexOf('-')

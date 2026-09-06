@@ -5,11 +5,26 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import integrationServerEnv from './integration-server-env.json' with {
+  type: 'json',
+}
 
 export const DEFAULT_ROOT = 'tests/integration'
 export const DEFAULT_AREAS_PER_CHUNK = 1
 export const DEFAULT_TARGET_SPECS = 10
 export const MANIFEST_PATH = 'tests/integration-chunks.manifest.json'
+
+export const PRUNED_RUNTIME_SPECS = [
+  'tests/integration/00-report-pdf/authorization-boundaries.spec.ts',
+  'tests/integration/authentication/login.spec.ts',
+  'tests/integration/authentication/security.spec.ts',
+  'tests/integration/platform/error-boundary-smoke.spec.ts',
+  'tests/integration/platform/smoke.spec.ts',
+]
+export const SEPARATE_OWNER_SPECS = [
+  'tests/integration/developer-mode/overlay.spec.ts',
+  'tests/integration/mcp/seeded-scan.spec.ts',
+]
 
 const GENERATED_BY = 'tests/integration-chunks.mjs'
 const SUITE_NAMES = ['dev', 'prodlike']
@@ -36,6 +51,7 @@ const SUITE_CONFIG = {
     port: 3000,
     serverCommand: ['npm', ['run', 'dev']],
     serverEnv: {
+      ...integrationServerEnv,
       ENABLE_ERROR_BOUNDARY_TEST_ROUTE: '1',
       NODE_ENV: 'development',
     },
@@ -52,6 +68,7 @@ const SUITE_CONFIG = {
     port: 3001,
     serverCommand: ['npm', ['run', 'start:prodlike-pruned']],
     serverEnv: {
+      ...integrationServerEnv,
       BUILD_TARGET: 'local-prod',
       ENABLE_ERROR_BOUNDARY_TEST_ROUTE: '1',
       NODE_ENV: 'production',
@@ -132,11 +149,9 @@ export function shouldIgnoreSpec(suite, specPath) {
   assertSuite(suite)
   const normalized = toPosixPath(specPath)
 
-  if (suite === 'dev') {
-    return normalized === 'tests/integration/mcp/seeded-scan.spec.ts'
-  }
-
-  return normalized === 'tests/integration/developer-mode/overlay.spec.ts'
+  return suite === 'prodlike'
+    ? !PRUNED_RUNTIME_SPECS.includes(normalized)
+    : [...PRUNED_RUNTIME_SPECS, ...SEPARATE_OWNER_SPECS].includes(normalized)
 }
 
 function slugForManifestPath(root, manifestPath) {
@@ -166,14 +181,20 @@ function buildSuiteManifest({
 }) {
   const ignoredSpecs = specs.filter(spec => shouldIgnoreSpec(suite, spec))
   const includedSpecs = specs.filter(spec => !shouldIgnoreSpec(suite, spec))
-  const finalSpecs =
-    suite === 'prodlike'
-      ? includedSpecs.filter(spec => spec.startsWith(`${root}/mcp/`))
-      : []
-  const normalSpecs =
-    suite === 'prodlike'
-      ? includedSpecs.filter(spec => !spec.startsWith(`${root}/mcp/`))
-      : includedSpecs
+  if (suite === 'prodlike') {
+    return {
+      chunks: [
+        {
+          id: 'prodlike-runtime-contract',
+          paths: includedSpecs,
+          specCount: includedSpecs.length,
+        },
+      ],
+      ignoredSpecs,
+      includedSpecCount: includedSpecs.length,
+    }
+  }
+  const normalSpecs = includedSpecs
   const grouped = new Map()
 
   for (const spec of normalSpecs) {
@@ -229,14 +250,6 @@ function buildSuiteManifest({
     currentSpecCount += area.specCount
   }
   flushCurrent()
-
-  for (const spec of finalSpecs) {
-    chunks.push({
-      id: chunkIdForPaths(suite, root, [spec]),
-      paths: [spec],
-      specCount: 1,
-    })
-  }
 
   return {
     chunks,
@@ -312,12 +325,6 @@ function specsForManifestPath(manifestPath, specs) {
   return specs.filter(spec => spec.startsWith(prefix))
 }
 
-function expandChunkSpecs(chunk, specs) {
-  return chunk.paths.flatMap(chunkPath =>
-    specsForManifestPath(chunkPath, specs),
-  )
-}
-
 export function validateManifestAgainstSpecs(
   manifest,
   specs,
@@ -363,7 +370,12 @@ export function validateManifestAgainstSpecs(
     const assignedCounts = new Map()
 
     for (const chunk of suiteManifest.chunks ?? []) {
-      const chunkSpecs = expandChunkSpecs(chunk, normalizedSpecs)
+      const chunkSpecs = chunk.paths.flatMap(chunkPath =>
+        specsForManifestPath(chunkPath, normalizedSpecs).filter(
+          spec =>
+            chunkPath.endsWith('.spec.ts') || !shouldIgnoreSpec(suite, spec),
+        ),
+      )
       if (chunkSpecs.length === 0) {
         errors.push(`suite ${suite} chunk ${chunk.id} matches no specs`)
       }
@@ -755,7 +767,14 @@ function chunkPlaywrightCommand({ chunk, forceAuthSetup, suite }) {
 
   return command(
     'npx',
-    [...basePlaywrightArgs(suite), '--reporter=blob,list', ...chunk.paths],
+    [
+      ...basePlaywrightArgs(suite),
+      '--reporter=blob,list',
+      '--retries=0',
+      '--trace=retain-on-failure',
+      `--output=test-results/${suite}/${chunk.id}`,
+      ...chunk.paths,
+    ],
     env,
   )
 }
@@ -908,15 +927,16 @@ async function writeManifest(manifest, manifestPath = MANIFEST_PATH) {
 
 async function assertManifestCurrent(manifest) {
   const root = manifest.root ?? DEFAULT_ROOT
-  const check = checkManifestAgainstSpecs(
-    manifest,
-    discoverIntegrationSpecs(root),
-    {
-      areasPerChunk: manifest.chunkPolicy?.areasPerChunk,
-      root,
-      targetSpecs: manifest.chunkPolicy?.targetSpecs,
-    },
-  )
+  const discovered = discoverIntegrationSpecs(root)
+  for (const spec of PRUNED_RUNTIME_SPECS) {
+    if (!discovered.includes(spec))
+      throw new Error(`Missing pruned runtime contract specification: ${spec}`)
+  }
+  const check = checkManifestAgainstSpecs(manifest, discovered, {
+    areasPerChunk: manifest.chunkPolicy?.areasPerChunk,
+    root,
+    targetSpecs: manifest.chunkPolicy?.targetSpecs,
+  })
 
   if (!check.ok) {
     throw new Error(
@@ -1151,6 +1171,11 @@ async function runChunked(plan) {
       if (result.exitCode !== 0) {
         failedChunks.push(chunk.id)
       }
+    } catch (error) {
+      failedChunks.push(chunk.id)
+      process.stderr.write(
+        `[integration-chunks] ${chunk.id}: ${errorMessage(error)}\n`,
+      )
     } finally {
       await stopServer(server)
       process.stdout.write(

@@ -5,9 +5,14 @@ import { pathToFileURL } from 'node:url'
 
 const require = createRequire(import.meta.url)
 
-export function resolveProdlikeStandalonePaths(root = process.cwd()) {
+export function resolveProdlikeStandalonePaths(
+  root = process.cwd(),
+  runtimeRoot,
+) {
   const workspaceRoot = path.resolve(root)
-  const standaloneRoot = path.join(workspaceRoot, '.next', 'standalone')
+  const standaloneRoot = runtimeRoot
+    ? path.resolve(runtimeRoot)
+    : path.join(workspaceRoot, '.next', 'standalone')
 
   return {
     publicSource: path.join(workspaceRoot, 'public'),
@@ -19,10 +24,14 @@ export function resolveProdlikeStandalonePaths(root = process.cwd()) {
   }
 }
 
-export function stageProdlikeStandaloneAssets(root = process.cwd()) {
-  const paths = resolveProdlikeStandalonePaths(root)
+export function stageProdlikeStandaloneAssets(
+  root = process.cwd(),
+  runtimeRoot,
+) {
+  const source = resolveProdlikeStandalonePaths(root)
+  const paths = resolveProdlikeStandalonePaths(root, runtimeRoot)
   const requiredPaths = [
-    ['generated standalone server', paths.server],
+    ['generated standalone server', source.server],
     ['public assets', paths.publicSource],
     ['generated static assets', paths.staticSource],
   ]
@@ -31,6 +40,31 @@ export function stageProdlikeStandaloneAssets(root = process.cwd()) {
     if (!fs.existsSync(requiredPath)) {
       throw new Error(`Missing ${description}: ${requiredPath}`)
     }
+  }
+
+  if (runtimeRoot) {
+    const workspaceRoot = fs.realpathSync(root)
+    const destination = fs.realpathSync(paths.standaloneRoot)
+    if (
+      destination === workspaceRoot ||
+      destination.startsWith(`${workspaceRoot}${path.sep}`)
+    ) {
+      throw new Error('Isolated runtime must be outside the repository')
+    }
+    for (
+      let ancestor = path.dirname(destination);
+      ;
+      ancestor = path.dirname(ancestor)
+    ) {
+      if (fs.existsSync(path.join(ancestor, 'node_modules'))) {
+        throw new Error(`Isolated runtime has dependency ancestry: ${ancestor}`)
+      }
+      if (ancestor === path.dirname(ancestor)) break
+    }
+    fs.cpSync(source.standaloneRoot, paths.standaloneRoot, {
+      recursive: true,
+      dereference: true,
+    })
   }
 
   fs.cpSync(paths.publicSource, paths.publicTarget, {
@@ -46,7 +80,10 @@ export function stageProdlikeStandaloneAssets(root = process.cwd()) {
 }
 
 export function launchProdlikeStandalone(root = process.cwd()) {
-  const paths = stageProdlikeStandaloneAssets(root)
+  const paths = stageProdlikeStandaloneAssets(
+    root,
+    process.env.PRODLIKE_RUNTIME_DIR,
+  )
   const providerSecretKeyring =
     process.env.AI_PROVIDER_SECRET_KEYRING_FILE?.trim()
   if (providerSecretKeyring && !path.isAbsolute(providerSecretKeyring)) {

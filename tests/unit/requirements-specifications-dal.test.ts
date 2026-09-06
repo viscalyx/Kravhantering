@@ -99,6 +99,29 @@ function specificationCatalogRow(overrides: Record<string, unknown> = {}) {
   }
 }
 
+describe('requirement application deviation status', () => {
+  it.each([
+    ['library', updateSpecificationItemFields],
+    ['specification-local', updateSpecificationLocalRequirementFields],
+  ] as const)(
+    'rejects Deviated without approval for a %s requirement',
+    async (_kind, update) => {
+      const db = {
+        query: vi
+          .fn()
+          .mockResolvedValueOnce([{ id: 5 }])
+          .mockResolvedValueOnce([]),
+      }
+      await expect(
+        update(db as never, 42, { specificationItemStatusId: 5 }),
+      ).rejects.toMatchObject({
+        code: 'validation',
+        message: 'Deviated status requires an approved deviation',
+      })
+    },
+  )
+})
+
 describe('requirements-specifications DAL (SQL Server path)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
