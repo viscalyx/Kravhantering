@@ -1,0 +1,226 @@
+<!doctype html>
+<!-- Throwaway prototype for #1098: one agreed design, standalone and in-memory.
+     Question: can settings and verification stay readable with all rows present?
+     CSS mirrors the app's Slate/Indigo tokens, font stack, controls and modal. -->
+<html lang="sv">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modellverifiering · Prototyp #1098</title>
+<style>
+  :root { color-scheme: light; --bg:#f1f5f9; --surface:#fff; --soft:#f8fafc; --text:#0f172a; --muted:#475569; --border:#e2e8f0; --input:#cbd5e1; --primary:#4338ca; --tint:#eef2ff; --ring:#c7d2fe; --success:#166534; --success-bg:#f0fdf4; --warning:#92400e; --warning-bg:#fffbeb; --error:#b91c1c; }
+  :root.dark { color-scheme:dark; --bg:#020617; --surface:#0f172a; --soft:#172033; --text:#f1f5f9; --muted:#cbd5e1; --border:#334155; --input:#475569; --primary:#818cf8; --tint:#1e1b4b; --ring:#6366f1; --success:#86efac; --success-bg:#102c21; --warning:#fcd34d; --warning-bg:#332915; --error:#fca5a5; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 "Apercu",Inter,system-ui,sans-serif; }
+  button,input,select,textarea { font:inherit; }
+  button { cursor:pointer; }
+  button:disabled { opacity:.4; cursor:default; }
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible { outline:2px solid #818cf8; outline-offset:3px; }
+  .demo { max-width:1280px; margin:18px auto; padding:0 4px; display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px; }
+  .demo-title { flex:1 1 240px; }
+  .demo-title strong { display:block; font-size:13px; }
+  .demo-title span { font-size:12px; color:var(--muted); }
+  .demo-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .demo button,.demo select { min-height:34px; padding:5px 10px; font-size:12px; border:1px solid var(--input); border-radius:8px; background:var(--surface); color:var(--text); }
+  .demo label { font-size:12px; color:var(--muted); }
+  .dialog { margin:0 auto 28px; max-width:1280px; background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:0 18px 45px -22px #0f172a55; overflow:clip; }
+  .dialog-header { padding:20px 24px; border-bottom:1px solid var(--border); }
+  h1 { margin:0; font-size:18px; font-weight:600; }
+  .subtitle { color:var(--muted); margin:3px 0 0; font-size:12px; }
+  .layout { display:grid; grid-template-columns:minmax(0, .8fr) minmax(0, 1.2fr); align-items:start; gap:28px; padding:24px; }
+  .fields { display:grid; gap:17px; }
+  .catalog { padding:12px; border:1px solid var(--ring); border-radius:12px; background:var(--tint); color:var(--muted); display:flex; align-items:flex-start; gap:8px; font-size:12px; }
+  .catalog svg { margin-top:1px; }
+  .field label { display:block; font-weight:500; margin-bottom:6px; }
+  .field .optional { font-size:12px; color:var(--muted); font-weight:400; }
+  input,select,textarea { width:100%; min-height:44px; padding:9px 12px; border:1px solid var(--input); border-radius:12px; color:var(--text); background:var(--surface); }
+  textarea { min-height:90px; resize:vertical; }
+  .field-head { display:flex; align-items:center; gap:6px; margin-bottom:5px; }
+  .field-head label { margin:0; }
+  .help { position:relative; }
+  .help summary { list-style:none; color:var(--muted); width:24px; height:24px; display:grid; place-items:center; cursor:pointer; border-radius:50%; }
+  .help summary::-webkit-details-marker { display:none; }
+  .help p { position:absolute; z-index:2; top:22px; left:0; width:230px; margin:0; padding:12px; border:1px solid var(--border); background:var(--surface); box-shadow:0 8px 20px #0002; border-radius:10px; font-size:12px; font-weight:400; }
+  .help[open] { position:static; }
+  .field-head { position:relative; }
+  .help[open] p { left:0; top:30px; max-width:100%; }
+  .actions { border-top:1px solid var(--border); padding-top:18px; margin-top:22px; }
+  .button { min-height:40px; padding:8px 15px; border:1px solid var(--border); border-radius:12px; background:var(--surface); color:var(--text); font-weight:500; display:inline-flex; gap:7px; align-items:center; justify-content:center; }
+  .button:hover:not(:disabled) { background:var(--soft); }
+  .button.primary { background:#4338ca; border-color:#4338ca; color:white; }
+  .dark .button.primary { background:#4f46e5; border-color:#4f46e5; }
+  .button.primary:hover:not(:disabled) { background:#3730a3; }
+  .save-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:10px; margin-top:20px; }
+  .action-hint { font-size:12px; color:var(--muted); margin:8px 0 0; }
+  .panel { min-width:0; border:1px solid var(--border); border-radius:16px; padding:20px; }
+  .panel-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  h2 { font-size:17px; font-weight:600; margin:0; }
+  .count { font-size:12px; color:var(--muted); background:var(--soft); padding:3px 9px; border-radius:20px; }
+  .panel-intro { color:var(--muted); font-size:12px; margin:6px 0 16px; }
+  .group + .group { margin-top:18px; }
+  h3 { margin:0 0 8px; font-size:13px; font-weight:600; }
+  .rows { display:grid; gap:6px; }
+  .capabilities { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .row { padding:9px 11px; background:var(--soft); border:1px solid transparent; border-radius:12px; min-width:0; }
+  .row-name { font-size:13px; font-weight:500; margin:0; overflow-wrap:anywhere; }
+  .status { color:var(--muted); display:flex; align-items:flex-start; gap:6px; font-size:12px; margin-top:3px; }
+  .status svg { width:15px; height:15px; margin-top:2px; }
+  .row[data-state="running"] { border-color:var(--ring); background:var(--tint); }
+  .row[data-state="running"] .status { color:var(--primary); }
+  .row[data-state="verified"] .status { color:var(--success); }
+  .row[data-state="negative"] .status { color:var(--error); }
+  .row[data-state="inconclusive"] .status { color:var(--warning); }
+  .inline-row { display:flex; align-items:center; justify-content:space-between; gap:8px 18px; flex-wrap:wrap; }
+  .inline-row .status { margin:0; }
+  .detail { color:var(--muted); font-size:11px; line-height:1.5; margin-top:5px; overflow-wrap:anywhere; }
+  .detail:empty { display:none; }
+  .group-help { margin:8px 0 0; font-size:11px; line-height:1.6; color:var(--muted); }
+  .summary-box { margin-top:18px; padding:12px; border:1px solid var(--border); border-radius:12px; background:var(--soft); min-height:76px; }
+  .summary-box h3 { display:flex; align-items:center; gap:7px; margin:0 0 4px; }
+  .summary-box p { margin:0; font-size:12px; color:var(--muted); }
+  .summary-box[data-state="verified"] { background:var(--success-bg); }
+  .summary-box[data-state="inconclusive"] { background:var(--warning-bg); }
+  svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
+  .spin { animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  @media(prefers-reduced-motion:reduce) { .spin { animation:none; } }
+  @media(max-width:1320px) { .demo { margin:16px; padding:0; } .dialog { margin:0 16px 24px; } }
+  @media(max-width:960px) { .layout { grid-template-columns:1fr; } .panel { grid-row:2; } .actions { grid-row:3; margin:0; } .form-side { display:contents; } .save-actions { justify-content:flex-start; } }
+  @media(max-width:520px) { .layout { padding:16px; gap:20px; } .dialog-header { padding:16px; } .panel { padding:14px; } .capabilities { grid-template-columns:1fr; } .inline-row { display:block; } .inline-row .status { margin-top:3px; } .demo-controls { width:100%; } .demo-controls select { flex:1; width:100%; } .demo-controls label { width:100%; } }
+</style>
+<body>
+  <svg style="display:none" aria-hidden="true"><defs>
+    <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-unknown" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 .5c0 1.5-2.5 2-2.5 3M12 16h.01"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></symbol>
+  </defs></svg>
+  <header class="demo">
+    <div class="demo-title"><strong>Prototyp · Modellverifiering #1098</strong><span>Fristående skiss med simulerade resultat. Inga AI-anrop eller sparade uppgifter.</span></div>
+    <div class="demo-controls">
+      <label for="scenario">Testresultat</label>
+      <select id="scenario" style="width:auto"><option value="success">Alla kompatibla</option><option value="mixed">Utan bildstöd</option><option value="inconclusive">Oavgjort resonemang</option></select>
+      <button id="finish">Visa slutresultat</button><button id="reset">Återställ</button><button id="theme" aria-label="Växla mörkt tema" aria-pressed="false">Mörkt tema</button>
+    </div>
+  </header>
+  <main class="dialog" aria-labelledby="title">
+    <header class="dialog-header"><h1 id="title">Ny anslutningsmodell</h1><p class="subtitle">AI-anslutning: OpenRouter</p></header>
+    <div class="layout">
+      <div class="form-side">
+        <form class="fields" id="model-form">
+          <div class="catalog"><svg aria-hidden="true"><use href="#i-info"/></svg><span>Välj en modell från katalogen eller ange modellens tekniska identitet manuellt. Verifieringen kontrollerar modellens förmågor.</span></div>
+          <div class="field"><div class="field-head"><label for="catalog">Modell från katalogen</label><details class="help"><summary aria-label="Hjälp om modellkatalogen"><svg aria-hidden="true"><use href="#i-unknown"/></svg></summary><p>Katalogen hjälper dig att fylla i modelluppgifter. Förmågorna fastställs genom verifiering.</p></details></div><select id="catalog"><option>Exempelmodell · example/reasoning-model</option><option>Ange manuellt</option></select></div>
+          <div class="field"><div class="field-head"><label for="name">Namn <span aria-hidden="true">*</span></label><details class="help"><summary aria-label="Hjälp om namn"><svg aria-hidden="true"><use href="#i-unknown"/></svg></summary><p>Ett namn som gör modellen lätt att känna igen. Namnändringar kräver inte ny verifiering.</p></details></div><input id="name" value="Exempelmodell" required></div>
+          <div class="field"><div class="field-head"><label for="model-id">Tekniskt modell-ID <span aria-hidden="true">*</span></label><details class="help"><summary aria-label="Hjälp om modell-ID"><svg aria-hidden="true"><use href="#i-unknown"/></svg></summary><p>Modellens identifierare hos leverantören. Ändring återställer verifieringen.</p></details></div><input id="model-id" value="example/reasoning-model" required data-technical></div>
+          <div class="field"><div class="field-head"><label for="version">Modellversion <span class="optional">(valfritt)</span></label><details class="help"><summary aria-label="Hjälp om modellversion"><svg aria-hidden="true"><use href="#i-unknown"/></svg></summary><p>Ange en bestämd version om leverantören använder versionsbeteckningar.</p></details></div><input id="version" placeholder="Ingen särskild version" data-technical></div>
+          <div class="field"><div class="field-head"><label for="reasoning">Resonemangsnivå</label><details class="help"><summary aria-label="Hjälp om resonemangsnivå"><svg aria-hidden="true"><use href="#i-unknown"/></svg></summary><p>Begärd resonemangsnivå för modellrevisionen. Den verifieras tillsammans med modellen.</p></details></div><select id="reasoning" data-technical><option>Låg</option><option>Medel</option><option selected>Hög</option></select></div>
+          <div class="field"><div class="field-head"><label for="description">Beskrivning <span class="optional">(valfritt)</span></label><details class="help"><summary aria-label="Hjälp om beskrivning"><svg aria-hidden="true"><use href="#i-unknown"/></svg></summary><p>Beskriv vad modellen ska användas till. Beskrivningen påverkar inte verifieringen.</p></details></div><textarea id="description" placeholder="Beskriv modellens användning"></textarea></div>
+        </form>
+        <div class="actions">
+          <button class="button" id="verify"><svg aria-hidden="true"><use href="#i-check"/></svg><span>Verifiera</span></button>
+          <p class="action-hint">Verifiera modellen och granska resultatet innan du sparar.</p>
+          <div class="save-actions"><button class="button" id="cancel">Avbryt</button><button class="button primary" id="save" disabled>Spara modellrevision</button></div>
+        </div>
+      </div>
+      <section class="panel" aria-labelledby="verification-title">
+        <div class="panel-heading"><h2 id="verification-title">Modellverifiering</h2><span class="count" id="count">Inte startad</span></div>
+        <p class="panel-intro">Kontrollerna uppdateras här när du verifierar modellen.</p>
+        <div class="group" role="group" aria-labelledby="base-title"><h3 id="base-title">Grundkontroller</h3><div class="rows" id="base"></div></div>
+        <div class="group" role="group" aria-labelledby="cap-title"><h3 id="cap-title">Förmågor</h3><div class="rows capabilities" id="capabilities"></div><p class="group-help">Resonemangsaktivitet krävs. Uttrycklig styrning krävs bara när modellen använder den. AI-analys och övriga förmågor kan saknas eller vara oavgjorda.</p></div>
+        <div class="group" role="group" aria-labelledby="profiles-title"><h3 id="profiles-title">Kompatibilitet med körprofiler</h3><div class="rows" id="profiles"></div></div>
+        <div class="summary-box" id="summary"><h3><svg aria-hidden="true"><use href="#i-info"/></svg><span id="summary-title">Slutsammanfattning</span></h3><p id="summary-text">Starta verifieringen för att se om modellrevisionen kan sparas.</p></div>
+        <p class="sr-only" role="status" id="announcement"></p>
+      </section>
+    </div>
+  </main>
+<script>
+  const checks = [
+    ['connection','Anslutning och autentisering','base'],
+    ['baseline','Grundläggande modellåtkomst','base'],
+    ['reasoning','Resonemangsaktivitet','capabilities'],
+    ['control','Uttrycklig resonemangsstyrning','capabilities'],
+    ['analysis','AI-analys','capabilities'],
+    ['cost','Kostnadsuppgifter','capabilities'],
+    ['images','Bildindata','capabilities'],
+    ['schema','Styrning med JSON-schema','capabilities'],
+    ['stream','Strömning','capabilities'],
+    ['tokens','Användning av token','capabilities'],
+    ['json','Validerbar JSON','capabilities'],
+    ['text-profile','Kravgenerering utan bilder','profiles'],
+    ['image-profile','Kravgenerering med bilder','profiles'],
+    ['repair-profile','Reparation av ogiltig import-JSON','profiles'],
+  ];
+  const $ = id => document.getElementById(id);
+  let timer, active = -1, phase = 'idle', completed = 0;
+  const rowElements = new Map();
+  const iconFor = { idle:'unknown',waiting:'clock',running:'loader',verified:'check',negative:'x',inconclusive:'unknown' };
+  function icon(name, spinning = false) { return `<svg aria-hidden="true" class="${spinning ? 'spin' : ''}"><use href="#i-${name}"/></svg>`; }
+  checks.forEach(([id,name,group]) => {
+    const row = document.createElement('div');
+    row.className = 'row'; row.id = 'check-' + id;
+    row.innerHTML = `<div class="${group === 'capabilities' ? '' : 'inline-row'}"><p class="row-name">${name}</p><div class="status"></div></div><div class="detail"></div>`;
+    $(group).append(row); rowElements.set(id,row);
+  });
+  function setRow(check, state, detail = '') {
+    const [id,,group] = check, row = rowElements.get(id);
+    row.dataset.state = state;
+    if (state === 'running') row.setAttribute('aria-current','step'); else row.removeAttribute('aria-current');
+    const profile = group === 'profiles';
+    const labels = { idle:profile?'Okänd kompatibilitet':'Inte testad', waiting:profile?'Okänd kompatibilitet · Väntar':'Väntar', running:profile?'Okänd kompatibilitet · Verifierar':'Verifierar', verified:profile?'Kompatibel':'Verifierad', negative:profile?'Inte kompatibel':'Inte verifierad', inconclusive:'Kunde inte avgöras' };
+    row.querySelector('.status').innerHTML = icon(iconFor[state],state === 'running') + `<span>${labels[state]}</span>`;
+    row.querySelector('.detail').textContent = detail;
+  }
+  function outcome(check) {
+    const [id,,group] = check, scenario = $('scenario').value;
+    if (scenario === 'mixed' && id === 'images') return ['negative','Bildindata kunde inte verifieras.'];
+    if (scenario === 'mixed' && id === 'image-profile') return ['negative','Saknar verifierad förmåga: Bildindata.'];
+    if (scenario === 'inconclusive' && id === 'reasoning') return ['inconclusive','Resonemangsaktiviteten kunde inte avgöras. Teknisk kod: demo_reasoning_inconclusive'];
+    if (scenario === 'inconclusive' && group === 'profiles') return ['inconclusive','Kräver verifierad resonemangsaktivitet.'];
+    return ['verified',''];
+  }
+  function summary(title, text, state = '') { $('summary-title').textContent=title; $('summary-text').textContent=text; $('summary').dataset.state=state; $('announcement').textContent=text; }
+  function syncControls() {
+    const busy=phase==='running';
+    $('verify').innerHTML=icon(busy?'x':'check')+`<span>${busy?'Avbryt verifiering':'Verifiera'}</span>`;
+    $('verify').disabled=!busy&&!$('model-id').value.trim();
+    $('scenario').disabled=busy;
+    $('save').disabled=phase!=='done'||$('scenario').value==='inconclusive'||!$('name').value.trim();
+  }
+  function reset(message) {
+    clearInterval(timer); phase='idle'; active=-1; completed=0;
+    checks.forEach(check=>setRow(check,'idle')); $('count').textContent='Inte startad';
+    summary('Slutsammanfattning', typeof message==='string'?message:'Starta verifieringen för att se om modellrevisionen kan sparas.'); syncControls();
+  }
+  function finish() {
+    clearInterval(timer); phase='done'; active=-1; completed=checks.length;
+    checks.forEach(check=>setRow(check,...outcome(check))); $('count').textContent='14 av 14 kontroller klara';
+    if ($('scenario').value==='inconclusive') summary('Modellrevisionen kan inte sparas','Resonemangsaktiviteten kunde inte avgöras. Verifiera igen för att få ett avgjort resultat.','inconclusive');
+    else summary('Verifieringen är klar',($('scenario').value==='mixed'?'Kompatibel med 2 av 3 körprofiler. ':'Kompatibel med alla 3 körprofiler. ')+'Granska resultatet och spara modellrevisionen separat.','verified');
+    syncControls();
+  }
+  function start() {
+    reset(); phase='running'; active=0; checks.forEach(check=>setRow(check,'waiting')); setRow(checks[active],'running'); syncControls();
+    function announce() { $('count').textContent=`${completed} av 14 kontroller klara`; summary('Verifiering pågår',`${checks[active][1]} kontrolleras. Du kan avbryta verifieringen.`); }
+    announce();
+    timer=setInterval(()=>{setRow(checks[active],...outcome(checks[active])); completed++; active++; if(active===checks.length) finish(); else {setRow(checks[active],'running'); announce();}},850);
+  }
+  function stop() {
+    clearInterval(timer); phase='cancelled';
+    checks.forEach((check,index)=>{if(index>=active)setRow(check,'idle',index===active?'Kontrollen avbröts.':'');});
+    active=-1; $('count').textContent=`Avbruten · ${completed} av 14 klara`;
+    summary('Verifieringen avbröts','Slutförda kontroller visas ovan. Verifiera igen innan du sparar modellrevisionen.','inconclusive'); syncControls();
+  }
+  $('verify').onclick=()=>phase==='running'?stop():start();
+  $('reset').onclick=()=>reset(); $('finish').onclick=finish; $('scenario').onchange=()=>reset();
+  $('cancel').onclick=()=>reset('Formuläret är återställt i prototypen. Du kan prova verifieringen igen.');
+  $('save').onclick=()=>{phase='saved';summary('Modellrevisionen är sparad','Simulerat sparande i prototypen. Ingen data har lagrats.','verified');syncControls();};
+  $('theme').onclick=()=>{const dark=document.documentElement.classList.toggle('dark');$('theme').setAttribute('aria-pressed',String(dark));$('theme').textContent=dark?'Ljust tema':'Mörkt tema';};
+  document.querySelectorAll('[data-technical]').forEach(input=>input.addEventListener('input',()=>reset('Modellinställningarna har ändrats. Verifiera modellen igen innan du sparar.')));
+  $('catalog').onchange=()=>reset('Modellvalet har ändrats. Verifiera modellen innan du sparar.');
+  $('name').oninput=syncControls; $('model-form').onsubmit=event=>event.preventDefault();
+  reset();
+</script>
+</body>
+</html>
