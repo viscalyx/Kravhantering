@@ -1,0 +1,12 @@
+# Authenticated development requests
+
+- Use `scripts/dev-curl.sh` for authenticated HTTP requests against the
+  development server. Plain curl can see only the login redirect.
+- The helper logs in through the development Keycloak realm and caches its
+  cookie jar at `.auth/<user>.cookies`; its default public test identity is
+  `ada.admin` / `devpass`.
+- Bare `/` paths resolve against `DEV_LOGIN_BASE_URL`, defaulting to
+  `http://localhost:3000`.
+- Set `DEV_LOGIN_USER` to select a development user, `DEV_LOGIN_BASE_URL`
+  to change the host, and use `node scripts/dev-login.mjs --force` to log in
+  again. Read `docs/development/auth-developer-workflow.md` for that workflow.

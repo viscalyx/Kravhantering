@@ -1,0 +1,94 @@
+# Agent Instructions
+
+## Common guidance
+
+- Read `CONTEXT-MAP.md` and the glossary for the work; read each relevant
+  glossary when the task crosses context boundaries.
+- Use quoted shell paths, including literal Next.js bracket directories.
+- Fix lint/test failures; never use `git stash` to diagnose their origin.
+- Preserve uncommitted work. Before undoing edits, inspect `git diff` and
+  apply targeted edits; use Git undo commands only when work cannot be lost.
+- Create worktrees under `/mnt/krav-azure-dev-data/.worktrees/` when that
+  mount exists; otherwise use a writable temporary root outside the checkout.
+- For Markdown cSpell findings, add correct technical terms, words in the
+  document language, proper nouns and common contextual acronyms to the
+  project dictionary; correct actual misspellings in the text.
+- Track issues in `viscalyx/Kravhantering`. For multiline GitHub Markdown,
+  use `gh ... --body-file -` with a single-quoted heredoc, then verify the
+  body with `gh ... view --json body --jq .body`.
+- Keep relevant `docs/**/*.md` aligned when behavior or workflows change.
+- For user-facing functionality, workflows, roles/permissions, visible UI,
+  reports, privacy/export, lifecycle or admin changes, update matching
+  automated tests and manual cases. If internal-only work needs no manual
+  case update, state that in the final response.
+- Use the repository stack: Next.js App Router, React, strict TypeScript,
+  Tailwind CSS, next-intl (`en`/`sv`), Framer Motion and Vitest; self-hosted
+  Next.js with SQL Server and TypeORM as the sole database stack. Read
+  `package.json` for current versions and command composition.
+- Use `npm run check` for repository checks, `npm run test` for tests and
+  `npm run dev` for the development server; apply scoped verification rules.
+
+## Routing contract
+
+- All four consumers use these routes: Codex CLI, Codex IDE extension,
+  GitHub Copilot CLI and GitHub Copilot in VS Code.
+- Resolve every path from the repository root, including planned files.
+  Before a move, evaluate source and destination scope.
+- Each row requires reading its target when its path selector matches OR
+  its task condition holds. Task conditions can hold before paths are known.
+  A rule within that target applies only when its own path, task, framework
+  and exception conditions hold; reading does not broaden applicability.
+- Select every matching row. Read the current target unless its full current
+  text is already in context, and follow applicable reference pointers.
+  Re-evaluate when scope, paths or instruction files change. Native Copilot
+  selection can supply a target; it does not replace semantic task routing.
+- Interpret bracket directory names literally. `[[]locale[]]` and `[[]id[]]`
+  below denote `[locale]` and `[id]`. Braces list alternatives; `*` matches
+  within one path segment and `**` spans directory levels. Native selectors
+  must express the same intended path coverage.
+- For work anywhere under `tests/integration/`, read
+  `tests/integration/AGENTS.md`, including with nested discovery disabled.
+
+## Conditional routes
+
+Targets below are relative to `.github/instructions/`; each basename ends
+in `.instructions.md`. Selectors are repository-relative reading triggers.
+
+- `add-requirement-column.instructions.md`: `{components/**/*.tsx,app/[[]locale[]]/requirements/**/*.tsx,app/api/**/*.ts,lib/**/*.ts,i18n/**/*.ts,lib/typeorm/entities/**/*.ts,typeorm/{seed.mjs,migrations/**/*.mjs},tests/**/*.test.ts,tests/**/*.test.tsx,tests/**/*.spec.ts,tests/**/*.spec.tsx,docs/governance/requirements-ui-behaviour.md,messages/*.json,typeorm/*seed*.mjs}` OR adding, removing, renaming, or exposing a requirement property, including list/filter/form/detail/CSV/service/MCP output, even before paths are chosen.
+- `admin-center.instructions.md`: `{app/[[]locale[]]/admin/**/*.tsx,components/Navigation.tsx,app/api/admin/**/*.ts,app/api/privacy/**/*.ts}` OR changing Admin Center panels, tab authorization, shell/navigation, or admin/privacy endpoints.
+- `ai-instruction-authoring.instructions.md`: `{AGENTS.md,tests/integration/AGENTS.md,.github/instructions/*.md,.github/prompts/*.md}` OR maintaining instructions, their routes, selectors or covered paths, including additions, moves and deletions.
+- `api-contract.instructions.md`: `{app/api/**/*.ts,lib/http/validation.ts,openapi/**/*.yaml,docs/security-privacy/api-security.md,schemathesis.toml,.github/workflows/security-api.yml,scripts/security/**/*.mjs}` OR adding, removing, renaming or changing an app-owned REST route, contract, or Schemathesis scope.
+- `auth-docs.instructions.md`: `{app/api/auth/**/*.ts,app/api/mcp/route.ts,components/AuthMenu.tsx,lib/auth/**/*.ts,lib/mcp/http.ts,lib/requirements/auth.ts,proxy.ts,tests/support/oidc-mock.ts,dev/keycloak/realm-kravhantering-dev.json,docs/security-privacy/auth-how-it-works.md,docs/integrations/oidc-identity-provider-integration.md,docs/development/auth-developer-workflow.md,docs/integrations/external-idp-handoff.md,docs/operations/rhel10-production-deploy.md}` OR changing login/session/proxy/MCP bearer auth, claims, identity mapping, IdP deployment or local auth workflow.
+- `auth-security.instructions.md`: `{app/api/**/*.ts,app/**/*.tsx,components/**/*.tsx,lib/auth/**/*.ts,lib/http/api-fetch.ts,lib/requirements/auth.ts,proxy.ts,tests/**/*.{ts,tsx}}` OR changing authentication, CSRF, browser mutations, identity headers, session projection or security tests.
+- `components.instructions.md`: `components/**/*.tsx` OR authoring component TSX, with client-only rules conditional on hooks/events/animation and PDF exceptions preserved.
+- `database-schema.instructions.md`: `{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,typeorm/*seed*.mjs,docs/reference/database-schema.md}` OR changing schema, migrations, seeds, database-backed JSON Schema, requirement snapshots, lifecycle dates or personal-data persistence.
+- `database-writes.instructions.md`: `{lib/dal/**/*.ts,lib/requirements/service*.ts,app/api/**/*.ts}` OR changing multi-table writes or assignment authorization for requirements, areas, packages or specifications.
+- `detail-pane-layout.instructions.md`: `{app/[[]locale[]]/requirements/[[]id[]]/requirement-detail-client.tsx,components/RequirementDetailCard.tsx,components/RequirementDetailSections.tsx,components/RequirementForm.tsx,components/RequirementFormFields.tsx}` OR changing requirement inline/full detail cards, metadata or area-owner presentation in create/edit forms.
+- `dev-http.instructions.md`: `{scripts/dev-curl.sh,scripts/dev-login.mjs,docs/development/auth-developer-workflow.md}` OR making authenticated HTTP requests against the development server, or changing its login/request helper workflow.
+- `developer-mode.instructions.md`: `{app/**/*.tsx,components/**/*.tsx,docs/**/*.md,tests/unit/**/*.ts,tests/unit/**/*.tsx,tests/integration/**/*.spec.ts,CONTRIBUTING.md,lib/developer-mode-markers.ts,lib/runtime/developer-mode-*.ts,lib/runtime/developer-mode-*.tsx,next.config.ts}` OR changing visible UI elements, labels, roles or layout, or Developer Mode markers, scanner, naming or runtime wiring.
+- `github-actions-security.instructions.md`: `{.github/workflows/*.yml,.github/workflows/*.yaml,.github/dependabot.yml}` OR editing GitHub Actions or Dependabot configuration, including adding or renaming workflows.
+- `help-panel.instructions.md`: `{components/HelpPanel.tsx,app/[[]locale[]]/**/*-client.tsx}` OR adding, changing or removing a client view, its HelpContent or translation-driven help visuals.
+- `information-assets-retention.instructions.md`: `{docs/security-privacy/informationsmangder-kravhantering.md,docs/governance/admin-center.md,docs/reference/database-schema.md,lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,lib/archiving/**/*.ts,app/api/admin/archiving/**/*.ts,app/[[]locale[]]/admin/**/*.tsx,tests/unit/archiving-retention*.test.ts}` OR adding persistent business data, document sections, export payloads or stored files, or changing app retention.
+- `lychee-toolchain.instructions.md`: `{.devcontainer/Dockerfile,.github/workflows/quality-checks.yml,scripts/azure-dev/templates/bootstrap-host.sh,.github/dependency-maintenance.json,.github/workflows/dependency-drift.mjs,scripts/__tests__/dependency-drift.test.mjs}` OR changing Lychee installers, workflow input, checksums, or dependency-drift lane/detector behavior.
+- `manual-test-playwright.instructions.md`: `{docs/governance/manuella-testfall.md,tests/integration/**/*.ts}` OR changing functional/manual scenario coverage, Playwright specs or authorization fixture boundaries.
+- `markdown.instructions.md`: `{docs/**/*.md,README.md,CONTRIBUTING.md,SECURITY.md,CODE_OF_CONDUCT.md,packages/**/*.md}` OR authoring Markdown in the selected documentation paths.
+- `mcp-tool-contract.instructions.md`: `{lib/mcp/**/*.ts,lib/requirements/**/*.ts,lib/dal/**/*.ts,app/api/**/*.ts,docs/integrations/mcp-server-*.md,tests/unit/mcp-http.test.ts}` OR changing callable MCP inputs, outputs, prerequisites or next actions, including shared backend behavior.
+- `next-runtime.instructions.md`: `{app/api/**/*.ts,next.config.ts,package.json,scripts/**/*.mjs,scripts/**/*.sh,containers/production/nginx/templates/api-docs-security-headers.conf,tests/helpers/api-docs-security-headers.ts,docs/operations/api-docs-edge-verification.md}` OR creating or moving API routes, changing server runtime, DB script setup or API-documentation security headers.
+- `node-version.instructions.md`: `{**/{Dockerfile,.devcontainer/**,.github/workflows/**,package.json,.nvmrc},docs/**/*.md,scripts/azure-dev/templates/bootstrap-host.sh,containers/**/Dockerfile}` OR changing any file that sets or documents a Node version, including documented pins before all locations are known.
+- `operator-upgrade-notes.instructions.md`: `docs/operations/operator-upgrade-notes.md` OR correcting existing operator-upgrade-note content within explicit task scope.
+- `package-updates.instructions.md`: `package.json` OR changing root dependencies, overrides or related peer/tool/browser versions.
+- `pester.instructions.md`: `tests/powershell/**/*.Tests.ps1` OR authoring PowerShell tests or changing their isolated runners and execution gates.
+- `privacy-display-name.instructions.md`: `{app/**/*.tsx,components/**/*.tsx,lib/reports/**/*,tests/unit/**/*.ts,tests/unit/**/*.tsx,tests/integration/**/*.spec.ts,app/api/**/*.ts,lib/privacy/display-name.ts}` OR rendering person/actor labels in UI, report/PDF/CSV or user-facing assertions; not durable identity or internal logs.
+- `reports.instructions.md`: `{lib/reports/**/*,components/reports/**/*,app/[[]locale[]]/requirements/reports/**/*}` OR changing report templates, sections, engines, routes, styling, output or PDF actions.
+- `requirement-lifecycle-policy.instructions.md`: `{lib/requirements/lifecycle.ts,lib/requirements/status-constants.mjs,lib/dal/requirements.ts,lib/requirements/service*.ts,app/api/requirements/**/*.ts,app/api/requirement-transitions/**/*.ts}` OR changing edit, archiving, transition, restore, reactivate or delete-draft decisions.
+- `requirement-service-boundary.instructions.md`: `{app/api/**/*.ts,lib/requirements/service*.ts,lib/mcp/server.ts}` OR changing REST/MCP workflow overlap or a shared RequirementsService workflow.
+- `requirements-table.instructions.md`: `{components/RequirementsTable.tsx,app/[[]locale[]]/requirements/**/*.tsx,lib/requirements/list-view.ts,tests/unit/requirements-table.test.tsx,tests/unit/requirement-list-view.test.ts,tests/unit/requirements-client.test.tsx,tests/integration/requirements/table-resize.spec.ts,docs/governance/manuella-testfall.md,docs/governance/requirements-ui-behaviour.md}` OR changing requirement table columns/defaults, filters, sort, width persistence or resizing.
+- `route-security-policy.instructions.md`: `{app/api/**/route.ts,lib/http/*.ts,proxy.ts,openapi/requirements-api.yaml,tests/unit/rest-route-*.test.ts,lib/__tests__/*policy.test.ts}` OR changing explicit REST operations, registry, transport policy, wrappers or OpenAPI policy metadata.
+- `scripts.instructions.md`: `scripts/**/*.js,scripts/**/*.mjs` OR editing JS/MJS scripts; deterministic-code coverage and orchestration-only exclusion remain distinct.
+- `secure-mutation-routes.instructions.md`: `{app/api/**/route.ts,lib/http/secure-mutation-route.ts,tests/unit/secure-mutation-route*.test.ts,docs/security-privacy/api-security.md,docs/security-privacy/auth-how-it-works.md}` OR changing REST mutation authorization, validation, handlers, audit, cache or errors; excludes MCP.
+- `tests.instructions.md`: `**/*.{test,spec}.{ts,tsx,js,mjs,cjs},**/__tests__/**/*` OR adding or modifying tests; apply React/Vitest/Playwright/DAL branches only to their frameworks and subjects.
+- `translations.instructions.md`: `messages/*.json` OR changing messages, including UI/help/report labels requiring both locales.
+- `typeorm-entities.instructions.md`: `lib/typeorm/entities/**/*.ts` OR authoring EntitySchema metadata, relations, indices, localized fields or entity registration.
+- `typeorm-sqlserver.instructions.md`: `{lib/typeorm/**/*.mjs,typeorm/**/*.mjs,lib/db.ts,scripts/db-sqlserver-admin.mjs,scripts/__tests__/db-sqlserver-admin.test.mjs,docker-compose.sqlserver.yml,package.json,docs/development/sql-server-developer-workflow.md}` OR changing SQL Server/TypeORM connections, queries, transactions, procedures, migrations, seeds or browse workflow.
+- `ui-ux.instructions.md`: `{components,app}/**/*.tsx` OR changing product UI layout, accessibility, form help, interactions, feedback or stored view state; respect Developer Mode and PDF exceptions.
+- `utilities.instructions.md`: `lib/**/*.ts` OR authoring TypeScript library utilities, including external HTML handling or dynamic import paths.

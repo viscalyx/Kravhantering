@@ -1,0 +1,458 @@
+{
+  "add-requirement-column": {
+    "destination": ".github/instructions/add-requirement-column.instructions.md",
+    "selector_proposal": "{components/**/*.tsx,app/[[]locale[]]/requirements/**/*.tsx,app/api/**/*.ts,lib/**/*.ts,i18n/**/*.ts,lib/typeorm/entities/**/*.ts,typeorm/{seed.mjs,migrations/**/*.mjs},tests/**/*.test.ts,tests/**/*.test.tsx,tests/**/*.spec.ts,tests/**/*.spec.tsx,docs/governance/requirements-ui-behaviour.md,messages/*.json,typeorm/*seed*.mjs}",
+    "task_condition": "adding, removing, renaming, or exposing a requirement property, including list/filter/form/detail/CSV/service/MCP output, even before paths are chosen",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep registry/data wiring/admin defaults/field-specific verification. Delegate locked columns and sort constraints to requirements-table; schema/seed verification to database-schema; localization to translations/UI. Repair hydration and admin entrypoint paths. Keep the task trigger before paths exist."
+  },
+  "admin-center": {
+    "destination": ".github/instructions/admin-center.instructions.md",
+    "selector_proposal": "{app/[[]locale[]]/admin/**/*.tsx,components/Navigation.tsx,app/api/admin/**/*.ts,app/api/privacy/**/*.ts}",
+    "task_condition": "changing Admin Center panels, tab authorization, shell/navigation, or admin/privacy endpoints",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep server authorization, authorized-tab fallback, activation-only fetches, shell/panel separation, client-secret boundary and focused panel contracts. Complementary auth and UI routes remain applicable."
+  },
+  "ai-instruction-authoring": {
+    "destination": ".github/instructions/ai-instruction-authoring.instructions.md",
+    "selector_proposal": "{AGENTS.md,tests/integration/AGENTS.md,.github/instructions/*.md,.github/prompts/*.md}",
+    "task_condition": "maintaining instructions, their routes, selectors or covered paths, including additions, moves and deletions",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep concise AI directives, single owner, narrow string applyTo, headings/bullets/code style. Remove obsolete Copilot-root exception/reference. Preserve prospective prompt coverage; no prompt directory currently exists. Add the accepted reciprocal maintenance procedure and retained AGENTS coverage."
+  },
+  "api-contract": {
+    "destination": ".github/instructions/api-contract.instructions.md",
+    "selector_proposal": "{app/api/**/*.ts,lib/http/validation.ts,openapi/**/*.yaml,docs/security-privacy/api-security.md,schemathesis.toml,.github/workflows/security-api.yml,scripts/security/**/*.mjs}",
+    "task_condition": "adding, removing, renaming or changing an app-owned REST route, contract, or Schemathesis scope",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep REST/Schemathesis inclusion decision, bounded disposable-target contract, auth/CSRF/errors/schema synchronization, focused tests and available-stack verification. REST registry authority stays in route-security-policy; MCP stays separate."
+  },
+  "auth-docs": {
+    "destination": ".github/instructions/auth-docs.instructions.md",
+    "selector_proposal": "{app/api/auth/**/*.ts,app/api/mcp/route.ts,components/AuthMenu.tsx,lib/auth/**/*.ts,lib/mcp/http.ts,lib/requirements/auth.ts,proxy.ts,tests/support/oidc-mock.ts,dev/keycloak/realm-kravhantering-dev.json,docs/security-privacy/auth-how-it-works.md,docs/integrations/oidc-identity-provider-integration.md,docs/development/auth-developer-workflow.md,docs/integrations/external-idp-handoff.md,docs/operations/rhel10-production-deploy.md}",
+    "task_condition": "changing login/session/proxy/MCP bearer auth, claims, identity mapping, IdP deployment or local auth workflow",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep each documentation destination with its distinct trigger, Mermaid alignment and provider-generic wording. These are specialized obligations under the common documentation rule."
+  },
+  "auth-security": {
+    "destination": ".github/instructions/auth-security.instructions.md",
+    "selector_proposal": "{app/api/**/*.ts,app/**/*.tsx,components/**/*.tsx,lib/auth/**/*.ts,lib/http/api-fetch.ts,lib/requirements/auth.ts,proxy.ts,tests/**/*.{ts,tsx}}",
+    "task_condition": "changing authentication, CSRF, browser mutations, identity headers, session projection or security tests",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep browser apiFetch/header handling, identity stripping, shared CSRF helper and auth test scenarios. Delegate REST policy and MCP exclusion to route-security-policy; retain browser-versus-bearer qualification."
+  },
+  "components": {
+    "destination": ".github/instructions/components.instructions.md",
+    "selector_proposal": "components/**/*.tsx",
+    "task_condition": "authoring component TSX, with client-only rules conditional on hooks/events/animation and PDF exceptions preserved",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep component structure/client islands, conditional client/server translations, reduced motion, images/PDF exception, async controls and high-frequency interactions. Consolidate general loading/animation rules in ui-ux; keep component-specific mechanics and reduced-motion helper here."
+  },
+  "database-schema": {
+    "destination": ".github/instructions/database-schema.instructions.md",
+    "selector_proposal": "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,typeorm/*seed*.mjs,docs/reference/database-schema.md}",
+    "task_condition": "changing schema, migrations, seeds, database-backed JSON Schema, requirement snapshots, lifecycle dates or personal-data persistence",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep naming, snapshots, removal cleanup, sync surfaces, JSON Schema, erasure, docs, migration/seed flow and lifecycle-date semantics. Clarify metadata versus DDL authority; replace decorator naming examples with EntitySchema uniques/indices. Own scalar-FK exceptions. Consolidate repeated released-migration, canonical-doc and cleanup statements within their sections."
+  },
+  "database-writes": {
+    "destination": ".github/instructions/database-writes.instructions.md",
+    "selector_proposal": "{lib/dal/**/*.ts,lib/requirements/service*.ts,app/api/**/*.ts}",
+    "task_condition": "changing multi-table writes or assignment authorization for requirements, areas, packages or specifications",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep wrapper-level atomic ownership, transactional safety, deterministic-cleanup exception, assignment boundaries and focused rollback/ownership tests. Reference this owner from TypeORM transaction guidance; TypeORM manager/QueryRunner specifics remain there."
+  },
+  "detail-pane-layout": {
+    "destination": ".github/instructions/detail-pane-layout.instructions.md",
+    "selector_proposal": "{app/[[]locale[]]/requirements/[[]id[]]/requirement-detail-client.tsx,components/RequirementDetailCard.tsx,components/RequirementDetailSections.tsx,components/RequirementForm.tsx,components/RequirementFormFields.tsx}",
+    "task_condition": "changing requirement inline/full detail cards, metadata or area-owner presentation in create/edit forms",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep fixed card order, no sidebar within the card, area ownership and non-editable form owner. Consolidate repeated card/order statements. Extend selection to shared cards and form fields; do not interpret the card rule as banning surrounding page action rails."
+  },
+  "dev-http": {
+    "destination": ".github/instructions/dev-http.instructions.md",
+    "selector_proposal": "{scripts/dev-curl.sh,scripts/dev-login.mjs,docs/development/auth-developer-workflow.md}",
+    "task_condition": "making authenticated HTTP requests against the development server, or changing its login/request helper workflow",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "New conditional owner for every authenticated-development-request rule in the retired Copilot root."
+  },
+  "developer-mode": {
+    "destination": ".github/instructions/developer-mode.instructions.md",
+    "selector_proposal": "{app/**/*.tsx,components/**/*.tsx,docs/**/*.md,tests/unit/**/*.ts,tests/unit/**/*.tsx,tests/integration/**/*.spec.ts,CONTRIBUTING.md,lib/developer-mode-markers.ts,lib/runtime/developer-mode-*.ts,lib/runtime/developer-mode-*.tsx,next.config.ts}",
+    "task_condition": "changing visible UI elements, labels, roles or layout, or Developer Mode markers, scanner, naming or runtime wiring",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Own English developer labels and the desktop/compact/accessibility exception transferred from Copilot root and ui-ux. Keep marker updates, code-owned exact coverage, documentation trigger and production noops. Keep external rationale pointer conditional on runtime-wiring work."
+  },
+  "github-actions-security": {
+    "destination": ".github/instructions/github-actions-security.instructions.md",
+    "selector_proposal": "{.github/workflows/*.yml,.github/workflows/*.yaml,.github/dependabot.yml}",
+    "task_condition": "editing GitHub Actions or Dependabot configuration, including adding or renaming workflows",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep external action SHA/tag resolution, credential exception and Dependabot ecosystem. Retire all instructions requiring or permitting workflow unit assertions; reference tests for the shared testing boundary."
+  },
+  "help-panel": {
+    "destination": ".github/instructions/help-panel.instructions.md",
+    "selector_proposal": "{components/HelpPanel.tsx,app/[[]locale[]]/**/*-client.tsx}",
+    "task_condition": "adding, changing or removing a client view, its HelpContent or translation-driven help visuals",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep module-scope typed constants, view add/change/remove lifecycle, text/visual schema and translation-driven visuals. Collapse repeated placement rules and paired-language examples into the translations pointer; preserve relative help namespace."
+  },
+  "information-assets-retention": {
+    "destination": ".github/instructions/information-assets-retention.instructions.md",
+    "selector_proposal": "{docs/security-privacy/informationsmangder-kravhantering.md,docs/governance/admin-center.md,docs/reference/database-schema.md,lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,lib/archiving/**/*.ts,app/api/admin/archiving/**/*.ts,app/[[]locale[]]/admin/**/*.tsx,tests/unit/archiving-retention*.test.ts}",
+    "task_condition": "adding persistent business data, document sections, export payloads or stored files, or changing app retention",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep asset classification, retention decision, documented exceptions, app policy/fixtures/tests and privacy-versus-retention separation. No policy retirement; branch on new assets before schema paths exist."
+  },
+  "lychee-toolchain": {
+    "destination": ".github/instructions/lychee-toolchain.instructions.md",
+    "selector_proposal": "{.devcontainer/Dockerfile,.github/workflows/quality-checks.yml,scripts/azure-dev/templates/bootstrap-host.sh,.github/dependency-maintenance.json,.github/workflows/dependency-drift.mjs,scripts/__tests__/dependency-drift.test.mjs}",
+    "task_condition": "changing Lychee installers, workflow input, checksums, or dependency-drift lane/detector behavior",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep coordinated versions and both architecture hashes, maintained drift lane and relational executable-detector tests. Delegate action pinning to github-actions-security; retire workflow/version-alignment unit-test requirement."
+  },
+  "manual-test-playwright": {
+    "destination": ".github/instructions/manual-test-playwright.instructions.md",
+    "selector_proposal": "{docs/governance/manuella-testfall.md,tests/integration/**/*.ts}",
+    "task_condition": "changing functional/manual scenario coverage, Playwright specs or authorization fixture boundaries",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep all manual/spec lockstep, functional-versus-geometry scope, explicit maintenance authorization, chunk generation, role phases/storage and isolated fixture equivalence. Do not silently relax spec maintenance restrictions."
+  },
+  "markdown": {
+    "destination": ".github/instructions/markdown.instructions.md",
+    "selector_proposal": "{docs/**/*.md,README.md,CONTRIBUTING.md,SECURITY.md,CODE_OF_CONDUCT.md,packages/**/*.md}",
+    "task_condition": "authoring Markdown in the selected documentation paths",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep Markdown style and lint conventions, 80-column prose, intact code/URLs, allowed MD013 exceptions and consistent table style. Scope stays documentation-shaped, not a new all-Markdown policy."
+  },
+  "mcp-tool-contract": {
+    "destination": ".github/instructions/mcp-tool-contract.instructions.md",
+    "selector_proposal": "{lib/mcp/**/*.ts,lib/requirements/**/*.ts,lib/dal/**/*.ts,app/api/**/*.ts,docs/integrations/mcp-server-*.md,tests/unit/mcp-http.test.ts}",
+    "task_condition": "changing callable MCP inputs, outputs, prerequisites or next actions, including shared backend behavior",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep client-visible descriptions/schemas/prerequisites, both guide inventories and MCP tests. Delegate shared service boundary to its owner, without turning documentation into the callable contract."
+  },
+  "next-runtime": {
+    "destination": ".github/instructions/next-runtime.instructions.md",
+    "selector_proposal": "{app/api/**/*.ts,next.config.ts,package.json,scripts/**/*.mjs,scripts/**/*.sh,containers/production/nginx/templates/api-docs-security-headers.conf,tests/helpers/api-docs-security-headers.ts,docs/operations/api-docs-edge-verification.md}",
+    "task_condition": "creating or moving API routes, changing server runtime, DB script setup or API-documentation security headers",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep Node server runtime, wrapper access, platform independence, explicit connection contract/prodlike flow and header-surface synchronization. Categorical Turbopack second-segment exclusion is unresolved: existing REST authoring docs and routes use requirements/[id]. Record a separate decision; preserve current wording pending it."
+  },
+  "node-version": {
+    "destination": ".github/instructions/node-version.instructions.md",
+    "selector_proposal": "{**/{Dockerfile,.devcontainer/**,.github/workflows/**,package.json,.nvmrc},docs/**/*.md,scripts/azure-dev/templates/bootstrap-host.sh,containers/**/Dockerfile}",
+    "task_condition": "changing any file that sets or documents a Node version, including documented pins before all locations are known",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep coordinated Node major, discovery of all pins, verification and documented exceptions. Use rg and current .nvmrc/package/container/CI inputs; retire the absent generated bundled/NODE_VERSION example. Do not freeze the example major as a permanent policy or rewrite digest pinning."
+  },
+  "operator-upgrade-notes": {
+    "destination": ".github/instructions/operator-upgrade-notes.instructions.md",
+    "selector_proposal": "docs/operations/operator-upgrade-notes.md",
+    "task_condition": "correcting existing operator-upgrade-note content within explicit task scope",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep automation ownership, explicit correction-only scope and preservation of markers/history. No broad deployment editing rule is added."
+  },
+  "package-updates": {
+    "destination": ".github/instructions/package-updates.instructions.md",
+    "selector_proposal": "package.json",
+    "task_condition": "changing root dependencies, overrides or related peer/tool/browser versions",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep intentional specifiers, override review, peer compatibility, Biome schema/type-major alignment, browser installation and check/audit commands. Read current package metadata for versions; preserve existing user authorization rules."
+  },
+  "pester": {
+    "destination": ".github/instructions/pester.instructions.md",
+    "selector_proposal": "tests/powershell/**/*.Tests.ps1",
+    "task_condition": "authoring PowerShell tests or changing their isolated runners and execution gates",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep all safety, syntax, scope, mocking, naming, folder, data-driven, opt-in/container and CI rules. Only remove singleton braces; CI permissions and result publication are execution requirements, not instructions to unit-test YAML."
+  },
+  "privacy-display-name": {
+    "destination": ".github/instructions/privacy-display-name.instructions.md",
+    "selector_proposal": "{app/**/*.tsx,components/**/*.tsx,lib/reports/**/*,tests/unit/**/*.ts,tests/unit/**/*.tsx,tests/integration/**/*.spec.ts,app/api/**/*.ts,lib/privacy/display-name.ts}",
+    "task_condition": "rendering person/actor labels in UI, report/PDF/CSV or user-facing assertions; not durable identity or internal logs",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep localized sentinel-safe public names, durable-key/internal-log exclusion, enforcement-test protection and positive anonymous rendering cases. Cover CSV API producers explicitly; do not extend formatting into erasure identity matching."
+  },
+  "reports": {
+    "destination": ".github/instructions/reports.instructions.md",
+    "selector_proposal": "{lib/reports/**/*,components/reports/**/*,app/[[]locale[]]/requirements/reports/**/*}",
+    "task_condition": "changing report templates, sections, engines, routes, styling, output or PDF actions",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep template/renderer ownership, server PDF/CSP, section/type/engine lifecycle, archiving review differences, locale-safe links and specialized docs. Preserve PDF image/rendering exception; locale key synchronization delegates to translations."
+  },
+  "requirement-lifecycle-policy": {
+    "destination": ".github/instructions/requirement-lifecycle-policy.instructions.md",
+    "selector_proposal": "{lib/requirements/lifecycle.ts,lib/requirements/status-constants.mjs,lib/dal/requirements.ts,lib/requirements/service*.ts,app/api/requirements/**/*.ts,app/api/requirement-transitions/**/*.ts}",
+    "task_condition": "changing edit, archiving, transition, restore, reactivate or delete-draft decisions",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep incremental pure decisions, status constants, DAL lock/transaction ownership, no duplicate precondition reads, route transport ownership and focused tests. No unrelated extraction project is authorized."
+  },
+  "requirement-service-boundary": {
+    "destination": ".github/instructions/requirement-service-boundary.instructions.md",
+    "selector_proposal": "{app/api/**/*.ts,lib/requirements/service*.ts,lib/mcp/server.ts}",
+    "task_condition": "changing REST/MCP workflow overlap or a shared RequirementsService workflow",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep all enumerated overlaps and direct-DAL/streaming exceptions. Own HTTP-versus-service responsibility for shared workflows; REST wrapper specifics remain in secure-mutation-routes."
+  },
+  "requirements-table": {
+    "destination": ".github/instructions/requirements-table.instructions.md",
+    "selector_proposal": "{components/RequirementsTable.tsx,app/[[]locale[]]/requirements/**/*.tsx,lib/requirements/list-view.ts,tests/unit/requirements-table.test.tsx,tests/unit/requirement-list-view.test.ts,tests/unit/requirements-client.test.tsx,tests/integration/requirements/table-resize.spec.ts,docs/governance/manuella-testfall.md,docs/governance/requirements-ui-behaviour.md}",
+    "task_condition": "changing requirement table columns/defaults, filters, sort, width persistence or resizing",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep custom-table choice, locked columns, default baseline, one sort, hide resets, width versioning, live resize/commit/cancel semantics and rendered-width verification. Describe baseline visibility as registry/seed defaults, retaining admin overrides. Replace moved spec and absent Markdown companion with current manual-case source."
+  },
+  "route-security-policy": {
+    "destination": ".github/instructions/route-security-policy.instructions.md",
+    "selector_proposal": "{app/api/**/route.ts,lib/http/*.ts,proxy.ts,openapi/requirements-api.yaml,tests/unit/rest-route-*.test.ts,lib/__tests__/*policy.test.ts}",
+    "task_condition": "changing explicit REST operations, registry, transport policy, wrappers or OpenAPI policy metadata",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep registry fields/completeness, REST/MCP split, cache safeguards, auth-CSRF order, derived methods, unknown-operation fallback, wrappers and OpenAPI declarations. Other transport guides point here for authority."
+  },
+  "scripts": {
+    "destination": ".github/instructions/scripts.instructions.md",
+    "selector_proposal": "scripts/**/*.js,scripts/**/*.mjs",
+    "task_condition": "editing JS/MJS scripts; deterministic-code coverage and orchestration-only exclusion remain distinct",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep changed deterministic code at 85% across four metrics, pure-function extraction, mixed-script handling and orchestration exclusion. Delegate database schema/seed facts to database-schema; keep script execution logic tests permitted."
+  },
+  "secure-mutation-routes": {
+    "destination": ".github/instructions/secure-mutation-routes.instructions.md",
+    "selector_proposal": "{app/api/**/route.ts,lib/http/secure-mutation-route.ts,tests/unit/secure-mutation-route*.test.ts,docs/security-privacy/api-security.md,docs/security-privacy/auth-how-it-works.md}",
+    "task_condition": "changing REST mutation authorization, validation, handlers, audit, cache or errors; excludes MCP",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep wrapper-only REST exports, required bounded policies, no pre-auth work, validation/context shape, audit specialization and focused wrapper/route tests. Reference service boundary for shared workflow transport separation."
+  },
+  "tests": {
+    "destination": ".github/instructions/tests.instructions.md",
+    "selector_proposal": "**/*.{test,spec}.{ts,tsx,js,mjs,cjs},**/__tests__/**/*",
+    "task_condition": "adding or modifying tests; apply React/Vitest/Playwright/DAL branches only to their frameworks and subjects",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep current-behavior/security-negative assertions, behavioral testing, framework-specific mocks/act, viewport, coverage, DAL and SQL testing. Explicitly prohibit workflow/skill-definition unit tests and automated AI-instruction tests. Keep script and application tests, including actual import-instruction API behavior."
+  },
+  "translations": {
+    "destination": ".github/instructions/translations.instructions.md",
+    "selector_proposal": "messages/*.json",
+    "task_condition": "changing messages, including UI/help/report labels requiring both locales",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep paired locales, nested keys, JSON validity and interpolation. Remove absent page-specific cookies/privacy/terms file cache; those pages currently use messages/en.json and messages/sv.json."
+  },
+  "typeorm-entities": {
+    "destination": ".github/instructions/typeorm-entities.instructions.md",
+    "selector_proposal": "lib/typeorm/entities/**/*.ts",
+    "task_condition": "authoring EntitySchema metadata, relations, indices, localized fields or entity registration",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep EntitySchema file/type/registration/column/relation/index/localized metadata mechanics. Reference database-schema for DDL ownership, naming and scalar FK exceptions. Describe metadata test as naming/table-presence evidence, not full final-schema drift proof."
+  },
+  "typeorm-sqlserver": {
+    "destination": ".github/instructions/typeorm-sqlserver.instructions.md",
+    "selector_proposal": "{lib/typeorm/**/*.mjs,typeorm/**/*.mjs,lib/db.ts,scripts/db-sqlserver-admin.mjs,scripts/__tests__/db-sqlserver-admin.test.mjs,docker-compose.sqlserver.yml,package.json,docs/development/sql-server-developer-workflow.md}",
+    "task_condition": "changing SQL Server/TypeORM connections, queries, transactions, procedures, migrations, seeds or browse workflow",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep Data Mapper/query hierarchy, pooling, transaction manager/QueryRunner mechanics, SQL performance/procedure/security choices, read-only browsing and specialized checks/docs. Delegate schema authority and logical mutation ownership; repair absent script, shallow docs and MJS coverage."
+  },
+  "ui-ux": {
+    "destination": ".github/instructions/ui-ux.instructions.md",
+    "selector_proposal": "{components,app}/**/*.tsx",
+    "task_condition": "changing product UI layout, accessibility, form help, interactions, feedback or stored view state; respect Developer Mode and PDF exceptions",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep responsive, target-size exceptions/evidence, dark mode, accessibility, status contrast, form help, discoverability, interaction/view state, feedback and UI integration coverage. Own product dialogs transferred from Copilot root. Reference Developer Mode for its exception; components owns reduced-motion mechanics. Replace generic direct Playwright invocation with current repository runner pointer."
+  },
+  "utilities": {
+    "destination": ".github/instructions/utilities.instructions.md",
+    "selector_proposal": "lib/**/*.ts",
+    "task_condition": "authoring TypeScript library utilities, including external HTML handling or dynamic import paths",
+    "consumers": [
+      "Codex CLI",
+      "Codex IDE extension",
+      "GitHub Copilot CLI",
+      "GitHub Copilot in VS Code"
+    ],
+    "review": "Keep naming/export/types, utility-local test placement, HTML sanitization and dynamic-import path validation. Explicitly preserve area-specific test locations; retain current library-TS scope and conditions."
+  }
+}

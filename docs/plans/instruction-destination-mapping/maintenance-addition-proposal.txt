@@ -1,0 +1,14 @@
+## Reciprocal maintenance
+
+- For instruction or covered-path changes, find the authoritative file by
+  repository-relative path and inspect its root route, native `applyTo` and
+  references together. Update affected representations in the same change.
+- For moves, inspect old and new instruction paths and source/destination
+  covered paths. For additions/deletions, repair routes, selectors and links.
+- Keep rule bodies in one owner. Preserve task triggers before paths are
+  known; path selection causes reading, not unconditional applicability.
+- Review positive and negative scope examples and applicable task-only cases.
+  Check references and report remaining uncertainty. Existing repository
+  checks do not establish route/selector agreement.
+- Ask the user when intended coverage or conflicting representations remain
+  unclear. Keep this procedure here; do not duplicate it across instructions.

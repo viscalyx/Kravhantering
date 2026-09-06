@@ -1,0 +1,195 @@
+{
+  "commit": "8339cd5b4b6799de90f578946362e3d34736a6b6",
+  "files": {
+    "AGENTS.md": {
+      "bytes": 1909,
+      "sha256": "c5880688d7e7d4f60c3ca85c5237092c0948a41471b8fb42a3bcd3088d306f27"
+    },
+    ".github/copilot-instructions.md": {
+      "bytes": 3363,
+      "sha256": "bccec5538f8c40a275e45139b2f5243a83ef20168233dc03711463a5bc5f6e74"
+    },
+    "tests/integration/AGENTS.md": {
+      "bytes": 1097,
+      "sha256": "1331f0b81e215981f4a740cbb59d5dc926b37797605d6ccb9939183f3974d446"
+    },
+    ".github/instructions/add-requirement-column.instructions.md": {
+      "bytes": 4468,
+      "sha256": "0d36de673c60e986aac96be570def24c6b3585c45ef9a0b7a7b5a310c6bfb13a"
+    },
+    ".github/instructions/admin-center.instructions.md": {
+      "bytes": 982,
+      "sha256": "451a34d465a574270c19a68d8525c93e8c88c7cca0c409338999b16e1c56792a"
+    },
+    ".github/instructions/ai-instruction-authoring.instructions.md": {
+      "bytes": 1033,
+      "sha256": "4692ca9c6e674d21d43829b7a913c182cad1315fc7eb50f328f9e1c9d6e66abb"
+    },
+    ".github/instructions/api-contract.instructions.md": {
+      "bytes": 2357,
+      "sha256": "69e26f1265d1eb2b39d9a73dd2742013612b5d2e545a2f3df2099cff2a6b15b3"
+    },
+    ".github/instructions/auth-docs.instructions.md": {
+      "bytes": 2219,
+      "sha256": "a942ecc442393746d13eb5dd7a69ea94ae3110183be43062da429745634429d4"
+    },
+    ".github/instructions/auth-security.instructions.md": {
+      "bytes": 1365,
+      "sha256": "db4c6576ed7009f7057e82a93fcaf9aff536812dd12127915d7461b5655ec718"
+    },
+    ".github/instructions/components.instructions.md": {
+      "bytes": 2428,
+      "sha256": "2abd433d6982739b836a10887be67e38d1da9970dfa1b90bed6f4295ca774894"
+    },
+    ".github/instructions/database-schema.instructions.md": {
+      "bytes": 11437,
+      "sha256": "fd3f71b589a4f4d5d9f6eeef22e11e421c24ee25f733b9ebb59c1816e4802253"
+    },
+    ".github/instructions/database-writes.instructions.md": {
+      "bytes": 1837,
+      "sha256": "2b4ca50748c083615efd5ecf048b4d0e9dd23f0abfb943537b573f098c9f8b6e"
+    },
+    ".github/instructions/detail-pane-layout.instructions.md": {
+      "bytes": 1481,
+      "sha256": "06e06e8af3998c8f264918faaeef7283617675d7373fb4a2cd502e24bd8ce0a0"
+    },
+    ".github/instructions/developer-mode.instructions.md": {
+      "bytes": 1467,
+      "sha256": "fcd09df97ef6a3d6b43f5b0752e11ffcd18ef5c398c4bc12a83f84a29db86ca4"
+    },
+    ".github/instructions/github-actions-security.instructions.md": {
+      "bytes": 1240,
+      "sha256": "44f8150dd8b7b6ed6043970f42b91d82b14ff16195596fd7b7e4a237564f0bea"
+    },
+    ".github/instructions/help-panel.instructions.md": {
+      "bytes": 2072,
+      "sha256": "523e2dbc5c9930f6b4a64ef14ac255a5db52e579412c93a08691a0c337d4219e"
+    },
+    ".github/instructions/information-assets-retention.instructions.md": {
+      "bytes": 1610,
+      "sha256": "a001f34c403cdd2f256347cdfdb9acebbcbd148e63ca7c358d842b6237384e90"
+    },
+    ".github/instructions/lychee-toolchain.instructions.md": {
+      "bytes": 1031,
+      "sha256": "fa459603f0520cf19f2530c1f50a78282fcce2fbd64bb453753b90d193aa9c3e"
+    },
+    ".github/instructions/manual-test-playwright.instructions.md": {
+      "bytes": 1858,
+      "sha256": "0f55b7fbb1e122c17c80a5742e1fc8e46402a34e2d85bd5905cdd26bc21226f6"
+    },
+    ".github/instructions/markdown.instructions.md": {
+      "bytes": 1566,
+      "sha256": "f05c188352cf288ab0a2ce9976fcac1c0d01265d9c81fde18400d4a8e046a7cd"
+    },
+    ".github/instructions/mcp-tool-contract.instructions.md": {
+      "bytes": 1005,
+      "sha256": "4c1c9b177bd083551da26f2f990f32063823ce479e20c31f3c70bef440e4e0b5"
+    },
+    ".github/instructions/next-runtime.instructions.md": {
+      "bytes": 2172,
+      "sha256": "62fcfaeb16f851ea14b138969213da7a9ab283b67043ba111f5befae6530c503"
+    },
+    ".github/instructions/node-version.instructions.md": {
+      "bytes": 1146,
+      "sha256": "61768d3fb2818cee18f30c3f79069524bdee7e7f4f1bc8c43f15b2ff5c2e5949"
+    },
+    ".github/instructions/operator-upgrade-notes.instructions.md": {
+      "bytes": 407,
+      "sha256": "9f88301bc7ebdcf97a74975e0a420cfaf7299a21e2384e1c923801f700a0f8ca"
+    },
+    ".github/instructions/package-updates.instructions.md": {
+      "bytes": 1289,
+      "sha256": "4039d587143065a4c9a953d8508cbb59792bb5a06e62def4041639aaa5298afa"
+    },
+    ".github/instructions/pester.instructions.md": {
+      "bytes": 5651,
+      "sha256": "f3c3d33332830ee2edab7f767601ba47c1ce8e26c50a8c599bab3231997137dc"
+    },
+    ".github/instructions/privacy-display-name.instructions.md": {
+      "bytes": 1606,
+      "sha256": "1fb55d3ce40fae257ccdca105841905872ea68253b37e1b49ca6daff4d6636b2"
+    },
+    ".github/instructions/reports.instructions.md": {
+      "bytes": 2157,
+      "sha256": "01be735d5a8ce983b9e747cf831ff50775fed0530b8610cfd0ba79af9d01345c"
+    },
+    ".github/instructions/requirement-lifecycle-policy.instructions.md": {
+      "bytes": 1130,
+      "sha256": "f652616397185018fab0f2c7c83d356838e0f74ada75c2ab65baca93e6665ea3"
+    },
+    ".github/instructions/requirement-service-boundary.instructions.md": {
+      "bytes": 1493,
+      "sha256": "65083a55cd23ef358da1e52a99527dbdcbeb627889552f325ae48474ebbf7bb7"
+    },
+    ".github/instructions/requirements-table.instructions.md": {
+      "bytes": 2185,
+      "sha256": "5f294f01801ce8adb60e65cbcbb5abab59d4fc54fe3f2b7ff746fd827ae1fe24"
+    },
+    ".github/instructions/route-security-policy.instructions.md": {
+      "bytes": 1948,
+      "sha256": "8763ae4e02165d4760e7e8834833a4ca149edf64b5985a67430ab400bdb581ec"
+    },
+    ".github/instructions/scripts.instructions.md": {
+      "bytes": 929,
+      "sha256": "4ad0bf37c863ce70bfe907ca10078f734adba45ccab8dd2f6c6dd7544ab4922d"
+    },
+    ".github/instructions/secure-mutation-routes.instructions.md": {
+      "bytes": 2279,
+      "sha256": "7aebd0c8df304e3a6192c13f0033710efdaee7e8583b636e0e504202e28a93bb"
+    },
+    ".github/instructions/tests.instructions.md": {
+      "bytes": 5901,
+      "sha256": "441d93b84a69d1b2b9a218022a479e1d330da7ea13b4a05823f2321b5cfc407c"
+    },
+    ".github/instructions/translations.instructions.md": {
+      "bytes": 404,
+      "sha256": "a362fbc79d34d56aa80b1f6926f94a085f0bdcebfc4c522145b9dd73213d91a5"
+    },
+    ".github/instructions/typeorm-entities.instructions.md": {
+      "bytes": 3578,
+      "sha256": "dd80fd47c94e5da7a021ee47edbadd10c78337168c5b6bf4e668f353f193614a"
+    },
+    ".github/instructions/typeorm-sqlserver.instructions.md": {
+      "bytes": 6337,
+      "sha256": "7397414e3d85513babc534b583aa68a14b99908c48b9e76210f998fbb3e9805a"
+    },
+    ".github/instructions/ui-ux.instructions.md": {
+      "bytes": 6140,
+      "sha256": "0295fc808a3b2dc4d74427cd27c2750e1eb25649b46cfd529978be8dea767410"
+    },
+    ".github/instructions/utilities.instructions.md": {
+      "bytes": 517,
+      "sha256": "5a1317f32c6e3246625827755938486bac24463886a338f821a53ea9c4096af9"
+    }
+  },
+  "source_blocks": 749,
+  "reference_bytes": {
+    ".github/copilot-instructions.md": 3363,
+    ".github/instructions/developer-mode.instructions.md": 1467,
+    "CONTEXT-MAP.md": 1967,
+    "docs/development/auth-developer-workflow.md": 40518,
+    ".github/instructions/manual-test-playwright.instructions.md": 1858,
+    "docs/development/sql-server-developer-workflow.md": 18913,
+    ".github/instructions/database-schema.instructions.md": 11437,
+    "CONTEXT.md": 56303,
+    ".github/instructions/translations.instructions.md": 404,
+    "docs/governance/requirements-ui-behaviour.md": 65123,
+    "openapi/requirements-api.yaml": 61679,
+    "docs/security-privacy/api-security.md": 22549,
+    "docs/security-privacy/auth-how-it-works.md": 22710,
+    "docs/integrations/oidc-identity-provider-integration.md": 10275,
+    "docs/integrations/external-idp-handoff.md": 14763,
+    "docs/operations/rhel10-production-deploy.md": 55815,
+    "docs/reference/database-schema.md": 210603,
+    "docs/governance/admin-center.md": 41426,
+    "docs/reference/version-lifecycle-dates.md": 13648,
+    "docs/development/developer-mode-overlay.md": 7987,
+    "docs/security-privacy/informationsmangder-kravhantering.md": 36489,
+    "docs/governance/manuella-testfall.md": 112692,
+    "docs/integrations/mcp-server-user-guide.md": 35528,
+    "docs/integrations/mcp-server-contributor-guide.md": 35022,
+    "docs/operations/api-docs-edge-verification.md": 4690,
+    "docs/reference/reports.md": 24000,
+    "docs/development/report-generation-developer-workflow.md": 9906
+  }
+}
