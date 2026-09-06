@@ -276,6 +276,7 @@ assert config['projects']['/workspace']['trust_level'] == 'trusted'
 profile = config['permissions']['kravhantering-development']
 assert profile['extends'] == ':workspace'
 assert profile['filesystem']['~/.codex/skills'] == 'write'
+assert profile['filesystem']['/mnt/krav-azure-dev-data/.worktrees'] == 'write'
 assert profile['filesystem'][':workspace_roots'] == {
     '.codex': 'write',
     '.git': 'write',
@@ -370,6 +371,15 @@ data_mount_real="$(readlink -f "${data_mount_source}")"
 test "${data_mount_real}" = "${data_device_real}"
 data_device_number="$(stat -c '%d' /mnt/krav-azure-dev-data)"
 worktree-storage validate
+codex sandbox -P kravhantering-development -C /workspace -- python3 - <<'PY'
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+with TemporaryDirectory(dir='/mnt/krav-azure-dev-data/.worktrees') as directory:
+    probe = Path(directory) / 'write-probe'
+    probe.write_text('Codex worktree storage probe\n', encoding='utf-8')
+    assert probe.read_text(encoding='utf-8') == 'Codex worktree storage probe\n'
+PY
 test "$(stat -c '%d' /workspace)" = "${data_device_number}"
 test "$(stat -c '%d' /var/lib/krav-azure-dev)" = "${data_device_number}"
 test "$(stat -c '%d' /home/vscode/.local/share/containers/storage)" = "${data_device_number}"

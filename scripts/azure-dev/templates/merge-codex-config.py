@@ -19,6 +19,7 @@ PROFILE_START = "# >>> kravhantering azure dev managed profile"
 PROFILE_END = "# <<< kravhantering azure dev managed profile"
 WORKSPACE_SECTION = 'projects."/workspace"'
 CODEX_SKILLS_PATH = "~/.codex/skills"
+AZURE_WORKTREE_PATH = "/mnt/krav-azure-dev-data/.worktrees"
 MANAGED_PROFILE_NAMES = (
     "permissions.kravhantering-development",
     "permissions.kravhantering-azure-dev",
@@ -246,6 +247,11 @@ def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
     )
     if codex_skills_access != "write":
         raise ValueError(f"permission {CODEX_SKILLS_PATH} access must be write")
+    filesystem_access = {CODEX_SKILLS_PATH: codex_skills_access}
+    if AZURE_WORKTREE_PATH in filesystem:
+        if filesystem[AZURE_WORKTREE_PATH] != "write":
+            raise ValueError(f"permission {AZURE_WORKTREE_PATH} access must be write")
+        filesystem_access[AZURE_WORKTREE_PATH] = "write"
     workspace_roots = require_table(
         filesystem.get(":workspace_roots"),
         "permission filesystem workspace roots",
@@ -284,7 +290,10 @@ def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
         f"extends = {toml_string(extends)}",
         "",
         f"[permissions.{default_permissions}.filesystem]",
-        f"{toml_string(CODEX_SKILLS_PATH)} = {toml_string(codex_skills_access)}",
+        *(
+            f"{toml_string(path)} = {toml_string(access)}"
+            for path, access in filesystem_access.items()
+        ),
         "",
         f'[permissions.{default_permissions}.filesystem.":workspace_roots"]',
         *(
@@ -367,6 +376,11 @@ def validate_merged_config(
         raise ValueError("merged default permission profile is incorrect")
     if parsed["projects"]["/workspace"].get("trust_level") != trust_level:
         raise ValueError("merged workspace trust level is incorrect")
+    if (
+        parsed["permissions"][default_permissions]["filesystem"]
+        != managed["permissions"][default_permissions]["filesystem"]
+    ):
+        raise ValueError("merged filesystem permissions are incorrect")
     parsed_plugins = parsed.get("plugins", {})
     if not all(
         isinstance(parsed_plugins.get(name), dict)

@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 const mergerPath = 'scripts/azure-dev/templates/merge-codex-config.py'
 const managedConfigPath = 'scripts/azure-dev/templates/codex-config.toml'
 const devcontainerConfigPath = '.devcontainer/codex-config.toml'
+const azureWorktreePath = '/mnt/krav-azure-dev-data/.worktrees'
 const temporaryDirectories: string[] = []
 const disabledSystemSkillPaths = [
   '/home/vscode/.codex/skills/.system/plugin-creator/SKILL.md',
@@ -59,6 +60,76 @@ afterEach(() => {
 })
 
 describe('Azure development Codex configuration', () => {
+  it.each([
+    {
+      source: managedConfigPath,
+      extraGrants: { [azureWorktreePath]: 'write' },
+    },
+    { source: devcontainerConfigPath, extraGrants: {} },
+  ])(
+    'preserves the scoped filesystem grants from $source',
+    ({ source, extraGrants }) => {
+      const configPath = createTemporaryConfig('personality = "pragmatic"\n')
+      const merged = mergeConfig(configPath, source)
+      const filesystem = JSON.parse(
+        execFileSync(
+          'python3',
+          [
+            '-c',
+            `import json, sys, tomllib
+config = tomllib.loads(sys.stdin.read())
+print(json.dumps(config['permissions'][config['default_permissions']]['filesystem']))`,
+          ],
+          { input: merged, encoding: 'utf8' },
+        ),
+      )
+
+      expect(filesystem).toEqual({
+        '~/.codex/skills': 'write',
+        ':workspace_roots': { '.codex': 'write', '.git': 'write' },
+        ...extraGrants,
+      })
+      expect(mergeConfig(configPath, source)).toBe(merged)
+    },
+  )
+
+  it('rejects a merged configuration that drops the worktree grant', () => {
+    const configPath = createTemporaryConfig('')
+    const merged = mergeConfig(configPath).replace(
+      `"${azureWorktreePath}" = "write"\n`,
+      '',
+    )
+    const validation = spawnSync(
+      'python3',
+      ['-c', validateMergedConfigScript, mergerPath, managedConfigPath],
+      { encoding: 'utf8', input: merged },
+    )
+
+    expect(validation.status).toBe(1)
+    expect(validation.stderr).toContain(
+      'merged filesystem permissions are incorrect',
+    )
+  })
+
+  it('rejects a managed worktree root without write access', () => {
+    const source = createTemporaryConfig(
+      readFileSync(managedConfigPath, 'utf8').replace(
+        `"${azureWorktreePath}" = "write"`,
+        `"${azureWorktreePath}" = "read"`,
+      ),
+    )
+    const configPath = createTemporaryConfig('personality = "pragmatic"\n')
+    const result = spawnSync('python3', [mergerPath, source, configPath], {
+      encoding: 'utf8',
+    })
+
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain(
+      `permission ${azureWorktreePath} access must be write`,
+    )
+    expect(readFileSync(configPath, 'utf8')).toBe('personality = "pragmatic"\n')
+  })
+
   it('merges the managed profile without replacing existing user settings', () => {
     const configPath = createTemporaryConfig(`personality = "pragmatic"
 model = "gpt-existing"
