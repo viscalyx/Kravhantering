@@ -83,10 +83,11 @@ export function stageProdlikeStandaloneAssets(
 }
 
 export function launchProdlikeStandalone(root = process.cwd()) {
-  const paths = stageProdlikeStandaloneAssets(
-    root,
-    process.env.PRODLIKE_RUNTIME_DIR,
-  )
+  const runtimeRoot = process.env.PRODLIKE_RUNTIME_DIR
+  if (runtimeRoot) {
+    fs.mkdirSync(runtimeRoot, { recursive: true })
+  }
+  const paths = stageProdlikeStandaloneAssets(root, runtimeRoot)
   const providerSecretKeyring =
     process.env.AI_PROVIDER_SECRET_KEYRING_FILE?.trim()
   if (providerSecretKeyring && !path.isAbsolute(providerSecretKeyring)) {

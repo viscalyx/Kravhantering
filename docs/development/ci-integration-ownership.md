@@ -41,6 +41,8 @@ report authorization boundaries, authentication login, authentication security,
 platform smoke, and platform error-boundary smoke. The manifest validator
 checks their presence before any owned service starts. One production build
 with full dependencies supplies a standalone directory outside repository
+dependency ancestry. The launcher creates a missing `PRODLIKE_RUNTIME_DIR`;
+staging still requires that destination to be empty and outside repository
 dependency ancestry. Required public and static assets accompany it. Only its
 traced dependencies can resolve there; the test runner keeps the full repository
 dependency tree. One Chromium worker, application process, SQL Server seed, and
