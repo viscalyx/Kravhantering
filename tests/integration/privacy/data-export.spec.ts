@@ -874,10 +874,11 @@ test('PRIV-01: self-service privacy page exports the signed-in user without targ
 test('PRIV-11: bounded self-service export rejects overflow without a partial download', async ({
   page,
 }) => {
-  let exportRequests = 0
+  const dialog = page.getByRole('alertdialog', {
+    name: 'Nedladdningen misslyckades',
+  })
   await test.step('set up the bounded export failure', async () => {
     await page.route('**/api/privacy/data-subject-export', async route => {
-      exportRequests += 1
       await route.fulfill({
         contentType: 'application/json',
         headers: { 'Cache-Control': 'no-store' },
@@ -895,16 +896,14 @@ test('PRIV-11: bounded self-service export rejects overflow without a partial do
     await page.goto('/sv/privacy')
     await expect(async () => {
       await page.getByRole('button', { name: 'Exportera JSON' }).click()
-      await expect
-        .poll(() => exportRequests, { timeout: 1_000 })
-        .toBeGreaterThan(0)
+      await expect(dialog).toContainText(
+        'Personuppgiftsexporten innehåller fler än den tillåtna gränsen på 1000 poster.',
+        { timeout: 1_000 },
+      )
     }).toPass({ timeout: 15_000 })
   })
 
   await test.step('verify the safe localized failure dialog', async () => {
-    const dialog = page.getByRole('alertdialog', {
-      name: 'Nedladdningen misslyckades',
-    })
     await expect(dialog).toContainText(
       'Personuppgiftsexporten innehåller fler än den tillåtna gränsen på 1000 poster.',
     )
