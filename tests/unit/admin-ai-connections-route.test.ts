@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { conflictError } from '@/lib/requirements/errors'
+import { conflictError, forbiddenError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
   context: {
@@ -26,6 +26,7 @@ const routeState = vi.hoisted(() => ({
   getDb: vi.fn(async () => ({ db: true })),
   runtime: vi.fn(),
   service: {
+    getConnection: vi.fn(),
     deleteModelRevision: vi.fn(),
     discardModelVerification: vi.fn(),
     endModelRevision: vi.fn(),
@@ -56,6 +57,7 @@ vi.mock('@/lib/audit/action-audit', () => ({
 }))
 
 import { POST as connectionAction } from '@/app/api/admin/ai-connections/[connectionId]/actions/route'
+import { GET as getConnection } from '@/app/api/admin/ai-connections/[connectionId]/route'
 import { PATCH as saveProfile } from '@/app/api/admin/ai-run-profiles/[profileKey]/route'
 
 const connectionId = '00000000-0000-4000-8000-000000000001'
@@ -165,6 +167,10 @@ describe('Admin AI stable-profile and model-verification routes', () => {
     expect(routeState.service.verifyModelCandidate).toHaveBeenCalledWith(
       expect.objectContaining({
         candidate: {
+          name: '',
+          description: null,
+          modelId: null,
+          modelToken: null,
           reasoning: {
             mode: 'explicit_control' as const,
             effort: 'high' as const,
@@ -268,6 +274,7 @@ describe('Admin AI stable-profile and model-verification routes', () => {
     expect(routeState.service.endModelRevision).toHaveBeenCalledOnce()
     expect(routeState.service.deleteModelRevision).toHaveBeenCalledOnce()
     expect(routeState.service.discardModelVerification).toHaveBeenCalledWith(
+      connectionId,
       attemptId,
     )
   })
@@ -385,4 +392,88 @@ describe('Admin AI stable-profile and model-verification routes', () => {
     expect(response.status).toBe(403)
     expect(routeState.service.verifyModelCandidate).not.toHaveBeenCalled()
   })
+  it('denies discovery and discard before SQL work for a user without Admin', async () => {
+    routeState.createRequestContext.mockResolvedValue({
+      ...routeState.context,
+      actor: { ...routeState.context.actor, roles: ['Reader'] },
+    })
+    const read = await getConnection(
+      new Request(
+        `https://example.test/api/admin/ai-connections/${connectionId}`,
+      ),
+      { params: Promise.resolve({ connectionId }) },
+    )
+    expect(read.status).toBe(403)
+    routeState.createPrivilegedContext.mockRejectedValueOnce(
+      forbiddenError('Missing required role.'),
+    )
+    const discard = await connectionAction(
+      mutationRequest({ action: 'discard_model_verification', attemptId }),
+      { params: Promise.resolve({ connectionId }) },
+    )
+    expect(discard.status).toBe(403)
+    expect(routeState.getDb).not.toHaveBeenCalled()
+    expect(routeState.runtime).not.toHaveBeenCalled()
+  })
+
+  it('returns shared candidates only through authorized connection detail', async () => {
+    routeState.service.getConnection.mockResolvedValueOnce({
+      id: connectionId,
+      models: [],
+      pendingVerifications: [
+        { id: attemptId, result: { candidate: { name: 'Shared' } } },
+      ],
+    })
+    const response = await getConnection(
+      new Request(
+        `https://example.test/api/admin/ai-connections/${connectionId}`,
+      ),
+      { params: Promise.resolve({ connectionId }) },
+    )
+    expect(await response.json()).toMatchObject({
+      pendingVerifications: [
+        { id: attemptId, result: { candidate: { name: 'Shared' } } },
+      ],
+    })
+    expect(response.headers.get('cache-control')).toContain('no-store')
+  })
+
+  it('awaits discard failures and exposes only a safe error', async () => {
+    routeState.service.discardModelVerification.mockRejectedValueOnce(
+      new Error('sensitive SQL payload'),
+    )
+    const response = await connectionAction(
+      mutationRequest({ action: 'discard_model_verification', attemptId }),
+      { params: Promise.resolve({ connectionId }) },
+    )
+    expect(response.status).toBe(500)
+    expect(await response.text()).not.toContain('sensitive SQL payload')
+  })
+
+  it.each(['attempt_expired', 'attempt_mismatch', 'attempt_unavailable'])(
+    'preserves the bounded save outcome %s',
+    async blocker => {
+      routeState.service.saveModelRevision.mockRejectedValueOnce(
+        conflictError('Cannot use verification.', {
+          blocker,
+          secret: 'sensitive',
+        }),
+      )
+      const response = await connectionAction(
+        mutationRequest({
+          action: 'save_model_revision',
+          modelRevision: {
+            attemptId,
+            name: 'Shared',
+            externalModelId: 'controlled/model',
+            externalModelVersion: null,
+            reasoning: { mode: 'model_default', effort: null },
+          },
+        }),
+        { params: Promise.resolve({ connectionId }) },
+      )
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({ details: { blocker } })
+    },
+  )
 })

@@ -5,7 +5,8 @@ traffic. Every supported production topology installs one generic systemd timer
 and one one-shot cleanup container. The timer runs every five minutes with a
 small randomized delay.
 
-The current cleanup registry includes expired AI run coordination rows,
+The current cleanup registry includes expired shared model verification attempts,
+expired AI run coordination rows,
 time-limited AI forensic evidence, expired MCP import-validation sessions, and
 expired principal creation-rate buckets, and expired HSA verification quota
 rows. All use the same runner and timer.
@@ -308,3 +309,20 @@ This disables the timer, stops the one-shot service, removes the host units and
 retained manager generations, and reloads systemd. Shared images and application
 data remain under the normal host uninstall procedure. Remove the two protected
 cleanup configuration files and retained transport artifacts under site policy.
+
+## Shared Model Verification Attempts
+
+Completed model verifications have a 15-minute SQL UTC admission deadline.
+Cleanup deletes expired attempts in bounded batches and skips rows locked by an
+admitted save transaction, including after the deadline passes. Backlog counts
+and stored-byte totals exclude locked rows during that inspection. A later run
+observes rows restored by rollback. Telemetry includes only counts, sizes, ages,
+duration, and bounded outcomes; it contains no candidate fields or evidence.
+
+Apply the schema and reconcile runtime permissions before starting the new app.
+The runtime identity needs SELECT, INSERT, and DELETE on the new transient
+asset; cleanup needs SELECT and DELETE and its existing metadata visibility.
+A supported older schema without the table reports `not_applicable`; an
+inaccessible or partly installed target fails compatibility verification.
+Retain the release-independent cleanup deployment during app rollback and use
+the release's generated compatibility evidence. No new timer or secret is needed.

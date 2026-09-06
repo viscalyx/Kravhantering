@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import type { SqlServerEntityManager } from '@/lib/db'
 import {
   conflictError,
+  isRequirementsServiceError,
   notFoundError,
   validationError,
 } from '@/lib/requirements/errors'
@@ -14,11 +15,14 @@ import type {
   SaveAiRunProfile,
 } from './admin-contracts'
 import {
+  type AiModelVerificationAttempt,
   AiModelVerificationAttemptError,
-  type AiModelVerificationAttemptLease,
   type AiModelVerificationAttemptStore,
-  createAiModelVerificationAttemptStore,
 } from './model-verification-attempts'
+import {
+  type AiModelVerificationPayload,
+  aiModelVerificationSnapshotSchema,
+} from './model-verification-payload'
 import type { AiRunProfileKey } from './profile-resolver'
 import type {
   AiProviderSecretAvailability,
@@ -80,6 +84,7 @@ export interface AiAdminStoredConnectionDetail
 
 export interface AiAdminConnectionDetail extends AiAdminStoredConnectionDetail {
   adapterAvailability: AiAdminAdapterAvailability
+  pendingVerifications?: readonly AiModelVerificationAttempt<AiModelVerificationPayload>[]
 }
 
 export interface AiAdminAttestationRecord extends SaveAiAttestation {
@@ -418,7 +423,9 @@ export interface AiAdminStore {
     connection: AiAdminStoredConnectionDetail
     connectionId: string
     modelRevision: SaveAiModelRevision
-    verification: Readonly<AiAdminCandidateVerificationResult>
+    verification(
+      manager: SqlServerEntityManager,
+    ): Promise<Readonly<AiAdminCandidateVerificationResult>>
   }): Promise<AiAdminModelRecord>
   saveRunProfile(input: {
     profileKey: AiRunProfileKey
@@ -541,6 +548,41 @@ function assertNoBlockers(blockers: readonly AiAdminBlocker[]): void {
   }
 }
 
+function modelVerificationFingerprint(
+  connection: AiAdminStoredConnectionDetail,
+  candidate: Pick<
+    AiModelVerificationPayload['candidate'],
+    | 'modelId'
+    | 'modelToken'
+    | 'reasoning'
+    | 'externalModelId'
+    | 'externalModelVersion'
+  >,
+  testSuiteVersion: string,
+): string {
+  return fingerprint({
+    connection: {
+      adapterKey: connection.adapterKey,
+      adapterVersion: connection.adapterVersion,
+      agentRuntimeKey: connection.agentRuntimeKey,
+      agentRuntimeVersion: connection.agentRuntimeVersion,
+      authenticationType: connection.authenticationType,
+      configurationVersion: connection.configurationVersion,
+      egressPolicyKey: connection.egressPolicyKey,
+      endpointUrl: connection.endpointUrl,
+      tlsPolicyKey: connection.tlsPolicyKey,
+    },
+    model: {
+      modelId: candidate.modelId?.toLowerCase() ?? null,
+      modelToken: candidate.modelToken?.toLowerCase() ?? null,
+      reasoning: requireAiReasoningConfiguration(candidate.reasoning),
+      externalModelId: candidate.externalModelId,
+      externalModelVersion: candidate.externalModelVersion,
+    },
+    testSuiteVersion,
+  })
+}
+
 function fingerprint(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex')
 }
@@ -592,32 +634,31 @@ function isCurrentLivePathActivation(
   )
 }
 
-const aiModelVerificationAttempts =
-  createAiModelVerificationAttemptStore<AiAdminCandidateVerificationResult>()
-
 export class AiConnectionAdministrationService {
-  readonly #actorKey: string
   readonly #audit: AiAdminAudit
   readonly #external: AiAdminExternalOperations
   readonly #secrets: AiAdminSecretOperations
   readonly #store: AiAdminStore
-  readonly #verificationAttempts: AiModelVerificationAttemptStore<AiAdminCandidateVerificationResult>
+  readonly #verificationAttempts: AiModelVerificationAttemptStore<
+    AiModelVerificationPayload,
+    SqlServerEntityManager
+  >
 
   constructor(input: {
-    actorKey: string
     audit: AiAdminAudit
     external: AiAdminExternalOperations
     secrets: AiAdminSecretOperations
     store: AiAdminStore
-    verificationAttempts?: AiModelVerificationAttemptStore<AiAdminCandidateVerificationResult>
+    verificationAttempts: AiModelVerificationAttemptStore<
+      AiModelVerificationPayload,
+      SqlServerEntityManager
+    >
   }) {
-    this.#actorKey = input.actorKey
     this.#audit = input.audit
     this.#external = input.external
     this.#secrets = input.secrets
     this.#store = input.store
-    this.#verificationAttempts =
-      input.verificationAttempts ?? aiModelVerificationAttempts
+    this.#verificationAttempts = input.verificationAttempts
   }
 
   async #withSecretAvailability(
@@ -693,10 +734,19 @@ export class AiConnectionAdministrationService {
     return this.#store.listRunProfiles()
   }
 
-  async getConnection(connectionId: string): Promise<AiAdminConnectionDetail> {
+  async #getConnectionDetail(
+    connectionId: string,
+  ): Promise<AiAdminConnectionDetail> {
     const connection = await this.#store.getConnection(connectionId)
     if (!connection) throw notFoundError('AI connection not found.')
     return this.#withSecretAvailability(connection)
+  }
+
+  async getConnection(connectionId: string): Promise<AiAdminConnectionDetail> {
+    return {
+      ...(await this.#getConnectionDetail(connectionId)),
+      pendingVerifications: await this.#verificationAttempts.list(connectionId),
+    }
   }
 
   async createConnection(
@@ -772,7 +822,7 @@ export class AiConnectionAdministrationService {
     connectionRevisionToken: string
     secretVersionId: string
   }): Promise<AiProviderSecretVersionMetadata> {
-    const connection = await this.getConnection(input.connectionId)
+    const connection = await this.#getConnectionDetail(input.connectionId)
     if (
       connection.configurationVersion !==
         input.connectionConfigurationVersion ||
@@ -814,7 +864,7 @@ export class AiConnectionAdministrationService {
   async fetchCatalog(
     connectionId: string,
   ): Promise<readonly AiAdminCatalogItem[]> {
-    const connection = await this.getConnection(connectionId)
+    const connection = await this.#getConnectionDetail(connectionId)
     await this.#assertAuthorizedTarget(connection)
     const catalog = await this.#external.fetchCatalog(connection)
     await this.#audit({
@@ -826,46 +876,55 @@ export class AiConnectionAdministrationService {
   }
 
   async verifyModelCandidate(input: {
-    candidate: AiAdminModelVerificationCandidate
+    candidate: AiAdminModelVerificationCandidate &
+      Partial<
+        Pick<
+          AiModelVerificationPayload['candidate'],
+          'name' | 'description' | 'modelId' | 'modelToken'
+        >
+      >
     connectionId: string
     onProgress?: (
       progress: Readonly<AiAdminVerificationProgress>,
     ) => Promise<void> | void
     signal: AbortSignal
   }): Promise<AiAdminCandidateVerificationAttemptResult> {
+    const candidate = aiModelVerificationSnapshotSchema.parse(input.candidate)
     const connection = await this.getConnection(input.connectionId)
+    if (
+      candidate.modelId &&
+      !connection.models.some(
+        model =>
+          model.id.toLowerCase() === candidate.modelId?.toLowerCase() &&
+          model.revisionToken.toLowerCase() ===
+            candidate.modelToken?.toLowerCase(),
+      )
+    )
+      activationConflict()
     await this.#assertAuthorizedTarget(connection)
     const result = await this.#external.verifyModelCandidate(
       connection,
-      input.candidate,
+      {
+        externalModelId: candidate.externalModelId,
+        externalModelVersion: candidate.externalModelVersion,
+        reasoning: candidate.reasoning,
+      },
       { onProgress: input.onProgress, signal: input.signal },
     )
     input.signal.throwIfAborted()
-    const verificationFingerprint = fingerprint({
-      connection: {
-        adapterKey: connection.adapterKey,
-        adapterVersion: connection.adapterVersion,
-        agentRuntimeKey: connection.agentRuntimeKey,
-        agentRuntimeVersion: connection.agentRuntimeVersion,
-        authenticationType: connection.authenticationType,
-        configurationVersion: connection.configurationVersion,
-        egressPolicyKey: connection.egressPolicyKey,
-        endpointUrl: connection.endpointUrl,
-        tlsPolicyKey: connection.tlsPolicyKey,
-      },
-      model: {
-        reasoning: requireAiReasoningConfiguration(result.reasoning),
-        externalModelId: input.candidate.externalModelId,
-        externalModelVersion: input.candidate.externalModelVersion,
-      },
-      testSuiteVersion: result.testSuiteVersion,
-    })
+    const verificationFingerprint = modelVerificationFingerprint(
+      connection,
+      { ...candidate, reasoning: result.reasoning },
+      result.testSuiteVersion,
+    )
     const attempt = result.saveable
-      ? this.#verificationAttempts.create({
-          actorKey: this.#actorKey,
+      ? await this.#verificationAttempts.create({
           connectionId: connection.id,
           fingerprint: verificationFingerprint,
-          result,
+          result: {
+            candidate,
+            verification: result,
+          },
         })
       : null
     await this.#audit({
@@ -880,10 +939,15 @@ export class AiConnectionAdministrationService {
     }
   }
 
-  discardModelVerification(attemptId: string): void {
-    this.#verificationAttempts.discard({
-      actorKey: this.#actorKey,
-      attemptId,
+  async discardModelVerification(
+    connectionId: string,
+    attemptId: string,
+  ): Promise<void> {
+    await this.#verificationAttempts.discard({ connectionId, attemptId })
+    await this.#audit({
+      operation: 'discard',
+      resourceId: connectionId,
+      resourceType: 'ai_connection',
     })
   }
 
@@ -892,7 +956,7 @@ export class AiConnectionAdministrationService {
     modelRevisionId: string
     revisionToken: string
   }): Promise<AiAdminConnectionDetail> {
-    const connection = await this.getConnection(input.connectionId)
+    const connection = await this.#getConnectionDetail(input.connectionId)
     const modelRevision = connection.models
       .flatMap(model => model.revisions)
       .find(revision => revision.id === input.modelRevisionId)
@@ -923,67 +987,38 @@ export class AiConnectionAdministrationService {
       throw validationError('Verify the AI model before saving it.')
     }
     const connection = await this.getConnection(input.connectionId)
-    const verificationFingerprint = fingerprint({
-      connection: {
-        adapterKey: connection.adapterKey,
-        adapterVersion: connection.adapterVersion,
-        agentRuntimeKey: connection.agentRuntimeKey,
-        agentRuntimeVersion: connection.agentRuntimeVersion,
-        authenticationType: connection.authenticationType,
-        configurationVersion: connection.configurationVersion,
-        egressPolicyKey: connection.egressPolicyKey,
-        endpointUrl: connection.endpointUrl,
-        tlsPolicyKey: connection.tlsPolicyKey,
-      },
-      model: {
-        reasoning: requireAiReasoningConfiguration(
-          input.modelRevision.reasoning,
-        ),
-        externalModelId: input.modelRevision.externalModelId,
-        externalModelVersion: input.modelRevision.externalModelVersion,
-      },
-      testSuiteVersion: AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
-    })
-    let lease: AiModelVerificationAttemptLease<AiAdminCandidateVerificationResult>
+    const verificationFingerprint = modelVerificationFingerprint(
+      connection,
+      input.modelRevision,
+      AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
+    )
     try {
-      lease = this.#verificationAttempts.reserve({
-        actorKey: this.#actorKey,
-        attemptId: input.modelRevision.attemptId,
-        connectionId: connection.id,
-        fingerprint: verificationFingerprint,
+      return await this.#store.saveModelRevision({
+        connection,
+        connectionId: input.connectionId,
+        modelRevision: input.modelRevision,
+        verification: async manager => {
+          const attempt = await this.#verificationAttempts.consume(
+            {
+              attemptId: input.modelRevision.attemptId,
+              connectionId: connection.id,
+              fingerprint: verificationFingerprint,
+            },
+            manager,
+          )
+          return attempt.result.verification
+        },
       })
     } catch (error) {
       if (error instanceof AiModelVerificationAttemptError) {
-        throw conflictError(
-          error.code === 'attempt_expired'
-            ? 'The model verification attempt expired. Verify again.'
-            : 'The connection or model configuration changed. Verify again.',
-          { blocker: error.code },
-        )
+        throw conflictError('The model verification cannot be used.', {
+          blocker: error.code,
+        })
       }
-      throw error
-    }
-    try {
-      const verification = lease.attempt.result
-      if (!verification.saveable) {
-        throw validationError('The AI model verification is not saveable.')
-      }
-      const saved = await this.#store.saveModelRevision({
-        connection,
-        connectionId: input.connectionId,
-        modelRevision: {
-          ...input.modelRevision,
-          reasoning: requireAiReasoningConfiguration(
-            input.modelRevision.reasoning,
-          ),
-        },
-        verification,
+      if (isRequirementsServiceError(error)) throw error
+      throw conflictError('The model save outcome is unavailable.', {
+        blocker: 'attempt_unavailable',
       })
-      lease.commit()
-      return saved
-    } catch (error) {
-      lease.release()
-      throw error
     }
   }
 
@@ -1100,7 +1135,7 @@ export class AiConnectionAdministrationService {
       if (!updated) activationConflict()
       return updated
     }
-    const connection = await this.getConnection(input.connectionId)
+    const connection = await this.#getConnectionDetail(input.connectionId)
     assertNoBlockers(connectionBlockers(connection))
     const modelRevision = connection.models
       .flatMap(model => model.revisions)

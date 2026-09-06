@@ -10,3 +10,6 @@ IF OBJECT_ID(N'dbo.hsa_verification_quota_buckets', N'U') IS NOT NULL
 EXEC(N'IF (SELECT COUNT(*) FROM hsa_verification_quota_buckets) <> 1 OR EXISTS (SELECT 1 FROM hsa_verification_quota_buckets WHERE expires_at <= SYSUTCDATETIME()) THROW 51000, ''quota fixture mismatch'', 1;');
 IF OBJECT_ID(N'dbo.ai_forensic_capture_windows', N'U') IS NOT NULL
 EXEC(N'IF EXISTS (SELECT 1 FROM ai_forensic_evidence_events) OR NOT EXISTS (SELECT 1 FROM ai_forensic_capture_windows WHERE purged_at IS NOT NULL AND expiry_audited_at IS NOT NULL AND is_open IS NULL) THROW 51000, ''forensic fixture mismatch'', 1;');
+
+IF OBJECT_ID(N'dbo.ai_model_verification_attempts', N'U') IS NOT NULL
+EXEC(N'IF EXISTS (SELECT 1 FROM ai_model_verification_attempts) THROW 51000, ''verification fixture retained'', 1;');

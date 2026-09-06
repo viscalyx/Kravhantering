@@ -12,6 +12,7 @@ import {
   ModelForm,
   ProfileForm,
 } from '@/app/[locale]/admin/panels/settings/ai-connections/model-profile-forms'
+import { VERIFICATION } from '@/lib/__tests__/fixtures/ai-model-verification'
 import type {
   AiAdminCatalogItem,
   AiAdminConnectionDetail,
@@ -22,6 +23,11 @@ vi.mock('next-intl', () => ({
   useTranslations:
     (namespace: string) => (key: string, values?: Record<string, unknown>) =>
       `${namespace}.${key}${values ? ` ${Object.values(values).join(' ')}` : ''}`,
+}))
+
+const confirmMock = vi.hoisted(() => vi.fn(async () => true))
+vi.mock('@/components/ConfirmModal', () => ({
+  useConfirmModal: () => ({ confirm: confirmMock }),
 }))
 
 const fetchMock = vi.fn()
@@ -191,7 +197,7 @@ function connectionWithRevisions(
 function verificationResponse(): Response {
   const result = {
     reasoning: { mode: 'explicit_control' as const, effort: 'high' as const },
-    attemptExpiresAt: '2026-08-22T12:15:00.000Z',
+    attemptExpiresAt: new Date(Date.now() + 900_000).toISOString(),
     attemptId,
     baseline: {
       diagnosticCode: null,
@@ -305,6 +311,29 @@ function rejectedBaselineVerificationResponse(): Response {
     })}\n${JSON.stringify({ result, type: 'completed' })}\n`,
     { status: 200 },
   )
+}
+
+function sharedVerification(
+  expiresAt = new Date(Date.now() + 900_000).toISOString(),
+): NonNullable<AiAdminConnectionDetail['pendingVerifications']>[number] {
+  return {
+    id: attemptId,
+    connectionId: connection().id,
+    fingerprint: 'a'.repeat(64),
+    expiresAt,
+    result: {
+      candidate: {
+        name: 'Shared model',
+        description: 'Reviewed snapshot',
+        externalModelId: 'controlled/shared',
+        externalModelVersion: null,
+        reasoning: VERIFICATION.reasoning,
+        modelId: null,
+        modelToken: null,
+      },
+      verification: VERIFICATION,
+    },
+  }
 }
 
 describe('Admin AI model and stable-profile forms', () => {
@@ -820,7 +849,7 @@ describe('Admin AI model and stable-profile forms', () => {
     })
   })
 
-  it('preserves a proof for presentation edits and discards it after a technical edit or close', async () => {
+  it('preserves shared work after presentation edits, technical edits, and close', async () => {
     fetchMock
       .mockResolvedValueOnce(verificationResponse())
       .mockResolvedValue(new Response('{}', { status: 200 }))
@@ -866,14 +895,7 @@ describe('Admin AI model and stable-profile forms', () => {
       'v2',
     )
     expect(save).toBeDisabled()
-    await waitFor(() =>
-      expect(
-        JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)),
-      ).toMatchObject({
-        action: 'discard_model_verification',
-        attemptId,
-      }),
-    )
+    expect(fetchMock).toHaveBeenCalledTimes(1)
 
     fetchMock.mockResolvedValueOnce(verificationResponse())
     await user.click(
@@ -884,7 +906,7 @@ describe('Admin AI model and stable-profile forms', () => {
     await waitFor(() => expect(save).toBeEnabled())
     registeredClose.at(-1)?.()
     expect(cancel).toHaveBeenCalledOnce()
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
   })
 
   it('shows gated capabilities and profiles as not tested with a safe code', async () => {
@@ -1142,7 +1164,7 @@ describe('Admin AI model and stable-profile forms', () => {
     },
   )
 
-  it('shows exact verification and save failures and blocks missing credentials', async () => {
+  it('shows safe save failures and blocks missing credentials', async () => {
     fetchMock
       .mockResolvedValueOnce(verificationResponse())
       .mockResolvedValueOnce(new Response('save rejected', { status: 400 }))
@@ -1195,7 +1217,9 @@ describe('Admin AI model and stable-profile forms', () => {
     })
     await waitFor(() => expect(save).toBeEnabled())
     await user.click(save)
-    expect(await screen.findByRole('alert')).toHaveTextContent('save rejected')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'admin.aiConnections.mutationError',
+    )
   })
 
   it('shows transport and streamed verification failures without enabling save', async () => {
@@ -1223,7 +1247,7 @@ describe('Admin AI model and stable-profile forms', () => {
       }),
     )
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'verification rejected',
+      'admin.aiConnections.mutationError',
     )
     expect(
       screen.getByRole('button', {
@@ -1258,8 +1282,171 @@ describe('Admin AI model and stable-profile forms', () => {
       }),
     )
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'stream rejected',
+      'admin.aiConnections.mutationError',
     )
+  })
+
+  it.each([
+    ['attempt_expired', 'pending.expired'],
+    ['attempt_mismatch', 'pending.configurationChanged'],
+    ['attempt_unavailable', 'pending.saveUncertain'],
+    ['transport', 'pending.saveUncertain'],
+    ['server_error', 'pending.saveUncertain'],
+    ['duplicate_model', 'mutationError'],
+    ['incomplete_verification', 'mutationError'],
+  ])(
+    'restores shared evidence and gives safe recovery for %s',
+    async (blocker, message) => {
+      const current = connection()
+      const pending = sharedVerification()
+      if (blocker === 'transport')
+        fetchMock.mockRejectedValueOnce(new Error('secret transport text'))
+      else
+        fetchMock.mockResolvedValueOnce(
+          Response.json(
+            {
+              error: 'secret database text',
+              details: {
+                blocker: [
+                  'duplicate_model',
+                  'incomplete_verification',
+                ].includes(blocker)
+                  ? undefined
+                  : blocker,
+              },
+            },
+            { status: blocker === 'server_error' ? 503 : 409 },
+          ),
+        )
+      render(
+        <ModelForm
+          connection={current}
+          model={null}
+          onCancel={vi.fn()}
+          onComplete={vi.fn()}
+          pending={pending}
+        />,
+      )
+      expect(
+        screen.getByLabelText(/^admin\.aiConnections\.fields\.name\.label/),
+      ).toHaveValue('Shared model')
+      expect(screen.getByText(/pending.remaining/)).toBeInTheDocument()
+      const panel = screen.getByRole('region', {
+        name: 'admin.aiConnections.modelVerification.title',
+      })
+      expect(
+        within(panel).getByRole('button', {
+          name: 'admin.aiConnections.modelVerification.verifyAgain',
+        }),
+      ).toBeEnabled()
+      expect(panel.querySelectorAll('dt')).toHaveLength(14)
+      expect(panel).toHaveTextContent(
+        'admin.aiConnections.modelVerification.phases.completed',
+      )
+
+      const user = userEvent.setup()
+      await user.click(
+        screen.getByRole('button', {
+          name: 'admin.aiConnections.modelVerification.saveRevision',
+        }),
+      )
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        `admin.aiConnections.${message}`,
+      )
+      expect(screen.getByRole('alert')).not.toHaveTextContent('secret')
+      expect(
+        JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)),
+      ).toMatchObject({
+        action: 'save_model_revision',
+        modelRevision: { attemptId, name: 'Shared model' },
+      })
+    },
+  )
+
+  it('keeps reviewed results visible while expiry disables saving and updates the single summary', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-06T12:00:00Z'))
+    try {
+      render(
+        <ModelForm
+          connection={connection()}
+          model={null}
+          onCancel={vi.fn()}
+          onComplete={vi.fn()}
+          pending={sharedVerification('2026-09-06T12:00:01Z')}
+        />,
+      )
+      const save = screen.getByRole('button', {
+        name: 'admin.aiConnections.modelVerification.saveRevision',
+      })
+      const panel = screen.getByRole('region', {
+        name: 'admin.aiConnections.modelVerification.title',
+      })
+      const summary = within(panel)
+        .getByText('admin.aiConnections.modelVerification.saveable')
+        .closest('[role="status"]')
+      expect(save).toBeEnabled()
+      expect(within(panel).getByRole('timer')).toHaveTextContent(
+        'admin.aiConnections.pending.remaining 1',
+      )
+      await act(async () => vi.advanceTimersByTime(1000))
+      expect(save).toBeDisabled()
+      expect(summary).toHaveTextContent('admin.aiConnections.pending.expired')
+      expect(panel.querySelectorAll('dt')).toHaveLength(14)
+      expect(
+        within(panel).getByRole('button', {
+          name: 'admin.aiConnections.modelVerification.verifyAgain',
+        }),
+      ).toBeEnabled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('requires confirmation before discarding shared work for all administrators', async () => {
+    fetchMock
+      .mockResolvedValueOnce(verificationResponse())
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    const cancel = vi.fn()
+    render(
+      <ModelForm
+        connection={connection()}
+        model={null}
+        onCancel={cancel}
+        onComplete={vi.fn()}
+      />,
+    )
+    const user = userEvent.setup()
+    await user.type(
+      screen.getByLabelText(
+        /^admin\.aiConnections\.fields\.externalModelId\.label/,
+      ),
+      'controlled/model',
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.modelVerification.verify',
+      }),
+    )
+    const discard = await screen.findByRole('button', {
+      name: 'admin.aiConnections.pending.discard',
+    })
+    confirmMock.mockResolvedValueOnce(false)
+    await user.click(discard)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    confirmMock.mockResolvedValueOnce(true)
+    await user.click(discard)
+    await waitFor(() => expect(cancel).toHaveBeenCalledOnce())
+    expect(confirmMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'admin.aiConnections.pending.discardConfirm',
+        variant: 'danger',
+      }),
+    )
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      action: 'discard_model_verification',
+      attemptId,
+    })
   })
 
   it('shows incompatible revisions disabled and offers direct disconnection', async () => {

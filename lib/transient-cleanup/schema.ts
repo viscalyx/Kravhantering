@@ -43,7 +43,7 @@ export async function cleanupSchemaFingerprint(
       (SELECT OBJECT_DEFINITION(object_id) AS definition, is_disabled
        FROM sys.triggers WHERE parent_id = tables.object_id ORDER BY definition FOR JSON PATH) AS triggers
      FROM sys.tables AS tables WHERE SCHEMA_NAME(tables.schema_id) = N'dbo'
-       AND tables.name IN (N'ai_run_coordination_entries', N'ai_forensic_capture_windows',
+       AND tables.name IN (N'ai_model_verification_attempts', N'ai_run_coordination_entries', N'ai_forensic_capture_windows',
          N'ai_forensic_evidence_events', N'hsa_verification_quota_buckets',
          N'requirement_import_validation_sessions', N'requirement_import_validation_rate_buckets')
      ORDER BY tables.name FOR JSON PATH) AS metadata`)

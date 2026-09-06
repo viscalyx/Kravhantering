@@ -2131,15 +2131,24 @@ bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
    modellrevisionen kan sparas separat. Raderna finns kvar på samma plats.
    Använd tangentbordet och kontrollera att fokus ligger kvar på knappen
    och att hjälpmedel får statusuppdateringar utan fokusflytt.
-5. Ändra modellnamn och beskrivning och kontrollera att resultatet finns kvar.
-   Kontrollera att resonemangsnivån är `Hög`. Välj `Låg`: resultatet rensas,
-   panelen behåller alla startstatusar och ny verifiering krävs. Tekniskt
-   modell-id och extern modellversion återställer också verifieringen.
+5. Stäng formuläret med `Avbryt`. Öppna kandidaten under `Väntande verifieringar`
+   på samma anslutning. Panelen visar resultatet direkt med `Verifiera igen`
+   och återstående giltighetstid. Kandidaten ska också kunna öppnas av en
+   annan behörig Admin efter omladdning. Öppning får inte förlänga giltigheten.
+   Välj `Kassera verifiering`, kontrollera att bekräftelsen säger att arbetet
+   tas bort för alla administratörer och avbryt kasseringen. Resultatet ska
+   finnas kvar. Ändra modellnamn och beskrivning och kontrollera att resultatet
+   finns kvar. Kontrollera att resonemangsnivån är `Hög`. Välj `Låg`: resultatet
+   rensas, panelen behåller alla startstatusar och ny verifiering krävs för de
+   redigerade fälten; det delade originalet finns kvar. Tekniskt modell-id och
+   extern modellversion återställer också verifieringen.
    Välj `Medel`, verifiera igen och spara revisionen med
    `Spara modellrevision` vid `Avbryt` under fälten. Kontrollera
    `Resonemangsnivå: Medel` och statusen `Verifierad` och att inget separat
    modellutkast eller separat aktiveringssteg visas.
-6. Aktivera anslutningen. Redigera `Kravgenerering utan bilder`. Kontrollera att
+6. Aktivera anslutningen. Redigera `Kravgenerering utan bilder`. Välj den
+   nyss skapade modellrevisionen även om andra modeller finns i listan.
+   Kontrollera att
    inkompatibla, avslutade eller ersättningskrävande revisioner visas
    inaktiverade med orsak, att den senaste användbara revisionen per modell är
    rekommenderad och att applikationens förmågekrav inte kan redigeras. Välj den
@@ -2174,6 +2183,18 @@ En använd
 modellrevision kan inte avslutas eller raderas; avslut är irreversibelt och
 permanent radering kräver en separat bekräftelse. Ingen automatisk fallback
 sker.
+
+**Kompletterande överlämning och felåterhämtning (svenska och engelska):**
+Öppna en väntande verifiering, ändra namn och en teknisk parameter och stäng
+formuläret. Originalets inskickade fält ska återställas vid återöppning.
+Simulera ett förlorat sparsvar i den isolerade testmiljön. Gränssnittet ska
+förklara att sparandet kan ha lyckats och att modellistan måste laddas om och
+kontrolleras före nytt försök. Samma vägledning gäller när återförsöket får
+konflikt för ett otillgängligt försök. Bekräfta sedan uttrycklig kassering och
+kontrollera att kandidaten försvinner för alla administratörer. Ett känt
+utgånget eller konfigurationsändrat resultat ska i stället kräva ny verifiering.
+En avvisning för dubblettmodell eller ofullständig verifiering ska visa det
+vanliga åtgärdsfelet, utan att påstå att sparandet kan ha lyckats.
 
 ### ADMIN-21: Misslyckad AI-åtgärd visar åtgärd och serverfel i viewporten
 

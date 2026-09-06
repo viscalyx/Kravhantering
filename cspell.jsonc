@@ -4,6 +4,10 @@
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
     "oobserverad",
+    "arbetsmetadata",
+    "modellmetadata",
+    "NOWAIT",
+    "samtidighetstoken",
     "rollösa",
     "arbetsvyer",
     "desktopfönster",

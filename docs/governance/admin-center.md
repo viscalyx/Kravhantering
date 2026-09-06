@@ -202,8 +202,29 @@ summary in fixed order. It retries a transient failure once and has one
 15-minute verification attempt with a successful baseline and at least one
 compatible profile. An inconclusive optional capability remains unavailable,
 but does not block saving when a separately verified combined-profile probe
-establishes compatibility. Changing a technical field invalidates the attempt;
-name and description remain editable. Saved revisions are immediately
+establishes compatibility.
+
+Completed, saveable candidates appear under **Pending verifications** on their
+connection. Any currently authorized administrator can reopen the submitted
+name, description, technical configuration, target-model concurrency token,
+and verification results. Opening a candidate does not extend its validity or
+reserve it. A pending candidate is not a model revision and cannot be selected
+by a run profile. Verification does not require a final presentation name.
+
+Closing the form preserves completed work. Changing a technical field requires
+new verification for the edited form and preserves the shared original.
+Name and description edits remain local until final save. **Discard
+verification** requires confirmation and removes the pending work for every
+administrator. Connection configuration changes invalidate incompatible proof.
+
+SQL Server sets the 15-minute admission deadline. A save admitted before that
+deadline may finish after it. Reservation, revision, evidence, action log, and
+consumption commit together; rollback restores an unexpired attempt. Only one
+save can consume it. If a response is lost or retry finds the attempt
+unavailable, reload the model list and check whether the revision exists before
+trying again. The form gives this guidance without claiming success.
+
+ Saved revisions are immediately
 `verified`. Connection changes or concrete contradictions mark them
 `new_revision_required`; replacement requires a newly verified revision.
 

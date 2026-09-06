@@ -13,7 +13,7 @@ function permissionFor(objectName: string) {
 
 describe('runtime permission manifest', () => {
   it('is release-versioned, stable, and explicit about protected objects', () => {
-    expect(RUNTIME_PERMISSION_MANIFEST_VERSION).toMatch(/^2026\.09\.04\./u)
+    expect(RUNTIME_PERMISSION_MANIFEST_VERSION).toMatch(/^2026\.09\.06\./u)
     expect(RUNTIME_PERMISSION_MANIFEST_DIGEST).toMatch(/^[a-f0-9]{64}$/u)
     expect(RUNTIME_PERMISSION_MANIFEST.map(entry => entry.object)).toEqual(
       [...RUNTIME_PERMISSION_MANIFEST]

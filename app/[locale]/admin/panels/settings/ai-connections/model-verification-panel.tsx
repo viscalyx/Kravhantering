@@ -34,6 +34,7 @@ interface ModelVerificationPanelProps {
   onVerify(): void
   phase: VerificationPhase
   progress: readonly AiAdminVerificationProgress[]
+  remainingSeconds: number
   verification: AiAdminCandidateVerificationAttemptResult | null
   verifyDisabledReason: string | undefined
 }
@@ -75,6 +76,7 @@ export function ModelVerificationPanel({
   onCancel,
   phase,
   progress,
+  remainingSeconds,
   verification,
 }: ModelVerificationPanelProps) {
   const t = useTranslations('admin.aiConnections')
@@ -123,11 +125,14 @@ export function ModelVerificationPanel({
       : running
         ? 'runningSummary'
         : 'interruptedSummary'
-  const SummaryIcon = verification
-    ? verification.saveable
-      ? CheckCircle2
-      : XCircle
-    : Info
+  const expired = Boolean(verification?.attemptId) && remainingSeconds === 0
+  const SummaryIcon = expired
+    ? XCircle
+    : verification
+      ? verification.saveable
+        ? CheckCircle2
+        : XCircle
+      : Info
   const ActionIcon = running ? Square : Play
   return (
     <section
@@ -315,8 +320,22 @@ export function ModelVerificationPanel({
           className="text-xs text-secondary-600 dark:text-secondary-300"
           role="status"
         >
-          {t(`modelVerification.${summaryKey}`)}
+          {expired
+            ? t('pending.expired')
+            : t(`modelVerification.${summaryKey}`)}
         </p>
+        {verification?.attemptId && remainingSeconds > 0 ? (
+          <p
+            className="mt-2 text-xs text-secondary-600 dark:text-secondary-300"
+            role="timer"
+            {...devMarker({
+              name: 'AI verification validity',
+              context: 'AI model form',
+            })}
+          >
+            {t('pending.remaining', { seconds: remainingSeconds })}
+          </p>
+        ) : null}
       </div>
     </section>
   )

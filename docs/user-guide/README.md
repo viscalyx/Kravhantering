@@ -648,6 +648,15 @@ sparas. Välj **Verifiera igen** för ett nytt försök. Slutsammanfattningen an
 om resultatet är sparbart. Välj sedan **Spara modellrevision** bredvid
 **Avbryt** under formuläret; verifieringen sparar inte automatiskt.
 
+Ett färdigt, sparbart resultat finns under **Väntande verifieringar** på
+anslutningen även när du stänger formuläret. En annan behörig administratör kan
+öppna det och spara modellrevisionen. Panelen visar resultat och återstående
+giltighetstid direkt; öppning förlänger inte tiden. När tiden går ut spärras
+sparandet och slutsammanfattningen visar att ny verifiering krävs.
+**Kassera verifiering** kräver bekräftelse och tar bort försöket för alla
+administratörer. Tekniska redigeringar i formuläret bevarar det delade
+originalförsöket.
+
 Namn och beskrivning kan ändras utan ny verifiering. Ändrat tekniskt modell-id,
 extern modellversion eller resonemangsnivå återställer startstatusarna och
 kräver ny verifiering. Panelen finns kvar hela tiden.

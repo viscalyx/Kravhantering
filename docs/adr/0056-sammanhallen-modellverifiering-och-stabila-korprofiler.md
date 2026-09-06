@@ -2,6 +2,10 @@
 
 Status: Antagen 2026-08-22.
 
+Bindning, delning, överlämning, kassering och giltighet för
+modellverifieringsförsök följer
+[ADR 0060](./0060-delade-modellverifieringsforsok.md).
+
 Admin Center sparar en anslutningsmodell först efter en enda avbrytbar,
 strömmande verifieringssvit. Administratören anger modellens tekniska
 identitet, och sviten kontrollerar i fast ordning anslutning och autentisering,
@@ -10,11 +14,10 @@ av de tre fasta körprofilerna och en slutsammanfattning. Den behåller adaptern
 säkerhets-, fel- och avbrottskontrakt, gör högst ett omförsök vid övergående
 fel och har en gemensam tidsgräns på 60 sekunder.
 
-Resultatet binds server-side i högst 15 minuter till aktör, anslutning och ett
-fingeravtryck över tekniska fält. Namn och beskrivning får ändras utan ny
-verifiering. Försöket förbrukas först när modellrevisionen och dess append-only
-verifieringsbevis har sparats atomiskt. Lyckad grundkontroll, verifierat
-resonemang och minst en kompatibel körprofil gör försöket sparbart.
+Namn och beskrivning får ändras utan ny verifiering. Försöket förbrukas först
+när modellrevisionen och dess append-only verifieringsbevis har sparats
+atomiskt. Lyckad grundkontroll, verifierat resonemang och minst en kompatibel
+körprofil gör försöket sparbart.
 Uttrycklig nivåstyrning krävs bara för den uttryckliga
 vägen. Oavgjorda valfria förmågor hindrar inte sparande men förblir otillgängliga.
 Resonemangets separata bevisgräns beskrivs i
