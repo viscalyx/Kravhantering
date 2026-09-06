@@ -53,6 +53,12 @@ Monitor import delays and settings-save delays after rollout. Import validation,
 - Create fresh AI deployment evidence with the upgraded release tools before you release the global AI guard. Earlier verification evidence is no longer accepted. Reversing the database schema change does not restore the previous model verification status.
 - Release maintainers must enable repository auto-merge for generated operator upgrade notes to merge automatically. Keep required checks and branch protections enabled. If the workflow cannot request auto-merge, review its warning and retry or merge the generated notes after the required checks pass.
 <!-- operator-upgrade:source pr-1341 end -->
+
+<!-- operator-upgrade:source pr-1343 start -->
+Install the independent cleanup service before operational handoff. Prepare its runtime database connection and metadata permissions. Retain its verified image and recovery assets when changing the application release.
+The preceding published release is the default rollback source. No routine source-list maintenance is required. To select another published release, request an explicit source during release preparation and use the resulting authenticated release only after compatibility verification succeeds.
+Pause cleanup before migration or restore. Reapply metadata permissions and complete a successful cleanup run before restoring traffic. Confirm that the next scheduled run is active. Remove the independent service explicitly during full host removal.
+<!-- operator-upgrade:source pr-1343 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
