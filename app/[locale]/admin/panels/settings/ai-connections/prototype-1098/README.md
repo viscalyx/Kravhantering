@@ -24,7 +24,11 @@ ljust och mörkt tema. En smal webbläsare visar en kolumn.
 
 Designen använder appens färgkoder, teckensnittsordning, fältstorlekar och
 rundade ytor. En enda design demonstrerar det överenskomna förslaget.
-Panelens slutliga utseende ska bedömas av användaren innan implementation.
+Användaren godkänner prototypens utseende 2026-09-06. Prototypen är visuell
+referens för implementationen i
+[issue #1098](https://github.com/viscalyx/Kravhantering/issues/1098).
+Layout, gruppering, statuspresentation, knappplacering och ikonval ska följa
+denna referens tillsammans med ärendets beteendekrav.
 
 Användaren väljer placeringen i verifieringspanelens rubrikrad. Panelens
 inledning förklarar åtgärden; separat hjälptext under formuläret tas bort.
