@@ -108,41 +108,37 @@ for (const viewport of viewports) {
 
         await expect(tableSurface).toHaveCount(1)
 
-        const buttonBox = await createButton.boundingBox()
-        const deleteActionBox = await deleteAction.boundingBox()
-        const requirementAreasHeaderBox =
-          await requirementAreasHeader.boundingBox()
-        let tableBox = await tableSurface.boundingBox()
-        await expect
-          .poll(async () => {
-            tableBox = await tableSurface.boundingBox()
-            return tableBox
-          })
-          .not.toBeNull()
-        const viewportSize = page.viewportSize()
+        await expect(async () => {
+          const buttonBox = await createButton.boundingBox()
+          const deleteActionBox = await deleteAction.boundingBox()
+          const requirementAreasHeaderBox =
+            await requirementAreasHeader.boundingBox()
+          const tableBox = await tableSurface.boundingBox()
+          const viewportSize = page.viewportSize()
 
-        expect(buttonBox).not.toBeNull()
-        expect(deleteActionBox).not.toBeNull()
-        expect(requirementAreasHeaderBox).not.toBeNull()
-        expect(tableBox).not.toBeNull()
-        expect(viewportSize).not.toBeNull()
-        expect(requirementAreasHeaderBox?.width ?? 0).toBeLessThanOrEqual(260)
-        expect(
-          (deleteActionBox?.x ?? 0) + (deleteActionBox?.width ?? 0),
-        ).toBeLessThanOrEqual(
-          (tableBox?.x ?? 0) + (tableBox?.width ?? viewport.width) + 1,
-        )
-        expect(buttonBox?.x ?? 0).toBeGreaterThanOrEqual(
-          (viewportSize?.width ?? viewport.width) -
-            (buttonBox?.width ?? 0) -
-            16,
-        )
-        expect(
-          (buttonBox?.x ?? 0) + (buttonBox?.width ?? 0),
-        ).toBeLessThanOrEqual((viewportSize?.width ?? viewport.width) + 1)
-        expect(
-          Math.abs((buttonBox?.y ?? 0) - ((tableBox?.y ?? 0) + 4)),
-        ).toBeLessThanOrEqual(12)
+          expect(buttonBox).not.toBeNull()
+          expect(deleteActionBox).not.toBeNull()
+          expect(requirementAreasHeaderBox).not.toBeNull()
+          expect(tableBox).not.toBeNull()
+          expect(viewportSize).not.toBeNull()
+          expect(requirementAreasHeaderBox?.width ?? 0).toBeLessThanOrEqual(260)
+          expect(
+            (deleteActionBox?.x ?? 0) + (deleteActionBox?.width ?? 0),
+          ).toBeLessThanOrEqual(
+            (tableBox?.x ?? 0) + (tableBox?.width ?? viewport.width) + 1,
+          )
+          expect(buttonBox?.x ?? 0).toBeGreaterThanOrEqual(
+            (viewportSize?.width ?? viewport.width) -
+              (buttonBox?.width ?? 0) -
+              16,
+          )
+          expect(
+            (buttonBox?.x ?? 0) + (buttonBox?.width ?? 0),
+          ).toBeLessThanOrEqual((viewportSize?.width ?? viewport.width) + 1)
+          expect(
+            Math.abs((buttonBox?.y ?? 0) - ((tableBox?.y ?? 0) + 4)),
+          ).toBeLessThanOrEqual(12)
+        }).toPass({ timeout: 15_000 })
         await expect(
           page.locator('[data-floating-action-rail-placement="fixed-right"]'),
         ).toBeVisible()
