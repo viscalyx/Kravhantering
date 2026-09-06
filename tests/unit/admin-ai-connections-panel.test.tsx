@@ -11,12 +11,12 @@ import {
   ModelForm,
   ProfileForm,
 } from '@/app/[locale]/admin/panels/settings/ai-connections/model-profile-forms'
+import { VERIFICATION } from '@/lib/__tests__/fixtures/ai-model-verification'
 import type {
   AiAdminCatalogItem,
   AiAdminConnectionDetail,
   AiAdminRunProfileRecord,
 } from '@/lib/ai/admin-service'
-import { VERIFICATION } from '@/tests/helpers/ai-model-verification'
 
 vi.mock('next-intl', () => ({
   useTranslations:

@@ -5,13 +5,13 @@ import {
   type Route,
   test,
 } from '@playwright/test'
+import { VERIFICATION } from '@/lib/__tests__/fixtures/ai-model-verification'
 import {
   addMcpMaxRequestBytesSteps,
   MCP_REQUEST_PAYLOAD_MAX_BYTES,
   MCP_REQUEST_PAYLOAD_MIN_BYTES,
 } from '@/lib/ai/generation-availability'
 import type { AdminApplicationSettings } from '@/lib/application-settings'
-import { VERIFICATION } from '../../helpers/ai-model-verification'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { getAiSettings, putAiSettings } from '../ai-settings-test-helpers'
 import {

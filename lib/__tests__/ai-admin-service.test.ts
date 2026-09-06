@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
+import { createTestAiVerificationAttemptStore } from '@/lib/__tests__/fixtures/ai-verification-attempt-store'
 import type { AiAdminSecretOperations } from '@/lib/ai/admin-service'
 import {
   type AiAdminCandidateVerificationResult,
@@ -8,7 +9,6 @@ import {
   type AiAdminStoredConnectionDetail,
   AiConnectionAdministrationService,
 } from '@/lib/ai/admin-service'
-import { createTestAiVerificationAttemptStore } from '@/tests/helpers/ai-verification-attempt-store'
 
 const capabilities = {
   reasoning: {

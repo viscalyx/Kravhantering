@@ -1,8 +1,8 @@
+import { VERIFICATION } from '@/lib/__tests__/fixtures/ai-model-verification'
 import {
   aiModelVerificationSnapshotSchema,
   parseAiModelVerificationPayload,
 } from '@/lib/ai/model-verification-payload'
-import { VERIFICATION } from '@/tests/helpers/ai-model-verification'
 
 describe('Completed verification candidate snapshots', () => {
   const candidate = {

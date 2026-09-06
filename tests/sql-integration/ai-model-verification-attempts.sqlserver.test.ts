@@ -2,6 +2,7 @@ import { fork } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { once } from 'node:events'
 import { describe, expect, it, vi } from 'vitest'
+import { VERIFICATION } from '@/lib/__tests__/fixtures/ai-model-verification'
 import { createAiConnectionAdministrationRuntime } from '@/lib/ai/admin-runtime'
 import type { AiAdminExternalOperations } from '@/lib/ai/admin-service'
 import { parseAiModelVerificationPayload } from '@/lib/ai/model-verification-payload'
@@ -12,7 +13,6 @@ import {
   purgeExpiredAiModelVerificationAttempts,
 } from '@/lib/transient-cleanup/ai-model-verification-attempts'
 import { AiVerificationSqlLogger } from '@/lib/typeorm/ai-verification-sql-logger'
-import { VERIFICATION } from '@/tests/helpers/ai-model-verification'
 import {
   makeRequestContext,
   useSqlIntegrationDatabase,

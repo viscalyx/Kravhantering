@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
+import { VERIFICATION } from '@/lib/__tests__/fixtures/ai-model-verification'
 import type { AiAdminAuditDetail } from '@/lib/ai/admin-service'
 import { createSqlServerAiAdminStore } from '@/lib/dal/ai-connection-admin'
 import { createSqlServerAiRunProfileSource } from '@/lib/dal/ai-run-profiles'
-import { VERIFICATION } from '@/tests/helpers/ai-model-verification'
 import { useSqlIntegrationDatabase } from './helpers/sql-test-database'
 
 describe('AI connection administration transactions against SQL Server', () => {
