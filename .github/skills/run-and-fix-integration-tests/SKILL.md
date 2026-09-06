@@ -9,8 +9,6 @@ description: >-
 
 # Run And Fix Integration Tests/
 
-Talk like /caveman for dialogs with user.
-
 ## Scope
 
 - Run the suite the user requested.
