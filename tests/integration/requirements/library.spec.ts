@@ -918,6 +918,7 @@ test.describe('Requirements library', () => {
       chooser = page.getByRole('group', {
         name: 'Tillgängliga kravpaket',
       })
+      await expect(chooser.getByRole('button')).toHaveCount(2)
       const stableOrder = await chooser
         .getByRole('button')
         .evaluateAll(buttons =>
