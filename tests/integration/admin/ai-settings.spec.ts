@@ -1261,6 +1261,41 @@ test.describe('Admin settings', () => {
               } finally {
                 await page.unroute(verificationRoute, failedTransport)
               }
+              const incompleteStream = async (route: Route) => {
+                if (
+                  route.request().postDataJSON().action !==
+                  'verify_model_candidate'
+                )
+                  return route.continue()
+                await route.fulfill({
+                  body: `${JSON.stringify({
+                    type: 'progress',
+                    progress: {
+                      check: 'connection_authentication',
+                      state: 'completed',
+                      outcome: 'verified',
+                      diagnosticCode: null,
+                      failureCategory: null,
+                    },
+                  })}\n`,
+                  contentType: 'application/x-ndjson',
+                })
+              }
+              await page.route(verificationRoute, incompleteStream)
+              try {
+                await panel
+                  .getByRole('button', { name: 'Verifiera igen', exact: true })
+                  .click()
+                await expect(dialog.getByRole('alert')).toHaveText(
+                  'Anslutningen stängdes innan verifieringen slutfördes.',
+                )
+                await expect(panel.locator('.animate-spin')).toHaveCount(0)
+                await expect(
+                  dialog.getByRole('button', { name: 'Spara modellrevision' }),
+                ).toBeDisabled()
+              } finally {
+                await page.unroute(verificationRoute, incompleteStream)
+              }
               const mixedResult = async (route: Route) => {
                 if (
                   route.request().postDataJSON().action !==

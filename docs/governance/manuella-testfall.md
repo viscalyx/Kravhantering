@@ -2121,8 +2121,10 @@ bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
    snurrande ikon. Profiler behåller okänd kompatibilitet tills de avgjorts.
    Välj `Avbryt verifiering` med Square-ikon. Inga kontroller är längre
    pågående; slutförda delresultat bevaras och sparande är spärrat. Knappen
-   heter `Verifiera igen`. Prova även ett transportfel och ett blandat
-   slutresultat med oavgjord, inkompatibel och ej kontrollerad profil.
+   heter `Verifiera igen`. Prova ett svar som stängs före slutresultatet:
+   felmeddelandet anger att anslutningen stängdes innan verifieringen
+   slutfördes och sparande förblir spärrat. Prova även ett transportfel och ett
+   blandat slutresultat med oavgjord, inkompatibel och ej kontrollerad profil.
    Kontrollera `Kunde inte avgöras`, `Inte kompatibel` respektive
    `Okänd kompatibilitet`, med felorsak, teknisk kod och saknade förmågor vid
    rätt rad. Oobserverad förmåga får inte beskrivas som uttryckligen avvisad.

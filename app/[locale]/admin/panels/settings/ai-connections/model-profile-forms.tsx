@@ -373,7 +373,11 @@ export function ModelForm({
           if (message.error) throw new Error(message.error)
         }
         if (chunk.done) {
-          if (!result) throw new Error(t('modelVerification.incompleteStream'))
+          if (!result) {
+            setPhase('failed')
+            setError(t('modelVerification.incompleteStream'))
+            return
+          }
           setReasoning(result.reasoning ?? reasoning)
           setVerification(result)
           setPhase('completed')

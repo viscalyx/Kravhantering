@@ -1093,6 +1093,13 @@ describe('Admin AI model and stable-profile forms', () => {
         await act(async () => stream.error(new Error('connection lost')))
       if (stop === 'truncated') await act(async () => stream.close())
       if (stop === 'technical') await user.type(modelId, '-changed')
+      if (stop === 'truncated' || stop === 'transport') {
+        expect(screen.getByRole('alert')).toHaveTextContent(
+          stop === 'truncated'
+            ? 'admin.aiConnections.modelVerification.incompleteStream'
+            : 'admin.aiConnections.mutationError',
+        )
+      }
       const panel = screen.getByRole('region', {
         name: 'admin.aiConnections.modelVerification.title',
       })
