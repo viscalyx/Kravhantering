@@ -91,6 +91,7 @@
 <body>
   <svg style="display:none" aria-hidden="true"><defs>
     <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m7 4 14 8-14 8Z"/></symbol>
     <symbol id="i-unknown" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 .5c0 1.5-2.5 2-2.5 3M12 16h.01"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
     <symbol id="i-loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9"/></symbol>
@@ -123,7 +124,7 @@
         </div>
       </div>
       <section class="panel" aria-labelledby="verification-title">
-        <div class="panel-heading"><h2 id="verification-title">Modellverifiering</h2><button class="button" id="verify"><svg aria-hidden="true"><use href="#i-check"/></svg><span>Verifiera</span></button></div>
+        <div class="panel-heading"><h2 id="verification-title">Modellverifiering</h2><button class="button" id="verify"><svg aria-hidden="true"><use href="#i-play"/></svg><span>Verifiera</span></button></div>
         <div class="panel-meta"><p class="panel-intro">Verifiera modellens förmågor och kompatibilitet med körprofiler.</p><span class="count" id="count">Inte startad</span></div>
         <div class="group" role="group" aria-labelledby="base-title"><h3 id="base-title">Grundkontroller</h3><div class="rows" id="base"></div></div>
         <div class="group" role="group" aria-labelledby="cap-title"><h3 id="cap-title">Förmågor</h3><div class="rows capabilities" id="capabilities"></div><p class="group-help">Resonemangsaktivitet krävs. Uttrycklig styrning krävs bara när modellen använder den. AI-analys och övriga förmågor kan saknas eller vara oavgjorda.</p></div>
@@ -181,7 +182,7 @@
   function summary(title, text, state = '') { $('summary-title').textContent=title; $('summary-text').textContent=text; $('summary').dataset.state=state; $('announcement').textContent=text; }
   function syncControls() {
     const busy=phase==='running';
-    $('verify').innerHTML=icon(busy?'x':'check')+`<span>${busy?'Avbryt verifiering':phase==='idle'?'Verifiera':'Verifiera igen'}</span>`;
+    $('verify').innerHTML=icon(busy?'x':'play')+`<span>${busy?'Avbryt verifiering':phase==='idle'?'Verifiera':'Verifiera igen'}</span>`;
     $('verify').disabled=!busy&&!$('model-id').value.trim();
     $('scenario').disabled=busy;
     $('save').disabled=phase!=='done'||$('scenario').value==='inconclusive'||!$('name').value.trim();

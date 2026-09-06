@@ -29,6 +29,8 @@ Panelens slutliga utseende ska bedömas av användaren innan implementation.
 Användaren väljer placeringen i verifieringspanelens rubrikrad. Panelens
 inledning förklarar åtgärden; separat hjälptext under formuläret tas bort.
 **Avbryt** och **Spara modellrevision** ligger tillsammans under formuläret.
+**Verifiera** och **Verifiera igen** använder en play-ikon som signalerar
+att åtgärden startar en körning. Bockikonen används för verifierade resultat.
 
 Detta är engångskod på grenen `prototype/issue-1098-verification-panel`.
 Alla resultat är simulerade och allt tillstånd finns enbart i minnet.
