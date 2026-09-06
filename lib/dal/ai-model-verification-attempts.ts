@@ -48,6 +48,8 @@ export function createSqlServerAiModelVerificationAttemptStore<TResult>(
         throw new AiModelVerificationAttemptError('attempt_payload_invalid')
       }
       return db.transaction(async manager => {
+        if (manager.queryRunner)
+          manager.queryRunner.data.aiModelVerification = true
         const locks = await manager.query<{ result: number }[]>(`
           DECLARE @result int;
           EXEC @result = sys.sp_getapplock @Resource = N'ai_model_verification_capacity',

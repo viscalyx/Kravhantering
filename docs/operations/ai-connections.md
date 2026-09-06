@@ -808,3 +808,8 @@ revision before trying again. An unavailable attempt does not prove that saving
 failed. Monitor the bounded transient cleanup target after rollout; retain the
 release-independent cleanup deployment and its compatibility evidence during
 application rollback.
+
+Completed model-verification snapshots and their model-save transactions are
+excluded from SQL query, parameter, slow-query, and error-text logging, including
+when database error logging is enabled. Safe application conflicts and aggregate
+transient-cleanup telemetry remain available.

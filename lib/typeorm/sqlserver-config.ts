@@ -1,6 +1,7 @@
 import sqlServerDriver from 'mssql'
 import type { DataSource, DataSourceOptions } from 'typeorm'
 import { DataSource as TypeOrmDataSource } from 'typeorm'
+import { AiVerificationSqlLogger } from './ai-verification-sql-logger'
 
 const DEFAULT_CONNECT_TIMEOUT_MS = 15_000
 const DEFAULT_POOL_ACQUIRE_TIMEOUT_MS = 15_000
@@ -200,6 +201,7 @@ export function buildSqlServerDataSourceOptions(
     isolationLevel: DEFAULT_TRANSACTION_ISOLATION_LEVEL,
     synchronize: false,
     logging,
+    logger: new AiVerificationSqlLogger(logging),
     entities: options.entities ?? [],
     migrations: options.migrations ?? ['typeorm/migrations/*.{js,ts}'],
     connectionTimeout: parseInteger(

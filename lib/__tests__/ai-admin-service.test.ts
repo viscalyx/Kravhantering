@@ -292,9 +292,10 @@ describe('AI administration model verification attempts', () => {
       },
     }
 
-    await expect(service.saveModelRevision(input)).rejects.toThrow(
-      'database unavailable',
-    )
+    await expect(service.saveModelRevision(input)).rejects.toMatchObject({
+      message: 'The model save outcome is unavailable.',
+      details: { blocker: 'attempt_unavailable' },
+    })
     await expect(service.saveModelRevision(input)).resolves.toBe(savedModel)
   })
 

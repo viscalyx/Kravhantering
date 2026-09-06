@@ -6,6 +6,8 @@ process.once('message', async ({ options, attemptId }) => {
     const db = new DataSource({
       ...options,
       driver: sqlServerDriver,
+      logger: 'advanced-console',
+      logging: false,
       entities: [],
       migrations: [],
       subscribers: [],

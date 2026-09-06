@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import type { SqlServerEntityManager } from '@/lib/db'
 import {
   conflictError,
+  isRequirementsServiceError,
   notFoundError,
   validationError,
 } from '@/lib/requirements/errors'
@@ -547,6 +548,41 @@ function assertNoBlockers(blockers: readonly AiAdminBlocker[]): void {
   }
 }
 
+function modelVerificationFingerprint(
+  connection: AiAdminStoredConnectionDetail,
+  candidate: Pick<
+    AiModelVerificationPayload['candidate'],
+    | 'modelId'
+    | 'modelToken'
+    | 'reasoning'
+    | 'externalModelId'
+    | 'externalModelVersion'
+  >,
+  testSuiteVersion: string,
+): string {
+  return fingerprint({
+    connection: {
+      adapterKey: connection.adapterKey,
+      adapterVersion: connection.adapterVersion,
+      agentRuntimeKey: connection.agentRuntimeKey,
+      agentRuntimeVersion: connection.agentRuntimeVersion,
+      authenticationType: connection.authenticationType,
+      configurationVersion: connection.configurationVersion,
+      egressPolicyKey: connection.egressPolicyKey,
+      endpointUrl: connection.endpointUrl,
+      tlsPolicyKey: connection.tlsPolicyKey,
+    },
+    model: {
+      modelId: candidate.modelId?.toLowerCase() ?? null,
+      modelToken: candidate.modelToken?.toLowerCase() ?? null,
+      reasoning: requireAiReasoningConfiguration(candidate.reasoning),
+      externalModelId: candidate.externalModelId,
+      externalModelVersion: candidate.externalModelVersion,
+    },
+    testSuiteVersion,
+  })
+}
+
 function fingerprint(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex')
 }
@@ -870,27 +906,11 @@ export class AiConnectionAdministrationService {
       { onProgress: input.onProgress, signal: input.signal },
     )
     input.signal.throwIfAborted()
-    const verificationFingerprint = fingerprint({
-      connection: {
-        adapterKey: connection.adapterKey,
-        adapterVersion: connection.adapterVersion,
-        agentRuntimeKey: connection.agentRuntimeKey,
-        agentRuntimeVersion: connection.agentRuntimeVersion,
-        authenticationType: connection.authenticationType,
-        configurationVersion: connection.configurationVersion,
-        egressPolicyKey: connection.egressPolicyKey,
-        endpointUrl: connection.endpointUrl,
-        tlsPolicyKey: connection.tlsPolicyKey,
-      },
-      model: {
-        modelId: candidate.modelId?.toLowerCase() ?? null,
-        modelToken: candidate.modelToken?.toLowerCase() ?? null,
-        reasoning: requireAiReasoningConfiguration(result.reasoning),
-        externalModelId: candidate.externalModelId,
-        externalModelVersion: candidate.externalModelVersion,
-      },
-      testSuiteVersion: result.testSuiteVersion,
-    })
+    const verificationFingerprint = modelVerificationFingerprint(
+      connection,
+      { ...candidate, reasoning: result.reasoning },
+      result.testSuiteVersion,
+    )
     const attempt = result.saveable
       ? await this.#verificationAttempts.create({
           connectionId: connection.id,
@@ -961,29 +981,11 @@ export class AiConnectionAdministrationService {
       throw validationError('Verify the AI model before saving it.')
     }
     const connection = await this.getConnection(input.connectionId)
-    const verificationFingerprint = fingerprint({
-      connection: {
-        adapterKey: connection.adapterKey,
-        adapterVersion: connection.adapterVersion,
-        agentRuntimeKey: connection.agentRuntimeKey,
-        agentRuntimeVersion: connection.agentRuntimeVersion,
-        authenticationType: connection.authenticationType,
-        configurationVersion: connection.configurationVersion,
-        egressPolicyKey: connection.egressPolicyKey,
-        endpointUrl: connection.endpointUrl,
-        tlsPolicyKey: connection.tlsPolicyKey,
-      },
-      model: {
-        modelId: input.modelRevision.modelId?.toLowerCase() ?? null,
-        modelToken: input.modelRevision.modelToken?.toLowerCase() ?? null,
-        reasoning: requireAiReasoningConfiguration(
-          input.modelRevision.reasoning,
-        ),
-        externalModelId: input.modelRevision.externalModelId,
-        externalModelVersion: input.modelRevision.externalModelVersion,
-      },
-      testSuiteVersion: AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
-    })
+    const verificationFingerprint = modelVerificationFingerprint(
+      connection,
+      input.modelRevision,
+      AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
+    )
     try {
       return await this.#store.saveModelRevision({
         connection,
@@ -1007,7 +1009,10 @@ export class AiConnectionAdministrationService {
           blocker: error.code,
         })
       }
-      throw error
+      if (isRequirementsServiceError(error)) throw error
+      throw conflictError('The model save outcome is unavailable.', {
+        blocker: 'attempt_unavailable',
+      })
     }
   }
 

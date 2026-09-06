@@ -2411,6 +2411,8 @@
       },
       "pending": {
         "title": "Väntande verifieringar",
+        "opening": "Öppnar verifieringen…",
+        "busy": "En åtgärd pågår. Vänta tills den är klar.",
         "description": "Färdiga verifieringar delas med alla administratörer i 15 minuter. Öppna en kandidat för att granska och spara den.",
         "open": "Granska {name}",
         "remaining": "Giltig i ytterligare {seconds} sekunder.",

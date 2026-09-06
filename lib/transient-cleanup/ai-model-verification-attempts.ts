@@ -4,6 +4,8 @@ import type {
   TransientCleanupQueryExecutor,
 } from './requirement-import-validation-sessions'
 
+import type { TransientCleanupTarget } from './runner'
+
 interface BacklogRow {
   expiredRowCount: number | string
   expiredStoredBytes: number | string
@@ -74,7 +76,7 @@ export async function purgeExpiredAiModelVerificationAttempts(
 
 export function createAiModelVerificationAttemptCleanupTarget(
   executor: TransientCleanupQueryExecutor,
-) {
+): TransientCleanupTarget {
   return {
     inspect: () => inspectExpiredAiModelVerificationAttempts(executor),
     kind: 'ai_model_verification_attempts' as const,

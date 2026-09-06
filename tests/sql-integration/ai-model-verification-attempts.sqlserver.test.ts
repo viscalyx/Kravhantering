@@ -1,7 +1,7 @@
 import { fork } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { once } from 'node:events'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createAiConnectionAdministrationRuntime } from '@/lib/ai/admin-runtime'
 import type { AiAdminExternalOperations } from '@/lib/ai/admin-service'
 import { parseAiModelVerificationPayload } from '@/lib/ai/model-verification-payload'
@@ -11,6 +11,7 @@ import {
   inspectExpiredAiModelVerificationAttempts,
   purgeExpiredAiModelVerificationAttempts,
 } from '@/lib/transient-cleanup/ai-model-verification-attempts'
+import { AiVerificationSqlLogger } from '@/lib/typeorm/ai-verification-sql-logger'
 import { VERIFICATION } from '@/tests/helpers/ai-model-verification'
 import {
   makeRequestContext,
@@ -398,16 +399,102 @@ describe('Shared completed model verifications', () => {
     ).rejects.toThrow('audit_failed')
     expect((await second.getConnection(connectionId)).models).toEqual([])
     expect(await attempts.list(connectionId)).toHaveLength(1)
-    const saved = await second.saveModelRevision({
-      connectionId,
-      modelRevision,
+    const saves = await Promise.allSettled([
+      second.saveModelRevision({ connectionId, modelRevision }),
+      creator.saveModelRevision({ connectionId, modelRevision }),
+    ])
+    expect(saves.filter(result => result.status === 'fulfilled')).toHaveLength(
+      1,
+    )
+    const loser = saves.find(result => result.status === 'rejected')
+    if (loser?.status !== 'rejected')
+      throw new Error('Competing save did not fail')
+    expect(loser.reason).toMatchObject({
+      details: { blocker: 'attempt_unavailable' },
     })
+    const winner = saves.find(result => result.status === 'fulfilled')
+    if (winner?.status !== 'fulfilled')
+      throw new Error('Neither save succeeded')
+    const saved = winner.value
     expect(saved.name).toBe('Reviewed by another administrator')
     expect(saved.revisions).toHaveLength(1)
     await expect(
       second.saveModelRevision({ connectionId, modelRevision }),
     ).rejects.toMatchObject({ details: { blocker: 'attempt_unavailable' } })
     expect((await second.getConnection(connectionId)).models).toHaveLength(1)
+
+    const update = await creator.verifyModelCandidate({
+      connectionId,
+      signal: new AbortController().signal,
+      candidate: {
+        ...pending.result.candidate,
+        modelId: saved.id,
+        modelToken: saved.revisionToken,
+      },
+    })
+    if (!update.attemptId) throw new Error('Update verification missing')
+    await db.query(
+      'UPDATE ai_connection_models SET revision_token = NEWID() WHERE id = @0',
+      [saved.id],
+    )
+    await expect(
+      second.saveModelRevision({
+        connectionId,
+        modelRevision: {
+          ...modelRevision,
+          attemptId: update.attemptId,
+          modelId: saved.id,
+          modelToken: saved.revisionToken,
+        },
+      }),
+    ).rejects.toMatchObject({ details: { blocker: 'attempt_mismatch' } })
+    expect(await attempts.list(connectionId)).toHaveLength(1)
+    expect(
+      (await second.getConnection(connectionId)).models[0].revisions,
+    ).toHaveLength(1)
+  })
+
+  it('keeps failed SQL insert parameters and database error text out of enabled logging', async () => {
+    const db = database()
+    const connectionId = await createConnection()
+    const originalLogger = db.logger
+    const output = [
+      vi.spyOn(console, 'log'),
+      vi.spyOn(console, 'warn'),
+      vi.spyOn(console, 'error'),
+    ]
+    db.logger = new AiVerificationSqlLogger('all')
+    try {
+      const attempts = createSqlServerAiModelVerificationAttemptStore(
+        db,
+        parseAiModelVerificationPayload,
+      )
+      await expect(
+        attempts.create({
+          connectionId,
+          fingerprint: 'a'.repeat(100),
+          result: {
+            candidate: {
+              name: 'Private candidate sentinel',
+              description: 'Private description sentinel',
+              externalModelId: 'controlled/private',
+              externalModelVersion: null,
+              reasoning: VERIFICATION.reasoning,
+              modelId: null,
+              modelToken: null,
+            },
+            verification: VERIFICATION,
+          },
+        }),
+      ).rejects.toMatchObject({ code: 'attempt_unavailable' })
+      const logs = JSON.stringify(output.flatMap(spy => spy.mock.calls))
+      expect(logs).not.toMatch(
+        /Private|candidate|description|truncated|INSERT INTO/iu,
+      )
+    } finally {
+      db.logger = originalLogger
+      for (const spy of output) spy.mockRestore()
+    }
   })
 
   it('allows retry only after SQL resolves a crashed process transaction', async () => {

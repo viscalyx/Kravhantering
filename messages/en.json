@@ -2411,6 +2411,8 @@
       },
       "pending": {
         "title": "Pending verifications",
+        "opening": "Opening verification…",
+        "busy": "An operation is in progress. Please wait.",
         "description": "Completed verifications are shared with all administrators for 15 minutes. Open a candidate to review and save it.",
         "open": "Review {name}",
         "remaining": "Valid for another {seconds} seconds.",

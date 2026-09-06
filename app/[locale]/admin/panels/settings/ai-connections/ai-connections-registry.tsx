@@ -263,17 +263,20 @@ function PendingModelVerifications({
             disabled={disabled || opening}
             key={attempt.id}
             onClick={() => void open(attempt.id)}
+            title={disabled || opening ? t('pending.busy') : undefined}
             type="button"
             {...devMarker({
               name: 'Open pending AI verification',
               context: 'AI connection models',
             })}
           >
-            {t('pending.open', {
-              name:
-                attempt.result.candidate.name ||
-                attempt.result.candidate.externalModelId,
-            })}
+            {opening
+              ? t('pending.opening')
+              : t('pending.open', {
+                  name:
+                    attempt.result.candidate.name ||
+                    attempt.result.candidate.externalModelId,
+                })}
           </button>
         ))}
     </section>

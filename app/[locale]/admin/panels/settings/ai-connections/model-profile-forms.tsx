@@ -839,9 +839,10 @@ export function ModelForm({
           className="btn-secondary min-h-9 px-3! py-1.5! text-sm"
           disabled={busy}
           onClick={event => void discardAttempt(event.currentTarget)}
+          title={busy ? t('pending.busy') : undefined}
           type="button"
         >
-          {t('pending.discard')}
+          {busy ? t('pending.busy') : t('pending.discard')}
         </button>
       ) : null}
       <DialogActions

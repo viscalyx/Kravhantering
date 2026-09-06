@@ -666,6 +666,10 @@ test.describe('Admin settings', () => {
               close: 'Avbryt',
               discard: 'Kassera verifiering',
               everyone: /alla administratörer/,
+              expired: /Verifieringen har gått ut/,
+              changed:
+                /Modellens eller anslutningens konfiguration har ändrats/,
+              unavailable: /Verifieringen är inte längre tillgänglig/,
               uncertain:
                 'Sparandet kan ha lyckats. Ladda om modellistan och kontrollera om revisionen finns innan du försöker igen.',
             }
@@ -677,6 +681,9 @@ test.describe('Admin settings', () => {
               close: 'Cancel',
               discard: 'Discard verification',
               everyone: /every administrator/,
+              expired: /This verification has expired/,
+              changed: /The model or connection configuration has changed/,
+              unavailable: /The verification is no longer available/,
               uncertain:
                 'Saving may have succeeded. Reload the model list and check whether the revision exists before trying again.',
             }
@@ -760,7 +767,14 @@ test.describe('Admin settings', () => {
                 status: 409,
                 json: {
                   code: 'conflict',
-                  details: { blocker: 'attempt_unavailable' },
+                  details: {
+                    blocker:
+                      saveCount === 3
+                        ? 'attempt_expired'
+                        : saveCount === 4
+                          ? 'attempt_mismatch'
+                          : 'attempt_unavailable',
+                  },
                   error: 'Unavailable',
                 },
               })
@@ -794,6 +808,37 @@ test.describe('Admin settings', () => {
       await expect(dialog.getByRole('alert')).toHaveText(copy.uncertain)
       await dialog.getByRole('button', { name: copy.save }).click()
       await expect(dialog.getByRole('alert')).toHaveText(copy.uncertain)
+      const refreshed = page.waitForResponse(response =>
+        response.url().endsWith(`/api/admin/ai-connections/${connectionId}`),
+      )
+      await dialog
+        .getByRole('button', { name: copy.close, exact: true })
+        .click()
+      await refreshed
+      await expect(
+        page.getByRole('button', { name: copy.open, exact: true }),
+      ).toBeVisible()
+      pending = false
+      await page.getByRole('button', { name: copy.open, exact: true }).click()
+      await expect(page.getByText(copy.unavailable)).toBeVisible()
+      await expect(dialog).toHaveCount(0)
+      pending = true
+      await page.reload()
+      await page
+        .getByRole('button', { name: /Shared verification connection/ })
+        .click()
+      for (const expectedError of [copy.expired, copy.changed]) {
+        await page.getByRole('button', { name: copy.open, exact: true }).click()
+        await dialog.getByRole('button', { name: copy.save }).click()
+        await expect(dialog.getByRole('alert')).toHaveText(expectedError)
+        await expect(
+          dialog.getByRole('button', { name: copy.save }),
+        ).toBeDisabled()
+        await dialog
+          .getByRole('button', { name: copy.close, exact: true })
+          .click()
+      }
+      await page.getByRole('button', { name: copy.open, exact: true }).click()
       await dialog
         .getByRole('button', { name: copy.discard, exact: true })
         .click()
@@ -823,6 +868,7 @@ test.describe('Admin settings', () => {
   for (const viewport of [{ ...DESKTOP_VIEWPORT, name: 'desktop' }] as const) {
     test(`ADMIN-20 (${viewport.name}): Admin verifies a model and controls a stable AI profile`, async ({
       page,
+      browser,
     }) => {
       test.setTimeout(180_000)
       const cleanup = await prepareAdmin20Fixture()
@@ -1078,6 +1124,53 @@ test.describe('Admin settings', () => {
                 .getByRole('button', { name: 'Avbryt', exact: true })
                 .click()
               await expect(dialog).toHaveCount(0)
+              const otherAdmin = await browser.newContext({
+                baseURL: new URL(page.url()).origin,
+                storageState: 'test-results/auth/admin-only.json',
+              })
+              try {
+                const reviewPage = await otherAdmin.newPage()
+                for (const locale of ['sv', 'en']) {
+                  await reviewPage.goto(`/${locale}/admin?tab=settings`)
+                  await reviewPage
+                    .getByRole('button', {
+                      name: new RegExp(administrationName),
+                    })
+                    .click()
+                  await reviewPage
+                    .getByRole('button', {
+                      name: `${locale === 'sv' ? 'Granska' : 'Review'} ${modelName}`,
+                      exact: true,
+                    })
+                    .last()
+                    .click()
+                  const review = reviewPage.getByRole('dialog')
+                  await expect(
+                    review.getByLabel(
+                      locale === 'sv'
+                        ? /^Externt modell-id/
+                        : /^External model ID/,
+                    ),
+                  ).toHaveValue('controlled/model')
+                  await expect(
+                    review.getByText(
+                      locale === 'sv'
+                        ? /Giltig i ytterligare/
+                        : /Valid for another/,
+                    ),
+                  ).toBeVisible()
+                  await expect(
+                    review.getByRole('button', {
+                      name:
+                        locale === 'sv'
+                          ? 'Spara modellrevision'
+                          : 'Save model revision',
+                    }),
+                  ).toBeEnabled()
+                }
+              } finally {
+                await otherAdmin.close()
+              }
               await connectionCard
                 .getByRole('button', {
                   name: `Granska ${modelName}`,

@@ -1017,7 +1017,22 @@ export function createSqlServerAiAdminStore(
 
     async saveModelRevision(input) {
       return db.transaction('SERIALIZABLE', async manager => {
+        if (manager.queryRunner)
+          manager.queryRunner.data.aiModelVerification = true
         const verification = await input.verification(manager)
+        const current = await manager.query<Array<{ id: string }>>(
+          `SELECT [id] FROM [ai_connections] WITH (UPDLOCK, HOLDLOCK)
+           WHERE [id] = @0 AND [configuration_version] = @1 AND [revision_token] = @2`,
+          [
+            input.connectionId,
+            input.connection.configurationVersion,
+            input.connection.revisionToken,
+          ],
+        )
+        if (!current[0])
+          throw conflictError('AI connection changed before model save.', {
+            blocker: 'attempt_mismatch',
+          })
         const value = input.modelRevision
         const verifiedCapabilities = Object.fromEntries(
           Object.entries(verification.capabilities).map(([key, result]) => [
@@ -1101,6 +1116,7 @@ export function createSqlServerAiAdminStore(
           if (!models[0]) {
             throw conflictError(
               'AI connection model changed. Reload and try again.',
+              { blocker: 'attempt_mismatch' },
             )
           }
         }
@@ -1130,14 +1146,7 @@ export function createSqlServerAiAdminStore(
           )
           .digest('hex')
         await manager.query(
-          `DECLARE @configuration_version int;
-           SELECT @configuration_version = [configuration_version]
-           FROM [ai_connections] WITH (UPDLOCK, HOLDLOCK)
-           WHERE [id] = @0
-             AND [configuration_version] = @7
-             AND [revision_token] = @8;
-           IF @configuration_version IS NULL
-             THROW 51230, 'AI connection changed before model save.', 1;
+          `DECLARE @configuration_version int = @7;
            INSERT INTO [ai_connection_verification_evidence] (
              [id], [ai_connection_id], [connection_configuration_version],
              [outcome], [test_suite_version], [adapter_version],
