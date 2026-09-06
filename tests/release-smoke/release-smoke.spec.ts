@@ -148,9 +148,14 @@ test.describe('Release smoke container flow', () => {
 
       if (coreAssembly) {
         expect(requirementsPayload.requirements).toEqual([])
-        await expect(
-          page.getByRole('heading', { name: 'Kravbibliotek', exact: true }),
-        ).toHaveCount(1)
+        const requirementsTable = page.getByRole('table', {
+          name: 'Lista över krav',
+          exact: true,
+        })
+        await expect(requirementsTable).toBeVisible()
+        await expect(requirementsTable.getByRole('status')).toHaveText(
+          'Inga resultat hittades',
+        )
       } else {
         expect(firstRequirement).toBeDefined()
         await expect(page.locator('body')).toContainText(
