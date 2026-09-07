@@ -18,7 +18,18 @@ export function FinancialAmount({
     : t(`measurement.${measurement.state}`)
 }
 
-function ScopeSummary({ scope }: { scope: 'organization' | 'credential' }) {
+interface FinancialSummaryProps {
+  connectionId: string
+  expanded: boolean
+  onToggle(): void
+}
+
+function ScopeSummary({
+  scope,
+  connectionId,
+  expanded,
+  onToggle,
+}: FinancialSummaryProps & { scope: 'organization' | 'credential' }) {
   const t = useTranslations('admin.aiConnections.financial')
   const { status, busy } = useFinancialStatus()
   const result =
@@ -51,12 +62,23 @@ function ScopeSummary({ scope }: { scope: 'organization' | 'credential' }) {
         context: 'AI connection registry',
       })}
     >
-      <p
-        className="mb-1 text-xs font-semibold uppercase tracking-wide text-secondary-500 dark:text-secondary-400"
+      <button
+        aria-controls={`ai-connection-${connectionId}`}
+        aria-expanded={expanded}
+        className="relative z-20 mb-1 block min-h-6 text-left text-xs font-semibold uppercase tracking-wide text-secondary-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 dark:text-secondary-400"
+        onClick={onToggle}
         title={t(`summary.${scope}.help`)}
+        type="button"
+        {...devMarker({
+          name:
+            scope === 'organization'
+              ? 'AI organization credit explanation'
+              : 'AI credential allowance explanation',
+          context: 'AI connection registry',
+        })}
       >
         {t(`summary.${scope}.title`)}
-      </p>
+      </button>
       <div className="flex items-center gap-2">
         <div className="flex min-w-0 items-center gap-1 rounded-full border border-secondary-200 bg-secondary-100 px-2 py-0.5 font-semibold text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
           <Coins aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
@@ -129,11 +151,11 @@ function SummaryRefresh() {
   )
 }
 
-export default function FinancialStatusSummary() {
+export default function FinancialStatusSummary(props: FinancialSummaryProps) {
   return (
     <>
-      <ScopeSummary scope="organization" />
-      <ScopeSummary scope="credential" />
+      <ScopeSummary {...props} scope="organization" />
+      <ScopeSummary {...props} scope="credential" />
     </>
   )
 }

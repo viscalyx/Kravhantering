@@ -383,9 +383,17 @@ describe('AI connections registry', () => {
     expect(row).toHaveTextContent(
       /financial.summary.organization.title.*financial.summary.credential.title.*lifecycle.label.*health.label/u,
     )
-    expect(connectionToggle).toHaveAttribute(
-      'title',
-      'admin.aiConnections.financial.summary.organization.help admin.aiConnections.financial.summary.credential.help',
+    const orgHeading = screen.getByRole('button', {
+      name: 'admin.aiConnections.financial.summary.organization.title',
+    })
+    const keyHeading = screen.getByRole('button', {
+      name: 'admin.aiConnections.financial.summary.credential.title',
+    })
+    expect(orgHeading).toHaveAccessibleDescription(
+      'admin.aiConnections.financial.summary.organization.help',
+    )
+    expect(keyHeading).toHaveAccessibleDescription(
+      'admin.aiConnections.financial.summary.credential.help',
     )
     expect(connectionToggle).toHaveAttribute('aria-expanded', 'false')
     await userEvent.click(
@@ -404,6 +412,10 @@ describe('AI connections registry', () => {
     await userEvent.click(financialToggle)
     expect(financialToggle).toHaveAttribute('aria-expanded', 'true')
     expect(summary).toBeVisible()
+    await userEvent.click(orgHeading)
+    expect(connectionToggle).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(keyHeading)
+    expect(connectionToggle).toHaveAttribute('aria-expanded', 'true')
     expect(apiFetch).toHaveBeenCalledTimes(2)
   })
 

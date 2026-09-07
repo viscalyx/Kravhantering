@@ -685,6 +685,10 @@ export default function AiConnectionsPanel() {
         {connections.map(connection => {
           const detail = details[connection.id]
           const expanded = expandedId === connection.id
+          const toggleExpanded = () =>
+            setExpandedId(current =>
+              current === connection.id ? null : connection.id,
+            )
           const catalog =
             visibleCatalogByConnection[connection.id.toLowerCase()] ?? []
           return (
@@ -704,12 +708,7 @@ export default function AiConnectionsPanel() {
                     aria-controls={`ai-connection-${connection.id}`}
                     aria-expanded={expanded}
                     className="flex min-h-9 w-full items-center gap-2 text-left after:absolute after:inset-0 after:z-10 after:cursor-pointer focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-primary-500"
-                    onClick={() =>
-                      setExpandedId(current =>
-                        current === connection.id ? null : connection.id,
-                      )
-                    }
-                    title={`${t('financial.summary.organization.help')} ${t('financial.summary.credential.help')}`}
+                    onClick={toggleExpanded}
                     type="button"
                   >
                     <span className="inline-flex min-h-9 min-w-9 items-center shrink-0 justify-center rounded-full text-secondary-600 dark:text-secondary-300">
@@ -728,7 +727,11 @@ export default function AiConnectionsPanel() {
                       </span>
                     </span>
                   </button>
-                  <FinancialStatusSummary />
+                  <FinancialStatusSummary
+                    connectionId={connection.id}
+                    expanded={expanded}
+                    onToggle={toggleExpanded}
+                  />
                   <span>
                     <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary-500 dark:text-secondary-400">
                       {t('lifecycle.label')}

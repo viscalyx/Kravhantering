@@ -37,7 +37,11 @@ function FinancialStatusPanel({
       {expanded ? (
         <FinancialDetails connection={connection} />
       ) : (
-        <FinancialStatusSummary />
+        <FinancialStatusSummary
+          connectionId={connection.id}
+          expanded={expanded}
+          onToggle={vi.fn()}
+        />
       )}
     </FinancialStatusProvider>
   )

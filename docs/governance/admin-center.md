@@ -809,7 +809,8 @@ AI-anslutningar under Inställningar visar ”Org. total/kvar” och
 hopfällt och utfällt läge. Organisationens värden visar köpta kontokrediter och
 återstående saldo, eller leverantörens organisationsgräns och återstående
 utrymme. Nyckelns värden visar dess utgiftsgräns och återstående utrymme för
-samma period. En tooltip förklarar betydelsen. Beloppen visas med två decimaler;
+samma period. Varje rubrik har en egen tooltip som förklarar just dess värden.
+Beloppen visas med två decimaler;
 obegränsade och saknade värden anges uttryckligen. Förbrukning visas i detaljerna.
 Uppgifterna hämtas när sidan öppnas. Uppdateringsikonen efter översikten hämtar
 nya värden utan att öppna anslutningen. Klicka på raden för att fälla ut eller

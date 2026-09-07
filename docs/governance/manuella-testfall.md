@@ -2236,9 +2236,10 @@ ett tillfälligt hämtningsfel. Använd endast syntetiska nycklar i fixturen.
    rubrikknappen kan användas med tangentbord och anger om delen är utfälld.
    ”Org. total/kvar” och ”Nyckel total/kvar” finns kvar före Administrativ
    livscykel och Operativ hälsa även när anslutningen och ekonomidelen är
-   utfällda. Kontrollera att tooltipen förklarar organisationens totala
-   krediter och kvarvarande saldo samt nyckelns utgiftsgräns och kvarvarande
-   utrymme. Förbrukningen finns i detaljerna.
+   utfällda. Håll pekaren över respektive rubrik: organisationens tooltip
+   förklarar bara kontokrediter och saldo, och nyckelns tooltip förklarar bara
+   utgiftsgräns och kvarvarande utrymme. Klick på respektive rubrik fäller
+   fortfarande ut eller ihop anslutningen. Förbrukningen finns i detaljerna.
 2. Välj fixturen med delvis stöd och uppdatera ekonomisk status. Kontrollera
    omfattning, belopp, valuta, period, obegränsade och saknade värden samt
    senaste lyckade uppdatering. Saknad management-nyckel döljer inte

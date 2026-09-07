@@ -1839,10 +1839,31 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
   await expect(
     article.getByRole('status', { name: 'Org. total/kvar' }),
   ).toContainText('nyckel saknas')
-  await expect(connectionToggle).toHaveAttribute(
-    'title',
-    /köpta krediter.*utgiftsgräns/u,
+  const orgHeading = article.getByRole('button', {
+    name: 'Org. total/kvar',
+    exact: true,
+  })
+  const keyHeading = article.getByRole('button', {
+    name: 'Nyckel total/kvar',
+    exact: true,
+  })
+  await orgHeading.hover()
+  await expect(orgHeading).toHaveAttribute('title', /^Köpta krediter/u)
+  expect(await orgHeading.getAttribute('title')).not.toContain(
+    'Nyckel total/kvar',
   )
+  await keyHeading.hover()
+  await expect(keyHeading).toHaveAttribute(
+    'title',
+    /^Környckelns konfigurerade utgiftsgräns/u,
+  )
+  expect(await keyHeading.getAttribute('title')).not.toContain(
+    'Org. total/kvar',
+  )
+  await orgHeading.click()
+  await expect(connectionToggle).toHaveAttribute('aria-expanded', 'false')
+  await keyHeading.click()
+  await expect(connectionToggle).toHaveAttribute('aria-expanded', 'true')
   const beforeToggling = financialFetches
   await financialToggle.click()
   await expect(financialToggle).toHaveAttribute('aria-expanded', 'false')
