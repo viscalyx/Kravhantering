@@ -81,6 +81,11 @@ After rollout, confirm that readers without these permissions can read
 published versions and receive access-denied responses for restricted versions.
 Confirm that authorized authors and reviewers retain access.
 <!-- operator-upgrade:source pr-1384 end -->
+
+<!-- operator-upgrade:source pr-1385 start -->
+After upgrade, if real credentials may have entered an approved AI forensic capture, arrange an authorized incident review with the original capture parties. Review evidence only after capture stops or expires and through the protected interface. Revoke or rotate suspected exposed credentials through the incident process. Keep excerpts out of tickets and logs.
+The fix protects future evidence writes. It does not sanitize existing evidence or backup copies. Keep the existing live-evidence and backup retention rules, and run cleanup after a restore before allowing application traffic. Excerpts remain sensitive after masking.
+<!-- operator-upgrade:source pr-1385 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
