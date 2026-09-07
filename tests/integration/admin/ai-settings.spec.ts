@@ -98,7 +98,7 @@ test.describe('Admin settings', () => {
       ).toHaveAttribute('aria-selected', 'true')
 
       const panel = page.locator('#settings-panel')
-      await expect(panel.locator('[aria-busy]')).toHaveAttribute(
+      await expect(panel.locator(':scope > div[aria-busy]')).toHaveAttribute(
         'aria-busy',
         'false',
       )
@@ -760,7 +760,15 @@ test.describe('Admin settings', () => {
         `**/api/admin/ai-connections/${connectionId}/actions`,
         async route => {
           const body = route.request().postDataJSON()
-          if (body.action === 'discard_model_verification') {
+          if (body.action === 'fetch_financial_status') {
+            await route.fulfill({
+              json: {
+                capabilities: { support: 'none', operations: [] },
+                managementCredential: { active: null, candidates: [] },
+                results: [],
+              },
+            })
+          } else if (body.action === 'discard_model_verification') {
             expect(body.attemptId).toBe(attemptId)
             pending = false
             await route.fulfill({ status: 204 })
