@@ -417,10 +417,24 @@ ett krav med publicerad version 1 och ett nyare utkast, version 2. Läs båda
 versionerna som `noah.noroles` via
 `GET /api/requirements/{id}/versions/{version}`. Version 1 kan läsas, medan
 version 2 ger 403 utan kravtext eller acceptanskriterier. Upprepa efter att
-version 2 skickats till granskning. Kravområdesägare, `Admin` och `Reviewer`
-kan läsa version 2 i båda lägena. Publicera sedan version 2 och kontrollera
-att den kan läsas utan ansvarstilldelning, medan den nu arkiverade version 1
-ger 403. Ett saknat versionsnummer på samma krav ger 404.
+version 2 skickats till granskning. Kravområdesägare,
+kravområdesmedförfattare, `Admin` och `Reviewer` kan läsa version 2 i båda
+lägena. Publicera sedan version 2 och kontrollera att den kan läsas utan
+ansvarstilldelning, medan den nu arkiverade version 1 ger 403. Ett saknat
+versionsnummer på samma krav ger 404.
+
+**Versionsval i gränssnittet:** Öppna kravets detaljsida som `noah.noroles`
+och välj `v1 Publicerad` i versionshistoriken. Version 2 saknar versionsknapp.
+En direkt sidlänk till version 2 visar den publicerade version 1 utan
+version 2:s kravtext eller acceptanskriterier. Kontrollera både utkast och
+granskning. Öppna samma krav som kravområdesägare, kravområdesmedförfattare,
+`Admin` och `Reviewer` och välj version 2 i versionshistoriken. Alla fyra kan
+läsa dess kravtext och acceptanskriterier i båda lägena. Publicera version 2,
+öppna kravet som `noah.noroles` och välj `v2 Publicerad`. Version 1 saknar nu
+versionsknapp och dess kravtext visas inte. Direkta sidlänkar till den
+arkiverade version 1 och den saknade version 99 visar den publicerade
+version 2. Välj dess versionsknapp och kontrollera att sidlänken pekar på
+version 2.
 
 ### AUTHZ-02: kravområdesägare
 

@@ -3,12 +3,10 @@ import {
   STATUS_PUBLISHED,
   STATUS_REVIEW,
 } from '@/lib/requirements/status-constants.mjs'
-import type {
-  RequirementDetailResponse,
-  RequirementVersionResponse,
-} from '@/lib/requirements/types'
+import type { RequirementDetailResponse } from '@/lib/requirements/types'
 import { escapeRegExp } from '@/tests/helpers/common'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
+import { resolveIntegrationBaseUrl } from '../base-url'
 import {
   type AuthorizationFixture,
   createAuthorizationFixture,
@@ -281,14 +279,19 @@ test.describe('AUTHZ-01/AUTH-10/AUTH-11: forbidden requirement specification sur
   })
 })
 
-test('AUTHZ-01: explicit version reads enforce current publication status', async ({
-  browserName: _browserName,
+test('AUTHZ-01: version controls enforce current publication status', async ({
+  browser,
 }, testInfo) => {
   referenceManualCases(testInfo, 'AUTHZ-01')
   const admin = await newRoleContext(testInfo, 'admin')
   const reviewer = await newRoleContext(testInfo, 'reviewer')
   const owner = await newRoleContext(testInfo, 'areaOwner')
-  const reader = await newRoleContext(testInfo, 'noRoles')
+  const readerContext = await browser.newContext({
+    baseURL: resolveIntegrationBaseUrl(testInfo),
+    storageState: ROLE_STORAGE_STATE.noRoles,
+    viewport: DESKTOP_VIEWPORT,
+  })
+  const reader = await readerContext.newPage()
   const publishedText = `Published version visibility ${Date.now()}`
   const draftText = `Confidential version visibility ${Date.now()}`
 
@@ -343,25 +346,59 @@ test('AUTHZ-01: explicit version reads enforce current publication status', asyn
           'submit newer version for review',
         )
       }
-      const published = await reader.get(`${path}/versions/1`)
-      await expectOk(published, 'reader published version')
-      expect(await published.json()).toMatchObject({
-        version: { versionNumber: 1, description: publishedText },
+      await test.step(`reader sees only the published version during ${phase}`, async () => {
+        await reader.goto(`/sv/requirements/${requirement.id}`)
+        await reader.getByRole('button', { name: /^v1 Publicerad/ }).click()
+        await expect(reader).toHaveURL(new RegExp(`/${requirement.id}/1$`))
+        await expect(reader.locator('main')).toContainText(publishedText)
+        await expect(reader.getByRole('button', { name: /^v2 / })).toHaveCount(
+          0,
+        )
+        await expect(reader.locator('main')).not.toContainText(draftText)
+        await expect(reader.locator('main')).not.toContainText(
+          'Confidential version criteria',
+        )
+
+        await reader.goto(`/sv/requirements/${requirement.id}/2`)
+        await expect(reader.locator('main')).toContainText(publishedText)
+        await expect(reader.locator('main')).not.toContainText(draftText)
+        await expect(reader.locator('main')).not.toContainText(
+          'Confidential version criteria',
+        )
+        await expect(reader.getByRole('button', { name: /^v2 / })).toHaveCount(
+          0,
+        )
       })
-      const denied = await reader.get(`${path}/versions/2`)
-      await expectStatus(denied, 403, `reader restricted ${phase} version`)
-      const denialBody = await denied.text()
-      expect(denialBody).not.toContain(draftText)
-      expect(denialBody).not.toContain('Confidential version criteria')
-      for (const authorized of [owner, admin, reviewer]) {
-        const allowed = await authorized.get(`${path}/versions/2`)
-        await expectOk(allowed, `authorized ${phase} version`)
-        expect(await allowed.json()).toMatchObject({
-          version: {
-            versionNumber: 2,
-            description: draftText,
-            acceptanceCriteria: 'Confidential version criteria',
-          },
+
+      for (const role of [
+        'areaOwner',
+        'areaCoauthor',
+        'admin',
+        'reviewer',
+      ] as const) {
+        await test.step(`${role} reads the ${phase} version through history`, async () => {
+          const context = await browser.newContext({
+            baseURL: resolveIntegrationBaseUrl(testInfo),
+            storageState: ROLE_STORAGE_STATE[role],
+            viewport: DESKTOP_VIEWPORT,
+          })
+          try {
+            const page = await context.newPage()
+            await page.goto(`/sv/requirements/${requirement.id}/1`)
+            await expect(page.locator('main')).toContainText(publishedText)
+            await page
+              .getByRole('button', {
+                name: phase === 'draft' ? /^v2 Utkast/ : /^v2 Granskning/,
+              })
+              .click()
+            await expect(page).toHaveURL(new RegExp(`/${requirement.id}/2$`))
+            await expect(page.locator('main')).toContainText(draftText)
+            await expect(page.locator('main')).toContainText(
+              'Confidential version criteria',
+            )
+          } finally {
+            await context.close()
+          }
         })
       }
     }
@@ -372,23 +409,38 @@ test('AUTHZ-01: explicit version reads enforce current publication status', asyn
       }),
       'publish successor version',
     )
-    const successor = await reader.get(`${path}/versions/2`)
-    await expectOk(successor, 'reader published successor')
-    expect(
-      (await successor.json()) as RequirementVersionResponse,
-    ).toMatchObject({ version: { versionNumber: 2, description: draftText } })
-    const archived = await reader.get(`${path}/versions/1`)
-    await expectStatus(archived, 403, 'reader archived predecessor')
-    expect(await archived.text()).not.toContain(publishedText)
-    const missing = await reader.get(`${path}/versions/99`)
-    await expectStatus(missing, 404, 'reader missing version')
-    expect(await missing.json()).toMatchObject({ error: expect.any(String) })
+    await test.step('reader sees the published successor without archived content', async () => {
+      await reader.goto(`/sv/requirements/${requirement.id}`)
+      await reader.getByRole('button', { name: /^v2 Publicerad/ }).click()
+      await expect(reader).toHaveURL(new RegExp(`/${requirement.id}/2$`))
+      await expect(reader.locator('main')).toContainText(draftText)
+      await expect(reader.locator('main')).toContainText(
+        'Confidential version criteria',
+      )
+      await expect(reader.getByRole('button', { name: /^v1 / })).toHaveCount(0)
+      await expect(reader.locator('main')).not.toContainText(publishedText)
+    })
+
+    for (const versionNumber of [1, 99]) {
+      await test.step(`version URL ${versionNumber} falls back to the published successor`, async () => {
+        await reader.goto(`/sv/requirements/${requirement.id}/${versionNumber}`)
+        await expect(reader.locator('main')).toContainText(draftText)
+        await expect(reader.locator('main')).not.toContainText(publishedText)
+        await expect(
+          reader.getByRole('button', {
+            name: new RegExp(`^v${versionNumber} `),
+          }),
+        ).toHaveCount(0)
+        await reader.getByRole('button', { name: /^v2 Publicerad/ }).click()
+        await expect(reader).toHaveURL(new RegExp(`/${requirement.id}/2$`))
+      })
+    }
   } finally {
     await Promise.all([
       admin.dispose(),
       reviewer.dispose(),
       owner.dispose(),
-      reader.dispose(),
+      readerContext.close(),
     ])
   }
 })
