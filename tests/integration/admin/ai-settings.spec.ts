@@ -1836,8 +1836,8 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
     await panel
       .getByRole('button', { name: 'Uppdatera ekonomisk status' })
       .click()
-    await expect(panel.getByText('25,50 USD')).toBeVisible()
-    await expect(panel.getByText('25,56 USD')).toBeVisible()
+    await expect(panel.getByText('25,50 USD')).toHaveText('25,50 USD')
+    await expect(panel.getByText('25,56 USD')).toHaveText('25,56 USD')
     await expect(
       panel.getByText('Nyckeln för denna omfattning saknas'),
     ).toBeVisible()
@@ -1909,7 +1909,7 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
     await expect(panel.getByRole('alert')).toContainText(
       'Begäran kunde inte slutföras',
     )
-    await expect(panel.getByText('25,50 USD')).toBeVisible()
+    await expect(panel.getByText('25,50 USD')).toHaveText('25,50 USD')
     await expect(activeCredential).toHaveText(activeBeforeRejection ?? '')
     await expect(
       panel.getByRole('button', { name: 'Verifiera och aktivera' }),
@@ -1946,7 +1946,7 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
     await expect(
       panel.getByText('Senast uppdaterad:', { exact: false }),
     ).toHaveText(originalTime ?? '')
-    await expect(panel.getByText('25,50 USD')).toBeVisible()
+    await expect(panel.getByText('25,50 USD')).toHaveText('25,50 USD')
   })
   await test.step('Remove the management credential without losing runtime information', async () => {
     await panel
@@ -1964,7 +1964,7 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
     await expect(
       panel.getByText('Nyckeln för denna omfattning saknas'),
     ).toBeVisible()
-    await expect(panel.getByText('25,50 USD')).toBeVisible()
+    await expect(panel.getByText('25,50 USD')).toHaveText('25,50 USD')
     if (process.env.NODE_ENV !== 'production') {
       await expect(panel).toHaveAttribute(
         'data-developer-mode-name',
