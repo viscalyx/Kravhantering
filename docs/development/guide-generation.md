@@ -26,6 +26,8 @@ The runner's `test()` and `test.step()` APIs provide orchestration and reporting
 they do not classify this script as an integration test. Generator entry points
 have no `.spec.ts` or `.test.ts` suffix, so Vitest does not collect them. Both
 integration configurations restrict discovery to `tests/integration/`.
+The app container build context excludes `scripts/guide/` alongside the test
+helpers and documentation that it uses.
 
 ## Generate the User Guide
 
