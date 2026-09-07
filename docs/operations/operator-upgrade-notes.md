@@ -65,6 +65,11 @@ Apply the database upgrade and reconcile runtime and cleanup permissions before 
 Completed verifications are shared with all authorized administrators for 15 minutes. Closing a form preserves this work; explicit discard removes it for everyone. Candidates held only in an older application process must be verified again after rollout.
 If a save response is lost, reload the model list and check whether the revision exists before trying again. Candidate snapshots and their save transactions are excluded from SQL query and error-text logging; safe application outcomes and aggregate cleanup telemetry remain available.
 <!-- operator-upgrade:source pr-1368 end -->
+
+<!-- operator-upgrade:source pr-1380 start -->
+Deploy the application, database migration and secret-maintenance tools as one compatible release. Stop older application nodes before administrators add management credentials. Keep a compatible database backup and external keyring for downgrade, and verify restoration with tools from the same release.
+Management credentials are optional and use the existing external keyring. Administrators add them in the connection financial-status panel. Local rotation and removal erase stored management secret material but do not revoke the provider key; administrators must revoke keys at the provider when required. Missing financial data does not affect model availability or execution.
+<!-- operator-upgrade:source pr-1380 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
