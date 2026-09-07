@@ -107,6 +107,7 @@ COPY --chown=node:node scripts/db-sqlserver-admin.mjs ./scripts/db-sqlserver-adm
 COPY --chown=node:node scripts/ai-provider-secret-maintenance.mjs ./scripts/ai-provider-secret-maintenance.mjs
 COPY --chown=node:node scripts/ai-provider-secret-restore-cli.mjs ./scripts/ai-provider-secret-restore-cli.mjs
 COPY --chown=node:node lib/ai/provider-secret-crypto-core.mjs ./lib/ai/provider-secret-crypto-core.mjs
+COPY --chown=node:node lib/ai/provider-secret-keyring-core.mjs ./lib/ai/provider-secret-keyring-core.mjs
 COPY --from=transient-cleanup-build --chown=node:node /workspace/.build/transient-cleanup ./transient-cleanup
 COPY --chown=node:node typeorm/migrations ./typeorm/migrations
 COPY --chown=node:node typeorm/runtime-permission-manifest.mjs ./typeorm/runtime-permission-manifest.mjs
@@ -135,6 +136,7 @@ COPY --chown=node:node scripts/db-sqlserver-admin.mjs ./scripts/db-sqlserver-adm
 COPY --chown=node:node scripts/ai-provider-secret-maintenance.mjs ./scripts/ai-provider-secret-maintenance.mjs
 COPY --chown=node:node scripts/ai-provider-secret-restore-cli.mjs ./scripts/ai-provider-secret-restore-cli.mjs
 COPY --chown=node:node lib/ai/provider-secret-crypto-core.mjs ./lib/ai/provider-secret-crypto-core.mjs
+COPY --chown=node:node lib/ai/provider-secret-keyring-core.mjs ./lib/ai/provider-secret-keyring-core.mjs
 COPY --chown=node:node typeorm/migrations ./typeorm/migrations
 COPY --chown=node:node typeorm/runtime-permission-manifest.mjs ./typeorm/runtime-permission-manifest.mjs
 COPY --chown=node:node typeorm/seed-required.mjs ./typeorm/seed-required.mjs

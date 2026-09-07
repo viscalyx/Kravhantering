@@ -1,4 +1,8 @@
+import { spawnSync } from 'node:child_process'
 import { createCipheriv, randomBytes, randomUUID } from 'node:crypto'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { decryptAiProviderSecret } from '../../lib/ai/provider-secret-crypto.ts'
 import { parseAiProviderSecretKeyring } from '../../lib/ai/provider-secret-keyring.ts'
@@ -65,6 +69,76 @@ function encryptedRow(serialized, rootKeyVersion = 'root-1') {
 }
 
 describe('plain-Node AI provider-secret maintenance', () => {
+  it.each(['db-job', 'demo-seed'])(
+    'verifies retained secrets from the %s packaged layout',
+    stage => {
+      const root = mkdtempSync(join(tmpdir(), 'keyring-package-'))
+      try {
+        // Materialize the stage's repository COPY instructions outside the checkout.
+        // Build-stage dependencies are unnecessary for the standalone maintenance API.
+        const dockerfile = readFileSync('containers/app/Dockerfile', 'utf8')
+        const section = dockerfile
+          .split(new RegExp(`^FROM .+ AS ${stage}$`, 'm'))[1]
+          .split(/^FROM /m)[0]
+        for (const line of section.split('\n')) {
+          if (!line.startsWith('COPY ') || line.includes('--from=')) continue
+          const paths = line
+            .split(/\s+/u)
+            .slice(1)
+            .filter(value => !value.startsWith('--'))
+          const target = paths.pop()
+          for (const source of paths) {
+            const destination = join(
+              root,
+              target.endsWith('/')
+                ? `${target}${source.split('/').at(-1)}`
+                : target,
+            )
+            mkdirSync(dirname(destination), { recursive: true })
+            cpSync(source, destination, { recursive: true })
+          }
+        }
+        const serialized = serializedKeyring()
+        const row = encryptedRow(serialized)
+        const env = { ...process.env }
+        delete env.NODE_OPTIONS
+        delete env.NODE_NO_WARNINGS
+        const result = spawnSync(
+          process.execPath,
+          [
+            '--input-type=module',
+            '-e',
+            `
+        import { readFileSync } from 'node:fs'
+        import { loadAiProviderSecretMaintenanceKeyring, verifyAiProviderSecretRestoreSet } from './scripts/ai-provider-secret-maintenance.mjs'
+        const { serialized, row } = JSON.parse(readFileSync(0, 'utf8'), (_key, value) =>
+          value?.type === 'Buffer' ? Buffer.from(value.data) : value)
+        const ring = loadAiProviderSecretMaintenanceKeyring({ AI_PROVIDER_SECRET_KEYRING_FILE: 'fixture' }, () => serialized)
+        const report = await verifyAiProviderSecretRestoreSet({ query: async () => [row] }, ring)
+        const omitted = await verifyAiProviderSecretRestoreSet({ query: async () => [row] }, ring, { omitRootKeyVersion: 'root-1' })
+        console.log(JSON.stringify({ report, omitted }))
+      `,
+          ],
+          {
+            cwd: root,
+            env,
+            input: JSON.stringify({ serialized, row }),
+            encoding: 'utf8',
+          },
+        )
+        expect(result.status, result.stderr).toBe(0)
+        expect(result.stderr).toBe('')
+        expect(JSON.parse(result.stdout)).toMatchObject({
+          report: { checkedSecretVersionCount: 1, compatible: true },
+          omitted: { compatible: false, failedSecretVersionCount: 1 },
+        })
+        expect(result.stdout).not.toContain('maintenance-secret')
+      } finally {
+        rmSync(root, { recursive: true, force: true })
+      }
+    },
+  )
+
   it('loads only a complete external keyring and returns copied key bytes', () => {
     const serialized = serializedKeyring()
     const loaded = keyring(serialized)
@@ -88,7 +162,7 @@ describe('plain-Node AI provider-secret maintenance', () => {
     ).toThrow('file is unavailable')
     expect(() => keyring('{')).toThrow('not valid JSON')
     expect(() => keyring(JSON.stringify({ formatVersion: 2 }))).toThrow(
-      'is invalid',
+      'format version must be 1',
     )
     expect(() =>
       keyring(
@@ -98,7 +172,7 @@ describe('plain-Node AI provider-secret maintenance', () => {
           keys: { 'root-1': 'bad' },
         }),
       ),
-    ).toThrow('invalid key')
+    ).toThrow('not valid base64')
     expect(() =>
       keyring(
         JSON.stringify({
@@ -107,52 +181,8 @@ describe('plain-Node AI provider-secret maintenance', () => {
           keys: { 'root-1': randomBytes(32).toString('base64') },
         }),
       ),
-    ).toThrow('active root key is unavailable')
+    ).toThrow('active write version root-missing is unavailable')
   })
-
-  it.each([
-    ['canonical', randomBytes(32).toString('base64'), true],
-    ['empty', '', false],
-    ['ignored punctuation', `${randomBytes(32).toString('base64')}!`, false],
-    [
-      'embedded whitespace',
-      `${randomBytes(16).toString('base64')}\n${randomBytes(16).toString('base64')}`,
-      false,
-    ],
-    [
-      'missing padding',
-      randomBytes(32).toString('base64').replace(/=$/u, ''),
-      false,
-    ],
-    ['wrong decoded size', randomBytes(31).toString('base64'), false],
-  ])(
-    'matches runtime keyring acceptance for %s base64',
-    (_label, encoded, accepted) => {
-      const serialized = JSON.stringify({
-        activeWriteVersion: 'root-1',
-        formatVersion: 1,
-        keys: { 'root-1': encoded },
-      })
-      const runtimeAccepted = (() => {
-        try {
-          parseAiProviderSecretKeyring(serialized)
-          return true
-        } catch {
-          return false
-        }
-      })()
-      const maintenanceAccepted = (() => {
-        try {
-          keyring(serialized)
-          return true
-        } catch {
-          return false
-        }
-      })()
-      expect(runtimeAccepted).toBe(accepted)
-      expect(maintenanceAccepted).toBe(runtimeAccepted)
-    },
-  )
 
   it('authenticates retained rows and proves an omitted root is unavailable', async () => {
     const serialized = serializedKeyring()
@@ -285,6 +315,40 @@ describe('plain-Node AI provider-secret maintenance', () => {
     expect(JSON.stringify(report).length).toBeLessThan(10_000)
     expect(db.query).toHaveBeenCalledTimes(3)
     expect(String(db.query.mock.calls[0][0])).toContain('TOP (10)')
+  })
+
+  it('bounds restore input and root-version evidence across complete batches', async () => {
+    const ring = keyring(serializedKeyring())
+    const db = { query: vi.fn(async () => []) }
+    for (const batchSize of [0, 1_001, 1.5]) {
+      await expect(
+        verifyAiProviderSecretRestoreSet(db, ring, { batchSize }),
+      ).rejects.toThrow('batch size must be 1-1000')
+    }
+    expect(db.query).not.toHaveBeenCalled()
+    await expect(
+      verifyAiProviderSecretRestoreSet(db, ring),
+    ).resolves.toMatchObject({
+      checkedSecretVersionCount: 0,
+      compatible: true,
+      referencedRootKeyVersions: [],
+    })
+    const row = encryptedRow(serializedKeyring())
+    const rows = Array.from({ length: 101 }, (_, index) => ({
+      ...row,
+      rootKeyVersion: `missing-${index}`,
+    }))
+    rows.push(rows[0])
+    const paged = {
+      query: vi.fn().mockResolvedValueOnce(rows).mockResolvedValueOnce([]),
+    }
+    const report = await verifyAiProviderSecretRestoreSet(paged, ring, {
+      batchSize: 102,
+    })
+    expect(report.referencedRootKeyVersions).toHaveLength(100)
+    expect(report.referencedRootKeyVersionsTruncated).toBe(true)
+    expect(report.failedSecretVersionCount).toBe(102)
+    expect(report.failureSample).toHaveLength(20)
   })
 
   it('validates bounded rotation arguments and rotates one fenced batch', async () => {

@@ -49,7 +49,9 @@ stores encrypted provider-secret revisions.
 
 Both devcontainer profiles provision the ignored, external AI provider-secret
 root keyring at `.local/ai-provider-secret-keyring.json` during container
-creation. The helper is idempotent: rebuilding or reopening a container never
+creation, before dependency installation. The helper uses the explicit ESM
+keyring parser shared with application and maintenance code and needs only
+Node.js. The helper is idempotent: rebuilding or reopening a container never
 prints or overwrites an existing keyring. It validates the owner, private file
 and directory modes, readability, and keyring format before accepting it. The
 Azure development host bootstrap performs the same step on its persistent

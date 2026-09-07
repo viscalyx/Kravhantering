@@ -5,7 +5,7 @@ import { constants } from 'node:fs'
 import { link, lstat, mkdir, open, unlink } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { parseAiProviderSecretKeyring } from '../lib/ai/provider-secret-keyring.ts'
+import { parseAiProviderSecretKeyring } from '../lib/ai/provider-secret-keyring-core.mjs'
 
 const KEYRING_ENV = 'AI_PROVIDER_SECRET_KEYRING_FILE'
 const LOCAL_ROOT_KEY_VERSION = 'local-1'

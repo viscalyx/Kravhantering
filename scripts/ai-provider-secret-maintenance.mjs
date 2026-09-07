@@ -5,69 +5,21 @@ import {
   buildAiProviderSecretAadCore,
   validateAiProviderSecretEnvelope,
 } from '../lib/ai/provider-secret-crypto-core.mjs'
+import { parseAiProviderSecretKeyring } from '../lib/ai/provider-secret-keyring-core.mjs'
 
 const AUTHENTICATION_TAG_BYTES = 16
 const NONCE_BYTES = 12
-const ROOT_KEY_BYTES = 32
 const DEFAULT_RESTORE_BATCH_SIZE = 100
 const FAILURE_SAMPLE_LIMIT = 20
 const ROOT_VERSION_SAMPLE_LIMIT = 100
 const VERSION_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/u
-const BASE64_PATTERN =
-  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u
 
+/** @returns {never} */
 function fail(message) {
   throw new Error(message)
 }
 
-function parseKeyring(serialized) {
-  let document
-  try {
-    document = JSON.parse(serialized)
-  } catch {
-    return fail('AI provider-secret keyring is not valid JSON.')
-  }
-  if (
-    document?.formatVersion !== 1 ||
-    !VERSION_PATTERN.test(document.activeWriteVersion ?? '') ||
-    !document.keys ||
-    typeof document.keys !== 'object' ||
-    Array.isArray(document.keys)
-  ) {
-    return fail('AI provider-secret keyring is invalid.')
-  }
-  const keys = new Map()
-  for (const [version, encoded] of Object.entries(document.keys)) {
-    if (
-      !VERSION_PATTERN.test(version) ||
-      typeof encoded !== 'string' ||
-      encoded.length === 0 ||
-      !BASE64_PATTERN.test(encoded)
-    ) {
-      return fail('AI provider-secret keyring contains an invalid key.')
-    }
-    const key = Buffer.from(encoded, 'base64')
-    if (key.byteLength !== ROOT_KEY_BYTES) {
-      return fail('AI provider-secret keyring contains an invalid key.')
-    }
-    keys.set(version, key)
-  }
-  if (keys.size === 0) {
-    return fail('AI provider-secret keyring is invalid.')
-  }
-  if (!keys.has(document.activeWriteVersion)) {
-    return fail('AI provider-secret active root key is unavailable.')
-  }
-  return {
-    activeWriteVersion: document.activeWriteVersion,
-    keyForVersion(version) {
-      const key = keys.get(version)
-      if (!key) return fail('AI provider-secret root key is unavailable.')
-      return Buffer.from(key)
-    },
-  }
-}
-
+/** @param {Readonly<Record<string, string | undefined>>} [env] */
 export function loadAiProviderSecretMaintenanceKeyring(
   env = process.env,
   readFile = path => readFileSync(path, 'utf8'),
@@ -80,7 +32,7 @@ export function loadAiProviderSecretMaintenanceKeyring(
   } catch {
     return fail('AI provider-secret keyring file is unavailable.')
   }
-  return parseKeyring(serialized)
+  return parseAiProviderSecretKeyring(serialized)
 }
 
 function binding(row) {

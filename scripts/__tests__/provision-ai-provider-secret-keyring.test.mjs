@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import {
   chmod,
   mkdtemp,
@@ -35,6 +36,35 @@ async function temporaryKeyringPath() {
 }
 
 describe('local AI provider-secret keyring provisioning', () => {
+  it('runs the real Node CLI with visible warnings for creation and validation', async () => {
+    const path = await temporaryKeyringPath()
+    const env = { ...process.env }
+    delete env.NODE_OPTIONS
+    delete env.NODE_NO_WARNINGS
+    let original
+    for (const action of [
+      'Created local',
+      'Local AI provider-secret keyring already exists',
+    ]) {
+      const result = spawnSync(
+        process.execPath,
+        ['scripts/provision-ai-provider-secret-keyring.mjs', '--path', path],
+        { env, encoding: 'utf8' },
+      )
+      expect(result.status, result.stderr).toBe(0)
+      expect(result.stderr).toBe('')
+      expect(result.stdout).toContain(action)
+      const serialized = await readFile(path, 'utf8')
+      const ring = parseAiProviderSecretKeyring(serialized)
+      expect(ring.keyForVersion(ring.activeWriteVersion)).toHaveLength(32)
+      for (const encoded of Object.values(JSON.parse(serialized).keys)) {
+        expect(result.stdout + result.stderr).not.toContain(encoded)
+      }
+      if (original) expect(serialized).toBe(original)
+      original = serialized
+    }
+  })
+
   it('creates a unique, loadable 256-bit keyring with private permissions', async () => {
     const path = await temporaryKeyringPath()
 

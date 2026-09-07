@@ -99,10 +99,18 @@ node scripts/provision-ai-provider-secret-keyring.mjs
 
 The helper atomically creates the ignored
 `.local/ai-provider-secret-keyring.json` with private permissions. Repeated or
-concurrent runs leave an existing file byte-for-byte unchanged and never read
-or print its key material. Use `--path <file>` only when testing an alternate
+concurrent runs validate an existing file, leave it byte-for-byte unchanged,
+and never print its key material. Use `--path <file>` only when testing an alternate
 local path. This helper is for local provisioning, not production key
 generation or distribution.
+
+Provisioning, application runtime, and maintenance share the dependency-free
+ESM parser in `lib/ai/provider-secret-keyring-core.mjs`. Its adjacent
+`.d.mts` declaration preserves the application types and typed errors. Local
+provisioning needs no TypeScript loader, package installation, or application
+build. The `db-job` and `demo-seed` images include the shared keyring and crypto
+modules; release deployment archives invoke maintenance through these images.
+Keep both modules alongside maintenance code when preparing a custom package.
 
 ## Provider-Secret Lifecycle
 
