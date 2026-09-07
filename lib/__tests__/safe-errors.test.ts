@@ -11,6 +11,32 @@ import {
 } from '@/lib/http/safe-errors'
 
 describe('safe error helpers', () => {
+  it.each([
+    ['sk-or-mgmt-syntheticCredential_-', '[OPENROUTER_KEY_REDACTED]'],
+    ['"sk-or-v1-syntheticCredential"', '"[OPENROUTER_KEY_REDACTED]"'],
+    ['"eyJhbGciOi.header.signature_-"', '"[JWT_REDACTED]"'],
+    ['Bearer syntheticCredential+/=', 'Bearer [REDACTED]'],
+  ])(
+    'masks bare and quoted credentials through the error interface: %s',
+    (text, expected) => {
+      expect(redactSensitiveText(text)).toBe(expected)
+    },
+  )
+
+  it.each([
+    'password="synthetic secret with spaces"',
+    "'client secret': 'synthetic secret with spaces'",
+    '"api key": "synthetic secret with spaces"',
+    'code_verifier="synthetic secret with spaces"',
+    'password="synthetic \\"quoted\\" secret with spaces"',
+    'password="synthetic secret with spaces',
+    'password=synthetic;credential',
+  ])('masks complete quoted assignments: %s', text => {
+    const redacted = redactSensitiveText(text)
+    expect(redacted).toContain('[REDACTED]')
+    expect(redacted).not.toMatch(/synthetic|with spaces|credential/)
+  })
+
   it('accepts only explicit, bounded safe messages from Error instances', () => {
     const safeError = Object.assign(new Error('internal detail'), {
       safeMessage: '  Safe explanation  ',

@@ -361,8 +361,15 @@ When an AI safety block happens, metadata is always written to
 `security-audit`. During an approved matching window, redacted and strictly
 bounded evidence is additionally persisted in
 `ai_forensic_evidence_events`. The evidence never uses stdout or ordinary
-logs. Secret-shaped values and direct HSA-id, email, and IP identifiers are
-replaced before persistence; per-event and whole-window limits fail closed.
+logs. Shared credential recognition masks bare OpenRouter regular and
+management keys, JWT-shaped values, Bearer credentials, and labeled secrets,
+including quoted assignments with spaces. Masking happens before selecting or
+truncating trigger-centered excerpts. Direct HSA-id, email, and IPv4 identifiers
+are also replaced; per-event and whole-window limits fail closed. Excerpts
+remain sensitive after masking; this is not complete secret detection or
+anonymization. See the
+[authorized review procedure](../operations/ai-forensic-evidence.md)
+if existing captures may contain credentials.
 Scheduled cleanup records metadata-only expiry and purges evidence 72 hours
 after stop or expiry.
 

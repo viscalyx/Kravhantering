@@ -1,4 +1,10 @@
 import { HSA_ID_PATTERN_SOURCE } from '@/lib/auth/hsa-id'
+import {
+  BEARER_TOKEN_PATTERN,
+  JWT_PATTERN,
+  OPENROUTER_KEY_PATTERN,
+  SECRET_ASSIGNMENT_PATTERN,
+} from '@/lib/credential-patterns'
 
 export const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error'
 export const AI_PROVIDER_UNAVAILABLE_MESSAGE = 'AI provider is unavailable'
@@ -13,15 +19,10 @@ interface SafeErrorLogValue {
   stack?: string
 }
 
-const OPENROUTER_KEY_PATTERN = /\bsk-or-(?:v1|mgmt)-[A-Za-z0-9_-]+\b/g
-const BEARER_TOKEN_PATTERN = /\bBearer\s+[A-Za-z0-9._~+/=-]+\b/gi
-const JWT_PATTERN = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g
 const HSA_ID_PATTERN = new RegExp(
   `(?<![A-Za-z0-9])${HSA_ID_PATTERN_SOURCE}(?![A-Za-z0-9])`,
   'gu',
 )
-const SECRET_ASSIGNMENT_PATTERN =
-  /\b([A-Za-z0-9_.-]*(?:api[_-]?key|authorization[_-]?code|code[_-]?verifier|nonce|password|secret|state|token)[A-Za-z0-9_.-]*)\s*[:=]\s*["']?[^"',\s}]+/gi
 
 const SQL_FRAGMENT_PATTERNS: readonly RegExp[] = [
   /\bSELECT\b\s+[\s\S]{0,500}?\bFROM\b\s+[\w.[\]"`-]+/gi,
@@ -33,7 +34,7 @@ const SQL_FRAGMENT_PATTERNS: readonly RegExp[] = [
 
 export function redactSensitiveText(value: string): string {
   let redacted = value
-    .replace(BEARER_TOKEN_PATTERN, 'Bearer [REDACTED]')
+    .replace(BEARER_TOKEN_PATTERN, '$1Bearer [REDACTED]')
     .replace(OPENROUTER_KEY_PATTERN, '[OPENROUTER_KEY_REDACTED]')
     .replace(JWT_PATTERN, '[JWT_REDACTED]')
     .replace(HSA_ID_PATTERN, '[HSA_ID_REDACTED]')
