@@ -1,4 +1,4 @@
-import { DESKTOP_VIEWPORT } from '../helpers/desktop-viewport'
+import { DESKTOP_VIEWPORT } from '../../tests/helpers/desktop-viewport'
 /**
  * Kravhantering — automatisk guidegenerering
  *
@@ -518,7 +518,7 @@ async function ensureAiGuideRequirementArea(
     return existing
   }
 
-  const verifyResponse = await browserJsonMutation<unknown>(
+  const verifyResponse = await browserJsonMutation<{ evidence: string }>(
     page,
     '/api/requirement-responsibility-people/verify',
     {
@@ -527,7 +527,7 @@ async function ensureAiGuideRequirementArea(
       purpose: 'requirement_area_owner',
     },
   )
-  if (!verifyResponse.ok) {
+  if (!verifyResponse.ok || !verifyResponse.body?.evidence) {
     throw new Error(
       `Could not verify guide requirement area owner: HTTP ${verifyResponse.status} ${verifyResponse.text.slice(0, 300)}`,
     )
@@ -541,6 +541,7 @@ async function ensureAiGuideRequirementArea(
       name: AI_GUIDE_AREA_NAME,
       ownerHsaId: AI_GUIDE_AREA_OWNER_HSA_ID,
       prefix: AI_GUIDE_AREA_PREFIX,
+      verificationEvidence: verifyResponse.body.evidence,
     },
   )
   if (!createResponse.ok) {

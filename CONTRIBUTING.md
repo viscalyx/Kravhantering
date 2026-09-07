@@ -134,6 +134,8 @@ tests/            Unit and integration tests
   [contributor guide](docs/integrations/mcp-server-contributor-guide.md).
 - Report generation implementation:
   [report generation workflow](docs/development/report-generation-developer-workflow.md).
+- User-guide generation:
+  [guide generation workflow](docs/development/guide-generation.md).
 - AI-assisted authoring architecture, local setup, and adapter test policy:
   [AI-assisted authoring workflow](docs/development/ai-assisted-authoring-developer-workflow.md).
 - AI-assisted authoring behavioral contracts:

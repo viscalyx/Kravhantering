@@ -1,20 +1,22 @@
 ---
 name: update-guide-spec
 description: >-
-  Update the Playwright user-guide generator spec. Use when a user asks to add
+  Update the Playwright user-guide generator script. Use when a user asks to add
   or modify generated guide steps, screenshots, selectors, or scenarios.
 ---
 
 ## Updating the Guide Generator
 
-`tests/guide/generate-guide.spec.ts` is a single serial Playwright test that clicks
-through the app, takes screenshots, and writes `docs/user-guide/README.md`.
+Edit `scripts/guide/generate-guide.ts`, a one-shot script using Playwright Test
+to click through the app, take screenshots, and write `docs/user-guide/README.md`.
 Run with `npm run generate:guide`.
+Follow the naming and discovery convention in
+[guide generation workflow](../../../docs/development/guide-generation.md).
 
 ### Selectors — prefer stable locators
 
 - **Buttons with aria-label**: always use `aria-label` on interactive buttons so
-  the guide spec (and other tests) can target them reliably with
+  the guide script and integration tests can target them reliably with
   `page.getByLabel(...)` or `button[aria-label="..."]`.
   - Filter buttons already use `aria-label={tc('filterBy', { label })}`.
   - **Sort buttons** were missing `aria-label` — that was added as

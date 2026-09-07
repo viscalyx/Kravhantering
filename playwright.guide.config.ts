@@ -26,7 +26,8 @@ const desktopChromium = {
  * Run `npm run db:setup` to reset the database to seed state afterwards if needed.
  */
 export default defineConfig({
-  testDir: './tests/guide',
+  testDir: './scripts/guide',
+  testMatch: '**/generate-guide.ts',
   outputDir: 'test-results/guide',
   globalSetup: './tests/integration/global-setup.ts',
   // The guide is a single long-running script — allow 10 minutes

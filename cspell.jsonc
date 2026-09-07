@@ -1709,7 +1709,7 @@
       "enabled": false
     },
     {
-      "filename": "tests/guide/generate-guide.spec.ts",
+      "filename": "scripts/guide/generate-guide.ts",
       "words": [
         "förväljs",
         "annot",

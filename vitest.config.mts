@@ -18,7 +18,7 @@ export default defineConfig({
     // Test file patterns (equivalent to Jest's testMatch)
     include: ['**/*.{spec,test}.{ts,tsx,js,jsx,mjs}'],
 
-    // Exclude Playwright integration/release-smoke tests, guide tests, HSA
+    // Exclude Playwright integration/release-smoke tests, HSA
     // node:test contract suites, local worktrees, node_modules, and .git.
     exclude: [
       'containers/hsa-directory-mock/test/**',
@@ -26,7 +26,6 @@ export default defineConfig({
       'containers/hsa-person-lookup-adapter/test/**',
       '**/tests/integration/**',
       '**/tests/sql-integration/**',
-      '**/tests/guide/**',
       '**/tests/release-smoke/**',
       '**/.worktrees/**',
       '**/node_modules/**',
