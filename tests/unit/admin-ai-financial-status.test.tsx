@@ -421,7 +421,7 @@ describe('AI connection financial details', () => {
     expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'false')
     expect(
       container.querySelector(
-        '[data-developer-mode-name="AI provider financial status"]',
+        '[data-developer-mode-name="AI organization and connection finances"]',
       ),
     ).toBeInTheDocument()
   })

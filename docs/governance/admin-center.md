@@ -815,7 +815,8 @@ obegränsade och saknade värden anges uttryckligen. Förbrukning visas i detalj
 Uppgifterna hämtas när sidan öppnas. Uppdateringsikonen efter översikten hämtar
 nya värden utan att öppna anslutningen. Klicka på raden för att fälla ut eller
 ihop anslutningen; pilen finns före namnet. Öppna anslutningen och klicka på
-”Leverantörens krediter och användning” för att visa belopp, utgiftsgränser och
+”Organisationens och anslutningens krediter och användning” för att visa
+belopp, utgiftsgränser och
 management-nyckeln. Detaljerna är först hopfällda. Uppdatera hämtar nya värden
 för varje omfattning; att fälla ut eller ihop vyerna gör ingen ny hämtning.
 Kontovärden kan omfatta flera nycklar och anslutningar. Summera inte rapporter

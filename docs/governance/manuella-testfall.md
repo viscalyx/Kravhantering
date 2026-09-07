@@ -2230,7 +2230,8 @@ ett tillfälligt hämtningsfel. Använd endast syntetiska nycklar i fixturen.
    översikten och kontrollera att anslutningen förblir hopfälld. Klicka på
    radens livscykelstatus för att öppna anslutningen. Hela raden kan växla
    anslutningens läge utom uppdateringsikonen. Öppna
-   anslutningen: endast rubriken ”Leverantörens krediter och användning” visas
+   anslutningen: endast rubriken ”Organisationens och anslutningens krediter
+   och användning” visas
    för ekonomidelen. Aktivera rubriken för att visa detaljerna. Utan ekonomiskt
    stöd visas en förklaring utan begäran om management-nyckel. Kontrollera att
    rubrikknappen kan användas med tangentbord och anger om delen är utfälld.

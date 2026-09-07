@@ -2446,7 +2446,7 @@
         "unavailable": "Verifieringen är inte längre tillgänglig. Ladda om modellistan och kontrollera om den redan har sparats."
       },
       "financial": {
-        "title": "Leverantörens krediter och användning",
+        "title": "Organisationens och anslutningens krediter och användning",
         "refresh": "Uppdatera ekonomisk status",
         "loading": "Hämtar ekonomisk status…",
         "summary": {

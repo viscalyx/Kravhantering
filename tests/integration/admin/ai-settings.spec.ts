@@ -1792,10 +1792,10 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
   await expect(summary).toHaveAttribute('aria-busy', 'false')
   await expect(connectionToggle).toHaveAttribute('aria-expanded', 'true')
   const panel = page.getByRole('region', {
-    name: 'Leverantörens krediter och användning',
+    name: 'Organisationens och anslutningens krediter och användning',
   })
   const financialToggle = panel.getByRole('button', {
-    name: 'Leverantörens krediter och användning',
+    name: 'Organisationens och anslutningens krediter och användning',
   })
   await expect(financialToggle).toHaveAttribute('aria-expanded', 'false')
   await expect(
@@ -1937,7 +1937,7 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
   if (process.env.NODE_ENV !== 'production') {
     await expect(panel).toHaveAttribute(
       'data-developer-mode-name',
-      'AI provider financial status',
+      'AI organization and connection finances',
     )
   }
 })

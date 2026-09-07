@@ -52,7 +52,7 @@ export default function FinancialStatusPanel({
       aria-labelledby={`ai-financial-${connection.id}`}
       className="space-y-4 rounded-2xl border border-secondary-200 p-4 text-secondary-950 dark:border-secondary-700 dark:text-secondary-50"
       {...devMarker({
-        name: 'AI provider financial status',
+        name: 'AI organization and connection finances',
         context: 'AI connection details',
       })}
     >
@@ -120,7 +120,7 @@ export default function FinancialStatusPanel({
                   key={result.operation.id}
                   {...devMarker({
                     name: 'AI financial scope values',
-                    context: 'AI provider financial status',
+                    context: 'AI organization and connection finances',
                   })}
                 >
                   <h6 className="font-semibold">

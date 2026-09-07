@@ -2446,7 +2446,7 @@
         "unavailable": "The verification is no longer available. Reload the model list and check whether it has already been saved."
       },
       "financial": {
-        "title": "Provider credits and usage",
+        "title": "Organization and connection credits and usage",
         "refresh": "Refresh financial status",
         "loading": "Fetching financial status…",
         "summary": {
