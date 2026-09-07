@@ -1,7 +1,7 @@
 <!-- AUTO-GENERERAD — redigera inte manuellt. Kör: npm run generate:guide -->
 # Kravhantering — Användarguide
 
-> Guiden genererades automatiskt av Playwright 2026-07-26.
+> Guiden genererades automatiskt av Playwright 2026-09-07.
 > Alla skärmdumpar visar det svenska gränssnittet.
 
 ## Innehållsförteckning
@@ -399,8 +399,7 @@ behörighetsstyrning, spårbar ändringshistorik, tydlig återkoppling till lär
 och skydd av elevuppgifter. Skapa både funktionella och icke-funktionella
 krav.", och välj kravområdet **Betygshantering**. Anslutning, modell,
 förmågepolicy och datapolicy kan inte väljas i dialogen. Guiden mockar AI-svaret
-men använder applikationens riktiga
-importförhandsgranskning.
+men använder applikationens riktiga importförhandsgranskning.
 
 ![AI-assisterat författande — behov och AI-anslutning](images/036-ai-oppna.png)
 
@@ -652,10 +651,9 @@ Ett färdigt, sparbart resultat finns under **Väntande verifieringar** på
 anslutningen även när du stänger formuläret. En annan behörig administratör kan
 öppna det och spara modellrevisionen. Panelen visar resultat och återstående
 giltighetstid direkt; öppning förlänger inte tiden. När tiden går ut spärras
-sparandet och slutsammanfattningen visar att ny verifiering krävs.
-**Kassera verifiering** kräver bekräftelse och tar bort försöket för alla
-administratörer. Tekniska redigeringar i formuläret bevarar det delade
-originalförsöket.
+sparandet och slutsammanfattningen visar att ny verifiering krävs. **Kassera
+verifiering** kräver bekräftelse och tar bort försöket för alla administratörer.
+Tekniska redigeringar i formuläret bevarar det delade originalförsöket.
 
 Namn och beskrivning kan ändras utan ny verifiering. Ändrat tekniskt modell-id,
 extern modellversion eller resonemangsnivå återställer startstatusarna och

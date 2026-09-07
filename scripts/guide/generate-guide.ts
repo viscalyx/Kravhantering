@@ -1969,7 +1969,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
     // ── Sektion 7: Import av krav ─────────────────────────────────────────
     currentSection = 'Import av krav'
     setSectionIntro(
-      'Importfunktionen använder JSON enligt `requirement-import.v4`. **AI-assisterat författande** använder samma importkontrakt och samma redigerbara importgranskning som manuell JSON-import. **Kravbiblioteksimport** skapar nya utkast i kravbiblioteket, medan **kravunderlagsimport** skapar unika krav direkt i ett kravunderlag. Importen laddar först en granskning där rader, metadata, föreslagna normreferenser och föreslagna behovsreferenser kan kontrolleras innan något sparas.',
+      'Importfunktionen använder JSON enligt `requirement-import.v4`. **AI-assisterat författande** använder samma importkontrakt och samma redigerbara importgranskning som manuell JSON-import. **Kravbiblioteksimport** skapar nya utkast i kravbiblioteket, medan **kravunderlagsimport** skapar unika krav direkt i ett kravunderlag. Importen laddar först en granskning där rader, metadata, föreslagna normreferenser och föreslagna behovsreferenser kan kontrolleras innan något sparas.\n\nImportfiler får innehålla högst 8 MiB importdata. Aktuella gränser för antal krav, referensförslag, underposter och JSON-djup visas i det nedladdningsbara schemat och kan sänkas av en administratör.',
     )
 
     let cleanupAiMocks: (() => Promise<void>) | null = null
@@ -2621,6 +2621,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
     // ── Sektion 9: Administrationscenter ─────────────────────────────────
     currentSection = 'Administrationscenter'
+    setSectionIntro(
+      '### Admin — Modellverifiering\n\nÖppna **Inställningar > AI** och välj **Lägg till modell** på en AI-anslutning. Panelen **Modellverifiering** visar grundkontroller, förmågor och kompatibilitet med alla tre körprofiler redan från start. På bred skärm ligger panelen till höger om fälten; på smal skärm ligger den under dem.\n\nAnge modelluppgifterna och välj **Verifiera** med Play-ikon i panelens rubrikrad. Raderna uppdateras på plats med **Väntar**, **Verifierar** och kontrollens utfall. Körprofiler börjar med **Okänd kompatibilitet** och visar **Kompatibel**, **Inte kompatibel** eller **Kunde inte avgöras** först när ett resultat finns. En ej kontrollerad profil förblir okänd. Felorsaker, tekniska koder och saknade förmågor visas vid respektive rad. Kompatibiliteten gäller modellens användning med profilen och är separat från profilens huvudstatus.\n\n**Avbryt verifiering** med Square-ikon stoppar körningen. Vid avbrott eller anslutningsfel bevaras slutförda kontroller, men modellrevisionen kan inte sparas. Välj **Verifiera igen** för ett nytt försök. Slutsammanfattningen anger om resultatet är sparbart. Välj sedan **Spara modellrevision** bredvid **Avbryt** under formuläret; verifieringen sparar inte automatiskt.\n\nEtt färdigt, sparbart resultat finns under **Väntande verifieringar** på anslutningen även när du stänger formuläret. En annan behörig administratör kan öppna det och spara modellrevisionen. Panelen visar resultat och återstående giltighetstid direkt; öppning förlänger inte tiden. När tiden går ut spärras sparandet och slutsammanfattningen visar att ny verifiering krävs. **Kassera verifiering** kräver bekräftelse och tar bort försöket för alla administratörer. Tekniska redigeringar i formuläret bevarar det delade originalförsöket.\n\nNamn och beskrivning kan ändras utan ny verifiering. Ändrat tekniskt modell-id, extern modellversion eller resonemangsnivå återställer startstatusarna och kräver ny verifiering. Panelen finns kvar hela tiden.',
+    )
 
     await guideStep(page, 'Admin — Kolumner', async () => {
       await guideGoto(page, '/sv/admin', {
