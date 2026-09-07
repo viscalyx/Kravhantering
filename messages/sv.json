@@ -2444,6 +2444,61 @@
         "discardConfirm": "Kassera verifieringen? Det väntande arbetet tas bort för alla administratörer.",
         "saveUncertain": "Sparandet kan ha lyckats. Ladda om modellistan och kontrollera om revisionen finns innan du försöker igen.",
         "unavailable": "Verifieringen är inte längre tillgänglig. Ladda om modellistan och kontrollera om den redan har sparats."
+      },
+      "financial": {
+        "title": "Leverantörens krediter och användning",
+        "refresh": "Uppdatera ekonomisk status",
+        "loading": "Hämtar ekonomisk status…",
+        "providerReported": "Leverantörsrapporterad information, inte intern bokföring. Värdena styr inte modellkörning och får inte ensamma ligga till grund för kostnadskontroll. Rapporter från olika anslutningar kan avse samma konto och får inte summeras.",
+        "requestFailed": "Begäran kunde inte slutföras. Uppdatera för att försöka igen.",
+        "support": {
+          "none": "Adaptern erbjuder inte ekonomisk status. Ingen management-nyckel behövs.",
+          "partial": "Adaptern stöder vissa ekonomiska värden. Värden utan stöd anges uttryckligen.",
+          "full": "Adaptern stöder alla ekonomiska värden inom sina angivna omfattningar."
+        },
+        "scope": {
+          "account": "Leverantörens kontokrediter (kan delas av en organisation)",
+          "organization": "Leverantörens organisation",
+          "credential": "Anslutningens környckel"
+        },
+        "state": {
+          "success": "Leverantörsrapport hämtad",
+          "stale": "Inaktuellt — visar senast hämtade rapport",
+          "unsupported": "Ekonomisk information stöds inte",
+          "missing_credential": "Nyckeln för denna omfattning saknas",
+          "invalid_credential": "Leverantören avvisade nyckeln",
+          "temporary_error": "Ekonomisk information är tillfälligt otillgänglig"
+        },
+        "field": {
+          "purchased_credits": "Köpta krediter",
+          "usage": "Rapporterad användning",
+          "credit_balance": "Återstående kreditsaldo",
+          "spending_limit": "Konfigurerad utgiftsgräns",
+          "remaining_allowance": "Återstående utgiftsutrymme"
+        },
+        "period": {
+          "lifetime": "Totalt / ingen periodisk återställning",
+          "daily": "Dagligen",
+          "weekly": "Veckovis",
+          "monthly": "Månadsvis",
+          "unknown": "Period inte rapporterad"
+        },
+        "measurement": {
+          "unlimited": "Obegränsat",
+          "unavailable": "Inte rapporterat",
+          "unsupported": "Stöds inte"
+        },
+        "lastSuccess": "Senast uppdaterad: {time}",
+        "credentialTitle": "Management-nyckel",
+        "credentialLabel": "Ny management-nyckel",
+        "credentialHelp": "Valfri nyckel för läsning av leverantörens kontoinformation. Ange leverantörens management-nyckel här. Környckeln hanteras separat. Registrera en kandidat och verifiera och aktivera den sedan. Vid misslyckad verifiering behålls den nuvarande nyckeln.",
+        "register": "Registrera kandidat",
+        "verify": "Verifiera och aktivera",
+        "remove": "Ta bort management-nyckel",
+        "discard": "Kasta kandidat",
+        "removeHelp": "Ta bort nyckelns lagrade hemliga material och stoppa lokal användning? Nyckeln återkallas inte hos leverantören. Återkalla den direkt hos leverantören vid behov.",
+        "candidate": "Kandidat registrerad: {time}",
+        "verified": "Aktiv management-nyckel verifierad: {time}"
       }
     },
     "applicationSettings": {

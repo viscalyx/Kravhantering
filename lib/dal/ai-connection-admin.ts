@@ -177,7 +177,7 @@ const CONNECTION_JOINS = `
     SELECT TOP (1) [candidate].[id], [candidate].[root_key_version]
     FROM [ai_provider_secret_versions] AS [candidate]
     WHERE [candidate].[ai_connection_id] = [connection].[id]
-      AND [candidate].[status] = N'active'
+      AND [candidate].[status] = N'active' AND [candidate].[credential_purpose] = N'runtime'
       AND [candidate].[ciphertext] IS NOT NULL
   ) AS [secret]
   OUTER APPLY (
@@ -636,7 +636,7 @@ async function loadProfiles(
        SELECT TOP (1) [candidate].[id]
        FROM [ai_provider_secret_versions] AS [candidate]
        WHERE [candidate].[ai_connection_id] = [connection].[id]
-         AND [candidate].[status] = N'active'
+         AND [candidate].[status] = N'active' AND [candidate].[credential_purpose] = N'runtime'
          AND [candidate].[ciphertext] IS NOT NULL
          AND [candidate].[provider_revoked_at] IS NULL
      ) AS [secret]
@@ -1559,7 +1559,7 @@ export function createSqlServerAiAdminStore(
                AND ([connection].[authentication_type] = N'none' OR EXISTS (
                  SELECT 1 FROM [ai_provider_secret_versions] AS [secret]
                  WHERE [secret].[ai_connection_id] = [connection].[id]
-                   AND [secret].[status] = N'active'
+                   AND [secret].[status] = N'active' AND [secret].[credential_purpose] = N'runtime'
                    AND [secret].[ciphertext] IS NOT NULL
                ))`,
             [value.modelRevisionId, `$.${input.profileKey}.supported`],
@@ -1724,7 +1724,7 @@ export function createSqlServerAiAdminStore(
                  SELECT 1 FROM [ai_provider_secret_versions] AS [secret]
                  WHERE [secret].[id] = @5
                    AND [secret].[ai_connection_id] = [connection].[id]
-                   AND [secret].[status] = N'active'
+                   AND [secret].[status] = N'active' AND [secret].[credential_purpose] = N'runtime'
                    AND [secret].[ciphertext] IS NOT NULL
                )
              );`,

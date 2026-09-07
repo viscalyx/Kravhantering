@@ -813,3 +813,25 @@ Completed model-verification snapshots and their model-save transactions are
 excluded from SQL query, parameter, slow-query, and error-text logging, including
 when database error logging is enabled. Safe application conflicts and aggregate
 transient-cleanup telemetry remain available.
+
+## Optional management credentials and financial status
+
+Deploy the application, database migration and secret-maintenance tooling as
+one compatible release. The schema supports independent runtime and
+management credentials per connection. Existing encrypted rows default to
+runtime purpose without re-encryption. Older application versions cannot
+safely select credentials once management credentials exist; stop old app
+nodes before enabling this feature. Downgrade requires a compatible database
+backup and external keyring. Verify backup restoration with tooling from the
+same release so both credential purposes are authenticated.
+
+Management keys use the existing external root-keyring. No management key is
+required for model availability, activation or execution. Administrators enter
+optional keys in the connection's financial-status section. Local rotation or
+removal scrubs management secret material but does not revoke a provider key.
+Revocation at the provider remains an administrator task. The same approved
+network and TLS policies apply to financial reads; missing financial data must
+not become a runtime health failure or cost-enforcement gate.
+
+See the [financial adapter contract](../development/ai-provider-financial-status.md)
+for scopes, partial support, bounded requests and stale-value behavior.

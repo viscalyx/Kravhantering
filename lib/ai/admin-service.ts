@@ -15,6 +15,12 @@ import type {
   SaveAiRunProfile,
 } from './admin-contracts'
 import {
+  AI_FINANCIAL_UNSUPPORTED,
+  type AiConnectionFinancialStatus,
+  AiFinancialRequestError,
+  type AiManagementCredentialMetadata,
+} from './financial-contracts'
+import {
   type AiModelVerificationAttempt,
   AiModelVerificationAttemptError,
   type AiModelVerificationAttemptStore,
@@ -302,6 +308,21 @@ export interface AiAdminExternalOperations {
   fetchCatalog(
     connection: Readonly<AiAdminConnectionDetail>,
   ): Promise<readonly AiAdminCatalogItem[]>
+  financial?: {
+    capabilities(
+      connection: Readonly<AiAdminConnectionDetail>,
+    ): import('./financial-contracts').AiFinancialCapabilities
+    fetch(
+      connection: Readonly<AiAdminConnectionDetail>,
+      signal: AbortSignal,
+    ): Promise<readonly import('./financial-contracts').AiFinancialResult[]>
+    activateManagement(
+      connection: Readonly<AiAdminConnectionDetail>,
+      secretVersionId: string,
+      signal: AbortSignal,
+      beforeCommit: import('./provider-secret-service').AiProviderSecretBeforeCommit,
+    ): Promise<void>
+  }
   probeHealth(
     connection: Readonly<AiAdminConnectionDetail>,
     revision: Readonly<AiAdminModelRevisionRecord>,
@@ -450,6 +471,10 @@ export interface AiAdminStore {
 
 export interface AiAdminAuditDetail {
   changedFields?: readonly string[]
+  details?: Record<
+    string,
+    import('@/lib/auth/audit').SecurityEventDetailValue | null | undefined
+  >
   operation:
     | 'activate'
     | 'create'
@@ -462,6 +487,7 @@ export interface AiAdminAuditDetail {
     | 'suspend'
     | 'update'
     | 'verify'
+    | 'view'
   resourceId: string
   resourceType:
     | 'ai_connection'
@@ -469,12 +495,14 @@ export interface AiAdminAuditDetail {
     | 'ai_connection_model'
     | 'ai_connection_model_revision'
     | 'ai_provider_secret'
+    | 'ai_management_credential'
+    | 'ai_financial_status'
     | 'ai_run_profile'
 }
 
 export type AiAdminAudit = (
   detail: Readonly<AiAdminAuditDetail>,
-  executor?: SqlServerEntityManager,
+  executor?: import('./provider-secret-service').AiProviderSecretMutationExecutor,
 ) => Promise<void>
 
 function completeAttestation(attestation: SaveAiAttestation): boolean {
@@ -634,7 +662,14 @@ function isCurrentLivePathActivation(
   )
 }
 
+export interface AiAdminManagementOperations {
+  metadata(connectionId: string): Promise<AiManagementCredentialMetadata>
+  remove(connectionId: string, secretVersionId: string): Promise<void>
+  write(connectionId: string, plaintext: string): Promise<void>
+}
+
 export class AiConnectionAdministrationService {
+  readonly #management?: AiAdminManagementOperations
   readonly #audit: AiAdminAudit
   readonly #external: AiAdminExternalOperations
   readonly #secrets: AiAdminSecretOperations
@@ -645,6 +680,7 @@ export class AiConnectionAdministrationService {
   >
 
   constructor(input: {
+    management?: AiAdminManagementOperations
     audit: AiAdminAudit
     external: AiAdminExternalOperations
     secrets: AiAdminSecretOperations
@@ -655,6 +691,7 @@ export class AiConnectionAdministrationService {
     >
   }) {
     this.#audit = input.audit
+    this.#management = input.management
     this.#external = input.external
     this.#secrets = input.secrets
     this.#store = input.store
@@ -747,6 +784,120 @@ export class AiConnectionAdministrationService {
       ...(await this.#getConnectionDetail(connectionId)),
       pendingVerifications: await this.#verificationAttempts.list(connectionId),
     }
+  }
+
+  async getFinancialStatus(
+    connectionId: string,
+    signal: AbortSignal,
+  ): Promise<AiConnectionFinancialStatus> {
+    const connection = await this.#getConnectionDetail(connectionId)
+    const capabilities =
+      this.#external.financial?.capabilities(connection) ??
+      AI_FINANCIAL_UNSUPPORTED
+    const results =
+      (await this.#external.financial?.fetch(connection, signal)) ?? []
+    const managementCredential = (await this.#management?.metadata(
+      connectionId,
+    )) ?? { active: null, candidates: [] }
+    const current = await this.#getConnectionDetail(connectionId)
+    const status = {
+      capabilities,
+      managementCredential,
+      results:
+        current.configurationVersion === connection.configurationVersion
+          ? results
+          : results.map(result => ({
+              ...result,
+              binding: null,
+              state: 'temporary_error' as const,
+              snapshot: null,
+              lastSuccessfulAt: null,
+            })),
+    }
+    await this.#audit({
+      operation: 'probe',
+      resourceId: connectionId,
+      resourceType: 'ai_financial_status',
+      details: {
+        outcomes: status.results
+          .map(result => `${result.operation.scope}:${result.state}`)
+          .join(','),
+      },
+    })
+    await this.#audit({
+      operation: 'view',
+      resourceId: connectionId,
+      resourceType: 'ai_financial_status',
+    })
+    return status
+  }
+
+  async writeManagementCredential(
+    connectionId: string,
+    plaintext: string,
+  ): Promise<void> {
+    const connection = await this.#getConnectionDetail(connectionId)
+    if (
+      !this.#management ||
+      !this.#external.financial
+        ?.capabilities(connection)
+        .operations.some(item => item.credentialPurpose === 'management')
+    ) {
+      throw validationError(
+        'Management credentials are unsupported for this adapter.',
+      )
+    }
+    await this.#management.write(connectionId, plaintext)
+  }
+
+  async verifyManagementCredential(
+    connectionId: string,
+    secretVersionId: string,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const connection = await this.#getConnectionDetail(connectionId)
+    if (!this.#external.financial)
+      throw validationError(
+        'Management credentials are unsupported for this adapter.',
+      )
+    try {
+      await this.#external.financial.activateManagement(
+        connection,
+        secretVersionId,
+        signal,
+        executor =>
+          this.#audit(
+            {
+              operation: 'activate',
+              resourceId: connectionId,
+              resourceType: 'ai_management_credential',
+            },
+            executor,
+          ),
+      )
+    } catch (error) {
+      await this.#audit({
+        operation: 'verify',
+        resourceId: connectionId,
+        resourceType: 'ai_management_credential',
+        details: { outcome: 'failed' },
+      })
+      if (error instanceof AiFinancialRequestError)
+        throw validationError('Management credential verification failed.', {
+          reason: error.code,
+        })
+      throw error
+    }
+  }
+
+  async removeManagementCredential(
+    connectionId: string,
+    secretVersionId: string,
+  ): Promise<void> {
+    await this.#getConnectionDetail(connectionId)
+    if (!this.#management)
+      throw validationError('Management credentials are unavailable.')
+    await this.#management.remove(connectionId, secretVersionId)
   }
 
   async createConnection(

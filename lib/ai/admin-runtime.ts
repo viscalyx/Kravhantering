@@ -18,8 +18,10 @@ import {
   AiProviderSecretService,
   confirmAiProviderSecretRevocation,
   deleteAiProviderSecretCandidate,
+  getAiManagementCredentialMetadata,
   getAiProviderSecretAvailabilities,
   getAiProviderSecretAvailability,
+  removeAiManagementCredential,
   writeAiProviderSecretCandidate,
 } from './provider-secret-service'
 
@@ -50,6 +52,41 @@ export function createAiConnectionAdministrationRuntime(
       executor ?? db.manager,
     )
   return new AiConnectionAdministrationService({
+    management: {
+      metadata: connectionId =>
+        getAiManagementCredentialMetadata(db, connectionId),
+      write: async (connectionId, plaintext) => {
+        await writeAiProviderSecretCandidate(
+          db,
+          keyring(),
+          { connectionId, plaintext, purpose: 'management' },
+          executor =>
+            audit(
+              {
+                operation: 'rotate',
+                resourceId: connectionId,
+                resourceType: 'ai_management_credential',
+              },
+              executor,
+            ),
+        )
+      },
+      remove: (connectionId, secretVersionId) =>
+        removeAiManagementCredential(
+          db,
+          connectionId,
+          secretVersionId,
+          executor =>
+            audit(
+              {
+                operation: 'delete',
+                resourceId: connectionId,
+                resourceType: 'ai_management_credential',
+              },
+              executor,
+            ),
+        ),
+    },
     verificationAttempts: createSqlServerAiModelVerificationAttemptStore(
       db,
       parseAiModelVerificationPayload,

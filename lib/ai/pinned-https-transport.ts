@@ -21,6 +21,16 @@ export function createPinnedHttpsFetch(
   request: HttpsRequest = httpsRequest,
 ): (input: Readonly<AiPinnedTlsRequest>) => Promise<Response> {
   return async input => {
+    const maximumResponseBytes = Math.min(
+      MAX_ADMIN_RESPONSE_BYTES,
+      input.init.responseByteLimit ?? MAX_ADMIN_RESPONSE_BYTES,
+    )
+    if (
+      !Number.isSafeInteger(maximumResponseBytes) ||
+      maximumResponseBytes < 1
+    ) {
+      throw new Error('The AI administration response limit is invalid.')
+    }
     const address = input.resolvedAddresses[0]
     if (!address || !isIP(address)) {
       throw new Error('The pinned AI administration address is invalid.')
@@ -56,7 +66,7 @@ export function createPinnedHttpsFetch(
           let length = 0
           incoming.on('data', (chunk: Buffer) => {
             length += chunk.byteLength
-            if (length > MAX_ADMIN_RESPONSE_BYTES) {
+            if (length > maximumResponseBytes) {
               incoming.destroy(
                 new Error('AI administration response too large.'),
               )

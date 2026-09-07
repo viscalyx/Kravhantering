@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto'
 import type { AiAdminConnectionAdapter } from '@/lib/ai/admin-adapter'
 import type { AiAdminConnectionDetail } from '@/lib/ai/admin-service'
 import { controlledTestAdminAdapterRegistration } from '@/lib/ai/controlled-test-admin-adapter'
+import { AiFinancialRequestError } from '@/lib/ai/financial-contracts'
 import {
   decryptAiProviderSecret,
   encryptAiProviderSecret,
@@ -91,6 +92,172 @@ function persistedRow(
 }
 
 describe('AI provider-secret service', () => {
+  it('bounds target preparation and prevents decryption after cancellation', async () => {
+    vi.useFakeTimers()
+    try {
+      const id = randomUUID()
+      const ring = keyring('root-1', { 'root-1': randomBytes(32) })
+      const row = persistedRow(id, randomUUID(), 'runtime-secret', ring)
+      const query = vi.fn(async () => [row])
+      const loadKeyring = vi.fn(() => ring)
+      const service = new AiProviderSecretAdminService(
+        database(query).db,
+        loadKeyring,
+      )
+      const operation = {
+        id: 'usage',
+        credentialPurpose: 'runtime' as const,
+        scope: 'credential' as const,
+        fields: ['usage' as const],
+      }
+      const fetch = vi.fn()
+      const adapter = {
+        ...controlledTestAdminAdapterRegistration.adapter,
+        financial: {
+          capabilities: {
+            support: 'partial' as const,
+            operations: [operation],
+          },
+          fetch,
+        },
+      }
+      let prepared!: (value: AiEgressTransport) => void
+      const target = new Promise<AiEgressTransport>(resolve => {
+        prepared = resolve
+      })
+      const result = service.fetchFinancialStatus(
+        adapter,
+        { id, configurationVersion: 1 } as AiAdminConnectionDetail,
+        () => target,
+        operation,
+        new AbortController().signal,
+      )
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(await result).toMatchObject({
+        binding: expect.any(String),
+        state: 'temporary_error',
+        snapshot: null,
+      })
+      prepared({ fetch: vi.fn() })
+      await vi.advanceTimersByTimeAsync(1)
+      expect(fetch).not.toHaveBeenCalled()
+      expect(loadKeyring).not.toHaveBeenCalled()
+      const cancelled = new AbortController()
+      cancelled.abort()
+      const preparedTarget = vi.fn(async () => ({ fetch: vi.fn() }))
+      expect(
+        await service.fetchFinancialStatus(
+          adapter,
+          { id, configurationVersion: 1 } as AiAdminConnectionDetail,
+          preparedTarget,
+          operation,
+          cancelled.signal,
+        ),
+      ).toMatchObject({ state: 'temporary_error', snapshot: null })
+      expect(preparedTarget).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('retains a validated binding on transient DNS errors for the same credential', async () => {
+    const id = randomUUID()
+    const ring = keyring('root-1', { 'root-1': randomBytes(32) })
+    const row = persistedRow(id, randomUUID(), 'runtime-secret', ring)
+    const service = new AiProviderSecretAdminService(
+      database(vi.fn(async () => [row])).db,
+      ring,
+    )
+    const operation = {
+      id: 'usage',
+      credentialPurpose: 'runtime' as const,
+      scope: 'credential' as const,
+      fields: ['usage' as const],
+    }
+    const adapter = {
+      ...controlledTestAdminAdapterRegistration.adapter,
+      financial: {
+        capabilities: { support: 'partial' as const, operations: [operation] },
+        fetch: vi.fn(async () => ({
+          scope: 'credential' as const,
+          measurements: [
+            {
+              field: 'usage' as const,
+              amount: '5',
+              currency: 'USD',
+              period: 'lifetime' as const,
+              state: 'available' as const,
+            },
+          ],
+        })),
+      },
+    }
+    const detail = { id, configurationVersion: 1 } as AiAdminConnectionDetail
+    const original = await service.fetchFinancialStatus(
+      adapter,
+      detail,
+      { fetch: vi.fn() },
+      operation,
+      new AbortController().signal,
+    )
+    const failed = await service.fetchFinancialStatus(
+      adapter,
+      detail,
+      async () => {
+        throw new Error('DNS failure')
+      },
+      operation,
+      new AbortController().signal,
+    )
+    expect(original.state).toBe('success')
+    expect(failed).toMatchObject({
+      binding: original.binding,
+      state: 'temporary_error',
+      snapshot: null,
+      lastSuccessfulAt: null,
+    })
+    expect(adapter.financial.fetch).toHaveBeenCalledOnce()
+  })
+  it('invalidates a failed financial report binding when its credential is removed during the request', async () => {
+    const id = randomUUID()
+    const ring = keyring('root-1', { 'root-1': randomBytes(32) })
+    const row = persistedRow(id, randomUUID(), 'runtime-secret', ring)
+    const query = vi.fn().mockResolvedValueOnce([row]).mockResolvedValueOnce([])
+    const service = new AiProviderSecretAdminService(database(query).db, ring)
+    const operation = {
+      id: 'usage',
+      credentialPurpose: 'runtime' as const,
+      scope: 'credential' as const,
+      fields: ['usage' as const],
+    }
+    const adapter = {
+      ...controlledTestAdminAdapterRegistration.adapter,
+      financial: {
+        capabilities: { support: 'partial' as const, operations: [operation] },
+        fetch: async () => {
+          throw new AiFinancialRequestError('temporary_error')
+        },
+      },
+    }
+    const result = await service.fetchFinancialStatus(
+      adapter,
+      {
+        id,
+        configurationVersion: 1,
+        adapterKey: 'test',
+        adapterVersion: '1',
+      } as AiAdminConnectionDetail,
+      { fetch: vi.fn() },
+      operation,
+      new AbortController().signal,
+    )
+    expect(result).toMatchObject({
+      binding: null,
+      state: 'temporary_error',
+      snapshot: null,
+      lastSuccessfulAt: null,
+    })
+  })
   it('injects an active credential only for the bounded runtime callback', async () => {
     const connectionId = randomUUID()
     const secretVersionId = randomUUID()

@@ -16,6 +16,7 @@ const MAX_PROVIDER_SECRET_BYTES = 65_536
 
 export interface AiProviderSecretBinding {
   connectionId: string
+  purpose?: import('./financial-contracts').AiCredentialPurpose
   secretVersionId: string
 }
 

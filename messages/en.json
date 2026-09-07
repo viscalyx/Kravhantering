@@ -2444,6 +2444,61 @@
         "discardConfirm": "Discard this verification? This removes the pending work for every administrator.",
         "saveUncertain": "Saving may have succeeded. Reload the model list and check whether the revision exists before trying again.",
         "unavailable": "The verification is no longer available. Reload the model list and check whether it has already been saved."
+      },
+      "financial": {
+        "title": "Provider credits and usage",
+        "refresh": "Refresh financial status",
+        "loading": "Fetching financial status…",
+        "providerReported": "Provider-reported information, not internal accounting. These values do not control model execution and must not be the sole basis for cost enforcement. Reports from different connections may describe the same account and must not be added together.",
+        "requestFailed": "The request could not be completed. Refresh to try again.",
+        "support": {
+          "none": "This adapter does not offer financial status. No management credential is needed.",
+          "partial": "This adapter supports some financial values. Unsupported values are shown explicitly.",
+          "full": "This adapter supports all financial values in its declared scopes."
+        },
+        "scope": {
+          "account": "Provider account credit pool (may be shared by an organization)",
+          "organization": "Provider organization",
+          "credential": "This connection’s runtime credential"
+        },
+        "state": {
+          "success": "Provider report retrieved",
+          "stale": "Stale — showing the last successful report",
+          "unsupported": "Financial information is unsupported",
+          "missing_credential": "The credential for this scope is missing",
+          "invalid_credential": "The provider rejected this credential",
+          "temporary_error": "Financial information is temporarily unavailable"
+        },
+        "field": {
+          "purchased_credits": "Purchased credits",
+          "usage": "Reported usage",
+          "credit_balance": "Remaining credit balance",
+          "spending_limit": "Configured spending limit",
+          "remaining_allowance": "Remaining spending allowance"
+        },
+        "period": {
+          "lifetime": "All time / no periodic reset",
+          "daily": "Daily",
+          "weekly": "Weekly",
+          "monthly": "Monthly",
+          "unknown": "Period not reported"
+        },
+        "measurement": {
+          "unlimited": "Unlimited",
+          "unavailable": "Not reported",
+          "unsupported": "Not supported"
+        },
+        "lastSuccess": "Last successful update: {time}",
+        "credentialTitle": "Management credential",
+        "credentialLabel": "New management credential",
+        "credentialHelp": "Optional credential for read-only provider account information. Enter the provider’s management key here. The runtime key remains separate. Register a candidate, then verify and activate it. A failed verification keeps the current credential.",
+        "register": "Register candidate",
+        "verify": "Verify and activate",
+        "remove": "Remove management credential",
+        "discard": "Discard candidate",
+        "removeHelp": "Remove this credential’s stored secret material and stop its local use? This does not revoke the key at the provider. Revoke it directly with the provider when needed.",
+        "candidate": "Candidate registered: {time}",
+        "verified": "Active management credential verified: {time}"
       }
     },
     "applicationSettings": {

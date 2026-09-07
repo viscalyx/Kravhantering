@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import type { SqlServerDatabase } from '@/lib/db'
 import { conflictError } from '@/lib/requirements/errors'
 import type {
@@ -18,6 +18,14 @@ import type {
   AiAdminVerificationProgress,
 } from './admin-service'
 import { AI_CAPABILITY_KEYS } from './capability-keys'
+import {
+  type AiFinancialOperation,
+  AiFinancialRequestError,
+  type AiFinancialResult,
+  type AiManagementCredentialMetadata,
+  aiFinancialSnapshotSchema,
+} from './financial-contracts'
+import { withAiFinancialDeadline } from './financial-deadline'
 import {
   AI_RUN_PROFILE_KEYS,
   type AiAdapterConfigurationResolver,
@@ -791,6 +799,7 @@ interface AiProviderSecretRow {
   id: string
   nonce: Buffer | null
   providerRevokedAt?: Date | string | null
+  purpose?: import('./financial-contracts').AiCredentialPurpose
   revisionNumber: number | string
   revisionToken: string
   rootKeyVersion: string
@@ -875,6 +884,7 @@ export class AiProviderSecretUnavailableError extends Error {
 export interface WriteAiProviderSecretCandidateInput {
   connectionId: string
   plaintext: string
+  purpose?: import('./financial-contracts').AiCredentialPurpose
 }
 
 export interface ActivateAiProviderSecretVersionInput {
@@ -943,9 +953,10 @@ function envelope(row: AiProviderSecretRow): AiProviderSecretEnvelope | null {
 async function selectActiveSecret(
   executor: AiProviderSecretMutationExecutor,
   connectionId: string,
+  purpose: import('./financial-contracts').AiCredentialPurpose = 'runtime',
 ): Promise<AiProviderSecretRow | undefined> {
   const rows = await executor.query<AiProviderSecretRow[]>(
-    `SELECT [id], [ai_connection_id] AS [connectionId],
+    `SELECT [id], [ai_connection_id] AS [connectionId], [credential_purpose] AS [purpose],
        [revision_number] AS [revisionNumber], [status],
        [ciphertext], [nonce], [authentication_tag] AS [authenticationTag],
        [cipher_format_version] AS [formatVersion],
@@ -956,10 +967,17 @@ async function selectActiveSecret(
        [ciphertext_deleted_at] AS [ciphertextDeletedAt],
        [revision_token] AS [revisionToken]
      FROM [ai_provider_secret_versions]
-     WHERE [ai_connection_id] = @0 AND [status] = N'active'`,
-    [connectionId],
+     WHERE [ai_connection_id] = @0 AND [status] = N'active' AND [credential_purpose] = @1`,
+    [connectionId, purpose],
   )
-  return rows[0]
+  const row = rows[0]
+  if (row && (row.purpose ?? 'runtime') !== purpose) {
+    throw new AiProviderSecretUnavailableError(connectionId, {
+      available: false,
+      reason: 'authentication_failed',
+    })
+  }
+  return row
 }
 
 async function selectActivatableSecret(
@@ -968,7 +986,7 @@ async function selectActivatableSecret(
   secretVersionId: string,
 ): Promise<AiProviderSecretRow | undefined> {
   const rows = await executor.query<AiProviderSecretRow[]>(
-    `SELECT [id], [ai_connection_id] AS [connectionId],
+    `SELECT [id], [ai_connection_id] AS [connectionId], [credential_purpose] AS [purpose],
        [revision_number] AS [revisionNumber], [status],
        [ciphertext], [nonce], [authentication_tag] AS [authenticationTag],
        [cipher_format_version] AS [formatVersion],
@@ -980,6 +998,7 @@ async function selectActivatableSecret(
        [revision_token] AS [revisionToken]
      FROM [ai_provider_secret_versions]
      WHERE [id] = @0 AND [ai_connection_id] = @1
+       AND [credential_purpose] = N'runtime'
        AND [status] IN (N'candidate', N'superseded')`,
     [secretVersionId, connectionId],
   )
@@ -1002,7 +1021,11 @@ function decryptRow(
   try {
     return decryptAiProviderSecret(
       keyring,
-      { connectionId: row.connectionId, secretVersionId: row.id },
+      {
+        connectionId: row.connectionId,
+        secretVersionId: row.id,
+        purpose: row.purpose,
+      },
       encrypted,
     )
   } catch (error) {
@@ -1029,7 +1052,11 @@ export async function writeAiProviderSecretCandidate(
   const secretVersionId = randomUUID()
   const encrypted = encryptAiProviderSecret(
     keyring,
-    { connectionId: input.connectionId, secretVersionId },
+    {
+      connectionId: input.connectionId,
+      secretVersionId,
+      purpose: input.purpose,
+    },
     input.plaintext,
   )
   const row = await db.transaction('SERIALIZABLE', async manager => {
@@ -1040,16 +1067,19 @@ export async function writeAiProviderSecretCandidate(
        )
          THROW 51100, 'AI connection does not exist.', 1;
 
+       IF @7 = N'management' AND (SELECT COUNT(*) FROM [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK) WHERE [ai_connection_id] = @0 AND [credential_purpose] = N'management' AND [status] = N'candidate') >= 8
+         THROW 51106, 'Remove an unused management credential candidate before adding another.', 1;
+
        DECLARE @revision_number int = (
          SELECT COALESCE(MAX([revision_number]), 0) + 1
          FROM [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
-         WHERE [ai_connection_id] = @0
+         WHERE [ai_connection_id] = @0 AND [credential_purpose] = @7
        );
 
        INSERT INTO [ai_provider_secret_versions] (
          [id], [ai_connection_id], [revision_number], [status], [ciphertext],
          [nonce], [authentication_tag], [cipher_format_version],
-         [root_key_version], [created_at]
+         [root_key_version], [created_at], [credential_purpose]
        )
        OUTPUT INSERTED.[id], INSERTED.[ai_connection_id] AS [connectionId],
          INSERTED.[revision_number] AS [revisionNumber], INSERTED.[status],
@@ -1062,7 +1092,7 @@ export async function writeAiProviderSecretCandidate(
          INSERTED.[revision_token] AS [revisionToken]
        VALUES (
          @1, @0, @revision_number, N'candidate', @2, @3, @4, @5, @6,
-         SYSUTCDATETIME()
+         SYSUTCDATETIME(), @7
        );`,
       [
         input.connectionId,
@@ -1072,6 +1102,7 @@ export async function writeAiProviderSecretCandidate(
         encrypted.authenticationTag,
         encrypted.formatVersion,
         encrypted.rootKeyVersion,
+        input.purpose ?? 'runtime',
       ],
     )
     const saved = rows[0]
@@ -1139,7 +1170,7 @@ export async function getAiProviderSecretAvailabilities(
      FROM OPENJSON(@0) WITH ([id] uniqueidentifier '$') AS [requested]
      INNER JOIN [ai_provider_secret_versions] AS [secret]
        ON [secret].[ai_connection_id] = [requested].[id]
-       AND [secret].[status] = N'active'`,
+       AND [secret].[status] = N'active' AND [secret].[credential_purpose] = N'runtime'`,
     [JSON.stringify(normalizedIds)],
   )
   const byConnection = new Map(
@@ -1235,7 +1266,7 @@ async function activateAiProviderSecretVersion(
        IF NOT EXISTS (
          SELECT 1 FROM [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
          WHERE [id] = @0 AND [ai_connection_id] = @1
-           AND [revision_token] = @2
+           AND [revision_token] = @2 AND [credential_purpose] = N'runtime'
            AND [status] IN (N'candidate', N'superseded')
            AND [ciphertext] IS NOT NULL AND [provider_revoked_at] IS NULL
        )
@@ -1244,7 +1275,7 @@ async function activateAiProviderSecretVersion(
        UPDATE [ai_provider_secret_versions]
        SET [status] = N'superseded', [deactivated_at] = @now,
          [revision_token] = NEWID()
-       WHERE [ai_connection_id] = @1 AND [status] = N'active';
+       WHERE [ai_connection_id] = @1 AND [status] = N'active' AND [credential_purpose] = N'runtime';
 
        UPDATE [ai_provider_secret_versions]
        SET [status] = N'active', [verified_at] = @now,
@@ -1260,7 +1291,7 @@ async function activateAiProviderSecretVersion(
          INSERTED.[ciphertext_deleted_at] AS [ciphertextDeletedAt],
          INSERTED.[revision_token] AS [revisionToken]
        INTO @activated
-       WHERE [id] = @0 AND [ai_connection_id] = @1;
+       WHERE [id] = @0 AND [ai_connection_id] = @1 AND [credential_purpose] = N'runtime';
 
        UPDATE [ai_connections]
        SET [configuration_version] = [configuration_version] + 1,
@@ -1349,11 +1380,212 @@ export class AiProviderSecretService {
  */
 export class AiProviderSecretAdminService {
   readonly #db: SqlServerDatabase
-  readonly #keyring: AiProviderSecretKeyring
+  readonly #loadKeyring: () => AiProviderSecretKeyring
 
-  constructor(db: SqlServerDatabase, keyring: AiProviderSecretKeyring) {
+  constructor(
+    db: SqlServerDatabase,
+    keyring: AiProviderSecretKeyring | (() => AiProviderSecretKeyring),
+  ) {
     this.#db = db
-    this.#keyring = keyring
+    this.#loadKeyring = typeof keyring === 'function' ? keyring : () => keyring
+  }
+
+  async fetchFinancialStatus(
+    adapter: AiAdminConnectionAdapter,
+    connection: Readonly<AiAdminConnectionDetail>,
+    egress: AiEgressTransport | (() => Promise<AiEgressTransport>),
+    operation: Readonly<AiFinancialOperation>,
+    signal: AbortSignal,
+  ): Promise<AiFinancialResult> {
+    let result: AiFinancialResult = {
+      operation,
+      binding: null,
+      state: 'temporary_error',
+      lastSuccessfulAt: null,
+      snapshot: null,
+    }
+    const financial = adapter.financial
+    if (!financial) return { ...result, state: 'unsupported' }
+    let row: AiProviderSecretRow | null | undefined
+    try {
+      row = operation.credentialPurpose
+        ? await selectActiveSecret(
+            this.#db,
+            connection.id,
+            operation.credentialPurpose,
+          )
+        : null
+      if (operation.credentialPurpose && !row)
+        return { ...result, state: 'missing_credential' }
+      result.binding = createHash('sha256')
+        .update(
+          JSON.stringify([
+            connection.id.toLowerCase(),
+            connection.configurationVersion,
+            connection.adapterKey,
+            connection.adapterVersion,
+            operation,
+            row?.id.toLowerCase() ?? null,
+          ]),
+        )
+        .digest('hex')
+      const snapshot = await withAiFinancialDeadline(signal, async bounded => {
+        const transport = typeof egress === 'function' ? await egress() : egress
+        bounded.throwIfAborted()
+        return aiFinancialSnapshotSchema.parse(
+          await financial.fetch(
+            {
+              connection,
+              egress: transport,
+              credential: row ? decryptRow(this.#loadKeyring(), row) : null,
+            },
+            operation,
+            bounded,
+          ),
+        )
+      })
+      if (
+        snapshot.scope !== operation.scope ||
+        snapshot.measurements.some(
+          item =>
+            item.state !== 'unsupported' &&
+            !operation.fields.includes(item.field),
+        )
+      )
+        throw new AiFinancialRequestError('temporary_error')
+      result = {
+        ...result,
+        state: 'success',
+        snapshot,
+        lastSuccessfulAt: new Date().toISOString(),
+      }
+    } catch (error) {
+      result = {
+        ...result,
+        state:
+          error instanceof AiFinancialRequestError
+            ? error.code
+            : 'temporary_error',
+      }
+    }
+    // Revalidate after every outcome, including failed and cancelled calls.
+    // A failure must not authorize retaining another credential's report.
+    if (result.binding && operation.credentialPurpose) {
+      try {
+        const current = await selectActiveSecret(
+          this.#db,
+          connection.id,
+          operation.credentialPurpose,
+        )
+        if (current?.id !== row?.id)
+          throw new AiFinancialRequestError('temporary_error')
+      } catch {
+        return {
+          ...result,
+          binding: null,
+          state: 'temporary_error',
+          snapshot: null,
+          lastSuccessfulAt: null,
+        }
+      }
+    }
+    return result
+  }
+
+  async activateManagementCandidate(
+    adapter: AiAdminConnectionAdapter,
+    connection: Readonly<AiAdminConnectionDetail>,
+    egress: AiEgressTransport | (() => Promise<AiEgressTransport>),
+    secretVersionId: string,
+    signal: AbortSignal,
+    beforeCommit: AiProviderSecretBeforeCommit,
+  ): Promise<void> {
+    const operations =
+      adapter.financial?.capabilities.operations.filter(
+        item => item.credentialPurpose === 'management',
+      ) ?? []
+    if (!operations.length || !adapter.financial)
+      throw new AiFinancialRequestError('unsupported')
+    const rows = await this.#db.query<AiProviderSecretRow[]>(
+      `SELECT [id], [ai_connection_id] AS [connectionId], [credential_purpose] AS [purpose],
+        [ciphertext], [nonce], [authentication_tag] AS [authenticationTag],
+        [cipher_format_version] AS [formatVersion], [root_key_version] AS [rootKeyVersion],
+        [revision_token] AS [revisionToken]
+       FROM [ai_provider_secret_versions]
+       WHERE [id] = @0 AND [ai_connection_id] = @1 AND [credential_purpose] = N'management' AND [status] = N'candidate'`,
+      [secretVersionId, connection.id],
+    )
+    const candidate = rows[0]
+    if (candidate?.purpose !== 'management')
+      throw conflictError('Management credential candidate is unavailable.')
+    const active = await selectActiveSecret(
+      this.#db,
+      connection.id,
+      'management',
+    )
+    for (const operation of operations) {
+      try {
+        const financial = adapter.financial
+        const snapshot = await withAiFinancialDeadline(
+          signal,
+          async bounded => {
+            const transport =
+              typeof egress === 'function' ? await egress() : egress
+            bounded.throwIfAborted()
+            return aiFinancialSnapshotSchema.parse(
+              await financial.fetch(
+                {
+                  connection,
+                  egress: transport,
+                  credential: decryptRow(this.#loadKeyring(), candidate),
+                },
+                operation,
+                bounded,
+              ),
+            )
+          },
+        )
+        if (snapshot.scope !== operation.scope)
+          throw new AiFinancialRequestError('temporary_error')
+      } catch (error) {
+        throw error instanceof AiFinancialRequestError
+          ? error
+          : new AiFinancialRequestError('temporary_error')
+      }
+    }
+    signal.throwIfAborted()
+    await this.#db.transaction('SERIALIZABLE', async manager => {
+      const changed = await manager.query<{ id: string }[]>(
+        `DECLARE @now datetime2(3) = SYSUTCDATETIME();
+         IF NOT EXISTS (SELECT 1 FROM [ai_connections] WITH (UPDLOCK, HOLDLOCK)
+           WHERE [id] = @1 AND [configuration_version] = @3 AND [revision_token] = @4) RETURN;
+         IF NOT EXISTS (SELECT 1 FROM [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
+           WHERE [id] = @0 AND [ai_connection_id] = @1 AND [credential_purpose] = N'management'
+             AND [status] = N'candidate' AND [revision_token] = @2) RETURN;
+         IF COALESCE((SELECT CONVERT(nvarchar(36), [id]) FROM [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
+           WHERE [ai_connection_id] = @1 AND [credential_purpose] = N'management' AND [status] = N'active'), N'') <> COALESCE(@5, N'') RETURN;
+         UPDATE [ai_provider_secret_versions] SET [status] = N'superseded', [deactivated_at] = @now,
+           [ciphertext] = NULL, [nonce] = NULL, [authentication_tag] = NULL,
+           [ciphertext_deleted_at] = @now, [revision_token] = NEWID()
+         WHERE [ai_connection_id] = @1 AND [credential_purpose] = N'management' AND [status] = N'active';
+         UPDATE [ai_provider_secret_versions] SET [status] = N'active', [verified_at] = @now,
+           [activated_at] = @now, [revision_token] = NEWID() WHERE [id] = @0;
+         SELECT [id] FROM [ai_provider_secret_versions] WHERE [id] = @0;`,
+        [
+          secretVersionId,
+          connection.id,
+          candidate.revisionToken,
+          connection.configurationVersion,
+          connection.revisionToken,
+          active?.id ?? null,
+        ],
+      )
+      if (!changed.length)
+        throw conflictError(
+          'Management credential or connection changed. Reload and try again.',
+        )
+      await beforeCommit(manager)
+    })
   }
 
   async #execute<Result>(
@@ -1373,7 +1605,7 @@ export class AiProviderSecretAdminService {
     }
     return operation({
       connection,
-      credential: decryptRow(this.#keyring, row),
+      credential: decryptRow(this.#loadKeyring(), row),
       egress,
     })
   }
@@ -1840,7 +2072,7 @@ export async function confirmAiProviderSecretRevocation(
          INSERTED.[revision_token] AS [revisionToken]
        INTO @revoked
        WHERE [id] = @0 AND [ai_connection_id] = @1
-         AND [status] = N'superseded' AND [ciphertext] IS NOT NULL;
+         AND [credential_purpose] = N'runtime' AND [status] = N'superseded' AND [ciphertext] IS NOT NULL;
        SELECT * FROM @revoked;`,
       [input.secretVersionId, input.connectionId],
     )
@@ -1867,13 +2099,74 @@ export async function deleteAiProviderSecretCandidate(
        DELETE FROM [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
        OUTPUT DELETED.[id] INTO @deleted
        WHERE [id] = @0 AND [ai_connection_id] = @1
-         AND [status] = N'candidate';
+         AND [credential_purpose] = N'runtime' AND [status] = N'candidate';
        SELECT [deletedId] FROM @deleted;`,
       [input.secretVersionId, input.connectionId],
     )
     const deleted = rows[0]?.deletedId === input.secretVersionId
     if (deleted) await beforeCommit?.(manager)
     return deleted
+  })
+}
+
+export async function getAiManagementCredentialMetadata(
+  db: SqlServerDatabase,
+  connectionId: string,
+): Promise<AiManagementCredentialMetadata> {
+  const rows = await db.query<
+    { id: string; status: string; verifiedAt: Date; createdAt: Date }[]
+  >(
+    `SELECT TOP (9) [id], [status], [verified_at] AS [verifiedAt], [created_at] AS [createdAt]
+     FROM [ai_provider_secret_versions] WHERE [ai_connection_id] = @0
+       AND [credential_purpose] = N'management' AND [status] IN (N'active', N'candidate')
+     ORDER BY [status], [created_at] DESC`,
+    [connectionId],
+  )
+  const active = rows.find(row => row.status === 'active')
+  return {
+    active: active
+      ? { id: active.id, verifiedAt: iso(active.verifiedAt) as string }
+      : null,
+    candidates: rows
+      .filter(row => row.status === 'candidate')
+      .map(row => ({ id: row.id, createdAt: iso(row.createdAt) as string })),
+  }
+}
+
+/** Local removal scrubs material; it never claims provider-side revocation. */
+export async function removeAiManagementCredential(
+  db: SqlServerDatabase,
+  connectionId: string,
+  secretVersionId: string,
+  beforeCommit: AiProviderSecretBeforeCommit,
+): Promise<void> {
+  await db.transaction('SERIALIZABLE', async manager => {
+    const rows = await manager.query<{ status: string }[]>(
+      `SELECT [status] FROM [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
+       WHERE [id] = @0 AND [ai_connection_id] = @1 AND [credential_purpose] = N'management'
+         AND [status] IN (N'active', N'candidate')`,
+      [secretVersionId, connectionId],
+    )
+    if (!rows[0])
+      throw conflictError(
+        'Management credential changed. Reload and try again.',
+      )
+    if (rows[0].status === 'candidate') {
+      await manager.query(
+        `DELETE FROM [ai_provider_secret_versions] WHERE [id] = @0 AND [credential_purpose] = N'management' AND [status] = N'candidate'`,
+        [secretVersionId],
+      )
+    } else {
+      await manager.query(
+        `DECLARE @now datetime2(3) = SYSUTCDATETIME();
+         UPDATE [ai_provider_secret_versions] SET [status] = N'superseded', [deactivated_at] = @now,
+           [ciphertext] = NULL, [nonce] = NULL, [authentication_tag] = NULL,
+           [ciphertext_deleted_at] = @now, [revision_token] = NEWID()
+         WHERE [id] = @0 AND [credential_purpose] = N'management' AND [status] = N'active';`,
+        [secretVersionId],
+      )
+    }
+    await beforeCommit(manager)
   })
 }
 
@@ -1906,7 +2199,7 @@ export async function reencryptAiProviderSecrets(
   while (true) {
     const batch = await db.transaction('SERIALIZABLE', async manager => {
       const rows = await manager.query<AiProviderSecretRow[]>(
-        `SELECT TOP (${batchSize}) [id], [ai_connection_id] AS [connectionId],
+        `SELECT TOP (${batchSize}) [id], [ai_connection_id] AS [connectionId], [credential_purpose] AS [purpose],
          [revision_number] AS [revisionNumber], [status],
          [ciphertext], [nonce],
          [authentication_tag] AS [authenticationTag],
@@ -1927,7 +2220,11 @@ export async function reencryptAiProviderSecrets(
         const plaintext = decryptRow(keyring, row)
         const encrypted = encryptAiProviderSecret(
           keyring,
-          { connectionId: row.connectionId, secretVersionId: row.id },
+          {
+            connectionId: row.connectionId,
+            secretVersionId: row.id,
+            purpose: row.purpose,
+          },
           plaintext,
         )
         const updatedRows = await manager.query<Array<{ updatedId: string }>>(
@@ -2037,7 +2334,7 @@ export async function verifyAiProviderSecretRestoreSet(
     : keyring
   while (true) {
     const rows: AiProviderSecretRow[] = await db.query<AiProviderSecretRow[]>(
-      `SELECT TOP (${batchSize}) [id], [ai_connection_id] AS [connectionId],
+      `SELECT TOP (${batchSize}) [id], [ai_connection_id] AS [connectionId], [credential_purpose] AS [purpose],
        [revision_number] AS [revisionNumber], [status],
        [ciphertext], [nonce], [authentication_tag] AS [authenticationTag],
        [cipher_format_version] AS [formatVersion],

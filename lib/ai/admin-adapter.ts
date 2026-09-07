@@ -54,6 +54,15 @@ export interface AiAdminConnectionAdapter {
   fetchCatalog(
     context: Readonly<AiAdminAdapterContext>,
   ): Promise<readonly AiAdminCatalogItem[]>
+  /** Optional read-only administration; never part of runtime availability. */
+  financial?: {
+    capabilities: import('./financial-contracts').AiFinancialCapabilities
+    fetch(
+      context: Readonly<AiAdminAdapterContext>,
+      operation: Readonly<import('./financial-contracts').AiFinancialOperation>,
+      signal: AbortSignal,
+    ): Promise<import('./financial-contracts').AiFinancialSnapshot>
+  }
   probeConnection(
     context: Readonly<AiAdminAdapterContext>,
     probe?: Readonly<AiAdminConnectionProbe>,

@@ -18,6 +18,7 @@ import {
   OPENROUTER_ADAPTER_VERSION,
   openRouterAdapterRegistration,
 } from './openrouter-adapter'
+import { openRouterFinancialAdapter } from './openrouter-financial-adapter'
 import { requireAiReasoningConfiguration } from './reasoning'
 import type {
   AiConnectionId,
@@ -370,6 +371,7 @@ function pricePerMillionTokens(
 }
 
 const openRouterAdminAdapter: AiAdminConnectionAdapter = {
+  financial: openRouterFinancialAdapter,
   async resolveReasoningConfiguration(context, candidate, probe) {
     const models = await fetchModels(context, probe)
     const model = models.find(item => item.id === candidate.externalModelId)

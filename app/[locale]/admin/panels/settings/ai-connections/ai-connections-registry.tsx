@@ -34,6 +34,7 @@ import type { AiRunProfileKey } from '@/lib/ai/profile-resolver'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { AttestationForm, ConnectionForm, SecretForm } from './connection-forms'
+import FinancialStatusPanel from './financial-status-panel'
 import { ModelForm, ProfileForm } from './model-profile-forms'
 import {
   AnimatedRegistrySection,
@@ -837,6 +838,11 @@ export default function AiConnectionsPanel() {
                       </section>
                     ) : null}
 
+                    <FinancialStatusPanel
+                      connection={detail}
+                      expanded={expanded}
+                      key={`${detail.id}-${detail.configurationVersion}`}
+                    />
                     <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                       <section className="rounded-2xl bg-secondary-50 p-4 dark:bg-secondary-950/50">
                         <h5 className="font-semibold text-secondary-950 dark:text-secondary-50">

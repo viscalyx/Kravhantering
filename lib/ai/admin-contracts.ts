@@ -158,6 +158,25 @@ const connectionLifecycleActionSchema = z
   .strict()
 
 export const aiConnectionActionSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('fetch_financial_status') }).strict(),
+  z
+    .object({
+      action: z.literal('write_management_credential'),
+      secret: z.string().min(1).max(16_384),
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal('verify_management_credential'),
+      secretVersionId: aiIdentifierSchema,
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal('remove_management_credential'),
+      secretVersionId: aiIdentifierSchema,
+    })
+    .strict(),
   z
     .object({
       action: z.literal('activate_secret'),

@@ -52,8 +52,13 @@ export interface AiAdapterRunContext {
   externalRunId: AiExternalRunId
 }
 
+export interface AiEgressRequestInit extends RequestInit {
+  /** Optional stricter limit enforced before buffering by the trusted transport. */
+  responseByteLimit?: number
+}
+
 export interface AiEgressTransport {
-  fetch(input: string, init: RequestInit): Promise<Response>
+  fetch(input: string, init: AiEgressRequestInit): Promise<Response>
 }
 
 export interface AiCapabilitySelection {

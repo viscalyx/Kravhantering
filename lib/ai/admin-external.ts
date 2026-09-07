@@ -23,6 +23,11 @@ import {
   enforceAiDataPolicy,
 } from './connection-trust'
 import { controlledTestAdminAdapterRegistration } from './controlled-test-admin-adapter'
+import {
+  AI_FINANCIAL_UNSUPPORTED,
+  type AiFinancialResult,
+  aiFinancialCapabilitiesSchema,
+} from './financial-contracts'
 import { openRouterAdminAdapterRegistration } from './openrouter-admin-adapter'
 import { createPinnedHttpsFetch } from './pinned-https-transport'
 import {
@@ -262,7 +267,7 @@ export function createProductionAiAdminExternalOperations(
       controlledTestAdminAdapterRegistration,
     ])
   const secrets = (): AiProviderSecretAdminService =>
-    new AiProviderSecretAdminService(db, keyring())
+    new AiProviderSecretAdminService(db, keyring)
   const exactLivePathRunner =
     options.exactLivePathRunner ??
     createExactLivePathRunner(db, keyring, deployment)
@@ -280,6 +285,68 @@ export function createProductionAiAdminExternalOperations(
     }
   }
   return {
+    financial: {
+      capabilities(connection) {
+        if (
+          !registry.isRegistered(
+            connection.adapterKey,
+            connection.adapterVersion,
+          )
+        )
+          return AI_FINANCIAL_UNSUPPORTED
+        return aiFinancialCapabilitiesSchema.parse(
+          registry.resolve(connection.adapterKey, connection.adapterVersion)
+            .financial?.capabilities ?? AI_FINANCIAL_UNSUPPORTED,
+        )
+      },
+      async fetch(connection, signal) {
+        const capabilities = this.capabilities(connection)
+        return Promise.all(
+          capabilities.operations.map(async operation => {
+            try {
+              const adapter = registry.resolve(
+                connection.adapterKey,
+                connection.adapterVersion,
+              )
+              return await secrets().fetchFinancialStatus(
+                adapter,
+                connection,
+                async () => (await prepared(connection)).egress,
+                operation,
+                signal,
+              )
+            } catch {
+              return {
+                operation,
+                binding: null,
+                state: 'temporary_error',
+                lastSuccessfulAt: null,
+                snapshot: null,
+              } satisfies AiFinancialResult
+            }
+          }),
+        )
+      },
+      async activateManagement(
+        connection,
+        secretVersionId,
+        signal,
+        beforeCommit,
+      ) {
+        const adapter = registry.resolve(
+          connection.adapterKey,
+          connection.adapterVersion,
+        )
+        await secrets().activateManagementCandidate(
+          adapter,
+          connection,
+          async () => (await prepared(connection)).egress,
+          secretVersionId,
+          signal,
+          beforeCommit,
+        )
+      },
+    },
     adapterAvailability(connection) {
       return registry.isRegistered(
         connection.adapterKey,

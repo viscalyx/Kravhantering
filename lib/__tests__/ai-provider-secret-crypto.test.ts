@@ -28,6 +28,50 @@ function keyring(
 }
 
 describe('AI provider-secret cryptographic envelope', () => {
+  it('authenticates credential purpose and cannot decrypt management material as runtime', () => {
+    const ring = keyring()
+    const binding = {
+      connectionId: randomUUID(),
+      secretVersionId: randomUUID(),
+    }
+    const encrypted = encryptAiProviderSecret(
+      ring,
+      { ...binding, purpose: 'management' },
+      'management-secret',
+    )
+    expect(
+      decryptAiProviderSecret(
+        ring,
+        { ...binding, purpose: 'management' },
+        encrypted,
+      ),
+    ).toBe('management-secret')
+    expect(() => decryptAiProviderSecret(ring, binding, encrypted)).toThrow(
+      'authentication failed',
+    )
+    expect(() =>
+      decryptAiProviderSecret(
+        ring,
+        { ...binding, purpose: 'runtime' },
+        encrypted,
+      ),
+    ).toThrow('authentication failed')
+    expect(() =>
+      encryptAiProviderSecret(
+        ring,
+        { ...binding, purpose: 'unknown' as never },
+        'secret',
+      ),
+    ).toThrow('purpose is invalid')
+    const runtime = encryptAiProviderSecret(ring, binding, 'runtime-secret')
+    expect(
+      decryptAiProviderSecret(
+        ring,
+        { ...binding, purpose: 'runtime' },
+        runtime,
+      ),
+    ).toBe('runtime-secret')
+  })
   it('round-trips AES-256-GCM with the explicitly selected write version', () => {
     const connectionId = randomUUID()
     const secretVersionId = randomUUID()

@@ -31,6 +31,7 @@ export type AdminPrivilegedActionOperation =
   | 'suspend'
   | 'update'
   | 'verify'
+  | 'view'
 
 export type AdminPrivilegedResourceType =
   | 'application_settings'
@@ -42,6 +43,8 @@ export type AdminPrivilegedResourceType =
   | 'ai_connection_model'
   | 'ai_connection_model_revision'
   | 'ai_provider_secret'
+  | 'ai_management_credential'
+  | 'ai_financial_status'
   | 'ai_run_profile'
   | 'hsa_id_prefix'
   | 'norm_reference'

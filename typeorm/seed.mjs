@@ -257,7 +257,9 @@ const SEED_DATA = {
     ],
   },
   ai_provider_secret_versions: {
-    columns: ['id'],
+    // Both credential purposes intentionally stay empty: seed profiles must
+    // never register runtime or management secrets.
+    columns: ['id', 'credential_purpose'],
     identity: false,
     pk: ['id'],
     rows: [],

@@ -81,6 +81,9 @@ describe('pinned HTTPS transport', () => {
     const request = vi.fn()
     const fetchPinned = createPinnedHttpsFetch(request as never)
     await expect(
+      fetchPinned(input({ init: { responseByteLimit: 0 } }) as never),
+    ).rejects.toThrow('response limit is invalid')
+    await expect(
       fetchPinned(input({ resolvedAddresses: [] }) as never),
     ).rejects.toThrow('address is invalid')
     await expect(
@@ -94,41 +97,50 @@ describe('pinned HTTPS transport', () => {
     expect(request).not.toHaveBeenCalled()
   })
 
-  it('rejects oversized and transport-error responses', async () => {
-    const incoming = new EventEmitter() as FakeIncoming
-    incoming.headers = {}
-    incoming.destroy = vi.fn(error => incoming.emit('error', error))
-    const outgoing = new EventEmitter() as EventEmitter & {
-      end: () => void
-      setTimeout: ReturnType<typeof vi.fn>
-      write: ReturnType<typeof vi.fn>
-    }
-    outgoing.write = vi.fn()
-    outgoing.setTimeout = vi.fn()
-    outgoing.end = () => {
-      incoming.emit('data', Buffer.alloc(4 * 1024 * 1024 + 1))
-    }
-    const request = vi.fn((_url, _options, callback) => {
-      callback(incoming)
-      return outgoing
-    })
-    await expect(
-      createPinnedHttpsFetch(request as never)(input() as never),
-    ).rejects.toThrow('response too large')
+  it.each([undefined, 32768])(
+    'rejects oversized and transport-error responses at limit %s',
+    async responseByteLimit => {
+      const incoming = new EventEmitter() as FakeIncoming
+      incoming.headers = {}
+      incoming.destroy = vi.fn(error => incoming.emit('error', error))
+      const outgoing = new EventEmitter() as EventEmitter & {
+        end: () => void
+        setTimeout: ReturnType<typeof vi.fn>
+        write: ReturnType<typeof vi.fn>
+      }
+      outgoing.write = vi.fn()
+      outgoing.setTimeout = vi.fn()
+      outgoing.end = () => {
+        incoming.emit(
+          'data',
+          Buffer.alloc((responseByteLimit ?? 4 * 1024 * 1024) + 1),
+        )
+      }
+      const request = vi.fn((_url, _options, callback) => {
+        callback(incoming)
+        return outgoing
+      })
+      await expect(
+        createPinnedHttpsFetch(request as never)(
+          input({ init: { responseByteLimit } }) as never,
+        ),
+      ).rejects.toThrow('response too large')
 
-    const failedOutgoing = new EventEmitter() as EventEmitter & {
-      end: () => void
-      setTimeout: ReturnType<typeof vi.fn>
-      write: ReturnType<typeof vi.fn>
-    }
-    failedOutgoing.write = vi.fn()
-    failedOutgoing.setTimeout = vi.fn()
-    failedOutgoing.end = () => failedOutgoing.emit('error', new Error('socket'))
-    const failedRequest = vi.fn(() => failedOutgoing)
-    await expect(
-      createPinnedHttpsFetch(failedRequest as never)(input() as never),
-    ).rejects.toThrow('socket')
-  })
+      const failedOutgoing = new EventEmitter() as EventEmitter & {
+        end: () => void
+        setTimeout: ReturnType<typeof vi.fn>
+        write: ReturnType<typeof vi.fn>
+      }
+      failedOutgoing.write = vi.fn()
+      failedOutgoing.setTimeout = vi.fn()
+      failedOutgoing.end = () =>
+        failedOutgoing.emit('error', new Error('socket'))
+      const failedRequest = vi.fn(() => failedOutgoing)
+      await expect(
+        createPinnedHttpsFetch(failedRequest as never)(input() as never),
+      ).rejects.toThrow('socket')
+    },
+  )
 
   it('force-closes a hanging pinned socket when its deadline signal aborts', async () => {
     const controller = new AbortController()

@@ -23,6 +23,7 @@ import {
   enforceAiDataPolicy,
 } from '@/lib/ai/connection-trust'
 import { controlledTestAdminAdapterRegistration } from '@/lib/ai/controlled-test-admin-adapter'
+import { AI_FINANCIAL_FIELDS } from '@/lib/ai/financial-contracts'
 import { openRouterAdminAdapterRegistration } from '@/lib/ai/openrouter-admin-adapter'
 import type { AiPersistedRunProfile } from '@/lib/ai/profile-resolver'
 import { encryptAiProviderSecret } from '@/lib/ai/provider-secret-crypto'
@@ -1935,5 +1936,194 @@ describe('AI administration provider composition', () => {
         ([request]) => request.init.method === 'POST',
       ),
     ).toBe(true)
+  })
+})
+
+describe('AI financial capabilities through the trusted administration boundary', () => {
+  it('keeps adapters without financial support usable without keyring or provider calls', async () => {
+    const query = vi.fn()
+    const policy = deployment()
+    const keyring = vi.fn(() => {
+      throw new Error('keyring unavailable')
+    })
+    const external = createProductionAiAdminExternalOperations(
+      { query } as unknown as SqlServerDatabase,
+      keyring,
+      { deployment: policy },
+    )
+    expect(external.financial?.capabilities(connection())).toEqual({
+      support: 'none',
+      operations: [],
+    })
+    expect(
+      await external.financial?.fetch(
+        connection(),
+        new AbortController().signal,
+      ),
+    ).toEqual([])
+    expect(external.adapterAvailability(connection())).toEqual({
+      available: true,
+    })
+    expect(keyring).not.toHaveBeenCalled()
+    expect(policy.resolveHostname).not.toHaveBeenCalled()
+    expect(query).not.toHaveBeenCalled()
+  })
+
+  it('supports a full provider-neutral adapter without provider key concepts', async () => {
+    const fetch = vi.fn(async () => ({
+      scope: 'organization' as const,
+      measurements: AI_FINANCIAL_FIELDS.map(field => ({
+        field,
+        amount: '12',
+        currency: 'EUR',
+        period: 'monthly' as const,
+        state: 'available' as const,
+      })),
+    }))
+    const adapter = {
+      ...controlledTestAdminAdapterRegistration,
+      adapter: {
+        ...controlledTestAdminAdapterRegistration.adapter,
+        financial: {
+          capabilities: {
+            support: 'full' as const,
+            operations: [
+              {
+                id: 'organization',
+                scope: 'organization' as const,
+                credentialPurpose: null,
+                fields: [...AI_FINANCIAL_FIELDS],
+              },
+            ],
+          },
+          fetch,
+        },
+      },
+    }
+    const keyring = vi.fn(() => {
+      throw new Error('no credential needed')
+    })
+    const external = createProductionAiAdminExternalOperations(
+      { query: vi.fn() } as unknown as SqlServerDatabase,
+      keyring,
+      {
+        deployment: deployment(),
+        registry: createAiAdminConnectionAdapterRegistry([adapter]),
+      },
+    )
+    const result = await external.financial?.fetch(
+      connection(),
+      new AbortController().signal,
+    )
+    expect(external.financial?.capabilities(connection()).support).toBe('full')
+    expect(result?.[0]).toMatchObject({
+      state: 'success',
+      snapshot: {
+        scope: 'organization',
+        measurements: [
+          expect.objectContaining({ amount: '12', currency: 'EUR' }),
+          expect.anything(),
+          expect.anything(),
+          expect.anything(),
+          expect.anything(),
+        ],
+      },
+    })
+    expect(keyring).not.toHaveBeenCalled()
+    expect(fetch).toHaveBeenCalledWith(
+      expect.objectContaining({ credential: null }),
+      expect.objectContaining({ scope: 'organization' }),
+      expect.any(AbortSignal),
+    )
+  })
+
+  it('reads runtime-key data when management is missing, invalid or cannot be decrypted without crossing purposes', async () => {
+    const current = connection({
+      adapterKey: 'openrouter',
+      authenticationType: 'static_secret',
+    })
+    const root = randomBytes(32)
+    const ring = parseAiProviderSecretKeyring(
+      JSON.stringify({
+        formatVersion: 1,
+        activeWriteVersion: 'root-1',
+        keys: { 'root-1': root.toString('base64') },
+      }),
+    )
+    const row = (purpose: 'runtime' | 'management', plaintext: string) => {
+      const id = randomUUID()
+      return {
+        id,
+        connectionId: current.id,
+        purpose,
+        ...encryptAiProviderSecret(
+          ring,
+          { connectionId: current.id, secretVersionId: id, purpose },
+          plaintext,
+        ),
+      }
+    }
+    const runtime = row('runtime', 'runtime-only-secret')
+    let management: ReturnType<typeof row> | undefined
+    const db = {
+      query: vi.fn(async (_sql: string, params: unknown[]) =>
+        params[1] === 'runtime' ? [runtime] : management ? [management] : [],
+      ),
+    } as unknown as SqlServerDatabase
+    const policy = deployment()
+    const fetch = vi.mocked(
+      policy.tlsPolicies.test?.fetchPinned as NonNullable<
+        typeof policy.tlsPolicies.test
+      >['fetchPinned'],
+    )
+    fetch.mockImplementation(async input => {
+      const auth = new Headers(input.init.headers).get('authorization')
+      if (new URL(input.url).pathname.endsWith('/key')) {
+        expect(auth).toBe('Bearer runtime-only-secret')
+        return Response.json({
+          data: {
+            usage: 5,
+            limit: null,
+            limit_remaining: null,
+            limit_reset: null,
+            label: 'sensitive-provider-label',
+          },
+        })
+      }
+      expect(auth).toBe('Bearer rejected-management-secret')
+      return new Response('untrusted-provider-error-secret', { status: 403 })
+    })
+    const external = createProductionAiAdminExternalOperations(db, () => ring, {
+      deployment: policy,
+    })
+    let results = await external.financial?.fetch(
+      current,
+      new AbortController().signal,
+    )
+    expect(results?.map(result => result.state)).toEqual([
+      'missing_credential',
+      'success',
+    ])
+    management = row('management', 'rejected-management-secret')
+    results = await external.financial?.fetch(
+      current,
+      new AbortController().signal,
+    )
+    expect(results?.map(result => result.state)).toEqual([
+      'invalid_credential',
+      'success',
+    ])
+    management.authenticationTag.fill(0)
+    results = await external.financial?.fetch(
+      current,
+      new AbortController().signal,
+    )
+    expect(results?.map(result => result.state)).toEqual([
+      'temporary_error',
+      'success',
+    ])
+    expect(JSON.stringify(results)).not.toMatch(
+      /runtime-only-secret|management-secret|sensitive-provider-label|untrusted-provider-error-secret/u,
+    )
   })
 })

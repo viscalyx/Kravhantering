@@ -2218,6 +2218,33 @@ modellkatalog" misslyckades. Fel: The AI connection trust policy blocked the
 request.`. Det generiska meddelandet `Failed to perform AI connection action.`
 visas inte. Indikeringen ligger kvar tills användaren stänger den.
 
+### ADMIN-22: Ekonomisk AI-status och separat management-nyckel
+
+**Förutsättningar:** Logga in som Admin i en testmiljö med en AI-anslutning.
+Använd kontrollerade leverantörssvar för saknat och delvis ekonomiskt stöd,
+környckelns användning och obegränsad gräns, avvisad management-kandidat och
+ett tillfälligt hämtningsfel. Använd endast syntetiska nycklar i fixturen.
+
+1. Öppna anslutningens detaljer under Inställningar. Utan ekonomiskt stöd
+   visas en förklaring utan begäran om management-nyckel.
+2. Välj fixturen med delvis stöd och uppdatera ekonomisk status. Kontrollera
+   omfattning, belopp, valuta, period, obegränsade och saknade värden samt
+   senaste lyckade uppdatering. Saknad management-nyckel döljer inte
+   környckelns information.
+3. Registrera en management-kandidat. Kontrollera att inmatningen töms.
+   Låt verifieringen misslyckas och kontrollera att környckelns värden finns
+   kvar. Verifiera sedan en godtagbar kandidat och aktivera den.
+4. Låt nästa uppdatering misslyckas. Tidigare värden för samma nyckel och
+   omfattning visas som inaktuella med sin ursprungliga uppdateringstid.
+5. Ta bort management-nyckeln och bekräfta lokal borttagning. Környckelns
+   information visas fortsatt. Kontouppgifter anger saknad nyckel.
+
+**Förväntat resultat:** Ekonomiska uppgifter är märkta som
+leverantörsrapporterade och påverkar inte modellkörning. Borttagningens
+bekräftelse förklarar att leverantörens nyckel inte återkallas. Saknat stöd,
+saknad nyckel och tillfälliga fel skiljs åt. Ingen lagrad hemlighet eller rått
+leverantörssvar visas. Nyckelbyte återanvänder inte den gamla nyckelns rapport.
+
 ## Dataskydd och personuppgifter
 
 ### PRIV-01: egen personuppgiftsexport

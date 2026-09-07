@@ -618,3 +618,103 @@ describe('AI run profile authorization', () => {
     expect(saveRunProfile).not.toHaveBeenCalled()
   })
 })
+
+describe('AI administration financial status and management credentials', () => {
+  it('audits financial fetch and view without provider material and rejects unsupported registration', async () => {
+    const state = harness()
+    const result = await state.service.getFinancialStatus(
+      state.connection.id,
+      new AbortController().signal,
+    )
+    expect(result).toEqual({
+      capabilities: { support: 'none', operations: [] },
+      managementCredential: { active: null, candidates: [] },
+      results: [],
+    })
+    expect(state.audit.mock.calls.map(([detail]) => detail)).toEqual([
+      {
+        operation: 'probe',
+        resourceId: state.connection.id,
+        resourceType: 'ai_financial_status',
+        details: { outcomes: '' },
+      },
+      {
+        operation: 'view',
+        resourceId: state.connection.id,
+        resourceType: 'ai_financial_status',
+      },
+    ])
+    await expect(
+      state.service.writeManagementCredential(
+        state.connection.id,
+        'never-save-unsupported-secret',
+      ),
+    ).rejects.toThrow('unsupported')
+    await expect(
+      state.service.verifyManagementCredential(
+        state.connection.id,
+        randomUUID(),
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow('unsupported')
+  })
+
+  it('invalidates a report if connection configuration changes during the request', async () => {
+    const state = harness()
+    vi.mocked(state.store.getConnection)
+      .mockResolvedValueOnce({ ...state.connection })
+      .mockResolvedValueOnce({ ...state.connection, configurationVersion: 5 })
+    state.external.financial = {
+      capabilities: () => ({
+        support: 'partial',
+        operations: [
+          {
+            id: 'account',
+            credentialPurpose: 'management',
+            scope: 'account',
+            fields: ['usage'],
+          },
+        ],
+      }),
+      activateManagement: vi.fn(),
+      fetch: async () => [
+        {
+          operation: {
+            id: 'account',
+            credentialPurpose: 'management',
+            scope: 'account',
+            fields: ['usage'],
+          },
+          binding: 'old-configuration',
+          state: 'success',
+          lastSuccessfulAt: '2026-09-07T10:00:00Z',
+          snapshot: {
+            scope: 'account',
+            measurements: [
+              {
+                field: 'usage',
+                amount: '1',
+                currency: 'USD',
+                period: 'lifetime',
+                state: 'available',
+              },
+            ],
+          },
+        },
+      ],
+    }
+    const result = await state.service.getFinancialStatus(
+      state.connection.id,
+      new AbortController().signal,
+    )
+    expect(result.results[0]).toMatchObject({
+      state: 'temporary_error',
+      binding: null,
+      snapshot: null,
+      lastSuccessfulAt: null,
+    })
+    expect(JSON.stringify(state.audit.mock.calls)).not.toContain(
+      'old-configuration',
+    )
+  })
+})

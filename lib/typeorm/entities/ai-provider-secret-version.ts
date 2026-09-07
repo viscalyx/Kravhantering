@@ -14,6 +14,7 @@ export interface AiProviderSecretVersionEntity {
   ciphertextDeletedAt: Date | null
   connection: AiConnectionEntity
   createdAt: Date
+  credentialPurpose: 'runtime' | 'management'
   deactivatedAt: Date | null
   id: string
   nonce: Buffer | null
@@ -32,6 +33,12 @@ export const aiProviderSecretVersionEntity =
     columns: {
       id: { name: 'id', primary: true, type: 'uniqueidentifier' },
       revisionNumber: { name: 'revision_number', type: 'int' },
+      credentialPurpose: {
+        name: 'credential_purpose',
+        type: 'nvarchar',
+        length: 24,
+        default: () => "N'runtime'",
+      },
       status: { length: 24, name: 'status', type: 'nvarchar' },
       ciphertext: {
         length: 'MAX',
@@ -109,13 +116,13 @@ export const aiProviderSecretVersionEntity =
     },
     uniques: [
       {
-        columns: ['connection', 'revisionNumber'],
+        columns: ['connection', 'credentialPurpose', 'revisionNumber'],
         name: 'uq_ai_provider_secret_versions_connection_revision',
       },
     ],
     indices: [
       {
-        columns: ['connection'],
+        columns: ['connection', 'credentialPurpose'],
         name: 'uq_ai_provider_secret_versions_active_connection',
         unique: true,
         where: "[status] = N'active'",
@@ -127,6 +134,10 @@ export const aiProviderSecretVersionEntity =
       },
     ],
     checks: [
+      {
+        expression: "[credential_purpose] IN (N'runtime', N'management')",
+        name: 'chk_ai_provider_secret_versions_credential_purpose',
+      },
       {
         expression: '[revision_number] >= 1',
         name: 'chk_ai_provider_secret_versions_revision_number',
@@ -151,7 +162,7 @@ export const aiProviderSecretVersionEntity =
       },
       {
         expression:
-          "([provider_revoked_at] IS NULL AND [ciphertext_deleted_at] IS NULL) OR ([status] = N'superseded' AND [provider_revoked_at] IS NOT NULL AND [ciphertext_deleted_at] IS NOT NULL AND [provider_revoked_at] = [ciphertext_deleted_at])",
+          "([provider_revoked_at] IS NULL AND [ciphertext_deleted_at] IS NULL) OR ([status] = N'superseded' AND [ciphertext_deleted_at] IS NOT NULL AND (([credential_purpose] = N'management' AND [provider_revoked_at] IS NULL) OR ([provider_revoked_at] IS NOT NULL AND [provider_revoked_at] = [ciphertext_deleted_at])))",
         name: 'chk_ai_provider_secret_versions_revocation',
       },
     ],

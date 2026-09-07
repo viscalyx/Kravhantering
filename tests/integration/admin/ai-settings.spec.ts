@@ -5,7 +5,9 @@ import {
   type Route,
   test,
 } from '@playwright/test'
+import { FINANCIAL_STATUS } from '@/lib/__tests__/fixtures/ai-financial-status'
 import { VERIFICATION } from '@/lib/__tests__/fixtures/ai-model-verification'
+import type { AiConnectionFinancialStatus } from '@/lib/ai/financial-contracts'
 import {
   addMcpMaxRequestBytesSteps,
   MCP_REQUEST_PAYLOAD_MAX_BYTES,
@@ -1680,5 +1682,155 @@ test.describe('Admin settings', () => {
         await cleanup()
       }
     })
+  }
+})
+
+test('ADMIN-22: provider financial scopes, management lifecycle and stale refresh remain independent', async ({
+  page,
+  request,
+}) => {
+  const response = await request.get('/api/admin/ai-connections')
+  expect(response.ok()).toBe(true)
+  const connections = (await response.json()) as {
+    id: string
+    administrationName: string
+  }[]
+  const connection = connections[0]
+  if (!connection)
+    throw new Error('Financial status test requires a seeded AI connection')
+  expect(connection).toBeTruthy()
+  let status: AiConnectionFinancialStatus = {
+    capabilities: { support: 'none', operations: [] },
+    managementCredential: { active: null, candidates: [] },
+    results: [],
+  }
+  const id = '00000000-0000-4000-8000-000000001099'
+  let failVerification = false
+  await page.route(
+    `**/api/admin/ai-connections/${connection.id}/actions`,
+    async route => {
+      const body = route.request().postDataJSON()
+      if (body.action === 'fetch_financial_status') {
+        await route.fulfill({ json: status })
+      } else if (body.action === 'write_management_credential') {
+        expect(body).toEqual({
+          action: 'write_management_credential',
+          secret: 'synthetic-management-candidate',
+        })
+        status = {
+          ...status,
+          managementCredential: {
+            ...status.managementCredential,
+            candidates: [{ id, createdAt: '2026-09-07T10:00:00Z' }],
+          },
+        }
+        await route.fulfill({ status: 201, body: '' })
+      } else if (body.action === 'verify_management_credential') {
+        if (failVerification) {
+          await route.fulfill({
+            status: 400,
+            json: { error: 'Management credential verification failed.' },
+          })
+        } else {
+          status = {
+            ...status,
+            managementCredential: {
+              active: { id, verifiedAt: '2026-09-07T10:01:00Z' },
+              candidates: [],
+            },
+          }
+          await route.fulfill({ status: 204, body: '' })
+        }
+      } else if (body.action === 'remove_management_credential') {
+        status = { ...FINANCIAL_STATUS }
+        await route.fulfill({ status: 204, body: '' })
+      } else await route.continue()
+    },
+  )
+  await page.goto('/sv/admin?tab=settings')
+  await page
+    .getByRole('button', {
+      name: new RegExp(
+        connection.administrationName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+      ),
+    })
+    .click()
+  const panel = page.getByRole('region', {
+    name: 'Leverantörens krediter och användning',
+  })
+  await expect(
+    panel.getByText('Adaptern erbjuder inte ekonomisk status.', {
+      exact: false,
+    }),
+  ).toBeVisible()
+  await expect(panel.getByLabel(/^Ny management-nyckel/u)).toHaveCount(0)
+  status = structuredClone(FINANCIAL_STATUS)
+  await panel
+    .getByRole('button', { name: 'Uppdatera ekonomisk status' })
+    .click()
+  await expect(panel.getByText('25,5 USD')).toBeVisible()
+  await expect(
+    panel.getByText('Nyckeln för denna omfattning saknas'),
+  ).toBeVisible()
+  const input = panel.getByLabel(/^Ny management-nyckel/u)
+  await input.fill('synthetic-management-candidate')
+  await panel.getByRole('button', { name: 'Registrera kandidat' }).click()
+  await expect(input).toHaveValue('')
+  failVerification = true
+  await panel.getByRole('button', { name: 'Verifiera och aktivera' }).click()
+  await expect(panel.getByRole('alert')).toContainText(
+    'Begäran kunde inte slutföras',
+  )
+  await expect(panel.getByText('25,5 USD')).toBeVisible()
+  failVerification = false
+  await panel.getByRole('button', { name: 'Verifiera och aktivera' }).click()
+  await expect(
+    panel.getByText('Aktiv management-nyckel verifierad:', { exact: false }),
+  ).toBeVisible()
+  const originalTime = await panel
+    .getByText('Senast uppdaterad:', { exact: false })
+    .textContent()
+  status = {
+    ...status,
+    results: status.results.map(result =>
+      result.operation.scope === 'credential'
+        ? {
+            ...result,
+            state: 'temporary_error',
+            lastSuccessfulAt: null,
+            snapshot: null,
+          }
+        : result,
+    ),
+  }
+  await panel
+    .getByRole('button', { name: 'Uppdatera ekonomisk status' })
+    .click()
+  await expect(
+    panel.getByText('Inaktuellt — visar senast hämtade rapport'),
+  ).toBeVisible()
+  await expect(
+    panel.getByText('Senast uppdaterad:', { exact: false }),
+  ).toHaveText(originalTime ?? '')
+  await expect(panel.getByText('25,5 USD')).toBeVisible()
+  await panel.getByRole('button', { name: 'Ta bort management-nyckel' }).click()
+  const confirm = page.getByRole('alertdialog', {
+    name: 'Ta bort management-nyckel',
+  })
+  await expect(confirm).toContainText(
+    'Nyckeln återkallas inte hos leverantören',
+  )
+  await confirm
+    .getByRole('button', { name: 'Ta bort management-nyckel', exact: true })
+    .click()
+  await expect(
+    panel.getByText('Nyckeln för denna omfattning saknas'),
+  ).toBeVisible()
+  await expect(panel.getByText('25,5 USD')).toBeVisible()
+  if (process.env.NODE_ENV !== 'production') {
+    await expect(panel).toHaveAttribute(
+      'data-developer-mode-name',
+      'AI provider financial status',
+    )
   }
 })

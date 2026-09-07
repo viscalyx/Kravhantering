@@ -119,7 +119,8 @@ Deferred from this contract:
   completed candidates in connection detail, connection-scoped discard,
   atomic consumption, direct stable-profile saves,
   connection and provider-secret activation, encrypted write-only secrets,
-  external probes, optimistic concurrency, dependency invalidation, and
+  external probes, optional read-only financial status, independently encrypted
+  management credentials, optimistic concurrency, dependency invalidation, and
   redacted privileged audit. Mutations use same-origin CSRF enforcement and
   focused route/service/SQL tests; generated disposable-database traffic must
   not trigger provider calls or lifecycle changes.

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { assertSameOriginRequest } from '@/lib/auth/csrf'
 import { conflictError, forbiddenError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
@@ -26,6 +27,10 @@ const routeState = vi.hoisted(() => ({
   getDb: vi.fn(async () => ({ db: true })),
   runtime: vi.fn(),
   service: {
+    getFinancialStatus: vi.fn(),
+    writeManagementCredential: vi.fn(),
+    verifyManagementCredential: vi.fn(),
+    removeManagementCredential: vi.fn(),
     getConnection: vi.fn(),
     deleteModelRevision: vi.fn(),
     discardModelVerification: vi.fn(),
@@ -42,6 +47,11 @@ vi.mock('@/lib/admin/privileged-audit', () => ({
 }))
 vi.mock('@/lib/requirements/auth', () => ({
   createRequestContext: routeState.createRequestContext,
+}))
+vi.mock('@/lib/auth/config', () => ({
+  getAuthConfig: () => ({
+    redirectUri: 'https://example.test/api/auth/callback',
+  }),
 }))
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getDb,
@@ -84,7 +94,10 @@ describe('Admin AI stable-profile and model-verification routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     routeState.createRequestContext.mockResolvedValue(routeState.context)
-    routeState.createPrivilegedContext.mockResolvedValue(routeState.context)
+    routeState.createPrivilegedContext.mockImplementation(async request => {
+      assertSameOriginRequest(request)
+      return routeState.context
+    })
     routeState.runtime.mockReturnValue(routeState.service)
     routeState.service.verifyModelCandidate.mockImplementation(
       async ({ onProgress }) => {
@@ -106,6 +119,109 @@ describe('Admin AI stable-profile and model-verification routes', () => {
     routeState.service.endModelRevision.mockResolvedValue({
       id: modelRevisionId,
     })
+  })
+
+  it.each([
+    'fetch_financial_status',
+    'write_management_credential',
+    'verify_management_credential',
+    'remove_management_credential',
+  ])(
+    'authorizes %s before accessing credentials or providers',
+    async action => {
+      routeState.createPrivilegedContext.mockResolvedValue({
+        ...routeState.context,
+        actor: { ...routeState.context.actor, roles: ['Reader'] },
+      })
+      const body =
+        action === 'write_management_credential'
+          ? { action, secret: 'secret-fixture' }
+          : action === 'fetch_financial_status'
+            ? { action }
+            : { action, secretVersionId: attemptId }
+      const response = await connectionAction(mutationRequest(body), {
+        params: Promise.resolve({ connectionId }),
+      })
+      expect(response.status).toBe(403)
+      expect(routeState.runtime).not.toHaveBeenCalled()
+      expect(await response.text()).not.toContain('secret-fixture')
+    },
+  )
+
+  it('returns only safe financial status and keeps management mutation payloads separate', async () => {
+    const status = {
+      capabilities: { support: 'none', operations: [] },
+      managementCredential: { active: null, candidates: [] },
+      results: [],
+    }
+    routeState.service.getFinancialStatus.mockResolvedValue(status)
+    const response = await connectionAction(
+      mutationRequest({ action: 'fetch_financial_status' }),
+      { params: Promise.resolve({ connectionId }) },
+    )
+    expect(await response.json()).toEqual(status)
+    expect(response.headers.get('cache-control')).toContain('no-store')
+    const written = await connectionAction(
+      mutationRequest({
+        action: 'write_management_credential',
+        secret: 'management-fixture-secret',
+      }),
+      { params: Promise.resolve({ connectionId }) },
+    )
+    expect(written.status).toBe(201)
+    expect(await written.text()).toBe('')
+    expect(routeState.service.writeManagementCredential).toHaveBeenCalledWith(
+      connectionId,
+      'management-fixture-secret',
+    )
+    const verified = await connectionAction(
+      mutationRequest({
+        action: 'verify_management_credential',
+        secretVersionId: attemptId,
+      }),
+      { params: Promise.resolve({ connectionId }) },
+    )
+    expect(verified.status).toBe(204)
+    expect(routeState.service.verifyManagementCredential).toHaveBeenCalledWith(
+      connectionId,
+      attemptId,
+      expect.any(AbortSignal),
+    )
+    const removed = await connectionAction(
+      mutationRequest({
+        action: 'remove_management_credential',
+        secretVersionId: attemptId,
+      }),
+      { params: Promise.resolve({ connectionId }) },
+    )
+    expect(removed.status).toBe(204)
+    expect(routeState.service.removeManagementCredential).toHaveBeenCalledWith(
+      connectionId,
+      attemptId,
+    )
+  })
+
+  it('rejects oversized secrets, extra purpose fields and cross-origin financial reads before service access', async () => {
+    for (const body of [
+      { action: 'write_management_credential', secret: 'a'.repeat(16385) },
+      {
+        action: 'write_management_credential',
+        secret: 'a',
+        purpose: 'runtime',
+      },
+    ]) {
+      const response = await connectionAction(mutationRequest(body), {
+        params: Promise.resolve({ connectionId }),
+      })
+      expect(response.status).toBe(400)
+    }
+    const request = mutationRequest({ action: 'fetch_financial_status' })
+    request.headers.set('origin', 'https://untrusted.example')
+    const rejected = await connectionAction(request, {
+      params: Promise.resolve({ connectionId }),
+    })
+    expect(rejected.status).toBe(403)
+    expect(routeState.runtime).not.toHaveBeenCalled()
   })
 
   it.each([

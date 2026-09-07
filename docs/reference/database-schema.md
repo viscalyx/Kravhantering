@@ -223,6 +223,7 @@ erDiagram
     ai_provider_secret_versions {
         uniqueidentifier id PK
         uniqueidentifier ai_connection_id FK
+        text credential_purpose
         integer revision_number UK
         text status
         binary ciphertext
@@ -1796,42 +1797,54 @@ invalidates evidence bound to an earlier configuration.
 
 ### `ai_provider_secret_versions`
 
-AES-256-GCM encrypted provider-secret revisions. The root keys stay outside
-SQL Server. Each row is bound to its immutable connection and secret-version
-identities through authenticated additional data. Candidate creation,
-verified activation, restoration of a still-valid superseded revision, and
-root re-encryption rotate `revision_token` values. Only candidates may be
-deleted as rows. After a superseded provider credential is confirmed revoked,
-the ciphertext, nonce, and authentication tag are cleared while lifecycle and
-root-version metadata remain.
+AES-256-GCM encrypted provider-secret revisions. The external root keys serve
+both independent credential purposes. Runtime AAD uses the connection and
+secret-version identities; management AAD adds a purpose suffix. The immutable
+binding trigger also protects `credential_purpose`. Runtime lookups select
+only runtime rows, including model/profile availability and activation.
+
+Management activation verifies the encrypted candidate before an atomic swap.
+It compares the candidate token, connection configuration and prior active
+management revision. Failed verification or audit rolls back the swap. It does
+not change runtime credentials, connection lifecycle, configuration version,
+model verification or run-profile availability. Management rotation and local
+removal scrub superseded material without claiming provider revocation.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | ------ | ---- | ----------- |
 | `id` | uniqueidentifier PK | Immutable secret-version identity included in AES-GCM AAD |
 | `ai_connection_id` | uniqueidentifier FK | Immutable owning connection identity included in AES-GCM AAD |
-| `revision_number` | integer | Per-connection sequence, starting at 1 |
+| `credential_purpose` | nvarchar(24) | Immutable `runtime` (default) or `management`; separated in authenticated binding |
+| `revision_number` | integer | Sequence per connection and purpose, starting at 1 |
 | `status` | nvarchar(24) | `candidate`, `active`, or `superseded` |
-| `ciphertext` | varbinary(max), nullable | AES-256-GCM ciphertext; cleared only after confirmed provider revocation |
-| `nonce` | binary(12), nullable | Unique cryptographically random 96-bit GCM nonce for this encryption |
+| `ciphertext` | varbinary(max), nullable | AES-256-GCM ciphertext; cleared on confirmed runtime provider revocation or local management rotation/removal |
+| `nonce` | binary(12), nullable | Unique cryptographically random 96-bit GCM nonce |
 | `authentication_tag` | binary(16), nullable | 128-bit GCM authentication tag |
-| `cipher_format_version` | smallint | Explicit cipher/AAD format version; currently `1` |
-| `root_key_version` | nvarchar(100) | Explicit external root-key version used for this encryption; never inferred from ordering |
+| `cipher_format_version` | smallint | Cipher/AAD format version `1`; management purpose adds an AAD suffix |
+| `root_key_version` | nvarchar(100) | External root-key version, never inferred from ordering |
 | `created_at` | datetime2(3) | Candidate creation time |
-| `verified_at` | datetime2(3), nullable | Most recent successful provider test before activation or restoration |
+| `verified_at` | datetime2(3), nullable | Successful provider verification before activation |
 | `activated_at` | datetime2(3), nullable | First successful activation time |
 | `deactivated_at` | datetime2(3), nullable | Time the active revision was superseded |
-| `provider_revoked_at` | datetime2(3), nullable | Operator-confirmed provider revocation time |
-| `ciphertext_deleted_at` | datetime2(3), nullable | Time encrypted material was cleared after revocation |
+| `provider_revoked_at` | datetime2(3), nullable | Operator-confirmed runtime provider revocation; null for local management removal |
+| `ciphertext_deleted_at` | datetime2(3), nullable | Time encrypted material was cleared |
 | `revision_token` | uniqueidentifier | Optimistic concurrency token |
 <!-- markdownlint-enable MD013 -->
 
-**Constraints:** `(ai_connection_id, revision_number)` is unique and the
-filtered active index permits at most one active revision per connection.
-Encrypted material is all present or all absent. Missing material requires a
-superseded row with matching revocation and deletion times. Required and demo
-seed intentionally create no provider-secret rows because neither profile may
-contain credentials.
+**Constraints:** `(ai_connection_id, credential_purpose, revision_number)` is
+unique. The filtered active index permits one active revision per connection
+and purpose. Encrypted material is all present or all absent. Absent material
+requires a superseded row; runtime rows require matching provider revocation
+and deletion times. Management rows permit local removal without provider
+revocation. Only candidate rows can be deleted. Registration permits at most
+eight pending management candidates per connection.
+
+Required and demo seed intentionally create no secrets of either purpose.
+Restore verification and root re-encryption authenticate retained ciphertext
+for both purposes. The purpose migration defaults existing rows to runtime
+without re-encryption. Downgrade requires a compatible database backup and
+keyring; the migration refuses to discard credential-purpose information.
 
 **Indexes:** `uq_ai_provider_secret_versions_connection_revision`,
 `uq_ai_provider_secret_versions_active_connection`,
@@ -3390,8 +3403,8 @@ its purpose and the table/column(s) it covers.
 | `uq_requirement_import_validation_rate_buckets_principal_window` | `requirement_import_validation_rate_buckets` | `principal_fingerprint, window_started_at` | Ensures one creation counter per principal and fixed 10-minute window |
 | `uq_hsa_verification_quota_buckets_identity_window` | `hsa_verification_quota_buckets` | `bucket_kind, actor_fingerprint, target_fingerprint, window_started_at` | Ensures one counter per HSA verification quota identity and fixed window |
 | `uq_ai_connections_administration_name` | `ai_connections` | `administration_name` | Keeps the internal administration name unique without using provider names as keys |
-| `uq_ai_provider_secret_versions_connection_revision` | `ai_provider_secret_versions` | `(ai_connection_id, revision_number)` | Preserves ordered encrypted secret history per connection |
-| `uq_ai_provider_secret_versions_active_connection` | `ai_provider_secret_versions` | `ai_connection_id` where `status = 'active'` | Permits at most one active provider-secret revision per connection |
+| `uq_ai_provider_secret_versions_connection_revision` | `ai_provider_secret_versions` | `(ai_connection_id, credential_purpose, revision_number)` | Preserves encrypted history per connection and purpose |
+| `uq_ai_provider_secret_versions_active_connection` | `ai_provider_secret_versions` | `(ai_connection_id, credential_purpose)` where `status = 'active'` | Permits one active provider-secret revision per connection and purpose |
 | `uq_ai_connection_attestations_connection_revision` | `ai_connection_attestations` | `(ai_connection_id, revision_number)` | Preserves ordered attestation history per connection |
 | `uq_ai_connection_attestations_valid_connection` | `ai_connection_attestations` | `ai_connection_id` where `status = 'valid'` | Permits at most one valid attestation per connection |
 | `uq_ai_connection_model_revisions_model_revision` | `ai_connection_model_revisions` | `(ai_connection_model_id, revision_number)` | Preserves ordered immutable model revision history |

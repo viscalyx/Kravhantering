@@ -801,3 +801,25 @@ reasoning. Missing activity or technical failure is inconclusive; explicit
 rejection is not verified. Either blocks saving a usable revision even when
 ordinary JSON generation succeeds. Encrypted or redacted metadata can prove
 activity, but never visible analysis.
+
+## Leverantörens ekonomiska AI-status
+
+Öppna en AI-anslutning under Inställningar för att läsa leverantörens krediter,
+användning och utgiftsgränser. Uppdatera hämtar nya värden för varje omfattning.
+Kontovärden kan omfatta flera nycklar och anslutningar. Summera inte rapporter
+från flera anslutningar. Uppgifterna är leverantörsrapporterade, inte intern
+bokföring eller ensam grund för kostnadskontroll.
+
+Adaptern kan ha fullt, delvis eller inget stöd för ekonomiska värden inom sina
+angivna omfattningar. Vid delvis stöd anges värden utan stöd uttryckligen.
+Utan stöd behövs ingen management-nyckel. Saknade eller felaktiga nycklar och
+hämtningsfel påverkar inte modellkörning. Környckelns information och
+kontoinformation visas oberoende av varandra. Inaktuella värden behåller
+ursprunglig uppdateringstid; vid ny nyckel används inte gamla värden.
+
+När adaptern stöder det kan en administratör registrera en separat
+management-nyckel, verifiera och aktivera kandidaten, ersätta nyckeln eller ta
+bort den lokalt. Misslyckad verifiering behåller den aktiva nyckeln. Borttagning
+raderar lagrat hemligt material och stoppar lokal användning; den återkallar
+inte nyckeln hos leverantören. Återkalla nyckeln direkt hos leverantören vid
+behov. Környckeln hanteras separat.

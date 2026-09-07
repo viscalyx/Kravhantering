@@ -54,7 +54,7 @@ export interface AiTlsPolicy {
 }
 
 export interface AiPinnedTlsRequest {
-  init: Readonly<RequestInit>
+  init: Readonly<import('./run-contracts').AiEgressRequestInit>
   resolvedAddresses: readonly string[]
   serverName: string
   url: string
@@ -350,7 +350,10 @@ export function createAiEgressTransport(
   if (!egressPolicy) return denied('egress_policy_missing')
   if (!tlsPolicy) return denied('tls_policy_missing')
   return Object.freeze({
-    async fetch(input: string, init: RequestInit): Promise<Response> {
+    async fetch(
+      input: string,
+      init: import('./run-contracts').AiEgressRequestInit,
+    ): Promise<Response> {
       let requested: URL
       try {
         requested = new URL(input)

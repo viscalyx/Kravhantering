@@ -25,6 +25,26 @@ export const POST = secureMutationRoute({
     const service = createAiConnectionAdministrationRuntime(db, context)
     const connectionId = params.connectionId
     switch (body.action) {
+      case 'fetch_financial_status':
+        return NextResponse.json(
+          await service.getFinancialStatus(connectionId, request.signal),
+        )
+      case 'write_management_credential':
+        await service.writeManagementCredential(connectionId, body.secret)
+        return new NextResponse(null, { status: 201 })
+      case 'verify_management_credential':
+        await service.verifyManagementCredential(
+          connectionId,
+          body.secretVersionId,
+          request.signal,
+        )
+        return new NextResponse(null, { status: 204 })
+      case 'remove_management_credential':
+        await service.removeManagementCredential(
+          connectionId,
+          body.secretVersionId,
+        )
+        return new NextResponse(null, { status: 204 })
       case 'activate_secret':
         return NextResponse.json(
           await service.activateSecret({

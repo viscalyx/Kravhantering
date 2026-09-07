@@ -84,7 +84,11 @@ export function loadAiProviderSecretMaintenanceKeyring(
 }
 
 function binding(row) {
-  return { connectionId: row.connectionId, secretVersionId: row.id }
+  return {
+    connectionId: row.connectionId,
+    secretVersionId: row.id,
+    purpose: row.purpose,
+  }
 }
 
 function envelope(row, rootKeyVersion = row.rootKeyVersion) {
@@ -138,7 +142,7 @@ function encrypt(row, plaintext, keyring) {
   }
 }
 
-const RETAINED_COLUMNS = `[id], [ai_connection_id] AS [connectionId],
+const RETAINED_COLUMNS = `[id], [ai_connection_id] AS [connectionId], [credential_purpose] AS [purpose],
   [ciphertext], [nonce], [authentication_tag] AS [authenticationTag],
   [cipher_format_version] AS [formatVersion],
   [root_key_version] AS [rootKeyVersion], [revision_token] AS [revisionToken]`
@@ -246,7 +250,7 @@ export async function reencryptAiProviderSecretBatch(
     'SERIALIZABLE',
     async manager => {
       const rows = await manager.query(
-        `SELECT TOP (${batchSize}) [id], [ai_connection_id] AS [connectionId],
+        `SELECT TOP (${batchSize}) [id], [ai_connection_id] AS [connectionId], [credential_purpose] AS [purpose],
          [ciphertext], [nonce], [authentication_tag] AS [authenticationTag],
          [cipher_format_version] AS [formatVersion],
          [root_key_version] AS [rootKeyVersion], [revision_token] AS [revisionToken]
