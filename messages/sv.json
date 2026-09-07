@@ -2452,7 +2452,7 @@
         "summary": {
           "organization": {
             "title": "Org. total/kvar",
-            "help": "Köpta krediter och återstående saldo på leverantörens konto, som kan delas av organisationen. Om leverantören rapporterar en organisationsgräns visas den och återstående utrymme. Detta är inte anslutningens förbrukning."
+            "help": "Köpta krediter och återstående saldo som delas på genom organisationens konto. Om leverantören rapporterar en organisationsgräns visas den och återstående utrymme. Detta är inte anslutningens förbrukning."
           },
           "credential": {
             "title": "Nyckel total/kvar",

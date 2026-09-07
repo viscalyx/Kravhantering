@@ -2452,7 +2452,7 @@
         "summary": {
           "organization": {
             "title": "Org. total/remaining",
-            "help": "Purchased credits and remaining balance in the provider account, which may be shared by the organization. If the provider reports an organization limit, that limit and remaining allowance are shown. This is not connection usage."
+            "help": "Purchased credits and remaining balance shared through the organization’s account. If the provider reports an organization limit, that limit and remaining allowance are shown. This is not connection usage."
           },
           "credential": {
             "title": "Key total/remaining",
