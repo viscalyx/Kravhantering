@@ -1848,7 +1848,7 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
     await expect(panel.getByText('25,56 USD')).toHaveText('25,56 USD')
     await expect(
       panel.getByText('Nyckeln för denna omfattning saknas'),
-    ).toBeVisible()
+    ).toHaveText('Nyckeln för denna omfattning saknas')
     await expect(summary).toContainText('50,00 USD / 24,50 USD')
     await expect(
       article.getByRole('status', { name: 'Org. total/kvar' }),
@@ -1906,7 +1906,9 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
       'Aktiv management-nyckel verifierad:',
       { exact: false },
     )
-    await expect(activeCredential).toBeVisible()
+    await expect(activeCredential).toContainText(
+      'Aktiv management-nyckel verifierad:',
+    )
     const activeBeforeRejection = await activeCredential.textContent()
     const input = panel.getByLabel(/^Ny management-nyckel/u)
     await input.fill('synthetic-management-candidate')
@@ -1926,7 +1928,7 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
     await panel.getByRole('button', { name: 'Verifiera och aktivera' }).click()
     await expect(
       panel.getByText('Aktiv management-nyckel verifierad:', { exact: false }),
-    ).toBeVisible()
+    ).toContainText('Aktiv management-nyckel verifierad:')
   })
   await test.step('Retain stale values and their original timestamp after refresh fails', async () => {
     const originalTime = await panel
@@ -1950,7 +1952,7 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
       .click()
     await expect(
       panel.getByText('Inaktuellt — visar senast hämtade rapport'),
-    ).toBeVisible()
+    ).toHaveText('Inaktuellt — visar senast hämtade rapport')
     await expect(
       panel.getByText('Senast uppdaterad:', { exact: false }),
     ).toHaveText(originalTime ?? '')
@@ -1971,7 +1973,7 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
       .click()
     await expect(
       panel.getByText('Nyckeln för denna omfattning saknas'),
-    ).toBeVisible()
+    ).toHaveText('Nyckeln för denna omfattning saknas')
     await expect(panel.getByText('25,50 USD')).toHaveText('25,50 USD')
     if (process.env.NODE_ENV !== 'production') {
       await expect(panel).toHaveAttribute(
