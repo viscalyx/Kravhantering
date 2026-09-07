@@ -141,6 +141,26 @@ describe('AI provider secrets against SQL Server', () => {
         await getAiManagementCredentialMetadata(appDb(), id)
       ).active?.id.toLowerCase(),
     ).toBe(first.id.toLowerCase())
+    expect(
+      (await getAiManagementCredentialMetadata(appDb(), id)).candidates.map(
+        candidate => candidate.id.toLowerCase(),
+      ),
+    ).toContain(bad.id.toLowerCase())
+    const operation = adapter.financial?.capabilities.operations[0]
+    if (!operation) throw new Error('Expected account financial operation')
+    const financial = await service.fetchFinancialStatus(
+      adapter,
+      detail,
+      egress,
+      operation,
+      new AbortController().signal,
+    )
+    expect(financial.state).toBe('success')
+    expect(
+      new Headers(egress.fetch.mock.lastCall?.[1]?.headers).get(
+        'authorization',
+      ),
+    ).toBe('Bearer management-one')
     const second = await writeAiProviderSecretCandidate(appDb(), ring, {
       connectionId: id,
       purpose: 'management',

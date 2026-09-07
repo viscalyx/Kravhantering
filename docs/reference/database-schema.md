@@ -3742,8 +3742,8 @@ graph LR
     AIC -- "uq_..._administration_name\n(administration_name)" --> AIC
     AIC -- "idx_..._lifecycle_status\n(lifecycle_status)" --> AIC
     AIPSV -- "FK ai_connection_id" --> AIC
-    AIPSV -- "uq_..._connection_revision\n(ai_connection_id, revision_number)" --> AIC
-    AIPSV -- "uq_..._active_connection\n(ai_connection_id WHERE active)" --> AIC
+    AIPSV -- "uq_..._connection_revision\n(ai_connection_id, credential_purpose, revision_number)" --> AIC
+    AIPSV -- "uq_..._active_connection\n(ai_connection_id, credential_purpose WHERE active)" --> AIC
     AIPSV -- "idx_..._root_key_version\n(root_key_version WHERE encrypted)" --> AIPSV
     AICA -- "FK ai_connection_id" --> AIC
     AICA -- "uq_..._connection_revision\n(ai_connection_id, revision_number)" --> AIC

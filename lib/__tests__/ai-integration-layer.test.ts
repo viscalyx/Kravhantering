@@ -1,14 +1,23 @@
+import { randomBytes, randomUUID } from 'node:crypto'
 import { getEventListeners } from 'node:events'
 import { describe, expect, it, vi } from 'vitest'
 import { createAiConnectionAdapterRegistry } from '@/lib/ai/adapter-registry'
+import type { AiAdminConnectionDetail } from '@/lib/ai/admin-service'
 import {
   type AiIntegrationLayerWithSafeInvalidOutput,
   createAiIntegrationLayer,
 } from '@/lib/ai/integration-layer'
+import { openRouterAdminAdapterRegistration } from '@/lib/ai/openrouter-admin-adapter'
 import {
   type AiPersistedRunProfile,
   createAiRunProfileResolver,
 } from '@/lib/ai/profile-resolver'
+import { encryptAiProviderSecret } from '@/lib/ai/provider-secret-crypto'
+import { parseAiProviderSecretKeyring } from '@/lib/ai/provider-secret-keyring'
+import {
+  AiProviderSecretAdminService,
+  createAiRuntimeAdapterConfigurationResolver,
+} from '@/lib/ai/provider-secret-service'
 import type {
   AIConnectionAdapter,
   AiConnectionAdapterRunRequest,
@@ -24,6 +33,7 @@ import type {
 } from '@/lib/ai/run-coordinator'
 import { createAiRunCoordinator } from '@/lib/ai/run-coordinator'
 import type { AiRunTrustBoundary } from '@/lib/ai/run-trust-boundary'
+import type { SqlServerDatabase } from '@/lib/db'
 
 const USAGE: AiRunUsage = {
   analysisTokens: { reason: 'not_reported', status: 'unavailable' },
@@ -242,6 +252,115 @@ function coordinationStore(): AiRunCoordinationStore {
 }
 
 describe('AI integration layer', () => {
+  it.each(['missing_credential', 'temporary_error'] as const)(
+    'completes model execution with the runtime key after financial status returns %s',
+    async state => {
+      const stored = {
+        ...profile(),
+        connectionId: randomUUID(),
+        connectionConfiguration: { authenticationType: 'static_secret' },
+      }
+      const ring = parseAiProviderSecretKeyring(
+        JSON.stringify({
+          formatVersion: 1,
+          activeWriteVersion: 'root-1',
+          keys: { 'root-1': randomBytes(32).toString('base64') },
+        }),
+      )
+      const row = (purpose: 'runtime' | 'management', plaintext: string) => {
+        const id = randomUUID()
+        return {
+          id,
+          connectionId: stored.connectionId,
+          purpose,
+          ...encryptAiProviderSecret(
+            ring,
+            { connectionId: stored.connectionId, secretVersionId: id, purpose },
+            plaintext,
+          ),
+        }
+      }
+      const runtime = row('runtime', 'runtime-only-secret')
+      const management =
+        state === 'temporary_error'
+          ? row('management', 'management-only-secret')
+          : undefined
+      const db = {
+        query: vi.fn(async (_sql: string, params: unknown[]) => {
+          expect(params[0]).toBe(stored.connectionId)
+          return params[1] === 'runtime'
+            ? [runtime]
+            : management
+              ? [management]
+              : []
+        }),
+      } as unknown as SqlServerDatabase
+      const financialAdapter = openRouterAdminAdapterRegistration.adapter
+      const operation = financialAdapter.financial?.capabilities.operations[0]
+      if (!operation) throw new Error('Expected account financial operation')
+      const financialFetch = vi.fn(
+        async (_url: string, _init?: RequestInit) =>
+          new Response('', { status: 503 }),
+      )
+      const financial = await new AiProviderSecretAdminService(
+        db,
+        ring,
+      ).fetchFinancialStatus(
+        financialAdapter,
+        {
+          id: stored.connectionId,
+          configurationVersion: stored.connectionConfigurationVersion,
+          adapterKey: 'openrouter',
+          adapterVersion: '1',
+          endpointUrl: 'https://openrouter.ai/api/v1',
+          authenticationType: 'static_secret',
+        } as AiAdminConnectionDetail,
+        { fetch: financialFetch },
+        operation,
+        new AbortController().signal,
+      )
+      expect(financial.state).toBe(state)
+      expect(financialFetch).toHaveBeenCalledTimes(management ? 1 : 0)
+      if (management)
+        expect(
+          new Headers(financialFetch.mock.lastCall?.[1]?.headers).get(
+            'authorization',
+          ),
+        ).toBe('Bearer management-only-secret')
+      const configurations: unknown[] = []
+      const adapter: AIConnectionAdapter = {
+        forceClose: vi.fn(),
+        async *run(adapterRequest) {
+          configurations.push(adapterRequest.connection.configuration)
+          yield completedAdapterEvent(adapterRequest)
+        },
+      }
+      const layer = createAiIntegrationLayer({
+        adapterRegistry: createAiConnectionAdapterRegistry([
+          { adapter, adapterType: 'capture', adapterVersion: '3' },
+        ]),
+        profileResolver: createAiRunProfileResolver({
+          profileSource: { findProfile: async () => stored },
+          resolveAdapterConfiguration:
+            createAiRuntimeAdapterConfigurationResolver(db, ring),
+        }),
+        trustBoundary: PASSING_TRUST_BOUNDARY,
+        runCoordinator: RUN_COORDINATOR,
+      })
+      const events = await collect(layer.run(request()))
+      expect(events.at(-1)).toMatchObject({
+        type: 'completed',
+        rawOutput: '{"status":"ok"}',
+      })
+      expect(configurations).toEqual([
+        {
+          authenticationType: 'static_secret',
+          credential: 'runtime-only-secret',
+        },
+      ])
+    },
+  )
+
   it('stops on a safety-rule preflight failure before profile resolution', async () => {
     const resolve = vi.fn(async () => {
       throw new Error('profile resolution must not run')

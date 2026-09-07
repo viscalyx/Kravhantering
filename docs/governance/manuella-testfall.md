@@ -2223,7 +2223,9 @@ visas inte. Indikeringen ligger kvar tills användaren stänger den.
 **Förutsättningar:** Logga in som Admin i en testmiljö med en AI-anslutning.
 Använd kontrollerade leverantörssvar för saknat och delvis ekonomiskt stöd,
 környckelns användning och obegränsad gräns, avvisad management-kandidat och
-ett tillfälligt hämtningsfel. Använd endast syntetiska nycklar i fixturen.
+ett tillfälligt hämtningsfel. Livscykelfixturen ska även ha en redan aktiv
+management-nyckel. Ha en fungerande körprofil för anslutningen. Använd endast
+syntetiska nycklar i fixturen.
 
 1. Öppna Inställningar. Kontrollera att den hopfällda anslutningen visar en
    ekonomisk översikt som hämtas vid sidbesöket. Uppdatera med ikonen efter
@@ -2251,13 +2253,20 @@ ett tillfälligt hämtningsfel. Använd endast syntetiska nycklar i fixturen.
    anslutningen igen. Att fälla ut eller ihop
    anslutningen och ekonomidelen hämtar inte nya värden. Ladda om sidan och
    kontrollera att översikten hämtas på nytt.
-3. Registrera en management-kandidat. Kontrollera att inmatningen töms.
-   Låt verifieringen misslyckas och kontrollera att környckelns värden finns
-   kvar. Verifiera sedan en godtagbar kandidat och aktivera den.
+3. Välj livscykelfixturen med en redan aktiv management-nyckel. Registrera
+   en management-kandidat. Kontrollera att inmatningen töms. Låt verifieringen
+   misslyckas och kontrollera att den tidigare management-nyckeln förblir aktiv
+   och att környckelns värden finns kvar. Uppdatera ekonomisk status och
+   kontrollera att den aktiva nyckeln används. Den avvisade kandidaten förblir
+   kandidat och används inte för ordinarie hämtningar eller modellkörning.
+   Verifiera sedan en godtagbar kandidat och aktivera den.
 4. Låt nästa uppdatering misslyckas. Tidigare värden för samma nyckel och
    omfattning visas som inaktuella med sin ursprungliga uppdateringstid.
 5. Ta bort management-nyckeln och bekräfta lokal borttagning. Környckelns
    information visas fortsatt. Kontouppgifter anger saknad nyckel.
+6. Begär en modellkörning med anslutningens körprofil efter saknad
+   management-nyckel respektive tillfälligt fel vid hämtning av ekonomisk
+   status. Kontrollera att körningen slutförs med ett modellsvar i båda fallen.
 
 **Förväntat resultat:** Ekonomiska uppgifter är märkta som
 leverantörsrapporterade och påverkar inte modellkörning. Borttagningens
