@@ -287,7 +287,13 @@ Supports:
 
 The caller selects the behavior with `view`. Default detail reads must not fall
 back to draft, review, or archived versions. Those versions are only returned
-for explicit `view: "version"` or `view: "history"` requests.
+for explicit `view: "version"` or `view: "history"` requests by an area author,
+`Reviewer`, or `Admin`. Version reads authorize the status of the exact record
+selected by the shared service. Only current Published status grants reads
+without area assignment; a publication timestamp on an archived version does
+not. This includes predecessors archived when a replacement is published.
+A missing version on a readable requirement remains not found. REST and MCP
+share this policy.
 
 ### `requirements_manage_requirement`
 

@@ -412,6 +412,16 @@ Fel föräldrakombination ger 403, medan den saknade underresursen ger 404.
 Förslaget för det publicerade kravet och dess lista kan läsas, förslaget för
 det opublicerade kravet ger 403 och samtliga förslagssvar har `no-store`.
 
+**Läsning av en bestämd kravversion:** Förbered med `Admin` och `Reviewer`
+ett krav med publicerad version 1 och ett nyare utkast, version 2. Läs båda
+versionerna som `noah.noroles` via
+`GET /api/requirements/{id}/versions/{version}`. Version 1 kan läsas, medan
+version 2 ger 403 utan kravtext eller acceptanskriterier. Upprepa efter att
+version 2 skickats till granskning. Kravområdesägare, `Admin` och `Reviewer`
+kan läsa version 2 i båda lägena. Publicera sedan version 2 och kontrollera
+att den kan läsas utan ansvarstilldelning, medan den nu arkiverade version 1
+ger 403. Ett saknat versionsnummer på samma krav ger 404.
+
 ### AUTHZ-02: kravområdesägare
 
 **Syfte:** Kontrollera positiv och negativ behörighet för

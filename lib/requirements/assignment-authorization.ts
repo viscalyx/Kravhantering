@@ -862,15 +862,19 @@ export class AssignmentBasedAuthorizationService
     action: Extract<RequirementsAction, { kind: 'get_requirement' }>,
   ): Promise<void> {
     const target = await this.lookup.resolveRequirementTarget(action)
+    if (action.view === 'version') {
+      if (action.versionStatusId === STATUS_PUBLISHED) return
+      return this.assertCanReadRequirementTarget(context, target, 'history')
+    }
     return this.assertCanReadRequirementTarget(context, target, action.view)
   }
 
   private async assertCanReadRequirementTarget(
     context: RequestContext,
     target: RequirementTarget,
-    view: 'detail' | 'history' | 'version' = 'detail',
+    view: 'detail' | 'history' = 'detail',
   ): Promise<void> {
-    if (target.hasPublishedVersion && view !== 'history') return
+    if (target.hasPublishedVersion && view === 'detail') return
     if (hasRole(context, 'Reviewer')) return
     await this.assertAreaAuthor(context, target.areaId)
   }

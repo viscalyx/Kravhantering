@@ -69,7 +69,11 @@ agents can use it reliably.
   row without errors. Warning rows are importable.
 - `requirements_get_requirement`
   Fetch the current requirement detail, a specific version, or full version
-  history.
+  history. A version whose current status is Published can be read without
+  area assignment. Draft, review, and archived versions, including previously
+  published versions, require area authorship, `Reviewer`, or `Admin`, as does
+  full history. A published parent does not grant access to its newer draft.
+  A missing version on a readable requirement returns a not-found tool error.
 - `requirements_manage_requirement`
   Create, edit, archive, delete the latest draft, or restore a historical
   version. For `operation: "edit"`, first fetch the requirement with

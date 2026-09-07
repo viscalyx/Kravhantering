@@ -1,10 +1,20 @@
 import { expect, type Page, type TestInfo, test } from '@playwright/test'
+import {
+  STATUS_PUBLISHED,
+  STATUS_REVIEW,
+} from '@/lib/requirements/status-constants.mjs'
+import type {
+  RequirementDetailResponse,
+  RequirementVersionResponse,
+} from '@/lib/requirements/types'
 import { escapeRegExp } from '@/tests/helpers/common'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import {
   type AuthorizationFixture,
   createAuthorizationFixture,
   expectOk,
+  expectStatus,
+  newRoleContext,
   type RequirementListResponse,
   ROLE_STORAGE_STATE,
   referenceManualCases,
@@ -269,4 +279,116 @@ test.describe('AUTHZ-01/AUTH-10/AUTH-11: forbidden requirement specification sur
     ).toBeVisible()
     await expect(page.getByRole('tab')).toHaveCount(0)
   })
+})
+
+test('AUTHZ-01: explicit version reads enforce current publication status', async ({
+  browserName: _browserName,
+}, testInfo) => {
+  referenceManualCases(testInfo, 'AUTHZ-01')
+  const admin = await newRoleContext(testInfo, 'admin')
+  const reviewer = await newRoleContext(testInfo, 'reviewer')
+  const owner = await newRoleContext(testInfo, 'areaOwner')
+  const reader = await newRoleContext(testInfo, 'noRoles')
+  const publishedText = `Published version visibility ${Date.now()}`
+  const draftText = `Confidential version visibility ${Date.now()}`
+
+  try {
+    const created = await admin.post('/api/requirements', {
+      data: {
+        areaId: fixture.areaId,
+        description: publishedText,
+        verifiable: false,
+      },
+    })
+    await expectStatus(created, 201, 'create version visibility requirement')
+    const { requirement } = (await created.json()) as {
+      requirement: { id: number }
+    }
+    const path = `/api/requirements/${requirement.id}`
+    const transitionPath = `/api/requirement-transitions/${requirement.id}`
+    for (const statusId of [STATUS_REVIEW, STATUS_PUBLISHED]) {
+      await expectOk(
+        await (statusId === STATUS_REVIEW ? owner : reviewer).post(
+          transitionPath,
+          { data: { statusId } },
+        ),
+        'publish baseline version',
+      )
+    }
+    const baselineResponse = await admin.get(path)
+    await expectOk(baselineResponse, 'load baseline version')
+    const baseline =
+      (await baselineResponse.json()) as RequirementDetailResponse
+    const version = baseline.versions[0]
+    await expectOk(
+      await admin.put(path, {
+        data: {
+          areaId: fixture.areaId,
+          baseRevisionToken: version.revisionToken,
+          baseVersionId: version.id,
+          description: draftText,
+          acceptanceCriteria: 'Confidential version criteria',
+          verifiable: false,
+        },
+      }),
+      'create newer draft',
+    )
+
+    for (const phase of ['draft', 'review']) {
+      if (phase === 'review') {
+        await expectOk(
+          await owner.post(transitionPath, {
+            data: { statusId: STATUS_REVIEW },
+          }),
+          'submit newer version for review',
+        )
+      }
+      const published = await reader.get(`${path}/versions/1`)
+      await expectOk(published, 'reader published version')
+      expect(await published.json()).toMatchObject({
+        version: { versionNumber: 1, description: publishedText },
+      })
+      const denied = await reader.get(`${path}/versions/2`)
+      await expectStatus(denied, 403, `reader restricted ${phase} version`)
+      const denialBody = await denied.text()
+      expect(denialBody).not.toContain(draftText)
+      expect(denialBody).not.toContain('Confidential version criteria')
+      for (const authorized of [owner, admin, reviewer]) {
+        const allowed = await authorized.get(`${path}/versions/2`)
+        await expectOk(allowed, `authorized ${phase} version`)
+        expect(await allowed.json()).toMatchObject({
+          version: {
+            versionNumber: 2,
+            description: draftText,
+            acceptanceCriteria: 'Confidential version criteria',
+          },
+        })
+      }
+    }
+
+    await expectOk(
+      await reviewer.post(transitionPath, {
+        data: { statusId: STATUS_PUBLISHED },
+      }),
+      'publish successor version',
+    )
+    const successor = await reader.get(`${path}/versions/2`)
+    await expectOk(successor, 'reader published successor')
+    expect(
+      (await successor.json()) as RequirementVersionResponse,
+    ).toMatchObject({ version: { versionNumber: 2, description: draftText } })
+    const archived = await reader.get(`${path}/versions/1`)
+    await expectStatus(archived, 403, 'reader archived predecessor')
+    expect(await archived.text()).not.toContain(publishedText)
+    const missing = await reader.get(`${path}/versions/99`)
+    await expectStatus(missing, 404, 'reader missing version')
+    expect(await missing.json()).toMatchObject({ error: expect.any(String) })
+  } finally {
+    await Promise.all([
+      admin.dispose(),
+      reviewer.dispose(),
+      owner.dispose(),
+      reader.dispose(),
+    ])
+  }
 })

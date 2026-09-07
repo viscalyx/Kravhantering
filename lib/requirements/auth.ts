@@ -186,6 +186,8 @@ export type RequirementsAction =
       uniqueId?: string
       id?: number
       versionNumber?: number
+      /** Status of the version resolved by the service, never client input. */
+      versionStatusId?: number
       view?: 'detail' | 'history' | 'version'
     }
   | {

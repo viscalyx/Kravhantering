@@ -648,9 +648,12 @@ export function createRequirementWorkflow({
           id: input.id,
           uniqueId: input.uniqueId,
           versionNumber: input.versionNumber,
-          view: input.view,
+          // Check parent visibility before loading content. Version visibility
+          // is checked against the selected record below.
+          view: input.view === 'version' ? 'detail' : input.view,
         },
         context,
+        db,
       )
 
       return withLogging(
@@ -697,6 +700,21 @@ export function createRequirementWorkflow({
               uniqueId: detail.uniqueId,
               versionNumber: input.versionNumber,
             })
+          }
+
+          if (requestedVersion) {
+            await authorize(
+              authorization,
+              {
+                kind: 'get_requirement',
+                id: detail.id,
+                versionNumber: requestedVersion.versionNumber,
+                versionStatusId: requestedVersion.status,
+                view: 'version',
+              },
+              context,
+              db,
+            )
           }
 
           if (view === 'detail' && !latestPublishedVersion) {

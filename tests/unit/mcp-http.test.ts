@@ -80,6 +80,7 @@ import {
   buildRequirementsImportJsonSchema,
   REQUIREMENTS_IMPORT_SCHEMA_VERSION,
 } from '@/lib/requirements/import-schema'
+import { createRequirementVersionDatabase } from '@/tests/helpers/requirement-version-visibility'
 
 const getTestDatabase = async () => ({}) as never
 
@@ -885,6 +886,56 @@ describe('handleRequirementsMcpRequest', () => {
 
     await client.close()
     await transport.close()
+  })
+
+  it('enforces requested-version visibility through MCP HTTP and the shared service', async () => {
+    const { createRequirementsService } = await vi.importActual<
+      typeof import('@/lib/requirements/service')
+    >('@/lib/requirements/service')
+    serviceState.getService.mockReturnValue(
+      createRequirementsService(createRequirementVersionDatabase(), {
+        logger: { info: vi.fn(), error: vi.fn() },
+      }),
+    )
+    const verifyToken = vi.mocked(verifyMcpBearerToken)
+    const originalVerification = verifyToken.getMockImplementation()
+    if (!originalVerification)
+      throw new Error('Token verification fixture is required')
+    verifyToken.mockImplementation(async (...args) => {
+      const verified = await originalVerification(...args)
+      return { ...verified, actor: { ...verified.actor, roles: [] } }
+    })
+    const { client, transport } = await createClient()
+    try {
+      const draft = await client.callTool({
+        name: 'requirements_get_requirement',
+        arguments: { id: 11, view: 'version', versionNumber: 2 },
+      })
+      expect(draft.isError).toBe(true)
+      expect(draft.content).toEqual([
+        {
+          type: 'text',
+          text: 'Error: Requirement area author assignment is required',
+        },
+      ])
+      expect(JSON.stringify(draft)).not.toContain('Confidential')
+
+      const published = await client.callTool({
+        name: 'requirements_get_requirement',
+        arguments: { id: 11, view: 'version', versionNumber: 1 },
+      })
+      expect(published.isError).not.toBe(true)
+      expect(published.structuredContent).toMatchObject({
+        requirement: {
+          versions: [{ versionNumber: 1, description: 'Published baseline' }],
+        },
+      })
+      expect(JSON.stringify(published)).not.toContain('Confidential')
+    } finally {
+      verifyToken.mockImplementation(originalVerification)
+      await client.close()
+      await transport.close()
+    }
   })
 
   it('returns app metadata and resource links on get_requirement', async () => {

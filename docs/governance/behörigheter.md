@@ -227,6 +227,16 @@ Utkast, granskning, historik och arkiveringsarbete kräver
 kravområdesägare, kravområdesmedförfattare, `Reviewer` eller `Admin` beroende
 på åtgärd och kravområde.
 
+Vid läsning av en bestämd kravversion via REST eller MCP kontrolleras den
+begärda versionens aktuella status. En publicerad version kan läsas utan
+ansvarstilldelning även när kravet har ett nyare utkast. Utkast, granskning
+och arkiverade versioner kräver kravområdesägare, kravområdesmedförfattare,
+`Reviewer` eller `Admin`. Detta gäller även tidigare publicerade versioner
+som nu är arkiverade efter att en ny version publicerats; ett datum för
+tidigare publicering ger inte läsbehörighet. Om kravet får läsas men den
+begärda versionen saknas blir svaret `404`. En befintlig version som
+användaren saknar behörighet till ger `403`.
+
 Kravområdesägare, kravområdesmedförfattare och `Admin` kan författa
 kravområdets krav, kravurvalsfrågor och RFI-frågor. Beslut i gransknings- och
 arkiveringsflöden kräver däremot `Reviewer`; `Admin` räcker inte ensamt för

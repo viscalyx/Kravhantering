@@ -1337,7 +1337,7 @@ function createGetRequirementSchema() {
         .enum(['detail', 'history', 'version'])
         .default('detail')
         .describe(
-          'Use "detail" for the latest published version, "version" with versionNumber for one historical version, or "history" before editing so requirement.versions[0] is the latest overall version.',
+          'Use "detail" for the latest published version, "version" with versionNumber for one version (draft, review, and archived versions require area authorship, Reviewer, or Admin), or "history" before editing so requirement.versions[0] is the latest overall version.',
         ),
     })
     .strict()
@@ -2114,7 +2114,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'Fetch the current requirement detail, a specific version, or the full version history by stable requirement ID. Before editing, call with view: "history" and use requirement.versions[0].id plus requirement.versions[0].revisionToken as the edit base.',
+        'Fetch the current requirement detail, a specific version, or the full version history by stable requirement ID. Published versions are readable without area assignment. Draft, review, and archived versions (including previously published versions), and full history, require area authorship, Reviewer, or Admin. Before editing, call with view: "history" and use requirement.versions[0].id plus requirement.versions[0].revisionToken as the edit base.',
       inputSchema: createGetRequirementSchema(),
       outputSchema: GetRequirementOutputSchema,
       title: 'Get Requirement',

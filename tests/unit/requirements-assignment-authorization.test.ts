@@ -623,6 +623,27 @@ describe('AssignmentBasedAuthorizationService', () => {
     expect(lookup.isRequirementAreaAuthor).not.toHaveBeenCalled()
   })
 
+  it.each([undefined, STATUS_DRAFT, STATUS_REVIEW, STATUS_ARCHIVED])(
+    'requires area assignment when the requested version status is %s',
+    async versionStatusId => {
+      const { service } = makeService({
+        requirement: { hasPublishedVersion: true },
+      })
+      await expect(
+        service.assertAuthorized(
+          {
+            id: 11,
+            kind: 'get_requirement',
+            view: 'version',
+            versionNumber: 2,
+            versionStatusId,
+          },
+          makeContext([]),
+        ),
+      ).rejects.toMatchObject({ code: 'forbidden' })
+    },
+  )
+
   it('requires requirement-area authorship for requirement history and unpublished reads', async () => {
     await expect(
       makeService({
