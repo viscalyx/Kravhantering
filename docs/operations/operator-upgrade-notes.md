@@ -70,6 +70,17 @@ If a save response is lost, reload the model list and check whether the revision
 Deploy the application, database migration and secret-maintenance tools as one compatible release. Stop older application nodes before administrators add management credentials. Keep a compatible database backup and external keyring for downgrade, and verify restoration with tools from the same release.
 Management credentials are optional and use the existing external keyring. Administrators add them in the connection financial-status panel. Local rotation and removal erase stored management secret material but do not revoke the provider key; administrators must revoke keys at the provider when required. Missing financial data does not affect model availability or execution.
 <!-- operator-upgrade:source pr-1380 end -->
+
+<!-- operator-upgrade:source pr-1384 start -->
+Before rollout, notify REST and MCP consumers that reads of draft, review, and
+archived requirement versions require assignment as a requirement area owner
+or co-author, or the Reviewer or Admin role. This includes previously published
+versions that are now archived. A published version of the same requirement
+does not grant access to these versions.
+After rollout, confirm that readers without these permissions can read
+published versions and receive access-denied responses for restricted versions.
+Confirm that authorized authors and reviewers retain access.
+<!-- operator-upgrade:source pr-1384 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
