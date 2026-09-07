@@ -1,8 +1,8 @@
 import { HSA_ID_PATTERN_SOURCE } from '@/lib/auth/hsa-id'
 import {
   BEARER_TOKEN_PATTERN,
-  JWT_PATTERN,
   OPENROUTER_KEY_PATTERN,
+  redactJwtCredentials,
   SECRET_ASSIGNMENT_PATTERN,
 } from '@/lib/credential-patterns'
 
@@ -33,10 +33,12 @@ const SQL_FRAGMENT_PATTERNS: readonly RegExp[] = [
 ]
 
 export function redactSensitiveText(value: string): string {
-  let redacted = value
-    .replace(BEARER_TOKEN_PATTERN, '$1Bearer [REDACTED]')
-    .replace(OPENROUTER_KEY_PATTERN, '[OPENROUTER_KEY_REDACTED]')
-    .replace(JWT_PATTERN, '[JWT_REDACTED]')
+  let redacted = redactJwtCredentials(
+    value
+      .replace(BEARER_TOKEN_PATTERN, '$1Bearer [REDACTED]')
+      .replace(OPENROUTER_KEY_PATTERN, '[OPENROUTER_KEY_REDACTED]'),
+    '[JWT_REDACTED]',
+  )
     .replace(HSA_ID_PATTERN, '[HSA_ID_REDACTED]')
     .replace(SECRET_ASSIGNMENT_PATTERN, '$1=[REDACTED]')
 

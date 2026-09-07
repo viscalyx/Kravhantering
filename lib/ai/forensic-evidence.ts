@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto'
 import {
   BEARER_TOKEN_PATTERN,
-  JWT_PATTERN,
   OPENROUTER_KEY_PATTERN,
+  redactJwtCredentials,
   SECRET_ASSIGNMENT_PATTERN,
 } from '@/lib/credential-patterns'
 import type { SqlServerDatabase } from '@/lib/db'
@@ -68,11 +68,13 @@ function normalizeEvidenceText(value: string): string {
 }
 
 function redactEvidence(value: string): string {
-  return value
-    .replace(BEARER_TOKEN_PATTERN, 'Authorization: Bearer [REDACTED_SECRET]')
-    .replace(SECRET_ASSIGNMENT_PATTERN, '$1: [REDACTED_SECRET]')
-    .replace(OPENROUTER_KEY_PATTERN, '[REDACTED_SECRET]')
-    .replace(JWT_PATTERN, '[REDACTED_SECRET]')
+  return redactJwtCredentials(
+    value
+      .replace(BEARER_TOKEN_PATTERN, 'Authorization: Bearer [REDACTED_SECRET]')
+      .replace(SECRET_ASSIGNMENT_PATTERN, '$1: [REDACTED_SECRET]')
+      .replace(OPENROUTER_KEY_PATTERN, '[REDACTED_SECRET]'),
+    '[REDACTED_SECRET]',
+  )
     .replace(/\b[A-Z]{2}\d{10}-[A-Za-z0-9._-]+\b/giu, '[REDACTED_IDENTIFIER]')
     .replace(
       /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu,

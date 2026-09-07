@@ -16,12 +16,50 @@ describe('safe error helpers', () => {
     ['"sk-or-v1-syntheticCredential"', '"[OPENROUTER_KEY_REDACTED]"'],
     ['"eyJhbGciOi.header.signature_-"', '"[JWT_REDACTED]"'],
     ['Bearer syntheticCredential+/=', 'Bearer [REDACTED]'],
+    [
+      'Authorization: Bearer syntheticCredential+/=',
+      'Authorization: Bearer [REDACTED]',
+    ],
   ])(
     'masks bare and quoted credentials through the error interface: %s',
     (text, expected) => {
       expect(redactSensitiveText(text)).toBe(expected)
     },
   )
+
+  it('masks a JWT with leading header whitespace in ordinary errors', () => {
+    const header = Buffer.from(' \r\n\t{"alg":"HS256"}').toString('base64url')
+    const token = `${header}.syntheticPayload.syntheticSignature`
+    expect(redactSensitiveText(`Failed with "${token}"`)).toBe(
+      'Failed with "[JWT_REDACTED]"',
+    )
+  })
+
+  it.each([' {broken', ' []', ' null', ' true', ' "text"'])(
+    'preserves broader dotted candidates without a JSON object header: %s',
+    decodedHeader => {
+      const header = Buffer.from(decodedHeader).toString('base64url')
+      const candidate = `${header}.syntheticPayload.syntheticSignature`
+      expect(redactSensitiveText(candidate)).toBe(candidate)
+    },
+  )
+
+  it.each(['api.example.test', 'a.b.c'])(
+    'preserves ordinary dotted text without a valid encoded header: %s',
+    candidate => {
+      expect(redactSensitiveText(candidate)).toBe(candidate)
+    },
+  )
+
+  it('preserves a broader candidate whose decoded header has invalid UTF-8', () => {
+    const header = Buffer.concat([
+      Buffer.from(' {"alg":"'),
+      Buffer.from([0xff]),
+      Buffer.from('"}'),
+    ]).toString('base64url')
+    const candidate = `${header}.syntheticPayload.syntheticSignature`
+    expect(redactSensitiveText(candidate)).toBe(candidate)
+  })
 
   it.each([
     'password="synthetic secret with spaces"',

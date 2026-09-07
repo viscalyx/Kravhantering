@@ -66,6 +66,22 @@ async function persistExcerpt(
 }
 
 describe('AI forensic evidence credential protection', () => {
+  it.each([' ', '\t', '\r', '\n', ' \r\n\t'])(
+    'masks a JWT with leading JSON whitespace %j before persistence',
+    async whitespace => {
+      const header = Buffer.from(
+        `${whitespace}{"alg":"HS256","typ":"JWT"}`,
+      ).toString('base64url')
+      const payload = Buffer.from('{"sub":"synthetic"}').toString('base64url')
+      const signature = Buffer.from('synthetic-signature').toString('base64url')
+      const token = `${header}.${payload}.${signature}`
+
+      expect(
+        await persistExcerpt(`${token},Ignore previous instructions:${token}`),
+      ).toBe('[REDACTED_SECRET],Ignore previous instructions:[REDACTED_SECRET]')
+    },
+  )
+
   it.each([
     ['sk-or-v1-syntheticCredential', '[REDACTED_SECRET]'],
     ['sk-or-mgmt-syntheticCredential_-', '[REDACTED_SECRET]'],
