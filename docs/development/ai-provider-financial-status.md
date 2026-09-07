@@ -67,6 +67,8 @@ unsupported data and temporary errors. The successful-fetch timestamp is set
 only after a validated provider response. Values are provider-reported
 information, not internal accounting or an execution gate. Reports from
 different connections must not be summed into an organization total.
+The panel displays amounts rounded to exactly two decimal places using the
+current locale. The underlying normalized amounts retain their precision.
 
 The detail panel retains successful values in memory during its mounted
 session. A failed refresh can retain a report only when a new server response

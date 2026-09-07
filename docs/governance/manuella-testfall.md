@@ -2230,7 +2230,8 @@ ett tillfälligt hämtningsfel. Använd endast syntetiska nycklar i fixturen.
 2. Välj fixturen med delvis stöd och uppdatera ekonomisk status. Kontrollera
    omfattning, belopp, valuta, period, obegränsade och saknade värden samt
    senaste lyckade uppdatering. Saknad management-nyckel döljer inte
-   környckelns information.
+   környckelns information. Belopp visas med två decimaler: exempelvis blir
+   `25,555` till `25,56` och `25,5` till `25,50` på svenska.
 3. Registrera en management-kandidat. Kontrollera att inmatningen töms.
    Låt verifieringen misslyckas och kontrollera att környckelns värden finns
    kvar. Verifiera sedan en godtagbar kandidat och aktivera den.

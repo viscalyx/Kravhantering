@@ -203,7 +203,7 @@ export default function FinancialStatusPanel({
                     </dt>
                     <dd className="font-medium">
                       {item.state === 'available' && item.amount !== null
-                        ? `${new Intl.NumberFormat(locale, { maximumFractionDigits: 8 }).format(Number(item.amount))} ${item.currency}`
+                        ? `${new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(item.amount))} ${item.currency}`
                         : t(`measurement.${item.state}`)}
                     </dd>
                   </div>

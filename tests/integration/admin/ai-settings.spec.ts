@@ -1765,10 +1765,18 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
   ).toBeVisible()
   await expect(panel.getByLabel(/^Ny management-nyckel/u)).toHaveCount(0)
   status = structuredClone(FINANCIAL_STATUS)
+  status.results[1].snapshot?.measurements.push({
+    field: 'usage',
+    amount: '25.555',
+    currency: 'USD',
+    state: 'available',
+    period: 'daily',
+  })
   await panel
     .getByRole('button', { name: 'Uppdatera ekonomisk status' })
     .click()
-  await expect(panel.getByText('25,5 USD')).toBeVisible()
+  await expect(panel.getByText('25,50 USD')).toBeVisible()
+  await expect(panel.getByText('25,56 USD')).toBeVisible()
   await expect(
     panel.getByText('Nyckeln för denna omfattning saknas'),
   ).toBeVisible()
@@ -1781,7 +1789,7 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
   await expect(panel.getByRole('alert')).toContainText(
     'Begäran kunde inte slutföras',
   )
-  await expect(panel.getByText('25,5 USD')).toBeVisible()
+  await expect(panel.getByText('25,50 USD')).toBeVisible()
   failVerification = false
   await panel.getByRole('button', { name: 'Verifiera och aktivera' }).click()
   await expect(
@@ -1812,7 +1820,7 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
   await expect(
     panel.getByText('Senast uppdaterad:', { exact: false }),
   ).toHaveText(originalTime ?? '')
-  await expect(panel.getByText('25,5 USD')).toBeVisible()
+  await expect(panel.getByText('25,50 USD')).toBeVisible()
   await panel.getByRole('button', { name: 'Ta bort management-nyckel' }).click()
   const confirm = page.getByRole('alertdialog', {
     name: 'Ta bort management-nyckel',
@@ -1826,7 +1834,7 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
   await expect(
     panel.getByText('Nyckeln för denna omfattning saknas'),
   ).toBeVisible()
-  await expect(panel.getByText('25,5 USD')).toBeVisible()
+  await expect(panel.getByText('25,50 USD')).toBeVisible()
   if (process.env.NODE_ENV !== 'production') {
     await expect(panel).toHaveAttribute(
       'data-developer-mode-name',

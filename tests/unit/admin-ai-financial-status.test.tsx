@@ -31,10 +31,10 @@ describe('AI connection financial details', () => {
       .mockResolvedValueOnce(Response.json(FINANCIAL_STATUS))
       .mockResolvedValueOnce(new Response(null, { status: 503 }))
     render(<FinancialStatusPanel connection={connection} expanded />)
-    await screen.findByText('25.5 USD')
+    await screen.findByText('25.50 USD')
     await userEvent.click(screen.getByRole('button', { name: 'refresh' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('requestFailed')
-    expect(screen.queryByText('25.5 USD')).not.toBeInTheDocument()
+    expect(screen.queryByText('25.50 USD')).not.toBeInTheDocument()
     expect(screen.queryByText(/^lastSuccess /u)).not.toBeInTheDocument()
   })
 
@@ -84,20 +84,47 @@ describe('AI connection financial details', () => {
     render(<FinancialStatusPanel connection={connection} expanded />)
     await userEvent.click(await screen.findByRole('button', { name: 'verify' }))
     await screen.findByRole('alert')
-    expect(screen.getByText('25.5 USD')).toBeVisible()
+    expect(screen.getByText('25.50 USD')).toBeVisible()
     expect(screen.getByText(/^verified /u)).toBeVisible()
     expect(screen.getByText('support.full')).toBeVisible()
     expect(screen.getByRole('button', { name: 'verify' })).toBeEnabled()
   })
 
   it('fetches only on opening and displays independent scopes, amounts, currency, periods and Developer Mode markers', async () => {
-    vi.mocked(apiFetch).mockResolvedValue(Response.json(FINANCIAL_STATUS))
+    const status = structuredClone(FINANCIAL_STATUS)
+    status.results[1].snapshot?.measurements.push(
+      {
+        field: 'usage',
+        amount: '25.555',
+        currency: 'USD',
+        state: 'available',
+        period: 'daily',
+      },
+      {
+        field: 'usage',
+        amount: '25.554',
+        currency: 'USD',
+        state: 'available',
+        period: 'weekly',
+      },
+      {
+        field: 'usage',
+        amount: '0',
+        currency: 'USD',
+        state: 'available',
+        period: 'monthly',
+      },
+    )
+    vi.mocked(apiFetch).mockResolvedValue(Response.json(status))
     const { rerender, container } = render(
       <FinancialStatusPanel connection={connection} expanded={false} />,
     )
     expect(apiFetch).not.toHaveBeenCalled()
     rerender(<FinancialStatusPanel connection={connection} expanded />)
-    expect(await screen.findByText('25.5 USD')).toBeVisible()
+    expect(await screen.findByText('25.50 USD')).toBeVisible()
+    expect(screen.getByText('25.56 USD')).toBeVisible()
+    expect(screen.getByText('25.55 USD')).toBeVisible()
+    expect(screen.getByText('0.00 USD')).toBeVisible()
     expect(screen.getByText('state.missing_credential')).toBeVisible()
     expect(screen.getByText('scope.credential')).toBeVisible()
     expect(screen.getByText('measurement.unlimited')).toBeVisible()
@@ -129,12 +156,12 @@ describe('AI connection financial details', () => {
         }),
       )
     render(<FinancialStatusPanel connection={connection} expanded />)
-    await screen.findByText('25.5 USD')
+    await screen.findByText('25.50 USD')
     const time = screen.getByText(/^lastSuccess /u).textContent
     await userEvent.click(screen.getByRole('button', { name: 'refresh' }))
     expect(await screen.findByText('state.stale')).toBeVisible()
     expect(screen.getByText('state.invalid_credential')).toBeVisible()
-    expect(screen.getByText('25.5 USD')).toBeVisible()
+    expect(screen.getByText('25.50 USD')).toBeVisible()
     expect(screen.getByText(/^lastSuccess /u).textContent).toBe(time)
   })
 
@@ -156,10 +183,10 @@ describe('AI connection financial details', () => {
         }),
       )
     render(<FinancialStatusPanel connection={connection} expanded />)
-    await screen.findByText('25.5 USD')
+    await screen.findByText('25.50 USD')
     await userEvent.click(screen.getByRole('button', { name: 'refresh' }))
     await screen.findByText('state.temporary_error')
-    expect(screen.queryByText('25.5 USD')).not.toBeInTheDocument()
+    expect(screen.queryByText('25.50 USD')).not.toBeInTheDocument()
     expect(screen.queryByText(/^lastSuccess /u)).not.toBeInTheDocument()
   })
 
@@ -254,6 +281,6 @@ describe('AI connection financial details', () => {
     await act(async () => {
       resolve(Response.json(FINANCIAL_STATUS))
     })
-    expect(screen.queryByText('25.5 USD')).not.toBeInTheDocument()
+    expect(screen.queryByText('25.50 USD')).not.toBeInTheDocument()
   })
 })
