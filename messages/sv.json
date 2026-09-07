@@ -2449,6 +2449,33 @@
         "title": "Leverantörens krediter och användning",
         "refresh": "Uppdatera ekonomisk status",
         "loading": "Hämtar ekonomisk status…",
+        "summary": {
+          "organization": {
+            "title": "Org. total/kvar",
+            "help": "Org. total/kvar: köpta krediter och återstående saldo på leverantörens konto, som kan delas av organisationen. Om leverantören rapporterar en organisationsgräns visas den och återstående utrymme. Detta är inte anslutningens förbrukning."
+          },
+          "credential": {
+            "title": "Nyckel total/kvar",
+            "help": "Nyckel total/kvar: környckelns konfigurerade utgiftsgräns och återstående utrymme för den rapporterade perioden. Obegränsat betyder att leverantören inte har satt någon gräns. Saknade värden visas som inte rapporterade."
+          },
+          "loading": "Hämtar…",
+          "period": {
+            "lifetime": "totalt",
+            "daily": "per dag",
+            "weekly": "per vecka",
+            "monthly": "per månad",
+            "unknown": "(okänd period)"
+          },
+          "state": {
+            "missing_credential": "nyckel saknas",
+            "invalid_credential": "nyckeln avvisad",
+            "temporary_error": "tillfälligt otillgängligt",
+            "unsupported": "stöds inte",
+            "success": "hämtat",
+            "stale": "inaktuellt"
+          },
+          "stale": "inaktuellt"
+        },
         "providerReported": "Leverantörsrapporterad information, inte intern bokföring. Värdena styr inte modellkörning och får inte ensamma ligga till grund för kostnadskontroll. Rapporter från olika anslutningar kan avse samma konto och får inte summeras.",
         "requestFailed": "Begäran kunde inte slutföras. Uppdatera för att försöka igen.",
         "support": {

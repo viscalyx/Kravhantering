@@ -3,10 +3,12 @@ import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AiConnectionsRegistry from '@/app/[locale]/admin/panels/settings/ai-connections/ai-connections-registry'
+import { FINANCIAL_STATUS } from '@/lib/__tests__/fixtures/ai-financial-status'
 import type {
   AiAdminConnectionDetail,
   AiAdminRunProfileRecord,
 } from '@/lib/ai/admin-service'
+import { apiFetch } from '@/lib/http/api-fetch'
 
 const mocks = vi.hoisted(() => ({
   confirm: vi.fn(async (_options: { anchorEl?: HTMLElement }) => true),
@@ -22,6 +24,7 @@ vi.mock('next-intl', () => ({
     (namespace: string) => (key: string, values?: Record<string, unknown>) =>
       `${namespace}.${key}${values ? ` ${Object.values(values).join(' ')}` : ''}`,
 }))
+vi.mock('@/lib/http/api-fetch', () => ({ apiFetch: vi.fn() }))
 vi.mock('@/components/ConfirmModal', () => ({
   useConfirmModal: () => ({ confirm: mocks.confirm }),
 }))
@@ -219,7 +222,10 @@ vi.mock(
   }),
 )
 vi.mock('@/lib/developer-mode-markers', () => ({
-  devMarker: () => ({ 'data-developer-mode': 'ai-connections-registry' }),
+  devMarker: ({ name }: { name: string }) => ({
+    'data-developer-mode': 'ai-connections-registry',
+    'data-developer-mode-name': name,
+  }),
 }))
 
 function fixtures(): {
@@ -313,6 +319,9 @@ function fixtures(): {
 describe('AI connections registry', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(apiFetch)
+      .mockReset()
+      .mockImplementation(() => new Promise(() => {}))
     mocks.confirm.mockResolvedValue(true)
     const { connection, profile } = fixtures()
     Object.assign(mocks.state, {
@@ -352,6 +361,50 @@ describe('AI connections registry', () => {
           ),
         ),
     )
+  })
+
+  it('keeps cost status before lifecycle and health in both connection states and refreshes without expanding', async () => {
+    vi.mocked(apiFetch).mockImplementation(async () =>
+      Response.json(FINANCIAL_STATUS),
+    )
+    const { container } = render(<AiConnectionsRegistry />)
+    await screen.findByText(
+      'admin.aiConnections.financial.measurement.unlimited',
+    )
+    const connectionToggle = screen.getByRole('button', {
+      name: /Admin connection/u,
+    })
+    const summary = screen.getByRole('status', {
+      name: 'admin.aiConnections.financial.summary.credential.title',
+    })
+    const row = container.querySelector(
+      '[data-developer-mode-name="AI connection status row"]',
+    )
+    expect(row).toHaveTextContent(
+      /financial.summary.organization.title.*financial.summary.credential.title.*lifecycle.label.*health.label/u,
+    )
+    expect(connectionToggle).toHaveAttribute(
+      'title',
+      'admin.aiConnections.financial.summary.organization.help admin.aiConnections.financial.summary.credential.help',
+    )
+    expect(connectionToggle).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.financial.refresh',
+      }),
+    )
+    await waitFor(() => expect(summary).toHaveAttribute('aria-busy', 'false'))
+    expect(connectionToggle).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(connectionToggle)
+    expect(summary).toBeVisible()
+    const financialToggle = screen.getByRole('button', {
+      name: 'admin.aiConnections.financial.title',
+    })
+    expect(financialToggle).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(financialToggle)
+    expect(financialToggle).toHaveAttribute('aria-expanded', 'true')
+    expect(summary).toBeVisible()
+    expect(apiFetch).toHaveBeenCalledTimes(2)
   })
 
   it('marks the surface, loads the catalog, and probes model health', async () => {

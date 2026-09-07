@@ -34,7 +34,9 @@ import type { AiRunProfileKey } from '@/lib/ai/profile-resolver'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { AttestationForm, ConnectionForm, SecretForm } from './connection-forms'
+import { FinancialStatusProvider } from './financial-status-context'
 import FinancialStatusPanel from './financial-status-panel'
+import FinancialStatusSummary from './financial-status-summary'
 import { ModelForm, ProfileForm } from './model-profile-forms'
 import {
   AnimatedRegistrySection,
@@ -686,618 +688,660 @@ export default function AiConnectionsPanel() {
           const catalog =
             visibleCatalogByConnection[connection.id.toLowerCase()] ?? []
           return (
-            <article key={connection.id}>
-              <button
-                aria-controls={`ai-connection-${connection.id}`}
-                aria-expanded={expanded}
-                className={`grid w-full gap-3 p-5 text-left transition-colors sm:grid-cols-[minmax(0,1fr)_minmax(10rem,auto)_minmax(10rem,auto)_auto] sm:items-center ${expanded ? 'bg-primary-50/70 dark:bg-primary-950/30' : 'hover:bg-secondary-50 dark:hover:bg-secondary-800/40'}`}
-                onClick={() => {
-                  setExpandedId(current =>
-                    current === connection.id ? null : connection.id,
-                  )
-                }}
-                type="button"
-              >
-                <span className="min-w-0">
-                  <span className="block font-semibold text-secondary-950 dark:text-secondary-50">
-                    {connection.administrationName}
-                  </span>
-                  <span className="mt-1 block truncate text-xs text-secondary-500 dark:text-secondary-400">
-                    {connection.publicName}
-                  </span>
-                </span>
-                <span>
-                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary-500 dark:text-secondary-400">
-                    {t('lifecycle.label')}
-                  </span>
-                  <StatusBadge tone={lifecycleTone(connection.lifecycleStatus)}>
-                    {t(`lifecycle.${connection.lifecycleStatus}`)}
-                  </StatusBadge>
-                </span>
-                <span>
-                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary-500 dark:text-secondary-400">
-                    {t('health.label')}
-                  </span>
-                  <StatusBadge tone={healthTone(connection.operationalHealth)}>
-                    {t(`health.${connection.operationalHealth}`)}
-                  </StatusBadge>
-                </span>
-                <span className="inline-flex min-h-9 min-w-9 items-center justify-center justify-self-end rounded-full text-secondary-600 dark:text-secondary-300">
-                  {expanded ? (
-                    <ChevronDown aria-hidden="true" className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight aria-hidden="true" className="h-4 w-4" />
-                  )}
-                </span>
-              </button>
-              {detail ? (
-                <AnimatedRegistrySection
-                  expanded={expanded}
-                  id={`ai-connection-${connection.id}`}
+            <FinancialStatusProvider
+              connectionId={connection.id}
+              key={`${connection.id}-${detail?.configurationVersion}`}
+            >
+              <article>
+                <div
+                  className={`relative isolate grid gap-4 p-5 transition-colors hover:bg-secondary-50 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto] xl:items-center dark:hover:bg-secondary-800/40 ${expanded ? 'bg-primary-50/70 dark:bg-primary-950/30' : ''}`}
+                  {...devMarker({
+                    name: 'AI connection status row',
+                    context: 'AI connection registry',
+                  })}
                 >
-                  <div className="space-y-5 border-t border-primary-200 bg-white p-5 dark:border-primary-900 dark:bg-secondary-900">
-                    {!detail.adapterAvailability.available ? (
-                      <div
-                        className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100"
-                        role="status"
-                        {...devMarker({
-                          context: 'AI connection registry',
-                          name: 'AI adapter unavailable status',
-                        })}
-                      >
-                        <TriangleAlert
-                          aria-hidden="true"
-                          className="h-5 w-5 shrink-0"
-                        />
-                        <p>
-                          {t('adapter.unavailable', {
-                            adapter: `${detail.adapterKey}@${detail.adapterVersion}`,
+                  <button
+                    aria-controls={`ai-connection-${connection.id}`}
+                    aria-expanded={expanded}
+                    className="flex min-h-9 w-full items-center gap-2 text-left after:absolute after:inset-0 after:z-10 after:cursor-pointer focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-primary-500"
+                    onClick={() =>
+                      setExpandedId(current =>
+                        current === connection.id ? null : connection.id,
+                      )
+                    }
+                    title={`${t('financial.summary.organization.help')} ${t('financial.summary.credential.help')}`}
+                    type="button"
+                  >
+                    <span className="inline-flex min-h-9 min-w-9 items-center shrink-0 justify-center rounded-full text-secondary-600 dark:text-secondary-300">
+                      {expanded ? (
+                        <ChevronDown aria-hidden="true" className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight aria-hidden="true" className="h-4 w-4" />
+                      )}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-semibold text-secondary-950 dark:text-secondary-50">
+                        {connection.administrationName}
+                      </span>
+                      <span className="mt-1 block truncate text-xs text-secondary-500 dark:text-secondary-400">
+                        {connection.publicName}
+                      </span>
+                    </span>
+                  </button>
+                  <FinancialStatusSummary />
+                  <span>
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary-500 dark:text-secondary-400">
+                      {t('lifecycle.label')}
+                    </span>
+                    <StatusBadge
+                      tone={lifecycleTone(connection.lifecycleStatus)}
+                    >
+                      {t(`lifecycle.${connection.lifecycleStatus}`)}
+                    </StatusBadge>
+                  </span>
+                  <span>
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary-500 dark:text-secondary-400">
+                      {t('health.label')}
+                    </span>
+                    <StatusBadge
+                      tone={healthTone(connection.operationalHealth)}
+                    >
+                      {t(`health.${connection.operationalHealth}`)}
+                    </StatusBadge>
+                  </span>
+                </div>
+                {detail ? (
+                  <AnimatedRegistrySection
+                    expanded={expanded}
+                    id={`ai-connection-${connection.id}`}
+                  >
+                    <div className="space-y-5 border-t border-primary-200 bg-white p-5 dark:border-primary-900 dark:bg-secondary-900">
+                      {!detail.adapterAvailability.available ? (
+                        <div
+                          className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100"
+                          role="status"
+                          {...devMarker({
+                            context: 'AI connection registry',
+                            name: 'AI adapter unavailable status',
                           })}
-                        </p>
-                      </div>
-                    ) : null}
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <h4 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
-                          {detail.administrationName}
-                        </h4>
-                        <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
-                          {detail.description ?? t('values.noDescription')}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          className="btn-secondary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
-                          disabled={busy}
-                          onClick={() =>
-                            openDialog({
-                              connection: detail,
-                              kind: 'connection',
-                            })
-                          }
-                          type="button"
-                        >
-                          <Wrench aria-hidden="true" className="h-4 w-4" />
-                          {t('actions.editConnection')}
-                        </button>
-                        <button
-                          className="btn-secondary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
-                          disabled={busy}
-                          onClick={() =>
-                            openDialog({ connection: detail, kind: 'secret' })
-                          }
-                          type="button"
-                        >
-                          <KeyRound aria-hidden="true" className="h-4 w-4" />
-                          {t('actions.manageSecret')}
-                        </button>
-                        <button
-                          className="btn-secondary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
-                          disabled={busy}
-                          onClick={() =>
-                            openDialog({
-                              connection: detail,
-                              kind: 'attestation',
-                            })
-                          }
-                          type="button"
-                        >
-                          <ShieldCheck aria-hidden="true" className="h-4 w-4" />
-                          {t('actions.manageAttestation')}
-                        </button>
-                      </div>
-                    </div>
-
-                    {detail.blockers.length > 0 ? (
-                      <section
-                        aria-labelledby={`ai-blockers-${detail.id}`}
-                        className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40"
-                      >
-                        <h5
-                          className="flex items-center gap-2 font-semibold text-amber-950 dark:text-amber-100"
-                          id={`ai-blockers-${detail.id}`}
                         >
                           <TriangleAlert
                             aria-hidden="true"
-                            className="h-4 w-4"
+                            className="h-5 w-5 shrink-0"
                           />
-                          {t('blockers.title')}
-                        </h5>
-                        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-900 dark:text-amber-100">
-                          {detail.blockers.map(blocker => (
-                            <li key={`${blocker.code}-${blocker.field ?? ''}`}>
-                              <BlockerText
-                                attestationState={attestationBlockerState(
-                                  detail,
-                                )}
-                                blocker={blocker}
-                              />
-                            </li>
-                          ))}
-                        </ul>
-                      </section>
-                    ) : null}
-
-                    <FinancialStatusPanel
-                      connection={detail}
-                      expanded={expanded}
-                      key={`${detail.id}-${detail.configurationVersion}`}
-                    />
-                    <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                      <section className="rounded-2xl bg-secondary-50 p-4 dark:bg-secondary-950/50">
-                        <h5 className="font-semibold text-secondary-950 dark:text-secondary-50">
-                          {t('configuration.title')}
-                        </h5>
-                        <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
-                          {[
-                            [
-                              t('fields.adapterKey.label'),
-                              `${detail.adapterKey}@${detail.adapterVersion}`,
-                            ],
-                            [t('fields.endpointUrl.label'), detail.endpointUrl],
-                            [
-                              t('fields.authenticationType.label'),
-                              t(`authentication.${detail.authenticationType}`),
-                            ],
-                            [
-                              t('fields.tlsPolicyKey.label'),
-                              detail.tlsPolicyKey,
-                            ],
-                            [
-                              t('fields.egressPolicyKey.label'),
-                              detail.egressPolicyKey,
-                            ],
-                            [
-                              t('fields.maximumConcurrency.label'),
-                              String(detail.maximumConcurrency),
-                            ],
-                          ].map(([label, value]) => (
-                            <div key={label}>
-                              <dt className="text-xs font-semibold uppercase tracking-wide text-secondary-500 dark:text-secondary-400">
-                                {label}
-                              </dt>
-                              <dd className="mt-1 wrap-break-word font-medium text-secondary-900 dark:text-secondary-100">
-                                {value}
-                              </dd>
-                            </div>
-                          ))}
-                        </dl>
-                        <p className="mt-4 rounded-xl border border-secondary-200 bg-white p-3 text-xs leading-5 text-secondary-600 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-300">
-                          <strong>{t('configuration.dataPolicy')}:</strong>{' '}
-                          {detail.dataPolicySummary}
-                        </p>
-                        <p className="mt-3 text-xs text-secondary-600 dark:text-secondary-300">
-                          {detail.attestation
-                            ? t(
-                                `attestation.status.${detail.attestation.status}`,
-                              )
-                            : t('attestation.missing')}
-                        </p>
-                      </section>
-
-                      <section className="rounded-2xl border border-secondary-200 p-4 dark:border-secondary-700">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <h5 className="font-semibold text-secondary-950 dark:text-secondary-50">
-                              {t('model.title')}
-                            </h5>
-                            <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                              {t('model.description')}
-                            </p>
-                          </div>
-                          <button
-                            className="btn-secondary inline-flex min-h-9 items-center gap-2 px-3! py-1.5! text-sm"
-                            disabled={busy}
-                            onClick={() => openModelForm(detail, null)}
-                            type="button"
-                          >
-                            <Plus aria-hidden="true" className="h-4 w-4" />
-                            {t('actions.addModel')}
-                          </button>
-                        </div>
-                        <PendingModelVerifications
-                          connection={detail}
-                          disabled={busy}
-                          onOpen={(connection, pending) =>
-                            openDialog({
-                              connection,
-                              pending,
-                              kind: 'model',
-                              model: null,
-                            })
-                          }
-                          onUnavailable={() => {
-                            setMessage(t('pending.unavailable'))
-                            void loadRegistry()
-                          }}
-                        />
-                        <div className="mt-4 space-y-3">
-                          {detail.models.length === 0 ? (
-                            <p className="rounded-xl border border-dashed border-secondary-300 p-4 text-sm text-secondary-600 dark:border-secondary-700 dark:text-secondary-300">
-                              {t('model.empty')}
-                            </p>
-                          ) : null}
-                          {detail.models.map(model => {
-                            return (
-                              <article
-                                className="rounded-xl bg-secondary-50 p-3 dark:bg-secondary-950/50"
-                                key={model.id}
-                              >
-                                <div className="flex flex-wrap items-start justify-between gap-3">
-                                  <div>
-                                    <h6 className="font-semibold text-secondary-900 dark:text-secondary-100">
-                                      {model.name}
-                                    </h6>
-                                    {model.description ? (
-                                      <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                                        {model.description}
-                                      </p>
-                                    ) : null}
-                                  </div>
-                                  <button
-                                    className="btn-secondary px-3! py-1.5! text-xs"
-                                    disabled={busy}
-                                    onClick={() => openModelForm(detail, model)}
-                                    type="button"
-                                  >
-                                    {t('actions.editModel')}
-                                  </button>
-                                </div>
-                                <div className="mt-3 space-y-2">
-                                  {[...model.revisions]
-                                    .sort(
-                                      (left, right) =>
-                                        right.revisionNumber -
-                                        left.revisionNumber,
-                                    )
-                                    .map(revision => {
-                                      const usedByProfile = profiles.some(
-                                        profile =>
-                                          profile.modelRevisionId ===
-                                          revision.id,
-                                      )
-                                      const probingHealth =
-                                        pendingModelAction?.kind === 'health' &&
-                                        pendingModelAction.revisionId ===
-                                          revision.id
-                                      return (
-                                        <section
-                                          className="rounded-xl border border-secondary-200 bg-white p-3 dark:border-secondary-700 dark:bg-secondary-900"
-                                          key={revision.id}
-                                        >
-                                          <div className="flex flex-wrap items-start justify-between gap-3">
-                                            <div>
-                                              <p className="text-xs font-semibold text-secondary-800 dark:text-secondary-100">
-                                                {t('model.revision', {
-                                                  number:
-                                                    revision.revisionNumber,
-                                                })}
-                                              </p>
-                                              <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                                                {revision.externalModelId}
-                                              </p>
-                                              {revision.reasoning ? (
-                                                <p
-                                                  className="mt-1 text-xs text-secondary-600 dark:text-secondary-300"
-                                                  {...devMarker({
-                                                    context:
-                                                      'AI connection model revision',
-                                                    name: 'AI model saved reasoning',
-                                                    priority: 310,
-                                                  })}
-                                                >
-                                                  {t(
-                                                    'fields.reasoningEffort.label',
-                                                  )}
-                                                  :{' '}
-                                                  {revision.reasoning.mode ===
-                                                  'model_default'
-                                                    ? t(
-                                                        'reasoning.modelDefault',
-                                                      )
-                                                    : t(
-                                                        `reasoning.${revision.reasoning.effort}`,
-                                                      )}
-                                                </p>
-                                              ) : null}
-                                            </div>
-                                            <StatusBadge
-                                              tone={revisionTone(
-                                                revision.status,
-                                              )}
-                                            >
-                                              {t(
-                                                `model.status.${revision.status}`,
-                                              )}
-                                            </StatusBadge>
-                                          </div>
-                                          <div
-                                            className="mt-3 flex flex-wrap gap-2"
-                                            {...devMarker({
-                                              context:
-                                                'AI connection model revision',
-                                              name: 'AI model lifecycle and health actions',
-                                              priority: 310,
-                                            })}
-                                          >
-                                            {revision.status === 'verified' ? (
-                                              <button
-                                                aria-busy={probingHealth}
-                                                className="btn-secondary inline-flex items-center gap-1.5 px-3! py-1.5! text-xs disabled:cursor-not-allowed disabled:opacity-50"
-                                                disabled={
-                                                  busy ||
-                                                  pendingModelAction !== null ||
-                                                  !detail.adapterAvailability
-                                                    .available
-                                                }
-                                                onClick={() =>
-                                                  void probeModelHealth(
-                                                    detail,
-                                                    revision,
-                                                  )
-                                                }
-                                                type="button"
-                                              >
-                                                {probingHealth ? (
-                                                  <LoaderCircle
-                                                    aria-hidden="true"
-                                                    className="h-3.5 w-3.5 animate-spin"
-                                                  />
-                                                ) : null}
-                                                {t(
-                                                  probingHealth
-                                                    ? 'actions.probingHealth'
-                                                    : 'actions.probeHealth',
-                                                )}
-                                              </button>
-                                            ) : null}
-                                            {revision.status !== 'ended' ? (
-                                              <button
-                                                className="btn-secondary px-3! py-1.5! text-xs"
-                                                disabled={busy || usedByProfile}
-                                                onClick={event =>
-                                                  void modelRevisionAction(
-                                                    detail,
-                                                    model,
-                                                    revision,
-                                                    'end_model_revision',
-                                                    event.currentTarget,
-                                                  )
-                                                }
-                                                title={
-                                                  usedByProfile
-                                                    ? t(
-                                                        'model.usedByProfileHelp',
-                                                      )
-                                                    : undefined
-                                                }
-                                                type="button"
-                                              >
-                                                {t('destructive.end.confirm')}
-                                              </button>
-                                            ) : (
-                                              <button
-                                                aria-label={t(
-                                                  'destructive.delete.confirm',
-                                                )}
-                                                className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-red-300 bg-red-50 px-3! py-1.5! text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/70"
-                                                disabled={busy || usedByProfile}
-                                                onClick={event =>
-                                                  void modelRevisionAction(
-                                                    detail,
-                                                    model,
-                                                    revision,
-                                                    'delete_model_revision',
-                                                    event.currentTarget,
-                                                  )
-                                                }
-                                                type="button"
-                                              >
-                                                <Trash2
-                                                  aria-hidden="true"
-                                                  className="h-3.5 w-3.5"
-                                                />
-                                                {t(
-                                                  'destructive.delete.confirm',
-                                                )}
-                                              </button>
-                                            )}
-                                          </div>
-                                        </section>
-                                      )
-                                    })}
-                                </div>
-                              </article>
-                            )
-                          })}
-                        </div>
-                      </section>
-                    </div>
-
-                    <section className="rounded-2xl border border-secondary-200 p-4 dark:border-secondary-700">
-                      <h5 className="font-semibold text-secondary-950 dark:text-secondary-50">
-                        {t('profile.impactTitle')}
-                      </h5>
-                      <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                        {t('profile.impactDescription')}
-                      </p>
-                      <div className="mt-3 grid gap-3 md:grid-cols-3">
-                        {profilesForConnection(detail).length > 0 ? (
-                          profilesForConnection(detail).map(profile => {
-                            const status = effectiveProfileStatus(profile)
-                            return (
-                              <div
-                                className="flex items-center justify-between gap-3 rounded-xl bg-secondary-50 p-3 dark:bg-secondary-950/50"
-                                key={profile.id}
-                              >
-                                <span className="text-sm text-secondary-700 dark:text-secondary-200">
-                                  {profileName(t, profile.profileKey)}
-                                </span>
-                                <span
-                                  {...devMarker({
-                                    context: 'AI run profile impact',
-                                    name: 'Derived AI run profile status',
-                                    priority: 315,
-                                  })}
-                                >
-                                  <StatusBadge tone={status.tone}>
-                                    {t(`directProfile.status.${status.key}`)}
-                                  </StatusBadge>
-                                </span>
-                              </div>
-                            )
-                          })
-                        ) : (
-                          <p className="text-sm text-secondary-600 dark:text-secondary-300">
-                            {t('profile.noImpact')}
+                          <p>
+                            {t('adapter.unavailable', {
+                              adapter: `${detail.adapterKey}@${detail.adapterVersion}`,
+                            })}
                           </p>
-                        )}
-                      </div>
-                    </section>
-
-                    <section className="rounded-2xl border border-primary-200 bg-primary-50/50 p-4 dark:border-primary-900 dark:bg-primary-950/20">
+                        </div>
+                      ) : null}
                       <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div className="max-w-2xl">
-                          <h5 className="flex items-center gap-2 font-semibold text-secondary-950 dark:text-secondary-50">
-                            <Activity aria-hidden="true" className="h-4 w-4" />
-                            {t('verification.title')}
-                          </h5>
-                          <p className="mt-1 text-xs leading-5 text-secondary-600 dark:text-secondary-300">
-                            {t('verification.cost')}
-                          </p>
-                          <p className="mt-1 text-xs leading-5 text-secondary-600 dark:text-secondary-300">
-                            {t('health.safeRecoveryHelp')}
+                        <div>
+                          <h4 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
+                            {detail.administrationName}
+                          </h4>
+                          <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+                            {detail.description ?? t('values.noDescription')}
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <button
                             className="btn-secondary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
-                            disabled={
-                              busy || !detail.adapterAvailability.available
-                            }
-                            onClick={() => void fetchCatalog(detail)}
-                            title={
-                              detail.adapterAvailability.available
-                                ? undefined
-                                : t('adapter.unavailableAction')
+                            disabled={busy}
+                            onClick={() =>
+                              openDialog({
+                                connection: detail,
+                                kind: 'connection',
+                              })
                             }
                             type="button"
                           >
-                            <RefreshCw aria-hidden="true" className="h-4 w-4" />
-                            {t('actions.fetchCatalog')}
+                            <Wrench aria-hidden="true" className="h-4 w-4" />
+                            {t('actions.editConnection')}
                           </button>
-                          {detail.lifecycleStatus === 'active' ? (
-                            <button
-                              className="btn-secondary px-4! py-2! text-sm"
-                              disabled={busy}
-                              onClick={() =>
-                                void connectionAction(
-                                  detail,
-                                  {
-                                    action: 'set_lifecycle',
-                                    revisionToken: detail.revisionToken,
-                                    status: 'suspended',
-                                  },
-                                  'lifecycle.suspendedMessage',
-                                  {
-                                    actionLabel: t('actions.suspendConnection'),
-                                  },
-                                )
-                              }
-                              type="button"
-                            >
-                              {t('actions.suspendConnection')}
-                            </button>
-                          ) : (
-                            <button
-                              className="btn-primary px-4! py-2! text-sm"
-                              disabled={
-                                busy ||
-                                !detail.adapterAvailability.available ||
-                                detail.blockers.length > 0 ||
-                                detail.lifecycleStatus === 'retired'
-                              }
-                              onClick={() =>
-                                void connectionAction(
-                                  detail,
-                                  {
-                                    action: 'set_lifecycle',
-                                    revisionToken: detail.revisionToken,
-                                    status: 'active',
-                                  },
-                                  'lifecycle.activatedMessage',
-                                  {
-                                    actionLabel: t(
-                                      detail.lifecycleStatus === 'suspended'
-                                        ? 'actions.recoverConnection'
-                                        : 'actions.activateConnection',
-                                    ),
-                                  },
-                                )
-                              }
-                              title={
-                                !detail.adapterAvailability.available
-                                  ? t('adapter.unavailableAction')
-                                  : detail.blockers.length > 0
-                                    ? t('blockers.resolveBeforeActivation')
-                                    : undefined
-                              }
-                              type="button"
-                            >
-                              {detail.lifecycleStatus === 'suspended'
-                                ? t('actions.recoverConnection')
-                                : t('actions.activateConnection')}
-                            </button>
-                          )}
                           <button
-                            className="btn-destructive px-4! py-2! text-sm"
-                            disabled={
-                              busy || detail.lifecycleStatus === 'retired'
-                            }
-                            onClick={event =>
-                              void confirmRetirement(
-                                detail,
-                                event.currentTarget,
-                              )
+                            className="btn-secondary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
+                            disabled={busy}
+                            onClick={() =>
+                              openDialog({ connection: detail, kind: 'secret' })
                             }
                             type="button"
                           >
-                            {t('actions.retireConnection')}
+                            <KeyRound aria-hidden="true" className="h-4 w-4" />
+                            {t('actions.manageSecret')}
+                          </button>
+                          <button
+                            className="btn-secondary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
+                            disabled={busy}
+                            onClick={() =>
+                              openDialog({
+                                connection: detail,
+                                kind: 'attestation',
+                              })
+                            }
+                            type="button"
+                          >
+                            <ShieldCheck
+                              aria-hidden="true"
+                              className="h-4 w-4"
+                            />
+                            {t('actions.manageAttestation')}
                           </button>
                         </div>
                       </div>
-                      {catalog.length > 0 ? (
-                        <p className="mt-3 text-xs text-secondary-600 dark:text-secondary-300">
-                          {t('catalog.result', {
-                            models: catalog.map(item => item.name).join(', '),
-                          })}
-                        </p>
+
+                      {detail.blockers.length > 0 ? (
+                        <section
+                          aria-labelledby={`ai-blockers-${detail.id}`}
+                          className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40"
+                        >
+                          <h5
+                            className="flex items-center gap-2 font-semibold text-amber-950 dark:text-amber-100"
+                            id={`ai-blockers-${detail.id}`}
+                          >
+                            <TriangleAlert
+                              aria-hidden="true"
+                              className="h-4 w-4"
+                            />
+                            {t('blockers.title')}
+                          </h5>
+                          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-900 dark:text-amber-100">
+                            {detail.blockers.map(blocker => (
+                              <li
+                                key={`${blocker.code}-${blocker.field ?? ''}`}
+                              >
+                                <BlockerText
+                                  attestationState={attestationBlockerState(
+                                    detail,
+                                  )}
+                                  blocker={blocker}
+                                />
+                              </li>
+                            ))}
+                          </ul>
+                        </section>
                       ) : null}
-                    </section>
-                  </div>
-                </AnimatedRegistrySection>
-              ) : null}
-            </article>
+
+                      <FinancialStatusPanel connection={detail} />
+                      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                        <section className="rounded-2xl bg-secondary-50 p-4 dark:bg-secondary-950/50">
+                          <h5 className="font-semibold text-secondary-950 dark:text-secondary-50">
+                            {t('configuration.title')}
+                          </h5>
+                          <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+                            {[
+                              [
+                                t('fields.adapterKey.label'),
+                                `${detail.adapterKey}@${detail.adapterVersion}`,
+                              ],
+                              [
+                                t('fields.endpointUrl.label'),
+                                detail.endpointUrl,
+                              ],
+                              [
+                                t('fields.authenticationType.label'),
+                                t(
+                                  `authentication.${detail.authenticationType}`,
+                                ),
+                              ],
+                              [
+                                t('fields.tlsPolicyKey.label'),
+                                detail.tlsPolicyKey,
+                              ],
+                              [
+                                t('fields.egressPolicyKey.label'),
+                                detail.egressPolicyKey,
+                              ],
+                              [
+                                t('fields.maximumConcurrency.label'),
+                                String(detail.maximumConcurrency),
+                              ],
+                            ].map(([label, value]) => (
+                              <div key={label}>
+                                <dt className="text-xs font-semibold uppercase tracking-wide text-secondary-500 dark:text-secondary-400">
+                                  {label}
+                                </dt>
+                                <dd className="mt-1 wrap-break-word font-medium text-secondary-900 dark:text-secondary-100">
+                                  {value}
+                                </dd>
+                              </div>
+                            ))}
+                          </dl>
+                          <p className="mt-4 rounded-xl border border-secondary-200 bg-white p-3 text-xs leading-5 text-secondary-600 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-300">
+                            <strong>{t('configuration.dataPolicy')}:</strong>{' '}
+                            {detail.dataPolicySummary}
+                          </p>
+                          <p className="mt-3 text-xs text-secondary-600 dark:text-secondary-300">
+                            {detail.attestation
+                              ? t(
+                                  `attestation.status.${detail.attestation.status}`,
+                                )
+                              : t('attestation.missing')}
+                          </p>
+                        </section>
+
+                        <section className="rounded-2xl border border-secondary-200 p-4 dark:border-secondary-700">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <h5 className="font-semibold text-secondary-950 dark:text-secondary-50">
+                                {t('model.title')}
+                              </h5>
+                              <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                                {t('model.description')}
+                              </p>
+                            </div>
+                            <button
+                              className="btn-secondary inline-flex min-h-9 items-center gap-2 px-3! py-1.5! text-sm"
+                              disabled={busy}
+                              onClick={() => openModelForm(detail, null)}
+                              type="button"
+                            >
+                              <Plus aria-hidden="true" className="h-4 w-4" />
+                              {t('actions.addModel')}
+                            </button>
+                          </div>
+                          <PendingModelVerifications
+                            connection={detail}
+                            disabled={busy}
+                            onOpen={(connection, pending) =>
+                              openDialog({
+                                connection,
+                                pending,
+                                kind: 'model',
+                                model: null,
+                              })
+                            }
+                            onUnavailable={() => {
+                              setMessage(t('pending.unavailable'))
+                              void loadRegistry()
+                            }}
+                          />
+                          <div className="mt-4 space-y-3">
+                            {detail.models.length === 0 ? (
+                              <p className="rounded-xl border border-dashed border-secondary-300 p-4 text-sm text-secondary-600 dark:border-secondary-700 dark:text-secondary-300">
+                                {t('model.empty')}
+                              </p>
+                            ) : null}
+                            {detail.models.map(model => {
+                              return (
+                                <article
+                                  className="rounded-xl bg-secondary-50 p-3 dark:bg-secondary-950/50"
+                                  key={model.id}
+                                >
+                                  <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                      <h6 className="font-semibold text-secondary-900 dark:text-secondary-100">
+                                        {model.name}
+                                      </h6>
+                                      {model.description ? (
+                                        <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                                          {model.description}
+                                        </p>
+                                      ) : null}
+                                    </div>
+                                    <button
+                                      className="btn-secondary px-3! py-1.5! text-xs"
+                                      disabled={busy}
+                                      onClick={() =>
+                                        openModelForm(detail, model)
+                                      }
+                                      type="button"
+                                    >
+                                      {t('actions.editModel')}
+                                    </button>
+                                  </div>
+                                  <div className="mt-3 space-y-2">
+                                    {[...model.revisions]
+                                      .sort(
+                                        (left, right) =>
+                                          right.revisionNumber -
+                                          left.revisionNumber,
+                                      )
+                                      .map(revision => {
+                                        const usedByProfile = profiles.some(
+                                          profile =>
+                                            profile.modelRevisionId ===
+                                            revision.id,
+                                        )
+                                        const probingHealth =
+                                          pendingModelAction?.kind ===
+                                            'health' &&
+                                          pendingModelAction.revisionId ===
+                                            revision.id
+                                        return (
+                                          <section
+                                            className="rounded-xl border border-secondary-200 bg-white p-3 dark:border-secondary-700 dark:bg-secondary-900"
+                                            key={revision.id}
+                                          >
+                                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                              <div>
+                                                <p className="text-xs font-semibold text-secondary-800 dark:text-secondary-100">
+                                                  {t('model.revision', {
+                                                    number:
+                                                      revision.revisionNumber,
+                                                  })}
+                                                </p>
+                                                <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                                                  {revision.externalModelId}
+                                                </p>
+                                                {revision.reasoning ? (
+                                                  <p
+                                                    className="mt-1 text-xs text-secondary-600 dark:text-secondary-300"
+                                                    {...devMarker({
+                                                      context:
+                                                        'AI connection model revision',
+                                                      name: 'AI model saved reasoning',
+                                                      priority: 310,
+                                                    })}
+                                                  >
+                                                    {t(
+                                                      'fields.reasoningEffort.label',
+                                                    )}
+                                                    :{' '}
+                                                    {revision.reasoning.mode ===
+                                                    'model_default'
+                                                      ? t(
+                                                          'reasoning.modelDefault',
+                                                        )
+                                                      : t(
+                                                          `reasoning.${revision.reasoning.effort}`,
+                                                        )}
+                                                  </p>
+                                                ) : null}
+                                              </div>
+                                              <StatusBadge
+                                                tone={revisionTone(
+                                                  revision.status,
+                                                )}
+                                              >
+                                                {t(
+                                                  `model.status.${revision.status}`,
+                                                )}
+                                              </StatusBadge>
+                                            </div>
+                                            <div
+                                              className="mt-3 flex flex-wrap gap-2"
+                                              {...devMarker({
+                                                context:
+                                                  'AI connection model revision',
+                                                name: 'AI model lifecycle and health actions',
+                                                priority: 310,
+                                              })}
+                                            >
+                                              {revision.status ===
+                                              'verified' ? (
+                                                <button
+                                                  aria-busy={probingHealth}
+                                                  className="btn-secondary inline-flex items-center gap-1.5 px-3! py-1.5! text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                                                  disabled={
+                                                    busy ||
+                                                    pendingModelAction !==
+                                                      null ||
+                                                    !detail.adapterAvailability
+                                                      .available
+                                                  }
+                                                  onClick={() =>
+                                                    void probeModelHealth(
+                                                      detail,
+                                                      revision,
+                                                    )
+                                                  }
+                                                  type="button"
+                                                >
+                                                  {probingHealth ? (
+                                                    <LoaderCircle
+                                                      aria-hidden="true"
+                                                      className="h-3.5 w-3.5 animate-spin"
+                                                    />
+                                                  ) : null}
+                                                  {t(
+                                                    probingHealth
+                                                      ? 'actions.probingHealth'
+                                                      : 'actions.probeHealth',
+                                                  )}
+                                                </button>
+                                              ) : null}
+                                              {revision.status !== 'ended' ? (
+                                                <button
+                                                  className="btn-secondary px-3! py-1.5! text-xs"
+                                                  disabled={
+                                                    busy || usedByProfile
+                                                  }
+                                                  onClick={event =>
+                                                    void modelRevisionAction(
+                                                      detail,
+                                                      model,
+                                                      revision,
+                                                      'end_model_revision',
+                                                      event.currentTarget,
+                                                    )
+                                                  }
+                                                  title={
+                                                    usedByProfile
+                                                      ? t(
+                                                          'model.usedByProfileHelp',
+                                                        )
+                                                      : undefined
+                                                  }
+                                                  type="button"
+                                                >
+                                                  {t('destructive.end.confirm')}
+                                                </button>
+                                              ) : (
+                                                <button
+                                                  aria-label={t(
+                                                    'destructive.delete.confirm',
+                                                  )}
+                                                  className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-red-300 bg-red-50 px-3! py-1.5! text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/70"
+                                                  disabled={
+                                                    busy || usedByProfile
+                                                  }
+                                                  onClick={event =>
+                                                    void modelRevisionAction(
+                                                      detail,
+                                                      model,
+                                                      revision,
+                                                      'delete_model_revision',
+                                                      event.currentTarget,
+                                                    )
+                                                  }
+                                                  type="button"
+                                                >
+                                                  <Trash2
+                                                    aria-hidden="true"
+                                                    className="h-3.5 w-3.5"
+                                                  />
+                                                  {t(
+                                                    'destructive.delete.confirm',
+                                                  )}
+                                                </button>
+                                              )}
+                                            </div>
+                                          </section>
+                                        )
+                                      })}
+                                  </div>
+                                </article>
+                              )
+                            })}
+                          </div>
+                        </section>
+                      </div>
+
+                      <section className="rounded-2xl border border-secondary-200 p-4 dark:border-secondary-700">
+                        <h5 className="font-semibold text-secondary-950 dark:text-secondary-50">
+                          {t('profile.impactTitle')}
+                        </h5>
+                        <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                          {t('profile.impactDescription')}
+                        </p>
+                        <div className="mt-3 grid gap-3 md:grid-cols-3">
+                          {profilesForConnection(detail).length > 0 ? (
+                            profilesForConnection(detail).map(profile => {
+                              const status = effectiveProfileStatus(profile)
+                              return (
+                                <div
+                                  className="flex items-center justify-between gap-3 rounded-xl bg-secondary-50 p-3 dark:bg-secondary-950/50"
+                                  key={profile.id}
+                                >
+                                  <span className="text-sm text-secondary-700 dark:text-secondary-200">
+                                    {profileName(t, profile.profileKey)}
+                                  </span>
+                                  <span
+                                    {...devMarker({
+                                      context: 'AI run profile impact',
+                                      name: 'Derived AI run profile status',
+                                      priority: 315,
+                                    })}
+                                  >
+                                    <StatusBadge tone={status.tone}>
+                                      {t(`directProfile.status.${status.key}`)}
+                                    </StatusBadge>
+                                  </span>
+                                </div>
+                              )
+                            })
+                          ) : (
+                            <p className="text-sm text-secondary-600 dark:text-secondary-300">
+                              {t('profile.noImpact')}
+                            </p>
+                          )}
+                        </div>
+                      </section>
+
+                      <section className="rounded-2xl border border-primary-200 bg-primary-50/50 p-4 dark:border-primary-900 dark:bg-primary-950/20">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                          <div className="max-w-2xl">
+                            <h5 className="flex items-center gap-2 font-semibold text-secondary-950 dark:text-secondary-50">
+                              <Activity
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                              />
+                              {t('verification.title')}
+                            </h5>
+                            <p className="mt-1 text-xs leading-5 text-secondary-600 dark:text-secondary-300">
+                              {t('verification.cost')}
+                            </p>
+                            <p className="mt-1 text-xs leading-5 text-secondary-600 dark:text-secondary-300">
+                              {t('health.safeRecoveryHelp')}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              className="btn-secondary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
+                              disabled={
+                                busy || !detail.adapterAvailability.available
+                              }
+                              onClick={() => void fetchCatalog(detail)}
+                              title={
+                                detail.adapterAvailability.available
+                                  ? undefined
+                                  : t('adapter.unavailableAction')
+                              }
+                              type="button"
+                            >
+                              <RefreshCw
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                              />
+                              {t('actions.fetchCatalog')}
+                            </button>
+                            {detail.lifecycleStatus === 'active' ? (
+                              <button
+                                className="btn-secondary px-4! py-2! text-sm"
+                                disabled={busy}
+                                onClick={() =>
+                                  void connectionAction(
+                                    detail,
+                                    {
+                                      action: 'set_lifecycle',
+                                      revisionToken: detail.revisionToken,
+                                      status: 'suspended',
+                                    },
+                                    'lifecycle.suspendedMessage',
+                                    {
+                                      actionLabel: t(
+                                        'actions.suspendConnection',
+                                      ),
+                                    },
+                                  )
+                                }
+                                type="button"
+                              >
+                                {t('actions.suspendConnection')}
+                              </button>
+                            ) : (
+                              <button
+                                className="btn-primary px-4! py-2! text-sm"
+                                disabled={
+                                  busy ||
+                                  !detail.adapterAvailability.available ||
+                                  detail.blockers.length > 0 ||
+                                  detail.lifecycleStatus === 'retired'
+                                }
+                                onClick={() =>
+                                  void connectionAction(
+                                    detail,
+                                    {
+                                      action: 'set_lifecycle',
+                                      revisionToken: detail.revisionToken,
+                                      status: 'active',
+                                    },
+                                    'lifecycle.activatedMessage',
+                                    {
+                                      actionLabel: t(
+                                        detail.lifecycleStatus === 'suspended'
+                                          ? 'actions.recoverConnection'
+                                          : 'actions.activateConnection',
+                                      ),
+                                    },
+                                  )
+                                }
+                                title={
+                                  !detail.adapterAvailability.available
+                                    ? t('adapter.unavailableAction')
+                                    : detail.blockers.length > 0
+                                      ? t('blockers.resolveBeforeActivation')
+                                      : undefined
+                                }
+                                type="button"
+                              >
+                                {detail.lifecycleStatus === 'suspended'
+                                  ? t('actions.recoverConnection')
+                                  : t('actions.activateConnection')}
+                              </button>
+                            )}
+                            <button
+                              className="btn-destructive px-4! py-2! text-sm"
+                              disabled={
+                                busy || detail.lifecycleStatus === 'retired'
+                              }
+                              onClick={event =>
+                                void confirmRetirement(
+                                  detail,
+                                  event.currentTarget,
+                                )
+                              }
+                              type="button"
+                            >
+                              {t('actions.retireConnection')}
+                            </button>
+                          </div>
+                        </div>
+                        {catalog.length > 0 ? (
+                          <p className="mt-3 text-xs text-secondary-600 dark:text-secondary-300">
+                            {t('catalog.result', {
+                              models: catalog.map(item => item.name).join(', '),
+                            })}
+                          </p>
+                        ) : null}
+                      </section>
+                    </div>
+                  </AnimatedRegistrySection>
+                ) : null}
+              </article>
+            </FinancialStatusProvider>
           )
         })}
       </div>

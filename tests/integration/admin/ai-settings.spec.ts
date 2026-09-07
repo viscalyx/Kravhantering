@@ -1706,11 +1706,13 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
   }
   const id = '00000000-0000-4000-8000-000000001099'
   let failVerification = false
+  let financialFetches = 0
   await page.route(
     `**/api/admin/ai-connections/${connection.id}/actions`,
     async route => {
       const body = route.request().postDataJSON()
       if (body.action === 'fetch_financial_status') {
+        financialFetches += 1
         await route.fulfill({ json: status })
       } else if (body.action === 'write_management_credential') {
         expect(body).toEqual({
@@ -1748,16 +1750,60 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
     },
   )
   await page.goto('/sv/admin?tab=settings')
-  await page
-    .getByRole('button', {
-      name: new RegExp(
-        connection.administrationName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-      ),
-    })
+  const connectionToggle = page.getByRole('button', {
+    name: new RegExp(
+      connection.administrationName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+    ),
+  })
+  const article = page.getByRole('article').filter({ has: connectionToggle })
+  const summary = article.getByRole('status', { name: 'Nyckel total/kvar' })
+  await expect(summary).toContainText('stöds inte')
+  await expect(connectionToggle).toHaveAttribute('aria-expanded', 'false')
+  const initialFetches = financialFetches
+  await article
+    .getByRole('button', { name: 'Uppdatera ekonomisk status' })
     .click()
+  await expect(summary).toHaveAttribute('aria-busy', 'false')
+  expect(financialFetches).toBe(initialFetches + 1)
+  await expect(connectionToggle).toHaveAttribute('aria-expanded', 'false')
+  const lifecycleLabel = article.getByText('Administrativ livscykel', {
+    exact: true,
+  })
+  const lifecycleBox = await lifecycleLabel.boundingBox()
+  if (!lifecycleBox)
+    throw new Error('Expected lifecycle label on connection row')
+  await page.mouse.click(
+    lifecycleBox.x + lifecycleBox.width / 2,
+    lifecycleBox.y + lifecycleBox.height / 2,
+  )
+  await expect(connectionToggle).toHaveAttribute('aria-expanded', 'true')
+  const chevronBox = await connectionToggle.locator('svg').boundingBox()
+  const nameBox = await connectionToggle
+    .getByText(connection.administrationName, { exact: true })
+    .boundingBox()
+  if (!chevronBox || !nameBox)
+    throw new Error('Expected connection name and chevron')
+  expect(chevronBox.x + chevronBox.width).toBeLessThanOrEqual(nameBox.x)
+  await expect(summary).toBeVisible()
+  await connectionToggle
+    .locator('..')
+    .getByRole('button', { name: 'Uppdatera ekonomisk status' })
+    .click()
+  await expect(summary).toHaveAttribute('aria-busy', 'false')
+  await expect(connectionToggle).toHaveAttribute('aria-expanded', 'true')
   const panel = page.getByRole('region', {
     name: 'Leverantörens krediter och användning',
   })
+  const financialToggle = panel.getByRole('button', {
+    name: 'Leverantörens krediter och användning',
+  })
+  await expect(financialToggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(
+    panel.getByRole('button', { name: 'Uppdatera ekonomisk status' }),
+  ).toHaveCount(0)
+  await financialToggle.focus()
+  await page.keyboard.press('Enter')
+  await expect(financialToggle).toHaveAttribute('aria-expanded', 'true')
   await expect(
     panel.getByText('Adaptern erbjuder inte ekonomisk status.', {
       exact: false,
@@ -1765,6 +1811,15 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
   ).toBeVisible()
   await expect(panel.getByLabel(/^Ny management-nyckel/u)).toHaveCount(0)
   status = structuredClone(FINANCIAL_STATUS)
+  const keySnapshot = status.results[1].snapshot
+  if (keySnapshot)
+    keySnapshot.measurements = keySnapshot.measurements.map(item =>
+      item.field === 'spending_limit'
+        ? { ...item, amount: '50', state: 'available', period: 'lifetime' }
+        : item.field === 'remaining_allowance'
+          ? { ...item, amount: '24.5', state: 'available', period: 'lifetime' }
+          : item,
+    )
   status.results[1].snapshot?.measurements.push({
     field: 'usage',
     amount: '25.555',
@@ -1780,6 +1835,29 @@ test('ADMIN-22: provider financial scopes, management lifecycle and stale refres
   await expect(
     panel.getByText('Nyckeln för denna omfattning saknas'),
   ).toBeVisible()
+  await expect(summary).toContainText('50,00 USD / 24,50 USD')
+  await expect(
+    article.getByRole('status', { name: 'Org. total/kvar' }),
+  ).toContainText('nyckel saknas')
+  await expect(connectionToggle).toHaveAttribute(
+    'title',
+    /köpta krediter.*utgiftsgräns/u,
+  )
+  const beforeToggling = financialFetches
+  await financialToggle.click()
+  await expect(financialToggle).toHaveAttribute('aria-expanded', 'false')
+  await connectionToggle.click()
+  await expect(summary).toBeVisible()
+  await expect(connectionToggle).toHaveAttribute('aria-expanded', 'false')
+  await connectionToggle.click()
+  await financialToggle.click()
+  expect(financialFetches).toBe(beforeToggling)
+  await page.reload()
+  await expect(summary).toContainText('50,00 USD / 24,50 USD')
+  expect(financialFetches).toBeGreaterThan(beforeToggling)
+  await connectionToggle.click()
+  await expect(financialToggle).toHaveAttribute('aria-expanded', 'false')
+  await financialToggle.click()
   const input = panel.getByLabel(/^Ny management-nyckel/u)
   await input.fill('synthetic-management-candidate')
   await panel.getByRole('button', { name: 'Registrera kandidat' }).click()

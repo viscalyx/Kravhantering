@@ -2225,13 +2225,30 @@ Använd kontrollerade leverantörssvar för saknat och delvis ekonomiskt stöd,
 környckelns användning och obegränsad gräns, avvisad management-kandidat och
 ett tillfälligt hämtningsfel. Använd endast syntetiska nycklar i fixturen.
 
-1. Öppna anslutningens detaljer under Inställningar. Utan ekonomiskt stöd
-   visas en förklaring utan begäran om management-nyckel.
+1. Öppna Inställningar. Kontrollera att den hopfällda anslutningen visar en
+   ekonomisk översikt som hämtas vid sidbesöket. Uppdatera med ikonen efter
+   översikten och kontrollera att anslutningen förblir hopfälld. Klicka på
+   radens livscykelstatus för att öppna anslutningen. Hela raden kan växla
+   anslutningens läge utom uppdateringsikonen. Öppna
+   anslutningen: endast rubriken ”Leverantörens krediter och användning” visas
+   för ekonomidelen. Aktivera rubriken för att visa detaljerna. Utan ekonomiskt
+   stöd visas en förklaring utan begäran om management-nyckel. Kontrollera att
+   rubrikknappen kan användas med tangentbord och anger om delen är utfälld.
+   ”Org. total/kvar” och ”Nyckel total/kvar” finns kvar före Administrativ
+   livscykel och Operativ hälsa även när anslutningen och ekonomidelen är
+   utfällda. Kontrollera att tooltipen förklarar organisationens totala
+   krediter och kvarvarande saldo samt nyckelns utgiftsgräns och kvarvarande
+   utrymme. Förbrukningen finns i detaljerna.
 2. Välj fixturen med delvis stöd och uppdatera ekonomisk status. Kontrollera
    omfattning, belopp, valuta, period, obegränsade och saknade värden samt
    senaste lyckade uppdatering. Saknad management-nyckel döljer inte
    környckelns information. Belopp visas med två decimaler: exempelvis blir
    `25,555` till `25,56` och `25,5` till `25,50` på svenska.
+   Fäll ihop anslutningen och kontrollera att översiktens total/kvar motsvarar
+   kredit och saldo respektive nyckelgräns och utrymme i detaljerna. Öppna
+   anslutningen igen. Att fälla ut eller ihop
+   anslutningen och ekonomidelen hämtar inte nya värden. Ladda om sidan och
+   kontrollera att översikten hämtas på nytt.
 3. Registrera en management-kandidat. Kontrollera att inmatningen töms.
    Låt verifieringen misslyckas och kontrollera att környckelns värden finns
    kvar. Verifiera sedan en godtagbar kandidat och aktivera den.

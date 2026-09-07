@@ -61,8 +61,21 @@ completion request, provider key mutation or background polling is performed.
 
 ## Refresh and access
 
-Opening connection details and manual refresh fetch each supported scope
-independently. Results distinguish missing credentials, invalid credentials,
+Entering the settings page fetches each supported scope independently for
+each connection. Both collapsed and expanded connections show two compact
+total/remaining summaries before lifecycle and operational health, with a
+refresh button. The organization summary shows purchased account credits and
+the remaining balance, or a provider-reported organization limit and remaining
+allowance. The key summary shows its configured spending limit and remaining
+allowance for the same period. A tooltip explains that these totals are
+credits or limits; consumption remains in the details. Unlimited and missing
+values keep their explicit states. The entire connection row toggles its
+details, except the independent refresh button.
+Opening connection details initially shows only the
+financial section heading; its button expands the values and credential
+controls. Toggling either section reuses the same in-memory report. Manual
+refresh in either view updates both views without background polling.
+Results distinguish missing credentials, invalid credentials,
 unsupported data and temporary errors. The successful-fetch timestamp is set
 only after a validated provider response. Values are provider-reported
 information, not internal accounting or an execution gate. Reports from
@@ -70,7 +83,7 @@ different connections must not be summed into an organization total.
 The panel displays amounts rounded to exactly two decimal places using the
 current locale. The underlying normalized amounts retain their precision.
 
-The detail panel retains successful values in memory during its mounted
+Each connection retains successful values in memory during its mounted
 session. A failed refresh can retain a report only when a new server response
 confirms the same opaque connection/configuration/credential/operation
 binding. Stale reports keep their original timestamp and show the refresh

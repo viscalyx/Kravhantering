@@ -2449,6 +2449,33 @@
         "title": "Provider credits and usage",
         "refresh": "Refresh financial status",
         "loading": "Fetching financial status…",
+        "summary": {
+          "organization": {
+            "title": "Org. total/remaining",
+            "help": "Org. total/remaining: purchased credits and remaining balance in the provider account, which may be shared by the organization. If the provider reports an organization limit, that limit and remaining allowance are shown. This is not connection usage."
+          },
+          "credential": {
+            "title": "Key total/remaining",
+            "help": "Key total/remaining: the runtime key’s configured spending limit and remaining allowance for the reported period. Unlimited means the provider has set no limit. Missing values are shown as not reported."
+          },
+          "loading": "Fetching…",
+          "period": {
+            "lifetime": "total",
+            "daily": "daily",
+            "weekly": "weekly",
+            "monthly": "monthly",
+            "unknown": "(unknown period)"
+          },
+          "state": {
+            "missing_credential": "credential missing",
+            "invalid_credential": "credential rejected",
+            "temporary_error": "temporarily unavailable",
+            "unsupported": "unsupported",
+            "success": "fetched",
+            "stale": "stale"
+          },
+          "stale": "stale"
+        },
         "providerReported": "Provider-reported information, not internal accounting. These values do not control model execution and must not be the sole basis for cost enforcement. Reports from different connections may describe the same account and must not be added together.",
         "requestFailed": "The request could not be completed. Refresh to try again.",
         "support": {
