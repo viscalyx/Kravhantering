@@ -218,6 +218,15 @@ This keeps single-window admission assertions inside one quota window. A
 separate scenario verifies that exhausted earlier-window buckets permit
 admission in a new minute.
 
+Quota concurrency scenarios fill each bucket to one remaining admission, then
+race two application clients for that slot. Exactly one client must be admitted,
+and the other must receive the matching quota denial. This tests atomic
+admission without requiring a large request burst to complete inside the
+production one-second lock wait. A separate held-lock scenario verifies that
+coordination fails after that wait without retry.
+Concurrent first admissions also verify that each bucket is created once and
+both admissions are counted.
+
 ## Requirement List Performance Baseline
 
 The requirement list SQL path has a required SQL Server performance check for
