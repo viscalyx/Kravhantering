@@ -1,4 +1,5 @@
 export const CLEANUP_TARGET_KINDS = [
+  'export_actor_quota_entries',
   'ai_model_verification_attempts',
   'ai_run_coordination_entries',
   'ai_forensic_evidence',

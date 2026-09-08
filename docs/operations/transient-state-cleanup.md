@@ -108,6 +108,11 @@ Release packaging rejects missing schema evidence, failed targets,
 missing target results and image identity mismatches. The generated source lock
 and verification matrix travel inside the authenticated release archive.
 
+The compatibility matrix requires an outcome for every registered cleanup
+target, including export actor quota entries. For a source schema that does not
+contain a target's table, verified absence is recorded as `not_applicable`;
+the target result must still be present in the matrix.
+
 The same prerequisites apply to `app-node-tls`, `app-node-http` and
 `single-node`:
 

@@ -3,6 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { parseCleanupCompatibilityContract } from '../../lib/transient-cleanup/compatibility'
+import { createTransientCleanupTargets } from '../../lib/transient-cleanup/registry'
 import { runCleanupCompatibilityCli } from '../release/cleanup-compatibility.mjs'
 import {
   createCleanupCompatibilityContract,
@@ -15,14 +16,11 @@ afterEach(() => {
     fs.rmSync(root, { recursive: true, force: true })
 })
 
-const kinds = [
-  'ai_model_verification_attempts',
-  'ai_run_coordination_entries',
-  'ai_forensic_evidence',
-  'hsa_verification_quota_buckets',
-  'requirement_import_validation_sessions',
-  'requirement_import_validation_rate_buckets',
-]
+const kinds = createTransientCleanupTargets({
+  query: async () => {
+    throw new Error('Contract fixtures must not query a database')
+  },
+}).map(target => target.kind)
 const imageId = `sha256:${'a'.repeat(64)}`
 const digest = `sha256:${'b'.repeat(64)}`
 function input() {
@@ -55,6 +53,40 @@ function input() {
   }
 }
 describe('cleanup release compatibility contract', () => {
+  it('accepts every registered target with export quotas absent from the rollback schema', () => {
+    const args = input()
+    args.evidence[1].targets = kinds.map(kind => ({
+      kind,
+      outcome:
+        kind === 'export_actor_quota_entries' ? 'not_applicable' : 'success',
+    }))
+
+    const contract = createCleanupCompatibilityContract(args)
+
+    expect(contract.verification).toEqual(args.evidence)
+    expect(contract.verification[0].targets).toContainEqual({
+      kind: 'export_actor_quota_entries',
+      outcome: 'success',
+    })
+  })
+
+  it.each(['Target123', 'Source122'])(
+    'requires export quota evidence for schema %s',
+    schemaVersion => {
+      const args = input()
+      const evidence = args.evidence.find(
+        item => item.schemaVersion === schemaVersion,
+      )
+      evidence.targets = evidence.targets.filter(
+        target => target.kind !== 'export_actor_quota_entries',
+      )
+
+      expect(() => createCleanupCompatibilityContract(args)).toThrow(
+        'cleanup target verification is incomplete',
+      )
+    },
+  )
+
   it('seals source evidence for packaging and verifies the exact declared source set', () => {
     const args = input()
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cleanup-contract-'))
