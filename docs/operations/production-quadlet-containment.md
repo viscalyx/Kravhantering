@@ -53,9 +53,11 @@ respectively.
 
 The release smoke capacity test temporarily allows its administrator actor eight
 concurrent outputs and 100 starts per minute so actor quotas do not prevent the
-test from filling all CSV and PDF slots or retrying. It restores both settings
-afterward, including when an output fails. The released defaults remain one
-active output and ten starts per minute per actor.
+test from filling all CSV and PDF slots or retrying. It attempts both setting
+restorations independently, including when an output fails, and reads the
+settings back to verify their saved values before disposing the request context.
+Any restoration or verification failure fails the test. The released defaults
+remain one active output and ten starts per minute per actor.
 
 nginx writes generated configuration to `/etc/nginx/conf.d`, request and proxy
 buffers to `/var/cache/nginx`, and its PID to `/run/nginx.pid`. Access and error

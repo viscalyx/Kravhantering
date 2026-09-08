@@ -5,6 +5,7 @@ import {
   expectApiDocsToRenderWithoutCspErrors,
 } from '../helpers/api-docs-security-headers'
 import { RELEASE_SMOKE_ADMIN, RELEASE_SMOKE_AUTHOR } from './auth-roles'
+import { restoreActorQuotasAndDispose } from './restore-actor-quotas'
 
 interface AuthMeResponse {
   authenticated?: boolean
@@ -456,27 +457,7 @@ test.describe('Release smoke container flow', () => {
         ).toContain('application/pdf')
       }
     } finally {
-      try {
-        if (originalSettings) {
-          const settingsToRestore = originalSettings
-          const restored = await Promise.all(
-            (
-              ['exportActorConcurrency', 'exportActorStartsPerMinute'] as const
-            ).map(field =>
-              adminRequest.patch('/api/admin/application-settings', {
-                data: {
-                  [field]: settingsToRestore[field],
-                },
-              }),
-            ),
-          )
-          for (const response of restored) {
-            expect(response.status(), 'restore actor quota settings').toBe(200)
-          }
-        }
-      } finally {
-        await adminRequest.dispose()
-      }
+      await restoreActorQuotasAndDispose(adminRequest, originalSettings)
     }
   })
 })
