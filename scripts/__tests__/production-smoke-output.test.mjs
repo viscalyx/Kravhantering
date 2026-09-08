@@ -54,8 +54,9 @@ function runReadinessProbe(failures) {
   `
   const result = childProcess.spawnSync(
     'bash',
-    ['-c', shell, 'bash', PRODUCTION_SMOKE_PATH],
+    ['-s', '--', PRODUCTION_SMOKE_PATH],
     {
+      input: shell,
       encoding: 'utf8',
       env: {
         ...process.env,
@@ -104,8 +105,9 @@ function runKeycloakRecoveryProbe(failures, maxAttempts = 60) {
   `
   const result = childProcess.spawnSync(
     'bash',
-    ['-c', shell, 'bash', PRODUCTION_SMOKE_PATH],
+    ['-s', '--', PRODUCTION_SMOKE_PATH],
     {
+      input: shell,
       encoding: 'utf8',
       env: {
         ...process.env,
@@ -205,16 +207,12 @@ function renderHsaSmokeConfiguration() {
   `
   const result = childProcess.spawnSync(
     'bash',
-    [
-      '-c',
-      shell,
-      'bash',
-      PRODUCTION_SMOKE_PATH,
-      serviceHome,
-      configRoot,
-      appEnvPath,
-    ],
-    { cwd: process.cwd(), encoding: 'utf8' },
+    ['-s', '--', PRODUCTION_SMOKE_PATH, serviceHome, configRoot, appEnvPath],
+    {
+      input: shell,
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    },
   )
   const kongUnitPath = path.join(
     serviceHome,
@@ -355,8 +353,9 @@ function runHsaRotationEvidenceHarness({
   `
   const result = childProcess.spawnSync(
     'bash',
-    ['-c', shell, 'bash', PRODUCTION_SMOKE_PATH, temporaryDirectory],
+    ['-s', '--', PRODUCTION_SMOKE_PATH, temporaryDirectory],
     {
+      input: shell,
       encoding: 'utf8',
       env: {
         ...process.env,
@@ -375,11 +374,10 @@ function runHsaEndpointRestartHarness() {
     service_systemctl() { printf '%s\n' "$*"; }
     restart_hsa_mtls_endpoints
   `
-  return childProcess.spawnSync(
-    'bash',
-    ['-c', shell, 'bash', PRODUCTION_SMOKE_PATH],
-    { encoding: 'utf8' },
-  )
+  return childProcess.spawnSync('bash', ['-s', '--', PRODUCTION_SMOKE_PATH], {
+    input: shell,
+    encoding: 'utf8',
+  })
 }
 
 function runHsaCorrelationEvidenceHarness() {
@@ -436,15 +434,11 @@ function runHsaCorrelationEvidenceHarness() {
   `
   const result = childProcess.spawnSync(
     'bash',
-    [
-      '-c',
-      shell,
-      'bash',
-      PRODUCTION_SMOKE_PATH,
-      temporaryDirectory,
-      correlationId,
-    ],
-    { encoding: 'utf8' },
+    ['-s', '--', PRODUCTION_SMOKE_PATH, temporaryDirectory, correlationId],
+    {
+      input: shell,
+      encoding: 'utf8',
+    },
   )
   return { result, temporaryDirectory }
 }
@@ -481,15 +475,11 @@ function runHsaStaleProbeHarness() {
   `
   const result = childProcess.spawnSync(
     'bash',
-    [
-      '-c',
-      shell,
-      'bash',
-      PRODUCTION_SMOKE_PATH,
-      temporaryDirectory,
-      argumentsPath,
-    ],
-    { encoding: 'utf8' },
+    ['-s', '--', PRODUCTION_SMOKE_PATH, temporaryDirectory, argumentsPath],
+    {
+      input: shell,
+      encoding: 'utf8',
+    },
   )
   return { argumentsPath, result }
 }
@@ -516,8 +506,9 @@ function runHsaPkiLifecycle(operation, exitStatus) {
   `
   const result = childProcess.spawnSync(
     'bash',
-    ['-c', shell, 'bash', PRODUCTION_SMOKE_PATH, operation, String(exitStatus)],
+    ['-s', '--', PRODUCTION_SMOKE_PATH, operation, String(exitStatus)],
     {
+      input: shell,
       encoding: 'utf8',
       env: {
         ...process.env,

@@ -51,11 +51,8 @@ function fixture() {
 }
 
 function stage(f) {
-  return spawnSync(
-    'bash',
-    [
-      '-c',
-      String.raw`
+  return spawnSync('bash', ['-s', '--', script, f.serviceHome], {
+    input: String.raw`
         source "$1"
         SERVICE_HOME="$2"
         as_service() { (cd "$SERVICE_HOME" && "$@"); }
@@ -69,15 +66,10 @@ function stage(f) {
         staged="$(stage_cleanup_rollback_source)"
         printf '%s\n' "$staged"
       `,
-      'bash',
-      script,
-      f.serviceHome,
-    ],
-    {
-      encoding: 'utf8',
-      env: { ...process.env, PRODUCTION_SMOKE_EVIDENCE_DIR: f.evidence },
-    },
-  )
+
+    encoding: 'utf8',
+    env: { ...process.env, PRODUCTION_SMOKE_EVIDENCE_DIR: f.evidence },
+  })
 }
 
 const digest = file =>
@@ -112,11 +104,8 @@ function rollback(f, imageId) {
     path.join(f.evidence, 'cleanup-source.json'),
     '{"release":"1.0.0"}',
   )
-  const result = spawnSync(
-    'bash',
-    [
-      '-c',
-      String.raw`
+  const result = spawnSync('bash', ['-s', '--', script, f.serviceHome], {
+    input: String.raw`
         source "$1"
         SERVICE_HOME="$2"
         SERVICE_CONTEXT=0
@@ -145,21 +134,16 @@ function rollback(f, imageId) {
         assert_service_property() { :; }
         verify_cleanup_rollback_schedule
       `,
-      'bash',
-      script,
-      f.serviceHome,
-    ],
-    {
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        IMAGE_ID: imageId,
-        PRODUCTION_SMOKE_CONFIG_ROOT: config,
-        PRODUCTION_SMOKE_INSTALL_ROOT: target,
-        PRODUCTION_SMOKE_EVIDENCE_DIR: f.evidence,
-      },
+
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      IMAGE_ID: imageId,
+      PRODUCTION_SMOKE_CONFIG_ROOT: config,
+      PRODUCTION_SMOKE_INSTALL_ROOT: target,
+      PRODUCTION_SMOKE_EVIDENCE_DIR: f.evidence,
     },
-  )
+  })
   return { result, config }
 }
 

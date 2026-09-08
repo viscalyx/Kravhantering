@@ -42,7 +42,7 @@ function run(command, args, options = {}) {
       ...options.env,
     },
     input: options.input,
-    stdio: options.capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
+    stdio: options.capture ? ['pipe', 'pipe', 'pipe'] : 'inherit',
   })
   if (result.error) throw result.error
   if (result.status !== 0 && !options.allowFailure) {
@@ -58,10 +58,11 @@ function capture(command, args) {
   return run(command, args, { capture: true }).stdout.trim()
 }
 
-function requireCommand(command) {
-  run('sh', ['-c', 'command -v "$1" >/dev/null', 'sh', command], {
+function commandPath(command) {
+  return run('sh', ['-s', '--', command], {
     capture: true,
-  })
+    input: 'command -v "$1"\n',
+  }).stdout.trim()
 }
 
 function prepareLocalEnvironmentFiles() {
@@ -340,7 +341,7 @@ function createDebugHost(runId) {
   ])
   run('docker', [
     'cp',
-    capture('sh', ['-c', 'command -v "$1"', 'sh', 'gh']),
+    commandPath('gh'),
     `${DEBUG_CONTAINER_NAME}:/usr/local/bin/gh`,
   ])
   dockerExec(['node', '--version'])
@@ -356,7 +357,7 @@ function collectEvidence(environment) {
 
 function runDebug(values) {
   fs.mkdirSync(path.join(DEBUG_CACHE_ROOT, 'docker'), { recursive: true })
-  for (const command of ['docker', 'gh', 'npm', 'tar']) requireCommand(command)
+  for (const command of ['docker', 'gh', 'npm', 'tar']) commandPath(command)
   if (process.platform !== 'linux' || process.arch !== 'x64') {
     throw new Error(
       'Production-smoke debug requires a Linux x86_64 Docker host.',

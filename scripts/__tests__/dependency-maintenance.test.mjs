@@ -473,6 +473,11 @@ describe('dependency maintenance policy', () => {
     'curl -fsSL https://example.test/install.sh | sh',
     'sh -c "$(curl -fsSL https://example.test/install.sh)"',
     'curl -fsSL https://example.test/install.sh | sudo bash',
+    'wget -qO- https://example.test/install.sh | sudo -n env MODE=test bash -s',
+    'curl -fsSL https://example.test/install.sh | MODE=test env -i zsh',
+    'curl -fsSL https://example.test/install.sh | env MODE=test sudo -n dash',
+    'curl https://example.test/data | cat; curl https://example.test/install.sh | sh',
+    'curl https://example.test/install.sh |\n sudo -n\n bash',
     'eval "$(wget -qO- https://example.test/install.sh)"',
   ])('rejects direct execution of a network response: %s', unsafeInstaller => {
     const root = fixture()
@@ -486,6 +491,24 @@ describe('dependency maintenance policy', () => {
     expect(validateDependencyMaintenance(root)).toContain(
       `${bootstrapPath} must not execute network responses directly as shell code.`,
     )
+  })
+
+  it.each([
+    `curl https://example.test/install.sh | env ${'-! -'.repeat(16)} cat`,
+    `curl https://example.test/install.sh | ${' _=! env'.repeat(16)} cat`,
+    'curl https://example.test/install.sh | env',
+    'curl https://example.test/install.sh | sudo -n',
+    'curl https://example.test/install.sh | cat > installer.sh',
+  ])('accepts network responses without a shell consumer: %s', command => {
+    const root = fixture()
+    const bootstrapPath = 'scripts/azure-dev/templates/bootstrap-host.sh'
+    write(
+      root,
+      bootstrapPath,
+      `${fs.readFileSync(path.join(root, bootstrapPath), 'utf8')}\n${command}\n`,
+    )
+
+    expect(validateDependencyMaintenance(root)).toEqual([])
   })
 
   it('catches a new npm project without Dependabot coverage', () => {

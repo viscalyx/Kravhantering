@@ -220,21 +220,14 @@ describe('Codex installer integrity contract', () => {
       'install.lock',
     )
     mkdirSync(path.dirname(lockFile), { recursive: true })
-    const result = spawnSync(
-      'bash',
-      [
-        '-c',
+    const result = spawnSync('bash', ['-s', '--', lockFile, installerPath], {
+      input:
         'exec 8>"$1"; /usr/bin/flock 8; export CODEX_INSTALL_LOCK_FD=8; exec /bin/bash "$2"',
-        'bash',
-        lockFile,
-        installerPath,
-      ],
-      {
-        encoding: 'utf8',
-        env: testFixture.env,
-        timeout: 2_000,
-      },
-    )
+
+      encoding: 'utf8',
+      env: testFixture.env,
+      timeout: 2_000,
+    })
 
     expect(result.error).toBeUndefined()
     expect(result.status).toBe(0)

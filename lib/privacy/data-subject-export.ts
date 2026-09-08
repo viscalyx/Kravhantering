@@ -22,25 +22,49 @@ interface QueryExecutor {
 
 type ExportRow = Record<string, unknown>
 
-const SIMPLE_SELECT_PREFIX = /^(\s*(?:\/\*[\s\S]*?\*\/\s*)*SELECT)(\s+)/iu
-const SQL_TRIVIA_PREFIX = /^(?:\s|\/\*[\s\S]*?\*\/|--[^\r\n]*(?:\r?\n|$))*/u
+function skipSqlTrivia(
+  sql: string,
+  start: number,
+  allowLineComments: boolean,
+): number {
+  let offset = start
+  while (offset < sql.length) {
+    if (/\s/u.test(sql[offset])) {
+      offset += 1
+    } else if (sql.startsWith('/*', offset)) {
+      const end = sql.indexOf('*/', offset + 2)
+      if (end === -1) {
+        throw new Error('Privacy export source query must be a simple SELECT')
+      }
+      offset = end + 2
+    } else if (allowLineComments && sql.startsWith('--', offset)) {
+      const end = sql.indexOf('\n', offset + 2)
+      offset = end === -1 ? sql.length : end + 1
+    } else {
+      break
+    }
+  }
+  return offset
+}
 
 export function applyDataSubjectExportRowLimit(
   sql: string,
   limitParameter: string,
 ): string {
-  const match = SIMPLE_SELECT_PREFIX.exec(sql)
+  const selectStart = skipSqlTrivia(sql, 0, false)
+  const match = /^SELECT(\s+)/iu.exec(sql.slice(selectStart))
   if (!match) {
     throw new Error('Privacy export source query must be a simple SELECT')
   }
-  const remainder = sql.slice(match[0].length)
-  const meaningfulRemainder = remainder.slice(
-    SQL_TRIVIA_PREFIX.exec(remainder)?.[0].length ?? 0,
+  const selectEnd = selectStart + 'SELECT'.length
+  const remainderStart = selectStart + match[0].length
+  const meaningfulRemainder = sql.slice(
+    skipSqlTrivia(sql, remainderStart, true),
   )
   if (/^(?:ALL|DISTINCT|TOP)\b/iu.test(meaningfulRemainder)) {
     throw new Error('Privacy export source query must be a simple SELECT')
   }
-  return `${match[1]} TOP (${limitParameter})${match[2]}${remainder}`
+  return `${sql.slice(0, selectEnd)} TOP (${limitParameter})${sql.slice(selectEnd)}`
 }
 
 function withDataSubjectExportRowLimit(

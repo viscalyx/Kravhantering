@@ -115,6 +115,7 @@ export function generatedOutputErrorResponse(
   error: GeneratedOutputError,
   request?: Request,
 ): Response {
+  const status = STATUS_BY_CODE[error.code]
   const headers = new Headers({
     'Cache-Control': 'no-store',
     'Content-Type': 'application/json',
@@ -132,7 +133,8 @@ export function generatedOutputErrorResponse(
   ) {
     const locale = requestErrorLocale(request)
     const message =
-      serviceLimitMessage(error.code, error.details, locale) ?? error.message
+      serviceLimitMessage(error.code, error.details, locale) ??
+      FALLBACK_MESSAGES[error.code]
     const escaped = message.replace(
       /[&<>"']/g,
       character =>
@@ -151,8 +153,8 @@ export function generatedOutputErrorResponse(
       "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
     )
     return new Response(
-      `<!doctype html><html lang="${locale}"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${error.status}</title><main><h1>${error.status}</h1><p>${escaped}</p></main></html>`,
-      { status: error.status, headers },
+      `<!doctype html><html lang="${locale}"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${status}</title><main><h1>${status}</h1><p>${escaped}</p></main></html>`,
+      { status, headers },
     )
   }
   return Response.json(
@@ -161,7 +163,7 @@ export function generatedOutputErrorResponse(
       details: error.details,
       error: error.message,
     },
-    { headers, status: error.status },
+    { headers, status },
   )
 }
 

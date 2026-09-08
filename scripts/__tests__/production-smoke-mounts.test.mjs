@@ -43,11 +43,8 @@ function inspectFixture() {
 }
 
 function verifyMounts(fixture) {
-  return childProcess.spawnSync(
-    'bash',
-    [
-      '-c',
-      `
+  return childProcess.spawnSync('bash', ['-s', '--', productionSmokePath], {
+    input: `
         source "$1"
         as_service() {
           [[ "$1" == podman && "$2" == inspect && $# == 3 ]] || return 1
@@ -55,14 +52,10 @@ function verifyMounts(fixture) {
         }
         verify_writable_mounts
       `,
-      'bash',
-      productionSmokePath,
-    ],
-    {
-      encoding: 'utf8',
-      env: { ...process.env, INSPECT_FIXTURE: JSON.stringify(fixture) },
-    },
-  )
+
+    encoding: 'utf8',
+    env: { ...process.env, INSPECT_FIXTURE: JSON.stringify(fixture) },
+  })
 }
 
 describe('production smoke writable mount containment', () => {

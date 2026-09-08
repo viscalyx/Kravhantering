@@ -1000,6 +1000,36 @@ function validateDependabot(root, registry, now) {
   ]
 }
 
+function hasNetworkResponseShellPipeline(source) {
+  const segments = source.split('|')
+  for (let pipeline = 0; pipeline < segments.length - 1; pipeline += 1) {
+    const producer = segments[pipeline].slice(
+      segments[pipeline].lastIndexOf('\n') + 1,
+    )
+    if (!/\b(?:curl|wget)\b/iu.test(producer)) continue
+    const tokens = segments[pipeline + 1].trim().split(/\s+/u)
+    let index = 0
+    while (index < tokens.length) {
+      if (/^(?:ba|da|k|z)?sh\b/iu.test(tokens[index])) return true
+      if (/^(?:sudo|env)$/iu.test(tokens[index])) {
+        index += 1
+        while (
+          index < tokens.length &&
+          (/^--?\S+$/u.test(tokens[index]) ||
+            /^[A-Za-z_][A-Za-z0-9_]*=\S+$/u.test(tokens[index]))
+        ) {
+          index += 1
+        }
+      } else if (/^[A-Za-z_][A-Za-z0-9_]*=\S+$/u.test(tokens[index])) {
+        index += 1
+      } else {
+        break
+      }
+    }
+  }
+  return false
+}
+
 function validateInstallSurfaces(root, expectedVersion) {
   const errors = []
 
@@ -1059,13 +1089,14 @@ function validateInstallSurfaces(root, expectedVersion) {
     'scripts/azure-dev/templates/bootstrap-host.sh',
   ]) {
     const source = readText(root, relativePath).replace(/\\\r?\n\s*/gu, ' ')
-    const executesNetworkResponse = [
-      /\b(?:curl|wget)\b[^|\n]*\|\s*(?:(?:sudo|env)(?:\s+(?:--?\S+|[A-Za-z_][A-Za-z0-9_]*=\S+))*\s+|[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*(?:(?:ba|da|k|z)?sh)\b/iu,
-      /\b(?:(?:ba|da|k|z)?sh)\s+-c\s+["']?(?:\$\(|`)\s*(?:curl|wget)\b/iu,
-      /\b(?:eval|source)\b[^\n]*(?:\$\(|`|<\()\s*(?:curl|wget)\b/iu,
-      /(?:^|[;&|]\s*)\.\s+(?:\$\(|`|<\()\s*(?:curl|wget)\b/imu,
-      /(?:^|[;&]\s*)`\s*(?:curl|wget)\b[^`\n]*`/imu,
-    ].some(pattern => pattern.test(source))
+    const executesNetworkResponse =
+      hasNetworkResponseShellPipeline(source) ||
+      [
+        /\b(?:(?:ba|da|k|z)?sh)\s+-c\s+["']?(?:\$\(|`)\s*(?:curl|wget)\b/iu,
+        /\b(?:eval|source)\b[^\n]*(?:\$\(|`|<\()\s*(?:curl|wget)\b/iu,
+        /(?:^|[;&|]\s*)\.\s+(?:\$\(|`|<\()\s*(?:curl|wget)\b/imu,
+        /(?:^|[;&]\s*)`\s*(?:curl|wget)\b[^`\n]*`/imu,
+      ].some(pattern => pattern.test(source))
     if (executesNetworkResponse) {
       errors.push(
         `${relativePath} must not execute network responses directly as shell code.`,

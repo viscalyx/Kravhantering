@@ -108,6 +108,29 @@ describe('data-subject export service', () => {
     }
   })
 
+  it('preserves whitespace and repeated comments when inserting the row bound', () => {
+    const prefix = ' \t/**/ /* source */\n'.repeat(16)
+    expect(
+      applyDataSubjectExportRowLimit(
+        `${prefix}select \n-- columns\nvalue FROM records`,
+        '@2',
+      ),
+    ).toBe(`${prefix}select TOP (@2) \n-- columns\nvalue FROM records`)
+  })
+
+  it.each([
+    `/*${'*//*'.repeat(16)}`,
+    `${'/**/ '.repeat(16)}UPDATE records SET value = 1`,
+    '/* unterminated SELECT value FROM records',
+    'SELECT /* unterminated comment',
+    'SELECT/**/ value FROM records',
+    'SELECT \n/* first */ -- second\n/**/ DISTINCT value FROM records',
+  ])('rejects malformed or non-simple export SQL: %s', sql => {
+    expect(() => applyDataSubjectExportRowLimit(sql, '@1')).toThrow(
+      'Privacy export source query must be a simple SELECT',
+    )
+  })
+
   it('exports forensic actor metadata for every matching lifecycle role', async () => {
     const { db, query } = createExportDb({
       'ai_forensic_capture_windows.identity': [

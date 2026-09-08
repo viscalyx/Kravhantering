@@ -1489,9 +1489,9 @@ describe('kravhantering Quadlet helper', () => {
     const runProbe = message =>
       childProcess.spawnSync(
         'bash',
-        [
-          '-c',
-          `source "$1"
+        ['-s', '--', PRODUCTION_SMOKE_PATH, evidenceDir, message],
+        {
+          input: `source "$1"
 EVIDENCE_DIR="$2"
 CONFIG_ROOT="$2"
 DB_JOB_IMAGE_REF=test-db-job
@@ -1508,12 +1508,9 @@ as_service() {
 }
 expect_database_tls_failure 'identity probe' 'certificate.*identity'
 `,
-          'production-smoke-test',
-          PRODUCTION_SMOKE_PATH,
-          evidenceDir,
-          message,
-        ],
-        { cwd: process.cwd(), encoding: 'utf8' },
+          cwd: process.cwd(),
+          encoding: 'utf8',
+        },
       )
 
     const tlsFailure = runProbe('certificate identity mismatch')
@@ -1539,14 +1536,11 @@ expect_database_tls_failure 'identity probe' 'certificate.*identity'
       )
       const result = childProcess.spawnSync(
         'bash',
-        [
-          '-c',
-          'source "$1"; configure_smoke_app_env "$2" test-client test-cookie',
-          'production-smoke-test',
-          PRODUCTION_SMOKE_PATH,
-          fixture.appEnvPath,
-        ],
+        ['-s', '--', PRODUCTION_SMOKE_PATH, fixture.appEnvPath],
         {
+          input:
+            'source "$1"; configure_smoke_app_env "$2" test-client test-cookie',
+
           encoding: 'utf8',
           env: { ...process.env, PRODUCTION_SMOKE_SCOPE: scope },
         },
@@ -1573,9 +1567,9 @@ expect_database_tls_failure 'identity probe' 'certificate.*identity'
 
     const result = childProcess.spawnSync(
       'bash',
-      [
-        '-c',
-        `source "$1"
+      ['-s', '--', PRODUCTION_SMOKE_PATH, configDir],
+      {
+        input: `source "$1"
 CONFIG_ROOT="$2"
 SERVICE_USER=kravhantering
 sudo() {
@@ -1592,11 +1586,9 @@ sudo() {
 }
 install_runtime_config_directories
 `,
-        'production-smoke-test',
-        PRODUCTION_SMOKE_PATH,
-        configDir,
-      ],
-      { cwd: process.cwd(), encoding: 'utf8' },
+        cwd: process.cwd(),
+        encoding: 'utf8',
+      },
     )
 
     expect(result.stderr).toBe('')
@@ -1627,9 +1619,9 @@ install_runtime_config_directories
 
     const result = childProcess.spawnSync(
       'bash',
-      [
-        '-c',
-        `source "$1"
+      ['-s', '--', PRODUCTION_SMOKE_PATH, configDir, evidenceDir],
+      {
+        input: `source "$1"
 CONFIG_ROOT="$2"
 EVIDENCE_DIR="$3"
 db_calls=0
@@ -1652,12 +1644,9 @@ database_job() {
 verify_sqlserver_identity_upgrade
 (( db_calls == 2 ))
 `,
-        'production-smoke-test',
-        PRODUCTION_SMOKE_PATH,
-        configDir,
-        evidenceDir,
-      ],
-      { cwd: process.cwd(), encoding: 'utf8' },
+        cwd: process.cwd(),
+        encoding: 'utf8',
+      },
     )
 
     expect(result.stderr).toBe('')
@@ -1683,9 +1672,9 @@ verify_sqlserver_identity_upgrade
 
     const result = childProcess.spawnSync(
       'bash',
-      [
-        '-c',
-        `source "$1"
+      ['-s', '--', PRODUCTION_SMOKE_PATH, configDir, evidenceDir],
+      {
+        input: `source "$1"
 CONFIG_ROOT="$2"
 EVIDENCE_DIR="$3"
 SERVICE_USER=kravhantering
@@ -1733,12 +1722,9 @@ service_systemctl() { :; }
 database_job() { :; }
 rotate_sqlserver_certificate
 `,
-        'production-smoke-test',
-        PRODUCTION_SMOKE_PATH,
-        configDir,
-        evidenceDir,
-      ],
-      { cwd: process.cwd(), encoding: 'utf8' },
+        cwd: process.cwd(),
+        encoding: 'utf8',
+      },
     )
 
     expect(result.stderr).toBe('')

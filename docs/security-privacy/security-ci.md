@@ -84,6 +84,13 @@ not repo-owned workflow steps in this phase.
 Trivy secret scanning is also disabled in this workflow. GitHub Secret
 Protection owns the secret-detection surface.
 
+Shell test harnesses and the production-smoke debug command lookup pass fixed
+shell programs through standard input. Dynamic paths stay in positional
+arguments and are quoted when the shell uses them. Security-sensitive parsers
+use sequential scanning or unambiguous regular-expression alternatives to
+avoid excessive backtracking. Generated-output HTML error responses select
+predefined messages and escape HTML characters before rendering.
+
 ### Repository workflow steps
 
 1. Checks out the PR, installs the exact npm version declared by root

@@ -105,20 +105,17 @@ function runReconciler({
     printf 'CALLS=%s\n' "$calls"
     exit "$status"
   `
-  return childProcess.spawnSync(
-    'bash',
-    ['-c', shell, 'bash', RECONCILER_PATH],
-    {
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        FINALIZE_MODE: finalizeMode,
-        PENDING_GENERATION: pending ?? '',
-        SELECTION_MODE: selectionMode,
-        VERIFY_RESULTS: verificationResults.join(','),
-      },
+  return childProcess.spawnSync('bash', ['-s', '--', RECONCILER_PATH], {
+    input: shell,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      FINALIZE_MODE: finalizeMode,
+      PENDING_GENERATION: pending ?? '',
+      SELECTION_MODE: selectionMode,
+      VERIFY_RESULTS: verificationResults.join(','),
     },
-  )
+  })
 }
 
 describe('Azure persistent HSA mTLS startup renewal', () => {

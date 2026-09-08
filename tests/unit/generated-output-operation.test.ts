@@ -47,6 +47,41 @@ afterEach(() => {
 })
 
 describe('generated output operation contract', () => {
+  it('uses predefined HTML text and status even when exception properties are untrusted', async () => {
+    const error = new GeneratedOutputError(
+      'pdf_worker_failed',
+      'worker_failed',
+      { output: 'pdf' },
+    )
+    error.message = '<img src=x onerror="alert(1)"> private worker details'
+    Object.assign(error, { status: '<img src=x onerror="alert(1)">' })
+    const response = generatedOutputErrorResponse(
+      error,
+      new Request('https://example.test/en/report', {
+        headers: { Accept: 'text/html' },
+      }),
+    )
+
+    expect(response.status).toBe(503)
+    expect(response.headers.get('Content-Type')).toBe(
+      'text/html; charset=utf-8',
+    )
+    expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff')
+    expect(response.headers.get('Content-Security-Policy')).toBe(
+      "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+    )
+    const document = new DOMParser().parseFromString(
+      await response.text(),
+      'text/html',
+    )
+    expect(document.querySelector('p')?.textContent).toBe(
+      'The PDF renderer failed.',
+    )
+    expect(document.querySelector('title')?.textContent).toBe('503')
+    expect(document.querySelector('h1')?.textContent).toBe('503')
+    expect(document.querySelector('img')).toBeNull()
+  })
+
   it('maps stable errors to status, no-store, and Retry-After', async () => {
     const error = new GeneratedOutputError(
       'capacity_busy',

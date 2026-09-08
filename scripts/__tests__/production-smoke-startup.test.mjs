@@ -17,9 +17,9 @@ describe('production smoke startup readiness', () => {
       try {
         const result = spawnSync(
           'bash',
-          [
-            '-c',
-            String.raw`
+          ['-s', '--', path.resolve('scripts/containers/production-smoke.sh')],
+          {
+            input: String.raw`
               source "$1"
               required_env() { :; }
               prepare_service_user() { :; }
@@ -50,10 +50,7 @@ describe('production smoke startup readiness', () => {
               }
               up fixture.tar.gz
             `,
-            'bash',
-            path.resolve('scripts/containers/production-smoke.sh'),
-          ],
-          {
+
             encoding: 'utf8',
             timeout: 10_000,
             env: {
