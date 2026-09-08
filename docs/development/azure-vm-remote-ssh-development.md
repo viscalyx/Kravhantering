@@ -1003,6 +1003,40 @@ devcontainer config in `.devcontainer/codex-config.toml` selects the same
 profile name with devcontainer-specific service domains; it is not installed
 on the Azure VM.
 
+For Podman commands, setup enables the `vscode` user service's `podman.socket`
+and sets `CONTAINER_HOST` in the Codex shell environment to
+`unix:///run/user/<uid>/podman/podman.sock`. The configuration merger resolves
+the actual installing user's UID and allows that specific Unix socket in the
+permission profile. The rootless engine manages the existing host containers
+and data-disk storage outside the sandbox. This avoids writes to the
+sandbox's read-only `/run/user/<uid>` and container storage, and avoids running
+the engine inside the sandbox's user namespace. The socket grants control of
+containers as `vscode`; it is local to that user and has no TCP listener.
+Ordinary SSH terminals and the Quadlet services continue using native Podman.
+Commands available only in native Podman must run from an ordinary SSH
+terminal. See the [Podman service documentation](https://docs.podman.io/en/latest/markdown/podman-system-service.1.html).
+
+Bootstrap checks `podman info` through `codex sandbox`. Smoke validation also
+checks socket activation, the expected storage directory, container listing,
+and execution of an automatically removed container using the already-built
+HSA directory mock image, with networking disabled and a read-only filesystem.
+
+To apply only this repair to an existing Azure VM, run these commands as
+`vscode` in a regular Remote SSH terminal from `/workspace`:
+
+```bash
+python3 scripts/azure-dev/templates/merge-codex-config.py \
+  scripts/azure-dev/templates/codex-config.toml \
+  "$HOME/.codex/config.toml"
+systemctl --user enable --now podman.socket
+CONTAINER_HOST="unix:///run/user/$(id -u)/podman/podman.sock" \
+  codex sandbox -P kravhantering-development -C /workspace -- podman info
+```
+
+Then start a new Codex session to load the managed shell environment and
+socket permission. An already-running restricted session cannot expand its
+own permissions or repair the user configuration outside its writable roots.
+
 Setup does not restart existing terminals or the VS Code Server. After setup
 changes command-path policy or repairs Codex configuration, close existing SSH
 terminals, reconnect, reload the VS Code Remote SSH window, and start a new

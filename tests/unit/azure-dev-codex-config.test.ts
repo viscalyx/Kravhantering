@@ -1,6 +1,6 @@
 import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { tmpdir, userInfo } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
@@ -25,7 +25,7 @@ import tomllib
 spec = importlib.util.spec_from_file_location("merge_codex_config", sys.argv[1])
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
-managed = tomllib.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+managed = module.load_managed_config(Path(sys.argv[2]).read_text(encoding="utf-8"))
 module.validate_merged_config(sys.stdin.read(), managed)
 `
 
@@ -60,6 +60,104 @@ afterEach(() => {
 })
 
 describe('Azure development Codex configuration', () => {
+  it('routes Podman to the installing user socket while preserving personal environment values', () => {
+    const configPath = createTemporaryConfig(`personality = "pragmatic"
+
+[shell_environment_policy]
+inherit = "all"
+
+[shell_environment_policy.set]
+PERSONAL_SETTING = "keep me"
+EMPTY_SETTING = ""
+CONTAINER_HOST = "unix:///old/podman.sock"
+`)
+    const merged = mergeConfig(configPath)
+    const socket = `/run/user/${userInfo().uid}/podman/podman.sock`
+    const config = JSON.parse(
+      execFileSync(
+        'python3',
+        [
+          '-c',
+          'import json, sys, tomllib; print(json.dumps(tomllib.loads(sys.stdin.read())))',
+        ],
+        {
+          input: merged,
+          encoding: 'utf8',
+        },
+      ),
+    )
+
+    expect(config.shell_environment_policy).toEqual({
+      inherit: 'all',
+      set: {
+        PERSONAL_SETTING: 'keep me',
+        EMPTY_SETTING: '',
+        CONTAINER_HOST: `unix://${socket}`,
+      },
+    })
+    expect(
+      config.permissions['kravhantering-development'].network.unix_sockets,
+    ).toEqual({ [socket]: 'allow' })
+    expect(mergeConfig(configPath)).toBe(merged)
+    expect(mergeConfig(configPath)).toBe(merged)
+  })
+
+  it('resolves the Podman socket for an account with a different UID', () => {
+    const merged = execFileSync(
+      'python3',
+      [
+        '-c',
+        `
+import importlib.util
+from pathlib import Path
+import sys
+from unittest.mock import patch
+
+spec = importlib.util.spec_from_file_location("merger", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+with patch.object(module.os, "getuid", return_value=2042):
+    print(module.merge_config("", Path(sys.argv[2]).read_text()))
+`,
+        mergerPath,
+        managedConfigPath,
+      ],
+      { encoding: 'utf8' },
+    )
+
+    expect(merged).toContain(
+      '"CONTAINER_HOST" = "unix:///run/user/2042/podman/podman.sock"',
+    )
+    expect(merged).toContain('"/run/user/2042/podman/podman.sock" = "allow"')
+  })
+
+  it.each([
+    {
+      from: '"CONTAINER_HOST" = "unix://',
+      to: '"CONTAINER_HOST" = "wrong://',
+      error: 'merged shell environment is incorrect for CONTAINER_HOST',
+    },
+    {
+      from: `"/run/user/${userInfo().uid}/podman/podman.sock" = "allow"`,
+      to: `"/run/user/${userInfo().uid}/podman/podman.sock" = "deny"`,
+      error: 'merged network permissions are incorrect',
+    },
+  ])(
+    'rejects incorrect Podman configuration: $error',
+    ({ from, to, error }) => {
+      const configPath = createTemporaryConfig('')
+      const merged = mergeConfig(configPath).replace(from, to)
+      const result = spawnSync(
+        'python3',
+        ['-c', validateMergedConfigScript, mergerPath, managedConfigPath],
+        { encoding: 'utf8', input: merged },
+      )
+
+      expect(result.status).toBe(1)
+      expect(result.stderr).toContain(error)
+    },
+  )
+
   it.each([
     {
       source: managedConfigPath,

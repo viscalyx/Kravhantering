@@ -27,6 +27,14 @@ allow_local_binding = true
 "127.0.0.1" = "allow"
 "::1" = "allow"
 
+# The merger resolves @UID@ as the account running the installation.
+[permissions.kravhantering-development.network.unix_sockets]
+"/run/user/@UID@/podman/podman.sock" = "allow"
+
+# Run the engine in the host user service; sandboxed commands use its client.
+[shell_environment_policy.set]
+CONTAINER_HOST = "unix:///run/user/@UID@/podman/podman.sock"
+
 [plugins.openai-templates]
 enabled = false
 

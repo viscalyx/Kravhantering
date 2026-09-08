@@ -1169,6 +1169,19 @@ run_codex_as_vscode() {
     "${CODEX_MANAGED_LAUNCHER}" "$@"
 }
 
+configure_codex_podman() {
+  local uid
+  uid="$(id -u "${VSCODE_USER}")"
+
+  # The engine must run outside the Codex mount and user namespaces.
+  run_user_systemctl "${uid}" enable --now podman.socket
+  run_codex_as_vscode "${uid}" sandbox -P kravhantering-development \
+    -C "${WORKSPACE_DIR}" -- \
+    env CONTAINER_HOST="unix:///run/user/${uid}/podman/podman.sock" \
+    podman info --format '{{.Store.GraphRoot}}'
+  log 'Codex rootless Podman API connection configured and validated'
+}
+
 configure_codex_app_server() {
   local uid version_result expected_socket
   uid="$(id -u "${VSCODE_USER}")"
@@ -1701,6 +1714,7 @@ main() {
   install_quadlet_units
   build_hsa_images
   start_user_quadlets
+  configure_codex_podman
   configure_codex_app_server
   reconcile_persistent_hsa_renewal
   normalize_hsa_app_bundle_host_ownership

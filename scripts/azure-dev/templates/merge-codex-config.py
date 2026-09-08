@@ -37,6 +37,38 @@ def toml_string(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
+def load_managed_config(content: str) -> dict[str, Any]:
+    return tomllib.loads(content.replace("@UID@", str(os.getuid())))
+
+
+def merge_shell_environment(
+    lines: list[str], managed: dict[str, Any],
+) -> list[str]:
+    environment = managed.get("shell_environment_policy", {}).get("set", {})
+    if not environment:
+        return lines
+    existing = tomllib.loads("\n".join(lines))
+    values = dict(existing.get("shell_environment_policy", {}).get("set", {}))
+    values.update(environment)
+    result: list[str] = []
+    section: str | None = None
+    for line in lines:
+        match = SECTION_PATTERN.match(line) or ARRAY_SECTION_PATTERN.match(line)
+        if match:
+            section = match.group(1).strip()
+        if section != "shell_environment_policy.set":
+            result.append(line)
+    # Keep personal variables outside managed blocks so subsequent merges retain them.
+    while result and not result[-1].strip():
+        result.pop()
+    result.extend(["", "[shell_environment_policy.set]"])
+    for key, value in values.items():
+        if not isinstance(value, str):
+            raise ValueError(f"shell environment {key} must be a string")
+        result.append(f"{toml_string(key)} = {toml_string(value)}")
+    return result + [""]
+
+
 def without_marked_blocks(content: str) -> list[str]:
     lines = content.splitlines()
     result: list[str] = []
@@ -312,6 +344,16 @@ def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
             f"{toml_string(require_string(domain, 'domain'))} = "
             f"{toml_string(require_string(decision, f'domain {domain} decision'))}",
         )
+    if "unix_sockets" in network:
+        sockets = require_table(network["unix_sockets"], "permission unix sockets")
+        profile_lines.extend([
+            "", f"[permissions.{default_permissions}.network.unix_sockets]",
+        ])
+        for path, decision in sockets.items():
+            profile_lines.append(
+                f"{toml_string(path)} = "
+                f"{toml_string(require_string(decision, 'socket decision'))}",
+            )
     for plugin_name in disabled_plugin_names:
         profile_lines.extend(
             [
@@ -334,7 +376,7 @@ def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
 
 
 def merge_config(existing_content: str, managed_content: str) -> str:
-    managed = tomllib.loads(managed_content)
+    managed = load_managed_config(managed_content)
     managed_plugin_names = require_disabled_plugins(managed)
     managed_skill_paths = require_disabled_skills(managed)
     root_lines, trust_level, profile_lines = render_profile(managed)
@@ -357,6 +399,7 @@ def merge_config(existing_content: str, managed_content: str) -> str:
                 "",
             ],
         )
+    merged = merge_shell_environment(merged, managed)
     merged.extend(profile_lines)
     merged_content = "\n".join(merged).rstrip() + "\n"
 
@@ -381,6 +424,14 @@ def validate_merged_config(
         != managed["permissions"][default_permissions]["filesystem"]
     ):
         raise ValueError("merged filesystem permissions are incorrect")
+    if (
+        parsed["permissions"][default_permissions]["network"]
+        != managed["permissions"][default_permissions]["network"]
+    ):
+        raise ValueError("merged network permissions are incorrect")
+    for key, value in managed.get("shell_environment_policy", {}).get("set", {}).items():
+        if parsed.get("shell_environment_policy", {}).get("set", {}).get(key) != value:
+            raise ValueError(f"merged shell environment is incorrect for {key}")
     parsed_plugins = parsed.get("plugins", {})
     if not all(
         isinstance(parsed_plugins.get(name), dict)

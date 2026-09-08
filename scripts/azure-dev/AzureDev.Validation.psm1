@@ -265,6 +265,7 @@ run_workspace_command_or_diagnose() {
 
 python3 - <<'PY'
 from pathlib import Path
+import os
 import tomllib
 
 config = tomllib.loads(
@@ -288,6 +289,9 @@ assert profile['network']['domains'] == {
     '127.0.0.1': 'allow',
     '::1': 'allow',
 }
+podman_socket = f'/run/user/{os.getuid()}/podman/podman.sock'
+assert profile['network']['unix_sockets'] == {podman_socket: 'allow'}
+assert config['shell_environment_policy']['set']['CONTAINER_HOST'] == f'unix://{podman_socket}'
 PY
 
 sudo -n test -f /etc/apparmor.d/bwrap-userns-restrict
@@ -394,6 +398,18 @@ grep -Fq 'graphroot = "/home/vscode/.local/share/containers/storage"' /home/vsco
 grep -Fq 'rootless_storage_path = "/home/vscode/.local/share/containers/storage"' /home/vscode/.config/containers/storage.conf
 test "$(podman info --format '{{.Store.GraphRoot}}')" = "/home/vscode/.local/share/containers/storage"
 podman network exists krav-support
+systemctl --user is-enabled --quiet podman.socket
+systemctl --user is-active --quiet podman.socket
+codex sandbox -P kravhantering-development -C /workspace -- \
+  env CONTAINER_HOST="unix://${XDG_RUNTIME_DIR}/podman/podman.sock" \
+  bash -euo pipefail -c '
+    test "$(podman info --format "{{.Store.GraphRoot}}")" = "/home/vscode/.local/share/containers/storage"
+    podman ps --format "{{.Names}}"
+    podman run --rm --pull=never --network none --read-only \
+      --cap-drop=all --security-opt=no-new-privileges --entrypoint node \
+      localhost/kravhantering/hsa-directory-mock:local \
+      -e "console.log(\"Codex Podman container probe passed\")"
+  '
 node --version 2>/dev/null | grep -Eq '^v24\.'
 npm --version >/dev/null 2>&1
 test "$(npm config get cache)" = "/mnt/krav-azure-dev-data/cache/npm/vscode"

@@ -984,6 +984,25 @@ the installed configuration and creates a temporary directory and file through
 access in addition to the host write probe in `worktree-storage validate`.
 Repeated merges produce the same configuration.
 
+The Azure template also manages `shell_environment_policy.set.CONTAINER_HOST`
+and the permission profile's `network.unix_sockets` entry for the rootless
+Podman API. The merger resolves `@UID@` using the installing account's UID,
+preserves other shell environment values, and validates the resulting network
+and environment settings. Bootstrap enables the user `podman.socket` after
+the support stack starts and checks `podman info` through `codex sandbox`
+before starting the shared Codex app server. The socket activates the engine
+outside the agent's mount and user namespaces. The existing filesystem grants
+remain scoped to skills, the workspace, and worktrees; the sandbox does not
+need direct write access to Podman runtime or storage directories.
+
+Smoke validation checks the installed socket and environment settings, socket
+enablement and activity, and remote Podman storage, listing, and container
+execution through the sandbox. The disposable probe uses the local HSA mock
+image with `--pull=never`, `--rm`, `--network none`, and `--read-only`. Native
+Podman in SSH terminals and Quadlet services keeps its existing behavior.
+For repair without rerunning setup, see the
+[Codex configuration repair commands](./azure-vm-remote-ssh-development.md).
+
 Do not move bootstrap into Azure `customData`. Azure does not allow changing
 `customData` on an existing VM, while this workflow must be able to rerun the
 current local bootstrap against an existing development VM.
