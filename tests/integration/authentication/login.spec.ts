@@ -79,7 +79,7 @@ test.describe('login flow', () => {
       await expect(page).toHaveURL(/\/sv\/requirements(?:\?|$)/)
       await expect(
         page.getByRole('table', { name: 'Lista över krav' }),
-      ).toBeVisible()
+      ).toHaveCount(1)
       const userMenuButton = page.getByRole('button', {
         name: /^Inloggad som /,
       })
