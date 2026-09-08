@@ -86,6 +86,12 @@ Confirm that authorized authors and reviewers retain access.
 After upgrade, if real credentials may have entered an approved AI forensic capture, arrange an authorized incident review with the original capture parties. Review evidence only after capture stops or expires and through the protected interface. Revoke or rotate suspected exposed credentials through the incident process. Keep excerpts out of tickets and logs.
 The fix protects future evidence writes. It does not sanitize existing evidence or backup copies. Keep the existing live-evidence and backup retention rules, and run cleanup after a restore before allowing application traffic. Excerpts remain sensitive after masking.
 <!-- operator-upgrade:source pr-1385 end -->
+
+<!-- operator-upgrade:source pr-1386 start -->
+Drain old app nodes before upgrade and start the new nodes together. Apply the database update and deploy the matching ingress and cleanup components. Keep the identity fingerprint secret the same on all app nodes.
+Validate the new export and report limits with users who share a corporate proxy. Monitor rejected requests and tune actor and network limits separately. A stuck export can cause an app process restart after 14 minutes. Confirm that the service manager restarts failed processes.
+Rollback requires a coordinated drain. Keep the added database structures; old app versions do not enforce the shared quota.
+<!-- operator-upgrade:source pr-1386 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
