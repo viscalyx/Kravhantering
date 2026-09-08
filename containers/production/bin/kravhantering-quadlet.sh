@@ -253,8 +253,25 @@ validate_authentication_config() {
   validate_bundled_keycloak_auth
 }
 
+validate_identity_environment() {
+  [[ "$TOPOLOGY" == single-node ]] || return 0
+  local deployment_environment
+  deployment_environment="$(read_env_value "$APP_ENV_FILE" KRAVHANTERING_DEPLOYMENT_ENVIRONMENT)"
+  case "$deployment_environment" in
+    production | prodlike | staging) ;;
+    *) fail 'app.env must set KRAVHANTERING_DEPLOYMENT_ENVIRONMENT to production, prodlike, or staging' ;;
+  esac
+  if [[ "$deployment_environment" == production && "$IDENTITY_PROVIDER_MODE" == bundled ]]; then
+    fail 'production requires IDENTITY_PROVIDER_MODE=external or hardened-bundled in release.env; bundled is only allowed with an explicit prodlike or staging environment in app.env'
+  fi
+}
+
 configure_identity_provider() {
-  default_release_value IDENTITY_PROVIDER_MODE bundled
+  if [[ "$TOPOLOGY" != single-node ]]; then
+    IDENTITY_PROVIDER_MODE=external
+  else
+    IDENTITY_PROVIDER_MODE="$(read_env_value "$RELEASE_ENV_FILE" IDENTITY_PROVIDER_MODE)"
+  fi
   case "$IDENTITY_PROVIDER_MODE" in
     bundled)
       KEYCLOAK_APP_DEPENDENCIES='kravhantering-keycloak.service'
@@ -821,6 +838,7 @@ render_units() {
 
   read_release_env
   configure_identity_provider
+  validate_identity_environment
   validate_release_env "$TOPOLOGY"
   validate_identity_provider
   validate_authentication_config

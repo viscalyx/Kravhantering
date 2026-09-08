@@ -147,6 +147,7 @@ function createFixture(
   fs.writeFileSync(
     appEnvPath,
     [
+      'KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=prodlike',
       'AUTH_OIDC_CLIENT_ID=kravhantering-app',
       'AUTH_OIDC_CLIENT_SECRET=unique-production-oidc-secret',
       'AUTH_OIDC_ISSUER_URL=https://issuer.example.internal/realms/kravhantering',
@@ -202,6 +203,7 @@ function releaseEnv(overrides = {}) {
   return `${Object.entries({
     APP_RUNTIME_IMAGE_REF: 'registry.example/app-runtime:1.2.3',
     DB_JOB_IMAGE_REF: 'registry.example/db-job:1.2.3',
+    IDENTITY_PROVIDER_MODE: 'bundled',
     KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:26.7',
     NGINX_HTTP_BIND: '127.0.0.1:9080',
     NGINX_HTTPS_BIND: '8443:443',
@@ -711,7 +713,210 @@ describe('kravhantering Quadlet helper', () => {
     )
   })
 
-  it('renders the default bundled identity provider when no profile is configured', () => {
+  it.each([undefined, '', ' ', 'invalid-secret'])(
+    'rejects invalid single-node identity profile %s before writing units',
+    profile => {
+      const fixture = createFixture(
+        releaseEnv().replace(
+          'IDENTITY_PROVIDER_MODE=bundled\n',
+          profile === undefined ? '' : `IDENTITY_PROVIDER_MODE=${profile}\n`,
+        ),
+      )
+      const result = runHelper(
+        [
+          'render',
+          '--topology',
+          'single-node',
+          '--output-dir',
+          fixture.outputDir,
+        ],
+        fixture,
+        { IDENTITY_PROVIDER_MODE: 'bundled' },
+      )
+
+      expect(result.status).not.toBe(0)
+      expect(result.stderr).toContain('IDENTITY_PROVIDER_MODE')
+      expect(result.stderr).not.toContain('invalid-secret')
+      expect(fs.existsSync(fixture.outputDir)).toBe(false)
+    },
+  )
+
+  it.each([undefined, '', ' ', 'demo', 'test', 'PRODUCTION', 'invalid-secret'])(
+    'rejects unsupported single-node environment %s with a valid profile',
+    environment => {
+      const fixture = createFixture(
+        releaseEnv({ IDENTITY_PROVIDER_MODE: 'external' }),
+      )
+      const appEnv = fs.readFileSync(fixture.appEnvPath, 'utf8')
+      fs.writeFileSync(
+        fixture.appEnvPath,
+        appEnv.replace(
+          'KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=prodlike\n',
+          environment === undefined
+            ? ''
+            : `KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=${environment}\n`,
+        ),
+      )
+      const result = runHelper(
+        [
+          'render',
+          '--topology',
+          'single-node',
+          '--output-dir',
+          fixture.outputDir,
+        ],
+        fixture,
+        { KRAVHANTERING_DEPLOYMENT_ENVIRONMENT: 'staging' },
+      )
+
+      expect(result.status).not.toBe(0)
+      expect(result.stderr).toContain(
+        'app.env must set KRAVHANTERING_DEPLOYMENT_ENVIRONMENT to production, prodlike, or staging',
+      )
+      expect(result.stderr).not.toContain('invalid-secret')
+      expect(fs.existsSync(fixture.outputDir)).toBe(false)
+    },
+  )
+
+  it.each(['render', 'install', 'verify-host'])(
+    'rejects production bundled during %s without changing units or services',
+    command => {
+      const fixture = createFixture(
+        releaseEnv({
+          KRAVHANTERING_DEPLOYMENT_ENVIRONMENT: 'prodlike',
+        }),
+      )
+      fs.appendFileSync(
+        fixture.appEnvPath,
+        'KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=production\n',
+      )
+      const quadletDir = path.join(fixture.root, 'quadlet')
+      const systemdDir = path.join(fixture.root, 'systemd')
+      const serviceLog = path.join(fixture.root, 'service.log')
+      for (const dir of [fixture.outputDir, quadletDir, systemdDir]) {
+        fs.mkdirSync(dir)
+        fs.writeFileSync(
+          path.join(dir, 'kravhantering-app-runtime.container'),
+          'installed unit\n',
+        )
+        fs.writeFileSync(
+          path.join(dir, 'kravhantering-single-node.target'),
+          'installed target\n',
+        )
+      }
+      fs.writeFileSync(
+        fixture.preflightEnv.KRAVHANTERING_SYSTEMCTL_BIN,
+        '#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$SERVICE_LOG"\n',
+        { mode: 0o755 },
+      )
+      const args = [command, '--topology', 'single-node']
+      if (command === 'render') args.push('--output-dir', fixture.outputDir)
+      const result = runHelper(args, fixture, {
+        KRAVHANTERING_DEPLOYMENT_ENVIRONMENT: 'staging',
+        NODE_ENV: 'test',
+        KRAVHANTERING_QUADLET_DIR: quadletDir,
+        KRAVHANTERING_SYSTEMD_USER_DIR: systemdDir,
+        SERVICE_LOG: serviceLog,
+      })
+
+      expect(result.status).not.toBe(0)
+      expect(result.stderr).toContain(
+        'production requires IDENTITY_PROVIDER_MODE=external or hardened-bundled',
+      )
+      for (const dir of [fixture.outputDir, quadletDir, systemdDir]) {
+        expect(fs.readdirSync(dir).sort()).toEqual([
+          'kravhantering-app-runtime.container',
+          'kravhantering-single-node.target',
+        ])
+        expect(
+          fs.readFileSync(
+            path.join(dir, 'kravhantering-app-runtime.container'),
+            'utf8',
+          ),
+        ).toBe('installed unit\n')
+        expect(
+          fs.readFileSync(
+            path.join(dir, 'kravhantering-single-node.target'),
+            'utf8',
+          ),
+        ).toBe('installed target\n')
+      }
+      expect(fs.existsSync(serviceLog)).toBe(false)
+    },
+  )
+
+  it.each([
+    ['production', 'external'],
+    ['production', 'hardened-bundled'],
+    ['prodlike', 'external'],
+    ['prodlike', 'hardened-bundled'],
+    ['prodlike', 'bundled'],
+    ['staging', 'external'],
+    ['staging', 'hardened-bundled'],
+    ['staging', 'bundled'],
+  ])(
+    'installs and preflights the supported %s / %s identity profile',
+    (environment, profile) => {
+      const fixture = createFixture(
+        releaseEnv({
+          IDENTITY_PROVIDER_MODE: profile,
+          KEYCLOAK_MANAGEMENT_HTTPS_BIND: '10.20.30.40:9443:9443',
+        }),
+      )
+      fs.appendFileSync(
+        fixture.appEnvPath,
+        `KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=${environment}\n`,
+      )
+      const quadletDir = path.join(fixture.root, 'quadlet')
+      const systemdDir = path.join(fixture.root, 'systemd')
+      for (const command of ['verify-host', 'install']) {
+        const result = runHelper(
+          [command, '--topology', 'single-node'],
+          fixture,
+          {
+            KRAVHANTERING_QUADLET_DIR: quadletDir,
+            KRAVHANTERING_SYSTEMD_USER_DIR: systemdDir,
+          },
+        )
+        expect(result.stderr).toBe('')
+        expect(result.status).toBe(0)
+      }
+      const nginx = fs.readFileSync(
+        path.join(quadletDir, 'kravhantering-nginx.container'),
+        'utf8',
+      )
+      const templates = {
+        external: 'single-node-external-oidc-tls.conf.template',
+        'hardened-bundled': 'single-node-hardened-keycloak-tls.conf.template',
+        bundled: 'single-node-tls.conf.template',
+      }
+      expect(nginx).toContain(templates[profile])
+      expect(
+        fs.readFileSync(
+          path.join(systemdDir, 'kravhantering-single-node.target'),
+          'utf8',
+        ),
+      ).toContain('kravhantering-app-runtime.service')
+    },
+  )
+
+  it.each(['app-node-http', 'app-node-tls'])(
+    'renders %s without single-node identity settings',
+    topology => {
+      const fixture = createFixture(releaseEnv({ IDENTITY_PROVIDER_MODE: '' }))
+      fs.writeFileSync(
+        fixture.appEnvPath,
+        fs
+          .readFileSync(fixture.appEnvPath, 'utf8')
+          .replace('KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=prodlike\n', ''),
+      )
+      expect(render(topology, fixture).map(unit => unit.file)).toContain(
+        'kravhantering-app-runtime.container',
+      )
+    },
+  )
+
+  it('renders explicitly selected bundled identity in a prodlike environment', () => {
     const fixture = createFixture(releaseEnv())
     const units = render('single-node', fixture)
 
@@ -1323,6 +1528,43 @@ expect_database_tls_failure 'identity probe' 'certificate.*identity'
       'identity probe did not report a TLS certificate error',
     )
   })
+
+  it.each(['core', 'release'])(
+    'explicitly configures the disposable %s smoke environment',
+    scope => {
+      const fixture = createFixture(releaseEnv())
+      fs.appendFileSync(
+        fixture.appEnvPath,
+        'KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=production\n',
+      )
+      const result = childProcess.spawnSync(
+        'bash',
+        [
+          '-c',
+          'source "$1"; configure_smoke_app_env "$2" test-client test-cookie',
+          'production-smoke-test',
+          PRODUCTION_SMOKE_PATH,
+          fixture.appEnvPath,
+        ],
+        {
+          encoding: 'utf8',
+          env: { ...process.env, PRODUCTION_SMOKE_SCOPE: scope },
+        },
+      )
+
+      expect(result.stderr).toBe('')
+      expect(result.status).toBe(0)
+      const appEnv = fs.readFileSync(fixture.appEnvPath, 'utf8')
+      expect(
+        appEnv
+          .split('\n')
+          .filter(line =>
+            line.startsWith('KRAVHANTERING_DEPLOYMENT_ENVIRONMENT='),
+          ),
+      ).toEqual(['KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=prodlike'])
+      expect(appEnv).toContain('AUTH_OIDC_CLIENT_SECRET=test-client')
+    },
+  )
 
   it('creates the provider-secret mount source with the runtime configuration', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kh-smoke-config-'))

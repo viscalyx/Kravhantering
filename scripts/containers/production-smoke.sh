@@ -186,11 +186,14 @@ configure_smoke_app_env() {
     -e "s#^AUTH_SESSION_COOKIE_PASSWORD=.*#AUTH_SESSION_COOKIE_PASSWORD=$cookie_password#" \
     "$app_env"
   sed -i \
+    -e '/^KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=/d' \
     -e '/^HSA_PERSON_LOOKUP_CA_PATH=/d' \
     -e '/^HSA_PERSON_LOOKUP_CLIENT_CERT_PATH=/d' \
     -e '/^HSA_PERSON_LOOKUP_CLIENT_KEY_PATH=/d' \
     -e '/^HSA_PERSON_LOOKUP_TLS_SERVER_NAME=/d' \
     "$app_env"
+  # This disposable deployment explicitly permits convenience bundled Keycloak.
+  printf '%s\n' 'KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=prodlike' >>"$app_env"
   if [[ "$SMOKE_SCOPE" == core ]]; then
     sed -i '/^HSA_PERSON_LOOKUP_URL=/d' "$app_env"
     return
@@ -1112,12 +1115,13 @@ verify_hardened_keycloak_ingress() {
     >"$EVIDENCE_DIR/keycloak-hardened-ingress.txt"
 }
 
-verify_default_bundled_keycloak_login() {
+verify_keycloak_browser_login() {
+  local profile="$1"
   bash .devcontainer/trust-container-ca.sh
   CI=true npm run test:release-smoke -- \
     --grep 'proves HTTPS, auth, SQL Server reads and writes'
-  printf '%s\n' 'default-bundled-browser-login=passed' \
-    >"$EVIDENCE_DIR/keycloak-default-login.txt"
+  printf '%s-browser-login=passed\n' "$profile" \
+    >"$EVIDENCE_DIR/keycloak-${profile}-login.txt"
 }
 
 stack_services_are_progressing() {
@@ -1911,9 +1915,10 @@ up() {
   wait_for_url https://kravhantering.test/api/ready \
     'application readiness after SQL Server certificate recovery'
   verify_backup_recovery
-  verify_default_bundled_keycloak_login
+  verify_keycloak_browser_login bundled
   enable_hardened_keycloak_profile
   verify_hardened_keycloak_ingress
+  verify_keycloak_browser_login hardened-bundled
   restart_hsa_mtls_endpoints
   wait_for_url https://kravhantering.test/api/ready \
     'application readiness after reconciling HSA support services'

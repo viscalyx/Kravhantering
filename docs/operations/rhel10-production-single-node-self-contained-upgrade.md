@@ -10,7 +10,7 @@ single-node RHEL 10 production topology from released artifacts, with nginx,
 Before the change, read `IDENTITY_PROVIDER_MODE` from
 `/etc/kravhantering/release.env` and record it in the change ticket:
 
-- `bundled` is the test-oriented default; do not relabel it as production
+- `bundled` is an explicit test-oriented choice; do not relabel it as production
   hardened during an upgrade.
 - `external` has no bundled Keycloak unit, image, identity network or volume.
   Skip Keycloak image, realm-sync, backup and recovery steps and coordinate
@@ -20,6 +20,22 @@ Before the change, read `IDENTITY_PROVIDER_MODE` from
   retired bootstrap identity. Follow the
   [production-hardening appendix](./rhel10-production-single-node-self-contained-deploy.md#appendix-c-production-hardened-bundled-keycloak)
   before and after upgrade or rollback.
+
+## Identity Profile Upgrade Impact
+
+No current production installations require migration for this change.
+Older test configurations must explicitly supply `IDENTITY_PROVIDER_MODE`
+in `release.env` and `KRAVHANTERING_DEPLOYMENT_ENVIRONMENT` in `app.env`.
+Use `prodlike` or `staging` only for the corresponding non-production
+environment. Production requires `external` or fully configured
+`hardened-bundled`; no automatic identity or data conversion takes place.
+
+The target release's `render`, `install`, and `verify-host` reject missing,
+blank, or unsupported choices and production with `bundled` before changing
+installed resources. Fix the named setting in the indicated file and retry;
+a shell or `release.env` environment override cannot authorize `bundled` for
+production. Status, network diagnostics and removal do not require these
+choices. Preserve these explicit settings during rollback as well.
 
 For `hardened-bundled`, back up Keycloak data and configuration before the
 upgrade and verify public denial before upstream selection, management-only
@@ -123,7 +139,21 @@ script.
    unless the restore point covers the database state before any target-release
    migration runs.
 
-3. Drain or disable traffic to the host.
+3. Before draining traffic, complete the extraction and review in step 5
+   without changing `current`. Configure the explicit identity choices above,
+   then validate with the target release helper as the service user:
+
+   ```bash
+   sudo -iu kravhantering
+   # Set VERSION to the target release tag in this service-user shell.
+   VERSION=vX.Y.Z
+   "/opt/kravhantering/releases/${VERSION}/bin/kravhantering-quadlet.sh" \
+     verify-host --topology single-node
+   exit
+   ```
+
+   Continue only after preflight succeeds. A rejection leaves the installed
+   units and running stack intact. Then drain or disable traffic to the host.
    Use the site's load balancer, reverse proxy or firewall procedure so no new
    browser traffic reaches `PUBLIC_HOSTNAME`. Keep administrative access to the
    host available for the remaining steps.
@@ -139,13 +169,14 @@ script.
    Stopping the target preserves the named `kravhantering-sqlserver-data` and
    `kravhantering-keycloak-data` volumes.
 
-5. Install the new release bundle under `/opt/kravhantering/releases`.
+5. Prepare the new release bundle under `/opt/kravhantering/releases`
+   before the preflight in step 3; skip re-extraction if already complete.
    Extract the verified bundle and label the release-owned nginx files:
 
    For disconnected upgrades, skip this step. The disconnected
    [Upgrade Import](./rhel10-production-single-node-self-contained-disconnected.md#upgrade-import)
    prepares and labels `/opt/kravhantering/releases/${VERSION}` before this
-   guide resumes at step 6.
+   guide resumes at step 2 for backup confirmation and step 3 for preflight.
 
    ```bash
    cd "/tmp/kravhantering-${VERSION}"
@@ -207,7 +238,7 @@ script.
      sudo sed -n 's/^IDENTITY_PROVIDER_MODE=//p' \
        /etc/kravhantering/release.env
    )"
-   IDENTITY_PROVIDER_MODE="${IDENTITY_PROVIDER_MODE:-bundled}"
+   : "${IDENTITY_PROVIDER_MODE:?Set IDENTITY_PROVIDER_MODE in release.env}"
 
    update_ref() {
      sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
@@ -253,7 +284,7 @@ script.
      sudo sed -n 's/^IDENTITY_PROVIDER_MODE=//p' \
        /etc/kravhantering/release.env
    )"
-   IDENTITY_PROVIDER_MODE="${IDENTITY_PROVIDER_MODE:-bundled}"
+   : "${IDENTITY_PROVIDER_MODE:?Set IDENTITY_PROVIDER_MODE in release.env}"
    update_ref() {
      sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
    }
@@ -294,7 +325,7 @@ script.
      sudo sed -n 's/^IDENTITY_PROVIDER_MODE=//p' \
        /etc/kravhantering/release.env
    )"
-   IDENTITY_PROVIDER_MODE="${IDENTITY_PROVIDER_MODE:-bundled}"
+   : "${IDENTITY_PROVIDER_MODE:?Set IDENTITY_PROVIDER_MODE in release.env}"
    LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
    service_image() {
      jq -r --arg name "$1" \

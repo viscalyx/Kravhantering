@@ -63,6 +63,29 @@ flowchart TD
     R --> S[Run 5 CSV exports and 3 PDF reports concurrently]
 ```
 
+## Identity Profile Deployment Checks
+
+The disposable smoke explicitly configures `IDENTITY_PROVIDER_MODE=bundled`
+in `release.env` and `KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=prodlike` in
+`app.env`. The boundary sequence verifies browser login with that profile,
+switches to `hardened-bundled`, verifies the management boundary, and runs
+fresh browser login again through Playwright global setup. It records separate
+`keycloak-bundled-login.txt`, `keycloak-hardened-bundled-login.txt` and
+`keycloak-hardened-ingress.txt` evidence files.
+
+For manual deployment verification, perform these checks after activating the
+hardened profile and after upgrades:
+
+1. From the employee network, request `/auth/admin/` and the master-realm
+   token endpoint. Expect nginx `404` with no upstream selection.
+2. Request the management listener without a client certificate. Access must
+   fail. With an approved client certificate, authenticate as an administrator
+   and verify access to the console and Admin REST API.
+3. In a fresh browser session, sign in as a normal user through the application
+   and verify the requirements page and authenticated `/api/auth/me` response.
+4. Record live results separately from Quadlet renderer/unit-test results.
+   Passing renderer tests does not prove the live mTLS or browser boundary.
+
 ## Test Setup
 
 - `playwright.release-smoke.config.ts` points at

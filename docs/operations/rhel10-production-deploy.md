@@ -33,8 +33,10 @@ To uninstall a first install of this topology, use
 
 >[!WARNING]
 >The self-contained single-node topology keeps an easy bundled Keycloak
->profile as its default for QA, demos, automated testing, prod-like validation
->and smoke tests. That default is not sufficiently secure for production.
+>profile for explicit demo/test use with `prodlike` or `staging` in `app.env`.
+>Single-node preflight requires an explicit profile in `release.env` and
+>`KRAVHANTERING_DEPLOYMENT_ENVIRONMENT` in `app.env`; it rejects `bundled`
+>with `production` before writing units.
 >Production single-node deployments must choose an external OIDC provider or
 >explicitly select and verify the
 >[production-hardened bundled Keycloak appendix](./rhel10-production-single-node-self-contained-deploy.md#appendix-c-production-hardened-bundled-keycloak).

@@ -603,10 +603,11 @@ continue with the normal site-specific configuration.
 
 ## Upgrade Import
 
-Create and transfer the disconnected bundle before the downtime window. During
-the window, follow the regular upgrade guide for backup, traffic drain and
-service stop. Then use this section instead of the connected artifact download,
-extraction and image-pull steps.
+Create, transfer and import the disconnected bundle before the downtime window.
+Use this section instead of the connected artifact download, extraction and
+image-pull steps. Keep the current services running and `current` unchanged
+until the target release's identity-profile preflight succeeds in step 3 of
+the regular upgrade guide.
 
 Unpack and verify the disconnected bundle:
 
@@ -778,8 +779,10 @@ fi
 exit
 ```
 
-Resume the regular upgrade guide at step 6 in
+Resume the regular upgrade guide at step 2 in
 [Planned-Downtime Upgrade](./rhel10-production-single-node-self-contained-upgrade.md#planned-downtime-upgrade).
+Confirm the restore point, then run step 3's target-release preflight before
+traffic drain or service stop. Step 5's extraction is already complete.
 In step 7, choose the disconnected image-reference path that reads
 `offline-manifest.json`; the images are already loaded, so run verification
 without pulling from a registry. Then continue with the single-node database

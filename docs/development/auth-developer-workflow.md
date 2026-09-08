@@ -773,6 +773,21 @@ headers; see
 [Access Logging and Client IP Trust](../operations/access-log-and-client-ip-trust.md)
 for the deployment boundary.
 
+## Single-node container identity profile
+
+For disposable single-node Quadlet tests, explicitly select
+`IDENTITY_PROVIDER_MODE=bundled` in `release.env` and
+`KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=prodlike` in `app.env`.
+An explicitly identified `staging` environment also permits `bundled`.
+The production smoke setup supplies `prodlike` deliberately; `NODE_ENV=test`
+alone does not permit the convenience profile. Production requires `external`
+or `hardened-bundled`. Local dev and app-node authentication remain unchanged.
+
+The release smoke repeats fresh browser sign-in after switching to
+`hardened-bundled`, alongside public administration denial and management
+mTLS checks. Record live evidence separately from renderer tests; see
+[Release smoke checks](../../tests/release-smoke/release-smoke.md#identity-profile-deployment-checks).
+
 ## Pre-prod smoke test
 
 Before any first cutover to a deployed environment, run a manual smoke

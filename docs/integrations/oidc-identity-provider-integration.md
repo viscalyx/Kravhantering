@@ -15,10 +15,17 @@ current implementation.
 ## Self-Contained Single-Node Identity Profiles
 
 The self-contained single-node topology requires an explicit identity-provider
-choice through `IDENTITY_PROVIDER_MODE`:
+choice through `IDENTITY_PROVIDER_MODE` in `release.env` and an explicit
+`KRAVHANTERING_DEPLOYMENT_ENVIRONMENT` in `app.env` (`production`, `prodlike`,
+or `staging`). The Quadlet `render`, `install`, and `verify-host` commands
+reject missing, blank, or unsupported values before writing deployable units.
+Production accepts only `external` or `hardened-bundled`; a conflicting value
+in the shell or `release.env` cannot override the environment in `app.env`.
 
-- `bundled` is the default. It keeps the convenient bundled Keycloak service
-  for QA, demos, automated tests, prod-like validation and smoke tests. Its
+Supported profiles:
+
+- `bundled` requires deliberate selection with `prodlike` or `staging` in
+  `app.env` for QA, demos, automated tests and smoke tests. Its
   shared user and administration ingress is not sufficiently secure for
   production.
 - `external` omits the bundled Keycloak service. Configure the application

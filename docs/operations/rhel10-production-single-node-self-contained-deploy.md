@@ -19,7 +19,7 @@ Red Hat Enterprise Linux 10 host from released artifacts only, with nginx,
 operations.
 
 >[!WARNING]
->The default bundled Keycloak profile is intentionally easy to operate for
+>The convenience bundled Keycloak profile is intentionally easy to operate for
 >quality assurance, demos, automated testing, prod-like validation and smoke
 >tests. It is not sufficiently secure for production. Do not use bundled
 >Keycloak in production unless `IDENTITY_PROVIDER_MODE=hardened-bundled` and
@@ -48,13 +48,23 @@ To uninstall a first install of this topology, use
 
 ## Choose the Identity Provider Profile
 
-Record exactly one choice in `/etc/kravhantering/release.env`. Omitting the
-setting preserves `bundled`, the existing default.
+Record exactly one choice in `/etc/kravhantering/release.env`; the template
+leaves it blank. Also explicitly set `KRAVHANTERING_DEPLOYMENT_ENVIRONMENT`
+in `/etc/kravhantering/app.env` to `production`, `prodlike`, or `staging`.
+Production requires `external` or `hardened-bundled`. The convenience `bundled`
+profile requires `prodlike` or `staging` for deliberate demo/test use.
+
+`render`, `install`, and `verify-host` reject missing, blank, or unsupported
+choices and production with `bundled` before generating or replacing units.
+The environment comes only from `app.env`; shell variables, `release.env`,
+`NODE_ENV`, hostnames and demo data cannot authorize the convenience profile.
+Ordinary status, network diagnostics and removal remain available with
+incomplete configuration.
 
 <!-- markdownlint-disable MD013 -->
 | `IDENTITY_PROVIDER_MODE` | Intended use | Bundled Keycloak | Required action |
 | --- | --- | --- | --- |
-| `bundled` | QA, demos, automated testing, prod-like validation and smoke tests | Installed with the permissive `/auth/` proxy | Do not use for production. Disposable bootstrap credentials may remain only in these non-production environments. |
+| `bundled` | QA, demos, automated testing, prod-like validation and smoke tests | Installed with the permissive `/auth/` proxy | Requires explicit `prodlike` or `staging` in `app.env`. Rejected for `production`. Use unique bootstrap credentials. |
 | `external` | Production or pre-production with a deployer-selected OIDC-compatible provider | Not installed or required | Configure the external issuer, client, redirects, logout, claims and trust in `app.env`. The deployer operates and secures the provider. |
 | `hardened-bundled` | Explicitly approved production use of bundled Keycloak | Installed with separated user-facing and mTLS management ingress | Complete and verify Appendix C before serving users. |
 <!-- markdownlint-enable MD013 -->
@@ -124,7 +134,7 @@ contract with the external provider owner instead.
 | Name | Applies to | Default / derived value | Plan or record when |
 | --- | --- | --- | --- |
 | `VERSION` | Release artifact names | No default | Always record the release version to install, for example `1.2.3`. |
-| `IDENTITY_PROVIDER_MODE` | Single-node rendered services and nginx identity ingress | `bundled` | Always record the approved choice: `bundled`, `external` or `hardened-bundled`. Production may use only `external` or the fully verified `hardened-bundled` option. |
+| `IDENTITY_PROVIDER_MODE` | Single-node rendered services and nginx identity ingress | No default | Always record the approved choice: `bundled`, `external` or `hardened-bundled`. Production may use only `external` or the fully verified `hardened-bundled` option. |
 | `KEYCLOAK_MANAGEMENT_HTTPS_BIND` | Hardened bundled Keycloak management-only listener | No default | Required only for `hardened-bundled`; use an explicit host IPv4 and mapping to container port `9443`, for example `10.20.30.40:9443:9443`. Wildcard and malformed binds fail closed during rendering. |
 | `KC_HOSTNAME_ADMIN` | `KC_HOSTNAME_ADMIN` in `keycloak.env`; hardened bundled only | No default | Required for `hardened-bundled`; use the management-only HTTPS origin and `/auth` path. Missing values fail closed during rendering. |
 | `APP_HOST` | `PUBLIC_HOSTNAME`, app URLs, `KC_HOSTNAME`, realm redirect/logout settings, realm web origins, TLS certificate SANs and smoke checks | No default | Always record the public DNS name without `https://`, for example `kravhantering.example.internal`. |
@@ -812,13 +822,8 @@ shell, not from the `kravhantering` service-user shell used for image pulls.
 
 ### `/etc/kravhantering/release.env`
 
-Set the identity-provider choice first. The unchanged easy default is:
-
-```env
-IDENTITY_PROVIDER_MODE=bundled
-```
-
-For a deployer-operated external OIDC provider, use:
+Set the identity-provider choice first. For a deployer-operated external
+OIDC provider, use:
 
 ```env
 IDENTITY_PROVIDER_MODE=external
@@ -835,6 +840,12 @@ KEYCLOAK_MANAGEMENT_HTTPS_BIND=10.20.30.40:9443:9443
 Replace `10.20.30.40` with the host address reachable only through the
 approved management network or VPN. The hardened listener also requires mTLS;
 the explicit bind and mTLS are independent controls.
+
+For a disposable demo/test deployment only, select `IDENTITY_PROVIDER_MODE=bundled`
+in `release.env` and set `KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=prodlike` in
+`app.env`. An explicitly identified `staging` environment also permits this
+profile. Keep the AI staging-live opt-in disabled unless separately authorized;
+profile eligibility does not grant AI staging-live permissions.
 
 Set `PUBLIC_HOSTNAME` to the public DNS name without `https://`. This must be
 the same hostname used by `NEXT_PUBLIC_SITE_URL`, `KC_HOSTNAME`, redirect URIs
@@ -1547,7 +1558,8 @@ journalctl --user-unit kravhantering-sqlserver.service -n 100 --no-pager
 set -a
 . /etc/kravhantering/release.env
 set +a
-if [ "${IDENTITY_PROVIDER_MODE:-bundled}" != external ]; then
+: "${IDENTITY_PROVIDER_MODE:?Set IDENTITY_PROVIDER_MODE in release.env}"
+if [ "$IDENTITY_PROVIDER_MODE" != external ]; then
   systemctl --user start kravhantering-keycloak.service
   journalctl --user-unit kravhantering-keycloak.service -n 100 --no-pager
 fi
@@ -1575,7 +1587,8 @@ EDGE_RESOLVER="$(
     --topology single-node --purpose edge
 )"
 printf 'Use NGINX_RESOLVER=%s\n' "$EDGE_RESOLVER"
-if [ "${IDENTITY_PROVIDER_MODE:-bundled}" != external ]; then
+: "${IDENTITY_PROVIDER_MODE:?Set IDENTITY_PROVIDER_MODE in release.env}"
+if [ "$IDENTITY_PROVIDER_MODE" != external ]; then
   systemctl --user start kravhantering-single-node-identity-network.service
   IDENTITY_RESOLVER="$(
     bin/kravhantering-quadlet.sh print-resolver \
