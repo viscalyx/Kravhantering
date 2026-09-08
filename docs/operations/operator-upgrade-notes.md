@@ -92,6 +92,20 @@ Drain old app nodes before upgrade and start the new nodes together. Apply the d
 Validate the new export and report limits with users who share a corporate proxy. Monitor rejected requests and tune actor and network limits separately. A stuck export can cause an app process restart after 14 minutes. Confirm that the service manager restarts failed processes.
 Rollback requires a coordinated drain. Keep the added database structures; old app versions do not enforce the shared quota.
 <!-- operator-upgrade:source pr-1386 end -->
+
+<!-- operator-upgrade:source pr-1392 start -->
+Before a single-node installation or upgrade, select an identity-provider profile
+and declare the deployment environment. Production requires an external provider
+or hardened bundled Keycloak. The convenience bundled provider is permitted only
+for explicitly declared non-production use. Older test installations must supply
+both choices. No current production installations require migration.
+Run the target release preflight before stopping services, including for
+disconnected upgrades. Invalid choices stop deployment before installed units
+change. For hardened bundled Keycloak, preserve the management network and mutual
+TLS configuration. Verify that ordinary users can sign in but cannot reach
+identity administration, and that management access requires an approved client
+certificate and administrator authentication.
+<!-- operator-upgrade:source pr-1392 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
