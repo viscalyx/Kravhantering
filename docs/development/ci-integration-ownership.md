@@ -112,6 +112,13 @@ release evaluation still checks the complete release set. Build, scanner/tool,
 and vulnerability-policy outcomes remain distinguishable in retained evidence
 and job summaries.
 
+Container PR Smoke downloads candidates through the GitHub REST API with the
+job's read-only Actions token. The source remains the current repository and
+workflow run, and digest validation remains required. This avoids the internal
+artifact-listing endpoint that can reject available artifacts with HTTP 403.
+If an upload fails during finalization, rerun the failed producer and dependent
+jobs; a successful image build does not mean its artifact is available.
+
 Assembly depends only on the core matrix. A separate Ubuntu 24.04 runner
 imports those exact OCI archives into rootless Podman and packages their build
 metadata and identities into the versioned production deployment archive.

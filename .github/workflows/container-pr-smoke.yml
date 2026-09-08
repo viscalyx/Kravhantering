@@ -160,11 +160,14 @@ jobs:
       - name: Download app-runtime candidate
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
+          # Use the REST API instead of the intermittent internal artifact endpoint.
+          github-token: ${{ github.token }}
           name: container-candidate-app-runtime
           path: tmp/candidates/app-runtime
       - name: Download db-job candidate
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
+          github-token: ${{ github.token }}
           name: container-candidate-db-job
           path: tmp/candidates/db-job
       - name: Restore exact candidate build metadata
@@ -349,16 +352,19 @@ jobs:
       - name: Download exact OCI candidates
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
+          github-token: ${{ github.token }}
           name: hsa-mtls-current-commit-oci
           path: /tmp/hsa-oci
       - name: Download HSA mock candidate
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
+          github-token: ${{ github.token }}
           name: container-candidate-hsa-directory-mock
           path: /tmp/hsa-oci/candidates/hsa-directory-mock
       - name: Download HSA adapter candidate
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
+          github-token: ${{ github.token }}
           name: container-candidate-hsa-person-lookup-adapter
           path: /tmp/hsa-oci/candidates/hsa-person-lookup-adapter
       - name: Convert shared OCI candidates for Docker
@@ -436,16 +442,19 @@ jobs:
       - name: Download exact OCI candidates
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
+          github-token: ${{ github.token }}
           name: hsa-mtls-current-commit-oci
           path: /tmp/hsa-oci
       - name: Download HSA mock candidate
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
+          github-token: ${{ github.token }}
           name: container-candidate-hsa-directory-mock
           path: /tmp/hsa-oci/candidates/hsa-directory-mock
       - name: Download HSA adapter candidate
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
+          github-token: ${{ github.token }}
           name: container-candidate-hsa-person-lookup-adapter
           path: /tmp/hsa-oci/candidates/hsa-person-lookup-adapter
       - name: Convert shared OCI candidates for Docker
