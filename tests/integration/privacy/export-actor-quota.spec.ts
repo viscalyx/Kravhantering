@@ -22,6 +22,11 @@ for (const [locale, messages] of [
       }),
     )
     await page.goto(`/${locale}/privacy`)
+    // PrivacyClient registers help in its mount effect. Wait for that effect
+    // so Strict Mode's initial cleanup cannot abort the first export.
+    await expect(
+      page.getByRole('button', { name: messages.common.help, exact: true }),
+    ).toHaveAttribute('aria-pressed', 'false')
     for (const [reason, key] of [
       ['actor_rate_limit', 'actorRate'],
       ['actor_concurrency_limit', 'actorActive'],
