@@ -1,4 +1,5 @@
 import { expect, request as playwrightRequest, test } from '@playwright/test'
+import type { AdminApplicationSettings } from '../../lib/application-settings'
 import {
   expectApiDocsSecurityHeaders,
   expectApiDocsToRenderWithoutCspErrors,
@@ -403,8 +404,27 @@ test.describe('Release smoke container flow', () => {
       },
       storageState: RELEASE_SMOKE_ADMIN.filePath,
     })
+    let originalSettings: AdminApplicationSettings | undefined
 
     try {
+      const settingsResponse = await adminRequest.get(
+        '/api/admin/application-settings',
+      )
+      expect(settingsResponse.status(), 'read actor quota settings').toBe(200)
+      originalSettings = await settingsResponse.json()
+      // This checks service capacity. Allow this actor to fill all eight slots,
+      // including a retry, without changing the released default quota.
+      for (const [field, value] of Object.entries({
+        exportActorConcurrency: csvRequestCount + pdfRequestCount,
+        exportActorStartsPerMinute: 100,
+      })) {
+        const response = await adminRequest.patch(
+          '/api/admin/application-settings',
+          { data: { [field]: value } },
+        )
+        expect(response.status(), `configure ${field}`).toBe(200)
+      }
+
       const csvRequests = Array.from({ length: csvRequestCount }, () =>
         adminRequest.get('/api/admin/audit-events?format=csv&locale=en'),
       )
@@ -414,7 +434,10 @@ test.describe('Release smoke container flow', () => {
       const responses = await Promise.all([...csvRequests, ...pdfRequests])
 
       for (const [index, response] of responses.entries()) {
-        expect(response.ok(), `generated output ${index + 1}`).toBe(true)
+        expect(
+          response.status(),
+          `generated output ${index + 1}${response.ok() ? '' : `: ${await response.text()}`}`,
+        ).toBe(200)
         expect((await response.body()).length).toBeGreaterThan(0)
       }
       for (const response of responses.slice(0, csvRequestCount)) {
@@ -433,7 +456,27 @@ test.describe('Release smoke container flow', () => {
         ).toContain('application/pdf')
       }
     } finally {
-      await adminRequest.dispose()
+      try {
+        if (originalSettings) {
+          const settingsToRestore = originalSettings
+          const restored = await Promise.all(
+            (
+              ['exportActorConcurrency', 'exportActorStartsPerMinute'] as const
+            ).map(field =>
+              adminRequest.patch('/api/admin/application-settings', {
+                data: {
+                  [field]: settingsToRestore[field],
+                },
+              }),
+            ),
+          )
+          for (const response of restored) {
+            expect(response.status(), 'restore actor quota settings').toBe(200)
+          }
+        }
+      } finally {
+        await adminRequest.dispose()
+      }
     }
   })
 })
