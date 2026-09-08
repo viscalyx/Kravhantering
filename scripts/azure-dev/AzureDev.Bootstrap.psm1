@@ -250,6 +250,7 @@ function Copy-AzureDevDevelopmentToolFiles {
   $sourcePaths = @(
     (Join-Path $templatesPath 'codex-config.toml'),
     (Join-Path $templatesPath 'merge-codex-config.py'),
+    (Join-Path $templatesPath 'podman-client.sh'),
     (Join-Path $templatesPath 'install-codex.sh'),
     (Join-Path $templatesPath 'install-azure-codex.sh'),
     (Join-Path $templatesPath 'install-azure-codex-session-policy.sh'),
@@ -533,6 +534,7 @@ function Invoke-AzureDevBootstrap {
       "AZURE_DEV_ZSHRC_SOURCE=$remoteZshrcPath " +
       "AZURE_DEV_CODEX_CONFIG_SOURCE=$remoteToolingPath/codex-config.toml " +
       "AZURE_DEV_CODEX_CONFIG_MERGER=$remoteToolingPath/merge-codex-config.py " +
+      "AZURE_DEV_PODMAN_CLIENT_SOURCE=$remoteToolingPath/podman-client.sh " +
       "AZURE_DEV_CODEX_INSTALLER=$remoteToolingPath/install-codex.sh " +
       "AZURE_DEV_CODEX_ORCHESTRATOR=$remoteToolingPath/install-azure-codex.sh " +
       "AZURE_DEV_CODEX_SESSION_POLICY=$remoteToolingPath/install-azure-codex-session-policy.sh " +

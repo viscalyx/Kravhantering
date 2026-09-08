@@ -33,7 +33,10 @@ function runBootstrap(failure = '') {
       [
         'set -euo pipefail',
         'VSCODE_USER=vscode',
+        'VSCODE_HOME=/home/vscode',
+        'PODMAN_CLIENT_SOURCE=/tooling/podman-client.sh',
         'WORKSPACE_DIR=/workspace',
+        'install() { printf "install: %s\\n" "$*"; [ "$FAILURE" != install ]; }',
         'id() { printf "2042\\n"; }',
         'log() { printf "%s\\n" "$*"; }',
         'run_user_systemctl() {',
@@ -98,6 +101,7 @@ describe('Azure Codex Podman connection', () => {
 
     expect(result.status, result.stderr).toBe(0)
     expect(result.stdout.split('\n')).toEqual([
+      'install: -o vscode -g vscode -m 0755 /tooling/podman-client.sh /home/vscode/.local/bin/podman',
       'systemctl: 2042 enable --now podman.socket',
       'codex: 2042 sandbox -P kravhantering-development -C /workspace -- env CONTAINER_HOST=unix:///run/user/2042/podman/podman.sock podman info --format {{.Store.GraphRoot}}',
       'Codex rootless Podman API connection configured and validated',
@@ -105,14 +109,14 @@ describe('Azure Codex Podman connection', () => {
     ])
   })
 
-  it.each(['socket', 'client'])(
+  it.each(['install', 'socket', 'client'])(
     'fails provisioning when the %s fails',
     failure => {
       const result = runBootstrap(failure)
 
       expect(result.status).toBe(1)
       expect(result.stdout.trim().split('\n')).toHaveLength(
-        failure === 'socket' ? 1 : 2,
+        ['install', 'socket', 'client'].indexOf(failure) + 1,
       )
     },
   )

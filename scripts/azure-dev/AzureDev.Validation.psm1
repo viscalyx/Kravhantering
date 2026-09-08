@@ -398,6 +398,7 @@ grep -Fq 'graphroot = "/home/vscode/.local/share/containers/storage"' /home/vsco
 grep -Fq 'rootless_storage_path = "/home/vscode/.local/share/containers/storage"' /home/vscode/.config/containers/storage.conf
 test "$(podman info --format '{{.Store.GraphRoot}}')" = "/home/vscode/.local/share/containers/storage"
 podman network exists krav-support
+test "$(command -v podman)" = /home/vscode/.local/bin/podman
 systemctl --user is-enabled --quiet podman.socket
 systemctl --user is-active --quiet podman.socket
 codex sandbox -P kravhantering-development -C /workspace -- \

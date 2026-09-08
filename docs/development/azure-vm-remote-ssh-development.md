@@ -1010,7 +1010,13 @@ the actual installing user's UID and allows that specific Unix socket in the
 permission profile. The rootless engine manages the existing host containers
 and data-disk storage outside the sandbox. This avoids writes to the
 sandbox's read-only `/run/user/<uid>` and container storage, and avoids running
-the engine inside the sandbox's user namespace. The socket grants control of
+the engine inside the sandbox's user namespace. Setup installs a launcher at
+`/home/vscode/.local/bin/podman` because Podman 4.9 initializes local temporary
+state even in remote mode. When `CONTAINER_HOST` is set, the launcher gives
+only the Podman client a private temporary `XDG_RUNTIME_DIR` and removes it on
+exit. The host socket address and the surrounding shell's runtime directory
+stay unchanged. Without `CONTAINER_HOST`, it executes native `/usr/bin/podman`
+with the original environment. The socket grants control of
 containers as `vscode`; it is local to that user and has no TCP listener.
 Ordinary SSH terminals and the Quadlet services continue using native Podman.
 Commands available only in native Podman must run from an ordinary SSH
@@ -1028,9 +1034,12 @@ To apply only this repair to an existing Azure VM, run these commands as
 python3 scripts/azure-dev/templates/merge-codex-config.py \
   scripts/azure-dev/templates/codex-config.toml \
   "$HOME/.codex/config.toml"
+install -m 0755 scripts/azure-dev/templates/podman-client.sh \
+  "$HOME/.local/bin/podman"
 systemctl --user enable --now podman.socket
 CONTAINER_HOST="unix:///run/user/$(id -u)/podman/podman.sock" \
-  codex sandbox -P kravhantering-development -C /workspace -- podman info
+  codex sandbox -P kravhantering-development -C /workspace -- \
+  "$HOME/.local/bin/podman" info
 ```
 
 Then start a new Codex session to load the managed shell environment and

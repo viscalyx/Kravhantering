@@ -988,7 +988,13 @@ The Azure template also manages `shell_environment_policy.set.CONTAINER_HOST`
 and the permission profile's `network.unix_sockets` entry for the rootless
 Podman API. The merger resolves `@UID@` using the installing account's UID,
 preserves other shell environment values, and validates the resulting network
-and environment settings. Bootstrap enables the user `podman.socket` after
+and environment settings. The tooling upload includes `podman-client.sh`,
+which bootstrap installs as `/home/vscode/.local/bin/podman`. For remote
+commands it allocates a private temporary runtime directory, passes that
+directory as `XDG_RUNTIME_DIR` only to `/usr/bin/podman`, and removes it when
+the client exits. Podman 4.9 initializes this local scratch state even in
+remote mode. Native commands retain their original runtime and environment.
+Bootstrap enables the user `podman.socket` after
 the support stack starts and checks `podman info` through `codex sandbox`
 before starting the shared Codex app server. The socket activates the engine
 outside the agent's mount and user namespaces. The existing filesystem grants
