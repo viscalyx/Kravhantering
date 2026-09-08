@@ -1082,27 +1082,24 @@ export default function RequirementsClient({
       return rows.map(row => (row.id === pinnedRow.id ? pinnedRow : row))
     }
 
-    if (pinnedRow) {
-      const hasStatusSortMetadata =
-        sortState.by !== 'status' ||
-        statusOptions.some(option => option.sortOrder !== undefined)
+    const hasStatusSortMetadata =
+      sortState.by !== 'status' ||
+      statusOptions.some(option => option.sortOrder !== undefined)
 
-      if (!hasStatusSortMetadata) {
-        return [pinnedRow, ...rows]
-      }
-
-      const idx = rows.findIndex(
-        row =>
-          compareRequirementRows(row, pinnedRow, {
-            locale,
-            sort: sortState,
-            statusOptions,
-          }) > 0,
-      )
-      const pos = idx === -1 ? rows.length : idx
-      return [...rows.slice(0, pos), pinnedRow, ...rows.slice(pos)]
+    if (!hasStatusSortMetadata) {
+      return [pinnedRow, ...rows]
     }
-    return rows
+
+    const idx = rows.findIndex(
+      row =>
+        compareRequirementRows(row, pinnedRow, {
+          locale,
+          sort: sortState,
+          statusOptions,
+        }) > 0,
+    )
+    const pos = idx === -1 ? rows.length : idx
+    return [...rows.slice(0, pos), pinnedRow, ...rows.slice(pos)]
   }, [locale, pinnedRow, rows, sortState, statusOptions])
 
   const pinnedIds = useMemo(

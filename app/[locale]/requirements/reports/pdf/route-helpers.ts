@@ -23,7 +23,7 @@ export function requirementReportRef(id: string): {
   id?: number
   uniqueId?: string
 } {
-  let decoded = id
+  let decoded: string
   try {
     decoded = decodeURIComponent(id)
   } catch {

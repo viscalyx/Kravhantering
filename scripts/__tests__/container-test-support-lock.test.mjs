@@ -97,10 +97,10 @@ describe('container test support lock generation', () => {
 
   it('fails check mode when HSA mock is missing', () => {
     expect(() =>
-      checkTestSupportVendorLocks({ schemaVersion: 2, services: [] }, []),
+      checkTestSupportVendorLocks({ schemaVersion: 2, services: [] }),
     ).toThrow('must use schemaVersion 1')
     expect(() =>
-      checkTestSupportVendorLocks({ schemaVersion: 1, services: [] }, []),
+      checkTestSupportVendorLocks({ schemaVersion: 1, services: [] }),
     ).toThrow('missing "hsa-directory-mock"')
   })
 

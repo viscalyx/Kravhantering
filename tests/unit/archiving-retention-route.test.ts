@@ -1,3 +1,6 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { RequirementsServiceError } from '@/lib/requirements/errors'
+
 vi.mock('@/lib/dal/application-settings', async () => ({
   getApplicationSettings: async () =>
     (await import('@/lib/application-settings')).DEFAULT_APPLICATION_SETTINGS,
@@ -7,9 +10,6 @@ vi.mock('@/lib/generated-output/actor-quota', async () => ({
     await import('@/lib/__tests__/generated-output-admission')
   ).allowGeneratedOutput,
 }))
-
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { RequirementsServiceError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
   createArchivingRetentionException: vi.fn(),

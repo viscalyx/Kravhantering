@@ -265,10 +265,7 @@ export async function main(args, dependencies = {}) {
 
     if (command === 'check') {
       const lock = readJsonFile(lockFile, fsImpl)
-      checkTestSupportVendorLocks(
-        lock,
-        readTestSupportVendorLocks({ cwd, fsImpl }),
-      )
+      checkTestSupportVendorLocks(lock)
       consoleObj.log(`Checked ${path.relative(cwd, lockFile)}`)
       return 0
     }

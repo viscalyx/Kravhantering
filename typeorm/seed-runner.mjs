@@ -159,7 +159,6 @@ export async function runSeedData(
     if (startedTransaction && runner) {
       try {
         await runner.commitTransaction()
-        startedTransaction = false
       } catch (caughtCommitError) {
         commitError = caughtCommitError
       }

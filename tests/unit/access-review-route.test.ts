@@ -1,17 +1,16 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
+import { CsrfError } from '@/lib/auth/csrf'
+import {
+  forbiddenError,
+  serviceUnavailableError,
+} from '@/lib/requirements/errors'
 
 vi.mock('@/lib/generated-output/actor-quota', async () => ({
   runWithExportActorQuota: (
     await import('@/lib/__tests__/generated-output-admission')
   ).allowGeneratedOutput,
 }))
-
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { CsrfError } from '@/lib/auth/csrf'
-import {
-  forbiddenError,
-  serviceUnavailableError,
-} from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
   auditExecutor: { query: vi.fn() },

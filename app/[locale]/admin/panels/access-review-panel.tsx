@@ -846,9 +846,7 @@ export default function AccessReviewPanel({
                                         : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-700/60 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-900/40'
                                     }`}
                                     disabled={
-                                      !canManage ||
-                                      isDetailLoading ||
-                                      status === 'saving'
+                                      isDetailLoading || status === 'saving'
                                     }
                                     onClick={() => {
                                       if (!canManage) return

@@ -928,7 +928,6 @@ export default function AiRequirementGenerator({
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
-      let receivedTerminalEvent = false
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -950,7 +949,6 @@ export default function AiRequirementGenerator({
               current => `${current}${String(payload.chunk ?? '')}`,
             )
           } else if (parsed.event === 'done') {
-            receivedTerminalEvent = true
             flushQueuedThinking()
             const generated = payload.payload as ImportRequirementsPayload
             const rawContent = String(
@@ -966,7 +964,6 @@ export default function AiRequirementGenerator({
             }
             return
           } else if (parsed.event === 'validation_error') {
-            receivedTerminalEvent = true
             flushQueuedThinking()
             const issues = (payload.issues as SchemaIssue[] | undefined) ?? []
             setSchemaIssues(issues)
@@ -979,7 +976,6 @@ export default function AiRequirementGenerator({
             )
             return
           } else if (parsed.event === 'error') {
-            receivedTerminalEvent = true
             flushQueuedThinking()
             throw new Error(
               importBudgetErrorMessage(payload.code, t) ??
@@ -992,9 +988,7 @@ export default function AiRequirementGenerator({
           }
         }
       }
-      if (!receivedTerminalEvent) {
-        throw new Error(t('createError'))
-      }
+      throw new Error(t('createError'))
     } catch (generateError) {
       if (controller.signal.aborted) {
         cancelQueuedThinking()

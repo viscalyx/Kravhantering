@@ -1,9 +1,3 @@
-vi.mock('@/lib/generated-output/actor-quota', async () => ({
-  runWithExportActorQuota: (
-    await import('@/lib/__tests__/generated-output-admission')
-  ).allowGeneratedOutput,
-}))
-
 // @vitest-environment node
 import { createReadStream, type ReadStream } from 'node:fs'
 import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises'
@@ -25,6 +19,12 @@ import {
   generateDataSubjectExport,
 } from '@/lib/privacy/data-subject-export-output'
 import type { DataSubjectExportV1 } from '@/lib/privacy/data-subject-export-types'
+
+vi.mock('@/lib/generated-output/actor-quota', async () => ({
+  runWithExportActorQuota: (
+    await import('@/lib/__tests__/generated-output-admission')
+  ).allowGeneratedOutput,
+}))
 
 const state = vi.hoisted(() => ({
   collect: vi.fn(),

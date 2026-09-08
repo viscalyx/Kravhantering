@@ -1,4 +1,4 @@
-import { act, render } from '@testing-library/react'
+import { createEvent, fireEvent, render } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LocaleStorageSync from '@/components/LocaleStorageSync'
 import { LOCALE_STORAGE_KEY } from '@/lib/locale-preference'
@@ -14,6 +14,13 @@ vi.mock('@/i18n/routing', () => ({
   usePathname: () => '/requirements',
 }))
 
+function dispatchStorageEvent(init: StorageEventInit): void {
+  fireEvent(
+    window,
+    createEvent('storage', window, init, { EventType: 'StorageEvent' }),
+  )
+}
+
 describe('LocaleStorageSync', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -28,52 +35,36 @@ describe('LocaleStorageSync', () => {
 
   it('reroutes when another tab changes the stored locale', () => {
     render(<LocaleStorageSync />)
-    act(() => {
-      window.dispatchEvent(
-        new StorageEvent('storage', {
-          key: LOCALE_STORAGE_KEY,
-          newValue: 'en',
-        }),
-      )
+    dispatchStorageEvent({
+      key: LOCALE_STORAGE_KEY,
+      newValue: 'en',
     })
     expect(mockReplace).toHaveBeenCalledWith('/requirements', { locale: 'en' })
   })
 
   it('ignores storage events for unrelated keys', () => {
     render(<LocaleStorageSync />)
-    act(() => {
-      window.dispatchEvent(
-        new StorageEvent('storage', {
-          key: 'theme',
-          newValue: 'dark',
-        }),
-      )
+    dispatchStorageEvent({
+      key: 'theme',
+      newValue: 'dark',
     })
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
   it('ignores storage events that match the current locale', () => {
     render(<LocaleStorageSync />)
-    act(() => {
-      window.dispatchEvent(
-        new StorageEvent('storage', {
-          key: LOCALE_STORAGE_KEY,
-          newValue: 'sv',
-        }),
-      )
+    dispatchStorageEvent({
+      key: LOCALE_STORAGE_KEY,
+      newValue: 'sv',
     })
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
   it('ignores storage events with invalid locales', () => {
     render(<LocaleStorageSync />)
-    act(() => {
-      window.dispatchEvent(
-        new StorageEvent('storage', {
-          key: LOCALE_STORAGE_KEY,
-          newValue: 'fr',
-        }),
-      )
+    dispatchStorageEvent({
+      key: LOCALE_STORAGE_KEY,
+      newValue: 'fr',
     })
     expect(mockReplace).not.toHaveBeenCalled()
   })

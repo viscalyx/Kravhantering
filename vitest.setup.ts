@@ -220,6 +220,8 @@ vi.mock('next/navigation', () => ({
 // per-test global cleanup restores to these defaults instead of `undefined`.
 if (typeof globalThis.ResizeObserver === 'undefined') {
   globalThis.ResizeObserver = class ResizeObserver {
+    // biome-ignore lint/complexity/noUselessConstructor: Match the browser callback signature so CodeQL can distinguish the mock from a zero-argument constructor.
+    constructor(_callback: ResizeObserverCallback) {}
     disconnect() {}
     observe() {}
     unobserve() {}

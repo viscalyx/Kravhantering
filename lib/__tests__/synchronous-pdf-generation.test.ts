@@ -1,4 +1,11 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SqlServerDatabase } from '@/lib/db'
+import {
+  acquireGeneratedOutputCapacity,
+  generatedOutputCapacitySnapshot,
+} from '@/lib/generated-output/capacity'
+import { ClientCancelledGeneratedOutputError } from '@/lib/generated-output/operation'
+import { runSynchronousPdfGeneration } from '@/lib/pdf/synchronous-generation'
 import type { RequestContext } from '@/lib/requirements/auth'
 
 vi.mock('@/lib/generated-output/actor-quota', () => ({
@@ -10,14 +17,6 @@ vi.mock('@/lib/generated-output/actor-quota', () => ({
     work: (signal: AbortSignal) => Promise<Response>,
   ) => work(signal ?? new AbortController().signal),
 }))
-
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  acquireGeneratedOutputCapacity,
-  generatedOutputCapacitySnapshot,
-} from '@/lib/generated-output/capacity'
-import { ClientCancelledGeneratedOutputError } from '@/lib/generated-output/operation'
-import { runSynchronousPdfGeneration } from '@/lib/pdf/synchronous-generation'
 
 const mocks = vi.hoisted(() => ({
   getApplicationSettings: vi.fn(),

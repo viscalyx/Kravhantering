@@ -1,9 +1,3 @@
-vi.mock('@/lib/generated-output/actor-quota', async () => ({
-  runWithExportActorQuota: (
-    await import('@/lib/__tests__/generated-output-admission')
-  ).allowGeneratedOutput,
-}))
-
 import { parse as parseContentDisposition } from 'content-disposition'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -12,6 +6,12 @@ import {
 } from '@/lib/generated-output/capacity'
 import { GeneratedOutputError } from '@/lib/generated-output/errors'
 import { validationError } from '@/lib/requirements/errors'
+
+vi.mock('@/lib/generated-output/actor-quota', async () => ({
+  runWithExportActorQuota: (
+    await import('@/lib/__tests__/generated-output-admission')
+  ).allowGeneratedOutput,
+}))
 
 const routeState = vi.hoisted(() => ({
   collectDataSubjectExport: vi.fn(),

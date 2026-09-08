@@ -335,15 +335,15 @@ export default function ActionAuditLogView({
           <div className="flex gap-2">
             {isPreviousDisabled ? (
               <span
-                aria-disabled={isPreviousDisabled}
-                className={`btn-secondary ${isPreviousDisabled ? 'pointer-events-none opacity-50' : ''}`}
+                aria-disabled="true"
+                className="btn-secondary pointer-events-none opacity-50"
               >
                 {labels.previous}
               </span>
             ) : (
               <a
-                aria-disabled={isPreviousDisabled}
-                className={`btn-secondary ${isPreviousDisabled ? 'pointer-events-none opacity-50' : ''}`}
+                aria-disabled="false"
+                className="btn-secondary"
                 href={previousHref}
               >
                 {labels.previous}
@@ -351,15 +351,15 @@ export default function ActionAuditLogView({
             )}
             {isNextDisabled ? (
               <span
-                aria-disabled={isNextDisabled}
-                className={`btn-secondary ${isNextDisabled ? 'pointer-events-none opacity-50' : ''}`}
+                aria-disabled="true"
+                className="btn-secondary pointer-events-none opacity-50"
               >
                 {labels.next}
               </span>
             ) : (
               <a
-                aria-disabled={isNextDisabled}
-                className={`btn-secondary ${isNextDisabled ? 'pointer-events-none opacity-50' : ''}`}
+                aria-disabled="false"
+                className="btn-secondary"
                 href={nextHref}
               >
                 {labels.next}

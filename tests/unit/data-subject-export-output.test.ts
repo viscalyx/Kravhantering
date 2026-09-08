@@ -1,15 +1,15 @@
-vi.mock('@/lib/generated-output/actor-quota', async () => ({
-  runWithExportActorQuota: (
-    await import('@/lib/__tests__/generated-output-admission')
-  ).allowGeneratedOutput,
-}))
-
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { GeneratedOutputError } from '@/lib/generated-output/errors'
 import { createGenerationDeadline } from '@/lib/generated-output/operation'
 import type { GeneratedOutputStreamLifecycle } from '@/lib/generated-output/spool'
 import { collectDataSubjectExport } from '@/lib/privacy/data-subject-export'
 import type { DataSubjectExportV1 } from '@/lib/privacy/data-subject-export-types'
+
+vi.mock('@/lib/generated-output/actor-quota', async () => ({
+  runWithExportActorQuota: (
+    await import('@/lib/__tests__/generated-output-admission')
+  ).allowGeneratedOutput,
+}))
 
 const outputState = vi.hoisted(() => ({
   acquireSpool: vi.fn(),

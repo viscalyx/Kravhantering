@@ -1818,15 +1818,10 @@ export async function resetDemoSqlServerData(executor, options = {}) {
     }
     if (startedTransaction && runner) {
       await runner.commitTransaction()
-      startedTransaction = false
     }
   } catch (error) {
     if (startedTransaction && runner) {
-      try {
-        await runner.rollbackTransaction()
-      } finally {
-        startedTransaction = false
-      }
+      await runner.rollbackTransaction()
     }
     throw error
   } finally {

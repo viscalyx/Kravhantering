@@ -1,3 +1,5 @@
+import { NextRequest } from 'next/server'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
 
 vi.mock('@/lib/generated-output/actor-quota', async () => ({
@@ -5,9 +7,6 @@ vi.mock('@/lib/generated-output/actor-quota', async () => ({
     await import('@/lib/__tests__/generated-output-admission')
   ).allowGeneratedOutput,
 }))
-
-import { NextRequest } from 'next/server'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
   ReportDataError: class MockReportDataError extends Error {

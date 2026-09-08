@@ -667,7 +667,6 @@ export function createAiRunCoordinator(
       const onAbort = (): void => controller.abort()
       request.abortSignal.addEventListener('abort', onAbort, { once: true })
       if (request.abortSignal.aborted) controller.abort()
-      let finished = false
       let coordinationState:
         | 'lost'
         | 'none'
@@ -1170,78 +1169,74 @@ export function createAiRunCoordinator(
           controller.abort()
           finalEvent = cancellation(request.identity)
         }
-        if (!finished) {
-          finished = true
-          const outcome = terminalOutcome(finalEvent)
-          let coordinationResult: AiOperationalStateTransition | undefined
-          if (coordinationState === 'running') {
-            try {
-              coordinationResult = await options.coordination.finish({
-                applicationRunId: request.applicationRunId,
-                fencingToken,
-                leaseOwnerId,
-                ...(finalEvent.type === 'failed'
-                  ? { failure: finalEvent.failure }
-                  : {}),
-                outcome,
-              })
-            } catch {
-              coordinationResult = undefined
-            }
-          } else if (
-            coordinationState === 'queued' ||
-            coordinationState === 'retry_wait'
-          ) {
-            try {
-              await options.coordination.abandon({
-                applicationRunId: request.applicationRunId,
-                fencingToken,
-              })
-            } catch {
-              // Cleanup failure must not replace the application terminal.
-            }
-          }
-          if (
-            finalEvent.type === 'failed' &&
-            finalEvent.failure.category === 'authentication_failed'
-          ) {
-            await emit({
-              ...telemetryBase,
-              name: 'ai_alarm_authentication_failed',
+        const outcome = terminalOutcome(finalEvent)
+        let coordinationResult: AiOperationalStateTransition | undefined
+        if (coordinationState === 'running') {
+          try {
+            coordinationResult = await options.coordination.finish({
+              applicationRunId: request.applicationRunId,
+              fencingToken,
+              leaseOwnerId,
+              ...(finalEvent.type === 'failed'
+                ? { failure: finalEvent.failure }
+                : {}),
+              outcome,
             })
+          } catch {
+            coordinationResult = undefined
           }
-          if (coordinationResult?.breakerOpened) {
-            await emit({ ...telemetryBase, name: 'ai_alarm_breaker_opened' })
-          }
-          if (coordinationResult?.healthStateChanged) {
-            await emit({
-              ...telemetryBase,
-              healthStatus: coordinationResult.healthStatus,
-              breakerStatus: coordinationResult.breakerStatus,
-              name: 'ai_health_state_changed',
+        } else if (
+          coordinationState === 'queued' ||
+          coordinationState === 'retry_wait'
+        ) {
+          try {
+            await options.coordination.abandon({
+              applicationRunId: request.applicationRunId,
+              fencingToken,
             })
+          } catch {
+            // Cleanup failure must not replace the application terminal.
           }
+        }
+        if (
+          finalEvent.type === 'failed' &&
+          finalEvent.failure.category === 'authentication_failed'
+        ) {
           await emit({
             ...telemetryBase,
-            activeConcurrency: observedCapacity?.activeConcurrency,
-            cancellationReason:
-              finalEvent.type === 'cancelled'
-                ? (administrativeCancellationReason ?? finalEvent.reason)
-                : undefined,
-            durationMs: Math.max(0, now() - startedAt),
-            failureCategory:
-              finalEvent.type === 'failed'
-                ? finalEvent.failure.category
-                : undefined,
-            name: 'ai_run_terminal',
-            outcome,
-            queueDepth: observedCapacity?.queueDepth,
-            queueWaitMs,
-            retryCount: Math.max(0, attemptsRun - 1),
-            usage:
-              finalEvent.type === 'completed' ? finalEvent.usage : undefined,
+            name: 'ai_alarm_authentication_failed',
           })
         }
+        if (coordinationResult?.breakerOpened) {
+          await emit({ ...telemetryBase, name: 'ai_alarm_breaker_opened' })
+        }
+        if (coordinationResult?.healthStateChanged) {
+          await emit({
+            ...telemetryBase,
+            healthStatus: coordinationResult.healthStatus,
+            breakerStatus: coordinationResult.breakerStatus,
+            name: 'ai_health_state_changed',
+          })
+        }
+        await emit({
+          ...telemetryBase,
+          activeConcurrency: observedCapacity?.activeConcurrency,
+          cancellationReason:
+            finalEvent.type === 'cancelled'
+              ? (administrativeCancellationReason ?? finalEvent.reason)
+              : undefined,
+          durationMs: Math.max(0, now() - startedAt),
+          failureCategory:
+            finalEvent.type === 'failed'
+              ? finalEvent.failure.category
+              : undefined,
+          name: 'ai_run_terminal',
+          outcome,
+          queueDepth: observedCapacity?.queueDepth,
+          queueWaitMs,
+          retryCount: Math.max(0, attemptsRun - 1),
+          usage: finalEvent.type === 'completed' ? finalEvent.usage : undefined,
+        })
       }
     },
     runDueRecoveryProbes,
