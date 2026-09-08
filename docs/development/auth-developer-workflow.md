@@ -535,14 +535,35 @@ lifetime.
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
 | `AUTH_SESSION_COOKIE_PASSWORD` | yes | _(none)_ | Encryption + signing key for the session cookie. **Must be ≥ 32 characters.** Generate with `openssl rand -base64 48`. **Secret**: per env, lives in the OpenShift Secret. Rotating invalidates every live session — schedule during low traffic. |
-| `AUTH_SESSION_COOKIE_NAME` | no | `kravhantering_session` | Cookie name. Override only if you need to coexist with another deployment on the same host. |
+| `AUTH_SESSION_COOKIE_NAME` | no | `kravhantering_session` | Base name; secure builds add `__Host-` unless already present. Override for another deployment on the same host. |
 | `AUTH_SESSION_TTL_SECONDS` | no | `28800` (8 h) | Absolute encrypted-cookie lifetime. The cached access-token expiry normally forces a new sign-in sooner. |
 <!-- markdownlint-enable MD013 -->
+
+In `dev`, the default remains `kravhantering_session` for HTTP. Custom names
+must be valid ASCII cookie tokens; names requiring Secure (including
+`__Host-`, `__Secure-`, and `__Http-`) are rejected in this build.
+In `prod` and `local-prod`, unset or blank values resolve to
+`__Host-kravhantering_session`. An explicit `kravhantering_session` receives
+the same prefix; `custom_session` becomes `__Host-custom_session`, while
+`__Host-custom_session` is preserved. Surrounding whitespace is trimmed.
+The effective prefix is case-sensitive: `__host-` is not `__Host-`.
+Both secure cookies use `Secure`, `HttpOnly`, `SameSite=Lax`, `Path=/`, and
+no `Domain` attribute. Run the authentication Playwright scenarios against
+the prodlike runtime to check browser acceptance on localhost.
+Run `npx playwright test --config=playwright.auth-dev.config.ts` for HTTP
+login, callback, authenticated requests, and logout. To exercise a custom
+name, repeat with `AUTH_SESSION_COOKIE_NAME=custom_session` in the environment
+of both the runner and the application, restarting the application between
+runs. The same override works with `playwright.prodlike.config.ts` and
+`tests/integration/authentication/login.spec.ts`.
+
+See [cookie-name migration](../security-privacy/auth-how-it-works.md#cookie-name-migration)
+for fresh login, interrupted-login retry, and rollout expectations.
 
 ### Login-state callback failures
 
 `/api/auth/login` writes a separate short-lived
-`${AUTH_SESSION_COOKIE_NAME}_login` cookie that carries PKCE verifier,
+`${effectiveSessionCookieName}_login` cookie that carries PKCE verifier,
 `state`, `nonce`, and `returnTo` across the IdP redirect. If the browser does
 not send that cookie back to `/api/auth/callback`, the callback records
 `auth.login.failed` and logs a sanitized server-side diagnostic with

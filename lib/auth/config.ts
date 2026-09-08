@@ -11,7 +11,7 @@
  * contract and deployment expectations.
  */
 
-import { BUILD_TARGET } from '@/lib/runtime/build-target'
+import { BUILD_TARGET, USE_INSECURE_COOKIE } from '@/lib/runtime/build-target'
 
 const SHIPPED_AUTH_SECRET_MARKERS = [
   'dev-only-',
@@ -78,7 +78,7 @@ export interface AuthConfig {
   clientId: string
   /** Client secret at the IdP. */
   clientSecret: string
-  /** Iron-session cookie name. */
+  /** Effective iron-session cookie name, host-prefixed in secure builds. */
   cookieName: string
   /** Iron-session encryption password (≥32 characters, not bytes). */
   cookiePassword: string
@@ -166,11 +166,27 @@ function loadAuthConfig(): AuthConfig {
     scopes: readString('AUTH_OIDC_SCOPES') ?? 'openid profile email',
     rolesClaim: readString('AUTH_OIDC_ROLES_CLAIM') ?? 'roles',
     apiAudience: readString('AUTH_OIDC_API_AUDIENCE') ?? (clientId as string),
-    cookieName:
-      readString('AUTH_SESSION_COOKIE_NAME') ?? 'kravhantering_session',
+    cookieName: resolveCookieName(),
     cookiePassword: cookiePassword as string,
     sessionTtlSeconds: readNumber('AUTH_SESSION_TTL_SECONDS', 28_800),
   }
+}
+
+function resolveCookieName(): string {
+  const name = readString('AUTH_SESSION_COOKIE_NAME') ?? 'kravhantering_session'
+  if (!/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name)) {
+    throw new AuthConfigError(
+      'AUTH_SESSION_COOKIE_NAME must be a valid cookie name (ASCII token characters).',
+    )
+  }
+  if (USE_INSECURE_COOKIE && /^__(?:Host|Secure|Http)-/i.test(name)) {
+    throw new AuthConfigError(
+      'AUTH_SESSION_COOKIE_NAME uses a prefix requiring Secure; use an unprefixed name for HTTP development.',
+    )
+  }
+  return USE_INSECURE_COOKIE || name.startsWith('__Host-')
+    ? name
+    : `__Host-${name}`
 }
 
 export function getAuthConfig(): AuthConfig {

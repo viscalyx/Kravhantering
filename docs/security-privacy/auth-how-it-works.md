@@ -132,7 +132,35 @@ sequenceDiagram
   fits within the cookie budget, because it is used only as an
   `id_token_hint` during logout.
 - The main session cookie is `HttpOnly`, `SameSite=Lax`, scoped to `/`, and
-  `Secure` in production.
+  `Secure` in both `prod` and `local-prod`, with no `Domain` attribute.
+  Both cookies use an effective `__Host-` name in these secure builds,
+  following [OWASP cookie-prefix guidance](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#cookie-name-prefixes).
+  The default session name is `__Host-kravhantering_session`; its login-state
+  name is `__Host-kravhantering_session_login`. Custom unprefixed names receive
+  `__Host-` automatically, including explicit values in existing deployments.
+  An already-prefixed name is preserved. HTTP `dev` keeps the unprefixed
+  default or a valid custom name that does not require Secure.
+
+### Cookie-name migration
+
+Only the effective cookie names are accepted for authentication and login
+state. A differently named legacy cookie is never read as a fallback, copied,
+or upgraded, even when both names arrive in the same request. Users whose
+cookie name changes must complete a fresh OIDC login. A login already in
+progress under the legacy name reaches `login_state_cookie_missing` and must
+restart using the error page's retry link. An unchanged valid prefixed name
+requires no additional name-based reset.
+
+Legacy cookies expire naturally; the application does not refresh or delete
+them. Session TTL remains `AUTH_SESSION_TTL_SECONDS` (default eight hours),
+and login-state TTL remains five minutes. Browser Max-Age retains the
+existing 60-second subtraction. Access-token expiry can end a session sooner.
+
+Renaming does not revoke legacy cookies. An older instance may still accept
+them during a mixed-version rollout or rollback. Coordinate the cutover
+across every instance serving the host, drain older instances together, and
+plan for renewed login and interrupted login retries. A rollback can restore
+acceptance of unexpired legacy sessions; do not treat renaming as revocation.
 
 ### Session and logout flow
 

@@ -6,6 +6,7 @@ import {
   fetchWithTimeout,
   isSafeSessionCookieOutput,
   parseFetchTimeoutMs,
+  resolveProdlikeSessionCookieName,
 } from '../get-session-cookie.mjs'
 
 describe('parseFetchTimeoutMs', () => {
@@ -186,5 +187,18 @@ describe('decodeHtmlEntities', () => {
   it('handles repeated occurrences of the same entity', () => {
     expect(decodeHtmlEntities('&amp;&amp;&amp;')).toBe('&&&')
     expect(decodeHtmlEntities('&lt;&lt;&gt;&gt;')).toBe('<<>>')
+  })
+})
+
+describe('prodlike session cookie name', () => {
+  it.each([
+    [undefined, '__Host-kravhantering_session'],
+    ['', '__Host-kravhantering_session'],
+    ['  ', '__Host-kravhantering_session'],
+    ['kravhantering_session', '__Host-kravhantering_session'],
+    ['custom_session', '__Host-custom_session'],
+    [' __Host-custom_session ', '__Host-custom_session'],
+  ])('finds the effective cookie for %s', (configured, expected) => {
+    expect(resolveProdlikeSessionCookieName(configured)).toBe(expected)
   })
 })

@@ -52,7 +52,7 @@ export default defineConfig({
   testMatch: integrationManifest.suites.prodlike.chunks
     .flatMap(chunk => chunk.paths)
     .map(spec => `**/${spec.split('/').slice(2).join('/')}`),
-  metadata: { authRoles: ['admin', 'no-roles'] },
+  metadata: { authRoles: ['admin', 'no-roles'], secureCookies: true },
   globalSetup: './tests/integration/global-setup.ts',
   outputDir: 'test-results/prodlike',
   fullyParallel: true,

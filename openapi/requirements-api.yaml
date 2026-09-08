@@ -1106,7 +1106,7 @@ components:
     cookieSession:
       type: apiKey
       in: cookie
-      name: kravhantering_session
+      name: __Host-kravhantering_session
 
   headers:
     NoStore:
