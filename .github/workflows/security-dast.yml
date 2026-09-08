@@ -26,7 +26,7 @@ jobs:
       APP_BASE_URL: http://localhost:3001
       KEYCLOAK_USERNAME: ada.admin
       KEYCLOAK_PASSWORD: devpass
-      AUTH_SESSION_COOKIE_NAME: kravhantering_session
+      AUTH_SESSION_COOKIE_NAME: __Host-kravhantering_session
       NUCLEI_VERSION: v3.8.0
 
     steps:

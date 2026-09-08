@@ -135,18 +135,51 @@ describe('HSA verification quota against SQL Server', () => {
     expect(Number(deniedTargetRows[0]?.count)).toBe(0)
   })
 
-  it('atomically prevents concurrent target admission above the limit', async () => {
+  it('creates each bucket once for concurrent first admissions', async () => {
+    const input = quotaInput(125, 125)
+    const results = await Promise.all([
+      consumeHsaVerificationQuota(appDb(), input),
+      consumeHsaVerificationQuota(secondAppDb, input),
+    ])
+
+    expect(results).toEqual([{ allowed: true }, { allowed: true }])
+    const rows = await appDb().query<
+      Array<{ bucketKind: string; requestCount: number }>
+    >(
+      `SELECT bucket_kind AS bucketKind, request_count AS requestCount
+       FROM hsa_verification_quota_buckets
+       WHERE actor_fingerprint = @0 OR target_fingerprint = @1
+       ORDER BY bucket_kind`,
+      [input.actorFingerprint, input.targetFingerprint],
+    )
+    expect(rows).toEqual([
+      { bucketKind: 'actor', requestCount: 2 },
+      { bucketKind: 'actor_target', requestCount: 2 },
+      { bucketKind: 'target', requestCount: 2 },
+    ])
+  })
+
+  it('atomically admits only one client to the final target slot', async () => {
+    // Fill the window before racing the final slot. A large burst can validly
+    // exhaust the production one-second lock wait on a busy SQL Server.
+    for (let index = 0; index < 9; index += 1) {
+      await expect(
+        consumeHsaVerificationQuota(appDb(), quotaInput(index + 100, 100)),
+      ).resolves.toEqual({ allowed: true })
+    }
     const results = await Promise.all(
-      Array.from({ length: 12 }, (_, index) =>
+      Array.from({ length: 2 }, (_, index) =>
         consumeHsaVerificationQuota(
           index % 2 === 0 ? appDb() : secondAppDb,
-          quotaInput(index + 100, 100),
+          quotaInput(index + 109, 100),
         ),
       ),
     )
 
-    expect(results.filter(result => result.allowed)).toHaveLength(10)
-    expect(results.filter(result => !result.allowed)).toHaveLength(2)
+    expect(results.filter(result => result.allowed)).toHaveLength(1)
+    expect(
+      results.filter(result => !result.allowed && result.bucket === 'target'),
+    ).toHaveLength(1)
     const rows = (await appDb().query(
       `SELECT request_count AS requestCount
        FROM hsa_verification_quota_buckets
@@ -157,7 +190,7 @@ describe('HSA verification quota against SQL Server', () => {
     expect(rows).toEqual([{ requestCount: 10 }])
   })
 
-  it('atomically enforces the actor limit across application clients', async () => {
+  it('atomically admits only one client to the final actor slot', async () => {
     const actor = 150
     const input = quotaInput(actor, 150)
     await appDb().query(
@@ -178,14 +211,14 @@ describe('HSA verification quota against SQL Server', () => {
          created_at,
          updated_at
        ) VALUES (
-         N'actor', @0, NULL, @1, 45, @window_start,
+         N'actor', @0, NULL, @1, 49, @window_start,
          DATEADD(second, 60, @window_start), @now, @now
        );`,
       [input.actorFingerprint, input.actorSubjectFingerprint],
     )
 
     const results = await Promise.all(
-      Array.from({ length: 7 }, (_, index) =>
+      Array.from({ length: 2 }, (_, index) =>
         consumeHsaVerificationQuota(
           index % 2 === 0 ? appDb() : secondAppDb,
           quotaInput(actor, 151 + index),
@@ -193,10 +226,10 @@ describe('HSA verification quota against SQL Server', () => {
       ),
     )
 
-    expect(results.filter(result => result.allowed)).toHaveLength(5)
+    expect(results.filter(result => result.allowed)).toHaveLength(1)
     expect(
       results.filter(result => !result.allowed && result.bucket === 'actor'),
-    ).toHaveLength(2)
+    ).toHaveLength(1)
     const rows = (await appDb().query(
       `SELECT request_count AS requestCount
        FROM hsa_verification_quota_buckets
@@ -206,10 +239,17 @@ describe('HSA verification quota against SQL Server', () => {
     expect(rows).toEqual([{ requestCount: 50 }])
   })
 
-  it('shares concurrent actor-target admission across application clients', async () => {
+  it('atomically admits only one client to the final actor-target slot', async () => {
     const input = quotaInput(175, 175)
+    for (let index = 0; index < 9; index += 1) {
+      await expect(
+        consumeHsaVerificationQuota(appDb(), input),
+      ).resolves.toEqual({
+        allowed: true,
+      })
+    }
     const results = await Promise.all(
-      Array.from({ length: 12 }, (_, index) =>
+      Array.from({ length: 2 }, (_, index) =>
         consumeHsaVerificationQuota(
           index % 2 === 0 ? appDb() : secondAppDb,
           input,
@@ -217,12 +257,12 @@ describe('HSA verification quota against SQL Server', () => {
       ),
     )
 
-    expect(results.filter(result => result.allowed)).toHaveLength(10)
+    expect(results.filter(result => result.allowed)).toHaveLength(1)
     expect(
       results.filter(
         result => !result.allowed && result.bucket === 'actor_target',
       ),
-    ).toHaveLength(2)
+    ).toHaveLength(1)
     const rows = (await appDb().query(
       `SELECT bucket_kind AS bucketKind, request_count AS requestCount
        FROM hsa_verification_quota_buckets
@@ -231,7 +271,7 @@ describe('HSA verification quota against SQL Server', () => {
       [input.actorFingerprint, input.targetFingerprint],
     )) as Array<{ bucketKind: string; requestCount: number }>
     expect(rows).toEqual([
-      { bucketKind: 'actor', requestCount: 12 },
+      { bucketKind: 'actor', requestCount: 11 },
       { bucketKind: 'actor_target', requestCount: 10 },
       { bucketKind: 'target', requestCount: 10 },
     ])

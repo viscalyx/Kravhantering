@@ -606,10 +606,9 @@ actionable, and document every suppression with an issue or rationale.
   [dev/keycloak/realm-kravhantering-dev.json](../../dev/keycloak/realm-kravhantering-dev.json)
   is the only IdP target for PR scans; production credentials are
   never required.
-- The `kravhantering_session` cookie name (`AUTH_SESSION_COOKIE_NAME`
-  default in [lib/auth/config.ts](../../lib/auth/config.ts)) is unchanged.
-  If that default ever changes, update the workflow's `env:` block
-  accordingly.
+- Secure scans use `__Host-kravhantering_session`. The cookie acquisition
+  script applies the same prefix to unprefixed `AUTH_SESSION_COOKIE_NAME`
+  overrides as the prodlike application; already-prefixed names are preserved.
 - ZAP actions are pinned to peeled release commits:
   `action-baseline` `v0.15.0`,
   `action-api-scan` `v0.10.0`, and

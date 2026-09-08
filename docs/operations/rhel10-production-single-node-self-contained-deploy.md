@@ -46,6 +46,23 @@ To uninstall a first install of this topology, use
 >directory and images on the disconnected host, and tells you where to resume
 >these regular deployment steps.
 
+## Session cookie cutover
+
+Secure builds (`prod` and `local-prod`) automatically add `__Host-` to
+`AUTH_SESSION_COOKIE_NAME` unless that exact prefix is already present.
+Unset, blank, or explicit `kravhantering_session` values resolve to
+`__Host-kravhantering_session`; custom names follow the same rule. The
+login-state name appends `_login` to the effective session name. Both cookies
+remain host-only, with `Secure`, `HttpOnly`, `SameSite=Lax`, and `Path=/`.
+
+A changed effective name requires fresh login; an interrupted login must
+restart from the error page. Already-prefixed deployments keep their name.
+Legacy cookies expire naturally under the existing lifetimes and are never
+accepted or refreshed by the new application. Renaming does not revoke them:
+older instances can still accept them during a mixed-version rollout or
+rollback. Coordinate the cutover across instances and drain older instances
+together. See [cookie-name migration](../security-privacy/auth-how-it-works.md#cookie-name-migration).
+
 ## Choose the Identity Provider Profile
 
 Record exactly one choice in `/etc/kravhantering/release.env`; the template
@@ -172,7 +189,7 @@ contract with the external provider owner instead.
 | `AUTH_OIDC_ROLES_CLAIM` | `AUTH_OIDC_ROLES_CLAIM` in `app.env` | `roles` | Plan only if the Keycloak mapper emits application roles in another claim. |
 | `AUTH_OIDC_SCOPES` | `AUTH_OIDC_SCOPES` in `app.env` | `openid profile email` | Plan only if the realm needs additional scopes to release required claims. |
 | `AUTH_OIDC_API_AUDIENCE` | `AUTH_OIDC_API_AUDIENCE` in `app.env` | `kravhantering-app` | Plan only if the app API audience differs from the client id. |
-| `AUTH_SESSION_COOKIE_NAME` | `AUTH_SESSION_COOKIE_NAME` in `app.env` | `kravhantering_session` | Plan only if this host serves another deployment on the same browser cookie scope. |
+| `AUTH_SESSION_COOKIE_NAME` | `AUTH_SESSION_COOKIE_NAME` in `app.env` | `__Host-kravhantering_session` | Plan only if this host serves another deployment on the same browser cookie scope. |
 | `SESSION_COOKIE_PASSWORD` | `AUTH_SESSION_COOKIE_PASSWORD` in `app.env` | No default | Always generate with the opaque-secret fallback in [Generate Unique Secrets](#generate-unique-secrets). |
 | `AUTH_SESSION_TTL_SECONDS` | `AUTH_SESSION_TTL_SECONDS` in `app.env` | `28800` | Plan only if another absolute browser-session lifetime is approved. |
 | `KEYCLOAK_ADMIN_USER` | `KEYCLOAK_ADMIN` in `keycloak.env`; bundled profiles only | No default | Choose an approved Keycloak bootstrap administrator username when using bundled Keycloak. |
@@ -990,7 +1007,7 @@ AUTH_OIDC_CLIENT_SECRET=<same-as-realm-kravhantering-app-secret>
 AUTH_OIDC_ROLES_CLAIM=roles
 AUTH_OIDC_SCOPES=openid profile email
 AUTH_OIDC_API_AUDIENCE=kravhantering-app
-AUTH_SESSION_COOKIE_NAME=kravhantering_session
+AUTH_SESSION_COOKIE_NAME=__Host-kravhantering_session
 AUTH_SESSION_COOKIE_PASSWORD=<at-least-32-random-characters>
 AUTH_SESSION_TTL_SECONDS=28800
 MCP_CLIENT_ID=kravhantering-mcp
@@ -1061,7 +1078,7 @@ separate value for that client.
 
 Keep `AUTH_OIDC_SCOPES=openid profile email` unless the selected provider needs
 additional scopes to release required claims. `openid` must always be present.
-Keep `AUTH_SESSION_COOKIE_NAME=kravhantering_session` unless this host must
+Keep `AUTH_SESSION_COOKIE_NAME=__Host-kravhantering_session` unless this host must
 serve another deployment on the same browser cookie scope. Changing the cookie
 name signs out existing browser sessions.
 

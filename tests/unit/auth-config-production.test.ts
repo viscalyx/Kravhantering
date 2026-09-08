@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/lib/runtime/build-target', () => ({ BUILD_TARGET: 'prod' }))
+vi.mock('@/lib/runtime/build-target', () => ({
+  BUILD_TARGET: 'prod',
+  USE_INSECURE_COOKIE: false,
+}))
 
 import {
   AuthConfigError,

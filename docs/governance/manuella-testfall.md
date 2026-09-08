@@ -135,7 +135,15 @@ kopplad till knappen för hjälpmedel.
 1. Kontrollera användarmenyn i applikationen.
 
 **Förväntat resultat:** Kravbiblioteket visas och användarmenyn visar
-Admin-behörighet.
+Admin-behörighet. I HTTP-utveckling används `kravhantering_session` eller
+ett giltigt eget namn. I säkra byggen används `__Host-` för både sessionen
+och inloggningsläget; inloggningsläget förbrukas när inloggningen slutförs.
+Kontrollera även ett eget konfigurerat namn.
+
+Vid byte av effektivt cookienamn: öppna applikationen med enbart den äldre
+sessionscookien och bekräfta att ny inloggning krävs. Slutför inloggningen
+och kontrollera att åtkomsten återställs. Äldre cookies behåller sin
+ursprungliga livslängd och löper ut naturligt.
 
 ### AUTH-02: logga ut och kräv inloggning på skyddade sidor
 
@@ -156,7 +164,8 @@ Admin-behörighet.
 **Förväntat resultat:** Popupen förblir öppen när pekaren förs från
 navigeringslisten över mellanrummet till popupen. Sessionen är borttagen och
 både vanliga skyddade arbetsytor och skyddade dynamiska sökvägar med punkter
-skickar användaren till inloggning innan ny åtkomst ges.
+skickar användaren till inloggning innan ny åtkomst ges. Den effektiva
+sessionscookien tas bort vid utloggning även i säkra byggen och med eget namn.
 
 <a id="auth-03-anonym-api-begaran-ger-json-401"></a>
 
@@ -297,6 +306,11 @@ data. API:erna svarar 403 för privilegierade åtgärder.
 logga in på nytt.
 
 <a id="auth-10-behorighetsmatris-for-ansvarstilldelningar"></a>
+
+Vid byte av cookienamn under pågående inloggning: slutför en inloggning
+som startats med det äldre inloggningslägets cookie. Bekräfta felet
+`login_state_cookie_missing` och använd **Försök logga in igen**. Ny
+inloggning ska lyckas utan att den äldre cookiens livslängd förlängs.
 
 ### AUTH-10: behörighetsmatris för ansvarstilldelningar
 

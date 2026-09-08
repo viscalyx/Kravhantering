@@ -9,7 +9,7 @@
  * Required env vars (defaults match `.env.prodlike`):
  *   APP_BASE_URL                http://localhost:3001
  *   KEYCLOAK_PASSWORD           devpass
- *   AUTH_SESSION_COOKIE_NAME    kravhantering_session
+ *   AUTH_SESSION_COOKIE_NAME    __Host-kravhantering_session
  *
  * Optional env vars:
  *   DAST_FETCH_TIMEOUT_MS       15000
@@ -41,8 +41,9 @@ const APP_BASE_URL = (env.APP_BASE_URL ?? 'http://localhost:3001').replace(
   /\/$/,
   '',
 )
-const SESSION_COOKIE_NAME =
-  env.AUTH_SESSION_COOKIE_NAME ?? 'kravhantering_session'
+const SESSION_COOKIE_NAME = resolveProdlikeSessionCookieName(
+  env.AUTH_SESSION_COOKIE_NAME,
+)
 const PASSWORD = env.KEYCLOAK_PASSWORD ?? 'devpass'
 const MAX_REDIRECTS = 10
 export const DEFAULT_FETCH_TIMEOUT_MS = 15_000
@@ -53,6 +54,12 @@ const SAFE_SESSION_COOKIE_OUTPUT_PATTERN =
 export function isSafeSessionCookieOutput(value) {
   const match = SAFE_SESSION_COOKIE_OUTPUT_PATTERN.exec(value)
   return match?.[0] === value
+}
+
+/** Match the secure build's configured-to-effective name mapping. */
+export function resolveProdlikeSessionCookieName(configured) {
+  const name = configured?.trim() || 'kravhantering_session'
+  return name.startsWith('__Host-') ? name : `__Host-${name}`
 }
 
 export function parseFetchTimeoutMs(value) {

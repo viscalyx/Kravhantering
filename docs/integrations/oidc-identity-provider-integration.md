@@ -82,6 +82,12 @@ flowchart LR
   `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI`, `AUTH_OIDC_SCOPES`,
   `AUTH_OIDC_ROLES_CLAIM`, `AUTH_OIDC_API_AUDIENCE`,
   `AUTH_SESSION_COOKIE_NAME`, and `AUTH_SESSION_TTL_SECONDS`.
+  Secure builds automatically prefix session and derived login-state names
+  with `__Host-`, preserve already-prefixed names, and require host-only
+  cookies with `Secure` and `Path=/`. A name change requires fresh login and
+  retry of interrupted logins; legacy cookies expire naturally. Coordinate
+  all instances because older versions may still accept legacy cookies.
+  See [cookie-name migration](../security-privacy/auth-how-it-works.md#cookie-name-migration).
 - Terminate TLS at the public reverse proxy or load balancer and set
   `AUTH_OIDC_REDIRECT_URI` and `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` to the
   public HTTPS host. CSRF origin checks in `lib/auth/csrf.ts` and

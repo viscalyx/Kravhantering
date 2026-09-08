@@ -322,7 +322,7 @@ The workflow:
 
 The mutating scan requests include:
 
-- `Cookie: kravhantering_session=...`
+- `Cookie: __Host-kravhantering_session=...`
 - `Origin: http://localhost:3001`
 - `X-Requested-With: XMLHttpRequest`
 
