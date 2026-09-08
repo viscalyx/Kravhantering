@@ -210,6 +210,14 @@ The ordinary `npm test` command excludes `tests/sql-integration/`. The
 `Integration Tests` workflow runs the SQL suite as a separate required job
 against its own test database.
 
+HSA verification quota scenarios start after fixture setup with at least
+15 seconds left in the SQL Server minute. Near a minute boundary, the test
+process waits until the next minute and rechecks SQL time before exercising the
+real concurrent clients. Waiting outside a query avoids SQL request timeouts.
+This keeps single-window admission assertions inside one quota window. A
+separate scenario verifies that exhausted earlier-window buckets permit
+admission in a new minute.
+
 ## Requirement List Performance Baseline
 
 The requirement list SQL path has a required SQL Server performance check for
