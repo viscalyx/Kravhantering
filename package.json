@@ -182,8 +182,8 @@
     "framer-motion": "^13.2.0",
     "iron-session": "^9.0.1",
     "jose": "^6.2.12",
-    "lucide-react": "^1.41.0",
-    "mssql": "^12.7.0",
+    "lucide-react": "^1.43.0",
+    "mssql": "^12.7.1",
     "next": "^16.3.4",
     "next-intl": "^4.14.2",
     "next-themes": "^0.4.6",
@@ -216,7 +216,7 @@
     "ajv": "^8.20.0",
     "autoprefixer": "^10.5.5",
     "cross-env": "^10.1.0",
-    "cspell": "^10.2.2",
+    "cspell": "^10.3.0",
     "dotenv-cli": "^11.0.0",
     "esbuild": "0.28.2",
     "fast-check": "^4.9.0",
@@ -241,15 +241,15 @@
     "which causes 'npm ci' to fail with EBADPLATFORM in CI."
   ],
   "overrides": {
-    "browserslist": "4.28.7",
-    "fast-uri": "3.1.6",
+    "fast-uri": "3.1.7",
+    "hono": "4.13.5",
     "qs": "6.16.0"
   },
   "//overrides": [
     "Overrides pin transitive dependencies that still resolve to vulnerable versions.",
     "Remove each override when the parent dependency updates to include the fix natively.",
-    "browserslist: autoprefixer@10.5.4 resolves browserslist@4.28.6. Override to 4.28.7 for GHSA-c83g-rgw3-j3cx and GHSA-73wf-gq98-2v4g.",
-    "fast-uri: ajv@8.20.0 resolves fast-uri@3.1.5. Override to 3.1.6 for GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, and GHSA-jqff-g426-hqxp.",
+    "fast-uri: ajv@8.20.0 allows vulnerable fast-uri versions through ^3.0.1. Override to 3.1.7 to retain the fixes introduced in 3.1.6 for GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, and GHSA-jqff-g426-hqxp without forcing major 4.",
+    "hono: @modelcontextprotocol/sdk@1.30.0 resolves hono@4.12.34 directly and through @hono/node-server@2.0.12. Override to 4.13.5 for GHSA-gqvv-2mrq-wpjv, GHSA-g6gw-c38x-mqfc, and GHSA-crvj-82cr-hjcx.",
     "qs: @modelcontextprotocol/sdk@1.30.0 resolves qs@6.15.2 through express@5.2.1 and body-parser@2.3.0. Override to 6.16.0 for GHSA-x5fp-wj9c-mxmx and GHSA-4mjr-xmp4-gh2g."
   ],
   "allowScripts": {

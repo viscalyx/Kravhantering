@@ -1,10 +1,10 @@
-import type { IconNode } from 'lucide-react'
+import type { LucideIconNode } from 'lucide-react'
 import dynamicIconImports from 'lucide-react/dynamicIconImports'
 
 type DynamicIconName = keyof typeof dynamicIconImports & string
 
 export type StatusIconName = string
-export type StatusIconNodeTag = IconNode[number][0]
+export type StatusIconNodeTag = LucideIconNode[0]
 export type StatusIconNode = readonly [
   StatusIconNodeTag,
   Readonly<Record<string, string>>,
@@ -46,9 +46,19 @@ const STATUS_ICON_NODE_CACHE = new Map<
   readonly StatusIconNode[]
 >()
 
-function normalizeIconNodes(iconNode: IconNode): readonly StatusIconNode[] {
+function normalizeIconNodes(
+  iconNode: LucideIconNode[],
+): readonly StatusIconNode[] {
   return iconNode.map(([tag, attrs]) => {
-    const { key: _key, ...cleanAttrs } = attrs
+    const cleanAttrs: Record<string, string> = {}
+    for (const [name, value] of Object.entries(attrs)) {
+      if (
+        name !== 'key' &&
+        (typeof value === 'string' || typeof value === 'number')
+      ) {
+        cleanAttrs[name] = String(value)
+      }
+    }
     return [tag, cleanAttrs] as const
   })
 }
@@ -80,7 +90,7 @@ export async function loadStatusIconNodes(
   if (cachedNodes) return cachedNodes
 
   const iconModule = await dynamicIconImports[dynamicName]()
-  const nodes = normalizeIconNodes(iconModule.__iconNode)
+  const nodes = normalizeIconNodes(iconModule.__iconData.node)
   STATUS_ICON_NODE_CACHE.set(value, nodes)
   return nodes
 }
