@@ -13,7 +13,7 @@ const API_DOCS_SECURITY_HEADERS = {
     "default-src 'none'; script-src 'self'; script-src-attr 'none'; " +
     "style-src 'self'; style-src-attr 'none'; img-src 'self' data:; " +
     "font-src 'self'; connect-src 'self'; object-src 'none'; " +
-    "frame-ancestors 'none'; base-uri 'none'; form-action 'none'; report-to csp; report-uri /api/security/csp-reports",
+    "frame-ancestors 'none'; base-uri 'none'; form-action 'none'; report-to csp",
   'cross-origin-embedder-policy': 'credentialless',
   'cross-origin-opener-policy': 'same-origin',
   'cross-origin-resource-policy': 'same-origin',

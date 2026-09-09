@@ -126,7 +126,6 @@ const API_DOCS_CONTENT_SECURITY_POLICY = [
   "base-uri 'none'",
   "form-action 'none'",
   'report-to csp',
-  'report-uri /api/security/csp-reports',
 ].join('; ')
 
 const nextConfig: NextConfig = {

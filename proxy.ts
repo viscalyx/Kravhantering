@@ -192,7 +192,6 @@ function buildCsp(nonce: string): string {
     "frame-ancestors 'none'",
     "base-uri 'self'",
     'report-to csp',
-    'report-uri /api/security/csp-reports',
   ].join('; ')
 }
 

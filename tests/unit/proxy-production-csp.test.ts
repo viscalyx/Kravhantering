@@ -108,7 +108,7 @@ describe('proxy production CSP', () => {
     }
   })
 
-  it('adds reporting configuration while retaining an enforcing nonce policy', async () => {
+  it('uses modern reporting directives while retaining an enforcing nonce policy', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
       const response = await proxy(
@@ -117,9 +117,13 @@ describe('proxy production CSP', () => {
           await writeSignedInCookie(),
         ),
       )
-      expect(response.headers.get('content-security-policy')).toContain(
-        'report-to csp; report-uri /api/security/csp-reports',
-      )
+      const directives = response.headers
+        .get('content-security-policy')
+        ?.split(';')
+        .map(directive => directive.trim())
+      expect(
+        directives?.filter(directive => directive.startsWith('report-')),
+      ).toEqual(['report-to csp'])
       expect(response.headers.get('content-security-policy')).toMatch(
         /script-src 'self' 'nonce-[^']+'/,
       )

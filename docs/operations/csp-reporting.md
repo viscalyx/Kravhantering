@@ -1,8 +1,9 @@
 # CSP violation reporting
 
 Production application pages and API documentation use an enforcing CSP with
-`report-to csp`, `Reporting-Endpoints: csp="/api/security/csp-reports"` and the
-same-origin compatibility directive `report-uri /api/security/csp-reports`.
+`report-to csp` and `Reporting-Endpoints: csp="/api/security/csp-reports"`.
+The policy uses modern reporting only, avoiding the deprecated `report-uri`
+directive and its ZAP CSP notice (rule `10055-3`).
 The application is the internal collector. No external destination, subscription
 or separate service is needed. The bundled nginx serves the documentation with
 the same policy and a single value for each security header; application page
@@ -140,14 +141,16 @@ unchanged. The test edge uses a different port from the configured public origin
 so its diagnostic surface is `unknown`; receiver tests independently verify
 application/documentation classification behind a production reverse proxy.
 
-The `report-uri` compatibility path supports browsers that do not implement
-`report-to`/`Reporting-Endpoints`; it normalizes legacy envelopes to the same event
-contract. Legacy-envelope behavior
-is covered by focused tests; Firefox and WebKit native delivery have not been
-verified here. The attempted Firefox run could not start within this workspace's
-browser sandbox. No delivery guarantee is claimed for any engine. Delivery is best
-effort; blocking enforcement does not depend on a report reaching the receiver.
+Native delivery requires browser support for `report-to` and
+`Reporting-Endpoints`. Browsers without that support still enforce the CSP but
+do not send violation reports. The collector accepts legacy envelopes from
+already-loaded documents and normalizes them to the same event contract;
+focused tests cover that input format. Firefox and WebKit native delivery have
+not been verified here. The attempted Firefox run could not start within this
+workspace's browser sandbox. No delivery guarantee is claimed for any engine.
+Delivery is best effort; blocking enforcement does not depend on a report
+reaching the receiver.
 
-Native delivery and fallback semantics follow the
+Native delivery semantics follow the
 [Reporting API](https://www.w3.org/TR/reporting-1/#delivery) and
 [CSP reporting specification](https://www.w3.org/TR/CSP3/#report-violation).
