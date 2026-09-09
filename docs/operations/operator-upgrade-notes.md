@@ -112,6 +112,12 @@ Coordinate the upgrade across all instances that serve the application host. Sec
 Allow legacy cookies to expire under their existing lifetimes. The new application does not accept or refresh them. Renaming does not revoke them: older instances can still accept unexpired legacy cookies during a mixed-version rollout or rollback. Drain older instances together and account for this limit in the rollback plan.
 Update external tools that send session cookies to use the effective host-bound name. After rollout, confirm that login, authenticated access, and logout work through the public application address.
 <!-- operator-upgrade:source pr-1394 end -->
+
+<!-- operator-upgrade:source pr-1399 start -->
+- Complete the normal database upgrade and required seed step before you start the updated application. Deploy the matching reverse-proxy configuration with the application.
+- CSP violation logging is enabled by default, including for existing installations. An Admin can disable it in Settings  Security. The change takes effect without a restart. Disabling logging does not disable CSP protection, and browsers can continue to send reports.
+- After rollout, verify report delivery from application pages and API documentation to the security audit log. Treat these anonymous events as diagnostic reports, not proof of a successful attack. Apply the existing log access and retention rules, and monitor log volume. Collection limits apply separately to each application process.
+<!-- operator-upgrade:source pr-1399 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
