@@ -41,6 +41,18 @@
     }
   },
   "linter": {},
+  "overrides": [
+    {
+      "includes": ["lib/icons/status-icon-aliases.generated.ts"],
+      "assist": {
+        "actions": {
+          "source": {
+            "organizeImports": "off"
+          }
+        }
+      }
+    }
+  ],
   "vcs": {
     "clientKind": "git",
     "enabled": true,
