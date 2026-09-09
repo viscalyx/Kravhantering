@@ -51,68 +51,94 @@ test('AUTH-13: native CSP violations stay blocked and reach privacy-safe securit
   })
   const documentationPage = await documentationContext.newPage()
   try {
-    for (const enabled of [true, false, true]) {
-      // Load before changing the switch; fresh documents avoid duplicate suppression.
-      for (const [page, path] of [
-        [applicationPage, '/en/requirements'],
-        [documentationPage, '/api-docs/hsa-person-lookup/index.html'],
-      ] as const) {
-        const response = await page.goto(path)
-        expect(response?.headers()['content-security-policy']).toContain(
-          'report-to csp',
-        )
-        expect(response?.headers()['reporting-endpoints']).toBe(
-          'csp="/api/security/csp-reports"',
-        )
-      }
-      const changed = await request.patch('/api/admin/application-settings', {
-        data: { cspViolationLoggingEnabled: enabled },
-      })
-      expect(changed.ok()).toBeTruthy()
-      for (const page of [applicationPage, documentationPage]) {
-        const before = (await cspEvents()).length
-        const beforeDelivered = edge.deliveries.length
-        await page.evaluate(() => {
-          const script = document.createElement('script')
-          script.textContent =
-            'window.__cspSensitiveProbe = "private-csp-test-value"'
-          document.body.append(script)
+    for (const [phase, enabled] of [true, false, true].entries()) {
+      await test.step(`Phase ${phase + 1}: logging ${enabled ? 'enabled' : 'disabled'}`, async () => {
+        await test.step('Verify reporting headers on both pages', async () => {
+          // Load before changing the switch; fresh documents avoid duplicate suppression.
+          for (const [page, path] of [
+            [applicationPage, '/en/requirements'],
+            [documentationPage, '/api-docs/hsa-person-lookup/index.html'],
+          ] as const) {
+            const response = await page.goto(path)
+            expect(response?.headers()['content-security-policy']).toContain(
+              'report-to csp',
+            )
+            expect(response?.headers()['reporting-endpoints']).toBe(
+              'csp="/api/security/csp-reports"',
+            )
+          }
         })
-        await expect
-          .poll(() => edge.deliveries.length, { timeout: 45_000 })
-          .toBeGreaterThan(beforeDelivered)
-        expect(edge.deliveries.slice(beforeDelivered)).toEqual(
-          expect.arrayContaining([
+        await test.step('Save the logging setting', async () => {
+          const changed = await request.patch(
+            '/api/admin/application-settings',
             {
-              status: 204,
-              media: 'application/reports+json',
-              customHeader: false,
+              data: { cspViolationLoggingEnabled: enabled },
             },
-          ]),
-        )
-        expect(await page.evaluate(() => '__cspSensitiveProbe' in window)).toBe(
-          false,
-        )
-        const events = (await cspEvents()).slice(before)
-        if (enabled) {
-          expect(events.length).toBeGreaterThan(0)
-          expect(events).toEqual(
-            expect.arrayContaining([
-              expect.objectContaining({
-                actor: { source: 'anonymous' },
-                request: { method: 'POST', path: '/api/security/csp-reports' },
-                detail: expect.objectContaining({
-                  // The ephemeral TLS port differs from the configured public origin.
-                  surface: 'unknown',
-                  directive: 'script-src-elem',
-                  blockedResource: 'inline',
-                }),
-              }),
-            ]),
           )
-          expect(JSON.stringify(events)).not.toContain('private-csp-test-value')
-        } else expect(events).toEqual([])
-      }
+          expect(changed.ok()).toBeTruthy()
+        })
+        for (const [surface, page] of [
+          ['application', applicationPage],
+          ['documentation', documentationPage],
+        ] as const) {
+          const before = (await cspEvents()).length
+          const beforeDelivered = edge.deliveries.length
+          await test.step(`Inject a violation on ${surface}`, async () => {
+            await page.evaluate(() => {
+              const script = document.createElement('script')
+              script.textContent =
+                'window.__cspSensitiveProbe = "private-csp-test-value"'
+              document.body.append(script)
+            })
+          })
+          await test.step(`Verify delivery, enforcement and logs for ${surface}`, async () => {
+            await expect
+              .poll(() => edge.deliveries.length, { timeout: 45_000 })
+              .toBeGreaterThan(beforeDelivered)
+            expect(edge.deliveries.slice(beforeDelivered)).toEqual(
+              expect.arrayContaining([
+                {
+                  status: 204,
+                  media: 'application/reports+json',
+                  customHeader: false,
+                },
+              ]),
+            )
+            expect(
+              await page.evaluate(() => '__cspSensitiveProbe' in window),
+            ).toBe(false)
+            if (enabled) {
+              await expect
+                .poll(async () => (await cspEvents()).length)
+                .toBeGreaterThan(before)
+            }
+            const events = (await cspEvents()).slice(before)
+            if (enabled) {
+              expect(events.length).toBeGreaterThan(0)
+              expect(events).toEqual(
+                expect.arrayContaining([
+                  expect.objectContaining({
+                    actor: { source: 'anonymous' },
+                    request: {
+                      method: 'POST',
+                      path: '/api/security/csp-reports',
+                    },
+                    detail: expect.objectContaining({
+                      // The ephemeral TLS port differs from the configured public origin.
+                      surface: 'unknown',
+                      directive: 'script-src-elem',
+                      blockedResource: 'inline',
+                    }),
+                  }),
+                ]),
+              )
+              expect(JSON.stringify(events)).not.toContain(
+                'private-csp-test-value',
+              )
+            } else expect(events).toEqual([])
+          })
+        }
+      })
     }
   } finally {
     await context.close()

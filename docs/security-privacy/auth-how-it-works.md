@@ -344,8 +344,9 @@ sequenceDiagram
   `auth.csrf.rejected`, `auth.authorization.denied`,
   `auth.authorization.denied.audit_failed`,
   `privacy.data_subject_export.generated`, `privacy.erasure.executed`,
-  `privacy.erasure.previewed`, and
-  `requirements.sensitive_mutation.succeeded`.
+  `privacy.erasure.previewed`,
+  `requirements.sensitive_mutation.succeeded`, and
+  `security.csp.violation_reported`.
 - Audit events intentionally redact sensitive fields such as tokens, secrets,
   authorization codes, PKCE verifiers, `state`, and `nonce`. When a top-level
   detail key is redacted, the audit writer also emits a structured

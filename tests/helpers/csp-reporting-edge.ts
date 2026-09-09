@@ -1,8 +1,8 @@
 import { execFileSync } from 'node:child_process'
 import { createHash, X509Certificate } from 'node:crypto'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
-import { request as upstreamRequest } from 'node:http'
-import { createServer } from 'node:https'
+import { request as httpRequest } from 'node:http'
+import { createServer, request as httpsRequest } from 'node:https'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -13,6 +13,9 @@ export async function startCspReportingEdge(upstream: string): Promise<{
   deliveries: { status: number; media: string; customHeader: boolean }[]
   close: () => Promise<void>
 }> {
+  const upstreamUrl = new URL(upstream)
+  const upstreamRequest =
+    upstreamUrl.protocol === 'https:' ? httpsRequest : httpRequest
   const directory = await mkdtemp(join(tmpdir(), 'csp-reporting-edge-'))
   const key = join(directory, 'key.pem')
   const cert = join(directory, 'cert.pem')
@@ -43,7 +46,7 @@ export async function startCspReportingEdge(upstream: string): Promise<{
     { key: await readFile(key), cert: await readFile(cert) },
     (incoming, outgoing) => {
       const forwarded = upstreamRequest(
-        new URL(incoming.url ?? '/', upstream),
+        new URL(incoming.url ?? '/', upstreamUrl),
         {
           method: incoming.method,
           headers: incoming.headers,
