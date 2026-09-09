@@ -294,7 +294,7 @@ jobs:
           echo "Server log artifact: prodlike-pruned-server-log"
           start_epoch="$(date +%s)"
           set +e
-          npm run test:integration:prodlike
+          CSP_REPORT_SERVER_LOG="${prodlike_server_log}" npm run test:integration:prodlike
           test_exit=$?
           set -e
           end_epoch="$(date +%s)"
