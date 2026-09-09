@@ -1353,6 +1353,54 @@ rapportmodell eller rapportslutpunkt.
 **Förväntat resultat:** Kravområdesägare, kategori, typ, kvalitetsegenskap,
 paket och referenser visas.
 
+### COL-08: sammanjämka oberoende ändringar
+
+**Steg:** Två kravområdesmedförfattare öppnar samma utkast. Den första ändrar
+Acceptanskriterium och sparar. Den andra ändrar Kravtext och försöker spara.
+Välj Jämför med senaste och kontrollera ursprungligt, eget och senast sparat
+innehåll. Fortsätt till formuläret, kontrollera resultatet och spara.
+
+**Förväntat resultat:** Båda författarnas ändringar behålls. Sparandet utgår
+från versionen som jämfördes. Om ytterligare en ändring hinner sparas krävs
+ny jämförelse utan att det egna resultatet försvinner.
+
+### COL-09: välj mellan motstridiga ändringar utan dataförlust
+
+**Steg:** Två kravområdesmedförfattare ändrar Kravtext i samma utkast och
+försöker spara i turordning. Den andra öppnar jämförelsen, avbryter med Escape
+och öppnar den igen. Välj vilket värde som ska behållas, fortsätt till
+formuläret, komplettera texten och spara.
+
+**Förväntat resultat:** Ursprunglig text och båda ändringarna finns kvar
+under jämförelsen. Fortsätt är inaktiverad tills ett uttryckligt val gjorts.
+Escape bevarar det osparade arbetet och återför fokus till jämförelseknappen.
+Resultatet kan redigeras före sparande. Motstridiga normreferens- och
+kravpaketsval kräver också val; mängder slås inte ihop automatiskt.
+
+### COL-10: kopiera osparat arbete när granskning blockerar redigering
+
+**Steg:** En medförfattare redigerar ett utkast. En annan behörig person
+skickar det till Granskning. Den första försöker spara och jämför med senaste.
+Använd Kopiera osparat arbete. Välj Visa senaste och avbryt kasseringen.
+
+**Förväntat resultat:** Formuläret förklarar granskningsbegränsningen och
+sparandet förblir blockerat. Kopieringen innehåller de osparade värdena och
+bekräftas utan att formuläret töms. Misslyckad kopiering visar ett fel och
+kan upprepas. Avbruten kassering behåller redigeringen. Arkiverad status och
+förlorad redigeringsbehörighet skyddas på samma sätt.
+
+### COL-11: avbruten navigering och omladdning bevarar redigeringen
+
+**Steg:** Öppna ett krav från kravdetaljen och ändra Kravtext. Klicka på
+Kravunderlag i huvudnavigationen och avbryt kasseringen. Försök byta språk
+och avbryt kasseringen. Försök sedan gå
+bakåt i webbläsaren och avbryt. Försök ladda om sidan och avbryt webbläsarens
+bekräftelse. Gå slutligen bakåt och bekräfta kasseringen. Öppna redigeringen
+igen, gör en ändring och upprepa med formulärets Avbryt.
+
+**Förväntat resultat:** Varje avbruten åtgärd behåller formuläret och den
+osparade texten. Bekräftad kassering tillåter navigeringen.
+
 ## Kravunderlag
 
 ### SPEC-01: lista, filtrera och rensa kravunderlag

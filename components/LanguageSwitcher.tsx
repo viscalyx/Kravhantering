@@ -4,6 +4,7 @@ import { Globe } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { requestGuardedNavigation } from '@/lib/forms/navigation-guard'
 import { writeStoredLocale } from '@/lib/locale-preference'
 
 interface ComponentProps {
@@ -22,9 +23,14 @@ export default function LanguageSwitcher({
 
   const otherLocale = locale === 'sv' ? 'en' : 'sv'
 
-  const switchLocale = () => {
-    writeStoredLocale(otherLocale)
-    router.replace(pathname, { locale: otherLocale })
+  const switchLocale = (event: React.MouseEvent<HTMLButtonElement>) => {
+    requestGuardedNavigation({
+      anchorEl: event.currentTarget,
+      proceed: () => {
+        writeStoredLocale(otherLocale)
+        router.replace(pathname, { locale: otherLocale })
+      },
+    })
   }
 
   const isRail = variant === 'rail'

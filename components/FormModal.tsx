@@ -18,6 +18,7 @@ interface FormModalProps {
   maxWidthClassName?: string
   onClose: () => void
   open: boolean
+  returnFocusRef?: RefObject<HTMLElement | null>
   showHeader?: boolean
   title: string
   titleId: string
@@ -30,6 +31,7 @@ export default function FormModal({
   initialFocusRef,
   maxWidthClassName = 'max-w-2xl',
   onClose,
+  returnFocusRef,
   open,
   showHeader = true,
   title,
@@ -42,6 +44,7 @@ export default function FormModal({
     closeDisabled,
     initialFocusRef,
     modalRef,
+    returnFocusRef,
     onClose,
     open,
   })

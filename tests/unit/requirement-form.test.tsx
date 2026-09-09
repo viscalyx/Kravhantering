@@ -63,6 +63,7 @@ const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
 import RequirementForm from '@/components/RequirementForm'
+import type { RequirementEditSnapshot } from '@/components/requirement-edit-reconciliation'
 
 const sampleAreas = [
   { id: 1, name: 'Area 1', ownerHsaId: 'SE5560000001-area1' },
@@ -1000,7 +1001,9 @@ describe('RequirementForm', () => {
     fireEvent.click(
       screen.getByRole('button', { name: /requirement\.staleEditViewLatest/ }),
     )
-    expect(pushMock).toHaveBeenCalledWith('/requirements/REQ-001/2')
+    await waitFor(() =>
+      expect(pushMock).toHaveBeenCalledWith('/requirements/REQ-001/2'),
+    )
   })
 
   it('hides the latest-version action when a stale conflict omits latest data', async () => {
@@ -1067,8 +1070,8 @@ describe('RequirementForm', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('awaits stale-conflict refresh and disables conflict actions while loading', async () => {
-    const refresh = deferred<void>()
+  it('keeps local work while fetching the snapshot and cancelling comparison', async () => {
+    const refresh = deferred<RequirementEditSnapshot>()
     const onRefreshLatest = vi.fn(() => refresh.promise)
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
       if (opts?.method === 'PUT')
@@ -1126,7 +1129,7 @@ describe('RequirementForm', () => {
     fireEvent.submit(container.querySelector('form') as HTMLFormElement)
 
     const reload = await screen.findByRole('button', {
-      name: /requirement\.staleEditReload/,
+      name: /requirement\.reconciliation.compare/,
     })
     fireEvent.click(reload)
 
@@ -1137,11 +1140,41 @@ describe('RequirementForm', () => {
       screen.getByRole('button', { name: /requirement\.staleEditViewLatest/ }),
     ).toBeDisabled()
 
-    refresh.resolve()
-
-    await waitFor(() => {
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    refresh.resolve({
+      baseVersionId: 11,
+      baseRevisionToken: '22222222-2222-4222-8222-222222222222',
+      restriction: null,
+      isPublished: false,
+      values: {
+        description: 'Existing',
+        acceptanceCriteria: 'New server criterion',
+        areaId: '1',
+        categoryId: '',
+        typeId: '',
+        qualityCharacteristicId: '',
+        priorityLevelId: '',
+        verifiable: false,
+        verificationMethod: '',
+        normReferenceIds: [],
+        requirementPackageIds: [],
+      },
     })
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'requirement.reconciliation.title',
+      }),
+    ).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'requirement.reconciliation.cancel' }),
+    )
+    expect(
+      screen.getByRole('textbox', { name: /requirement\.description/ }),
+    ).toHaveValue('Changed before reload conflict')
+    expect(
+      screen.getByRole('button', {
+        name: /requirement\.reconciliation.compare/,
+      }),
+    ).toBeEnabled()
   })
 
   it('navigates back on cancel', async () => {

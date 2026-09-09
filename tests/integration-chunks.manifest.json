@@ -7,7 +7,7 @@
     "areasPerChunk": 1,
     "targetSpecs": 10
   },
-  "discoveredSpecCount": 49,
+  "discoveredSpecCount": 50,
   "suites": {
     "dev": {
       "chunks": [
@@ -59,7 +59,7 @@
         {
           "id": "dev-requirements",
           "paths": ["tests/integration/requirements"],
-          "specCount": 10
+          "specCount": 11
         },
         {
           "id": "dev-specifications",
@@ -82,7 +82,7 @@
         "tests/integration/platform/error-boundary-smoke.spec.ts",
         "tests/integration/platform/smoke.spec.ts"
       ],
-      "includedSpecCount": 41
+      "includedSpecCount": 42
     },
     "prodlike": {
       "chunks": [
@@ -133,6 +133,7 @@
         "tests/integration/requirements/ai-assisted-authoring-import-review.spec.ts",
         "tests/integration/requirements/collaboration.spec.ts",
         "tests/integration/requirements/create.spec.ts",
+        "tests/integration/requirements/edit-reconciliation.spec.ts",
         "tests/integration/requirements/import.spec.ts",
         "tests/integration/requirements/library.spec.ts",
         "tests/integration/requirements/lifecycle.spec.ts",

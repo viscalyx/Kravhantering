@@ -626,9 +626,8 @@
     "editNotAllowedStatusArchived": "Detta krav är Arkiverat och måste återskapas innan det kan redigeras.",
     "editPublishedVersionNotice": "Detta krav är Publicerat. Att spara skapar en ny version i Utkast — den publicerade kravversionen fortsätter gälla tills det nya utkastet genomgått granskningsprocessen och publicerats.",
     "staleEditConflict": "Kravet ändrades medan du redigerade.",
-    "staleEditConflictHelp": "Dina ändringar finns kvar här. Öppna den senaste sparade versionen för att jämföra, eller ladda om redigeraren innan du försöker igen.",
+    "staleEditConflictHelp": "Dina ändringar finns kvar. Jämför med senast sparat innehåll för att sammanjämka ändringarna innan du försöker igen.",
     "staleEditViewLatest": "Visa senaste",
-    "staleEditReload": "Ladda om redigeraren",
     "issuer": "Utfärdare",
     "name": "Benämning",
     "version": "Version",
@@ -650,7 +649,27 @@
     "typePlaceholder": "T.ex. Lag, Standard, Förordning",
     "specificationLocalBadge": "Unik",
     "specificationLocalTooltip": "Den här raden är ett unikt krav i kravunderlaget. Det finns bara i detta kravunderlag och visas inte i kravbiblioteket.",
-    "requirementPackageHelp": "<strong>Välj ett eller flera kravpaket som gäller för detta krav.</strong>\nKravpaket samlar krav för en viss gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning."
+    "requirementPackageHelp": "<strong>Välj ett eller flera kravpaket som gäller för detta krav.</strong>\nKravpaket samlar krav för en viss gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning.",
+    "reconciliation": {
+      "title": "Sammanjämka ändringar",
+      "compare": "Jämför med senaste",
+      "starting": "Ursprungligt innehåll",
+      "local": "Dina ändringar",
+      "server": "Senast sparat innehåll",
+      "proposed": "Föreslaget resultat",
+      "keepLocal": "Behåll ditt värde",
+      "keepServer": "Behåll senaste värdet",
+      "unresolved": "Välj ett värde för varje fält med motstridiga ändringar innan du fortsätter. Du kan sedan redigera resultatet i formuläret.",
+      "resolved": "Alla motstridiga ändringar har ett valt värde. Fortsätt för att kontrollera och redigera resultatet innan du sparar.",
+      "apply": "Kontrollera resultatet i formuläret",
+      "cancel": "Avbryt jämförelsen",
+      "copy": "Kopiera osparat arbete",
+      "copied": "Osparat arbete har kopierats.",
+      "copyFailed": "Kopieringen misslyckades. Ditt arbete finns kvar. Försök igen eller markera och kopiera formulärets värden.",
+      "restricted": "Du har inte längre behörighet att redigera detta krav. Ditt osparade arbete finns kvar och kan kopieras.",
+      "empty": "(tomt)",
+      "dependentFields": "Typ och kvalitetsegenskap samt verifierbar och verifieringsmetod löses tillsammans när ändringarna står i konflikt."
+    }
   },
   "requirementsTable": {
     "clear": "Rensa",
@@ -3058,6 +3077,10 @@
       "referenceData": {
         "heading": "Referensdata",
         "body": "Formuläret behåller inlästa alternativ när en uppdatering misslyckas. Om kravtypen ändras är Spara inte tillgänglig förrän matchande kvalitetsegenskaper har lästs in. Försök igen efter ett fel utan att dina ändringar eller val försvinner."
+      },
+      "reconciliation": {
+        "heading": "Samtidig redigering",
+        "body": "Om en annan författare sparar först kan du jämföra ursprungligt innehåll, dina ändringar och senast sparat innehåll. Oberoende ändringar behålls tillsammans. Välj vilket värde som ska behållas vid motstridiga ändringar och kontrollera och redigera sedan resultatet i formuläret innan du sparar. Ordningen mellan val saknar betydelse. Om någon sparar igen krävs en ny jämförelse. Avbruten jämförelse eller misslyckade anrop bevarar ditt arbete. Om Granskning, Arkiverad eller behörigheter hindrar redigering kan du kopiera ditt osparade arbete. Att lämna redigeringen, byta språk eller gå bakåt i webbläsaren kräver bekräftelse om arbete skulle gå förlorat. Omladdning eller stängning av fliken använder webbläsarens bekräftelse."
       }
     },
     "versionDetail": {

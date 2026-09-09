@@ -11,12 +11,18 @@ import NormReferenceModal from '@/components/NormReferenceModal'
 import ReferenceDataStatus, {
   ReferenceDataSaveHint,
 } from '@/components/ReferenceDataStatus'
+import RequirementEditReconciliation, {
+  REQUIREMENT_EDIT_LABELS,
+} from '@/components/RequirementEditReconciliation'
 import RequirementFormFields, {
   type RequirementFormFieldValues,
 } from '@/components/RequirementFormFields'
+import type { RequirementEditSnapshot } from '@/components/requirement-edit-reconciliation'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
+import { useUnsavedRequirementEdit } from '@/hooks/useUnsavedRequirementEdit'
 import { useRouter } from '@/i18n/routing'
+import { devMarker } from '@/lib/developer-mode-markers'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { ARRAY_INPUT_MAX_ITEMS } from '@/lib/http/validation-constants'
@@ -34,7 +40,7 @@ interface RequirementFormProps {
   initialNormReferenceIds?: number[]
   initialRequirementPackageIds?: number[]
   mode: 'create' | 'edit'
-  onRefreshLatest?: () => Promise<void> | void
+  onRefreshLatest?: () => Promise<RequirementEditSnapshot>
   requirementId?: number | string
 }
 
@@ -204,6 +210,8 @@ export default function RequirementForm({
   const shouldReduceMotion = useReducedMotion()
   const confirmDiscardChanges = useDiscardChangesConfirmation()
 
+  const formRef = useRef<HTMLFormElement>(null)
+  const recoveryReturnFocusRef = useRef<HTMLElement | null>(null)
   const [showCreateNormRef, setShowCreateNormRef] = useState(false)
   const [normRefForm, setNormRefForm] = useState(EMPTY_NORM_REFERENCE_FORM)
   const [normRefSubmitting, setNormRefSubmitting] = useState(false)
@@ -218,6 +226,18 @@ export default function RequirementForm({
   const [staleConflict, setStaleConflict] = useState<{
     latest: LatestEditConflictSummary | null
   } | null>(null)
+  const [comparison, setComparison] = useState<RequirementEditSnapshot | null>(
+    null,
+  )
+  const [restriction, setRestriction] = useState<string | null>(null)
+  const [copyStatus, setCopyStatus] = useState<'copied' | 'copyFailed' | null>(
+    null,
+  )
+  const [copying, setCopying] = useState(false)
+  const [editTokens, setEditTokens] = useState({
+    baseRevisionToken,
+    baseVersionId,
+  })
   const [saveDestination, setSaveDestination] = useState<'inline' | 'page'>(
     () => {
       try {
@@ -249,15 +269,30 @@ export default function RequirementForm({
       initialRequirementPackageIds,
     ),
   )
+  const [startingForm, setStartingForm] = useState(form)
   const [baselineSignature, setBaselineSignature] = useState(
     initialRequirementSignature,
   )
 
+  const [recoveryReferenceIds, setRecoveryReferenceIds] = useState({
+    normReferenceIds: [] as number[],
+    requirementPackageIds: [] as number[],
+  })
   const taxonomyOptions = useTaxonomyOptions(
     form.typeId,
-    initialNormReferenceIds,
+    [
+      ...new Set([
+        ...(initialNormReferenceIds ?? []),
+        ...recoveryReferenceIds.normReferenceIds,
+      ]),
+    ],
     {
-      selectedRequirementPackageIds: initialRequirementPackageIds,
+      selectedRequirementPackageIds: [
+        ...new Set([
+          ...(initialRequirementPackageIds ?? []),
+          ...recoveryReferenceIds.requirementPackageIds,
+        ]),
+      ],
       variant: 'library',
     },
   )
@@ -280,8 +315,12 @@ export default function RequirementForm({
       initialRequirementPackageIds,
     )
     setForm(nextForm)
+    setStartingForm(nextForm)
+    setEditTokens({ baseRevisionToken, baseVersionId })
     setBaselineSignature(initialRequirementSignature)
   }, [
+    baseRevisionToken,
+    baseVersionId,
     initialData,
     initialNormReferenceIds,
     initialRequirementPackageIds,
@@ -294,6 +333,9 @@ export default function RequirementForm({
 
   const currentSignature = createRequirementPayloadSignature(form, mode)
   const formDirty = baselineSignature !== currentSignature
+  const { allowNavigation, navigateBack } = useUnsavedRequirementEdit(
+    mode === 'edit' && formDirty,
+  )
   const associationSelectionsValid =
     form.normReferenceIds.length <= ARRAY_INPUT_MAX_ITEMS &&
     form.requirementPackageIds.length <= ARRAY_INPUT_MAX_ITEMS
@@ -313,6 +355,11 @@ export default function RequirementForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (
+      submitting ||
+      isRefreshing ||
+      comparison ||
+      staleConflict ||
+      restriction ||
       !formDirty ||
       !associationSelectionsValid ||
       !taxonomyOptions.readiness.canSave
@@ -333,8 +380,7 @@ export default function RequirementForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
           toRequirementPayload(form, {
-            baseRevisionToken,
-            baseVersionId,
+            ...editTokens,
             includeEditTokens: true,
             mode,
           }),
@@ -352,6 +398,7 @@ export default function RequirementForm({
           mode === 'create'
             ? data.requirement?.uniqueId
             : (data.uniqueId ?? requirementId)
+        allowNavigation()
         if (saveDestination === 'page') {
           const versionNumber =
             typeof data.version === 'object'
@@ -375,6 +422,10 @@ export default function RequirementForm({
           setError(null)
           return
         }
+        if (mode === 'edit' && (res.status === 409 || res.status === 403)) {
+          setStaleConflict({ latest: null })
+          if (res.status === 403) setRestriction(t('reconciliation.restricted'))
+        }
         setError(err?.error ?? res.statusText)
       }
     } catch (e) {
@@ -387,7 +438,7 @@ export default function RequirementForm({
   const handleCancel = async (anchorEl?: HTMLElement | null) => {
     if (submitting || isRefreshing) return
     if (formDirty && !(await confirmDiscardChanges(anchorEl))) return
-    router.back()
+    navigateBack(() => router.back())
   }
 
   const latestConflictTarget = staleConflict?.latest?.uniqueId
@@ -397,17 +448,62 @@ export default function RequirementForm({
       : `/requirements/${latestConflictTarget}`
     : null
 
-  const handleRefreshLatest = async () => {
+  const handleRefreshLatest = async (
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    recoveryReturnFocusRef.current = event.currentTarget
     if (!onRefreshLatest || isRefreshing) return
     setIsRefreshing(true)
     setError(null)
     try {
-      await onRefreshLatest()
-      setStaleConflict(null)
+      const snapshot = await onRefreshLatest()
+      const blocked =
+        snapshot.restriction === 'review'
+          ? t('editNotAllowedStatusReview')
+          : snapshot.restriction === 'archived'
+            ? t('editNotAllowedStatusArchived')
+            : snapshot.restriction === 'permission'
+              ? t('reconciliation.restricted')
+              : null
+      setRestriction(blocked)
+      setRecoveryReferenceIds(previous => ({
+        normReferenceIds: [
+          ...new Set([
+            ...previous.normReferenceIds,
+            ...snapshot.values.normReferenceIds,
+          ]),
+        ],
+        requirementPackageIds: [
+          ...new Set([
+            ...previous.requirementPackageIds,
+            ...snapshot.values.requirementPackageIds,
+          ]),
+        ],
+      }))
+      if (!blocked) setComparison(snapshot)
     } catch (e) {
       setError(e instanceof Error ? e.message : tc('error'))
     } finally {
       setIsRefreshing(false)
+    }
+  }
+
+  const handleCopy = async () => {
+    setCopying(true)
+    setCopyStatus(null)
+    try {
+      const text = Object.entries(REQUIREMENT_EDIT_LABELS)
+        .map(([field, label]) => {
+          const value = form[field as keyof RequirementFormFieldValues]
+          return `${t(label)}: ${Array.isArray(value) ? value.join(', ') : typeof value === 'boolean' ? tc(value ? 'yes' : 'no') : value}`
+        })
+        .join('\n\n')
+      await navigator.clipboard.writeText(text)
+      setCopyStatus('copied')
+    } catch {
+      setCopyStatus('copyFailed')
+    } finally {
+      setCopying(false)
     }
   }
 
@@ -437,6 +533,7 @@ export default function RequirementForm({
   return (
     <motion.form
       onSubmit={handleSubmit}
+      ref={formRef}
       {...offsetPanelMotion(shouldReduceMotion)}
     >
       <ReferenceDataStatus
@@ -444,16 +541,21 @@ export default function RequirementForm({
         readiness={taxonomyOptions.readiness}
       />
 
-      <RequirementFormFields
-        additionalNormReferences={createdNormRefs}
-        layout="sidebar"
-        normReferenceActions={normReferenceCreateButton}
-        onChange={handleFieldsChange}
-        referenceDataReadiness={taxonomyOptions.readiness}
-        referenceDataStatusId={referenceDataStatusId}
-        taxonomyOptions={taxonomyOptions}
-        values={form}
-      />
+      <fieldset
+        className="m-0 min-w-0 border-0 p-0"
+        disabled={submitting || isRefreshing || Boolean(comparison)}
+      >
+        <RequirementFormFields
+          additionalNormReferences={createdNormRefs}
+          layout="sidebar"
+          normReferenceActions={normReferenceCreateButton}
+          onChange={handleFieldsChange}
+          referenceDataReadiness={taxonomyOptions.readiness}
+          referenceDataStatusId={referenceDataStatusId}
+          taxonomyOptions={taxonomyOptions}
+          values={form}
+        />
+      </fieldset>
 
       {typeof document !== 'undefined' &&
         createPortal(
@@ -518,10 +620,41 @@ export default function RequirementForm({
           document.body,
         )}
 
+      {comparison && (
+        <RequirementEditReconciliation
+          local={form}
+          onApply={values => {
+            recoveryReturnFocusRef.current =
+              formRef.current?.querySelector('textarea') ?? null
+            setForm(values)
+            setStartingForm(comparison.values)
+            setBaselineSignature(
+              createRequirementPayloadSignature(comparison.values, mode),
+            )
+            setEditTokens({
+              baseVersionId: comparison.baseVersionId,
+              baseRevisionToken: comparison.baseRevisionToken,
+            })
+            setComparison(null)
+            setStaleConflict(null)
+            setCopyStatus(null)
+          }}
+          onClose={() => setComparison(null)}
+          returnFocusRef={recoveryReturnFocusRef}
+          server={comparison.values}
+          starting={startingForm}
+          taxonomyOptions={taxonomyOptions}
+        />
+      )}
+
       {staleConflict && (
         <div
           className="mt-5 rounded-xl border border-amber-200 bg-amber-50/90 p-4 text-sm text-amber-800 dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-200"
           role="alert"
+          {...devMarker({
+            name: 'conflict recovery',
+            value: 'requirement edit',
+          })}
         >
           <div className="flex items-start gap-3">
             <AlertTriangle
@@ -531,12 +664,23 @@ export default function RequirementForm({
             <div>
               <p className="font-semibold">{t('staleEditConflict')}</p>
               <p className="mt-1">{t('staleEditConflictHelp')}</p>
+              {restriction && (
+                <p className="mt-2 font-semibold">{restriction}</p>
+              )}
               <div className="mt-3 flex flex-wrap gap-2">
                 {latestConflictHref && (
                   <button
                     className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-700 dark:bg-secondary-900 dark:text-amber-100 dark:hover:bg-amber-950"
                     disabled={isRefreshing}
-                    onClick={() => router.push(latestConflictHref)}
+                    onClick={async event => {
+                      if (
+                        formDirty &&
+                        !(await confirmDiscardChanges(event.currentTarget))
+                      )
+                        return
+                      allowNavigation()
+                      router.push(latestConflictHref)
+                    }}
                     type="button"
                   >
                     <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
@@ -551,10 +695,27 @@ export default function RequirementForm({
                     type="button"
                   >
                     <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
-                    {isRefreshing ? tc('loading') : t('staleEditReload')}
+                    {isRefreshing ? tc('loading') : t('reconciliation.compare')}
                   </button>
                 )}
+                <button
+                  className="btn-secondary"
+                  disabled={copying}
+                  onClick={handleCopy}
+                  type="button"
+                  {...devMarker({
+                    name: 'copy action',
+                    value: 'unsaved requirement edit',
+                  })}
+                >
+                  {copying ? tc('loading') : t('reconciliation.copy')}
+                </button>
               </div>
+              {copyStatus && (
+                <p className="mt-2" role="status">
+                  {t(`reconciliation.${copyStatus}`)}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -588,6 +749,9 @@ export default function RequirementForm({
             disabled={
               submitting ||
               isRefreshing ||
+              Boolean(staleConflict) ||
+              Boolean(comparison) ||
+              Boolean(restriction) ||
               !associationSelectionsValid ||
               !taxonomyOptions.readiness.canSave
             }

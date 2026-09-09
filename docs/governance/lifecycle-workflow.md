@@ -64,6 +64,33 @@ Draft regardless of the Published status it had prior to
 being archived, and must go through the full
 Review → Published cycle again.
 
+### Recovering Concurrent Edits
+
+When a save conflicts with another author's update, the editor keeps the
+starting content and unsaved form values. **Compare with latest** fetches
+current content through the authorized requirement-detail interface without
+replacing the form. The comparison shows starting, local and server values
+for changed fields, including taxonomy and association selections.
+
+Independent changes carry into a proposed result. Competing changes require
+an explicit choice; identical changes do not. Norm-reference and
+requirement-package selections are unordered sets: competing sets require a
+choice, not a union. Dependent type/quality-characteristic and
+verifiable/verification-method values stay together when changes compete.
+
+After resolving conflicts, review and edit the result in the ordinary form.
+Saving uses the version ID and revision token of the compared snapshot. If
+another update intervenes, compare again with the working result preserved.
+Cancelling comparison and unsuccessful fetch/save attempts preserve local
+work. Leaving through the editor's actions, global navigation or browser history
+requires an explicit discard confirmation when there are unsaved changes.
+Reloading or closing the tab uses the browser's unload confirmation.
+
+Review and Archived versions remain protected. Permission changes also block
+editing. **Copy unsaved work** remains available, with visible feedback if
+copying fails. Copying does not clear the values. Recovery is held in the
+open editor; it is not persisted across browser restarts.
+
 ### Deleting Drafts
 
 The latest Draft version can be deleted before it becomes an

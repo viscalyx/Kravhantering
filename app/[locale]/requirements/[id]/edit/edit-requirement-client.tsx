@@ -5,11 +5,7 @@ import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementForm from '@/components/RequirementForm'
-import {
-  STATUS_ARCHIVED,
-  STATUS_PUBLISHED,
-  STATUS_REVIEW,
-} from '@/lib/requirements/status-constants.mjs'
+import { requirementEditSnapshot } from '@/components/requirement-edit-reconciliation'
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
 
 const EDIT_REQUIREMENT_HELP: HelpContent = {
@@ -23,6 +19,11 @@ const EDIT_REQUIREMENT_HELP: HelpContent = {
       kind: 'text',
       bodyKey: 'editRequirement.form.body',
       headingKey: 'editRequirement.form.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'editRequirement.reconciliation.body',
+      headingKey: 'editRequirement.reconciliation.heading',
     },
     {
       kind: 'text',
@@ -78,55 +79,31 @@ export default function EditRequirementClient({
       }
       const data = (await res.json()) as RequirementDetailResponse
       setUniqueId(data.uniqueId)
-      const latest = data.versions[0]
-      if (!latest) {
+      const snapshot = requirementEditSnapshot(data)
+      if (!snapshot) {
         setFetchError(tc('noResults'))
         setLoading(false)
         return
       }
-      if (
-        latest.status === STATUS_REVIEW ||
-        latest.status === STATUS_ARCHIVED
-      ) {
+      if (snapshot.restriction) {
         setFetchError(
-          latest.status === STATUS_REVIEW
+          snapshot.restriction === 'review'
             ? t('editNotAllowedStatusReview')
-            : t('editNotAllowedStatusArchived'),
+            : snapshot.restriction === 'archived'
+              ? t('editNotAllowedStatusArchived')
+              : t('reconciliation.restricted'),
         )
         setLoading(false)
         return
       }
-      setIsPublished(latest.status === STATUS_PUBLISHED)
-      setBaseRevisionToken(latest.revisionToken)
-      setBaseVersionId(latest.id)
-      setInitialData({
-        areaId: data.area?.id != null ? String(data.area.id) : '',
-        categoryId:
-          latest.category?.id != null ? String(latest.category.id) : '',
-        typeId: latest.type?.id != null ? String(latest.type.id) : '',
-        qualityCharacteristicId:
-          latest.qualityCharacteristic?.id != null
-            ? String(latest.qualityCharacteristic.id)
-            : '',
-        priorityLevelId:
-          latest.priorityLevel?.id != null
-            ? String(latest.priorityLevel.id)
-            : '',
-        description: String(latest.description ?? ''),
-        acceptanceCriteria: String(latest.acceptanceCriteria ?? ''),
-        verifiable: Boolean(latest.verifiable ?? false),
-        verificationMethod: String(latest.verificationMethod ?? ''),
-      })
-      setInitialNormReferenceIds(
-        latest.versionNormReferences
-          .map(vnr => vnr.normReference.id)
-          .filter((id): id is number => id != null),
-      )
-      setInitialRequirementPackageIds(
-        latest.versionRequirementPackages
-          .map(vs => vs.requirementPackage.id)
-          .filter((id): id is number => id != null),
-      )
+      setIsPublished(snapshot.isPublished)
+      setBaseRevisionToken(snapshot.baseRevisionToken)
+      setBaseVersionId(snapshot.baseVersionId)
+      const { normReferenceIds, requirementPackageIds, ...values } =
+        snapshot.values
+      setInitialData(values)
+      setInitialNormReferenceIds(normReferenceIds)
+      setInitialRequirementPackageIds(requirementPackageIds)
     } catch {
       setFetchError(tc('error'))
     }
@@ -191,7 +168,23 @@ export default function EditRequirementClient({
             initialNormReferenceIds={initialNormReferenceIds}
             initialRequirementPackageIds={initialRequirementPackageIds}
             mode="edit"
-            onRefreshLatest={fetchData}
+            onRefreshLatest={async () => {
+              const res = await fetch(`/api/requirements/${requirementId}`, {
+                cache: 'no-store',
+              })
+              if (!res.ok)
+                throw new Error(
+                  res.status === 403
+                    ? t('reconciliation.restricted')
+                    : tc('error'),
+                )
+              const snapshot = requirementEditSnapshot(
+                (await res.json()) as RequirementDetailResponse,
+              )
+              if (!snapshot) throw new Error(tc('noResults'))
+              setIsPublished(snapshot.isPublished)
+              return snapshot
+            }}
             requirementId={requirementId}
           />
         </div>

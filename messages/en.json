@@ -626,9 +626,8 @@
     "editNotAllowedStatusArchived": "This requirement is Archived and must be restored before it can be edited.",
     "editPublishedVersionNotice": "This requirement is Published. Saving will create a new Draft version — the published requirement version stays in effect until the new draft completes the review process and is published.",
     "staleEditConflict": "This requirement changed while you were editing.",
-    "staleEditConflictHelp": "Your changes are still here. Open the latest saved version to compare, or reload the editor before trying again.",
+    "staleEditConflictHelp": "Your changes are still here. Compare with the latest saved content to reconcile changes before trying again.",
     "staleEditViewLatest": "View latest",
-    "staleEditReload": "Reload editor",
     "issuer": "Issuer",
     "name": "Name",
     "version": "Version",
@@ -650,7 +649,27 @@
     "typePlaceholder": "E.g. Law, Standard, Regulation",
     "specificationLocalBadge": "Unique",
     "specificationLocalTooltip": "This row is a unique requirement. It exists only in this specification and does not appear in the requirements library.",
-    "requirementPackageHelp": "<strong>Select one or more requirements packages that apply to this requirement.</strong>\nRequirements packages group requirements for a specific area of concern, such as mobile use, data migration, integrations with other systems, case management, usability, cloud operations, normal operations, high load, or disaster recovery."
+    "requirementPackageHelp": "<strong>Select one or more requirements packages that apply to this requirement.</strong>\nRequirements packages group requirements for a specific area of concern, such as mobile use, data migration, integrations with other systems, case management, usability, cloud operations, normal operations, high load, or disaster recovery.",
+    "reconciliation": {
+      "title": "Reconcile changes",
+      "compare": "Compare with latest",
+      "starting": "Starting content",
+      "local": "Your edits",
+      "server": "Latest saved content",
+      "proposed": "Proposed result",
+      "keepLocal": "Keep your value",
+      "keepServer": "Keep latest value",
+      "unresolved": "Choose a value for each conflicting field before continuing. You can edit the result in the form afterwards.",
+      "resolved": "All competing changes have a choice. Continue to review and edit the result before saving.",
+      "apply": "Review result in form",
+      "cancel": "Cancel comparison",
+      "copy": "Copy unsaved work",
+      "copied": "Unsaved work copied.",
+      "copyFailed": "Copy failed. Your work is still here. Try again or select and copy the form values.",
+      "restricted": "You no longer have permission to edit this requirement. Your unsaved work is still available to copy.",
+      "empty": "(empty)",
+      "dependentFields": "Requirement type and quality characteristic, and verifiable and verification method, are resolved together when their changes compete."
+    }
   },
   "requirementsTable": {
     "clear": "Clear",
@@ -3058,6 +3077,10 @@
       "referenceData": {
         "heading": "Reference data",
         "body": "The form keeps loaded options available during an unsuccessful refresh. If the requirement type changes, Save remains unavailable until matching quality characteristics have loaded. Try again after a failure without losing your edits or selections."
+      },
+      "reconciliation": {
+        "heading": "Concurrent edits",
+        "body": "If another author saves first, compare the starting content, your edits and the latest saved content. Independent changes are retained together; choose which value to keep for competing changes, then review and edit the result in the form before saving. Selection order does not matter. A new intervening update requires another comparison. Cancelling the comparison or a failed request keeps your work. If Review, Archived status or permissions prevent editing, copy your unsaved work. Leaving the editor, changing language, or using browser Back requires confirmation when work would be lost. Reloading or closing the tab uses the browser’s confirmation."
       }
     },
     "versionDetail": {
