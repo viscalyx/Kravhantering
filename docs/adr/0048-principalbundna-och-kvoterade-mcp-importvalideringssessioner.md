@@ -16,12 +16,12 @@ destinationsbehörighet men ger inget kvotundantag.
 
 Lagringskvoten reserverar både sessionens ursprungliga data och ett
 konservativt utrymme för ett fullständigt körningskvitto, så att en giltig
-session inte senare blir okörbar enbart för att kvoten fylldes efter validering.
+session inte senare blir okörbar enbart för att kvoten fylls efter validering.
 Utgångna sessioner och skapandetaktsräknare är kortlivat operativt tillstånd och
 ska rensas utan arkivexport.
 
-Äldre applikationsversioner saknar principalbindningen och får därför inte
-betjäna MCP parallellt med den nya versionen. Uppgradering och återställning
+MCP får endast betjänas av applikationsversioner som stöder
+principalbindningen. Uppgradering och återställning
 görs som samordnade MCP-stopp där befintliga valideringssessioner raderas innan
 trafiken återupptas. Det fail-closed-beslutet prioriterar ägarskapsskydd framför
 obruten användbarhet för kortlivade valideringstoken.

@@ -16,7 +16,7 @@ driftsättning och innehåller hemligheter, certifikat och platsspecifika
 runtime-värden. Det striktare Filesystem Hierarchy Standard-alternativet för
 tilläggsprogramvara installerad under `/opt` är `/etc/opt/kravhantering`. Vi
 flyttar inte dit nu eftersom `/etc/kravhantering` är tydligare för operatörer
-och redan används i produktionsguider, Compose-filer, systemd units,
+och redan används i produktionsguider, systemd units,
 hjälpskript, tester, uppgraderingar och avinstallationsflöden.
 
 Vi kan ompröva `/etc/opt/kravhantering` för host-specifik konfiguration och

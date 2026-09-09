@@ -21,6 +21,6 @@ beslutet.
 Test- och demoscenarier måste verifiera nekad åtkomst för oautentiserade,
 korskopplade och korrekt-CA-men-fel-identitet-certifikat på alla tre länkar.
 Rotation stoppar klienter före servrar och startar servrar före klienter;
-rollback återväljer föregående generation med samma ordning. Den stödda
-produktions-Compose-topologin är fortsatt oberoende av Kong, Adapter, mock och
-detta test-PKI.
+rollback återväljer föregående generation med samma ordning.
+Produktionsstackens gräns mot HSA-stödtjänster följer
+[ADR 0029](./0029-hsa-personuppslag-som-restgrans-mot-integrationsplattform.md).

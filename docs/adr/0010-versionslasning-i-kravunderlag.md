@@ -2,14 +2,15 @@
 
 Status: Antagen 2026-06-05.
 
-Ett `Kravunderlag` är en spårad sammansättning av kravtillämpningar.
+Ett `Kravunderlag` är en spårad sammansättning av kravtillämpningar och
+eventuella kravunderlagslokala krav.
 Bibliotekskrav läggs bara till genom en konkret `Publicerad kravversion`, och
 den resulterande kravtillämpningen behåller den kravversionen som grund i
 stället för att automatiskt följa senare publicerade versioner.
 
 `Kravunderlagslokala krav` är separat kravunderlagsägt innehåll, inte dolda
 bibliotekskrav. När ett lokalt krav lyfts till kravbiblioteket skapar
-applikationen en ny utkastkopia av ett bibliotekskrav och lämnar det lokala
+applikationen ett nytt bibliotekskrav i utkast och lämnar det lokala
 kravet kvar på plats i sitt ursprungliga kravunderlag.
 
 Det bevarar ett granskningsbart innehållsunderlag för ett kravunderlag samtidigt

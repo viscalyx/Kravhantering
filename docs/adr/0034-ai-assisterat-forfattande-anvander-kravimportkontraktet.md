@@ -15,7 +15,7 @@ schemavaliderat innan det får visas eller skickas vidare till importflödet,
 enligt
 [ADR 0051](./0051-ai-integrationslager-med-korprofiler-och-adaptrar.md).
 
-Beslutet gör `Importinstruktion och schema` till den kanoniska strukturregeln
+Beslutet gör importens JSON Schema till den kanoniska strukturregeln
 för både extern AI-genererad import och inbyggt AI-assisterat författande. Den
 användarstyrda `AI-instruktion` får styra innehåll, omfattning, språk och stil,
 men den kan inte upphäva importkontraktet, destinationsregler eller

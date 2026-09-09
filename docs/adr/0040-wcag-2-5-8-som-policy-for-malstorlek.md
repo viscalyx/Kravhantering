@@ -63,7 +63,7 @@ issue 542.
 
 - **En generell regel på 44 pixlar:** Vi använder inte detta som gräns eftersom
   det skulle göra ett kriterium på nivå AAA till ett allmänt krav på nivå AA
-  och motverka den informations- och kontrolltäthet som har valts för
+  och motverka den informations- och kontrolltäthet som väljs för
   skrivbordsanvändning.
 - **Obligatoriska `min-h-6 min-w-6` på varje interaktivt element:** Vi kräver
   inte bestämda klassnamn eftersom de varken bevisar den faktiska målytan eller

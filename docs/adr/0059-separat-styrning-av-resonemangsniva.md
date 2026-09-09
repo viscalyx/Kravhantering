@@ -31,7 +31,7 @@ provet skicka den valda nivån genom en leverantörsväg som stöder parametern.
 För modellens standard ska provet fungera utan en styrparameter som modellen
 inte behöver eller stöder. Katalogmetadata eller ett lyckat anrop utan
 resonemangsevidens räcker inte i något av fallen. Beviset är inte ett intyg om
-exakt vilken nivå leverantören tillämpade internt.
+exakt vilken nivå leverantören tillämpar internt.
 
 Alla fasta körprofiler ska kräva verifierad resonemangsförmåga, inklusive
 reparation av ogiltig import-JSON. Avvisat eller oavgjort resonemang ska hindra
@@ -39,7 +39,7 @@ att modellrevisionen sparas som användbar. Saknad nivåstyrning ska däremot
 inte hindra en modell med verifierat resonemang som standard. Runtime ska
 följa revisionens verifierade konfiguration och får inte byta mellan
 uttrycklig styrning och modellens standard som en tyst reservväg vid fel.
-Detta utökar de fasta förmågekraven i
+Detta gäller de stabila körprofilerna i
 [ADR 0056](./0056-sammanhallen-modellverifiering-och-stabila-korprofiler.md).
 Visningsbar AI-analys förblir en separat, valfri förmåga.
 

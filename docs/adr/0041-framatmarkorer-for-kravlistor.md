@@ -24,9 +24,9 @@ förladdning. SQL Server-databasens befintliga kollation styr textjämförelser;
 applikationen varken väljer, validerar eller åsidosätter den.
 
 Kravbiblioteksmarkören innehåller nullrang, primärt sorteringsvärde och stabilt
-numeriskt Krav-ID. Sortering på fri text och uppslagsnamn använder en
-normaliserad, högst 48 tecken lång SQL-nyckel och därefter det numeriska
-Krav-ID:t; den bundna nyckeln gör att hela gränsen ryms även när själva
+numeriskt databas-ID för kravet. Sortering på fri text och uppslagsnamn använder
+en normaliserad, högst 48 tecken lång SQL-nyckel och därefter det numeriska
+databas-ID:t; den bundna nyckeln gör att hela gränsen ryms även när själva
 kravtexten är `nvarchar(MAX)`. Det systemgenererade unika Krav-ID:t använder
 sin befintliga indexerade databasnyckel direkt.
 Kravunderlagsmarkören bär motsvarande blandade listgräns med objektslag och

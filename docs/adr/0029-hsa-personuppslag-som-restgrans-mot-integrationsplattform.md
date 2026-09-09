@@ -83,10 +83,10 @@ behörighetsprövning. Export och loggning minimerar personfält och hjälptext
 förklarar att skyddsflaggan kräver behovsstyrd hantering men inte blockerar en
 kravansvarstilldelning.
 
-Verifieringsanropet är läsande och lagrar inte HSA-svaret. Det returnerar i
-stället kortlivat, signerat bevis bundet till aktör, målidentitet, ändamål och
-omfattning. Slutlig tilldelning verifierar beviset och sparar personpost och
-ansvar i samma transaktion. Begränsningsnycklar och utfallsloggar använder
+Verifieringsbevis och atomärt sparande av Kravansvarsperson och
+kravansvarstilldelning följer
+[ADR 0025](./0025-kravansvarsperson-for-hsa-uppslag.md).
+Begränsningsnycklar och utfallsloggar använder
 icke-reversibla fingeravtryck, inte rått mål-HSA-id eller personuppgifter.
 Utfallet loggas som `success`, `not_found`, `conflict`, `throttled` eller
 `provider_failure`.

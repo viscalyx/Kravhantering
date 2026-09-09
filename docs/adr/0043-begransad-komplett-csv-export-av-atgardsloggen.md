@@ -3,9 +3,9 @@
 Status: Antagen 2026-07-25.
 
 Kravhantering exporterar hela det filtrerade urvalet från `Åtgärdslogg` med
-samma synkrona resursgränser och privata temporära fil som ADR 0042. Den
-gemensamma CSV-gränsen avser datarader, inte krav, och exporten läser högst
-gränsen plus en rad så att ett för stort urval avvisas innan en nedladdning
+samma synkrona resursgränser och privata temporära fil som
+[ADR 0042](./0042-begransade-synkrona-exporter-och-rapporter.md). Exporten läser
+högst gränsen plus en rad så att ett för stort urval avvisas innan en nedladdning
 exponeras.
 
 Exporten förankrar den övre ID-gränsen vid det högsta rad-ID som finns när

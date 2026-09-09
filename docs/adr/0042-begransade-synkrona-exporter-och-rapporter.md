@@ -3,7 +3,7 @@
 Status: Antagen 2026-07-18.
 
 Kravbibliotekets CSV-export och stora kravliste-PDF använder separata,
-databaslagrade och Admin-styrda budgetar för antal krav, filstorlek,
+databaslagrade och Admin-styrda budgetar för antal datarader, filstorlek,
 genereringstid och samtidighet. PDF-budgeten omfattar även JavaScript-minne
 per renderer. Resultat som överskrider en budget avvisas före filleverans;
 partiella filer levereras aldrig.

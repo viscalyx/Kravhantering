@@ -854,9 +854,9 @@ _Avoid_: Kravgranskare när ett ärende- eller underlagsbundet uppdrag avses,
 Granskare som huvudterm.
 
 **Administratör**:
-Ett systemövergripande behörighetsmandat med full rätt att utföra åtgärder i
-systemet. Administratören blir inte verksamhetsansvarig ägare för innehållet
-bara genom rollen.
+Ett systemövergripande behörighetsmandat för administration; granskningsbeslut
+kräver även rollen kravgranskare. Administratören blir inte verksamhetsansvarig
+ägare för innehållet bara genom rollen.
 
 - `en`: Administrator
 

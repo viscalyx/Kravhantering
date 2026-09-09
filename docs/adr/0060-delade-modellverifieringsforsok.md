@@ -5,7 +5,7 @@ Status: Antagen 2026-09-06.
 Ett färdigt, sparbart modellverifieringsförsök ska vara beständigt och
 tillgängligt för alla behöriga administratörer på samma AI-anslutning. En
 annan administratör ska kunna granska resultatet och slutföra sparandet om
-den första inte kan fortsätta. Beslutet ersätter aktörsbindningen i
+den första inte kan fortsätta. Verifieringssviten följer
 [ADR 0056](./0056-sammanhallen-modellverifiering-och-stabila-korprofiler.md).
 Aktuell behörighet prövas vid varje operation; utförda åtgärder tillskrivs
 den agerande administratören i den befintliga åtgärdsloggen.

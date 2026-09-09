@@ -40,13 +40,14 @@ loggas i åtgärdsloggen.
 får lista och läsa bara tilldelade kravunderlag, där tilldelningen kommer från
 kravunderlagsansvarig eller kravunderlagsmedförfattare. Ett kravunderlag som
 finns men inte är tilldelat returnerar `403` vid direkt åtkomst; ett saknat
-kravunderlag returnerar `404`. Kravunderlagsansvarig och
-kravunderlagsmedförfattare får ändra kravunderlagets innehåll; bara
-kravunderlagsansvarig och `Admin` får ändra kravunderlagets uppdrag.
+kravunderlag returnerar `404`. Skrivbehörigheten för kravunderlagets innehåll
+och uppdrag följer
+[ADR 0027](./0027-underlagsstyrd-skrivbehorighet-i-kravunderlag.md).
 
 Kravurvalsfrågor och deras förvaltade svar hör till kravområdet. Alla
 förvaltningsskrivningar använder frågans lagrade kravområde och kräver
-kravområdesägare, kravområdesmedförfattare eller `Admin`. Ett svar slås upp
+kravområdesägare, kravområdesmedförfattare eller `Admin`. Vid skapande
+kontrolleras det begärda kravområdet. Ett svar slås upp
 tillsammans med sin lagrade fråga innan ändringen, så ett anrop kan inte flytta
 behörighetskontrollen genom att ange en annan frågeidentifierare. Sparade
 kravurvalssvar i ett kravunderlag hör däremot till kravunderlaget.

@@ -4,13 +4,10 @@ Status: Antagen 2026-05-31.
 
 Kravurvalsfrågor är kravområdesägt innehåll i kravbiblioteksförvaltningen, inte
 referensdata i Admin Center och inte ett nytt flöde för att lägga till krav.
-Kravområdesägare, kravområdesmedförfattare och användare med `Admin`
-underhåller frågorna, medan kravunderlagsansvariga och
-kravunderlagsmedförfattare besvarar dem i ett kravunderlag. Alla skrivningar
-av frågor, svar, synlighetsvillkor, ordning och livscykel kontrolleras mot
-frågans lagrade kravområde. Vid skapande kontrolleras det begärda
-kravområdet. Ett kravurvalssvar måste dessutom tillhöra den angivna frågan
-innan en ändring får genomföras.
+Behörigheten för förvaltning av frågor och svar följer
+[ADR 0012](./0012-uppdragsbaserad-rbac.md), medan sparade kravurvalssvar i ett
+kravunderlag följer dess skrivbehörighet enligt
+[ADR 0027](./0027-underlagsstyrd-skrivbehorighet-i-kravunderlag.md).
 
 Valda kravurvalssvar bevarar kravurvalssammanhanget för kravunderlaget och kan
 bilda ett kravurvalsfilter över den befintliga listan `Available
@@ -29,9 +26,9 @@ lägger till dem.
 Kravpaket är också innehåll i kravbiblioteksförvaltningen snarare än
 referensdata i Admin Center. Ett kravpaket har en egen kravpaketsansvarig, men
 paketmedlemskap är fortsatt del av kravversionsmetadata och ändras genom
-kravets livscykel, inte direkt från ytan för paketförvaltning. Kravpaket är
-författat innehåll i förvaltningsytan, så namn och beskrivning använder ett
-författat språk i stället för språkparade locale-kolumner.
+kravets livscykel, inte direkt från ytan för paketförvaltning. Kravpaketets
+källspråksinnehåll följer
+[ADR 0008](./0008-sprakparad-taxonomi-och-kallspraksinnehall.md).
 
 Kravurvalssvar kan peka på kravpaket och uttryckliga publicerade krav, eller
 markeras som `Utan kravurval`. Paketlänkar och uttryckliga kravlänkar är
@@ -80,5 +77,3 @@ kvar som sparat sammanhang tills användaren väljer att filtrera.
   eftersom aktiv/arkiverad plus hälsoindikatorer räcker för förvaltningen.
 - Obligatoriska kravurvalsfrågor: avvisat eftersom kravurvalssvar ska vägleda
   filtrering, inte bli en färdigställandegrind.
-- Språkparad kravpaketstext: avvisat eftersom kravpaket är författat innehåll i
-  kravbiblioteksförvaltningen, inte språkparad referensdata.
