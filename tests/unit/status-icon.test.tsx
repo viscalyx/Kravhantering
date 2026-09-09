@@ -1,4 +1,5 @@
 import { render } from '@testing-library/react'
+import * as LucideIcons from 'lucide-react'
 import { describe, expect, it } from 'vitest'
 import StatusIcon from '@/components/StatusIcon'
 import {
@@ -41,8 +42,11 @@ describe('status icon allowlist', () => {
   })
 
   it('maps every allowed icon to an installed Lucide component', () => {
+    const installedIcons = new Map(Object.entries(LucideIcons))
     for (const iconName of STATUS_ICON_NAMES) {
-      expect(getStatusIconComponent(iconName), iconName).toBeTruthy()
+      expect(getStatusIconComponent(iconName), iconName).toBe(
+        installedIcons.get(iconName),
+      )
     }
   })
 

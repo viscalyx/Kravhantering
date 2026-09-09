@@ -112,6 +112,16 @@ direct renderer. `report-worker-entry.ts` performs the same preload inside the
 worker because icon caches are process-local. Icon resolution must remain a
 static allowlist operation without network or file loading.
 
+Browser status icons resolve through Lucide's canonical `icons` export and a
+generated set of compatibility aliases. This preserves the complete selectable
+catalog without importing the package's prefixed and suffixed export variants.
+`scripts/prebuild.js` regenerates
+`lib/icons/status-icon-aliases.generated.ts` from the installed package before
+building. After updating Lucide, run
+`node scripts/generate-status-icon-aliases.mjs` and commit the generated file.
+The status-icon tests verify every allowed name resolves to the matching Lucide
+component; `npm run build` checks the production JavaScript bundle budgets.
+
 `runSynchronousPdfGeneration()` is the admission boundary for direct PDF
 routes. It loads `pdfReportMaxRequirements`,
 `pdfReportConcurrencyPerNode`, and `pdfReportTimeoutSeconds`, then supplies the
