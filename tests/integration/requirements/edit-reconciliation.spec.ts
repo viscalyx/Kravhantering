@@ -15,6 +15,7 @@ async function openConcurrentEdit(
   page: Page,
   request: APIRequestContext,
   throughDetail = false,
+  beforeEdit?: () => Promise<void>,
 ) {
   const response = await request.get('/api/requirements/INT0001')
   await expectApiResponseOk(response, 'load requirement edit fixture')
@@ -80,10 +81,21 @@ async function openConcurrentEdit(
     await page.goto(
       `/sv/requirements/INT0001/${server.versions[0].versionNumber}`,
     )
+    await expect
+      .poll(() => page.evaluate(() => Boolean(window.history.state?.__NA)))
+      .toBe(true)
+    await page.evaluate(() => {
+      window.history.pushState(
+        window.history.state,
+        '',
+        `${window.location.pathname}?history=intermediate`,
+      )
+    })
     await page.getByRole('link', { name: 'Redigera', exact: true }).click()
   } else {
     await page.goto('/sv/requirements/INT0001/edit')
   }
+  await beforeEdit?.()
   await page
     .getByRole('textbox', { name: /^Kravtext/ })
     .fill('Min osparade kravtext')
@@ -263,6 +275,8 @@ test.describe('Requirement edit reconciliation', () => {
     }) => {
       await context.grantPermissions(['clipboard-read', 'clipboard-write'])
       const { server, saved } = await openConcurrentEdit(page, request)
+      await page.getByRole('checkbox', { name: /NR-1 Norm 1/ }).check()
+      await page.getByRole('checkbox', { name: 'Paket 2', exact: true }).check()
       server.versions[0].status =
         restriction === 'archived' ? 4 : restriction === 'review' ? 2 : 1
       server.permissions.canEdit = restriction !== 'permission'
@@ -304,9 +318,10 @@ test.describe('Requirement edit reconciliation', () => {
         await expect(page.getByRole('status')).toHaveText(
           'Osparat arbete har kopierats.',
         )
-        expect(
-          await page.evaluate(() => navigator.clipboard.readText()),
-        ).toContain('Kravtext: Min osparade kravtext')
+        const copied = await page.evaluate(() => navigator.clipboard.readText())
+        expect(copied).toContain('Kravtext: Min osparade kravtext')
+        expect(copied).toContain('Norm 1 (#1)')
+        expect(copied).toContain('Paket 2 (#2)')
         await page.getByRole('button', { name: 'Visa senaste' }).click()
         await page
           .getByRole('alertdialog')
@@ -320,71 +335,105 @@ test.describe('Requirement edit reconciliation', () => {
     })
   }
 
-  for (const legacyHistory of [false, true]) {
-    test(`COL-11: declined navigation, browser Back and reload preserve the live editor (${legacyHistory ? 'legacy history' : 'Navigation API'})`, async ({
-      page,
-      request,
-    }) => {
-      if (legacyHistory)
-        await page.addInitScript(() => {
-          Object.defineProperty(window, 'navigation', { value: undefined })
-        })
-      await openConcurrentEdit(page, request, true)
-      const decline = async () => {
-        await page
-          .getByRole('alertdialog')
-          .getByRole('button', { name: 'Avbryt', exact: true })
-          .click()
-        await expect(
-          page.getByRole('textbox', { name: /^Kravtext/ }),
-        ).toHaveValue('Min osparade kravtext')
-      }
-      await test.step('decline global navigation', async () => {
-        await page
-          .getByRole('navigation', { name: 'Huvudnavigation' })
-          .getByRole('link', { name: 'Kravunderlag', exact: true })
-          .click()
-        await decline()
-      })
-      await test.step('decline language switching', async () => {
-        await page.getByRole('button', { name: 'Byt språk' }).click()
-        await decline()
-        await expect(page).toHaveURL(/\/sv\/requirements\/INT0001\/edit$/)
-      })
-      await test.step('decline browser Back', async () => {
-        await page.evaluate(() => window.history.back())
-        await decline()
-        await expect(page).toHaveURL(/INT0001\/edit$/)
-      })
-      await test.step('decline browser reload', async () => {
-        const dialogPromise = page.waitForEvent('dialog')
-        const reload = page.reload().catch(() => null)
-        const dialog = await dialogPromise
-        expect(dialog.type()).toBe('beforeunload')
-        await dialog.dismiss()
-        await reload
-        await expect(
-          page.getByRole('textbox', { name: /^Kravtext/ }),
-        ).toHaveValue('Min osparade kravtext')
-      })
-      await test.step('explicitly discard and navigate back', async () => {
-        await page.evaluate(() => window.history.back())
-        await page
-          .getByRole('alertdialog')
-          .getByRole('button', { name: 'Bekräfta', exact: true })
-          .click()
-        await expect(page).toHaveURL(/\/sv\/requirements\/INT0001\/\d+$/)
-        await page.getByRole('link', { name: 'Redigera', exact: true }).click()
-        await page
-          .getByRole('textbox', { name: /^Kravtext/ })
-          .fill('Ytterligare osparat arbete')
-        await page.getByRole('button', { name: 'Avbryt', exact: true }).click()
-        await page
-          .getByRole('alertdialog')
-          .getByRole('button', { name: 'Bekräfta', exact: true })
-          .click()
-        await expect(page).toHaveURL(/\/sv\/requirements\/INT0001\/\d+$/)
-      })
+  test('COL-11: an editor at the first history entry keeps unsaved work when Back has no destination', async ({
+    page,
+    request,
+    context,
+  }) => {
+    await openConcurrentEdit(page, request, false, async () => {
+      const session = await context.newCDPSession(page)
+      await session.send('Page.resetNavigationHistory')
+      await session.detach()
     })
-  }
+    expect(await page.evaluate(() => window.history.length)).toBe(1)
+    await page.evaluate(() => window.history.back())
+    await expect(page.getByRole('textbox', { name: /^Kravtext/ })).toHaveValue(
+      'Min osparade kravtext',
+    )
+    await page.getByRole('button', { name: 'Avbryt', exact: true }).click()
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: 'Bekräfta', exact: true })
+      .click()
+    await expect(page).toHaveURL(/INT0001\/edit$/)
+    await expect(page.getByRole('textbox', { name: /^Kravtext/ })).toHaveValue(
+      'Min osparade kravtext',
+    )
+    expect(await page.evaluate(() => window.history.length)).toBe(1)
+  })
+
+  test('COL-11: declined navigation, browser Back and reload preserve the live editor', async ({
+    page,
+    request,
+  }) => {
+    await openConcurrentEdit(page, request, true)
+    const selectEarlierEntry = () =>
+      page.evaluate(() => {
+        const destination = window.navigation.entries()[0]
+        const traversal = window.navigation.traverseTo(destination.key)
+        void Promise.all([traversal.committed, traversal.finished]).catch(
+          () => undefined,
+        )
+      })
+    const decline = async () => {
+      await page
+        .getByRole('alertdialog')
+        .getByRole('button', { name: 'Avbryt', exact: true })
+        .click()
+      await expect(
+        page.getByRole('textbox', { name: /^Kravtext/ }),
+      ).toHaveValue('Min osparade kravtext')
+    }
+    await test.step('decline global navigation', async () => {
+      await page
+        .getByRole('navigation', { name: 'Huvudnavigation' })
+        .getByRole('link', { name: 'Kravunderlag', exact: true })
+        .click()
+      await decline()
+    })
+    await test.step('decline language switching', async () => {
+      await page.getByRole('button', { name: 'Byt språk' }).click()
+      await decline()
+      await expect(page).toHaveURL(/\/sv\/requirements\/INT0001\/edit$/)
+    })
+    await test.step('decline browser Back', async () => {
+      await page.evaluate(() => window.history.back())
+      await decline()
+      await expect(page).toHaveURL(/INT0001\/edit$/)
+    })
+    await test.step('decline a history-menu jump over an intermediate detail entry', async () => {
+      await selectEarlierEntry()
+      await decline()
+      await expect(page).toHaveURL(/INT0001\/edit$/)
+    })
+    await test.step('decline browser reload', async () => {
+      const dialogPromise = page.waitForEvent('dialog')
+      const reload = page.reload().catch(() => null)
+      const dialog = await dialogPromise
+      expect(dialog.type()).toBe('beforeunload')
+      await dialog.dismiss()
+      await reload
+      await expect(
+        page.getByRole('textbox', { name: /^Kravtext/ }),
+      ).toHaveValue('Min osparade kravtext')
+    })
+    await test.step('explicitly discard and reach the selected history destination', async () => {
+      await selectEarlierEntry()
+      await page
+        .getByRole('alertdialog')
+        .getByRole('button', { name: 'Bekräfta', exact: true })
+        .click()
+      await expect(page).toHaveURL(/\/sv\/requirements\/INT0001\/\d+$/)
+      await page.getByRole('link', { name: 'Redigera', exact: true }).click()
+      await page
+        .getByRole('textbox', { name: /^Kravtext/ })
+        .fill('Ytterligare osparat arbete')
+      await page.getByRole('button', { name: 'Avbryt', exact: true }).click()
+      await page
+        .getByRole('alertdialog')
+        .getByRole('button', { name: 'Bekräfta', exact: true })
+        .click()
+      await expect(page).toHaveURL(/\/sv\/requirements\/INT0001\/\d+$/)
+    })
+  })
 })

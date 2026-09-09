@@ -1385,7 +1385,9 @@ Använd Kopiera osparat arbete. Välj Visa senaste och avbryt kasseringen.
 
 **Förväntat resultat:** Formuläret förklarar granskningsbegränsningen och
 sparandet förblir blockerat. Kopieringen innehåller de osparade värdena och
-bekräftas utan att formuläret töms. Misslyckad kopiering visar ett fel och
+bekräftas utan att formuläret töms. Valda kategorier, typer, kravområden,
+prioriteter, kvalitetsegenskaper, normreferenser och kravpaket kopieras med
+läsbara namn och identifierare. Misslyckad kopiering visar ett fel och
 kan upprepas. Avbruten kassering behåller redigeringen. Arkiverad status och
 förlorad redigeringsbehörighet skyddas på samma sätt.
 
@@ -1393,13 +1395,17 @@ förlorad redigeringsbehörighet skyddas på samma sätt.
 
 **Steg:** Öppna ett krav från kravdetaljen och ändra Kravtext. Klicka på
 Kravunderlag i huvudnavigationen och avbryt kasseringen. Försök byta språk
-och avbryt kasseringen. Försök sedan gå
-bakåt i webbläsaren och avbryt. Försök ladda om sidan och avbryt webbläsarens
-bekräftelse. Gå slutligen bakåt och bekräfta kasseringen. Öppna redigeringen
-igen, gör en ändring och upprepa med formulärets Avbryt.
+och avbryt kasseringen. Försök sedan gå bakåt i webbläsaren och avbryt.
+Välj också en tidigare sida direkt i historikmenyn för att hoppa över en
+mellanliggande sida och avbryt. Försök ladda om sidan och avbryt webbläsarens
+bekräftelse. Välj slutligen den tidigare sidan och bekräfta kasseringen.
+Öppna redigeringen igen, gör en ändring och upprepa med formulärets Avbryt.
 
 **Förväntat resultat:** Varje avbruten åtgärd behåller formuläret och den
-osparade texten. Bekräftad kassering tillåter navigeringen.
+osparade texten. Bekräftad kassering tillåter navigering till den valda
+historikposten. Om redigeraren är den enda historikposten i en ny flik ska
+Bakåt och formulärets Avbryt behålla arbetet utan att skapa extra
+historikposter.
 
 ## Kravunderlag
 

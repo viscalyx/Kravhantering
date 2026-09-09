@@ -515,9 +515,24 @@ redirects and errors. Alternative load balancers, reverse proxies and CDNs
 must emit equivalent single values rather than append duplicates. Missing,
 duplicate or conflicting values fail deployment verification.
 
-The supported browser baseline is modern Chrome, Edge, Firefox, Safari, and
-current platform WebViews. IE and pre-CSP2 browser engines are unsupported, so
-CSP `frame-ancestors` is the primary clickjacking control for page responses.
+Supported browsers are current, vendor-supported releases with the
+Navigation API. The minimum versions for this API are:
+
+| Browser                | Minimum version |
+| ---------------------- | --------------- |
+| Chrome                 | 102             |
+| Edge                   | 102             |
+| Firefox                | 147             |
+| Safari (macOS and iOS) | 26.2            |
+
+Embedded WebViews must also provide the Navigation API. These are API
+compatibility minimums, not recommendations to use outdated browser releases.
+See the [Navigation API compatibility data](https://developer.mozilla.org/en-US/docs/Web/API/Navigation#browser_compatibility).
+The requirement editor uses this API for history-navigation confirmation and
+requires it; no legacy history fallback is provided.
+
+IE and pre-CSP2 browser engines are unsupported, so CSP `frame-ancestors` is
+the primary clickjacking control for page responses.
 `X-Frame-Options` remains as a static fallback because the proxy matcher
 intentionally skips reviewed framework resources, metadata routes, and public
 assets, while static headers still apply to those responses. Other paths,

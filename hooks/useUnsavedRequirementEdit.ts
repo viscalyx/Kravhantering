@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useId, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import {
   GUARDED_NAVIGATION_EVENT,
@@ -10,7 +10,6 @@ import {
 /** Keep the live requirement editor mounted until navigation is confirmed. */
 export function useUnsavedRequirementEdit(dirty: boolean) {
   const confirmDiscard = useDiscardChangesConfirmation()
-  const historyGuardId = useId()
   const navigationAllowed = useRef(false)
   const confirming = useRef(false)
 
@@ -19,21 +18,7 @@ export function useUnsavedRequirementEdit(dirty: boolean) {
     if (!dirty) return
 
     const currentHref = window.location.href
-    const currentHistoryState: unknown = window.history.state
     const navigation = window.navigation
-    // Older browsers need an adjacent entry with the same router state so Back
-    // cannot unmount the editor before the popstate confirmation runs.
-    if (
-      !navigation &&
-      window.history.state?.requirementEditGuard !== historyGuardId
-    ) {
-      History.prototype.pushState.call(
-        window.history,
-        { ...window.history.state, requirementEditGuard: historyGuardId },
-        '',
-        currentHref,
-      )
-    }
     const confirmNavigation = async ({
       anchorEl,
       proceed,
@@ -102,27 +87,15 @@ export function useUnsavedRequirementEdit(dirty: boolean) {
       await confirmNavigation({
         proceed: () => {
           // A new user navigation may supersede this one while it completes.
-          void navigation.traverseTo(key).finished?.catch(() => {
-            navigationAllowed.current = false
-          })
+          const traversal = navigation.traverseTo(key)
+          void Promise.all([traversal.committed, traversal.finished]).catch(
+            () => {
+              navigationAllowed.current = false
+            },
+          )
         },
       })
     }
-    const legacyBack = async (event: PopStateEvent) => {
-      if (navigationAllowed.current) return
-      event.stopImmediatePropagation()
-      History.prototype.pushState.call(
-        window.history,
-        {
-          ...(currentHistoryState as object),
-          requirementEditGuard: historyGuardId,
-        },
-        '',
-        currentHref,
-      )
-      await confirmNavigation({ proceed: () => window.history.go(-2) })
-    }
-
     const guardNavigation = async (event: Event) => {
       if (navigationAllowed.current) return
       event.preventDefault()
@@ -133,34 +106,25 @@ export function useUnsavedRequirementEdit(dirty: boolean) {
     window.addEventListener(GUARDED_NAVIGATION_EVENT, guardNavigation)
     window.addEventListener('beforeunload', beforeUnload)
     document.addEventListener('click', followLink, true)
-    if (navigation) navigation.addEventListener('navigate', traverseHistory)
-    else window.addEventListener('popstate', legacyBack)
+    navigation.addEventListener('navigate', traverseHistory)
     return () => {
       window.removeEventListener(GUARDED_NAVIGATION_EVENT, guardNavigation)
       window.removeEventListener('beforeunload', beforeUnload)
       document.removeEventListener('click', followLink, true)
-      if (navigation)
-        navigation.removeEventListener('navigate', traverseHistory)
-      else window.removeEventListener('popstate', legacyBack)
+      navigation.removeEventListener('navigate', traverseHistory)
     }
-  }, [dirty, confirmDiscard, historyGuardId])
+  }, [dirty, confirmDiscard])
 
   const allowNavigation = useCallback(() => {
     navigationAllowed.current = true
   }, [])
   const navigateBack = useCallback(
     (back: () => void) => {
+      if (dirty && !window.navigation.canGoBack) return
       navigationAllowed.current = true
-      if (
-        !window.navigation &&
-        window.history.state?.requirementEditGuard === historyGuardId
-      ) {
-        window.history.go(-2)
-      } else {
-        back()
-      }
+      back()
     },
-    [historyGuardId],
+    [dirty],
   )
   return { allowNavigation, navigateBack }
 }

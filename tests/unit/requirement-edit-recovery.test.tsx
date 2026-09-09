@@ -18,6 +18,7 @@ import type {
   RequirementVersionDetail,
 } from '@/lib/requirements/types'
 import messages from '@/messages/en.json'
+import svMessages from '@/messages/sv.json'
 
 const { push, back, replace } = vi.hoisted(() => ({
   push: vi.fn(),
@@ -31,7 +32,10 @@ vi.mock('@/i18n/routing', () => ({
 vi.mock('@/components/HelpPanel', () => ({ useHelpContent: vi.fn() }))
 
 const fetchMock = vi.fn()
-let navigation: EventTarget & { traverseTo: ReturnType<typeof vi.fn> }
+let navigation: EventTarget & {
+  canGoBack: boolean
+  traverseTo: ReturnType<typeof vi.fn>
+}
 const initialToken = '11111111-1111-4111-8111-111111111111'
 const latestToken = '22222222-2222-4222-8222-222222222222'
 
@@ -117,10 +121,13 @@ let save: (body: Record<string, unknown>) => Response
 let readsFail: boolean
 let submitted: Record<string, unknown>[]
 
-async function openEditor() {
+async function openEditor(locale: 'en' | 'sv' = 'en') {
   const user = userEvent.setup()
   render(
-    <NextIntlClientProvider locale="en" messages={messages}>
+    <NextIntlClientProvider
+      locale={locale}
+      messages={locale === 'sv' ? svMessages : messages}
+    >
       <ConfirmModalProvider>
         <a href="/en/requirements">Requirements library</a>
         <LanguageSwitcher />
@@ -129,11 +136,17 @@ async function openEditor() {
     </NextIntlClientProvider>,
   )
   await screen.findByRole('option', { name: 'Platform' })
-  const text = screen.getByRole('textbox', { name: /^Requirement text/ })
+  const text = screen.getByRole('textbox', {
+    name: locale === 'sv' ? /^Kravtext/ : /^Requirement text/,
+  })
   await user.clear(text)
   await user.type(text, 'Local text')
   await waitFor(() =>
-    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled(),
+    expect(
+      screen.getByRole('button', {
+        name: locale === 'sv' ? 'Spara' : 'Save',
+      }),
+    ).toBeEnabled(),
   )
   return user
 }
@@ -151,6 +164,7 @@ describe('Requirement edit recovery', () => {
     vi.clearAllMocks()
     vi.stubGlobal('fetch', fetchMock)
     navigation = Object.assign(new EventTarget(), {
+      canGoBack: true,
       traverseTo: vi.fn(() => ({ finished: Promise.resolve() })),
     })
     vi.stubGlobal('navigation', navigation)
@@ -456,6 +470,98 @@ describe('Requirement edit recovery', () => {
       expect(
         screen.getByRole('textbox', { name: /^Requirement text/ }),
       ).toHaveValue('Local text')
+    },
+  )
+
+  it.each(['en', 'sv'] as const)(
+    'copies readable selections with %s labels',
+    async locale => {
+      server = detail({
+        category: { id: 1, nameEn: 'Business', nameSv: 'Verksamhet' },
+        type: { id: 1, nameEn: 'Functional', nameSv: 'Funktionell' },
+        qualityCharacteristic: {
+          id: 1,
+          nameEn: 'Security',
+          nameSv: 'Säkerhet',
+        },
+        priorityLevel: {
+          id: 1,
+          nameEn: 'Priority 1',
+          nameSv: 'Prioritet 1',
+          code: 'P1',
+          sortOrder: 1,
+          color: '#123456',
+          iconName: null,
+        },
+        versionNormReferences: [
+          {
+            normReference: {
+              id: 1,
+              name: 'Norm 1',
+              normReferenceId: 'NR-1',
+              issuer: 'Issuer',
+              reference: 'Reference',
+              type: 'Standard',
+              uri: null,
+              version: null,
+            },
+          },
+        ],
+        versionRequirementPackages: [
+          {
+            requirementPackage: {
+              id: 2,
+              name: 'Package 2',
+              purposeAndScope: null,
+            },
+          },
+        ],
+      })
+      const user = await openEditor(locale)
+      const localized = locale === 'sv' ? svMessages : messages
+      const copy = vi
+        .spyOn(navigator.clipboard, 'writeText')
+        .mockResolvedValue()
+      await user.click(
+        screen.getByRole('button', {
+          name: localized.common.save,
+        }),
+      )
+      await user.click(
+        await screen.findByRole('button', {
+          name: localized.requirement.reconciliation.copy,
+        }),
+      )
+      const copied = String(copy.mock.calls[0][0])
+      for (const value of [
+        'Platform (#1)',
+        'Norm 1 (#1)',
+        'Package 2 (#2)',
+        ...(locale === 'sv'
+          ? [
+              'Verksamhet (#1)',
+              'Funktionell (#1)',
+              'Säkerhet (#1)',
+              'Prioritet 1 (#1)',
+            ]
+          : [
+              'Business (#1)',
+              'Functional (#1)',
+              'Security (#1)',
+              'Priority 1 (#1)',
+            ]),
+      ]) {
+        expect(copied).toContain(value)
+      }
+      expect(copied).toContain(
+        `${localized.requirement.description}: Local text`,
+      )
+      expect(copied).toContain(
+        `${localized.requirement.verifiable}: ${localized.common.yes}`,
+      )
+      expect(copied).toContain(
+        `${localized.requirement.verificationMethod}: Starting method`,
+      )
     },
   )
 
@@ -769,27 +875,19 @@ describe('Requirement edit recovery', () => {
     )
     expect(navigation.traverseTo).toHaveBeenCalledWith('previous-entry')
   })
-  it('keeps work on declined browser Back without the Navigation API', async () => {
-    vi.stubGlobal('navigation', undefined)
+  it('does not add an unreachable back destination at the first history entry', async () => {
+    navigation.canGoBack = false
     const user = await openEditor()
-    fireEvent.popState(window)
-    await user.click(
-      within(await screen.findByRole('alertdialog')).getByRole('button', {
-        name: 'Cancel',
-      }),
-    )
-    expect(
-      screen.getByRole('textbox', { name: /^Requirement text/ }),
-    ).toHaveValue('Local text')
-    const go = vi.spyOn(window.history, 'go').mockImplementation(() => {})
-    fireEvent.popState(window)
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
     await user.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', {
         name: 'Confirm',
       }),
     )
-    expect(go).toHaveBeenCalledWith(-2)
-    go.mockRestore()
+    expect(back).not.toHaveBeenCalled()
+    const unload = new Event('beforeunload', { cancelable: true })
+    fireEvent(window, unload)
+    expect(unload.defaultPrevented).toBe(true)
   })
 
   it.each([
@@ -839,23 +937,21 @@ describe('Requirement edit recovery', () => {
     ).toHaveValue('Local text')
     unmount()
   })
-  it('leaves the editor after confirmed Cancel in a browser without the Navigation API', async () => {
-    vi.stubGlobal('navigation', undefined)
+  it('leaves the editor after confirmed Cancel when a previous entry exists', async () => {
     const user = await openEditor()
-    const go = vi.spyOn(window.history, 'go').mockImplementation(() => {})
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     await user.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', {
         name: 'Confirm',
       }),
     )
-    expect(go).toHaveBeenCalledWith(-2)
-    go.mockRestore()
+    expect(back).toHaveBeenCalledOnce()
   })
 
   it('keeps navigation guarded when an approved traversal is superseded', async () => {
     const user = await openEditor()
     navigation.traverseTo.mockImplementationOnce(() => ({
+      committed: Promise.reject(new Error('Superseded')),
       finished: Promise.reject(new Error('Superseded')),
     }))
     const event = () =>

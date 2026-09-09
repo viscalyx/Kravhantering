@@ -5,7 +5,10 @@ import { useLocale, useTranslations } from 'next-intl'
 import { type RefObject, useId, useRef, useState } from 'react'
 import FormModal from '@/components/FormModal'
 import type { RequirementFormFieldValues } from '@/components/RequirementFormFields'
-import { compareRequirementEdits } from '@/components/requirement-edit-reconciliation'
+import {
+  compareRequirementEdits,
+  formatRequirementEditValue,
+} from '@/components/requirement-edit-reconciliation'
 import type { TaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 import { devMarker } from '@/lib/developer-mode-markers'
 
@@ -65,36 +68,12 @@ export default function RequirementEditReconciliation({
   const formatValue = (
     values: RequirementFormFieldValues,
     field: keyof RequirementFormFieldValues,
-  ) => {
-    const value = values[field]
-    if (typeof value === 'boolean') return value ? tc('yes') : tc('no')
-    if (value === '' || (Array.isArray(value) && value.length === 0))
-      return t('reconciliation.empty')
-    const catalogs = {
-      areaId: taxonomyOptions.areas,
-      categoryId: taxonomyOptions.categories,
-      typeId: taxonomyOptions.types,
-      qualityCharacteristicId: taxonomyOptions.qualityCharacteristics,
-      priorityLevelId: taxonomyOptions.priorityLevels,
-      normReferenceIds: taxonomyOptions.normReferences,
-      requirementPackageIds: taxonomyOptions.requirementPackages,
-    }
-    if (!(field in catalogs)) return String(value)
-    const catalog = catalogs[field as keyof typeof catalogs]
-    return (Array.isArray(value) ? value : [Number(value)])
-      .map(id => {
-        const option = catalog.find(item => item.id === id)
-        if (!option) return `#${id}`
-        const name =
-          'name' in option
-            ? option.name
-            : locale === 'sv'
-              ? option.nameSv
-              : option.nameEn
-        return `${name} (#${id})`
-      })
-      .join(', ')
-  }
+  ) =>
+    formatRequirementEditValue(values, field, taxonomyOptions, locale, {
+      yes: tc('yes'),
+      no: tc('no'),
+      empty: t('reconciliation.empty'),
+    })
 
   return (
     <FormModal

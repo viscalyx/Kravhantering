@@ -215,6 +215,18 @@ vi.mock('next/navigation', () => ({
   notFound: vi.fn(),
 }))
 
+// The supported browser baseline includes the Navigation API; jsdom does not.
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'navigation', {
+    configurable: true,
+    writable: true,
+    value: Object.assign(new EventTarget(), {
+      canGoBack: true,
+      traverseTo: vi.fn(() => ({ finished: Promise.resolve() })),
+    }),
+  })
+}
+
 // jsdom does not provide these browser observers, but multiple components
 // rely on them during effects. Define stable no-op implementations once so
 // per-test global cleanup restores to these defaults instead of `undefined`.

@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { AlertTriangle, ExternalLink, Plus, RotateCcw } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import DirtyStateButton from '@/components/DirtyStateButton'
@@ -17,7 +17,10 @@ import RequirementEditReconciliation, {
 import RequirementFormFields, {
   type RequirementFormFieldValues,
 } from '@/components/RequirementFormFields'
-import type { RequirementEditSnapshot } from '@/components/requirement-edit-reconciliation'
+import {
+  formatRequirementEditValue,
+  type RequirementEditSnapshot,
+} from '@/components/requirement-edit-reconciliation'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 import { useUnsavedRequirementEdit } from '@/hooks/useUnsavedRequirementEdit'
@@ -207,6 +210,7 @@ export default function RequirementForm({
   const tc = useTranslations('common')
   const t = useTranslations('requirement')
   const router = useRouter()
+  const locale = useLocale()
   const shouldReduceMotion = useReducedMotion()
   const confirmDiscardChanges = useDiscardChangesConfirmation()
 
@@ -494,8 +498,20 @@ export default function RequirementForm({
     try {
       const text = Object.entries(REQUIREMENT_EDIT_LABELS)
         .map(([field, label]) => {
-          const value = form[field as keyof RequirementFormFieldValues]
-          return `${t(label)}: ${Array.isArray(value) ? value.join(', ') : typeof value === 'boolean' ? tc(value ? 'yes' : 'no') : value}`
+          const value = formatRequirementEditValue(
+            form,
+            field as keyof RequirementFormFieldValues,
+            {
+              ...taxonomyOptions,
+              normReferences: [
+                ...taxonomyOptions.normReferences,
+                ...createdNormRefs,
+              ],
+            },
+            locale,
+            { yes: tc('yes'), no: tc('no'), empty: '' },
+          )
+          return `${t(label)}: ${value}`
         })
         .join('\n\n')
       await navigator.clipboard.writeText(text)

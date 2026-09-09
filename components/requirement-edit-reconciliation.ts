@@ -1,4 +1,5 @@
 import type { RequirementFormFieldValues } from '@/components/RequirementFormFields'
+import type { TaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 import {
   STATUS_ARCHIVED,
   STATUS_PUBLISHED,
@@ -105,4 +106,41 @@ export function compareRequirementEdits(
       proposed: localChanged ? local : server,
     }
   })
+}
+
+export function formatRequirementEditValue(
+  values: RequirementFormFieldValues,
+  field: keyof RequirementFormFieldValues,
+  taxonomyOptions: TaxonomyOptions,
+  locale: string,
+  text: { yes: string; no: string; empty: string },
+): string {
+  const value = values[field]
+  if (typeof value === 'boolean') return value ? text.yes : text.no
+  if (value === '' || (Array.isArray(value) && value.length === 0))
+    return text.empty
+  const catalogs = {
+    areaId: taxonomyOptions.areas,
+    categoryId: taxonomyOptions.categories,
+    typeId: taxonomyOptions.types,
+    qualityCharacteristicId: taxonomyOptions.qualityCharacteristics,
+    priorityLevelId: taxonomyOptions.priorityLevels,
+    normReferenceIds: taxonomyOptions.normReferences,
+    requirementPackageIds: taxonomyOptions.requirementPackages,
+  }
+  if (!(field in catalogs)) return String(value)
+  const catalog = catalogs[field as keyof typeof catalogs]
+  return (Array.isArray(value) ? value : [Number(value)])
+    .map(id => {
+      const option = catalog.find(item => item.id === id)
+      if (!option) return `#${id}`
+      const name =
+        'name' in option
+          ? option.name
+          : locale === 'sv'
+            ? option.nameSv
+            : option.nameEn
+      return `${name} (#${id})`
+    })
+    .join(', ')
 }
