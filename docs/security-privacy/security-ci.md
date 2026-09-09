@@ -377,6 +377,17 @@ and document the reason here with an issue link.
 
 ### Reading reports
 
+The **Evaluate DAST scan outcomes** step prints blocking ZAP alerts before
+failing and adds them to the job summary. Each entry includes the rule ID,
+risk, configured action, instance count, up to three affected URLs, detailed
+notices, and remediation. Both `WARN` and `FAIL` block the job even for
+low-risk alerts; `INFO`, `IGNORE`, and `PASS` entries are excluded. Output is
+limited to 50 alerts and 1,000 characters per text field. URL credentials,
+query strings, fragments, and raw request/response evidence are omitted.
+If the report cannot be read, or ZAP fails without blocking alerts, the
+diagnostics point to the scanner step for execution errors. Diagnostic
+reporting does not change the scan failure policy.
+
 After the workflow finishes, download the **`zap_scan`** artifact from
 the workflow run summary. It contains:
 

@@ -408,12 +408,16 @@ jobs:
 
       - name: Evaluate DAST scan outcomes
         if: always()
+        env:
+          ZAP_SCAN_OUTCOME: ${{ steps.zap_scan.outcome }}
         run: |
           set -euo pipefail
           failed=0
 
-          if [ "${{ steps.zap_scan.outcome }}" = "failure" ]; then
-            echo "::error::OWASP ZAP baseline reported unsuppressed alerts."
+          node scripts/security/summarize-zap.mjs
+
+          if [ "${ZAP_SCAN_OUTCOME}" = "failure" ]; then
+            echo "::error::OWASP ZAP baseline failed. See the ZAP diagnostics above and the Run OWASP ZAP baseline scan step."
             failed=1
           fi
 
