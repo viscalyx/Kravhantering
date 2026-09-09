@@ -81,6 +81,60 @@ async function patchApplicationSetting(
 test.describe('Admin settings', () => {
   test.use({ viewport: DESKTOP_VIEWPORT })
 
+  test('ADMIN-30: Security saves the CSP logging switch and explains enforcement', async ({
+    page,
+    request,
+  }) => {
+    const original = await getApplicationSettings(request)
+    try {
+      await page.goto('/sv/admin?tab=settings')
+      const section = page.getByRole('region', {
+        name: 'Säkerhet',
+        exact: true,
+      })
+      const control = section.getByRole('checkbox', {
+        name: 'Logga CSP-överträdelser',
+      })
+      await expect(control).toBeEnabled()
+      await control.setChecked(!original.cspViolationLoggingEnabled)
+      await expect(section.getByText('Sparat', { exact: true })).toBeVisible()
+      await page.reload()
+      await expect(control).toBeChecked({
+        checked: !original.cspViolationLoggingEnabled,
+      })
+      await section.getByRole('button', { name: /Hjälp: Logga CSP/ }).click()
+      await expect(
+        section.getByText(/webbläsare kan fortfarande skicka rapporter/),
+      ).toBeVisible()
+      const response = await page.request.get('/api/admin/application-settings')
+      expect((await response.json()).cspViolationLoggingEnabled).toBe(
+        !original.cspViolationLoggingEnabled,
+      )
+      await page.route('**/api/admin/application-settings', async route => {
+        if (route.request().method() === 'PATCH') await route.abort('failed')
+        else await route.continue()
+      })
+      await control.focus()
+      await control.press('Space')
+      await expect(section.getByRole('status')).toContainText(
+        'Kunde inte spara inställningen.',
+      )
+      await expect(control).toBeChecked({
+        checked: !original.cspViolationLoggingEnabled,
+      })
+    } finally {
+      expect(
+        (
+          await request.patch('/api/admin/application-settings', {
+            data: {
+              cspViolationLoggingEnabled: original.cspViolationLoggingEnabled,
+            },
+          })
+        ).ok(),
+      ).toBeTruthy()
+    }
+  })
+
   test('ADMIN-15: Settings exposes limits and autosaves one application setting', async ({
     page,
     request,
@@ -116,7 +170,7 @@ test.describe('Admin settings', () => {
       ).toBeVisible()
       const sectionOrder = await panel
         .locator(
-          '#admin-settings-ai-section, [aria-labelledby="admin-settings-imports-title"], [aria-labelledby="admin-settings-exports-title"], [aria-labelledby="admin-settings-reports-title"]',
+          '#admin-settings-ai-section, [aria-labelledby="admin-settings-security-title"], [aria-labelledby="admin-settings-imports-title"], [aria-labelledby="admin-settings-exports-title"], [aria-labelledby="admin-settings-reports-title"]',
         )
         .evaluateAll(sections =>
           sections.map(
@@ -125,6 +179,7 @@ test.describe('Admin settings', () => {
         )
       expect(sectionOrder).toEqual([
         'admin-settings-ai-title',
+        'admin-settings-security-title',
         'admin-settings-imports-title',
         'admin-settings-exports-title',
         'admin-settings-reports-title',

@@ -15,6 +15,7 @@ export const DEFAULT_TARGET_SPECS = 10
 export const MANIFEST_PATH = 'tests/integration-chunks.manifest.json'
 
 export const PRUNED_RUNTIME_SPECS = [
+  'tests/integration/authentication/csp-reporting.spec.ts',
   'tests/integration/00-report-pdf/authorization-boundaries.spec.ts',
   'tests/integration/authentication/login.spec.ts',
   'tests/integration/authentication/security.spec.ts',

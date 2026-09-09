@@ -260,3 +260,17 @@ samma databaslås. Privilegierad radering återställer återstående startkvot.
 
 Se [driftkontraktet](../operations/export-report-admission.md) för
 fingeravtrycksnyckel, rensningskompatibilitet och samordnad driftsättning.
+
+## CSP-diagnostik i Säkerhetslogg
+
+CSP-rapporter är obetrodd webbläsartelemetri. Endast fasta kategorier för
+CSP-direktiv, blockerad resurs och sidyta samt serverns mottagningstid och
+versions-/miljömetadata når plattformens Säkerhetslogg. Råa URL:er, sökvägar,
+frågeparametrar, policytext, kodexempel, identiteter och begärans personmetadata
+avlägsnas före loggning. Rapportinnehåll sparas varken i SQL eller Åtgärdslogg.
+
+Undantag från appstyrd gallring: driftens befintliga säkerhetsprocess äger
+insamling, loggläsarbehörigheter och retention. Inställningen för loggning skapar
+ingen ny lagringstid eller åtkomsträtt. Transient käll-IP används endast för
+resursbegränsning och rensas inom ett 60-sekundersfönster; den loggas inte i
+CSP-händelser. Se [operatörskontraktet](../operations/csp-reporting.md).

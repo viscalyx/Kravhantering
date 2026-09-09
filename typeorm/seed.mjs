@@ -1036,6 +1036,7 @@ const SEED_DATA = {
   application_settings: {
     columns: [
       'id',
+      'is_csp_violation_logging_enabled',
       'csv_export_max_items',
       'csv_export_max_file_bytes',
       'csv_export_concurrency_per_node',
@@ -1057,6 +1058,7 @@ const SEED_DATA = {
     rows: [
       [
         1,
+        true,
         1000,
         104857600,
         5,

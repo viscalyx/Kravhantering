@@ -25,6 +25,7 @@ import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 const applicationSettingsPatchSchema = z
   .object({
+    cspViolationLoggingEnabled: z.boolean().optional(),
     exportActorStartsPerMinute: z
       .number()
       .int()
@@ -182,7 +183,7 @@ export const PATCH = secureMutationRoute({
     try {
       const [field, value] = Object.entries(body)[0] as [
         ApplicationSettingField,
-        number,
+        number | boolean,
       ]
       const db = await getRequestSqlServerDataSource()
       const update = await updateApplicationSetting(db, field, value, {

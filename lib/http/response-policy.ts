@@ -14,6 +14,7 @@ const ROUTE_HANDLER_BRAND = Symbol.for(
 )
 
 export type RouteHandlerBrand =
+  | 'native-csp-report'
   | 'logout-mutation'
   | 'mutation'
   | 'response-policy'

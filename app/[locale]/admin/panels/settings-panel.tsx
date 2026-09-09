@@ -1,6 +1,13 @@
 'use client'
 
-import { Download, FileInput, FileText, Minus, Plus } from 'lucide-react'
+import {
+  Download,
+  FileInput,
+  FileText,
+  Minus,
+  Plus,
+  Shield,
+} from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import {
   type KeyboardEvent,
@@ -17,6 +24,7 @@ import {
   type ApplicationSettingField,
   DEFAULT_APPLICATION_SETTINGS,
   MIB,
+  type NumericApplicationSettingField,
 } from '@/lib/application-settings'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -28,7 +36,7 @@ type LoadState = 'error' | 'loading' | 'ready'
 
 interface SettingDefinition {
   adjustmentStep?: number
-  field: ApplicationSettingField
+  field: NumericApplicationSettingField
   stepper?: boolean
   storedAsBytes?: boolean
   unit:
@@ -108,9 +116,7 @@ function apiValue(definition: SettingDefinition, value: number): number {
 
 function emptySaveStates(): Record<ApplicationSettingField, SaveState> {
   return Object.fromEntries(
-    [...IMPORT_SETTINGS, ...EXPORT_SETTINGS, ...REPORT_SETTINGS].map(
-      ({ field }) => [field, 'idle'],
-    ),
+    Object.keys(DEFAULT_APPLICATION_SETTINGS).map(field => [field, 'idle']),
   ) as Record<ApplicationSettingField, SaveState>
 }
 
@@ -133,9 +139,7 @@ export default function SettingsPanel() {
   const [openHelp, setOpenHelp] = useState<ApplicationSettingField | null>(null)
   const saveTokens = useRef<Record<ApplicationSettingField, number>>(
     Object.fromEntries(
-      [...IMPORT_SETTINGS, ...EXPORT_SETTINGS, ...REPORT_SETTINGS].map(
-        ({ field }) => [field, 0],
-      ),
+      Object.keys(DEFAULT_APPLICATION_SETTINGS).map(field => [field, 0]),
     ) as Record<ApplicationSettingField, number>,
   )
   const loadErrorMessage = ta('applicationSettings.loadError')
@@ -192,6 +196,13 @@ export default function SettingsPanel() {
       return
     }
 
+    await saveSetting(field, value)
+  }
+
+  async function saveSetting(
+    field: ApplicationSettingField,
+    value: number | boolean,
+  ) {
     const token = saveTokens.current[field] + 1
     saveTokens.current[field] = token
     const previousValue = settings[field]
@@ -219,7 +230,7 @@ export default function SettingsPanel() {
       const payload = (await response.json()) as {
         field: ApplicationSettingField
         updatedAt: string
-        value: number
+        value: number | boolean
       }
       if (token !== saveTokens.current[field]) return
       setSettings(current => ({
@@ -227,7 +238,10 @@ export default function SettingsPanel() {
         [payload.field]: payload.value,
         updatedAt: payload.updatedAt,
       }))
-      if (payload.field === 'requirementImportMaxRows') {
+      if (
+        payload.field === 'requirementImportMaxRows' &&
+        typeof payload.value === 'number'
+      ) {
         setPersistedMcpImportMaxRowsCeiling(payload.value)
       }
       setSaveStates(current => ({ ...current, [field]: 'saved' }))
@@ -476,6 +490,99 @@ export default function SettingsPanel() {
           onSettingsSettled={handleAiSettingsSettled}
           persistedMcpImportMaxRowsCeiling={persistedMcpImportMaxRowsCeiling}
         />
+
+        <section
+          aria-labelledby="admin-settings-security-title"
+          className="rounded-4xl border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+          {...devMarker({
+            context: 'admin settings',
+            name: 'settings section',
+            value: 'security',
+            priority: 350,
+          })}
+        >
+          <h3
+            className="flex items-center gap-2 text-xl font-semibold text-secondary-950 dark:text-secondary-50"
+            id="admin-settings-security-title"
+          >
+            <Shield
+              aria-hidden="true"
+              className="h-5 w-5 text-primary-700 dark:text-primary-300"
+            />
+            {ta('applicationSettings.security.title')}
+          </h3>
+          <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+            {ta('applicationSettings.security.description')}
+          </p>
+          <div
+            className="mt-4"
+            {...devMarker({
+              context: 'admin settings',
+              name: 'application setting',
+              value: 'cspViolationLoggingEnabled',
+              priority: 350,
+            })}
+          >
+            <div className="flex items-center gap-2">
+              <label
+                className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold"
+                htmlFor="admin-csp-logging"
+              >
+                <input
+                  aria-describedby={
+                    openHelp === 'cspViolationLoggingEnabled'
+                      ? 'admin-csp-logging-help'
+                      : undefined
+                  }
+                  checked={settings.cspViolationLoggingEnabled}
+                  className="h-6 w-6 accent-primary-600"
+                  disabled={
+                    loadState !== 'ready' ||
+                    saveStates.cspViolationLoggingEnabled === 'saving'
+                  }
+                  id="admin-csp-logging"
+                  onChange={event =>
+                    void saveSetting(
+                      'cspViolationLoggingEnabled',
+                      event.target.checked,
+                    )
+                  }
+                  type="checkbox"
+                />
+                {ta(
+                  'applicationSettings.fields.cspViolationLoggingEnabled.label',
+                )}
+              </label>
+              <FieldHelpButton
+                controls="admin-csp-logging-help"
+                expanded={openHelp === 'cspViolationLoggingEnabled'}
+                label={`${tc('help')}: ${ta('applicationSettings.fields.cspViolationLoggingEnabled.label')}`}
+                onClick={() =>
+                  setOpenHelp(current =>
+                    current === 'cspViolationLoggingEnabled'
+                      ? null
+                      : 'cspViolationLoggingEnabled',
+                  )
+                }
+              />
+            </div>
+            <AnimatedHelpPanel
+              id="admin-csp-logging-help"
+              isOpen={openHelp === 'cspViolationLoggingEnabled'}
+            >
+              {ta('applicationSettings.fields.cspViolationLoggingEnabled.help')}
+            </AnimatedHelpPanel>
+            <p aria-live="polite" className="min-h-5 text-sm" role="status">
+              {saveStates.cspViolationLoggingEnabled === 'saving'
+                ? tc('saving')
+                : saveStates.cspViolationLoggingEnabled === 'saved'
+                  ? ta('saved')
+                  : saveStates.cspViolationLoggingEnabled === 'error'
+                    ? ta('applicationSettings.saveError')
+                    : ''}
+            </p>
+          </div>
+        </section>
 
         <section
           aria-labelledby="admin-settings-imports-title"

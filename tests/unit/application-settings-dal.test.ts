@@ -8,6 +8,7 @@ import {
 
 function persistedRow() {
   return {
+    cspViolationLoggingEnabled: true,
     exportActorStartsPerMinute: '10',
     exportActorConcurrency: '1',
     createdAt: '2026-07-18T10:00:00.000Z',
@@ -154,4 +155,53 @@ describe('application settings DAL', () => {
     ).rejects.toMatchObject({ code: 'validation' })
     expect(db.transaction).not.toHaveBeenCalled()
   })
+})
+
+describe('persisted CSP logging Boolean', () => {
+  it('round-trips a disabled SQL bit and audits true/false without coercion', async () => {
+    let enabled = true
+    const manager = {
+      query: vi.fn(async (sql: string, values?: unknown[]) => {
+        if (sql.includes('UPDATE [application_settings]')) {
+          expect(sql).toContain('[is_csp_violation_logging_enabled] = @0')
+          expect(values?.[0]).toBe(false)
+          enabled = values?.[0] as boolean
+          return []
+        }
+        return [{ ...persistedRow(), cspViolationLoggingEnabled: enabled }]
+      }),
+    }
+    const audit = vi.fn(async () => {})
+    const db = {
+      ...manager,
+      transaction: vi.fn(async callback => callback(manager)),
+    }
+    await updateApplicationSetting(
+      db as never,
+      'cspViolationLoggingEnabled',
+      false,
+      { audit },
+    )
+    expect(
+      (await getApplicationSettings(db as never)).cspViolationLoggingEnabled,
+    ).toBe(false)
+    expect(audit).toHaveBeenCalledWith(manager, {
+      field: 'cspViolationLoggingEnabled',
+      oldValue: true,
+      newValue: false,
+    })
+  })
+
+  it.each([undefined, null, 0, 1, 'false'])(
+    'rejects corrupted Boolean state %s without restoring a default',
+    async value => {
+      await expect(
+        getApplicationSettings(
+          queryExecutor([
+            { ...persistedRow(), cspViolationLoggingEnabled: value },
+          ]).executor,
+        ),
+      ).rejects.toThrow('Invalid persisted application setting')
+    },
+  )
 })

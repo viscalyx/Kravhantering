@@ -73,7 +73,7 @@ describe('REST route registry coverage', () => {
     const registered = REST_OPERATIONS.map(
       operation => `${operation.method} ${operation.template}`,
     )
-    expect(Object.keys(routeModules)).toHaveLength(151)
+    expect(Object.keys(routeModules)).toHaveLength(152)
     expect(discovered.sort()).toEqual(registered.sort())
   }, 30_000)
 
@@ -87,9 +87,11 @@ describe('REST route registry coverage', () => {
         unknown
       >
       const expected: RouteHandlerBrand =
-        operation.template === '/api/auth/logout'
-          ? 'logout-mutation'
-          : 'mutation'
+        operation.csrf === 'native-csp-report'
+          ? 'native-csp-report'
+          : operation.template === '/api/auth/logout'
+            ? 'logout-mutation'
+            : 'mutation'
       if (getRouteHandlerBrand(module[operation.method]) !== expected) {
         failures.push(`${operation.method} ${operation.template}`)
       }

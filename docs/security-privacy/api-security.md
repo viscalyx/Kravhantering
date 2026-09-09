@@ -441,3 +441,14 @@ Retry delays vary with rolling usage; active actor limits do not estimate
 completion time. Other export/report and admin setting operations retain
 focused coverage outside Schemathesis. General API edge denials also apply
 to routes covered by the static JSON contract.
+
+## Native CSP report transport
+
+`POST /api/security/csp-reports` is a focused-contract operation outside
+Schemathesis: its native browser report envelopes and delivery are covered by
+receiver/privacy tests, registry completeness and production-like AUTH-13.
+Its exact `native-csp-report` policy permits anonymous, bounded telemetry without
+`X-Requested-With`; attached cookies confer no identity. Other operations,
+including Admin settings, retain session and same-origin CSRF protections.
+See [ADR 0062](../adr/0062-anonym-native-csp-rapportering.md) and the
+[collector contract](../operations/csp-reporting.md).

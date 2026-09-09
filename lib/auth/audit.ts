@@ -14,6 +14,7 @@
 import { getClientIp, isValidClientIp } from './client-ip'
 
 export type SecurityEventName =
+  | 'security.csp.violation_reported'
   | 'access_review.cancelled'
   | 'access_review.completed'
   | 'access_review.created'

@@ -36,7 +36,7 @@ MCP-korpusen ägs enbart av Security MCP.
 - [Navigering](#navigering)
 - [Tillgänglighet](#tillgänglighet)
 - [Autentisering och behörighet](#autentisering-och-behörighet)
-  - [AUTH-01 till AUTH-12](#auth-01-logga-in-via-keycloak)
+  - [AUTH-01 till AUTH-13](#auth-01-logga-in-via-keycloak)
   - [AUTHZ-00 till AUTHZ-10](#authz-00-fas-0-testdata-och-identiteter)
 - [Kravbibliotek](#kravbibliotek)
 - [Skapa krav och livscykel](#skapa-krav-och-livscykel)
@@ -2510,3 +2510,34 @@ visas aldrig. En väntetid lovar inte att tjänsten återhämtar sig.
 CSV-exporten visar samma förklaring om upptagen tjänstekapacitet.
 Det manuella försöket laddar ned CSV-filen, stänger felrutan och återför
 fokus till exportknappen.
+
+### ADMIN-30: Säkerhet styr loggning av CSP-överträdelser
+
+**Steg:** Öppna Inställningar som Admin. Välj kontrollen
+`Logga CSP-överträdelser` i sektionen Säkerhet med tangentbordet. Kontrollera
+Sparar/Sparat, ladda om sidan och öppna fälthjälpen. Simulera ett nätverksfel
+vid nästa ändring. Återställ ursprungsvärdet.
+
+**Förväntat resultat:** Ett booleskt värde sparas direkt och behålls efter
+omladdning. Hjälpen förklarar att avstängning stoppar loggning men att webbläsare
+kan fortsätta skicka rapporter och CSP-skyddet förblir aktivt. Fel visas och
+kontrollen återgår till sparat värde. Endast Admin får läsa eller ändra
+inställningen; ändringen följer ordinarie åtgärdslogg och säkerhetsaudit.
+
+### AUTH-13: Webbläsarens CSP-rapporter når säkerhetsloggen
+
+**Steg:** Kör i produktionslik miljö med tillgång till applikationens
+säkerhetslogg. Med loggning aktiverad, öppna en kravlista och API-dokumentationen.
+Skapa ett skriptelement utan nonce i webbläsarens utvecklarkonsol och försök
+sätta ett testvärde på `window`. Vänta på webbläsarens rapportleverans.
+Ladda om sidorna före varje ändring av inställningen för att undvika att
+webbläsaren undertrycker identiska rapporter. Stäng av loggningen i Inställningar,
+upprepa försöket i redan öppna sidor, och aktivera sedan loggningen igen och
+upprepa. Återställ ursprungsvärdet.
+
+**Förväntat resultat:** Testskriptet körs aldrig. Native rapportering kräver
+varken session eller applikationens specialheader. Med loggning på syns
+`security.csp.violation_reported` med endast fasta diagnostikkategorier och
+servermetadata. Avstängd loggning ger tomt 204-svar utan CSP-händelse, även för
+köade rapporter. Återaktivering fungerar utan omstart. Rapportleverans är
+bästa försök; se operatörsguiden för provade webbläsare och kompatibilitetsväg.

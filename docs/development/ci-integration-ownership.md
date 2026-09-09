@@ -36,9 +36,10 @@ HSA result depends on its own build, topology, and rotation outcomes.
 
 ## Integration coverage policy
 
-`Pruned Runtime Contract` owns five fixed specifications and 17 tests:
+`Pruned Runtime Contract` owns six fixed specifications and 18 tests:
 report authorization boundaries, authentication login, authentication security,
-platform smoke, and platform error-boundary smoke. The manifest validator
+platform smoke, platform error-boundary smoke, and native CSP delivery.
+The manifest validator
 checks their presence before any owned service starts. One production build
 with full dependencies supplies a standalone directory outside repository
 dependency ancestry. The launcher creates a missing `PRODLIKE_RUNTIME_DIR`;

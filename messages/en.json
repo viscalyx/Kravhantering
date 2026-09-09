@@ -2540,7 +2540,7 @@
     },
     "applicationSettings": {
       "title": "Settings",
-      "description": "Shared settings for AI, requirement imports, exports, and reports.",
+      "description": "Shared settings for AI, security, requirement imports, exports, and reports.",
       "loading": "Loading settings…",
       "loadError": "Could not load application settings.",
       "saveError": "Could not save the setting.",
@@ -2635,7 +2635,15 @@
         "exportActorConcurrency": {
           "label": "Active exports and reports per person",
           "help": "Shared across formats, sessions and app nodes, including administrators. Changing the limit does not cancel work."
+        },
+        "cspViolationLoggingEnabled": {
+          "label": "Log CSP violations",
+          "help": "Log privacy-safe categories from untrusted browser CSP reports. Turning this off stops logging; browsers may still send reports, and CSP enforcement remains active. Changes apply without a restart. Security-log access and retention follow the existing operations and security process."
         }
+      },
+      "security": {
+        "title": "Security",
+        "description": "Control logging of browser security reports. CSP enforcement always remains active."
       }
     },
     "archiving": {
@@ -3208,10 +3216,10 @@
       }
     },
     "adminAi": {
-      "title": "AI",
+      "title": "Settings",
       "overview": {
         "heading": "Purpose",
-        "body": "The AI tab controls how AI-assisted requirement authoring and AI-adjacent MCP requests and imports may be used across the system. The settings are global and affect requirement lists, specifications, and import flows that use AI or MCP."
+        "body": "The AI section in Settings controls how AI-assisted requirement authoring and AI-adjacent MCP requests and imports may be used across the system. The settings are global and affect requirement lists, specifications, and import flows that use AI or MCP."
       },
       "settings": {
         "heading": "Available settings",
@@ -3240,6 +3248,10 @@
       "saving": {
         "heading": "Change and restore",
         "body": "Add custom terms with the plus button inside a rule type. Remove selected terms with the minus button; custom additions are deleted while standard terms are deactivated. The word text itself is not edited: add the correct word and remove or deactivate the incorrect one. Restore standard on a rule asks for confirmation before activating standard terms and restoring their directions; custom additions remain unchanged."
+      },
+      "security": {
+        "heading": "Security",
+        "body": "Log privacy-safe categories from untrusted browser CSP reports. Turning this off stops logging; browsers may still send reports, and CSP enforcement remains active. Changes apply without a restart. Security-log access and retention follow the existing operations and security process."
       }
     },
     "adminPrivacy": {

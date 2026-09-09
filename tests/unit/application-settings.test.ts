@@ -9,6 +9,19 @@ import {
 import { applicationSettingEntity } from '@/lib/typeorm/entities/application-setting'
 
 describe('application settings contract', () => {
+  it('defaults CSP logging on and accepts only actual Booleans', () => {
+    expect(DEFAULT_APPLICATION_SETTINGS.cspViolationLoggingEnabled).toBe(true)
+    for (const value of [true, false]) {
+      expect(
+        isValidApplicationSetting('cspViolationLoggingEnabled', value),
+      ).toBe(true)
+    }
+    for (const value of [0, 1, 'true', 'false', null, undefined]) {
+      expect(
+        isValidApplicationSetting('cspViolationLoggingEnabled', value),
+      ).toBe(false)
+    }
+  })
   it('keeps every default inside its database/API constraint', () => {
     for (const [field, value] of Object.entries(DEFAULT_APPLICATION_SETTINGS)) {
       expect(
@@ -19,6 +32,7 @@ describe('application settings contract', () => {
       ).toBe(true)
     }
     expect(DEFAULT_APPLICATION_SETTINGS).toEqual({
+      cspViolationLoggingEnabled: true,
       exportActorStartsPerMinute: 10,
       exportActorConcurrency: 1,
       csvExportConcurrencyPerNode: 5,

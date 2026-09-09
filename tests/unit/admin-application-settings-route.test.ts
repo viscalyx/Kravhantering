@@ -94,6 +94,56 @@ describe('admin application settings route', () => {
     )
   })
 
+  it.each([true, false])(
+    'persists and audits the Boolean CSP logging value %s',
+    async value => {
+      const response = await PATCH(
+        new NextRequest('https://example.test/api/admin/application-settings', {
+          method: 'PATCH',
+          headers: {
+            Origin: 'https://example.test',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ cspViolationLoggingEnabled: value }),
+        }),
+      )
+      expect(response.status).toBe(200)
+      expect(await response.json()).toMatchObject({
+        field: 'cspViolationLoggingEnabled',
+        value,
+      })
+      expect(
+        routeState.recordAdminPrivilegedActionSucceeded,
+      ).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          changedFields: ['cspViolationLoggingEnabled'],
+        }),
+        expect.anything(),
+      )
+    },
+  )
+
+  it.each([1, 0, 'true', 'false', null])(
+    'rejects non-Boolean CSP setting %s',
+    async value => {
+      const response = await PATCH(
+        new NextRequest('https://example.test/api/admin/application-settings', {
+          method: 'PATCH',
+          headers: {
+            Origin: 'https://example.test',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ cspViolationLoggingEnabled: value }),
+        }),
+      )
+      expect(response.status).toBe(400)
+      expect(routeState.updateApplicationSetting).not.toHaveBeenCalled()
+    },
+  )
+
   it('returns no-store settings to Admin', async () => {
     const response = await GET(
       new NextRequest('https://example.test/api/admin/application-settings'),

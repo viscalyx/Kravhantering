@@ -415,6 +415,7 @@ erDiagram
     }
 
     application_settings {
+        bit is_csp_violation_logging_enabled
         integer id PK
         integer requirement_import_max_rows
         integer requirement_import_max_proposed_norm_references
@@ -2204,6 +2205,13 @@ defaults used by the app.
 
 ### `application_settings`
 
+The singleton also owns the browser CSP logging switch. Migration `0066` adds
+`is_csp_violation_logging_enabled` as SQL `bit NOT NULL DEFAULT 1`; existing and
+fresh installations start enabled. Both seeds use a Boolean. The API accepts
+only JSON Booleans, and the DAL preserves the SQL driver's Boolean without
+numeric/string coercion. No report payload is persisted here. See
+[CSP reporting operations](../operations/csp-reporting.md).
+
 Singleton Admin Center resource limits for requirement imports, generated CSV
 exports, and large PDF reports. Requirement-import limits are shared by the
 browser, REST, AI-assisted authoring, and MCP; the fixed transport and content
@@ -2220,6 +2228,7 @@ as bytes; the UI converts them to MiB.
 | Column | Type | Default | Allowed value |
 | --- | --- | --- | --- |
 | `id` | integer PK | `1` | Singleton row `1` |
+| `is_csp_violation_logging_enabled` | bit | `1` | Boolean; controls logging only |
 | `requirement_import_max_rows` | integer | `500` | `1`–`500` |
 | `requirement_import_max_proposed_norm_references` | integer | `500` | `0`–`500` |
 | `requirement_import_max_proposed_needs_references` | integer | `500` | `0`–`500` |

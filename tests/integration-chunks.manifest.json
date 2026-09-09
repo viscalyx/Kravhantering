@@ -7,7 +7,7 @@
     "areasPerChunk": 1,
     "targetSpecs": 10
   },
-  "discoveredSpecCount": 48,
+  "discoveredSpecCount": 49,
   "suites": {
     "dev": {
       "chunks": [
@@ -74,6 +74,7 @@
       ],
       "ignoredSpecs": [
         "tests/integration/00-report-pdf/authorization-boundaries.spec.ts",
+        "tests/integration/authentication/csp-reporting.spec.ts",
         "tests/integration/authentication/login.spec.ts",
         "tests/integration/authentication/security.spec.ts",
         "tests/integration/developer-mode/overlay.spec.ts",
@@ -89,12 +90,13 @@
           "id": "prodlike-runtime-contract",
           "paths": [
             "tests/integration/00-report-pdf/authorization-boundaries.spec.ts",
+            "tests/integration/authentication/csp-reporting.spec.ts",
             "tests/integration/authentication/login.spec.ts",
             "tests/integration/authentication/security.spec.ts",
             "tests/integration/platform/error-boundary-smoke.spec.ts",
             "tests/integration/platform/smoke.spec.ts"
           ],
-          "specCount": 5
+          "specCount": 6
         }
       ],
       "ignoredSpecs": [
@@ -142,7 +144,7 @@
         "tests/integration/specifications/requirement-detail.spec.ts",
         "tests/integration/stewardship/navigation.spec.ts"
       ],
-      "includedSpecCount": 5
+      "includedSpecCount": 6
     }
   }
 }

@@ -58,3 +58,11 @@ The local resolver benchmark evidence for Node.js 24.18.1 on 2026-07-29 is
 4.621 seconds for one million mixed literal, dynamic, sensitive, and unknown
 lookups, or about 216,000 lookups per second. CI verifies the deterministic
 method-and-segment indexes and does not use a timing threshold.
+
+## Native browser CSP exception
+
+Use `nativeCspReportRoute` only for `POST /api/security/csp-reports` and its exact
+`native-csp-report` registry declaration. Native reporting cannot set the custom
+application mutation header. The wrapper treats attached cookies as irrelevant
+and preserves the registry response policy. Ordinary routes continue using
+`secureMutationRoute`. See [ADR 0062](../adr/0062-anonym-native-csp-rapportering.md).

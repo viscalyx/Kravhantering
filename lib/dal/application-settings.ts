@@ -11,6 +11,7 @@ import { toIsoString } from '@/lib/typeorm/value-mappers'
 
 interface ApplicationSettingsRow {
   createdAt: Date | string
+  cspViolationLoggingEnabled: boolean
   csvExportConcurrencyPerNode: number | string
   csvExportMaxFileBytes: number | string
   csvExportMaxItems: number | string
@@ -37,8 +38,8 @@ interface QueryExecutor {
 
 interface ApplicationSettingChange {
   field: ApplicationSettingField
-  newValue: number
-  oldValue: number
+  newValue: number | boolean
+  oldValue: number | boolean
 }
 
 interface ApplicationSettingsWriteOptions {
@@ -51,11 +52,12 @@ interface ApplicationSettingsWriteOptions {
 export interface ApplicationSettingUpdate {
   field: ApplicationSettingField
   updatedAt: string
-  value: number
+  value: number | boolean
 }
 
 const COLUMN_BY_FIELD: Readonly<Record<ApplicationSettingField, string>> =
   Object.freeze({
+    cspViolationLoggingEnabled: 'is_csp_violation_logging_enabled',
     exportActorStartsPerMinute: 'export_actor_starts_per_minute',
     exportActorConcurrency: 'export_actor_concurrency',
     csvExportConcurrencyPerNode: 'csv_export_concurrency_per_node',
@@ -79,6 +81,7 @@ const COLUMN_BY_FIELD: Readonly<Record<ApplicationSettingField, string>> =
 const APPLICATION_SETTINGS_SELECT = `
   SELECT
     [id],
+    [is_csp_violation_logging_enabled] AS [cspViolationLoggingEnabled],
     [export_actor_starts_per_minute] AS [exportActorStartsPerMinute],
     [export_actor_concurrency] AS [exportActorConcurrency],
     [csv_export_max_items] AS [csvExportMaxItems],
@@ -103,6 +106,7 @@ const APPLICATION_SETTINGS_SELECT = `
 
 function rowToSettings(row: ApplicationSettingsRow): ApplicationSettings {
   return {
+    cspViolationLoggingEnabled: row.cspViolationLoggingEnabled,
     exportActorStartsPerMinute: Number(row.exportActorStartsPerMinute),
     exportActorConcurrency: Number(row.exportActorConcurrency),
     csvExportConcurrencyPerNode: Number(row.csvExportConcurrencyPerNode),
@@ -131,7 +135,7 @@ function rowToSettings(row: ApplicationSettingsRow): ApplicationSettings {
 function assertSettings(settings: ApplicationSettings): void {
   for (const [field, value] of Object.entries(settings) as [
     ApplicationSettingField,
-    number,
+    number | boolean,
   ][]) {
     if (!isValidApplicationSetting(field, value)) {
       throw new Error(`Invalid persisted application setting: ${field}`)
@@ -189,7 +193,7 @@ export async function getAdminApplicationSettings(
 export async function updateApplicationSetting(
   db: SqlServerDatabase,
   field: ApplicationSettingField,
-  value: number,
+  value: number | boolean,
   options: ApplicationSettingsWriteOptions = {},
 ): Promise<ApplicationSettingUpdate> {
   if (!isValidApplicationSetting(field, value)) {

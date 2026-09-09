@@ -16,7 +16,11 @@ applyTo: "{app/api/**/route.ts,lib/http/*.ts,proxy.ts,openapi/requirements-api.y
 
 ## Invariants
 
-- Require `same-origin` CSRF for every registered mutation.
+- Require `same-origin` CSRF for registered mutations except the exact
+  `POST /api/security/csp-reports` native telemetry operation.
+- Restrict `native-csp-report` to that operation with `public` auth/sensitivity,
+  `no-store`, `focused` contract and `nativeCspReportRoute` branding.
+- Treat native reports as anonymous untrusted input even with attached cookies.
 - Keep `POST /api/auth/logout` as the only `public` plus `same-origin`
   operation.
 - Require `no-store` for every `sensitive` operation.
@@ -35,7 +39,8 @@ applyTo: "{app/api/**/route.ts,lib/http/*.ts,proxy.ts,openapi/requirements-api.y
 - Use the most restrictive path response policy for unsupported methods.
 - Wrap restrictive reads with `withRestResponsePolicy`.
 - Keep mutations branded by `secureMutationRoute`; use
-  `secureLogoutMutationRoute` only for logout.
+  `secureLogoutMutationRoute` only for logout and `nativeCspReportRoute` only
+  for the native CSP reporting operation.
 - Do not declare transport policy in route-local response headers.
 
 ## Completeness

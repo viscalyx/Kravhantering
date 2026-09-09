@@ -39,6 +39,7 @@ API_DOCS_CSP+="script-src-attr 'none'; style-src 'self'; "
 API_DOCS_CSP+="style-src-attr 'none'; img-src 'self' data:; "
 API_DOCS_CSP+="font-src 'self'; connect-src 'self'; object-src 'none'; "
 API_DOCS_CSP+="frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+API_DOCS_CSP+="; report-to csp; report-uri /api/security/csp-reports"
 API_DOCS_PERMISSIONS="accelerometer=(), autoplay=(), camera=(), "
 API_DOCS_PERMISSIONS+="cross-origin-isolated=(), display-capture=(), "
 API_DOCS_PERMISSIONS+="encrypted-media=(), fullscreen=(), geolocation=(), "
@@ -51,6 +52,7 @@ API_DOCS_PERMISSIONS+="xr-spatial-tracking=()"
 
 declare -A EXPECTED_API_DOCS_HEADERS=(
   [content-security-policy]="$API_DOCS_CSP"
+  [reporting-endpoints]='csp="/api/security/csp-reports"'
   [strict-transport-security]="max-age=63072000; includeSubDomains; preload"
   [x-content-type-options]="nosniff"
   [x-frame-options]="DENY"
@@ -123,3 +125,6 @@ esac
 
 A successful run exits without output. Any unexpected status, missing header,
 duplicate header or conflicting value exits nonzero.
+
+For native delivery, privacy-safe log visibility and the Admin logging control,
+see [CSP reporting](csp-reporting.md).

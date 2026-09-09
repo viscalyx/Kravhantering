@@ -2540,7 +2540,7 @@
     },
     "applicationSettings": {
       "title": "Inställningar",
-      "description": "Gemensamma inställningar för AI, kravimporter, exporter och rapporter.",
+      "description": "Gemensamma inställningar för AI, säkerhet, kravimporter, exporter och rapporter.",
       "loading": "Laddar inställningar…",
       "loadError": "Kunde inte läsa applikationsinställningar.",
       "saveError": "Kunde inte spara inställningen.",
@@ -2635,7 +2635,15 @@
         "exportActorConcurrency": {
           "label": "Pågående exporter och rapporter per person",
           "help": "Gemensamt över format, sessioner och appnoder, även för administratörer. Ändringar avbryter inte pågående arbete."
+        },
+        "cspViolationLoggingEnabled": {
+          "label": "Logga CSP-överträdelser",
+          "help": "Logga integritetssäkra kategorier från webbläsarens obetrodda CSP-rapporter. När du stänger av detta upphör loggningen; webbläsare kan fortfarande skicka rapporter och CSP-skyddet förblir aktivt. Ändringen gäller utan omstart. Åtkomst till och lagring av säkerhetsloggen följer befintlig drift- och säkerhetsprocess."
         }
+      },
+      "security": {
+        "title": "Säkerhet",
+        "description": "Styr loggning av webbläsarens säkerhetsrapporter. CSP-skyddet är alltid aktivt."
       }
     },
     "archiving": {
@@ -3208,10 +3216,10 @@
       }
     },
     "adminAi": {
-      "title": "AI",
+      "title": "Inställningar",
       "overview": {
         "heading": "Syfte",
-        "body": "AI-fliken styr hur AI-assisterad kravgenerering samt AI-nära MCP-anrop och MCP-import får användas i hela systemet. Inställningarna gäller globalt och påverkar kravlistan, kravunderlag och importflöden som använder AI eller MCP."
+        "body": "AI-sektionen i Inställningar styr hur AI-assisterad kravgenerering samt AI-nära MCP-anrop och MCP-import får användas i hela systemet. Inställningarna gäller globalt och påverkar kravlistan, kravunderlag och importflöden som använder AI eller MCP."
       },
       "settings": {
         "heading": "Vad kan ställas in",
@@ -3240,6 +3248,10 @@
       "saving": {
         "heading": "Ändra och återställa",
         "body": "Lägg till egna termer med plusknappen i en regeltyp. Ta bort markerade termer med minusknappen; egna tillägg tas bort medan standardtermer inaktiveras. Själva ordtexten redigeras inte: lägg till rätt ord och ta bort eller inaktivera det felaktiga. Återställ standard på en regel begär bekräftelse innan standardtermerna aktiveras och deras riktning återställs; egna tillägg påverkas inte."
+      },
+      "security": {
+        "heading": "Säkerhet",
+        "body": "Logga integritetssäkra kategorier från webbläsarens obetrodda CSP-rapporter. När du stänger av detta upphör loggningen; webbläsare kan fortfarande skicka rapporter och CSP-skyddet förblir aktivt. Ändringen gäller utan omstart. Åtkomst till och lagring av säkerhetsloggen följer befintlig drift- och säkerhetsprocess."
       }
     },
     "adminPrivacy": {

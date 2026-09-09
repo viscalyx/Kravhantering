@@ -191,6 +191,8 @@ function buildCsp(nonce: string): string {
     "form-action 'self'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
+    'report-to csp',
+    'report-uri /api/security/csp-reports',
   ].join('; ')
 }
 
@@ -422,6 +424,11 @@ function applyPageHeaders(
   requestHeaders.set('content-security-policy', csp)
   applyRequestHeaderOverrides(response, requestHeaders)
   response.headers.set('Content-Security-Policy', csp)
+  if (!USE_DEV_CSP)
+    response.headers.set(
+      'Reporting-Endpoints',
+      'csp="/api/security/csp-reports"',
+    )
 
   return ensureRedirectContentType(
     stripRedirectBody(hardenLocaleCookie(response)),

@@ -6,6 +6,7 @@ import {
 
 export interface ApplicationSettingEntity {
   createdAt: Date
+  cspViolationLoggingEnabled: boolean
   csvExportConcurrencyPerNode: number
   csvExportMaxFileBytes: number
   csvExportMaxItems: number
@@ -31,6 +32,11 @@ export const applicationSettingEntity =
     name: 'ApplicationSetting',
     tableName: 'application_settings',
     columns: {
+      cspViolationLoggingEnabled: {
+        name: 'is_csp_violation_logging_enabled',
+        type: 'bit',
+        default: true,
+      },
       exportActorStartsPerMinute: {
         name: 'export_actor_starts_per_minute',
         type: 'int',

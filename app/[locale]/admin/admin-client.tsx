@@ -143,6 +143,11 @@ const ADMIN_AI_HELP: HelpContent = {
   sections: [
     {
       kind: 'text',
+      headingKey: 'adminAi.security.heading',
+      bodyKey: 'adminAi.security.body',
+    },
+    {
+      kind: 'text',
       bodyKey: 'adminAi.overview.body',
       headingKey: 'adminAi.overview.heading',
     },

@@ -20,6 +20,7 @@ export const APPLICATION_SETTING_CONSTRAINTS = Object.freeze({
 })
 
 export interface ApplicationSettings {
+  cspViolationLoggingEnabled: boolean
   csvExportConcurrencyPerNode: number
   csvExportMaxFileBytes: number
   csvExportMaxItems: number
@@ -39,6 +40,10 @@ export interface ApplicationSettings {
 }
 
 export type ApplicationSettingField = keyof ApplicationSettings
+export type NumericApplicationSettingField = Exclude<
+  ApplicationSettingField,
+  'cspViolationLoggingEnabled'
+>
 
 export interface AdminApplicationSettings extends ApplicationSettings {
   constraints: typeof APPLICATION_SETTING_CONSTRAINTS
@@ -46,6 +51,7 @@ export interface AdminApplicationSettings extends ApplicationSettings {
 }
 
 export const DEFAULT_APPLICATION_SETTINGS: ApplicationSettings = Object.freeze({
+  cspViolationLoggingEnabled: true,
   exportActorStartsPerMinute: 10,
   exportActorConcurrency: 1,
   csvExportConcurrencyPerNode: 5,
@@ -67,7 +73,8 @@ export const DEFAULT_APPLICATION_SETTINGS: ApplicationSettings = Object.freeze({
 export function isValidApplicationSetting(
   field: ApplicationSettingField,
   value: unknown,
-): value is number {
+): value is number | boolean {
+  if (field === 'cspViolationLoggingEnabled') return typeof value === 'boolean'
   if (typeof value !== 'number' || !Number.isSafeInteger(value)) return false
   const constraint = APPLICATION_SETTING_CONSTRAINTS[field]
   if (!constraint) return false

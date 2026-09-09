@@ -1,7 +1,7 @@
 export type RestAuthPolicy = 'public' | 'session'
 export type RestCachePolicy = 'framework-default' | 'no-cache' | 'no-store'
 export type RestContractPolicy = 'focused' | 'openapi'
-export type RestCsrfPolicy = 'none' | 'same-origin'
+export type RestCsrfPolicy = 'none' | 'same-origin' | 'native-csp-report'
 export type RestSensitivity = 'authenticated' | 'public' | 'sensitive'
 export const EXPLICIT_REST_METHODS = Object.freeze([
   'DELETE',
@@ -46,6 +46,15 @@ export type RestOperationDeclaration = readonly [
 ]
 
 export const REST_OPERATION_DECLARATIONS = [
+  [
+    'POST',
+    '/api/security/csp-reports',
+    'public',
+    'native-csp-report',
+    'public',
+    'no-store',
+    'focused',
+  ],
   [
     'POST',
     '/api/admin/access-reviews/[id]/cancel',
@@ -1992,7 +2001,11 @@ const CACHE_POLICIES = new Set<string>([
   'no-store',
 ])
 const CONTRACT_POLICIES = new Set<string>(['focused', 'openapi'])
-const CSRF_POLICIES = new Set<string>(['none', 'same-origin'])
+const CSRF_POLICIES = new Set<string>([
+  'none',
+  'same-origin',
+  'native-csp-report',
+])
 const SENSITIVITY_POLICIES = new Set<string>([
   'authenticated',
   'public',
@@ -2100,7 +2113,20 @@ function validatePolicy(operation: RestOperation): void {
   }
   const mutation = MUTATING_METHODS.has(operation.method)
 
-  if (mutation && operation.csrf !== 'same-origin') {
+  const nativeReport = operation.csrf === 'native-csp-report'
+  if (
+    nativeReport &&
+    (key !== 'POST /api/security/csp-reports' ||
+      operation.auth !== 'public' ||
+      operation.cache !== 'no-store' ||
+      operation.sensitivity !== 'public' ||
+      operation.contract !== 'focused')
+  ) {
+    throw new Error(
+      `Native CSP policy is restricted to the CSP receiver: ${key}`,
+    )
+  }
+  if (mutation && !nativeReport && operation.csrf !== 'same-origin') {
     throw new Error(`REST mutation must require same-origin CSRF: ${key}`)
   }
   if (!mutation && operation.csrf !== 'none') {
@@ -2172,6 +2198,7 @@ const CACHE_RANK: Record<RestCachePolicy, number> = {
   'no-store': 2,
 }
 const CSRF_RANK: Record<RestCsrfPolicy, number> = {
+  'native-csp-report': 0,
   none: 0,
   'same-origin': 1,
 }

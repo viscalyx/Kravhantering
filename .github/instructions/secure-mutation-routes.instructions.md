@@ -38,6 +38,10 @@ applyTo: "{app/api/**/route.ts,lib/http/secure-mutation-route.ts,tests/unit/secu
 
 ## Special Route Rules
 
+- Wrap `POST /api/security/csp-reports` with `nativeCspReportRoute`; apply
+  bounded anonymous admission before settings reads. Follow the exact native
+  exception in `route-security-policy.instructions.md`.
+
 - Preserve audit redaction on privacy and access review mutation responses.
 - Build admin privileged audit from the wrapper `context`, not separate session
   reads.

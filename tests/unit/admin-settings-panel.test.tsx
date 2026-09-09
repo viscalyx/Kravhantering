@@ -5,6 +5,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useEffect } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SettingsPanel from '@/app/[locale]/admin/panels/settings-panel'
@@ -80,6 +81,70 @@ describe('SettingsPanel', () => {
     vi.stubGlobal('fetch', fetchMock)
   })
 
+  it('autosaves the CSP switch with Boolean data, help and a curated marker', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okJson(settingsResponse()))
+      .mockResolvedValueOnce(
+        okJson({
+          field: 'cspViolationLoggingEnabled',
+          value: false,
+          updatedAt: '2026-09-09T10:00:00Z',
+        }),
+      )
+    render(<SettingsPanel />)
+    const control = await screen.findByRole('checkbox', {
+      name: 'admin.applicationSettings.fields.cspViolationLoggingEnabled.label',
+    })
+    await waitFor(() => expect(control).toBeEnabled())
+    expect(control).toBeChecked()
+    expect(control.closest('[data-developer-mode-name]')).toHaveAttribute(
+      'data-developer-mode-value',
+      'cspViolationLoggingEnabled',
+    )
+    await userEvent.click(control)
+    await waitFor(() => expect(control).not.toBeChecked())
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/admin/application-settings',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ cspViolationLoggingEnabled: false }),
+      }),
+    )
+    expect(
+      await within(
+        screen.getByRole('region', {
+          name: 'admin.applicationSettings.security.title',
+        }),
+      ).findByRole('status'),
+    ).toHaveTextContent('admin.saved')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'common.help: admin.applicationSettings.fields.cspViolationLoggingEnabled.label',
+      }),
+    )
+    expect(
+      screen.getByText(
+        'admin.applicationSettings.fields.cspViolationLoggingEnabled.help',
+      ),
+    ).toBeVisible()
+  })
+
+  it('restores the persisted CSP switch and announces failed saves', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okJson(settingsResponse()))
+      .mockRejectedValueOnce(new Error('network'))
+    render(<SettingsPanel />)
+    const control = await screen.findByRole('checkbox', {
+      name: 'admin.applicationSettings.fields.cspViolationLoggingEnabled.label',
+    })
+    await waitFor(() => expect(control).toBeEnabled())
+    await userEvent.click(control)
+    await waitFor(() => expect(control).toBeChecked())
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'admin.applicationSettings.saveError',
+    )
+  })
+
   it('keeps all sections reserved until parallel settings reads settle', async () => {
     const applicationSettings = deferred<Response>()
     fetchMock.mockReturnValueOnce(applicationSettings.promise)
@@ -102,6 +167,7 @@ describe('SettingsPanel', () => {
       .map(heading => heading.textContent)
     expect(headings).toEqual([
       'admin.applicationSettings.title',
+      'admin.applicationSettings.security.title',
       'admin.applicationSettings.imports.title',
       'admin.applicationSettings.exports.title',
       'admin.applicationSettings.reports.title',

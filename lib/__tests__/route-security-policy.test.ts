@@ -19,7 +19,7 @@ const validDeclaration = [
 
 describe('REST route security policy registry', () => {
   it('contains the complete explicit REST operation baseline', () => {
-    expect(REST_OPERATIONS).toHaveLength(217)
+    expect(REST_OPERATIONS).toHaveLength(218)
     expect(
       REST_OPERATIONS.filter(operation => operation.contract === 'openapi'),
     ).toHaveLength(30)
@@ -328,5 +328,57 @@ describe('REST route security policy registry', () => {
         template: operation.template,
       })
     }
+  })
+})
+
+describe('native CSP transport policy', () => {
+  it('permits only the exact anonymous CSP operation and retains conservative defaults elsewhere', () => {
+    expect(
+      REST_ROUTE_REGISTRY.resolve('POST', '/api/security/csp-reports'),
+    ).toMatchObject({
+      auth: 'public',
+      csrf: 'native-csp-report',
+      cache: 'no-store',
+    })
+    for (const [method, path] of [
+      ['PATCH', '/api/security/csp-reports'],
+      ['POST', '/api/security/csp-reports/other'],
+      ['POST', '/api/unknown'],
+    ]) {
+      expect(REST_ROUTE_REGISTRY.resolve(method, path)).toMatchObject({
+        auth: 'session',
+        csrf: 'same-origin',
+        cache: 'no-store',
+      })
+    }
+    expect(
+      REST_ROUTE_REGISTRY.resolve('PATCH', '/api/admin/application-settings'),
+    ).toMatchObject({ auth: 'session', csrf: 'same-origin', cache: 'no-store' })
+    expect(() =>
+      compileRestRouteRegistry([
+        [
+          'POST',
+          '/api/other',
+          'public',
+          'native-csp-report',
+          'public',
+          'no-store',
+          'focused',
+        ],
+      ]),
+    ).toThrow('restricted')
+    expect(() =>
+      compileRestRouteRegistry([
+        [
+          'GET',
+          '/api/security/csp-reports',
+          'public',
+          'native-csp-report',
+          'public',
+          'no-store',
+          'focused',
+        ],
+      ]),
+    ).toThrow('restricted')
   })
 })

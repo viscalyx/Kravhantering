@@ -855,3 +855,13 @@ Admin application settings expose starts per rolling minute and active work
 per person. Each field has localized help and a Developer Mode marker.
 Updates audit old and new values without resetting usage. Privacy erasure
 requires the target person’s active output to finish before quota deletion.
+
+## Browser security logging
+
+Settings > Security contains `Log CSP violations` / `Logga CSP-överträdelser`.
+The Admin-only Boolean saves immediately, with field help and saved/error
+feedback, using the same configuration audit contract as numeric settings.
+Turning it off stops log events; browsers may still send reports and CSP
+remains enforced. Changes apply without restart. Security-log access and
+retention belong to the existing operations/security process. See
+[CSP reporting](../operations/csp-reporting.md).

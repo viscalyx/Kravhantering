@@ -86,6 +86,54 @@ async function writeSignedInCookie(): Promise<string> {
 }
 
 describe('proxy production CSP', () => {
+  it('admits native CSP reports without touching an attached session or requiring application headers', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const response = await proxy(
+        new NextRequest('http://localhost/api/security/csp-reports', {
+          method: 'POST',
+          headers: {
+            Cookie: 'session=invalid-private-value',
+            'content-type': 'application/csp-report',
+          },
+          body: '{}',
+        }),
+      )
+      expect(response.status).toBe(200)
+      expect(response.headers.get('x-middleware-next')).toBe('1')
+      expect(response.headers.get('cache-control')).toBe('no-store')
+      expect(response.headers.get('set-cookie')).toBeNull()
+    } finally {
+      restore()
+    }
+  })
+
+  it('adds reporting configuration while retaining an enforcing nonce policy', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const response = await proxy(
+        buildRequest(
+          'http://localhost/en/requirements',
+          await writeSignedInCookie(),
+        ),
+      )
+      expect(response.headers.get('content-security-policy')).toContain(
+        'report-to csp; report-uri /api/security/csp-reports',
+      )
+      expect(response.headers.get('content-security-policy')).toMatch(
+        /script-src 'self' 'nonce-[^']+'/,
+      )
+      expect(response.headers.get('reporting-endpoints')).toBe(
+        'csp="/api/security/csp-reports"',
+      )
+      expect(
+        response.headers.get('content-security-policy-report-only'),
+      ).toBeNull()
+    } finally {
+      restore()
+    }
+  })
+
   it.each(['/sv/requirements', '/sv/requirements/policy.v2'])(
     'emits the strict production policy and sanitized request headers for %s',
     async path => {
