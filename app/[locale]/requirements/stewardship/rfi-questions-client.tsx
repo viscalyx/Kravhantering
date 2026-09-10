@@ -19,6 +19,7 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import FormModal from '@/components/FormModal'
+import ListWorkspace from '@/components/ListWorkspace'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
@@ -1171,8 +1172,8 @@ export default function RfiQuestionsClient() {
   )
 
   return (
-    <main className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom">
+    <main className="section-padding">
+      <ListWorkspace context="rfiQuestions" reserveActions>
         <FloatingActionRail
           anchorRef={listAnchorRef}
           developerModeContext="rfiQuestions"
@@ -1599,7 +1600,7 @@ export default function RfiQuestionsClient() {
             )}
           </div>
         </div>
-      </div>
+      </ListWorkspace>
     </main>
   )
 }

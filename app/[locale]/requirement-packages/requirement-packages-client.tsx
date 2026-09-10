@@ -33,6 +33,7 @@ import HsaPersonChangeModal, {
   type HsaPersonChangeSubmitResult,
 } from '@/components/HsaPersonChangeModal'
 import type { HsaPersonVerification } from '@/components/HsaPersonVerifyField'
+import ListWorkspace from '@/components/ListWorkspace'
 import { modalResizableTextareaClassName } from '@/components/modal-textarea-class'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import StatusBadge from '@/components/StatusBadge'
@@ -957,8 +958,12 @@ export default function RequirementPackagesClient() {
     : t('newRequirementPackage')
 
   return (
-    <div className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom" ref={contentRef}>
+    <div className="section-padding">
+      <ListWorkspace
+        context="requirementPackages"
+        ref={contentRef}
+        reserveActions
+      >
         <FloatingActionRail
           anchorRef={tableAnchorRef}
           developerModeContext="requirementPackages"
@@ -1280,7 +1285,7 @@ export default function RequirementPackagesClient() {
                             <span>{requirementPackage.name}</span>
                           </RequirementPackagePurposeTooltip>
                         </td>
-                        <td className="w-md max-w-md whitespace-normal wrap-break-word px-4 py-3 align-top leading-6 text-secondary-600 dark:text-secondary-400">
+                        <td className="min-w-64 whitespace-normal wrap-break-word px-4 py-3 align-top leading-6 text-secondary-600 dark:text-secondary-400">
                           {requirementPackage.purposeAndScope}
                         </td>
                         <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
@@ -1436,7 +1441,7 @@ export default function RequirementPackagesClient() {
             </table>
           </div>
         )}
-      </div>
+      </ListWorkspace>
     </div>
   )
 }

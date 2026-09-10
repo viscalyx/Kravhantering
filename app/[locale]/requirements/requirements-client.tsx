@@ -25,6 +25,7 @@ import LazyAiRequirementGenerator from '@/components/LazyAiRequirementGenerator'
 import LazyRequirementsImportDialog, {
   type InitialRequirementsImport,
 } from '@/components/LazyRequirementsImportDialog'
+import ListWorkspace from '@/components/ListWorkspace'
 import RequirementsTable from '@/components/RequirementsTable'
 import { useRequirementDetailPrefetchIntent } from '@/hooks/useRequirementDetailPrefetchIntent'
 import {
@@ -1159,8 +1160,8 @@ export default function RequirementsClient({
 
   return (
     <>
-      <div className="section-padding px-4 sm:px-6 lg:px-8">
-        <div className="container-custom">
+      <div className="section-padding">
+        <ListWorkspace context="requirements table" reserveActions>
           <div className="relative rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm dark:border-secondary-700 dark:bg-secondary-900/60">
             {shouldShowInitialLoadingState ? (
               <div
@@ -1469,7 +1470,7 @@ export default function RequirementsClient({
               </>
             )}
           </div>
-        </div>
+        </ListWorkspace>
       </div>
       {pdfDownload.dialog}
       <LazyAiRequirementGenerator

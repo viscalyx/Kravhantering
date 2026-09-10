@@ -9,6 +9,7 @@ import {
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useRef, useState } from 'react'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import ListWorkspace from '@/components/ListWorkspace'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -271,8 +272,8 @@ export default function RequirementTypesClient() {
   const qualityCharacteristics = qualityCharacteristicsResource.data
 
   return (
-    <div className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom">
+    <div className="section-padding">
+      <ListWorkspace context="requirementTypes">
         <h1 className="mb-6 text-2xl font-bold text-secondary-900 dark:text-secondary-100">
           {tn('types')}
         </h1>
@@ -539,7 +540,7 @@ export default function RequirementTypesClient() {
             })}
           </div>
         ) : null}
-      </div>
+      </ListWorkspace>
     </div>
   )
 }

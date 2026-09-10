@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl'
 import type { ErrorInfo, ReactNode } from 'react'
 import { Component, Suspense } from 'react'
+import ListWorkspace from '@/components/ListWorkspace'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 export type StewardshipWorkspaceId = 'norms' | 'packages' | 'questions' | 'rfi'
@@ -46,8 +47,11 @@ class StewardshipWorkspaceErrorBoundary extends Component<
     if (!this.state.hasError) return this.props.children
 
     return (
-      <div className="section-padding px-4 sm:px-6 lg:px-8">
-        <div className="container-custom space-y-6">
+      <div className="section-padding">
+        <ListWorkspace
+          className="space-y-6"
+          context="requirements library stewardship"
+        >
           <h1 className={workspaceHeadingClassName}>
             {this.props.workspaceLabel}
           </h1>
@@ -76,7 +80,7 @@ class StewardshipWorkspaceErrorBoundary extends Component<
               </button>
             </div>
           </section>
-        </div>
+        </ListWorkspace>
       </div>
     )
   }
@@ -96,8 +100,11 @@ function StewardshipWorkspaceLoading({
   const t = useTranslations('stewardshipWorkspace')
 
   return (
-    <div className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom space-y-6">
+    <div className="section-padding">
+      <ListWorkspace
+        className="space-y-6"
+        context="requirements library stewardship"
+      >
         <h1 className={workspaceHeadingClassName}>{workspaceLabel}</h1>
         <section
           className="flex min-h-40 items-center justify-center rounded-2xl border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
@@ -113,7 +120,7 @@ function StewardshipWorkspaceLoading({
             {t('loading', { workspace: workspaceLabel })}
           </span>
         </section>
-      </div>
+      </ListWorkspace>
     </div>
   )
 }

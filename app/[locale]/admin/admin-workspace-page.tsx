@@ -7,6 +7,7 @@ import {
   Suspense,
 } from 'react'
 import type { ActionAuditLogInitialState } from '@/components/admin/ActionAuditLogView'
+import ListWorkspace from '@/components/ListWorkspace'
 import { listActionAuditEvents } from '@/lib/audit/action-audit'
 import {
   type ActionAuditLogSearchParams,
@@ -36,12 +37,12 @@ interface AdminWorkspacePageProps {
 
 function loadingFallback(label: string): ReactNode {
   return (
-    <div className="section-padding px-4 sm:px-6 lg:px-8" role="status">
+    <div className="section-padding" role="status">
       <span className="sr-only">{label}</span>
-      <div className="container-custom space-y-6">
+      <ListWorkspace className="space-y-6" context="admin">
         <div className="h-40 rounded-4xl border border-secondary-200/70 bg-secondary-100/70 dark:border-secondary-700/60 dark:bg-secondary-900/70" />
         <div className="h-64 rounded-4xl border border-secondary-200/70 bg-white/70 dark:border-secondary-700/60 dark:bg-secondary-900/70" />
-      </div>
+      </ListWorkspace>
     </div>
   )
 }

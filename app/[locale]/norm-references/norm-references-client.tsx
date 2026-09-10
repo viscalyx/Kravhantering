@@ -18,6 +18,7 @@ import FloatingActionRail from '@/components/FloatingActionRail'
 import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import ListWorkspace from '@/components/ListWorkspace'
 import NormReferenceFormFields from '@/components/NormReferenceFormFields'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
@@ -475,8 +476,8 @@ export default function NormReferencesClient() {
     : t('newNormReference')
 
   return (
-    <div className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom" ref={contentRef}>
+    <div className="section-padding">
+      <ListWorkspace context="normReferences" ref={contentRef} reserveActions>
         <FloatingActionRail
           anchorRef={tableAnchorRef}
           developerModeContext="normReferences"
@@ -836,7 +837,7 @@ export default function NormReferencesClient() {
             </table>
           </div>
         )}
-      </div>
+      </ListWorkspace>
     </div>
   )
 }

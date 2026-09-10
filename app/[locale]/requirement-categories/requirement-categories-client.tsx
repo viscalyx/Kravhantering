@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import ListWorkspace from '@/components/ListWorkspace'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 const REQUIREMENT_CATEGORIES_HELP: HelpContent = {
@@ -77,22 +78,22 @@ export default function RequirementCategoriesClient() {
 
   if (loading) {
     return (
-      <div className="section-padding px-4 sm:px-6 lg:px-8">
-        <div className="container-custom">
+      <div className="section-padding">
+        <ListWorkspace context="requirement categories">
           <p
             className="text-secondary-600 dark:text-secondary-400"
             role="status"
           >
             {tc('loading')}
           </p>
-        </div>
+        </ListWorkspace>
       </div>
     )
   }
 
   return (
-    <div className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom space-y-6">
+    <div className="section-padding">
+      <ListWorkspace className="space-y-6" context="requirement categories">
         <div>
           <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
             {t('title')}
@@ -167,7 +168,7 @@ export default function RequirementCategoriesClient() {
             </div>
           </section>
         ) : null}
-      </div>
+      </ListWorkspace>
     </div>
   )
 }

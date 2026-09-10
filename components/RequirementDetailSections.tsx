@@ -78,7 +78,7 @@ export default function RequirementDetailSections({
         <h3 className="mb-1 text-sm font-medium text-secondary-600 dark:text-secondary-400">
           {descriptionLabel}
         </h3>
-        <div className="whitespace-pre-wrap text-secondary-900 dark:text-secondary-100">
+        <div className="reading-width text-secondary-900 dark:text-secondary-100">
           {description}
         </div>
       </div>
@@ -94,7 +94,7 @@ export default function RequirementDetailSections({
         <h3 className="mb-1 text-sm font-medium text-secondary-600 dark:text-secondary-400">
           {acceptanceCriteriaLabel}
         </h3>
-        <div className="whitespace-pre-wrap text-secondary-900 dark:text-secondary-100">
+        <div className="reading-width text-secondary-900 dark:text-secondary-100">
           {acceptanceCriteria}
         </div>
       </div>

@@ -286,3 +286,113 @@ test.describe('Requirements table column resizing', () => {
     })
   }
 })
+
+test('REQ-09: long requirement text wraps within a reading width in inline and full-page detail', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  const longText = `${'Systemet ska stödja ett säkert och spårbart utbyte av information. '.repeat(12)}\n${'referens'.repeat(120)}`
+  await page.route(/\/api\/requirements\/(INT0001|1)$/, async route => {
+    const response = await route.fetch()
+    const body = await response.json()
+    for (const version of body.versions) {
+      version.description = longText
+      version.acceptanceCriteria = longText
+    }
+    await route.fulfill({ response, json: body })
+  })
+  await page.goto('/sv/requirements?selected=INT0001')
+  const section = page
+    .locator(
+      '[data-developer-mode-name="detail section"][data-developer-mode-value="requirement text"]',
+    )
+    .first()
+  const assertReadingWidth = async () => {
+    await expect(section).toContainText(longText)
+    await expect
+      .poll(() =>
+        section
+          .locator('div')
+          .first()
+          .evaluate(el => {
+            const style = getComputedStyle(el)
+            return (
+              el.getBoundingClientRect().width <= 750 &&
+              el.scrollWidth <= el.clientWidth &&
+              el.clientHeight > 100 &&
+              style.whiteSpace === 'pre-wrap' &&
+              style.overflowWrap === 'anywhere'
+            )
+          }),
+      )
+      .toBe(true)
+  }
+  await test.step('read expanded requirement text', assertReadingWidth)
+  await test.step('read the full-page requirement text', async () => {
+    await page.goto('/sv/requirements/INT0001')
+    await assertReadingWidth()
+  })
+})
+
+test('REQ-05, REQ-09: manual column widths and selection survive reload, navigation and viewport changes', async ({
+  page,
+}) => {
+  await page.goto('/sv/requirements')
+  const picker = page.locator('[data-column-picker-trigger="true"]')
+  await picker.click()
+  await page.locator('[data-column-picker-option="version"] input').check()
+  await picker.click()
+  const handle = page
+    .locator('[data-column-resize-handle="description"]')
+    .first()
+  const description = page
+    .locator('thead th[data-developer-mode-value="requirement text"]')
+    .first()
+  const getWidth = () =>
+    description.evaluate(el => el.getBoundingClientRect().width)
+  await test.step('resize the text column with keyboard and mouse', async () => {
+    const initialWidth = await getWidth()
+    await handle.focus()
+    await page.keyboard.press('ArrowRight')
+    await expect.poll(getWidth).toBeGreaterThan(initialWidth)
+    const keyboardWidth = await getWidth()
+    const box = await handle.boundingBox()
+    if (!box) throw new Error('Description resize handle is unavailable')
+    await page.mouse.move(box.x + box.width / 2, box.y + 12)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width / 2 + 80, box.y + 12)
+    await expect.poll(getWidth).toBeGreaterThan(keyboardWidth + 60)
+    await page.mouse.up()
+  })
+  const savedWidth = await getWidth()
+  const saved = await page.evaluate(() => ({
+    columns: localStorage.getItem('requirements.visibleColumns.v5'),
+    widths: localStorage.getItem('requirements.columnWidths.v5.sv'),
+  }))
+  await test.step('retain column settings across reload and layout changes', async () => {
+    await page.reload()
+    await page
+      .getByRole('button', { name: 'Expandera navigation', exact: true })
+      .click()
+    for (const width of [1920, 1440, 375]) {
+      await page.setViewportSize({ width, height: 900 })
+      await expect.poll(getWidth).toBe(savedWidth)
+      await expect(
+        page.locator('[data-requirement-header-label="version"]').first(),
+      ).toHaveText(/\S/)
+      expect(
+        await page.evaluate(() => ({
+          columns: localStorage.getItem('requirements.visibleColumns.v5'),
+          widths: localStorage.getItem('requirements.columnWidths.v5.sv'),
+        })),
+      ).toEqual(saved)
+    }
+    const scroll = page.locator('[data-requirements-scroll-container]')
+    await expect
+      .poll(() => scroll.evaluate(el => el.scrollWidth > el.clientWidth))
+      .toBe(true)
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(375)
+  })
+})

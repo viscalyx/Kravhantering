@@ -8,6 +8,7 @@ import DirtyStateButton from '@/components/DirtyStateButton'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import IconPicker from '@/components/IconPicker'
+import ListWorkspace from '@/components/ListWorkspace'
 import StatusBadge from '@/components/StatusBadge'
 import StatusBadgeThemePreview from '@/components/StatusBadgeThemePreview'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
@@ -191,8 +192,8 @@ export default function SpecificationItemStatusesClient() {
     controller.editId === DEVIATED_SPECIFICATION_ITEM_STATUS_ID
 
   return (
-    <div className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom">
+    <div className="section-padding">
+      <ListWorkspace context="specificationItemStatuses">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
             {t('title')}
@@ -238,7 +239,7 @@ export default function SpecificationItemStatusesClient() {
         <AnimatePresence>
           {controller.showForm && (
             <motion.div
-              className="glass rounded-2xl p-6 mb-6"
+              className="glass max-w-7xl rounded-2xl p-6 mb-6"
               {...offsetPanelMotion(shouldReduceMotion)}
             >
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 items-start">
@@ -630,7 +631,7 @@ export default function SpecificationItemStatusesClient() {
             </table>
           </div>
         )}
-      </div>
+      </ListWorkspace>
     </div>
   )
 }

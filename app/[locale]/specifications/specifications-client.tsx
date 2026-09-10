@@ -22,6 +22,7 @@ import CoAuthorsManagementModal from '@/components/CoAuthorsManagementModal'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import ListWorkspace from '@/components/ListWorkspace'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -564,8 +565,8 @@ export default function RequirementsSpecificationsClient({
   const showSpecifications = !loading && !showSpinner
 
   return (
-    <div className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom" ref={contentRef}>
+    <div className="section-padding">
+      <ListWorkspace context="specifications" ref={contentRef} reserveActions>
         <FloatingActionRail
           anchorRef={tableAnchorRef}
           developerModeContext="specifications"
@@ -933,7 +934,7 @@ export default function RequirementsSpecificationsClient({
             </div>
           </div>
         )}
-      </div>
+      </ListWorkspace>
     </div>
   )
 }

@@ -90,6 +90,27 @@
     @apply max-w-7xl mx-auto;
   }
 
+  .list-workspace {
+    min-width: 0;
+    max-width: none;
+    margin-inline: auto;
+  }
+
+  .list-workspace-with-actions {
+    /* A 44px action rail plus the 12px gap used by both rail positioners. */
+    margin-right: 56px;
+  }
+
+  .list-workspace .section-padding:has(> .list-workspace) {
+    padding-inline: 0;
+  }
+
+  .reading-width {
+    max-width: 75ch;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
   .gradient-bg {
     @apply bg-linear-to-br from-primary-50 via-white to-secondary-50 dark:from-secondary-950 dark:via-secondary-900 dark:to-secondary-950;
   }

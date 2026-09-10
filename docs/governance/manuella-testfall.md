@@ -101,10 +101,14 @@ Behörighetsmatrisen finns i [behörigheter.md](./behörigheter.md).
 ### NAV-01: global sidonavigering kan öppnas och stängas
 
 **Steg:** Logga in som `ada.admin`, öppna `/sv/requirements`, expandera och
-fäll ihop den globala sidonavigeringen. Öppna och stäng därefter sidolådan.
+fäll ihop den globala sidonavigeringen. Växla mellan kravbibliotek,
+kravunderlag, förvaltningsflikar, referensdata, administrationslistor,
+inställningar och identitet. Använd listans åtgärder efter navigationsväxling
+och rullning. Öppna och stäng därefter sidolådan.
 
 **Förväntat resultat:** Sidonavigeringen och sidolådan öppnas och stängs med
-respektive kontroll.
+respektive kontroll. Kravbibliotekets liståtgärder kan användas även efter
+växling av navigation, ändring av fönstret och rullning.
 
 ## Tillgänglighet
 
@@ -745,10 +749,13 @@ arkiverad status väljs uttryckligen.
 
 **Steg:** Öppna kolumnväljaren, visa kolumnen `Verifierbar` och kontrollera
 att verifierbara och inte verifierbara krav kan skiljas åt. Dölj därefter en
-valfri kolumn, ladda om sidan och visa kolumnen igen.
+valfri kolumn, ändra kravtextkolumnens bredd med mus och piltangenter,
+ladda om sidan och visa kolumnen igen. Växla sidonavigeringen och ändra
+fönstrets storlek.
 
 **Förväntat resultat:** Båda verifierbarhetslägena har lokaliserade
-hjälptexter. Kolumnvalet ligger kvar efter omladdning och kan återställas.
+hjälptexter. Kolumnval och manuella bredder ligger kvar efter omladdning,
+navigationsväxling och ändring av fönstret. Breda tabeller kan rullas i sidled.
 
 ### REQ-06: återställ lokala listinställningar
 
@@ -766,10 +773,11 @@ rulla vidare.
 
 ### REQ-09: innehållsordning i inline-detalj
 
-**Steg:** Öppna ett krav i inline-detalj.
+**Steg:** Öppna ett krav med lång kravtext i inline-detalj och därefter på
+kravets egen sida. Läs texten och använd detaljens kontroller.
 
 **Förväntat resultat:** Kravtext visas före acceptanskriterier och därefter
-metadata, referenser och paket.
+metadata, referenser och paket. Hela texten går att läsa i båda vyerna.
 
 ### REQ-10: skapa PDF från kravlistan
 

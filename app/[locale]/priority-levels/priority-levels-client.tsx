@@ -10,6 +10,7 @@ import FieldHelpButton from '@/components/FieldHelpButton'
 import FormActionRow from '@/components/FormActionRow'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import IconPicker from '@/components/IconPicker'
+import ListWorkspace from '@/components/ListWorkspace'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
@@ -243,8 +244,8 @@ export default function PriorityLevelsClient() {
   }
 
   return (
-    <div className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom">
+    <div className="section-padding">
+      <ListWorkspace context="priorityLevels">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
             {tn('priorityLevels')}
@@ -290,7 +291,7 @@ export default function PriorityLevelsClient() {
         <AnimatePresence>
           {controller.showForm && (
             <motion.div
-              className="glass rounded-2xl p-6 mb-6"
+              className="glass max-w-7xl rounded-2xl p-6 mb-6"
               {...offsetPanelMotion(shouldReduceMotion)}
             >
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 items-start">
@@ -869,7 +870,7 @@ export default function PriorityLevelsClient() {
             </table>
           </div>
         )}
-      </div>
+      </ListWorkspace>
     </div>
   )
 }

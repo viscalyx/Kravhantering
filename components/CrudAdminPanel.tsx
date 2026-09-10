@@ -7,6 +7,7 @@ import type { ReactNode } from 'react'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
+import ListWorkspace from '@/components/ListWorkspace'
 import { modalResizableTextareaClassName } from '@/components/modal-textarea-class'
 import type { CrudAdminResourceController } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -167,8 +168,8 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
   )
 
   return (
-    <div className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom">
+    <div className="section-padding">
+      <ListWorkspace context={devContext}>
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
             {title}
@@ -382,7 +383,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
           </div>
         )}
         {children}
-      </div>
+      </ListWorkspace>
     </div>
   )
 }

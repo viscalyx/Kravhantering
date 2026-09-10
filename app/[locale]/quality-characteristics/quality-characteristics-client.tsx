@@ -9,6 +9,7 @@ import DirtyStateButton from '@/components/DirtyStateButton'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FormActionRow from '@/components/FormActionRow'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import ListWorkspace from '@/components/ListWorkspace'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -232,8 +233,8 @@ export default function QualityCharacteristicsClient() {
   }
 
   return (
-    <div className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom">
+    <div className="section-padding">
+      <ListWorkspace context="qualityCharacteristics">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
             {tn('qualityCharacteristics')}
@@ -610,7 +611,7 @@ export default function QualityCharacteristicsClient() {
             })}
           </div>
         )}
-      </div>
+      </ListWorkspace>
     </div>
   )
 }

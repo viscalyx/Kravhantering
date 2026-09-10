@@ -15,6 +15,29 @@ The behaviors below apply to the requirement list rendered by:
 - `components/RequirementsTable.tsx`
 - `lib/requirements/list-view.ts`
 
+## List Workspace and Reading Width
+
+Table workspaces use `ListWorkspace` to fill the space beside global
+navigation. The surrounding section supplies 16px mobile, 24px small-screen
+and 32px desktop gutters. Workspaces with floating actions reserve another
+56px on the right: a 44px rail and a 12px gap. Nested list sections reuse the
+outer gutters. Scrolling stays inside tables when their columns need more
+space than the workspace provides.
+
+The shared layout covers the Requirements Library, requirements
+specifications list, stewardship workspaces (packages, norms, selection
+questions and RFI questions), reference-data lists through `CrudAdminPanel`
+and the dedicated type, priority, quality, category and usage-status lists,
+and all administration workspaces, including Settings, Identity and the
+action audit log. Legacy package and norm links open their stewardship tabs.
+
+Requirement text receives spare table width only without manual overrides
+on visible columns. Saved column choices and widths retain their existing
+meaning across reloads, navigation changes and viewport resizing. Package
+purpose and scope can also grow with the list. Requirement description and
+acceptance criteria in both inline and full-page details wrap within 75ch,
+including unbroken text. Forms and dialogs retain their own width limits.
+
 ## Form Required Fields
 
 - Create and edit forms show a short hint near the start explaining that fields

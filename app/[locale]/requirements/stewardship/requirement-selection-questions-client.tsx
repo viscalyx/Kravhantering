@@ -29,6 +29,7 @@ import FloatingActionRail from '@/components/FloatingActionRail'
 import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import ListWorkspace from '@/components/ListWorkspace'
 import { modalResizableTextareaResizeClassName } from '@/components/modal-textarea-class'
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
@@ -3581,8 +3582,12 @@ export default function RequirementSelectionQuestionsClient() {
     : null
 
   return (
-    <div className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom" ref={contentRef}>
+    <div className="section-padding">
+      <ListWorkspace
+        context="requirement selection questions"
+        ref={contentRef}
+        reserveActions
+      >
         {questionDragPreviewContent}
         {questionDropMarkerContent}
         <FloatingActionRail
@@ -5259,7 +5264,7 @@ export default function RequirementSelectionQuestionsClient() {
             )}
           </div>
         </div>
-      </div>
+      </ListWorkspace>
     </div>
   )
 }

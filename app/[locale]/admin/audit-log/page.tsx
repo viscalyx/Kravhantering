@@ -4,6 +4,7 @@ import { getTranslations } from 'next-intl/server'
 import ActionAuditLogView, {
   type ActionAuditLogLabels,
 } from '@/components/admin/ActionAuditLogView'
+import ListWorkspace from '@/components/ListWorkspace'
 import { routing } from '@/i18n/routing'
 import { listActionAuditEvents } from '@/lib/audit/action-audit'
 import {
@@ -88,8 +89,8 @@ export default async function AuditLogPage({
   )
 
   return (
-    <main className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom space-y-6">
+    <main className="section-padding">
+      <ListWorkspace className="space-y-6" context="action audit log">
         <ActionAuditLogView
           basePath={`/${locale}/admin/audit-log`}
           labels={auditLogLabels(t)}
@@ -97,7 +98,7 @@ export default async function AuditLogPage({
           query={query}
           result={result}
         />
-      </div>
+      </ListWorkspace>
     </main>
   )
 }
