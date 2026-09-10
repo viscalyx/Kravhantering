@@ -503,3 +503,13 @@ When a requirement transitions from Published to Review for archiving
 See [export and report admission](../operations/export-report-admission.md) for
 covered routes, shared actor limits, distinct 429/503 reasons, English and
 Swedish messages, privacy handling and coordinated operational tuning.
+
+### Implementing versions in suggestion history
+
+Suggestion history keeps its grouping by the original feedback version. Each
+resolved suggestion with implementation evidence also shows the implementing
+version number, its current localized publication state, and the evidence date.
+Missing status names use the localized unknown-status label.
+Deleted versions show unavailable evidence. Motivation-only decisions have no
+implementation claim. The PDF history route requires requirement-history read
+access; the interactive suggestion link separately enforces version read access.

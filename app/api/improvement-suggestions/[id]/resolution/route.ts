@@ -23,6 +23,7 @@ const resolutionBodySchema = z
       z.literal(SUGGESTION_DISMISSED),
     ]),
     resolutionMotivation: businessTextSchema,
+    implementingRequirementVersionId: z.number().int().positive().optional(),
     resolvedBy: businessTextSchema.optional(),
   })
   .strict()
@@ -54,6 +55,7 @@ export const POST = secureMutationRoute({
         operation,
         suggestionId: params.id,
         resolutionMotivation: body.resolutionMotivation,
+        implementingRequirementVersionId: body.implementingRequirementVersionId,
         resolvedBy: body.resolvedBy,
         responseFormat: 'json',
       })

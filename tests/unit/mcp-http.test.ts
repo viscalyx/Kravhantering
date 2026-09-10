@@ -822,6 +822,12 @@ describe('handleRequirementsMcpRequest', () => {
       expect(JSON.stringify(listSuggestionsTool?.outputSchema)).toContain(
         'suggestions',
       )
+      expect(JSON.stringify(listSuggestionsTool?.outputSchema)).toContain(
+        'implementation',
+      )
+      expect(JSON.stringify(listSuggestionsTool?.outputSchema)).toContain(
+        'statusNameEn',
+      )
     })
 
     it('describes requirements_manage_improvement_suggestion resolution input', async () => {
@@ -834,6 +840,10 @@ describe('handleRequirementsMcpRequest', () => {
         manageSuggestionTool?.inputSchema,
       )
       expect(manageSuggestionInputSchemaText).toContain('resolutionMotivation')
+      expect(manageSuggestionInputSchemaText).toContain(
+        'implementingRequirementVersionId',
+      )
+      expect(manageSuggestionInputSchemaText).toContain('attach_implementation')
       expect(JSON.stringify(manageSuggestionTool?.outputSchema)).toContain(
         'result',
       )

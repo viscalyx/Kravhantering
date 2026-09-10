@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -232,6 +232,24 @@ describe('SuggestionResolutionModal', () => {
   })
 
   it.each([
+    [false, 'textbox'],
+    [true, 'combobox'],
+  ] as const)(
+    'focuses the editable field when implementationOnly is %s',
+    async (implementationOnly, role) => {
+      render(
+        <SuggestionResolutionModal
+          implementationOnly={implementationOnly}
+          onClose={vi.fn()}
+          onSubmit={vi.fn()}
+          open
+        />,
+      )
+      await waitFor(() => expect(screen.getByRole(role)).toHaveFocus())
+    },
+  )
+
+  it.each([
     ['resolve', 1],
     ['dismiss', 2],
   ] as const)(
@@ -278,7 +296,11 @@ describe('SuggestionResolutionModal', () => {
       expect(submit).toBeEnabled()
 
       await user.click(submit)
-      expect(onSubmit).toHaveBeenCalledWith(resolution, 'Duplicate request')
+      expect(onSubmit).toHaveBeenCalledWith(
+        resolution,
+        'Duplicate request',
+        undefined,
+      )
     },
   )
 

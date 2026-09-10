@@ -51,6 +51,50 @@ function makeRequirement(
 }
 
 describe('report templates', () => {
+  it.each([
+    ['en', 'Unknown'],
+    ['sv', 'Okänd'],
+  ])(
+    'labels an implementation with missing status names in %s',
+    (locale, unknownLabel) => {
+      const model = buildSuggestionHistoryReport(
+        makeRequirement([makeVersion()]),
+        [
+          {
+            id: 1,
+            requirementVersionId: 1,
+            content: 'Implemented suggestion',
+            createdAt: '2026-09-10T10:00:00Z',
+            createdBy: null,
+            isReviewRequested: 1,
+            resolution: 1,
+            resolutionMotivation: 'Implemented',
+            resolvedAt: '2026-09-10T10:00:00Z',
+            resolvedBy: null,
+            implementation: {
+              recordedAt: '2026-09-10T10:00:00Z',
+              version: {
+                id: 2,
+                requirementId: 1,
+                versionNumber: 2,
+                statusId: 3,
+                statusNameEn: '',
+                statusNameSv: '',
+              },
+            },
+          },
+        ],
+        locale,
+      )
+      const items = model.sections.flatMap(section =>
+        section.type === 'suggestion-list' ? section.items : [],
+      )
+      expect(items[0]?.implementationText).toContain(
+        `Version 2 · ${unknownLabel}`,
+      )
+    },
+  )
+
   it('reports review availability and missing comparison bases', () => {
     const noReview = buildReviewReport(
       makeRequirement([makeVersion({ status: 3 })]),
@@ -314,7 +358,20 @@ describe('report templates', () => {
     const model = buildSuggestionHistoryReport(
       makeRequirement(versions),
       [
-        suggestion(1, { resolution: 1 }),
+        suggestion(1, {
+          resolution: 1,
+          implementation: {
+            recordedAt: '2026-09-10T10:00:00Z',
+            version: {
+              id: 3,
+              requirementId: 1,
+              versionNumber: 3,
+              statusId: 3,
+              statusNameEn: 'Published',
+              statusNameSv: 'Publicerad',
+            },
+          },
+        }),
         suggestion(2, { resolution: 2 }),
         suggestion(3, { isReviewRequested: 1, requirementVersionId: 2 }),
         suggestion(4, { requirementVersionId: 3 }),
@@ -327,6 +384,10 @@ describe('report templates', () => {
     const suggestionItems = model.sections.flatMap(section =>
       section.type === 'suggestion-list' ? section.items : [],
     )
+    expect(
+      suggestionItems.find(item => item.content === 'Suggestion 1')
+        ?.implementationText,
+    ).toContain('Implementing version: Version 3 · Published')
     expect(suggestionItems.map(item => item.status.label)).toEqual(
       expect.arrayContaining([
         'Resolved',

@@ -1,4 +1,5 @@
 import {
+  attachSuggestionImplementation,
   deleteSuggestion,
   type ImprovementSuggestionMutationTarget,
   recordResolution,
@@ -90,6 +91,7 @@ export async function resolveImprovementSuggestionWithAudit(
     action: 'suggestion.resolution.recorded',
     operation: data.resolution === SUGGESTION_RESOLVED ? 'resolve' : 'dismiss',
     resolution: data.resolution,
+    implementingRequirementVersionId: data.implementingRequirementVersionId,
     suggestionId,
   }
 
@@ -117,6 +119,32 @@ export async function deleteImprovementSuggestionWithAudit(
     db,
     context,
     manager => deleteSuggestion(manager, suggestionId),
+    detail,
+    detail,
+  )
+}
+
+export function attachImprovementSuggestionImplementationWithAudit(
+  db: SqlServerDatabase,
+  suggestionId: number,
+  implementingRequirementVersionId: number,
+  context: RequestContext,
+): Promise<ImprovementSuggestionMutationTarget> {
+  const detail: SensitiveMutationAuditDetail = {
+    action: 'suggestion.implementation.attached',
+    operation: 'attach_implementation',
+    suggestionId,
+    implementingRequirementVersionId,
+  }
+  return runAuditedLifecycleMutation(
+    db,
+    context,
+    manager =>
+      attachSuggestionImplementation(
+        manager,
+        suggestionId,
+        implementingRequirementVersionId,
+      ),
     detail,
     detail,
   )

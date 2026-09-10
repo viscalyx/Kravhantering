@@ -75,6 +75,7 @@ vi.mock('@/lib/audit/action-audit', async importOriginal => {
   }
 })
 
+import { POST as attachImplementation } from '@/app/api/improvement-suggestions/[id]/implementation/route'
 import { POST as requestSuggestionReview } from '@/app/api/improvement-suggestions/[id]/request-review/route'
 import { POST as recordSuggestionResolution } from '@/app/api/improvement-suggestions/[id]/resolution/route'
 import { POST as revertSuggestionToDraft } from '@/app/api/improvement-suggestions/[id]/revert-to-draft/route'
@@ -333,6 +334,36 @@ describe('improvement suggestion REST service boundary', () => {
     },
   )
 
+  it('attaches implementing evidence through the service and validates its row ID', async () => {
+    const response = await attachImplementation(
+      jsonRequest('POST', { implementingRequirementVersionId: 31 }),
+      makeParams('9'),
+    )
+    expect(await response.json()).toEqual({ ok: true })
+    expect(mocks.service.manageSuggestion).toHaveBeenCalledWith(mocks.context, {
+      operation: 'attach_implementation',
+      suggestionId: 9,
+      implementingRequirementVersionId: 31,
+      responseFormat: 'json',
+    })
+    mocks.service.manageSuggestion.mockClear()
+    const invalid = await attachImplementation(
+      jsonRequest('POST', { implementingRequirementVersionId: 0 }),
+      makeParams('9'),
+    )
+    expect(invalid.status).toBe(400)
+    expect(mocks.service.manageSuggestion).not.toHaveBeenCalled()
+    mocks.service.manageSuggestion.mockRejectedValueOnce(
+      conflictError('Evidence already attached'),
+    )
+    const conflict = await attachImplementation(
+      jsonRequest('POST', { implementingRequirementVersionId: 31 }),
+      makeParams('9'),
+    )
+    expect(conflict.status).toBe(409)
+    expect(await conflict.json()).toMatchObject({ error: expect.any(String) })
+  })
+
   it('gets a suggestion and maps not-found while rethrowing infrastructure failures', async () => {
     mocks.getSuggestion.mockResolvedValueOnce({
       content: 'Clarify this',
@@ -347,6 +378,7 @@ describe('improvement suggestion REST service boundary', () => {
     expect(foundResponse.status).toBe(200)
     await expect(foundResponse.json()).resolves.toEqual({
       content: 'Clarify this',
+      implementation: null,
       id: 9,
     })
     expect(mocks.authorization.assertAuthorized).toHaveBeenCalledWith(

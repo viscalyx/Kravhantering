@@ -174,7 +174,13 @@ Deferred from this contract:
   display, or explicit selection.
 - Specification deviation routes, requirement-library deviation routes, and
   improvement-suggestion routes remain outside the OpenAPI/Schemathesis v1
-  contract. Their useful assertions are lifecycle state machines, reviewer
+  contract except `POST /api/improvement-suggestions/{id}/implementation`.
+  This bounded attachment endpoint requires an authenticated session, same-origin
+  CSRF headers, and the existing requirement-area suggestion management policy.
+  It attaches evidence once to a resolved suggestion without changing the
+  original decision. The resolution route accepts an optional implementing
+  version row ID; both mutations validate that it belongs to the same requirement.
+  Their useful assertions are lifecycle state machines, reviewer
   decisions, revert-to-draft behavior, parent authorization before child
   payload reads, published and unpublished requirement policy, 403/404
   separation, `Cache-Control: no-store`, audit detail, and UI stepper behavior.

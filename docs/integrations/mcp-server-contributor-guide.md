@@ -429,11 +429,12 @@ Exactly one identifier must be provided.
 Creates, edits, deletes, transitions, or resolves an improvement suggestion.
 
 - **Operations:** `create`, `edit`, `delete`, `request_review`,
-  `revert_to_draft`, `resolve`, `dismiss`
+  `revert_to_draft`, `resolve`, `dismiss`, `attach_implementation`
 - **Inputs:** `operation`, `suggestionId` (required except for `create`),
   `requirementId` (required for `create`), `content` (required for
   `create`/`edit`), `createdBy`, `requirementVersionId`,
-  `resolutionMotivation`, `resolvedBy`, `locale`, `responseFormat`
+  `resolutionMotivation`, `resolvedBy`, `implementingRequirementVersionId`,
+  `locale`, `responseFormat`
 - **Output:** confirmation message and updated suggestion data
 - **Grouping:** improvement suggestions
 
@@ -798,3 +799,14 @@ for the full setup.
 ## Related Docs
 
 - [mcp-server-user-guide.md](./mcp-server-user-guide.md)
+
+### Suggestion implementation contract
+
+The suggestion service owns `attach_implementation` and optional
+`implementingRequirementVersionId` on `resolve`. Both mutations validate
+requirement ownership and commit evidence with the Action log atomically.
+Lists authorize the implementing version independently before projecting its
+identity and current status. The REST detail route uses the same projection.
+A recorded timestamp with a null version means unavailable evidence; no
+version-number fallback is permitted. Keep the MCP schemas, REST contract,
+SQL tests, browser case COL-04a, and report template aligned.

@@ -992,6 +992,15 @@
     "bulkDeviationPartialFail": "Deviation requests failed for Requirement IDs: {ids}. Those requirements remain selected."
   },
   "improvementSuggestion": {
+    "attachImplementation": "Attach implementing version",
+    "implementingVersion": "Implementing version",
+    "implementingVersionHelp": "Optionally select the version of this requirement that implements the change. The original feedback version stays unchanged. You can attach a version later after resolving the suggestion. Evidence can be attached once; a deleted version becomes unavailable.",
+    "noImplementingVersion": "No implementing version selected",
+    "implementationVersionLabel": "Version {version}",
+    "implementationUnavailable": "Version unavailable or you do not have read permission",
+    "implementationRecordedAt": "Evidence recorded {date}",
+    "implementationActor": "Evidence recorded by",
+    "implementationActorHelp": "The signed-in person and time are recorded in the Action log. Attaching evidence does not change the original decision.",
     "title": "Improvement suggestions",
     "content": "Content",
     "contentHelp": "Describe the improvement suggestion or change proposal for this requirement. Do not enter names or other details that can identify a living person.",
@@ -1211,6 +1220,8 @@
         "version": "Version"
       },
       "suggestions": {
+        "implementingVersion": "Implementing version",
+        "implementationUnavailable": "Version unavailable or you do not have read permission",
         "resolved": "Resolved",
         "dismissed": "Dismissed",
         "reviewRequested": "Review Requested",

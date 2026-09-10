@@ -14277,6 +14277,16 @@ function addHsaColumnForDisplay(tableName, displayColumn, hsaColumn) {
   ensureColumn(table, hsaColumn, row => hsaForDisplayName(row[displayIndex]))
 }
 
+function addSuggestionImplementationSeed() {
+  const suggestions = seedTable('improvement_suggestions')
+  ensureColumn(suggestions, 'implementing_requirement_version_id', () => null)
+  ensureColumn(suggestions, 'implementation_recorded_at', () => null)
+  setSeedRowValues(suggestions, 'id', 1, {
+    implementing_requirement_version_id: 2,
+    implementation_recorded_at: '2026-04-10 20:07:00',
+  })
+}
+
 function addDuplicateNameImprovementSuggestionSeed() {
   const suggestions = seedTable('improvement_suggestions')
   ensureSeedRow(
@@ -14453,6 +14463,7 @@ function applyPrivacyIdentitySeed() {
     'resolved_by',
     'resolved_by_hsa_id',
   )
+  addSuggestionImplementationSeed()
   addDuplicateNameImprovementSuggestionSeed()
   addLinneaPrivacyExerciseSeed()
 
@@ -14810,6 +14821,10 @@ async function seedDemoLifecycleRow({
   setDraftValue('resolved_by_hsa_id', null)
   setDraftValue(resolvedByDisplayColumn, null)
   setDraftValue('resolved_at', null)
+  if (table === 'improvement_suggestions') {
+    setDraftValue('implementing_requirement_version_id', null)
+    setDraftValue('implementation_recorded_at', null)
+  }
   await query(defaultSql, draftRow)
 
   if (value('is_review_requested') === 1) {
@@ -14868,6 +14883,28 @@ async function seedDemoLifecycleRow({
       recordId: value('id'),
       table,
       transition: 'review-to-resolution',
+    })
+  }
+
+  if (
+    table === 'improvement_suggestions' &&
+    value('implementation_recorded_at') != null
+  ) {
+    const implementationResult = await query(
+      `UPDATE [improvement_suggestions]
+       SET implementing_requirement_version_id = @1, implementation_recorded_at = @2
+       WHERE id = @0 AND resolution = 1 AND implementation_recorded_at IS NULL;
+       SELECT @@ROWCOUNT AS [affectedRows]`,
+      [
+        value('id'),
+        value('implementing_requirement_version_id'),
+        value('implementation_recorded_at'),
+      ],
+    )
+    assertDemoLifecycleTransitionAffectedRows(implementationResult, {
+      recordId: value('id'),
+      table,
+      transition: 'resolution-to-implementation',
     })
   }
 

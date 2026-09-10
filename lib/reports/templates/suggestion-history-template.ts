@@ -61,8 +61,16 @@ function getSuggestionStatus(
 function toSuggestionItem(
   suggestion: SuggestionReportRow,
   labels: ReportLabels,
+  locale: string,
 ): SuggestionReportItem {
   return {
+    implementationText: suggestion.implementation
+      ? `${labels.suggestions.implementingVersion}: ${
+          suggestion.implementation.version
+            ? `${formatReportTemplate(labels.common.version, { version: suggestion.implementation.version.versionNumber })} · ${localizeReportValue(locale, suggestion.implementation.version.statusNameSv, suggestion.implementation.version.statusNameEn) || labels.common.unknown}`
+            : labels.suggestions.implementationUnavailable
+        } · ${new Date(suggestion.implementation.recordedAt).toLocaleDateString(locale)}`
+      : undefined,
     content: suggestion.content,
     createdBy: suggestion.createdBy,
     createdAt: suggestion.createdAt,
@@ -133,7 +141,7 @@ export function buildSuggestionHistoryReport(
     const versionSuggestions = suggestionsByVersionId.get(version.id) ?? []
     sections.push({
       type: 'suggestion-list',
-      items: versionSuggestions.map(s => toSuggestionItem(s, labels)),
+      items: versionSuggestions.map(s => toSuggestionItem(s, labels, locale)),
       emptyLabel,
     })
   }
@@ -147,7 +155,7 @@ export function buildSuggestionHistoryReport(
 
     sections.push({
       type: 'suggestion-list',
-      items: unlinkedSuggestions.map(s => toSuggestionItem(s, labels)),
+      items: unlinkedSuggestions.map(s => toSuggestionItem(s, labels, locale)),
       emptyLabel,
     })
   }

@@ -569,6 +569,26 @@ const ListSuggestionsOutputSchema = z
     suggestions: z.array(
       z
         .object({
+          implementation: z
+            .object({
+              recordedAt: z.string(),
+              version: z
+                .object({
+                  id: z.number(),
+                  requirementId: z.number(),
+                  versionNumber: z.number(),
+                  statusId: z.number(),
+                  statusNameEn: z.string(),
+                  statusNameSv: z.string(),
+                })
+                .strict()
+                .nullable(),
+            })
+            .strict()
+            .nullable()
+            .describe(
+              'Implementation evidence, separate from the feedback version. A null version means deleted or unreadable; status reflects the current publication state.',
+            ),
           content: z.string(),
           createdAt: z.string(),
           createdBy: z.string().nullable(),
@@ -2840,7 +2860,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: false,
       },
       description:
-        'Create, edit, delete, request review, revert to draft, resolve, or dismiss an improvement suggestion on a requirement.',
+        'Create, edit, delete, request review, revert to draft, resolve, dismiss, or attach implementation evidence to a resolved improvement suggestion. For resolve or attach_implementation, first call requirements_get_requirement with view history and copy the implementing requirement.versions[].id into implementingRequirementVersionId. Evidence is optional for resolve and required for attach_implementation. It can be attached once, without changing the original decision.',
       inputSchema: z
         .object({
           content: z
@@ -2864,6 +2884,7 @@ export function createKravhanteringMcpServer(
           locale: ResponseLocaleSchema,
           operation: z
             .enum([
+              'attach_implementation',
               'create',
               'delete',
               'dismiss',
@@ -2885,6 +2906,14 @@ export function createKravhanteringMcpServer(
             .positive()
             .optional()
             .describe('Optional version ID to link the suggestion to.'),
+          implementingRequirementVersionId: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+              'Implementing version row ID from requirements_get_requirement requirement.versions[].id; must belong to the same requirement. Use only for resolve or attach_implementation.',
+            ),
           resolutionMotivation: z
             .string()
             .max(4000)
@@ -2951,6 +2980,20 @@ export function createKravhanteringMcpServer(
                 })
               }
               break
+            case 'attach_implementation':
+              if (!data.implementingRequirementVersionId)
+                ctx.addIssue({
+                  code: 'custom',
+                  message: 'Implementing version ID is required',
+                  path: ['implementingRequirementVersionId'],
+                })
+              if (!data.suggestionId)
+                ctx.addIssue({
+                  code: 'custom',
+                  message: 'Suggestion ID is required',
+                  path: ['suggestionId'],
+                })
+              break
             case 'delete':
             case 'request_review':
             case 'revert_to_draft':
@@ -2982,6 +3025,8 @@ export function createKravhanteringMcpServer(
             operation: input.operation,
             requirementId: input.requirementId,
             requirementVersionId: input.requirementVersionId,
+            implementingRequirementVersionId:
+              input.implementingRequirementVersionId,
             resolutionMotivation: input.resolutionMotivation,
             resolvedBy: input.resolvedBy,
             responseFormat: toResponseFormat(input.responseFormat),

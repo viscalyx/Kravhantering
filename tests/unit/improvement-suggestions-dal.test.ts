@@ -50,6 +50,12 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
         updatedAt: new Date('2026-04-20T12:00:00.000Z'),
         reviewRequestedAt: new Date('2026-04-20T11:00:00.000Z'),
         requirementUniqueId: 'REQ-001',
+        implementationRecordedAt: null,
+        implementingRequirementVersionId: null,
+        implementingVersionNumber: null,
+        implementingVersionStatusId: null,
+        implementingVersionStatusNameEn: null,
+        implementingVersionStatusNameSv: null,
         requirementDescription: 'Example requirement',
       },
     ])
@@ -78,6 +84,12 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
         updatedAt: '2026-04-20T12:00:00.000Z',
         reviewRequestedAt: '2026-04-20T11:00:00.000Z',
         requirementUniqueId: 'REQ-001',
+        implementationRecordedAt: null,
+        implementingRequirementVersionId: null,
+        implementingVersionNumber: null,
+        implementingVersionStatusId: null,
+        implementingVersionStatusNameEn: null,
+        implementingVersionStatusNameSv: null,
         requirementDescription: 'Example requirement',
       },
     ])
@@ -141,7 +153,7 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('resolved_at = SYSUTCDATETIME()'),
-      [5, 1, 'Applied fix', 'alice', 'SE5560000001-alice1'],
+      [5, 1, 'Applied fix', 'alice', 'SE5560000001-alice1', null],
     )
     expect(query.mock.calls[0]?.[0]).toContain('AND is_review_requested = 1')
     expect(query.mock.calls[0]?.[0]).toContain('OUTPUT\n        INSERTED.id')
@@ -171,6 +183,7 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
       'Not applicable',
       'reviewer',
       'SE5560000001-reviewer1',
+      null,
     ])
   })
 
@@ -479,6 +492,12 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
         updatedAt: null,
         reviewRequestedAt: null,
         requirementUniqueId: null,
+        implementationRecordedAt: null,
+        implementingRequirementVersionId: null,
+        implementingVersionNumber: null,
+        implementingVersionStatusId: null,
+        implementingVersionStatusNameEn: null,
+        implementingVersionStatusNameSv: null,
         requirementDescription: null,
       },
     ])
@@ -501,6 +520,12 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
         updatedAt: null,
         reviewRequestedAt: null,
         requirementUniqueId: null,
+        implementationRecordedAt: null,
+        implementingRequirementVersionId: null,
+        implementingVersionNumber: null,
+        implementingVersionStatusId: null,
+        implementingVersionStatusNameEn: null,
+        implementingVersionStatusNameSv: null,
         requirementDescription: null,
       },
     ])

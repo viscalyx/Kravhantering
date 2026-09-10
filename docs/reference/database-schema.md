@@ -102,6 +102,7 @@ Apply these rules to all schema objects.
 | 4 | `specification_local_requirement_norm_references` uses composite PK `(specification_local_requirement_id, norm_reference_id)` instead of a single `id` | Same rationale as the version-based norm-references join table above. |
 | 4 | RFI join tables and `specification_rfi_question_items` use composite PKs | These rows are natural links between a question version and advisory target, or between a specification and an RFI question. A surrogate `id` would not improve identity. |
 | Localized columns | `norm_references.name`, `norm_references.type`, `norm_references.issuer` are single-language columns | Norm references are external legal/regulatory documents (e.g. laws, ISO standards) with proper names in their source language. Localizing them would be factually incorrect — "SFS 2018:218" and "Riksdagen" do not have per-locale translations. |
+| Versioning | Suggestion implementation evidence remains on `improvement_suggestions` | Evidence describes a follow-up to a suggestion decision, not requirement content. Copying it into version snapshots would prevent post-publication attachment without rewriting history. |
 | Versioning | `requirement_version_norm_references` stores only FK IDs, not snapshots of mutable `norm_references` fields (`name`, `type`, `reference`, `version`, `issuer`, `uri`, `is_archived`) | Norm references are shared external documents whose metadata should reflect the latest known state across all requirement versions. Snapshotting would create stale duplicates of external metadata that the system does not own. If point-in-time fidelity is needed in the future, a dedicated snapshot table can be added without breaking the current schema. |
 | Boolean columns | `ai_settings.requirement_generation_enabled` omits the `is_` prefix | The column names a positive feature preference exposed by Admin Center and REST response fields; an `is_*` name would read as observed state rather than administrator preference. |
 <!-- markdownlint-enable MD013 -->
@@ -1003,6 +1004,8 @@ erDiagram
         integer id PK
         integer requirement_id FK
         integer requirement_version_id FK
+        integer implementing_requirement_version_id FK
+        text implementation_recorded_at
         text content
         text created_by
         text created_by_hsa_id
@@ -1019,6 +1022,7 @@ erDiagram
 
     requirements ||--o{ improvement_suggestions : "has suggestions"
     requirement_versions ||--o{ improvement_suggestions : "version suggestions"
+    requirement_versions ||--o{ improvement_suggestions : "implements feedback"
 ```
 <!-- markdownlint-enable MD013 -->
 
@@ -3377,6 +3381,8 @@ draft → review requested → resolved or dismissed.
 | `id` | integer PK | Auto-increment primary key |
 | `requirement_id` | integer FK → `requirements.id` (CASCADE DELETE) | The requirement this suggestion applies to |
 | `requirement_version_id` | integer FK → `requirement_versions.id` (SET NULL) | Optional: the specific version being reviewed |
+| `implementing_requirement_version_id` | integer FK → `requirement_versions.id` (NO ACTION) | Optional implementing version row; must belong to the same requirement |
+| `implementation_recorded_at` | text (ISO 8601) | Evidence attachment time; retained when its version is removed |
 | `content` | text NOT NULL | The suggestion text |
 | `created_by` | text | Display-name snapshot for the actor that submitted the suggestion |
 | `created_by_hsa_id` | text | HSA-id for the actor that submitted the suggestion (nullable after privacy erasure) |
@@ -3393,6 +3399,7 @@ draft → review requested → resolved or dismissed.
 
 **Indexes:** `idx_improvement_suggestions_requirement_id`,
 `idx_improvement_suggestions_requirement_version_id`,
+`idx_improvement_suggestions_implementing_requirement_version_id`,
 `idx_improvement_suggestions_created_by_hsa_id`,
 `idx_improvement_suggestions_resolved_by_hsa_id`.
 
@@ -3403,7 +3410,19 @@ review timestamp. Resolved and dismissed suggestions require a valid decision,
 non-blank motivation, and ordered review and resolution timestamps. Resolver
 identity snapshots remain nullable so privacy erasure can anonymize them.
 
----
+`chk_improvement_suggestions_implementation` permits evidence only on resolved
+suggestions and requires its timestamp to follow the decision. The original
+feedback version and decision fields are independent of implementation evidence.
+Evidence can be attached with resolution or once afterward. The same audited
+transaction validates that the version belongs to the requirement. Motivation-only
+resolutions and dismissals need no implementing version.
+
+The implementing FK uses NO ACTION to avoid SQL Server multiple cascade paths.
+Draft deletion and Admin Archiving clear this FK inside their deletion transaction,
+retaining the evidence timestamp as an unavailable marker. Deleting the parent
+requirement removes the suggestion and its evidence. Demo suggestion 1 links
+feedback version row 1 to implementing version row 2; other motivation-only
+examples remain unlinked. No import JSON Schema fields change.
 
 ## Indexes & Constraints Reference
 
@@ -3524,6 +3543,7 @@ its purpose and the table/column(s) it covers.
 | `idx_specification_local_requirement_deviations_decided_by_hsa_id` | `specification_local_requirement_deviations` | `decided_by_hsa_id` | Speed up privacy erasure of local deviation decision makers |
 | `idx_deviations_created_by_hsa_id` | `deviations` | `created_by_hsa_id` | Speed up privacy erasure of deviation creators |
 | `idx_deviations_decided_by_hsa_id` | `deviations` | `decided_by_hsa_id` | Speed up privacy erasure of deviation decision makers |
+| `idx_improvement_suggestions_implementing_requirement_version_id` | `improvement_suggestions` | `implementing_requirement_version_id` | Clear implementation links during version deletion and retention |
 | `idx_improvement_suggestions_requirement_id` | `improvement_suggestions` | `requirement_id` | Speed up lookups of suggestions by requirement |
 | `idx_improvement_suggestions_requirement_version_id` | `improvement_suggestions` | `requirement_version_id` | Speed up lookups of suggestions by requirement version |
 | `idx_improvement_suggestions_created_by_hsa_id` | `improvement_suggestions` | `created_by_hsa_id` | Speed up privacy erasure of suggestion creators |
@@ -3675,6 +3695,7 @@ The following table lists every named FK constraint:
 | `fk_requirements_specification_items_requirement_version_id` | `requirements_specification_items` | `requirement_version_id` | `requirement_versions.id` | NO ACTION | NO ACTION |
 | `fk_requirements_specification_items_specification_item_status_id` | `requirements_specification_items` | `specification_item_status_id` | `specification_item_statuses.id` | NO ACTION | NO ACTION |
 | `fk_deviations_specification_item_id` | `deviations` | `specification_item_id` | `requirements_specification_items.id` | CASCADE | NO ACTION |
+| `fk_improvement_suggestions_implementing_requirement_version_id` | `improvement_suggestions` | `implementing_requirement_version_id` | `requirement_versions.id` | NO ACTION | NO ACTION |
 | `fk_improvement_suggestions_requirement_id` | `improvement_suggestions` | `requirement_id` | `requirements.id` | CASCADE | NO ACTION |
 | `fk_improvement_suggestions_requirement_version_id` | `improvement_suggestions` | `requirement_version_id` | `requirement_versions.id` | SET NULL | NO ACTION |
 | `fk_access_review_items_run_id` | `access_review_items` | `run_id` | `access_review_runs.id` | CASCADE | NO ACTION |
@@ -3863,6 +3884,7 @@ graph LR
     RV -- "idx_..._status_updated_at\n(status_updated_at)" --> RV
     RV -- "idx_..._has_specification_item_history\n(has_specification_item_history)" --> RV
 
+    IS -- "idx_..._implementing_requirement_version_id" --> RV
     IS -- "idx_..._requirement_id\n(requirement_id)" --> R
     IS -- "idx_..._requirement_version_id\n(requirement_version_id)" --> RV
     IS -- "idx_..._created_by_hsa_id\n(created_by_hsa_id)" --> IS

@@ -74,6 +74,7 @@ import {
 } from '@/lib/requirements/service-shared'
 import { createSpecificationWorkflow } from '@/lib/requirements/service-specifications'
 import { createSuggestionWorkflow } from '@/lib/requirements/service-suggestions'
+import type { SuggestionImplementation } from '@/lib/requirements/suggestion-implementation'
 import type {
   RequirementDetail,
   RequirementVersionDetail,
@@ -393,6 +394,7 @@ export interface ListSuggestionsOutput {
   }
   message: string
   suggestions: {
+    implementation: SuggestionImplementation | null
     content: string
     createdAt: string
     createdBy: string | null
@@ -530,11 +532,13 @@ export interface RequirementsService extends RfiQuestionQueryService {
   manageSuggestion(
     context: RequestContext,
     input: {
+      implementingRequirementVersionId?: number
       content?: string
       createdBy?: string | null
       suggestionId?: number
       locale?: ResponseLocale
       operation:
+        | 'attach_implementation'
         | 'create'
         | 'delete'
         | 'dismiss'

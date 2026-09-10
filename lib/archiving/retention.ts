@@ -199,6 +199,8 @@ const DELETE_REQUIREMENT_VERSION_SQL = `DECLARE @requirement_id int;
       BEGIN
         DELETE FROM requirement_version_requirement_packages WHERE requirement_version_id = @0;
         DELETE FROM requirement_version_norm_references WHERE requirement_version_id = @0;
+        UPDATE improvement_suggestions SET implementing_requirement_version_id = NULL
+        WHERE implementing_requirement_version_id = @0;
         DELETE FROM requirement_versions WHERE id = @0;
         IF NOT EXISTS (
           SELECT 1 FROM requirement_versions WHERE requirement_id = @requirement_id

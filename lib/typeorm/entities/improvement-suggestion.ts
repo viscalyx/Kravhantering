@@ -8,6 +8,8 @@ export interface ImprovementSuggestionEntity {
   createdBy: string | null
   createdByHsaId: string | null
   id: number
+  implementationRecordedAt: Date | null
+  implementingRequirementVersion: RequirementVersionEntity | null
   isReviewRequested: boolean
   requirement: RequirementEntity
   requirementVersion: RequirementVersionEntity | null
@@ -36,6 +38,12 @@ export const improvementSuggestionEntity =
         name: 'is_review_requested',
         type: 'bit',
         default: false,
+      },
+      implementationRecordedAt: {
+        name: 'implementation_recorded_at',
+        type: 'datetime2',
+        precision: 3,
+        nullable: true,
       },
       resolution: { name: 'resolution', type: 'int', nullable: true },
       resolutionMotivation: {
@@ -79,6 +87,10 @@ export const improvementSuggestionEntity =
     },
     checks: [
       {
+        name: 'chk_improvement_suggestions_implementation',
+        expression: `([implementing_requirement_version_id] IS NULL AND [implementation_recorded_at] IS NULL) OR ([resolution] IS NOT NULL AND [resolution] = 1 AND [implementation_recorded_at] IS NOT NULL AND [implementation_recorded_at] >= [resolved_at])`,
+      },
+      {
         expression: `(
           (
             [is_review_requested] = 0
@@ -118,6 +130,10 @@ export const improvementSuggestionEntity =
     ],
     indices: [
       {
+        name: 'idx_improvement_suggestions_implementing_requirement_version_id',
+        columns: ['implementingRequirementVersion'],
+      },
+      {
         name: 'idx_improvement_suggestions_requirement_id',
         columns: ['requirement'],
       },
@@ -135,6 +151,18 @@ export const improvementSuggestionEntity =
       },
     ],
     relations: {
+      implementingRequirementVersion: {
+        type: 'many-to-one',
+        target: 'RequirementVersion',
+        joinColumn: {
+          name: 'implementing_requirement_version_id',
+          referencedColumnName: 'id',
+          foreignKeyConstraintName:
+            'fk_improvement_suggestions_implementing_requirement_version_id',
+        },
+        nullable: true,
+        onDelete: 'NO ACTION',
+      },
       requirement: {
         type: 'many-to-one',
         target: 'Requirement',

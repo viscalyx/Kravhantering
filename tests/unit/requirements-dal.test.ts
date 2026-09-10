@@ -69,6 +69,7 @@ describe('requirements DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ count: 0 }])
       .mockResolvedValueOnce([])
 
@@ -93,9 +94,9 @@ describe('requirements DAL (SQL Server path)', () => {
     expect(sqlCalls[1]).toContain(
       'SELECT TOP (1) unique_id AS uniqueId FROM requirements WHERE id = @0',
     )
-    expect(sqlCalls[6]).toBe('DELETE FROM requirements WHERE id = @0')
+    expect(sqlCalls[7]).toBe('DELETE FROM requirements WHERE id = @0')
     const auditOrder = audit.mock.invocationCallOrder[0] ?? 0
-    const parentDeleteOrder = query.mock.invocationCallOrder[6] ?? 0
+    const parentDeleteOrder = query.mock.invocationCallOrder[7] ?? 0
     expect(auditOrder).toBeLessThan(parentDeleteOrder)
   })
 
@@ -105,6 +106,7 @@ describe('requirements DAL (SQL Server path)', () => {
     query
       .mockResolvedValueOnce([{ id: 21, statusId: 1, versionNumber: 3 }])
       .mockResolvedValueOnce([{ uniqueId: 'SEC-0001' }])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
