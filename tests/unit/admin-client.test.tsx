@@ -8,7 +8,7 @@ import {
   within,
 } from '@testing-library/react'
 import { type ComponentProps, StrictMode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AdminClientShell from '@/app/[locale]/admin/admin-composed-client'
 import type { ActionAuditLogInitialState } from '@/components/admin/ActionAuditLogView'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
@@ -472,6 +472,8 @@ async function expectLastCreatedBlobStartsWithUtf8Bom(): Promise<void> {
 }
 
 describe('AdminClient', () => {
+  afterEach(() => vi.unstubAllEnvs())
+
   beforeEach(() => {
     fetchMock.mockReset()
     fetchMock.mockImplementation(() => new Promise(() => undefined))
@@ -497,6 +499,34 @@ describe('AdminClient', () => {
       value: anchorClickMock,
     })
   })
+
+  it.each(['development', 'production'])(
+    'keeps navigation and fallback feedback usable with annotations appropriate for %s',
+    environment => {
+      vi.stubEnv('NODE_ENV', environment)
+      searchParamsMock.current = new URLSearchParams('tab=missing')
+      render(
+        <HelpProvider>
+          <AdminClient />
+        </HelpProvider>,
+      )
+
+      const navigation = screen.getByRole('tablist', { name: 'admin.title' })
+      const selectedTab = screen.getByRole('tab', { selected: true })
+      const notice = screen.getByText('admin.tabUnavailableFallback')
+      expect(navigation).toBeVisible()
+      expect(notice).toHaveAttribute('role', 'status')
+      for (const [element, marker] of [
+        [navigation, 'navigation'],
+        [selectedTab, 'edge tab'],
+        [notice, 'tab fallback notice'],
+      ] as const) {
+        expect(element.getAttribute('data-developer-mode-name')).toBe(
+          environment === 'production' ? null : marker,
+        )
+      }
+    },
+  )
 
   it('opens the taxonomy tab from the admin tab query parameter', () => {
     searchParamsMock.current = new URLSearchParams('tab=taxonomy')

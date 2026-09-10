@@ -341,11 +341,12 @@ export default function AdminClient({
               aria-label={ta('title')}
               className="flex max-w-full flex-wrap items-center gap-1 rounded-3xl border border-secondary-200/80 bg-white/80 p-1 dark:border-secondary-700/70 dark:bg-secondary-900/70"
               role="tablist"
-              {...devMarker({
-                name: 'navigation',
-                priority: 320,
-                value: 'admin center tabs',
-              })}
+              {...(process.env.NODE_ENV !== 'production' &&
+                devMarker({
+                  name: 'navigation',
+                  priority: 320,
+                  value: 'admin center tabs',
+                }))}
             >
               {authorizedTabs.map(tab => {
                 const label = adminTabLabel(tab.id, ta)
@@ -365,12 +366,13 @@ export default function AdminClient({
                     role="tab"
                     tabIndex={activeTab === tab.id ? 0 : -1}
                     type="button"
-                    {...devMarker({
-                      context: 'admin center',
-                      name: 'edge tab',
-                      priority: 360,
-                      value: ADMIN_TAB_DEVELOPER_MODE_VALUES[tab.id],
-                    })}
+                    {...(process.env.NODE_ENV !== 'production' &&
+                      devMarker({
+                        context: 'admin center',
+                        name: 'edge tab',
+                        priority: 360,
+                        value: ADMIN_TAB_DEVELOPER_MODE_VALUES[tab.id],
+                      }))}
                   >
                     <tab.icon aria-hidden="true" className="h-4 w-4" />
                     {label}
@@ -385,12 +387,13 @@ export default function AdminClient({
           <div
             className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100"
             role="status"
-            {...devMarker({
-              context: 'admin center',
-              name: 'tab fallback notice',
-              priority: 350,
-              value: fallbackReason,
-            })}
+            {...(process.env.NODE_ENV !== 'production' &&
+              devMarker({
+                context: 'admin center',
+                name: 'tab fallback notice',
+                priority: 350,
+                value: fallbackReason,
+              }))}
           >
             {ta(
               fallbackReason === 'unauthorized'

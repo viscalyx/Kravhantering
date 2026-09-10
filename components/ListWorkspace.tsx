@@ -8,19 +8,17 @@ interface ListWorkspaceProps extends ComponentProps<'div'> {
 
 /** Fluid table workspace; the surrounding section owns the page gutters. */
 export default function ListWorkspace({
-  children,
   className = '',
   context,
-  reserveActions = false,
+  reserveActions,
   ...props
 }: ListWorkspaceProps) {
   return (
     <div
       {...props}
-      {...devMarker({ context, name: 'list workspace', value: 'fluid' })}
+      {...(process.env.NODE_ENV !== 'production' &&
+        devMarker({ context, name: 'list workspace', value: 'fluid' }))}
       className={`list-workspace${reserveActions ? ' list-workspace-with-actions' : ''} ${className}`}
-    >
-      {children}
-    </div>
+    />
   )
 }
