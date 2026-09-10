@@ -118,6 +118,14 @@ Update external tools that send session cookies to use the effective host-bound 
 - CSP violation logging is enabled by default, including for existing installations. An Admin can disable it in Settings  Security. The change takes effect without a restart. Disabling logging does not disable CSP protection, and browsers can continue to send reports.
 - After rollout, verify report delivery from application pages and API documentation to the security audit log. Treat these anonymous events as diagnostic reports, not proof of a successful attack. Apply the existing log access and retention rules, and monitor log volume. Collection limits apply separately to each application process.
 <!-- operator-upgrade:source pr-1399 end -->
+
+<!-- operator-upgrade:source pr-1404 start -->
+After rollout, inform authors that they can save selected, unimported
+candidates as a local requirement import file before closing review. The file
+contains edited candidate content and required proposed references. When the
+file is opened again, current permissions, destination, reference data, and
+import budget apply. Changed or removed references can require further review.
+<!-- operator-upgrade:source pr-1404 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
