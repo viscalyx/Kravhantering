@@ -3736,6 +3736,10 @@
     "imageErrorRead": "Kunde inte läsa en eller flera bildfiler. Försök igen."
   },
   "requirementsImportDialog": {
+    "downloadCandidates": "Ladda ner valda kandidater",
+    "downloadCandidatesHelp": "Spara valda, ej importerade rader med aktuella ändringar. Välj minst en rad och vänta tills eventuell import är klar. När filen öppnas igen valideras den på nytt.",
+    "candidateReferenceUnavailable": "Kan inte ladda ner {field}: referensen kan inte kopplas till importfilen. Lös eller ta bort kopplingen och försök igen. Dina ändringar finns kvar.",
+    "candidateSchemaInvalid": "Kan inte ladda ner {field}: kontrollera fältet mot importschemat och aktuell kravimportbudget. Radnummer avser granskningen. Dina ändringar finns kvar.",
     "importTitleWithDestination": "{title} för {destination}",
     "loadingInitialImport": "Förbereder importgranskning...",
     "descriptionRequired": "Kravtext måste anges innan raden kan importeras.",

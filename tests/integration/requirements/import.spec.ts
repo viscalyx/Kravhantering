@@ -344,4 +344,211 @@ test.describe('Requirements import', () => {
       await expect(importButton).toBeFocused()
     })
   })
+  test('REQ-17a: downloads edited remaining candidates and reopens with changed reference data', async ({
+    page,
+  }) => {
+    const previewRequests: Array<{
+      payload: { requirements: Array<{ description: string }> }
+    }> = []
+    const proposal = {
+      issuer: 'Issuer',
+      key: 'pending',
+      name: 'Pending standard',
+      normReferenceId: null,
+      reference: 'Article 2',
+      type: 'Standard',
+      uri: null,
+      version: null,
+    }
+    const values = {
+      acceptanceCriteria: null,
+      categoryId: null,
+      description: 'Original candidate',
+      needsReferenceId: null,
+      normReferenceIds: [42],
+      priorityLevelId: null,
+      qualityCharacteristicId: null,
+      requirementPackageIds: [],
+      typeId: 1,
+      verifiable: false,
+      verificationMethod: null,
+    }
+    await page.route('**/api/requirements/import/schema?*', route =>
+      fulfillJson(route, buildRequirementsImportJsonSchema('sv')),
+    )
+    await page.route('**/api/norm-references*', route =>
+      fulfillJson(route, {
+        normReferences: [
+          { id: 42, name: 'Existing standard', normReferenceId: 'ISO-42' },
+        ],
+      }),
+    )
+    await page.route('**/api/requirements/import/preview', async route => {
+      const request = route.request().postDataJSON()
+      previewRequests.push(request)
+      const reopened =
+        request.payload.requirements[0].description ===
+        'Corrected remaining candidate'
+      await fulfillJson(route, {
+        previewToken: reopened ? 'fresh-preview' : 'original-preview',
+        proposals: [
+          {
+            ...proposal,
+            referencedCount: 1,
+            resolvedNormReferenceDbId: null,
+            warnings: [],
+          },
+        ],
+        needsReferenceProposals: [],
+        rows: reopened
+          ? [
+              {
+                errors: [],
+                infos: [],
+                proposedNeedsReferenceKey: null,
+                proposedNormReferenceKeys: ['pending'],
+                reviewRowId: 'fresh-row',
+                selected: true,
+                sourceIndex: 0,
+                values: {
+                  ...values,
+                  description: 'Corrected remaining candidate',
+                  normReferenceIds: [],
+                },
+                warnings: [
+                  {
+                    code: 'import_norm_reference_unresolved',
+                    field: 'normReferenceIds',
+                    level: 'warning',
+                    message: 'Normreferensen ISO-42 finns inte längre.',
+                    originalValue: 'ISO-42',
+                  },
+                ],
+              },
+            ]
+          : [0, 1].map(sourceIndex => ({
+              errors: [],
+              infos: [],
+              proposedNeedsReferenceKey: null,
+              proposedNormReferenceKeys: sourceIndex === 1 ? ['pending'] : [],
+              reviewRowId: `row-${sourceIndex}`,
+              selected: sourceIndex === 0,
+              sourceIndex,
+              values: {
+                ...values,
+                description:
+                  sourceIndex === 0
+                    ? 'Import this candidate'
+                    : values.description,
+              },
+              warnings: [],
+            })),
+        summary: {
+          errorCount: 0,
+          rowCount: reopened ? 1 : 2,
+          warningCount: reopened ? 1 : 0,
+        },
+      })
+    })
+    await page.route('**/api/requirements/import/execute', route =>
+      fulfillJson(route, {
+        createdRows: [
+          {
+            ...values,
+            categoryName: null,
+            createdDatabaseId: 9002,
+            createdVisibleId: 'PWI9002',
+            importMode: 'library',
+            normReferences: ['ISO-42'],
+            priorityLevelName: null,
+            qualityCharacteristicName: null,
+            requirementPackageNames: [],
+            sourceIndex: 0,
+            targetAreaId: 1,
+            targetSpecificationId: null,
+            typeName: 'Funktionellt',
+          },
+        ],
+        summary: { createdCount: 1 },
+      }),
+    )
+    await page.goto('/sv/requirements')
+    await page
+      .getByRole('button', { name: 'Importera krav', exact: true })
+      .click()
+    const dialog = page.getByRole('dialog', { name: /Importera krav/ })
+    await dialog.getByLabel('Kravområde').selectOption({ index: 1 })
+    await dialog.getByLabel('Import-JSON').fill(
+      JSON.stringify({
+        schemaVersion: 'requirement-import.v4',
+        proposedNormReferences: [proposal],
+        requirements: [
+          { description: 'Import this candidate' },
+          {
+            description: 'Original candidate',
+            normReferenceIds: ['ISO-42'],
+            proposedNormReferenceKeys: ['pending'],
+          },
+        ],
+      }),
+    )
+    await dialog.getByRole('button', { name: 'Förhandsgranska krav' }).click()
+    await dialog.getByRole('button', { name: 'Importera valda' }).click()
+    await expect(dialog.getByRole('switch')).toHaveCount(1)
+    const downloadButton = dialog.getByRole('button', {
+      name: 'Ladda ner valda kandidater',
+    })
+    await expect(downloadButton).toBeDisabled()
+    await expect(downloadButton).toHaveAttribute(
+      'data-developer-mode-name',
+      'download candidates button',
+    )
+    await dialog.getByRole('switch').click()
+    await dialog.getByRole('button', { name: 'Expandera alla' }).click()
+    await dialog.getByLabel(/^Kravtext/).fill('Corrected remaining candidate')
+    const downloading = page.waitForEvent('download')
+    await downloadButton.click()
+    const download = await downloading
+    expect(download.suggestedFilename()).toBe(
+      'requirements-import-candidates.json',
+    )
+    const path = await download.path()
+    if (!path) throw new Error('Candidate download has no local path')
+    const payload = JSON.parse(await readFile(path, 'utf8'))
+    expect(payload).toEqual({
+      schemaVersion: 'requirement-import.v4',
+      proposedNormReferences: [proposal],
+      requirements: [
+        {
+          ...values,
+          description: 'Corrected remaining candidate',
+          normReferenceIds: ['ISO-42'],
+          proposedNormReferenceKeys: ['pending'],
+        },
+      ],
+    })
+    await expect(dialog.getByLabel(/^Kravtext/)).toHaveValue(
+      'Corrected remaining candidate',
+    )
+    await dialog.getByRole('button', { name: 'Stäng', exact: true }).click()
+    await page
+      .getByRole('button', { name: 'Stäng', exact: true })
+      .last()
+      .click()
+    await expect(dialog).toHaveCount(0)
+    await page
+      .getByRole('button', { name: 'Importera krav', exact: true })
+      .click()
+    await dialog.getByLabel('Kravområde').selectOption({ index: 1 })
+    await dialog.locator('input[type="file"]').setInputFiles(path)
+    await dialog.getByRole('button', { name: 'Förhandsgranska krav' }).click()
+    await dialog.getByRole('button', { name: 'Expandera alla' }).click()
+    await expect(dialog.getByLabel(/^Kravtext/)).toHaveValue(
+      'Corrected remaining candidate',
+    )
+    await expect(
+      dialog.getByText('Normreferensen ISO-42 finns inte längre.'),
+    ).toHaveCount(1)
+    expect(previewRequests.at(-1)?.payload).toEqual(payload)
+  })
 })

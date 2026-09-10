@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import {
   type APIRequestContext,
   type APIResponse,
@@ -8,6 +9,7 @@ import {
   type TestInfo,
   test,
 } from '@playwright/test'
+import { requirementsImportPayloadSchema } from '@/lib/requirements/import-schema'
 import { delay } from '@/tests/helpers/common'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { expectApiResponseOk } from '../api-response-assertions'
@@ -3483,6 +3485,27 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await expect(
       dialog.getByRole('button', { name: 'Importera valda' }),
     ).toBeEnabled()
+    const candidateDownloadPromise = page.waitForEvent('download')
+    await dialog
+      .getByRole('button', { name: 'Ladda ner valda kandidater' })
+      .click()
+    const candidateDownload = await candidateDownloadPromise
+    const candidatePath = await candidateDownload.path()
+    if (!candidatePath) throw new Error('Candidate download has no local path')
+    const candidatePayload = requirementsImportPayloadSchema.parse(
+      JSON.parse(await readFile(candidatePath, 'utf8')),
+    )
+    expect(candidatePayload.requirements).toEqual([
+      expect.objectContaining({
+        description: importedDescription,
+        verificationMethod: 'Dokumentgranskning',
+        needsReferenceId: expect.any(Number),
+        normReferenceIds: [expect.any(String)],
+      }),
+    ])
+    await expect(dialog.getByLabel('Verifieringsmetod')).toHaveValue(
+      'Dokumentgranskning',
+    )
     await dialog.getByRole('button', { name: 'Importera valda' }).click()
 
     await expect.poll(() => previewRequests.length).toBe(1)

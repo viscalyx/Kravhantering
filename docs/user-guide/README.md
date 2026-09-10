@@ -550,6 +550,25 @@ CSV-kvittot kan laddas ned vid behov.
 
 ![Kravbiblioteksimport — importerade rader](images/054-import-kravbibliotek-kvitto.png)
 
+### Kravimport — spara kandidater för fortsatt arbete
+
+Välj kvarvarande rader och **"Ladda ner valda kandidater"** för att spara en
+kravimportfil med aktuella ändringar. Det fungerar både i kravbiblioteket och
+i ett kravunderlag. Redan importerade rader ingår inte. Använda olösta förslag
+på normreferenser och behovsreferenser följer med så att förberedelsen kan
+fortsätta senare. Nedladdningen ändrar inte granskningen.
+
+Kandidater behöver inte vara färdiga för import, men måste följa filschemat
+och aktuell kravimportbudget. Om ett fält eller en referens inte kan sparas
+visas ett fel och ändringarna finns kvar. Korrigera fältet eller referensen
+och försök igen.
+
+Öppna filen via vanlig kravimport när arbetet ska fortsätta. Välj destination
+på nytt. Aktuell behörighet, referensdata och kravimportbudget kontrolleras
+igen; ändrade eller borttagna referenser kan därför ge nya varningar eller
+fel. Spara filen innan granskningen stängs eftersom osparade ändringar då
+försvinner.
+
 ### Kravunderlagsimport — importfil
 
 I ett kravunderlag öppnar du **"Fler åtgärder"** och väljer **"Importera unika

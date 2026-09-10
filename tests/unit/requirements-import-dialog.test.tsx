@@ -4,7 +4,11 @@ import RequirementsImportDialog, {
   type ImportPreviewResponse,
 } from '@/components/RequirementsImportDialog'
 import { apiFetch } from '@/lib/http/api-fetch'
-import { REQUIREMENT_IMPORT_CONTENT_MAX_BYTES } from '@/lib/requirements/import-budget'
+import {
+  DEFAULT_REQUIREMENT_IMPORT_BUDGET,
+  REQUIREMENT_IMPORT_CONTENT_MAX_BYTES,
+  type RequirementImportBudget,
+} from '@/lib/requirements/import-budget'
 import { buildRequirementsImportJsonSchema } from '@/lib/requirements/import-schema'
 
 const confirmMock = vi.hoisted(() => vi.fn())
@@ -12,6 +16,9 @@ const downloadBlobMock = vi.hoisted(() => vi.fn())
 const importLocaleState = vi.hoisted(() => ({ locale: 'sv' }))
 const importDialogTranslate = vi.hoisted(() => {
   const messages: Record<string, string> = {
+    candidateReferenceUnavailable:
+      'Cannot map {field}. Resolve or remove the link.',
+    candidateSchemaInvalid: 'Check schema and budget: {field}.',
     descriptionRequired: 'Kravtext måste anges innan raden kan importeras.',
     importTitleWithDestination: '{title} för {destination}',
     loadingInitialImport: 'Förbereder importgranskning...',
@@ -51,6 +58,7 @@ vi.mock('@/lib/browser-download', () => ({
 
 function mockReferenceDataFetch(
   options: {
+    budget?: RequirementImportBudget
     normReferences?: Array<{
       id: number
       name: string
@@ -86,7 +94,7 @@ function mockReferenceDataFetch(
   global.fetch = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input)
     const body = url.includes('/api/requirements/import/schema')
-      ? buildRequirementsImportJsonSchema('sv')
+      ? buildRequirementsImportJsonSchema('sv', options.budget)
       : url.includes('requirement-packages')
         ? { requirementPackages: options.requirementPackages ?? [] }
         : url.includes('norm-references')
@@ -273,6 +281,267 @@ describe('RequirementsImportDialog', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it.each(['library', 'specification-local'] as const)(
+    'downloads current selected candidates in %s without review authority or changing edits',
+    async mode => {
+      mockReferenceDataFetch({
+        normReferences: [
+          { id: 42, name: 'Standard', normReferenceId: 'ISO-42' },
+        ],
+      })
+      const row = importPreviewRow()
+      row.values.normReferenceIds = [42]
+      const excluded = importPreviewRow(1)
+      excluded.selected = false
+      vi.mocked(apiFetch).mockResolvedValue(
+        importPreviewResponse([row, excluded]),
+      )
+      render(
+        <RequirementsImportDialog
+          areas={[{ id: 7, name: 'Area' }]}
+          mode={mode}
+          onClose={vi.fn()}
+          open
+          specificationId={8}
+        />,
+      )
+      fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+        target: { value: validImportPayload() },
+      })
+      if (mode === 'library') {
+        fireEvent.change(screen.getByLabelText(/^Kravområde/), {
+          target: { value: '7' },
+        })
+      }
+      await clickPreviewButton()
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Expandera alla' }),
+      )
+      fireEvent.change(screen.getAllByLabelText(/^Kravtext/)[0], {
+        target: { value: 'Korrigerad kravtext' },
+      })
+      const download = screen.getByRole('button', {
+        name: 'downloadCandidates',
+      })
+      expect(download).toHaveAttribute(
+        'data-developer-mode-name',
+        'download candidates button',
+      )
+      fireEvent.click(download)
+      expect(downloadBlobMock).toHaveBeenCalledTimes(1)
+      const [blob, filename] = downloadBlobMock.mock.calls[0] as [Blob, string]
+      expect(filename).toBe('requirements-import-candidates.json')
+      expect(JSON.parse(await blob.text())).toEqual({
+        schemaVersion: 'requirement-import.v4',
+        requirements: [
+          {
+            ...row.values,
+            description: 'Korrigerad kravtext',
+            normReferenceIds: ['ISO-42'],
+          },
+        ],
+      })
+      expect(screen.getAllByLabelText(/^Kravtext/)[0]).toHaveValue(
+        'Korrigerad kravtext',
+      )
+      expect(
+        screen
+          .getAllByRole('switch')
+          .map(control => control.getAttribute('aria-checked')),
+      ).toEqual(['true', 'false'])
+      expect(apiFetch).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  async function openCandidateReview(preview: ImportPreviewResponse) {
+    render(
+      <RequirementsImportDialog
+        initialImport={{
+          key: 'candidates',
+          payload: JSON.parse(validImportPayload()),
+          preview,
+        }}
+        mode="specification-local"
+        needsReferences={[{ id: 91, text: 'Replacement need' }]}
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+    const button = await screen.findByRole('button', {
+      name: 'downloadCandidates',
+    })
+    await waitFor(() => expect(button).toBeEnabled())
+    return button
+  }
+
+  async function downloadedCandidates() {
+    return JSON.parse(await (downloadBlobMock.mock.calls[0][0] as Blob).text())
+  }
+
+  it('preserves shared unresolved proposals despite business errors and omits unused and resolved proposals', async () => {
+    const preview =
+      (await specificationLocalPreviewResponse().json()) as ImportPreviewResponse
+    const row = preview.rows[0]
+    row.proposedNormReferenceKeys = ['pending', 'resolved']
+    row.values.verifiable = true
+    row.values.acceptanceCriteria = 'Edited acceptance criteria'
+    row.values.categoryId = 3
+    row.values.priorityLevelId = 4
+    row.values.qualityCharacteristicId = 5
+    row.values.typeId = 6
+    row.values.requirementPackageIds = [7]
+    preview.rows.push({ ...row, reviewRowId: 'second', sourceIndex: 1 })
+    const proposal = {
+      issuer: 'Issuer',
+      key: 'pending',
+      name: 'Pending norm',
+      normReferenceId: null,
+      reference: 'Article 2',
+      referencedCount: 2,
+      resolvedNormReferenceDbId: null,
+      type: 'Standard',
+      uri: null,
+      version: null,
+      warnings: [],
+    }
+    preview.proposals = [
+      proposal,
+      { ...proposal, key: 'unused' },
+      { ...proposal, key: 'resolved', resolvedNormReferenceDbId: 42 },
+    ]
+    const button = await openCandidateReview(preview)
+    fireEvent.click(button)
+    const payload = await downloadedCandidates()
+    expect(payload.proposedNormReferences).toEqual([
+      {
+        issuer: 'Issuer',
+        key: 'pending',
+        name: 'Pending norm',
+        normReferenceId: null,
+        reference: 'Article 2',
+        type: 'Standard',
+        uri: null,
+        version: null,
+      },
+    ])
+    expect(payload.proposedNeedsReferences).toEqual([
+      {
+        description: 'Stödjer införande av GDPR artikel 32.',
+        key: 'gdpr-need',
+        text: 'Personuppgiftsbehandling behöver tekniskt skydd',
+      },
+    ])
+    expect(payload.requirements).toEqual([
+      {
+        ...row.values,
+        needsReferenceKey: 'gdpr-need',
+        proposedNormReferenceKeys: ['pending'],
+      },
+      {
+        ...row.values,
+        needsReferenceKey: 'gdpr-need',
+        proposedNormReferenceKeys: ['pending'],
+      },
+    ])
+    expect(
+      screen.getByRole('button', { name: 'Importera valda' }),
+    ).toBeDisabled()
+  })
+
+  it('keeps an edited needs reference replacement and subsequent removal instead of resurrecting its proposal', async () => {
+    const preview =
+      (await specificationLocalPreviewResponse().json()) as ImportPreviewResponse
+    const button = await openCandidateReview(preview)
+    fireEvent.click(screen.getByRole('button', { name: 'Expandera alla' }))
+    const needs = screen.getByLabelText(/^Behovsreferens/)
+    fireEvent.change(needs, { target: { value: '91' } })
+    fireEvent.click(button)
+    expect(await downloadedCandidates()).toMatchObject({
+      requirements: [{ needsReferenceId: 91 }],
+    })
+    downloadBlobMock.mockClear()
+    fireEvent.change(needs, { target: { value: '' } })
+    fireEvent.click(button)
+    expect(await downloadedCandidates()).toEqual({
+      schemaVersion: 'requirement-import.v4',
+      requirements: [preview.rows[0].values],
+    })
+  })
+
+  it.each([
+    'norm',
+    'description',
+    'rows',
+    'nested',
+    'missing proposal',
+  ] as const)(
+    'reports an actionable candidate download error for %s and retains all edits',
+    async failure => {
+      const row = importPreviewRow(3)
+      if (failure === 'norm') row.values.normReferenceIds = [999]
+      if (failure === 'description') row.values.description = ''
+      if (failure === 'rows')
+        mockReferenceDataFetch({
+          budget: { ...DEFAULT_REQUIREMENT_IMPORT_BUDGET, maxRows: 0 },
+        })
+      if (failure === 'nested') {
+        mockReferenceDataFetch({
+          budget: { ...DEFAULT_REQUIREMENT_IMPORT_BUDGET, maxNestedItems: 0 },
+        })
+        row.values.requirementPackageIds = [1]
+      }
+      if (failure === 'missing proposal')
+        row.proposedNormReferenceKeys = ['missing']
+      const rows = [row]
+      const button = await openCandidateReview(
+        await importPreviewResponse(rows).json(),
+      )
+      fireEvent.click(button)
+      expect(downloadBlobMock).not.toHaveBeenCalled()
+      expect(screen.getByRole('alert').textContent).toMatch(
+        failure === 'norm'
+          ? /normReferenceIds.*999/
+          : failure === 'missing proposal'
+            ? /proposedNormReferenceKeys.*missing/
+            : /requirements/,
+      )
+      expect(screen.getAllByRole('switch')).toHaveLength(rows.length)
+      fireEvent.click(screen.getByRole('button', { name: 'Expandera alla' }))
+      expect(screen.getAllByLabelText(/^Kravtext/)[0]).toHaveValue(
+        row.values.description,
+      )
+    },
+  )
+
+  it('downloads only remaining selected rows after a partial import and disables download during execution and for empty selection', async () => {
+    const first = importPreviewRow()
+    const remaining = importPreviewRow(1)
+    remaining.selected = false
+    const pending = createDeferred<Response>()
+    vi.mocked(apiFetch).mockReturnValue(pending.promise)
+    const button = await openCandidateReview(
+      await importPreviewResponse([first, remaining]).json(),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Importera valda' }))
+    await waitFor(() => expect(button).toBeDisabled())
+    pending.resolve(importExecuteResponse())
+    await screen.findByText(/Importerade rader: 1/)
+    expect(button).toBeDisabled()
+    fireEvent.click(screen.getByRole('switch'))
+    fireEvent.click(screen.getByRole('button', { name: 'Expandera alla' }))
+    fireEvent.change(screen.getByLabelText(/^Kravtext/), {
+      target: { value: 'Remaining edited candidate' },
+    })
+    fireEvent.click(button)
+    expect(await downloadedCandidates()).toEqual({
+      schemaVersion: 'requirement-import.v4',
+      requirements: [
+        { ...remaining.values, description: 'Remaining edited candidate' },
+      ],
+    })
   })
 
   it('uses the specification-local import title when a destination is shown', async () => {

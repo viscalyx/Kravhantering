@@ -45,6 +45,8 @@ import {
 import { MCP_IMPORT_VALIDATION_MINIMUM_RESERVED_BYTES } from '@/lib/mcp/import-validation-storage'
 import type { RequestContext } from '@/lib/requirements/auth'
 import { forbiddenError } from '@/lib/requirements/errors'
+import { DEFAULT_REQUIREMENT_IMPORT_BUDGET } from '@/lib/requirements/import-budget'
+import { serializeRequirementImportCandidates } from '@/lib/requirements/import-candidates'
 import {
   buildRequirementsImportJsonSchema,
   REQUIREMENTS_IMPORT_SCHEMA_VERSION,
@@ -303,6 +305,103 @@ describe('requirements import service', () => {
     vi.mocked(createRequirementsBatchWithExecutor).mockReset()
     vi.mocked(createSpecificationLocalRequirementsBatch).mockReset()
     vi.mocked(createSpecificationLocalRequirementsBatchWithExecutor).mockReset()
+  })
+
+  it('reopens corrected remaining candidates through current reference, permission, destination and budget validation', async () => {
+    const norm: NormReferenceRow = {
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      id: 42,
+      isArchived: false,
+      issuer: 'Issuer',
+      name: 'Standard',
+      normReferenceId: 'ISO-42',
+      reference: 'Article 2',
+      type: 'Standard',
+      uri: null,
+      version: null,
+    }
+    vi.mocked(listNormReferences).mockResolvedValue([norm])
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+    const preview = await workflow.previewLibraryImport(
+      makeContext('requirements_import'),
+      {
+        areaId: 7,
+        locale: 'en',
+        payload: {
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+          requirements: Array.from({ length: 100 }, (_, i) => ({
+            description: `Candidate ${i + 1}`,
+            normReferenceIds: ['ISO-42'],
+          })),
+        },
+      },
+    )
+    for (const row of preview.rows.slice(0, 40))
+      row.values.description = `Corrected ${row.sourceIndex + 1}`
+    const json = serializeRequirementImportCandidates(
+      {
+        ...preview,
+        rows: preview.rows
+          .slice(20)
+          .map(row => ({ ...row, selected: row.sourceIndex < 40 })),
+        normReferences: [norm],
+      },
+      DEFAULT_REQUIREMENT_IMPORT_BUDGET,
+    )
+    const payload = requirementsImportPayloadSchema.parse(JSON.parse(json))
+    expect(payload.requirements).toHaveLength(20)
+    expect(payload.requirements[0]).toMatchObject({
+      description: 'Corrected 21',
+      normReferenceIds: ['ISO-42'],
+    })
+    expect(payload.requirements[19].description).toBe('Corrected 40')
+    const reopen = () =>
+      workflow.previewLibraryImport(makeContext('requirements_import'), {
+        areaId: 7,
+        locale: 'en',
+        payload,
+      })
+    expect((await reopen()).rows[0].values).toMatchObject({
+      description: 'Corrected 21',
+      normReferenceIds: [42],
+    })
+    vi.mocked(listNormReferences).mockResolvedValue([
+      { ...norm, isArchived: true },
+    ])
+    expect((await reopen()).rows[0].warnings).toContainEqual(
+      expect.objectContaining({ code: 'import_norm_reference_archived' }),
+    )
+    vi.mocked(listNormReferences).mockResolvedValue([])
+    expect((await reopen()).rows[0].warnings).toContainEqual(
+      expect.objectContaining({ code: 'import_norm_reference_unresolved' }),
+    )
+    authorization.assertAuthorized.mockRejectedValueOnce(
+      forbiddenError('Author permission removed'),
+    )
+    await expect(reopen()).rejects.toMatchObject({ code: 'forbidden' })
+    await expect(
+      workflow.previewSpecificationLocalImport(
+        makeContext('requirements_import'),
+        {
+          locale: 'en',
+          payload,
+          specificationId: 999,
+        },
+      ),
+    ).rejects.toMatchObject({ code: 'validation' })
+    vi.mocked(getApplicationSettings).mockResolvedValue({
+      ...DEFAULT_APPLICATION_SETTINGS,
+      requirementImportMaxRows: 10,
+    })
+    await expect(reopen()).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'import_row_count_cap_exceeded' },
+    })
   })
 
   it('carries proposed norm reference form fields into preview', async () => {

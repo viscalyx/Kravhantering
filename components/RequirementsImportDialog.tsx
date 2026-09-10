@@ -44,6 +44,10 @@ import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import type { RequirementImportBudget } from '@/lib/requirements/import-budget'
 import {
+  RequirementImportCandidateError,
+  serializeRequirementImportCandidates,
+} from '@/lib/requirements/import-candidates'
+import {
   assertRequirementImportTextSize,
   parseRequirementImportBudgetFromJsonSchema,
   RequirementImportClientBudgetError,
@@ -1290,6 +1294,8 @@ export default function RequirementsImportDialog({
     updateRow(reviewRowId, row =>
       revalidateEditableRow({
         ...row,
+        proposedNeedsReferenceKey:
+          key === 'needsReferenceId' ? null : row.proposedNeedsReferenceKey,
         values: { ...row.values, [key]: value },
       }),
     )
@@ -1763,6 +1769,29 @@ export default function RequirementsImportDialog({
     setResolvingProposalKey(null)
     setNormRefError(null)
     setNormRefForm(EMPTY_NORM_REFERENCE_FORM)
+  }
+
+  const downloadCandidates = () => {
+    if (loading || !importBudget || selectedCount === 0) return
+    try {
+      const json = serializeRequirementImportCandidates(
+        { rows, proposals, needsReferenceProposals, normReferences },
+        importBudget,
+      )
+      downloadBlob(
+        new Blob([json], { type: 'application/json;charset=utf-8' }),
+        'requirements-import-candidates.json',
+      )
+      setErrorMessage(null)
+    } catch (error) {
+      setErrorMessage(
+        error instanceof RequirementImportCandidateError
+          ? importText(error.code, { field: error.field })
+          : error instanceof RequirementImportClientBudgetError
+            ? text.contentTooLarge
+            : text.error,
+      )
+    }
   }
 
   const downloadArtifact = async (kind: 'schema' | 'instruction') => {
@@ -2771,6 +2800,23 @@ export default function RequirementsImportDialog({
                         >
                           <ChevronsUp aria-hidden="true" className="h-4 w-4" />
                           {text.collapseAll}
+                        </button>
+                        <button
+                          {...devMarker({
+                            context: 'requirements import',
+                            name: 'download candidates button',
+                            value: 'selected unimported candidates',
+                          })}
+                          className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary-700 dark:hover:bg-secondary-900"
+                          disabled={
+                            loading || !importBudget || selectedCount === 0
+                          }
+                          onClick={downloadCandidates}
+                          title={importText('downloadCandidatesHelp')}
+                          type="button"
+                        >
+                          <Download aria-hidden="true" className="h-4 w-4" />
+                          {importText('downloadCandidates')}
                         </button>
                         {receiptRows.length > 0 ? (
                           <button

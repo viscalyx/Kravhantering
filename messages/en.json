@@ -3736,6 +3736,10 @@
     "imageErrorRead": "Failed to read one or more image files. Please try again."
   },
   "requirementsImportDialog": {
+    "downloadCandidates": "Download selected candidates",
+    "downloadCandidatesHelp": "Save selected, unimported rows with current edits. Select at least one row and wait for any import to finish. Reopening the file runs current validation again.",
+    "candidateReferenceUnavailable": "Cannot download {field}: the reference cannot be mapped to the import file. Resolve or remove this link and try again. Your edits are preserved.",
+    "candidateSchemaInvalid": "Cannot download {field}: check this field against the import schema and current import budget. Row numbers refer to the review. Your edits are preserved.",
     "importTitleWithDestination": "{title} for {destination}",
     "loadingInitialImport": "Preparing import review...",
     "descriptionRequired": "Requirement text is required before this row can be imported.",

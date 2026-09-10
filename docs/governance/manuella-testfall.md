@@ -1051,6 +1051,24 @@ laddningsstatus tills innehållet är klart. Att stänga och öppna igen startar
 ren importgranskning, och vanlig stängning återför fokus till importåtgärden.
 Efter en lyckad import uppdateras kravbiblioteket när dialogen stängs.
 
+### REQ-17a: spara redigerade kravkandidater och återuppta import
+
+**Steg:** Öppna kravbiblioteksimport med två kandidater och ett olöst förslag
+på normreferens för den andra raden. Länka den andra raden även till en
+befintlig normreferens. Importera endast första raden. Välj den kvarvarande
+raden, korrigera kravtexten och välj `Ladda ner valda kandidater`. Kontrollera
+filens innehåll, stäng granskningen och öppna den nedladdade filen i en ny
+import. Låt den befintliga normreferensen saknas vid den nya granskningen.
+
+**Förväntat resultat:** Nedladdningen är inaktiverad utan valda kvarvarande
+rader och under pågående import. Filen följer `requirement-import.v4`, har den
+korrigerade texten, normreferensens verksamhets-ID och det använda olösta
+förslaget. Importerad rad, oanvända förslag och granskningsbevis ingår inte.
+Nedladdning behåller ändringar och val i granskningen. Filen kan öppnas via
+vanlig filinläsning; den nya granskningen visar den korrigerade raden och en
+varning för den saknade referensen. Aktuell behörighet, destination,
+referensdata och kravimportbudget valideras på nytt.
+
 ### REQ-18: exportera kravbiblioteket till CSV
 
 **Steg:** Använd en fixture med minst 205 publicerade krav och sätt CSV-gränsen
@@ -1755,7 +1773,10 @@ normreferens, `proposedNeedsReferences` med radens `needsReferenceKey` och fält
 för kravpaket som ska ignoreras för kravunderlagslokala krav. Lös
 behovsreferensen i fliken `Föreslagna behovsreferenser` genom att skapa eller
 länka behovsreferensen. Testa även en rad med `verifiable: true` utan
-verifieringsmetod och fyll sedan i metoden innan import.
+verifieringsmetod och fyll sedan i metoden innan import. Ladda ner valda
+kandidater innan import och kontrollera att filen innehåller aktuell
+verifieringsmetod, löst behovsreferens-ID och normreferensens verksamhets-ID.
+Nedladdningen behåller granskningen och filen följer det kanoniska schemat.
 
 **Förväntat resultat:** Importen kräver kravunderlagsbehörighet men inget
 kravområde. Rader skapas som kravunderlagslokala krav i aktuellt kravunderlag.

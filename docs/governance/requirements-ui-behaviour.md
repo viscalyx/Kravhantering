@@ -223,6 +223,18 @@ an explicit in-modal error.
   schema endpoint. Browser validation derives the row limit from the live
   `requirement-import.v4` schema and blocks payloads above that limit before
   preview.
+- Both import modes offer `Download selected candidates` to save the current
+  edited values of selected, unimported rows in review order as a canonical
+  requirement import file. The file includes only required unresolved norm
+  and needs proposals; resolved links use current edited associations, with
+  norm database IDs converted to business IDs. No preview token, destination,
+  receipt, or review metadata is included. Downloading preserves edits and
+  selection and is unavailable during execution or with no selected rows.
+  Business validation errors do not prevent download when the file schema can
+  represent the candidate. Unmappable references, schema-invalid edits and
+  import budget violations produce an error without discarding edits.
+  Reopening the file starts normal validation with current permissions,
+  destination, reference data and budget; the file grants no authority.
 - The schema and AI reference prompt are downloadable from the import dialog.
   The AI prompt contains the full schema and current reference data, but no
   examples. A successful execute can optionally be recorded by downloading the

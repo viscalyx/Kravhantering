@@ -3,6 +3,9 @@
   "language": "en,sv",
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
+    "filinläsning",
+    "filschemat",
+    "unmappable",
     "wrappermärkning",
     "transaktionell",
     "rapportkö",
