@@ -1361,6 +1361,21 @@ markeras som åtgärdat och visar samma inloggade person både efter sparandet
 och i förslagets historik efter omladdning. Förslaget kan inte lösas eller
 avvisas en gång till.
 
+### COL-04a: koppla genomförande med bibehållen beslutshistorik
+
+**Steg:** Öppna ett förslag på version 2 som är åtgärdat med endast motivering.
+Publicera version 3 och välj Koppla genomförande på förslaget. Välj version 3,
+spara och ladda om. Öppna versionslänken och förslagshistoriken. Kontrollera
+även ett förslag med genomförande i ett utkast som läsaren saknar behörighet
+för, samt evidens vars version är raderad.
+
+**Förväntat resultat:** Förslaget tillhör fortfarande version 2. Kopplingen
+visar version 3 och Publicerad. Länken öppnar version 3. Ursprunglig motivering,
+person och beslutstid behålls. Kopplingen kan inte skrivas över. Enbart
+motivering gör inget påstående om genomförande. Otillgänglig eller obehörig
+version saknar navigeringslänk och visas som otillgänglig. En obehörig läsare
+kan inte koppla genomförande. Historikrapporten visar båda versionsrollerna.
+
 ### COL-05: avvisa förbättringsförslag
 
 **Steg:** Öppna ett granskningsbart förslag och kontrollera den skrivskyddade

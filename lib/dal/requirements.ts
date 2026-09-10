@@ -1156,6 +1156,11 @@ export async function deleteDraftVersion(
       `DELETE FROM requirement_version_norm_references WHERE requirement_version_id = @0`,
       [latest.id],
     )
+    await tx.query(
+      `UPDATE improvement_suggestions SET implementing_requirement_version_id = NULL
+       WHERE implementing_requirement_version_id = @0`,
+      [latest.id],
+    )
     await tx.query(`DELETE FROM requirement_versions WHERE id = @0`, [
       latest.id,
     ])

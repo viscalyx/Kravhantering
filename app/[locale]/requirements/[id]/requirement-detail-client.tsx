@@ -81,6 +81,7 @@ interface RequirementDetailClientPropsBase {
   defaultVersion?: number
   detailCache?: LibraryRequirementDetailCache
   detailPrefetchContext?: RequirementDetailPrefetchContext
+  expectedVersionId?: number
   inline?: boolean
   onChange?: (detail?: RequirementDetailResponse) => void | Promise<void>
   onClose?: () => void
@@ -109,6 +110,7 @@ type RequirementDetailClientProps =
 export default function RequirementDetailClient({
   currentActorName,
   defaultVersion,
+  expectedVersionId,
   detailCache,
   detailPrefetchContext,
   inline,
@@ -123,6 +125,7 @@ export default function RequirementDetailClient({
 }: RequirementDetailClientProps) {
   useHelpContent(inline ? null : REQUIREMENT_DETAIL_HELP)
   const t = useTranslations('requirement')
+  const tf = useTranslations('improvementSuggestion')
   const tc = useTranslations('common')
   const tp = useTranslations('specification')
   const router = useRouter()
@@ -855,6 +858,24 @@ export default function RequirementDetailClient({
       return
     }
     await Promise.all([refreshRequirement(), onChange?.()])
+  }
+
+  if (
+    expectedVersionId != null &&
+    !req.versions.some(
+      version =>
+        version.id === expectedVersionId &&
+        version.versionNumber === defaultVersion,
+    )
+  ) {
+    return (
+      <p
+        className="p-6 text-secondary-700 dark:text-secondary-300"
+        role="alert"
+      >
+        {tf('implementationUnavailable')}
+      </p>
+    )
   }
 
   if (!inline && defaultVersion == null && displayVersionNumber == null) {

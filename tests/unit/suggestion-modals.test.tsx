@@ -278,7 +278,11 @@ describe('SuggestionResolutionModal', () => {
       expect(submit).toBeEnabled()
 
       await user.click(submit)
-      expect(onSubmit).toHaveBeenCalledWith(resolution, 'Duplicate request')
+      expect(onSubmit).toHaveBeenCalledWith(
+        resolution,
+        'Duplicate request',
+        undefined,
+      )
     },
   )
 

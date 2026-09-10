@@ -25,6 +25,7 @@ import {
   STATUS_ARCHIVED,
   STATUS_PUBLISHED,
 } from '@/lib/requirements/status-constants.mjs'
+import { mapSuggestionImplementation } from '@/lib/requirements/suggestion-implementation'
 
 export class ReportDataError extends Error {
   status: number
@@ -194,6 +195,7 @@ export async function collectSuggestionsForReport(
 
   const suggestions = await listSuggestionsForRequirement(db, requirement.id)
   return suggestions.map(suggestion => ({
+    implementation: mapSuggestionImplementation(suggestion),
     content: suggestion.content,
     createdAt: suggestion.createdAt,
     createdBy: suggestion.createdBy,

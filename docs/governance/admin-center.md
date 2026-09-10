@@ -865,3 +865,12 @@ Turning it off stops log events; browsers may still send reports and CSP
 remains enforced. Changes apply without restart. Security-log access and
 retention belong to the existing operations/security process. See
 [CSP reporting](../operations/csp-reporting.md).
+
+### Suggestion implementation evidence during retention
+
+Old requirement-version retention clears improvement suggestions' implementing
+version links in the same transaction as deletion. The evidence timestamp stays
+with the suggestion so its history shows unavailable evidence. The preview and
+legal-hold rules for the version still apply. Removing the parent requirement
+removes its suggestions and evidence. No separate actor snapshot is introduced;
+attachment uses the existing Action log and its privacy/retention rules.

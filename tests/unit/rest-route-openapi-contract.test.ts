@@ -63,14 +63,14 @@ function openApiOperations(document: OpenApiDocument) {
 }
 
 describe('REST registry and OpenAPI contract', () => {
-  it('keeps the existing 30-operation OpenAPI scope exactly synchronized', async () => {
+  it('keeps the existing 31-operation OpenAPI scope exactly synchronized', async () => {
     const document = await openApiDocument()
     const contractOperations = openApiOperations(document)
     const registryOpenApi = REST_OPERATIONS.filter(
       operation => operation.contract === 'openapi',
     )
 
-    expect(contractOperations).toHaveLength(30)
+    expect(contractOperations).toHaveLength(31)
     expect(contractOperations.map(({ key }) => key).sort()).toEqual(
       registryOpenApi
         .map(operation => `${operation.method} ${operation.template}`)

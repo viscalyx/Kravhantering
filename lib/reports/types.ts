@@ -41,6 +41,7 @@ export interface SuggestionReportItem {
   content: string
   createdAt: string
   createdBy: string | null
+  implementationText?: string
   resolutionMotivation: string | null
   resolvedAt: string | null
   resolvedBy: string | null

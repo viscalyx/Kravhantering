@@ -86,19 +86,23 @@ describe('requirements core pages', () => {
   it('passes valid versions and ignores malformed versions', async () => {
     const version = (await RequirementVersionPage({
       params: Promise.resolve({ id: '42', version: '3' }),
+      searchParams: Promise.resolve({}),
     })) as ReactElement<{ defaultVersion?: number; requirementId: string }>
     const malformed = (await RequirementVersionPage({
       params: Promise.resolve({ id: '42', version: 'latest' }),
+      searchParams: Promise.resolve({}),
     })) as ReactElement<{ defaultVersion?: number; requirementId: string }>
 
     expect(version.props).toEqual({
       currentActorName: 'Signed-in actor',
       defaultVersion: 3,
+      expectedVersionId: undefined,
       requirementId: '42',
     })
     expect(malformed.props).toEqual({
       currentActorName: 'Signed-in actor',
       defaultVersion: undefined,
+      expectedVersionId: undefined,
       requirementId: '42',
     })
   })

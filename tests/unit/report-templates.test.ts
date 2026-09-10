@@ -314,7 +314,20 @@ describe('report templates', () => {
     const model = buildSuggestionHistoryReport(
       makeRequirement(versions),
       [
-        suggestion(1, { resolution: 1 }),
+        suggestion(1, {
+          resolution: 1,
+          implementation: {
+            recordedAt: '2026-09-10T10:00:00Z',
+            version: {
+              id: 3,
+              requirementId: 1,
+              versionNumber: 3,
+              statusId: 3,
+              statusNameEn: 'Published',
+              statusNameSv: 'Publicerad',
+            },
+          },
+        }),
         suggestion(2, { resolution: 2 }),
         suggestion(3, { isReviewRequested: 1, requirementVersionId: 2 }),
         suggestion(4, { requirementVersionId: 3 }),
@@ -327,6 +340,10 @@ describe('report templates', () => {
     const suggestionItems = model.sections.flatMap(section =>
       section.type === 'suggestion-list' ? section.items : [],
     )
+    expect(
+      suggestionItems.find(item => item.content === 'Suggestion 1')
+        ?.implementationText,
+    ).toContain('Implementing version: Version 3 · Published')
     expect(suggestionItems.map(item => item.status.label)).toEqual(
       expect.arrayContaining([
         'Resolved',

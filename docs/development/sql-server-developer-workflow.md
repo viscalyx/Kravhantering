@@ -438,3 +438,12 @@ Clean setup seeds no verification attempts; only a completed server verification
 can create proof. Run the model-verification SQL integration tests for concurrent
 save/discard, rollback, process loss, admission expiry, capacity, and cleanup.
 The test database is disposable and distinct from the developer browse database.
+
+### Suggestion implementation migration
+
+Migration 0067 adds nullable implementation evidence to improvement suggestions.
+Run migrations before the application version that queries these fields.
+The implementing version FK uses NO ACTION because the feedback version already
+has a SET NULL path. Both draft deletion and version retention clear the new FK
+inside their transaction. Demo suggestion 1 links feedback row 1 to implementing
+row 2; seed execution records this evidence after its resolution transition.

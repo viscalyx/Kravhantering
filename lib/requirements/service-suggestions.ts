@@ -13,6 +13,7 @@ import {
 } from '@/lib/requirements/auth'
 import { notFoundError, validationError } from '@/lib/requirements/errors'
 import {
+  attachImprovementSuggestionImplementationWithAudit,
   deleteImprovementSuggestionWithAudit,
   requestImprovementSuggestionReview,
   resolveImprovementSuggestionWithAudit,
@@ -26,6 +27,7 @@ import {
   createServiceMessage,
   withLogging,
 } from '@/lib/requirements/service-shared'
+import { readSuggestionImplementations } from '@/lib/requirements/suggestion-implementation'
 
 interface SuggestionWorkflowDependencies {
   authorization: AuthorizationService
@@ -54,6 +56,7 @@ export function createSuggestionWorkflow({
           uniqueId: input.uniqueId,
         },
         context,
+        db,
       )
 
       return withLogging(
@@ -80,6 +83,12 @@ export function createSuggestionWorkflow({
           }
           const rows = await listSuggestionsForRequirement(db, requirementId)
           const counts = await countSuggestionsByRequirement(db, requirementId)
+          const implementations = await readSuggestionImplementations(
+            authorization,
+            context,
+            requirementId,
+            rows,
+          )
 
           const title =
             locale === 'sv' ? 'Förbättringsförslag' : 'Improvement suggestions'
@@ -90,7 +99,8 @@ export function createSuggestionWorkflow({
 
           return {
             counts,
-            suggestions: rows.map(r => ({
+            suggestions: rows.map((r, index) => ({
+              implementation: implementations[index] ?? null,
               content: r.content,
               createdAt: r.createdAt,
               createdBy: r.createdBy,
@@ -123,6 +133,7 @@ export function createSuggestionWorkflow({
           requirementId: input.requirementId,
         },
         context,
+        db,
       )
 
       return withLogging(
@@ -169,6 +180,33 @@ export function createSuggestionWorkflow({
 
           if (!input.suggestionId) {
             throw validationError('Suggestion ID is required')
+          }
+
+          if (input.operation === 'attach_implementation') {
+            if (input.implementingRequirementVersionId == null) {
+              throw validationError('Implementing version ID is required')
+            }
+            requireHumanActorSnapshot(context)
+            await attachImprovementSuggestionImplementationWithAudit(
+              db,
+              input.suggestionId,
+              input.implementingRequirementVersionId,
+              context,
+            )
+            return {
+              message: createServiceMessage(
+                locale === 'sv'
+                  ? 'Förbättringsförslag'
+                  : 'Improvement suggestion',
+                [
+                  locale === 'sv'
+                    ? 'Genomförande kopplat till förslaget.'
+                    : 'Implementation attached to suggestion.',
+                ],
+                responseFormat,
+              ),
+              result: { id: input.suggestionId },
+            }
           }
 
           if (input.operation === 'edit') {
@@ -246,6 +284,8 @@ export function createSuggestionWorkflow({
               input.suggestionId,
               {
                 resolution,
+                implementingRequirementVersionId:
+                  input.implementingRequirementVersionId,
                 resolutionMotivation: trimmedMotivation,
                 resolvedBy: actor.displayName,
                 resolvedByHsaId: actor.hsaId,

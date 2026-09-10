@@ -892,3 +892,23 @@ existing validation sessions; run `validate` again after rotation.
   <https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/extend-coding-agent-with-mcp>
 - GitHub Copilot coding agent MCP capabilities:
   <https://docs.github.com/en/copilot/concepts/agents/coding-agent/mcp-and-coding-agent>
+
+### Link a suggestion to the implementing version
+
+`requirements_manage_improvement_suggestion` accepts an optional
+`implementingRequirementVersionId` with `resolve`. Obtain the row ID from
+`requirements_get_requirement` with `view: "history"`, then copy the chosen
+`requirement.versions[].id`. The version must belong to the same requirement.
+
+To attach evidence after resolution or publication, call the suggestion tool
+with `operation: "attach_implementation"`, `suggestionId`, and
+`implementingRequirementVersionId`. This action requires the existing suggestion
+management permission, accepts evidence once, and preserves the original
+decision's motivation, person, and time. Dismissals cannot carry implementation
+evidence. Motivation-only resolutions remain valid.
+
+Suggestion lists return `implementation: null` when no evidence is attached.
+Otherwise `recordedAt` identifies the attachment time and `version` contains
+the implementing row ID, requirement ID, version number, and current localized
+status. `version: null` means the target is deleted or the caller cannot read it.
+Do not infer a replacement target from a reused version number.

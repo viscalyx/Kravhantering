@@ -85,6 +85,26 @@ export default function ImprovementSuggestionsSection({
                     step={step}
                     suggestion={suggestion}
                   />
+                  {suggestion.resolution === 1 &&
+                    !suggestion.implementation &&
+                    workflow.canAttachImplementation && (
+                      <button
+                        className="btn-secondary min-h-11 px-3 py-1 text-xs"
+                        type="button"
+                        {...devMarker({
+                          context: detailContext,
+                          name: 'action',
+                          value: 'attach-suggestion-implementation',
+                          priority: 350,
+                        })}
+                        disabled={workflow.suggestionSaving}
+                        onClick={() =>
+                          workflow.openImplementationDialog(suggestion)
+                        }
+                      >
+                        {tf('attachImplementation')}
+                      </button>
+                    )}
                   {!isResolved && (
                     <div className="flex flex-wrap gap-2">
                       {step === 'draft' && (
@@ -179,10 +199,12 @@ export default function ImprovementSuggestionsSection({
       />
       <SuggestionResolutionModal
         currentActorName={currentActorName}
+        implementationOnly={workflow.implementationOnly}
         loading={workflow.suggestionSaving}
         onClose={workflow.closeDialog}
         onSubmit={workflow.handleRecordResolution}
         open={workflow.showResolutionForm}
+        versions={workflow.implementingVersions}
       />
     </>
   )

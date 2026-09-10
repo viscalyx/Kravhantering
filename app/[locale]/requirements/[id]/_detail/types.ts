@@ -51,6 +51,9 @@ export interface SuggestionData {
   createdAt: string
   createdBy: string | null
   id: number
+  implementation?:
+    | import('@/lib/requirements/suggestion-implementation').SuggestionImplementation
+    | null
   isReviewRequested: number
   requirementVersionId: number | null
   resolution: number | null

@@ -742,6 +742,53 @@ paths:
         "429":
           $ref: "#/components/responses/EdgeRateLimit"
 
+  /api/improvement-suggestions/{id}/implementation:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      x-auth: session
+      x-csrf: same-origin
+      x-cache: framework-default
+      tags: [ requirements ]
+      operationId: attachSuggestionImplementation
+      summary: Attach implementation evidence once to a resolved suggestion.
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/XRequestedWith'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [ implementingRequirementVersionId ]
+              properties:
+                implementingRequirementVersionId:
+                  type: integer
+                  minimum: 1
+                  maximum: 2147483647
+                  description: Version row ID belonging to the suggestion's requirement.
+      responses:
+        '200':
+          description: Implementation attached; the original decision is unchanged.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ ok ]
+                properties:
+                  ok: { type: boolean, enum: [ true ] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/EdgeRateLimit' }
+
   /api/requirements/{id}/delete-draft:
     parameters:
       - $ref: '#/components/parameters/RequirementId'

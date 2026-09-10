@@ -2,6 +2,7 @@
 
 import { CheckCircle2, Eye, PenLine, XCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
+import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { formatActorDisplayName } from '@/lib/privacy/display-name'
 
@@ -10,6 +11,9 @@ interface SuggestionData {
   createdAt: string
   createdBy: string | null
   id: number
+  implementation?:
+    | import('@/lib/requirements/suggestion-implementation').SuggestionImplementation
+    | null
   isReviewRequested: number
   resolution: number | null
   resolutionMotivation: string | null
@@ -157,6 +161,43 @@ export default function SuggestionPill({
           {suggestion.resolutionMotivation && (
             <p className="text-secondary-700 dark:text-secondary-300 mb-1">
               {suggestion.resolutionMotivation}
+            </p>
+          )}
+          {suggestion.implementation && (
+            <p
+              className="mb-1 text-secondary-700 dark:text-secondary-300"
+              {...devMarker({
+                context: developerModeContext,
+                name: 'implementation evidence',
+                value: 'suggestion-implementation',
+                priority: 350,
+              })}
+            >
+              {t('implementingVersion')}:{' '}
+              {suggestion.implementation.version ? (
+                <>
+                  <Link
+                    className="underline"
+                    href={`/requirements/${suggestion.implementation.version.requirementId}/${suggestion.implementation.version.versionNumber}?versionId=${suggestion.implementation.version.id}`}
+                  >
+                    {t('implementationVersionLabel', {
+                      version: suggestion.implementation.version.versionNumber,
+                    })}
+                  </Link>
+                  {' · '}
+                  {locale === 'sv'
+                    ? suggestion.implementation.version.statusNameSv
+                    : suggestion.implementation.version.statusNameEn}
+                </>
+              ) : (
+                t('implementationUnavailable')
+              )}
+              {' · '}
+              {t('implementationRecordedAt', {
+                date: new Date(
+                  suggestion.implementation.recordedAt,
+                ).toLocaleDateString(locale),
+              })}
             </p>
           )}
           <p className="text-xs text-secondary-500 dark:text-secondary-400">

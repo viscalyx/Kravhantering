@@ -280,3 +280,26 @@ test('COL-06: opens the suggestion-history report for a requirement with suggest
     expect(text).toContain('P2 – Låg')
   })
 })
+
+test('COL-04a: suggestion history shows the feedback and implementing versions separately', async ({
+  page,
+}) => {
+  const detailPane = await openRequirementDetail(page, 'INT0001')
+  await detailPane.getByRole('button', { name: 'Rapporter' }).click()
+  const downloadPromise = page.waitForEvent('download')
+  await page
+    .getByRole('menuitem', { name: 'Förbättringsförslagshistorik' })
+    .click()
+  const download = await downloadPromise
+  const stream = await download.createReadStream()
+  if (!stream) throw new Error('Missing suggestion history PDF stream')
+  const chunks: Buffer[] = []
+  for await (const chunk of stream)
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  const { text } = await extractText(new Uint8Array(Buffer.concat(chunks)), {
+    mergePages: true,
+  })
+  expect(text).toContain('Version 1')
+  expect(text).toContain('Genomförande kravversion: Version 2')
+  expect(text).toContain('Good catch. Timeout reduced to 10 s in version 2')
+})

@@ -1436,6 +1436,11 @@ function PdfSuggestionCard({
       <Text style={{ fontSize: 9, color: '#374151', lineHeight: 1.5 }}>
         {item.content}
       </Text>
+      {item.implementationText && (
+        <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 4 }}>
+          {item.implementationText}
+        </Text>
+      )}
       {isResolved && item.resolutionMotivation && (
         <View
           style={{

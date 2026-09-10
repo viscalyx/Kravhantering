@@ -16,6 +16,7 @@ import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { authorize } from '@/lib/requirements/service-shared'
+import { readSuggestionImplementation } from '@/lib/requirements/suggestion-implementation'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,7 +44,23 @@ async function getHandler(
       runtime.context,
     )
     const item = await getSuggestion(runtime.db, id)
-    return NextResponse.json(item)
+    const {
+      implementationRecordedAt: _recordedAt,
+      implementingRequirementVersionId: _versionId,
+      implementingVersionNumber: _versionNumber,
+      implementingVersionStatusId: _statusId,
+      implementingVersionStatusNameEn: _statusNameEn,
+      implementingVersionStatusNameSv: _statusNameSv,
+      ...suggestion
+    } = item
+    return NextResponse.json({
+      ...suggestion,
+      implementation: await readSuggestionImplementation(
+        runtime.authorization,
+        runtime.context,
+        item,
+      ),
+    })
   } catch (error) {
     if (isRequirementsServiceError(error)) {
       const { body, status } = toHttpErrorPayload(error)

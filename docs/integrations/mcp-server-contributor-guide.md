@@ -798,3 +798,14 @@ for the full setup.
 ## Related Docs
 
 - [mcp-server-user-guide.md](./mcp-server-user-guide.md)
+
+### Suggestion implementation contract
+
+The suggestion service owns `attach_implementation` and optional
+`implementingRequirementVersionId` on `resolve`. Both mutations validate
+requirement ownership and commit evidence with the Action log atomically.
+Lists authorize the implementing version independently before projecting its
+identity and current status. The REST detail route uses the same projection.
+A recorded timestamp with a null version means unavailable evidence; no
+version-number fallback is permitted. Keep the MCP schemas, REST contract,
+SQL tests, browser case COL-04a, and report template aligned.

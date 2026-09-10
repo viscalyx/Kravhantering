@@ -18,6 +18,9 @@ interface SuggestionData {
   createdAt: string
   createdBy: string | null
   id: number
+  implementation?:
+    | import('@/lib/requirements/suggestion-implementation').SuggestionImplementation
+    | null
   isReviewRequested: number
   requirementVersionId: number | null
   resolution: number | null
@@ -174,6 +177,9 @@ async function mockSuggestions(
 
   return {
     actorName: actor.name,
+    replaceSuggestions: (items: SuggestionData[]) => {
+      suggestions = items
+    },
     get requests() {
       return requests
     },
@@ -426,6 +432,115 @@ test.describe('Requirement collaboration', () => {
         type: 'resolution',
       }),
     )
+  })
+
+  test('COL-04a: attaches implementation without changing the decision and hides unavailable version links', async ({
+    page,
+  }) => {
+    const detailResponse = await page.request.get('/api/requirements/1')
+    await expectApiResponseOk(detailResponse, 'load implementation fixture')
+    const detail = await detailResponse.json()
+    const feedback = detail.versions.find(
+      (version: { id: number }) => version.id === SELECTED_INT0001_VERSION_ID,
+    )
+    const implementing = detail.versions.find(
+      (version: { id: number }) => version.id !== SELECTED_INT0001_VERSION_ID,
+    )
+    expect(feedback).toBeDefined()
+    expect(implementing).toBeDefined()
+    feedback.versionNumber = 2
+    implementing.versionNumber = 3
+    implementing.status = 3
+    implementing.statusNameSv = 'Publicerad'
+    implementing.statusNameEn = 'Published'
+    feedback.status = 4
+    detail.permissions.canManageSuggestions = true
+    await page.route('**/api/requirements/1', route =>
+      fulfillJson(route, detail),
+    )
+    const original = suggestion(14, {
+      isReviewRequested: 1,
+      resolution: 1,
+      resolutionMotivation: 'Motiverat beslut',
+      resolvedAt: '2026-06-01T11:00:00.000Z',
+      resolvedBy: 'Beslutsfattaren',
+    })
+    const mock = await mockSuggestions(page, [original])
+    let attachedBody: unknown
+    await page.route(
+      '**/api/improvement-suggestions/14/implementation',
+      async route => {
+        attachedBody = route.request().postDataJSON()
+        mock.replaceSuggestions([
+          {
+            ...original,
+            implementation: {
+              recordedAt: '2026-06-02T11:00:00.000Z',
+              version: {
+                id: implementing.id,
+                requirementId: 1,
+                versionNumber: 3,
+                statusId: 3,
+                statusNameEn: 'Published',
+                statusNameSv: 'Publicerad',
+              },
+            },
+          },
+        ])
+        await fulfillJson(route, { ok: true })
+      },
+    )
+    await page.goto('/sv/requirements/1/2')
+    await page.getByRole('button', { name: 'Koppla genomförande' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Koppla genomförande' })
+    await dialog
+      .getByLabel('Genomförande kravversion *', { exact: true })
+      .selectOption(String(implementing.id))
+    await dialog.getByRole('button', { name: 'Koppla genomförande' }).click()
+    expect(attachedBody).toEqual({
+      implementingRequirementVersionId: implementing.id,
+    })
+    const card = page.getByRole('status', { name: 'Förslag:' })
+    await expect(card).toContainText('Motiverat beslut')
+    await expect(card).toContainText('Beslutsfattaren')
+    await expect(card).toContainText('Publicerad')
+    await card.getByRole('link', { name: 'Version 3', exact: true }).click()
+    await expect(page).toHaveURL(
+      new RegExp(`/sv/requirements/1/3\\?versionId=${implementing.id}$`),
+    )
+    const implementingId = implementing.id
+    implementing.id += 1000
+    await page.reload()
+    await expect(
+      page.getByRole('alert').filter({
+        hasText: 'Versionen är otillgänglig eller saknar läsbehörighet',
+      }),
+    ).toBeVisible()
+    implementing.id = implementingId
+    await page.goto('/sv/requirements/1/2')
+    await expect(
+      page.getByRole('button', { name: 'Koppla genomförande' }),
+    ).toHaveCount(0)
+    mock.replaceSuggestions([
+      {
+        ...original,
+        implementation: {
+          recordedAt: '2026-06-02T11:00:00.000Z',
+          version: null,
+        },
+      },
+    ])
+    detail.permissions.canManageSuggestions = false
+    await page.reload()
+    await expect(
+      page.getByText(/Versionen är otillgänglig eller saknar läsbehörighet/),
+    ).toHaveCount(1)
+    await expect(
+      page.getByRole('link', { name: 'Version 3', exact: true }),
+    ).toHaveCount(0)
+    await expect(
+      page.getByRole('button', { name: 'Koppla genomförande' }),
+    ).toHaveCount(0)
   })
 
   test('COL-05: dismisses an improvement suggestion with motivation', async ({

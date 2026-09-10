@@ -590,6 +590,15 @@ export const REST_OPERATION_DECLARATIONS = [
   ],
   [
     'POST',
+    '/api/improvement-suggestions/[id]/implementation',
+    'session',
+    'same-origin',
+    'authenticated',
+    'framework-default',
+    'openapi',
+  ],
+  [
+    'POST',
     '/api/improvement-suggestions/[id]/request-review',
     'session',
     'same-origin',

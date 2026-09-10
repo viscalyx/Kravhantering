@@ -2743,6 +2743,59 @@ describe('createRequirementsService', () => {
     ])
   })
 
+  it('redacts implementing version identity and status when the reader cannot open it', async () => {
+    mocks.listSuggestionsForRequirement.mockResolvedValue([
+      {
+        id: 12,
+        requirementId: 23,
+        requirementVersionId: 45,
+        implementationRecordedAt: '2026-09-10T10:00:00Z',
+        implementingRequirementVersionId: 46,
+        implementingVersionNumber: 3,
+        implementingVersionStatusId: 1,
+        implementingVersionStatusNameEn: 'Draft',
+        implementingVersionStatusNameSv: 'Utkast',
+      },
+    ])
+    const authorization = {
+      assertAuthorized: vi.fn(async (action: { kind: string }) => {
+        if (action.kind === 'get_requirement')
+          throw forbiddenError('No version access')
+      }),
+    }
+    const service = createRequirementsService(
+      { query: mocks.auditQuery, transaction: mocks.auditTransaction } as never,
+      { authorization, logger },
+    )
+    const response = await service.listSuggestions(makeContext(), {
+      requirementId: 23,
+    })
+    expect(response.suggestions[0]?.implementation).toEqual({
+      recordedAt: '2026-09-10T10:00:00Z',
+      version: null,
+    })
+    expect(authorization.assertAuthorized).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'get_requirement',
+        id: 23,
+        view: 'history',
+      }),
+      expect.anything(),
+    )
+    authorization.assertAuthorized.mockResolvedValue(undefined)
+    expect(
+      (await service.listSuggestions(makeContext(), { requirementId: 23 }))
+        .suggestions[0]?.implementation?.version,
+    ).toEqual({
+      id: 46,
+      requirementId: 23,
+      versionNumber: 3,
+      statusId: 1,
+      statusNameEn: 'Draft',
+      statusNameSv: 'Utkast',
+    })
+  })
+
   it('lists suggestions by unique ID with localized counts and complete rows', async () => {
     mocks.getRequirementByUniqueId.mockResolvedValue({
       ...makeRequirementRecord(),
@@ -2757,6 +2810,7 @@ describe('createRequirementsService', () => {
     mocks.listSuggestionsForRequirement.mockResolvedValue([
       {
         content: 'Clarify encryption requirements',
+        implementation: null,
         createdAt: '2026-08-01T10:00:00.000Z',
         createdBy: 'Alice',
         id: 12,
@@ -2785,6 +2839,7 @@ describe('createRequirementsService', () => {
     expect(result.suggestions).toEqual([
       {
         content: 'Clarify encryption requirements',
+        implementation: null,
         createdAt: '2026-08-01T10:00:00.000Z',
         createdBy: 'Alice',
         id: 12,

@@ -5,6 +5,14 @@ import ImprovementSuggestionsSection from '@/app/[locale]/requirements/[id]/_det
 import type { SuggestionData } from '@/app/[locale]/requirements/[id]/_detail/types'
 import type { UseSuggestionWorkflowResult } from '@/app/[locale]/requirements/[id]/_detail/use-suggestion-workflow'
 
+vi.mock('@/i18n/routing', () => ({
+  Link: ({ href, children, ...props }: React.ComponentProps<'a'>) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}))
+
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
   useTranslations: () => (key: string) => key,
@@ -31,6 +39,10 @@ function makeWorkflow(
   overrides: Partial<UseSuggestionWorkflowResult> = {},
 ): UseSuggestionWorkflowResult {
   return {
+    implementationOnly: false,
+    implementingVersions: [],
+    canAttachImplementation: false,
+    openImplementationDialog: vi.fn(),
     closeDialog: vi.fn(),
     editSuggestionTarget: null,
     getSuggestionStep: suggestion => {
@@ -59,6 +71,63 @@ function makeWorkflow(
 
 describe('ImprovementSuggestionsSection', () => {
   beforeEach(() => vi.clearAllMocks())
+
+  it('shows an authorized implementing-version link with its immutable row identity', () => {
+    render(
+      <ImprovementSuggestionsSection
+        workflow={makeWorkflow({
+          versionSuggestionItems: [
+            {
+              ...draftSuggestion,
+              resolution: 1,
+              implementation: {
+                recordedAt: '2026-09-10T10:00:00Z',
+                version: {
+                  id: 103,
+                  requirementId: 10,
+                  versionNumber: 3,
+                  statusId: 3,
+                  statusNameEn: 'Published',
+                  statusNameSv: 'Publicerad',
+                },
+              },
+            },
+          ],
+        })}
+      />,
+    )
+    expect(
+      screen.getByRole('link', { name: 'implementationVersionLabel' }),
+    ).toHaveAttribute(
+      'href',
+      expect.stringContaining('/requirements/10/3?versionId=103'),
+    )
+    expect(screen.getByText(/Published/)).toBeInTheDocument()
+  })
+
+  it('offers explicit evidence attachment while keeping unavailable evidence without a link', async () => {
+    const workflow = makeWorkflow({
+      canAttachImplementation: true,
+      versionSuggestionItems: [
+        { ...draftSuggestion, resolution: 1 },
+        {
+          ...draftSuggestion,
+          id: 12,
+          resolution: 1,
+          implementation: { recordedAt: '2026-09-10T10:00:00Z', version: null },
+        },
+      ],
+    })
+    render(<ImprovementSuggestionsSection workflow={workflow} />)
+    expect(screen.getByText(/implementationUnavailable/)).toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'attachImplementation' }),
+    )
+    expect(workflow.openImplementationDialog).toHaveBeenCalledWith(
+      expect.objectContaining({ id: draftSuggestion.id }),
+    )
+  })
 
   it('shows its empty state and opens the create dialog', async () => {
     const workflow = makeWorkflow()

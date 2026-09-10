@@ -19,12 +19,14 @@ type SuggestionDialogState =
   | { mode: 'edit'; target: SuggestionData }
   | { mode: 'none' }
   | { mode: 'resolution'; target: SuggestionData }
+  | { mode: 'implementation'; target: SuggestionData }
 
 type SuggestionDialogAction =
   | { type: 'close' }
   | { type: 'open_create' }
   | { target: SuggestionData; type: 'open_edit' }
   | { target: SuggestionData; type: 'open_resolution' }
+  | { target: SuggestionData; type: 'open_implementation' }
 
 function suggestionDialogReducer(
   _state: SuggestionDialogState,
@@ -37,6 +39,8 @@ function suggestionDialogReducer(
       return { mode: 'edit', target: action.target }
     case 'open_resolution':
       return { mode: 'resolution', target: action.target }
+    case 'open_implementation':
+      return { mode: 'implementation', target: action.target }
     case 'close':
       return { mode: 'none' }
   }
@@ -50,6 +54,7 @@ interface UseSuggestionWorkflowOptions {
 }
 
 export interface UseSuggestionWorkflowResult {
+  canAttachImplementation: boolean
   closeDialog: () => void
   editSuggestionTarget: SuggestionData | null
   getSuggestionStep: (suggestion: SuggestionData) => SuggestionStep
@@ -62,14 +67,18 @@ export interface UseSuggestionWorkflowResult {
   handleRecordResolution: (
     resolution: 1 | 2,
     motivation: string,
+    implementingRequirementVersionId?: number,
   ) => Promise<void>
   handleSuggestionRequestReview: (suggestionId: number) => Promise<void>
   handleSuggestionRevertToDraft: (
     suggestionId: number,
     event?: MouseEvent<HTMLButtonElement>,
   ) => Promise<void>
+  implementationOnly: boolean
+  implementingVersions: RequirementDetailResponse['versions']
   openCreateDialog: () => void
   openEditDialog: (target: SuggestionData) => void
+  openImplementationDialog: (target: SuggestionData) => void
   openResolutionDialog: (target: SuggestionData) => void
   resolutionTarget: SuggestionData | null
   showEditSuggestionForm: boolean
@@ -122,7 +131,7 @@ export function useSuggestionWorkflow({
       if (res.ok) {
         const data = (await res.json()) as { suggestions: SuggestionData[] }
         if (!isLatestRequest()) return
-        setSuggestionItems(data.suggestions)
+        setSuggestionItems(data.suggestions ?? [])
       } else {
         setSuggestionError(suggestionFetchFailed)
       }
@@ -132,9 +141,19 @@ export function useSuggestionWorkflow({
     }
   }, [resolvedRequirementId, suggestionFetchFailed])
 
+  const implementationVersionState = JSON.stringify(
+    requirement?.versions.map(version => [
+      version.id,
+      version.status,
+      version.statusNameEn,
+      version.statusNameSv,
+    ]),
+  )
+  // Refresh linked publication states when the requirement's versions change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the version signature is an explicit refresh trigger.
   useEffect(() => {
     void fetchSuggestions()
-  }, [fetchSuggestions])
+  }, [fetchSuggestions, implementationVersionState])
 
   const performSuggestionMutation = useCallback(
     async (
@@ -173,7 +192,10 @@ export function useSuggestionWorkflow({
   }, [])
 
   const editSuggestionTarget = dialog.mode === 'edit' ? dialog.target : null
-  const resolutionTarget = dialog.mode === 'resolution' ? dialog.target : null
+  const resolutionTarget =
+    dialog.mode === 'resolution' || dialog.mode === 'implementation'
+      ? dialog.target
+      : null
 
   const handleCreateSuggestion = useCallback(
     async (content: string) => {
@@ -309,19 +331,28 @@ export function useSuggestionWorkflow({
   )
 
   const handleRecordResolution = useCallback(
-    async (resolution: 1 | 2, motivation: string) => {
+    async (
+      resolution: 1 | 2,
+      motivation: string,
+      implementingRequirementVersionId?: number,
+    ) => {
       if (!resolutionTarget) return
       setSuggestionSaving(true)
       try {
         const ok = await performSuggestionMutation(
-          `/api/improvement-suggestions/${resolutionTarget.id}/resolution`,
+          `/api/improvement-suggestions/${resolutionTarget.id}/${dialog.mode === 'implementation' ? 'implementation' : 'resolution'}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              resolution,
-              resolutionMotivation: motivation,
-            }),
+            body: JSON.stringify(
+              dialog.mode === 'implementation'
+                ? { implementingRequirementVersionId }
+                : {
+                    resolution,
+                    resolutionMotivation: motivation,
+                    implementingRequirementVersionId,
+                  },
+            ),
           },
           suggestionResolutionFailed,
         )
@@ -334,6 +365,7 @@ export function useSuggestionWorkflow({
     },
     [
       resolutionTarget,
+      dialog.mode,
       performSuggestionMutation,
       suggestionResolutionFailed,
       closeDialog,
@@ -363,6 +395,12 @@ export function useSuggestionWorkflow({
   )
 
   return {
+    implementationOnly: dialog.mode === 'implementation',
+    implementingVersions: requirement?.versions ?? [],
+    canAttachImplementation:
+      requirement?.permissions?.canManageSuggestions ?? false,
+    openImplementationDialog: target =>
+      dispatchDialog({ type: 'open_implementation', target }),
     closeDialog,
     editSuggestionTarget,
     getSuggestionStep,
@@ -377,7 +415,8 @@ export function useSuggestionWorkflow({
     openResolutionDialog: target =>
       dispatchDialog({ type: 'open_resolution', target }),
     resolutionTarget,
-    showResolutionForm: dialog.mode === 'resolution',
+    showResolutionForm:
+      dialog.mode === 'resolution' || dialog.mode === 'implementation',
     showSuggestionForm: dialog.mode === 'create',
     showEditSuggestionForm: dialog.mode === 'edit',
     suggestionError,

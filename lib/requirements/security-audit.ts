@@ -34,6 +34,7 @@ export interface SensitiveMutationAuditDetail {
   deletedTypes?: readonly string[]
   deletedVersionNumber?: number
   deviationId?: number
+  implementingRequirementVersionId?: number
   locale?: string
   localRequirementId?: number
   newRequirementId?: number

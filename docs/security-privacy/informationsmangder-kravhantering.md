@@ -274,3 +274,19 @@ insamling, loggläsarbehörigheter och retention. Inställningen för loggning s
 ingen ny lagringstid eller åtkomsträtt. Transient käll-IP används endast för
 resursbegränsning och rensas inom ett 60-sekundersfönster; den loggas inte i
 CSP-händelser. Se [operatörskontraktet](../operations/csp-reporting.md).
+
+## Genomförande för förbättringsförslag
+
+Kopplingen till genomförande kravversion och registreringstid tillhör förslagets
+beslutshistorik. Förvaltningen äger bevarandebeslutet. Kopplingen har ingen
+fristående tidsstyrd gallring: den följer förslaget och raderas med kravet.
+Detta är ett uttryckligt undantag för beslutshistorik som kan behövas för
+revision. Driftorganisationen ansvarar för exporterade kopior och backup.
+
+Admin Arkivering och utkastborttagning nollställer versionskopplingen i samma
+transaktion som versionen raderas. Registreringstiden behålls så att historiken
+visar otillgängligt genomförande. Ett återanvänt versionsnummer skapar aldrig
+en ny koppling. Förhandsgranskningens versionskandidater och undantag gäller
+även länkade versioner; genomförandelänken blockerar inte beslutad gallring.
+Ingen separat export krävs av dessa två fält. Aktören registreras i den
+befintliga åtgärdsloggen med dess ordinarie dataskydd och retention.

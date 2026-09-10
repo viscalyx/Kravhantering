@@ -19,10 +19,10 @@ const validDeclaration = [
 
 describe('REST route security policy registry', () => {
   it('contains the complete explicit REST operation baseline', () => {
-    expect(REST_OPERATIONS).toHaveLength(218)
+    expect(REST_OPERATIONS).toHaveLength(219)
     expect(
       REST_OPERATIONS.filter(operation => operation.contract === 'openapi'),
-    ).toHaveLength(30)
+    ).toHaveLength(31)
     expect(
       REST_ROUTE_REGISTRY.resolve('GET', '/api/ai/authoring-profiles'),
     ).toMatchObject({

@@ -15,6 +15,12 @@ export interface ImprovementSuggestionRow {
   createdBy: string | null
   createdByHsaId: string | null
   id: number
+  implementationRecordedAt: string | null
+  implementingRequirementVersionId: number | null
+  implementingVersionNumber: number | null
+  implementingVersionStatusId: number | null
+  implementingVersionStatusNameEn: string | null
+  implementingVersionStatusNameSv: string | null
   isReviewRequested: number
   requirementDescription: string | null
   requirementId: number
@@ -143,6 +149,22 @@ function mapSqlServerSuggestionRow(
     createdByHsaId:
       row.createdByHsaId == null ? null : String(row.createdByHsaId),
     id: Number(row.id),
+    implementationRecordedAt: toIsoString(row.implementationRecordedAt),
+    implementingRequirementVersionId: toOptionalNumber(
+      row.implementingRequirementVersionId,
+    ),
+    implementingVersionNumber: toOptionalNumber(row.implementingVersionNumber),
+    implementingVersionStatusId: toOptionalNumber(
+      row.implementingVersionStatusId,
+    ),
+    implementingVersionStatusNameEn:
+      row.implementingVersionStatusNameEn == null
+        ? null
+        : String(row.implementingVersionStatusNameEn),
+    implementingVersionStatusNameSv:
+      row.implementingVersionStatusNameSv == null
+        ? null
+        : String(row.implementingVersionStatusNameSv),
     isReviewRequested: toNumericFlag(row.isReviewRequested),
     requirementDescription:
       row.requirementDescription == null
@@ -229,6 +251,12 @@ export async function listSuggestionsForRequirement(
         suggestion.id AS id,
         suggestion.requirement_id AS requirementId,
         suggestion.requirement_version_id AS requirementVersionId,
+        suggestion.implementation_recorded_at AS implementationRecordedAt,
+        implementing_version.id AS implementingRequirementVersionId,
+        implementing_version.version_number AS implementingVersionNumber,
+        implementing_version.requirement_status_id AS implementingVersionStatusId,
+        implementing_status.name_en AS implementingVersionStatusNameEn,
+        implementing_status.name_sv AS implementingVersionStatusNameSv,
         suggestion.content AS content,
         CAST(suggestion.is_review_requested AS int) AS isReviewRequested,
         suggestion.resolution AS resolution,
@@ -248,6 +276,11 @@ export async function listSuggestionsForRequirement(
         ON requirement.id = suggestion.requirement_id
       LEFT JOIN requirement_versions requirement_version
         ON requirement_version.id = suggestion.requirement_version_id
+      LEFT JOIN requirement_versions implementing_version
+        ON implementing_version.id = suggestion.implementing_requirement_version_id
+        AND implementing_version.requirement_id = suggestion.requirement_id
+      LEFT JOIN requirement_statuses implementing_status
+        ON implementing_status.id = implementing_version.requirement_status_id
       WHERE suggestion.requirement_id = @0
       ORDER BY suggestion.created_at ASC, suggestion.id ASC
     `,
@@ -267,6 +300,12 @@ export async function getSuggestion(
         suggestion.id AS id,
         suggestion.requirement_id AS requirementId,
         suggestion.requirement_version_id AS requirementVersionId,
+        suggestion.implementation_recorded_at AS implementationRecordedAt,
+        implementing_version.id AS implementingRequirementVersionId,
+        implementing_version.version_number AS implementingVersionNumber,
+        implementing_version.requirement_status_id AS implementingVersionStatusId,
+        implementing_status.name_en AS implementingVersionStatusNameEn,
+        implementing_status.name_sv AS implementingVersionStatusNameSv,
         suggestion.content AS content,
         CAST(suggestion.is_review_requested AS int) AS isReviewRequested,
         suggestion.resolution AS resolution,
@@ -286,6 +325,11 @@ export async function getSuggestion(
         ON requirement.id = suggestion.requirement_id
       LEFT JOIN requirement_versions requirement_version
         ON requirement_version.id = suggestion.requirement_version_id
+      LEFT JOIN requirement_versions implementing_version
+        ON implementing_version.id = suggestion.implementing_requirement_version_id
+        AND implementing_version.requirement_id = suggestion.requirement_id
+      LEFT JOIN requirement_statuses implementing_status
+        ON implementing_status.id = implementing_version.requirement_status_id
       WHERE suggestion.id = @0
     `,
     [suggestionId],
@@ -402,6 +446,7 @@ export async function recordResolution(
   db: SqlExecutor,
   suggestionId: number,
   data: {
+    implementingRequirementVersionId?: number
     resolution: number
     resolutionMotivation: string
     resolvedBy: string
@@ -428,6 +473,19 @@ export async function recordResolution(
     throw validationError('Resolved by HSA-id is required')
   }
 
+  if (data.implementingRequirementVersionId != null) {
+    if (data.resolution !== SUGGESTION_RESOLVED) {
+      throw validationError(
+        'Only resolved suggestions can link an implementing version',
+      )
+    }
+    await requireImplementingVersion(
+      db,
+      suggestionId,
+      data.implementingRequirementVersionId,
+    )
+  }
+
   const rows = (await db.query(
     buildGuardedSuggestionMutationSql({
       outputAlias: 'INSERTED',
@@ -438,6 +496,8 @@ export async function recordResolution(
           resolved_by = @3,
           resolved_by_hsa_id = @4,
           resolved_at = SYSUTCDATETIME(),
+          implementing_requirement_version_id = @5,
+          implementation_recorded_at = CASE WHEN @5 IS NULL THEN NULL ELSE SYSUTCDATETIME() END,
           updated_at = SYSUTCDATETIME()`,
     }),
     [
@@ -446,6 +506,7 @@ export async function recordResolution(
       data.resolutionMotivation.trim(),
       data.resolvedBy.trim(),
       resolvedByHsaId,
+      data.implementingRequirementVersionId ?? null,
     ],
   )) as ImprovementSuggestionMutationTarget[]
   if (rows[0]) return mapMutationTarget(rows[0])
@@ -619,3 +680,52 @@ export async function revertToDraft(
 
 export const SUGGESTION_RESOLVED = 1
 export const SUGGESTION_DISMISSED = 2
+
+async function requireImplementingVersion(
+  db: SqlExecutor,
+  suggestionId: number,
+  versionId: number,
+): Promise<void> {
+  if (!Number.isSafeInteger(versionId) || versionId <= 0) {
+    throw validationError('A positive implementing version ID is required')
+  }
+  const rows = await db.query<Array<{ id: number }>>(
+    `SELECT version.id
+     FROM requirement_versions version WITH (UPDLOCK, HOLDLOCK)
+     INNER JOIN improvement_suggestions suggestion
+       ON suggestion.requirement_id = version.requirement_id
+     WHERE suggestion.id = @0 AND version.id = @1`,
+    [suggestionId, versionId],
+  )
+  if (!rows[0]) {
+    throw notFoundError('Implementing version not found for this suggestion')
+  }
+}
+
+export async function attachSuggestionImplementation(
+  db: SqlExecutor,
+  suggestionId: number,
+  implementingRequirementVersionId: number,
+): Promise<ImprovementSuggestionMutationTarget> {
+  await requireImplementingVersion(
+    db,
+    suggestionId,
+    implementingRequirementVersionId,
+  )
+  const rows = await db.query<ImprovementSuggestionMutationTarget[]>(
+    buildGuardedSuggestionMutationSql({
+      outputAlias: 'INSERTED',
+      predicates: ['resolution = 1', 'implementation_recorded_at IS NULL'],
+      statement: `UPDATE improvement_suggestions
+        SET implementing_requirement_version_id = @1,
+            implementation_recorded_at = SYSUTCDATETIME(),
+            updated_at = SYSUTCDATETIME()`,
+    }),
+    [suggestionId, implementingRequirementVersionId],
+  )
+  if (rows[0]) return mapMutationTarget(rows[0])
+  await requireSuggestionState(db, suggestionId)
+  throw conflictError(
+    'Implementation evidence requires a resolved suggestion without existing evidence',
+  )
+}

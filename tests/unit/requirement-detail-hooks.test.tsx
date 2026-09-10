@@ -340,6 +340,29 @@ describe('useDeviationWorkflow', () => {
 })
 
 describe('useSuggestionWorkflow', () => {
+  it('refreshes implementation evidence when the requirement version publication state changes', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response({ suggestions: [] }))
+    vi.stubGlobal('fetch', fetchMock)
+    const initial = makeRequirement(1)
+    const { rerender } = renderHook(
+      ({ requirement }) =>
+        useSuggestionWorkflow({
+          requirement,
+          requirementId: 123,
+          selectedVersionNumber: 1,
+        }),
+      { initialProps: { requirement: initial }, wrapper },
+    )
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    rerender({
+      requirement: {
+        ...initial,
+        versions: initial.versions.map(version => ({ ...version, status: 3 })),
+      },
+    })
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+  })
+
   it('clears previous suggestions while a new requirement fetch is pending', async () => {
     const secondFetch = createDeferred<Response>()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
