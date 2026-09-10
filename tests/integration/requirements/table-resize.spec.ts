@@ -337,11 +337,20 @@ test('REQ-09: long requirement text wraps within a reading width in inline and f
 test('REQ-05, REQ-09: manual column widths and selection survive reload, navigation and viewport changes', async ({
   page,
 }) => {
-  await page.goto('/sv/requirements')
   const picker = page.locator('[data-column-picker-trigger="true"]')
-  await picker.click()
-  await page.locator('[data-column-picker-option="version"] input').check()
-  await picker.click()
+  const versionOption = page.locator(
+    '[data-column-picker-option="version"] input',
+  )
+  const versionHeader = page
+    .locator('[data-requirement-header-label="version"]')
+    .first()
+  await test.step('REQ-05: show the version column using the column picker', async () => {
+    await page.goto('/sv/requirements')
+    await picker.click()
+    await versionOption.check()
+    await picker.click()
+    await expect(versionHeader).toHaveText(/\S/)
+  })
   const handle = page
     .locator('[data-column-resize-handle="description"]')
     .first()
@@ -369,17 +378,28 @@ test('REQ-05, REQ-09: manual column widths and selection survive reload, navigat
     columns: localStorage.getItem('requirements.visibleColumns.v5'),
     widths: localStorage.getItem('requirements.columnWidths.v5.sv'),
   }))
-  await test.step('retain column settings across reload and layout changes', async () => {
+  await test.step('REQ-05: retain a hidden column after reload and show it again', async () => {
+    await picker.click()
+    await versionOption.uncheck()
+    await picker.click()
+    await expect(versionHeader).toHaveCount(0)
     await page.reload()
+    await expect(picker).toBeVisible()
+    await expect(versionHeader).toHaveCount(0)
+    await picker.click()
+    await expect(versionOption).not.toBeChecked()
+    await versionOption.check()
+    await picker.click()
+    await expect(versionHeader).toHaveText(/\S/)
+  })
+  await test.step('retain column settings across navigation and viewport changes', async () => {
     await page
       .getByRole('button', { name: 'Expandera navigation', exact: true })
       .click()
     for (const width of [1920, 1440, 375]) {
       await page.setViewportSize({ width, height: 900 })
       await expect.poll(getWidth).toBe(savedWidth)
-      await expect(
-        page.locator('[data-requirement-header-label="version"]').first(),
-      ).toHaveText(/\S/)
+      await expect(versionHeader).toHaveText(/\S/)
       expect(
         await page.evaluate(() => ({
           columns: localStorage.getItem('requirements.visibleColumns.v5'),

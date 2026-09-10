@@ -748,9 +748,10 @@ arkiverad status väljs uttryckligen.
 ### REQ-05: kolumnväljare sparar synliga kolumner
 
 **Steg:** Öppna kolumnväljaren, visa kolumnen `Verifierbar` och kontrollera
-att verifierbara och inte verifierbara krav kan skiljas åt. Dölj därefter en
-valfri kolumn, ändra kravtextkolumnens bredd med mus och piltangenter,
-ladda om sidan och visa kolumnen igen. Växla sidonavigeringen och ändra
+att verifierbara och inte verifierbara krav kan skiljas åt. Ändra
+kravtextkolumnens bredd med mus och piltangenter. Dölj därefter en valfri kolumn,
+ladda om sidan och kontrollera att kolumnen fortfarande är dold och avmarkerad
+i kolumnväljaren. Visa kolumnen igen. Växla sidonavigeringen och ändra
 fönstrets storlek.
 
 **Förväntat resultat:** Båda verifierbarhetslägena har lokaliserade
