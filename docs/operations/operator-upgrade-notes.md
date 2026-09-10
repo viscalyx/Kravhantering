@@ -126,6 +126,12 @@ contains edited candidate content and required proposed references. When the
 file is opened again, current permissions, destination, reference data, and
 import budget apply. Changed or removed references can require further review.
 <!-- operator-upgrade:source pr-1404 end -->
+
+<!-- operator-upgrade:source pr-1407 start -->
+Apply the database upgrade before starting the updated application. Complete the application rollout before users record implementation links. Older application instances cannot clear these links when they delete requirement versions. Reversing the database upgrade removes recorded implementation links and attachment times; preserve them before a database rollback.
+After rollout, check that authorized users can attach an implementing requirement version and read it in suggestion history. Inform integration owners that REST and MCP suggestion responses include optional implementation evidence and its current publication state. Consumers must handle unavailable versions and must not select a replacement by version number.
+Inform administrators that version deletion and Admin Archiving remove the implementation link but retain its attachment time with the suggestion. This evidence has no separate timed deletion policy and is deleted with the requirement. Attachment actors follow the existing Action log retention rules. Exported copies and backups remain the responsibility of the operations team.
+<!-- operator-upgrade:source pr-1407 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
