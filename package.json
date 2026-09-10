@@ -182,21 +182,21 @@
     "framer-motion": "^13.2.0",
     "iron-session": "^9.0.1",
     "jose": "^6.2.12",
-    "lucide-react": "^1.43.0",
+    "lucide-react": "^1.44.0",
     "mssql": "^12.7.1",
     "next": "^16.3.4",
-    "next-intl": "^4.14.2",
+    "next-intl": "^4.14.3",
     "next-themes": "^0.4.6",
     "openid-client": "^6.8.8",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "react-markdown": "^10.1.0",
     "reflect-metadata": "^0.2.2",
     "typeorm": "^1.1.1",
-    "zod": "^4.5.4"
+    "zod": "^4.6.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.12",
+    "@biomejs/biome": "^2.5.13",
     "@cspell/dict-sv": "^2.3.2",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/node": "^4.3.3",
@@ -205,10 +205,10 @@
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
     "@types/mssql": "^12.3.0",
-    "@types/node": "^24.13.3",
-    "@types/oidc-provider": "^9.12.0",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.7",
+    "@types/node": "^24.13.4",
+    "@types/oidc-provider": "^9.12.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@viscalyx/developer-mode-core": "^0.2.2",
     "@viscalyx/developer-mode-react": "^0.2.0",
     "@vitest/coverage-v8": "^5.0.0",
@@ -224,7 +224,7 @@
     "jsonc-parser": "^3.3.1",
     "markdownlint-cli2": "^0.23.2",
     "oidc-provider": "^9.12.2",
-    "pyright": "^1.1.413",
+    "pyright": "^1.1.414",
     "rimraf": "^6.1.3",
     "swagger-ui-dist": "^5.32.15",
     "tailwindcss": "^4.3.3",
@@ -242,15 +242,17 @@
   ],
   "overrides": {
     "fast-uri": "3.1.7",
-    "hono": "4.13.5",
-    "qs": "6.16.0"
+    "hono": "4.13.7",
+    "qs": "6.16.0",
+    "smol-toml": "1.8.0"
   },
   "//overrides": [
     "Overrides pin transitive dependencies that still resolve to vulnerable versions.",
     "Remove each override when the parent dependency updates to include the fix natively.",
     "fast-uri: ajv@8.20.0 allows vulnerable fast-uri versions through ^3.0.1. Override to 3.1.7 to retain the fixes introduced in 3.1.6 for GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, and GHSA-jqff-g426-hqxp without forcing major 4.",
-    "hono: @modelcontextprotocol/sdk@1.30.0 resolves hono@4.12.34 directly and through @hono/node-server@2.0.12. Override to 4.13.5 for GHSA-gqvv-2mrq-wpjv, GHSA-g6gw-c38x-mqfc, and GHSA-crvj-82cr-hjcx.",
-    "qs: @modelcontextprotocol/sdk@1.30.0 resolves qs@6.15.2 through express@5.2.1 and body-parser@2.3.0. Override to 6.16.0 for GHSA-x5fp-wj9c-mxmx and GHSA-4mjr-xmp4-gh2g."
+    "hono: @modelcontextprotocol/sdk@1.30.0 allows vulnerable hono versions through ^4.11.4, and @hono/node-server@2.0.12 accepts ^4 as a peer dependency. Override to 4.13.7 for GHSA-hxh3-vqpv-xpqv while retaining the fixes for GHSA-gqvv-2mrq-wpjv, GHSA-g6gw-c38x-mqfc, and GHSA-crvj-82cr-hjcx.",
+    "qs: @modelcontextprotocol/sdk@1.30.0 resolves qs@6.15.2 through express@5.2.1 and body-parser@2.3.0. Override to 6.16.0 for GHSA-x5fp-wj9c-mxmx and GHSA-4mjr-xmp4-gh2g.",
+    "smol-toml: markdownlint-cli2@0.23.2 pins vulnerable smol-toml@1.7.0 with no newer parent release available. Override to 1.8.0 for GHSA-7w5x-hrqm-74c2 (fixed in 1.7.1) without downgrading cspell@10.3.0's TOML dependency through cspell-config-lib@10.3.0, which requires ^1.8.0."
   ],
   "allowScripts": {
     "@parcel/watcher@2.5.6": true,
