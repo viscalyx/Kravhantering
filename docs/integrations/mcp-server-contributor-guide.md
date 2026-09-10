@@ -429,11 +429,12 @@ Exactly one identifier must be provided.
 Creates, edits, deletes, transitions, or resolves an improvement suggestion.
 
 - **Operations:** `create`, `edit`, `delete`, `request_review`,
-  `revert_to_draft`, `resolve`, `dismiss`
+  `revert_to_draft`, `resolve`, `dismiss`, `attach_implementation`
 - **Inputs:** `operation`, `suggestionId` (required except for `create`),
   `requirementId` (required for `create`), `content` (required for
   `create`/`edit`), `createdBy`, `requirementVersionId`,
-  `resolutionMotivation`, `resolvedBy`, `locale`, `responseFormat`
+  `resolutionMotivation`, `resolvedBy`, `implementingRequirementVersionId`,
+  `locale`, `responseFormat`
 - **Output:** confirmation message and updated suggestion data
 - **Grouping:** improvement suggestions
 

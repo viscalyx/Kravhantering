@@ -154,7 +154,7 @@ agents can use it reliably.
 - `requirements_manage_improvement_suggestion`
   Create, edit, delete, request review, revert to draft, resolve, or dismiss
   an improvement suggestion on a requirement. Operations: `create`, `edit`, `delete`,
-  `request_review`, `revert_to_draft`, `resolve`, `dismiss`.
+  `request_review`, `revert_to_draft`, `resolve`, `dismiss`, `attach_implementation`.
 
 ### Resources
 

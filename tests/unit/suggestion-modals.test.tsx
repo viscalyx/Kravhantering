@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -230,6 +230,24 @@ describe('SuggestionResolutionModal', () => {
     localeMock.value = 'en'
     confirmDiscardChangesMock.mockResolvedValue(true)
   })
+
+  it.each([
+    [false, 'textbox'],
+    [true, 'combobox'],
+  ] as const)(
+    'focuses the editable field when implementationOnly is %s',
+    async (implementationOnly, role) => {
+      render(
+        <SuggestionResolutionModal
+          implementationOnly={implementationOnly}
+          onClose={vi.fn()}
+          onSubmit={vi.fn()}
+          open
+        />,
+      )
+      await waitFor(() => expect(screen.getByRole(role)).toHaveFocus())
+    },
+  )
 
   it.each([
     ['resolve', 1],

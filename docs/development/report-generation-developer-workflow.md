@@ -235,3 +235,5 @@ The suggestion DAL joins implementation evidence by version row ID. The report
 collector maps this data after the history route authorizes access. The shared
 suggestion-history template formats the implementation text without changing
 the original feedback-version grouping; the PDF renderer only styles that text.
+Implementation status labels use the same localized unknown-status fallback as
+the version headings.

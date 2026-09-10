@@ -1364,8 +1364,9 @@ avvisas en gång till.
 ### COL-04a: koppla genomförande med bibehållen beslutshistorik
 
 **Steg:** Öppna ett förslag på version 2 som är åtgärdat med endast motivering.
-Publicera version 3 och välj Koppla genomförande på förslaget. Välj version 3,
-spara och ladda om. Öppna versionslänken och förslagshistoriken. Kontrollera
+Publicera version 3 och välj Koppla genomförandeversion på förslaget.
+Kontrollera att versionsvalet får tangentbordsfokus. Välj version 3, spara
+och ladda om. Öppna versionslänken och förslagshistoriken. Kontrollera
 även ett förslag med genomförande i ett utkast som läsaren saknar behörighet
 för, samt evidens vars version är raderad.
 

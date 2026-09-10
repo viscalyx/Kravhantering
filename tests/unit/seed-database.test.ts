@@ -34,6 +34,7 @@ function collectSeedInsertRows(
   failedLifecycleTransition:
     | 'draft-to-review'
     | 'review-to-resolution'
+    | 'resolution-to-implementation'
     | null = null,
 ) {
   const rows: SeedInsertRow[] = []
@@ -50,10 +51,21 @@ function collectSeedInsertRows(
             seedRow.table === lifecycleTable && seedRow.row.id === params[0],
         )?.row
         if (!seeded) return
-        const transition = sql.includes('SET [resolution] = @1')
-          ? 'review-to-resolution'
-          : 'draft-to-review'
+        const transition = sql.includes(
+          'SET implementing_requirement_version_id',
+        )
+          ? 'resolution-to-implementation'
+          : sql.includes('SET [resolution] = @1')
+            ? 'review-to-resolution'
+            : 'draft-to-review'
         const affectedRows = transition === failedLifecycleTransition ? 0 : 1
+        if (
+          affectedRows === 1 &&
+          transition === 'resolution-to-implementation'
+        ) {
+          seeded.implementing_requirement_version_id = params[1]
+          seeded.implementation_recorded_at = params[2]
+        }
         if (
           affectedRows === 1 &&
           sql.includes('SET [is_review_requested] = 1')
@@ -144,7 +156,11 @@ describe('seed profiles', () => {
     expect(message).not.toContain('SFS 2018:218')
   })
 
-  it.each(['draft-to-review', 'review-to-resolution'] as const)(
+  it.each([
+    'draft-to-review',
+    'review-to-resolution',
+    'resolution-to-implementation',
+  ] as const)(
     'fails loudly when the %s demo seed transition affects zero rows',
     async transition => {
       const { executor } = collectSeedInsertRows(transition)

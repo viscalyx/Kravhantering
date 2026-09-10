@@ -1,5 +1,6 @@
 import type { DeviationStep } from '@/components/DeviationStepper'
 import type { SuggestionStep } from '@/components/SuggestionStepper'
+import type { SuggestionImplementation } from '@/lib/requirements/suggestion-implementation'
 
 export {
   STATUS_ARCHIVED,
@@ -51,9 +52,7 @@ export interface SuggestionData {
   createdAt: string
   createdBy: string | null
   id: number
-  implementation?:
-    | import('@/lib/requirements/suggestion-implementation').SuggestionImplementation
-    | null
+  implementation?: SuggestionImplementation | null
   isReviewRequested: number
   requirementVersionId: number | null
   resolution: number | null

@@ -14890,16 +14890,22 @@ async function seedDemoLifecycleRow({
     table === 'improvement_suggestions' &&
     value('implementation_recorded_at') != null
   ) {
-    await query(
-      `UPDATE improvement_suggestions
+    const implementationResult = await query(
+      `UPDATE [improvement_suggestions]
        SET implementing_requirement_version_id = @1, implementation_recorded_at = @2
-       WHERE id = @0 AND resolution = 1 AND implementation_recorded_at IS NULL`,
+       WHERE id = @0 AND resolution = 1 AND implementation_recorded_at IS NULL;
+       SELECT @@ROWCOUNT AS [affectedRows]`,
       [
         value('id'),
         value('implementing_requirement_version_id'),
         value('implementation_recorded_at'),
       ],
     )
+    assertDemoLifecycleTransitionAffectedRows(implementationResult, {
+      recordId: value('id'),
+      table,
+      transition: 'resolution-to-implementation',
+    })
   }
 
   return true

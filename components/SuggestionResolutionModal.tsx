@@ -60,6 +60,7 @@ export default function SuggestionResolutionModal({
   )
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const implementingVersionRef = useRef<HTMLSelectElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
   const shouldReduceMotion = useReducedMotion()
   const confirmDiscardChanges = useDiscardChangesConfirmation()
@@ -108,7 +109,7 @@ export default function SuggestionResolutionModal({
   const { handleKeyDown } = useModalFocus({
     closeDisabled: loading,
     modalRef,
-    initialFocusRef: textareaRef,
+    initialFocusRef: implementationOnly ? implementingVersionRef : textareaRef,
     onClose: () => {
       void requestClose()
     },
@@ -265,6 +266,7 @@ export default function SuggestionResolutionModal({
                     onChange={event =>
                       setImplementingVersionId(event.target.value)
                     }
+                    ref={implementingVersionRef}
                     value={implementingVersionId}
                   >
                     <option value="">{tf('noImplementingVersion')}</option>

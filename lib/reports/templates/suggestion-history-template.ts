@@ -67,7 +67,7 @@ function toSuggestionItem(
     implementationText: suggestion.implementation
       ? `${labels.suggestions.implementingVersion}: ${
           suggestion.implementation.version
-            ? `${formatReportTemplate(labels.common.version, { version: suggestion.implementation.version.versionNumber })} · ${localizeReportValue(locale, suggestion.implementation.version.statusNameSv, suggestion.implementation.version.statusNameEn)}`
+            ? `${formatReportTemplate(labels.common.version, { version: suggestion.implementation.version.versionNumber })} · ${localizeReportValue(locale, suggestion.implementation.version.statusNameSv, suggestion.implementation.version.statusNameEn) || labels.common.unknown}`
             : labels.suggestions.implementationUnavailable
         } · ${new Date(suggestion.implementation.recordedAt).toLocaleDateString(locale)}`
       : undefined,

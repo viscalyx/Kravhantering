@@ -3382,7 +3382,7 @@ draft → review requested → resolved or dismissed.
 | `requirement_id` | integer FK → `requirements.id` (CASCADE DELETE) | The requirement this suggestion applies to |
 | `requirement_version_id` | integer FK → `requirement_versions.id` (SET NULL) | Optional: the specific version being reviewed |
 | `implementing_requirement_version_id` | integer FK → `requirement_versions.id` (NO ACTION) | Optional implementing version row; must belong to the same requirement |
-| `implementation_recorded_at` | datetime2(3) | Evidence attachment time; retained when its version is removed |
+| `implementation_recorded_at` | text (ISO 8601) | Evidence attachment time; retained when its version is removed |
 | `content` | text NOT NULL | The suggestion text |
 | `created_by` | text | Display-name snapshot for the actor that submitted the suggestion |
 | `created_by_hsa_id` | text | HSA-id for the actor that submitted the suggestion (nullable after privacy erasure) |

@@ -51,6 +51,50 @@ function makeRequirement(
 }
 
 describe('report templates', () => {
+  it.each([
+    ['en', 'Unknown'],
+    ['sv', 'Okänd'],
+  ])(
+    'labels an implementation with missing status names in %s',
+    (locale, unknownLabel) => {
+      const model = buildSuggestionHistoryReport(
+        makeRequirement([makeVersion()]),
+        [
+          {
+            id: 1,
+            requirementVersionId: 1,
+            content: 'Implemented suggestion',
+            createdAt: '2026-09-10T10:00:00Z',
+            createdBy: null,
+            isReviewRequested: 1,
+            resolution: 1,
+            resolutionMotivation: 'Implemented',
+            resolvedAt: '2026-09-10T10:00:00Z',
+            resolvedBy: null,
+            implementation: {
+              recordedAt: '2026-09-10T10:00:00Z',
+              version: {
+                id: 2,
+                requirementId: 1,
+                versionNumber: 2,
+                statusId: 3,
+                statusNameEn: '',
+                statusNameSv: '',
+              },
+            },
+          },
+        ],
+        locale,
+      )
+      const items = model.sections.flatMap(section =>
+        section.type === 'suggestion-list' ? section.items : [],
+      )
+      expect(items[0]?.implementationText).toContain(
+        `Version 2 · ${unknownLabel}`,
+      )
+    },
+  )
+
   it('reports review availability and missing comparison bases', () => {
     const noReview = buildReviewReport(
       makeRequirement([makeVersion({ status: 3 })]),

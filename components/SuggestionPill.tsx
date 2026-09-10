@@ -2,30 +2,16 @@
 
 import { CheckCircle2, Eye, PenLine, XCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
+import type { SuggestionData } from '@/app/[locale]/requirements/[id]/_detail/types'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { formatActorDisplayName } from '@/lib/privacy/display-name'
-
-interface SuggestionData {
-  content: string
-  createdAt: string
-  createdBy: string | null
-  id: number
-  implementation?:
-    | import('@/lib/requirements/suggestion-implementation').SuggestionImplementation
-    | null
-  isReviewRequested: number
-  resolution: number | null
-  resolutionMotivation: string | null
-  resolvedAt: string | null
-  resolvedBy: string | null
-}
 
 interface SuggestionPillProps {
   developerModeContext?: string
   muted?: boolean
   step?: 'draft' | 'review_requested' | 'resolved'
-  suggestion: SuggestionData
+  suggestion: Omit<SuggestionData, 'requirementVersionId'>
 }
 
 export default function SuggestionPill({

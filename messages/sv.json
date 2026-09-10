@@ -992,12 +992,12 @@
     "bulkDeviationPartialFail": "Avstegsförfrågningar misslyckades för krav-ID:n: {ids}. De kraven är fortfarande markerade."
   },
   "improvementSuggestion": {
-    "attachImplementation": "Koppla genomförande",
-    "implementingVersion": "Genomförande kravversion",
-    "implementingVersionHelp": "Välj valfritt den kravversion som genomför ändringen. Förslagets ursprungliga kravversion behålls. Du kan koppla en version senare när förslaget är åtgärdat. Genomförande kan kopplas en gång; en raderad version blir otillgänglig.",
-    "noImplementingVersion": "Ingen genomförande kravversion vald",
+    "attachImplementation": "Koppla genomförandeversion",
+    "implementingVersion": "Genomförandeversion",
+    "implementingVersionHelp": "Välj vid behov en genomförandeversion för ändringen. Förslagets ursprungliga kravversion behålls. Du kan koppla en version senare när förslaget är åtgärdat. En genomförandeversion kan kopplas en gång; en raderad version blir otillgänglig.",
+    "noImplementingVersion": "Ingen genomförandeversion vald",
     "implementationVersionLabel": "Version {version}",
-    "implementationUnavailable": "Versionen är otillgänglig eller saknar läsbehörighet",
+    "implementationUnavailable": "Versionen är otillgänglig eller du saknar läsbehörighet",
     "implementationRecordedAt": "Genomförande registrerat {date}",
     "implementationActor": "Genomförande registrerat av",
     "implementationActorHelp": "Inloggad person och tid registreras i åtgärdsloggen. Kopplingen ändrar inte det ursprungliga beslutet.",
@@ -1220,8 +1220,8 @@
         "version": "Version"
       },
       "suggestions": {
-        "implementingVersion": "Genomförande kravversion",
-        "implementationUnavailable": "Versionen är otillgänglig eller saknar läsbehörighet",
+        "implementingVersion": "Genomförandeversion",
+        "implementationUnavailable": "Versionen är otillgänglig eller du saknar läsbehörighet",
         "resolved": "Åtgärdad",
         "dismissed": "Avvisad",
         "reviewRequested": "Granskning begärd",
