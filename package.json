@@ -20,6 +20,7 @@
     "predev": "npm run dev:prepare",
     "dev": "next dev",
     "dev:fresh": "npm run kill:port && npm run clean && npm run dev",
+    "storage-report:install": "bash scripts/azure-dev/install-storage-report.sh",
     "dev:prepare": "node ./scripts/prebuild.js --metadata-only && npm run openapi:hsa-person-lookup:generate:public",
     "idp:up": "docker compose -f docker-compose.idp.yml up --wait --wait-timeout 180 idp",
     "idp:down": "docker compose -f docker-compose.idp.yml down",

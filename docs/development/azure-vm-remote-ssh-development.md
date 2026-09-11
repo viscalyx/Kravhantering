@@ -867,6 +867,19 @@ Quadlet services, and runs smoke validation.
 An interactive shell performs a fast filesystem check. It stays silent while
 both root and the data disk are below 80% use, warns at 80%, and labels the
 warning urgent at 90%. The check never blocks commands or removes data.
+`storage-report --check` runs only this fast warning check; it does not list
+cleanup candidates.
+
+Azure host provisioning installs a copy of the helper in
+`/usr/local/bin/storage-report`. To update that copy from the current checkout
+without rerunning provisioning, run this on the Azure development VM:
+
+```sh
+npm run storage-report:install
+```
+
+The installer checks the script's Bash syntax and uses `sudo` when needed to
+install it with the same ownership and permissions as provisioning.
 
 Run the read-only detailed report when a warning appears:
 
@@ -876,7 +889,10 @@ storage-report
 
 The report shows filesystem, directory, Docker, Podman, and Git worktree use.
 Directory sizing includes `/mnt/krav-azure-dev-data/.worktrees`, and registered
-worktrees are reported by their actual paths. The report classifies worktrees
+worktrees are reported by their actual paths. Missing worktrees receive a
+suggestion to review `git worktree prune --dry-run`. If a worktree cannot be
+fully measured, its size is shown as unknown and the report continues through
+the cleanup suggestions. The report classifies worktrees
 with uncommitted or unverified detached work as needing review and prints
 candidate removal commands only for clean worktrees whose commits remain on a
 branch. Cleanup stays manual. Never prune container volumes; they may contain

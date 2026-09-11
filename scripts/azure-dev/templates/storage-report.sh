@@ -114,12 +114,17 @@ worktree_report() {
         if [ -z "${path}" ]; then
           continue
         fi
-        size="$(du -sh "${path}" 2>/dev/null | awk '{ print $1 }')"
+        if [ ! -d "${path}" ]; then
+          printf '%s: missing; review with git worktree prune --dry-run\n' "${path}"
+          path=''
+          continue
+        fi
+        if ! size="$(du -sh "${path}" 2>/dev/null | awk '{ print $1 }')"; then
+          size='unknown size'
+        fi
         size="${size:-unknown size}"
         if [ "${path}" = "${WORKSPACE_DIR}" ]; then
           printf '%s (%s): primary worktree, keep\n' "${path}" "${size}"
-        elif [ ! -d "${path}" ]; then
-          printf '%s: missing; review with git worktree prune --dry-run\n' "${path}"
         elif [ -n "$(git -C "${path}" status --porcelain 2>/dev/null)" ]; then
           printf '%s (%s): review; contains uncommitted changes\n' "${path}" "${size}"
         elif [ -n "${branch}" ]; then
