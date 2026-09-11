@@ -132,6 +132,12 @@ Apply the database upgrade before starting the updated application. Complete the
 After rollout, check that authorized users can attach an implementing requirement version and read it in suggestion history. Inform integration owners that REST and MCP suggestion responses include optional implementation evidence and its current publication state. Consumers must handle unavailable versions and must not select a replacement by version number.
 Inform administrators that version deletion and Admin Archiving remove the implementation link but retain its attachment time with the suggestion. This evidence has no separate timed deletion policy and is deleted with the requirement. Attachment actors follow the existing Action log retention rules. Exported copies and backups remain the responsibility of the operations team.
 <!-- operator-upgrade:source pr-1407 end -->
+
+<!-- operator-upgrade:source pr-1410 start -->
+Back up the database before upgrade. Apply database migrations and reconcile runtime permissions before starting the updated application. Database rollback requires backup restoration.
+Update assessment API clients to send the displayed question version and list lock revision. Update CSV consumers to distinguish current-question rows from assessment-history rows. Tell users that adopting a changed question requires explicit confirmation of the previous assessment.
+After rollout, verify that privacy export and anonymization include assessment authors. Verify that archived specification exports include assessment history and that retained history protects referenced questions and versions from deletion.
+<!-- operator-upgrade:source pr-1410 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
