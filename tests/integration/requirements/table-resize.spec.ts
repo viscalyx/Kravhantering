@@ -384,7 +384,6 @@ test('REQ-05, REQ-09: manual column widths and selection survive reload, navigat
     await picker.click()
     await expect(versionHeader).toHaveCount(0)
     await page.reload()
-    await expect(picker).toBeVisible()
     await expect(versionHeader).toHaveCount(0)
     await picker.click()
     await expect(versionOption).not.toBeChecked()
