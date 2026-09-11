@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 
 export const SQL_SERVER_RUNTIME_ROLE = 'kravhantering_runtime'
-export const RUNTIME_PERMISSION_MANIFEST_VERSION = '2026.09.07.1'
+export const RUNTIME_PERMISSION_MANIFEST_VERSION = '2026.09.11.1'
 
 const CRUD = Object.freeze(['SELECT', 'INSERT', 'UPDATE', 'DELETE'])
 const READ_CREATE = Object.freeze(['SELECT', 'INSERT'])
@@ -207,6 +207,19 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
             ]),
           })
         : entry
+    if (entry.object === 'dbo.specification_rfi_lists') {
+      return [
+        Object.freeze({
+          object: 'dbo.specification_rfi_assessments',
+          permissions: READ_CREATE_DELETE,
+          updateColumns: Object.freeze([
+            'created_by_hsa_id',
+            'created_by_display_name',
+          ]),
+        }),
+        currentEntry,
+      ]
+    }
     if (entry.object === 'dbo.ai_safety_rule_terms') {
       return [
         Object.freeze({

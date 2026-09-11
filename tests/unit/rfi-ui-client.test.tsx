@@ -1270,6 +1270,11 @@ describe('RFI client UI states', () => {
         name: 'specificationRfiList.notRelevant',
       }),
     )
+    await userEvent.click(
+      within(securitySection).getByRole('button', {
+        name: 'specificationRfiList.assessment.save',
+      }),
+    )
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/requirements-specifications/1/rfi-list/items/11',

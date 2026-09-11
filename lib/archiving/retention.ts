@@ -270,7 +270,11 @@ const DELETE_RFI_QUESTION_VERSION_SQL = `DECLARE @version_id int;
           SELECT 1
           FROM specification_rfi_question_items item
           WHERE item.rfi_question_version_id = version.id
-        );
+        )
+          AND NOT EXISTS (
+            SELECT 1 FROM specification_rfi_assessments assessment
+            WHERE assessment.rfi_question_version_id = version.id
+          );
       IF @version_id IS NOT NULL
       BEGIN
         DELETE FROM rfi_question_version_requirement_selection_questions WHERE rfi_question_version_id = @version_id;
@@ -290,6 +294,11 @@ const DELETE_RFI_QUESTION_SQL = `DECLARE @question_id int;
           FROM specification_rfi_question_items item
           WHERE item.rfi_question_id = question.id
         )
+          AND NOT EXISTS (
+            SELECT 1 FROM specification_rfi_assessments assessment
+            INNER JOIN rfi_question_versions assessed_version ON assessed_version.id = assessment.rfi_question_version_id
+            WHERE assessed_version.rfi_question_id = question.id
+          )
         AND NOT EXISTS (
           SELECT 1
           FROM specification_rfi_question_items item
@@ -663,6 +672,10 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
             FROM specification_rfi_question_items item
             WHERE item.rfi_question_version_id = version.id
           )
+          AND NOT EXISTS (
+            SELECT 1 FROM specification_rfi_assessments assessment
+            WHERE assessment.rfi_question_version_id = version.id
+          )
           AND NOT (
             question.is_archived = 1
             AND question.archived_at <= @0
@@ -671,6 +684,11 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
               FROM specification_rfi_question_items question_item
               WHERE question_item.rfi_question_id = question.id
             )
+          AND NOT EXISTS (
+            SELECT 1 FROM specification_rfi_assessments assessment
+            INNER JOIN rfi_question_versions assessed_version ON assessed_version.id = assessment.rfi_question_version_id
+            WHERE assessed_version.rfi_question_id = question.id
+          )
             AND NOT EXISTS (
               SELECT 1
               FROM specification_rfi_question_items version_item
@@ -720,6 +738,11 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
             SELECT 1
             FROM specification_rfi_question_items item
             WHERE item.rfi_question_id = question.id
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM specification_rfi_assessments assessment
+            INNER JOIN rfi_question_versions assessed_version ON assessed_version.id = assessment.rfi_question_version_id
+            WHERE assessed_version.rfi_question_id = question.id
           )
           AND NOT EXISTS (
             SELECT 1
@@ -1407,6 +1430,9 @@ async function exportSpecification(
   }
 
   const [
+    rfiList,
+    rfiItems,
+    rfiAssessmentHistory,
     needsReferences,
     coAuthors,
     libraryRequirements,
@@ -1418,6 +1444,43 @@ async function exportSpecification(
     localRequirementPackages,
     localDeviations,
   ] = await Promise.all([
+    db.query(
+      `SELECT is_locked AS isLocked, lock_revision AS lockRevision, locked_at AS lockedAt,
+      created_at AS createdAt, updated_at AS updatedAt,
+      CAST(NULL AS nvarchar(64)) AS lockedByHsaId,
+      CASE WHEN locked_by_display_name IS NULL THEN NULL ELSE N'no-user' END AS lockedByDisplayName
+      FROM specification_rfi_lists WHERE specification_id = @0`,
+      [specificationId],
+    ) as Promise<Row[]>,
+    db.query(
+      `SELECT item.rfi_question_id AS questionId, question.question_code AS questionCode,
+      item.rfi_question_version_id AS versionId, version.version_number AS versionNumber,
+      version.question_text AS questionText, version.help_text AS helpText,
+      version.expected_answer_format AS expectedAnswerFormat,
+      item.is_included AS isIncluded, item.relevance, item.changed_at AS changedAt,
+      CAST(NULL AS nvarchar(64)) AS changedByHsaId,
+      CASE WHEN item.changed_by_display_name IS NULL THEN NULL ELSE N'no-user' END AS changedByDisplayName
+      FROM specification_rfi_question_items item
+      INNER JOIN rfi_questions question ON question.id = item.rfi_question_id
+      LEFT JOIN rfi_question_versions version ON version.id = item.rfi_question_version_id
+      WHERE item.specification_id = @0 ORDER BY item.rfi_question_id`,
+      [specificationId],
+    ) as Promise<Row[]>,
+    db.query(
+      `SELECT assessment.id, version.rfi_question_id AS questionId,
+      question.question_code AS questionCode, version.id AS versionId, version.version_number AS versionNumber,
+      version.question_text AS questionText, version.help_text AS helpText,
+      version.expected_answer_format AS expectedAnswerFormat,
+      assessment.relevance, assessment.reason, assessment.document_reference AS documentReference,
+      assessment.document_url AS documentUrl, assessment.created_at AS createdAt,
+      CAST(NULL AS nvarchar(64)) AS createdByHsaId,
+      CASE WHEN assessment.created_by_display_name IS NULL THEN NULL ELSE N'no-user' END AS createdByDisplayName
+      FROM specification_rfi_assessments assessment
+      INNER JOIN rfi_question_versions version ON version.id = assessment.rfi_question_version_id
+      INNER JOIN rfi_questions question ON question.id = version.rfi_question_id
+      WHERE assessment.specification_id = @0 ORDER BY assessment.id`,
+      [specificationId],
+    ) as Promise<Row[]>,
     db.query(
       `SELECT
           id,
@@ -1439,7 +1502,7 @@ async function exportSpecification(
           CAST(NULL AS nvarchar(64)) AS createdByHsaId
         FROM specification_co_authors
         WHERE specification_id = @0
-        ORDER BY display_name ASC`,
+        ORDER BY hsa_id ASC`,
       [specificationId],
     ) as Promise<Row[]>,
     db.query(
@@ -1646,6 +1709,9 @@ async function exportSpecification(
   ])
 
   return {
+    rfiList: rfiList[0] ?? null,
+    rfiItems,
+    rfiAssessmentHistory,
     coAuthors,
     libraryDeviations,
     libraryNormReferences,

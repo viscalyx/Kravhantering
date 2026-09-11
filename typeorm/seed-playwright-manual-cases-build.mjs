@@ -647,12 +647,42 @@ function addRfi(seedData) {
       requirement_package_id: PWT_MANUAL_SEED.package.source,
       rfi_question_version_id: question.versionId,
     })
+    addRow(seedData, 'specification_rfi_assessments', {
+      id: question.id,
+      specification_id: PWT_MANUAL_SEED.specification.rfiWorkflow,
+      rfi_question_version_id: question.versionId,
+      relevance:
+        question.id === PWT_MANUAL_SEED.rfiQuestion.primary
+          ? 'not_relevant'
+          : 'relevant',
+      reason:
+        question.id === PWT_MANUAL_SEED.rfiQuestion.primary
+          ? 'PWT-MANUAL driften omfattas av befintligt avtal.'
+          : null,
+      document_reference:
+        question.id === PWT_MANUAL_SEED.rfiQuestion.primary
+          ? 'Driftavtal 2026-14, avsnitt 3'
+          : null,
+      document_url:
+        question.id === PWT_MANUAL_SEED.rfiQuestion.primary
+          ? 'https://example.org/agreements/2026-14'
+          : null,
+      created_at: SEED_TS,
+      created_by_hsa_id:
+        question.id === PWT_MANUAL_SEED.rfiQuestion.primary
+          ? ACTOR.specResponsible.hsaId
+          : 'SE5560000001-rfiduplicate',
+      created_by_display_name: ACTOR.specResponsible.displayName,
+    })
     addRow(seedData, 'specification_rfi_question_items', {
       changed_at: SEED_TS,
       changed_by_display_name: ACTOR.specResponsible.displayName,
       changed_by_hsa_id: ACTOR.specResponsible.hsaId,
       is_included: 1,
-      relevance: null,
+      relevance:
+        question.id === PWT_MANUAL_SEED.rfiQuestion.primary
+          ? 'not_relevant'
+          : 'relevant',
       rfi_question_id: question.id,
       rfi_question_version_id: question.versionId,
       specification_id: PWT_MANUAL_SEED.specification.rfiWorkflow,

@@ -71,6 +71,46 @@ function generatedBy() {
 }
 
 describe('data-subject export service', () => {
+  it('exports the assessment author and their version-bound evidence by exact HSA-id', async () => {
+    const { db } = createExportDb({
+      'specification_rfi_assessments.created_by': [
+        {
+          id: 7,
+          label: 'SPEC-001 / INT-RFI001 v2',
+          hsaId: TARGET_HSA_ID,
+          displayName: 'Assessment author',
+          createdAt: '2026-09-11T10:00:00.000Z',
+          relevance: 'not_relevant',
+          reason: 'Existing agreement',
+          documentReference: 'Agreement 14',
+          documentUrl: 'https://example.org/evidence',
+        },
+      ],
+    })
+    const result = await collectDataSubjectExport(db, {
+      target: { hsaId: TARGET_HSA_ID },
+      generatedBy: generatedBy(),
+    })
+    expect(result.sources).toContainEqual(
+      expect.objectContaining({
+        key: 'specification_rfi_assessments.created_by',
+        items: expect.arrayContaining([
+          expect.objectContaining({
+            fieldName: 'created_by_hsa_id',
+            value: TARGET_HSA_ID,
+          }),
+          expect.objectContaining({
+            fieldName: 'reason',
+            value: 'Existing agreement',
+          }),
+          expect.objectContaining({
+            fieldName: 'document_url',
+            value: 'https://example.org/evidence',
+          }),
+        ]),
+      }),
+    )
+  })
   it('bounds only simple top-level SELECT source queries', () => {
     expect(
       applyDataSubjectExportRowLimit(

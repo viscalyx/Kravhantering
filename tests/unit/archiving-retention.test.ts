@@ -150,6 +150,16 @@ function createRetentionDb(options?: {
           affected: options?.executeAffectedBySubjectId?.[subjectId] ?? 1,
         }
       }
+      if (sql.includes('FROM specification_rfi_assessments assessment'))
+        return [
+          {
+            id: 81,
+            reason: 'Existing agreement',
+            versionNumber: 1,
+            createdByHsaId: null,
+            createdByDisplayName: 'no-user',
+          },
+        ]
       if (sql.includes('requirement_version_requirement_packages link')) {
         return [
           {
@@ -1039,6 +1049,15 @@ describe('archiving retention service', () => {
             responsibleDisplayName: null,
             responsibleHsaId: null,
           }),
+          rfiAssessmentHistory: [
+            {
+              id: 81,
+              reason: 'Existing agreement',
+              versionNumber: 1,
+              createdByHsaId: null,
+              createdByDisplayName: null,
+            },
+          ],
           libraryRequirementPackages: [
             {
               description: 'Security package purpose and scope.',

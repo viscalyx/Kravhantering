@@ -120,6 +120,112 @@ describe('requirements specification RFI list routes', () => {
     mocks.updateSpecificationRfiQuestionItem.mockResolvedValue(list)
   })
 
+  it.each([
+    { isIncluded: true, reason: 'Evidence without an outcome' },
+    { reason: 'Evidence without an outcome' },
+    { relevance: 'not_relevant' },
+    {
+      relevance: 'relevant',
+      assessedVersionId: 12,
+      expectedLockRevision: 1,
+      documentUrl: 'javascript:alert(1)',
+    },
+    {
+      relevance: 'relevant',
+      assessedVersionId: 12,
+      expectedLockRevision: 1,
+      documentUrl: 'not a URL',
+    },
+    {
+      relevance: 'relevant',
+      assessedVersionId: 12,
+      expectedLockRevision: 1,
+      documentUrl: 'https://user:password@example.org',
+    },
+    {
+      relevance: 'relevant',
+      assessedVersionId: 12,
+      expectedLockRevision: 1,
+      reason: 'a'.repeat(10001),
+    },
+    {
+      relevance: 'relevant',
+      assessedVersionId: 12,
+      expectedLockRevision: 1,
+      isIncluded: false,
+    },
+    {
+      relevance: null,
+      assessedVersionId: 12,
+      expectedLockRevision: 1,
+      reason: 'Evidence without an outcome',
+    },
+  ])('rejects incomplete or unsafe assessment payloads %#', async body => {
+    const response = await updateRfiItem(
+      mutationRequest(
+        'http://localhost/api/requirements-specifications/41/rfi-list/items/23',
+        'PATCH',
+        body,
+      ),
+      params({ id: '41', questionId: '23' }),
+    )
+    expect(response.status).toBe(400)
+    expect(mocks.updateSpecificationRfiQuestionItem).not.toHaveBeenCalled()
+  })
+
+  it.each(['relevant', 'not_relevant', null])(
+    'accepts %s without optional evidence',
+    async relevance => {
+      const response = await updateRfiItem(
+        mutationRequest(
+          'http://localhost/api/requirements-specifications/41/rfi-list/items/23',
+          'PATCH',
+          { relevance, assessedVersionId: 12, expectedLockRevision: 1 },
+        ),
+        params({ id: '41', questionId: '23' }),
+      )
+      await expect(response.json()).resolves.toEqual({ list })
+    },
+  )
+
+  it('accepts an inclusion decision independently of assessment evidence', async () => {
+    const response = await updateRfiItem(
+      mutationRequest(
+        'http://localhost/api/requirements-specifications/41/rfi-list/items/23',
+        'PATCH',
+        { isIncluded: true },
+      ),
+      params({ id: '41', questionId: '23' }),
+    )
+    expect(response.status).toBe(200)
+    expect(mocks.updateSpecificationRfiQuestionItem).toHaveBeenCalledWith(
+      mocks.db,
+      41,
+      23,
+      { isIncluded: true },
+      expect.any(Object),
+    )
+  })
+
+  it('rejects assessment writes without the specification assignment', async () => {
+    mocks.assertAuthorized.mockRejectedValue(forbiddenError('Not assigned'))
+    const response = await updateRfiItem(
+      mutationRequest(
+        'http://localhost/api/requirements-specifications/41/rfi-list/items/23',
+        'PATCH',
+        {
+          relevance: 'relevant',
+          assessedVersionId: 12,
+          expectedLockRevision: 1,
+          reason: 'Evidence',
+        },
+      ),
+      params({ id: '41', questionId: '23' }),
+    )
+    expect(response.status).toBe(403)
+    expect(mocks.updateSpecificationRfiQuestionItem).not.toHaveBeenCalled()
+  })
+
   it('returns the authorized RFI list with its specification identity', async () => {
     const response = await getRfiList(
       new NextRequest(
@@ -219,7 +325,14 @@ describe('requirements specification RFI list routes', () => {
       mutationRequest(
         'http://localhost/api/requirements-specifications/41/rfi-list/items/23',
         'PATCH',
-        { isIncluded: false, relevance: 'not_relevant' },
+        {
+          relevance: 'not_relevant',
+          assessedVersionId: 12,
+          expectedLockRevision: 1,
+          reason: 'Existing hosting agreement',
+          documentReference: 'Agreement 2026-14',
+          documentUrl: 'https://example.org/agreement',
+        },
       ),
       params({ id: '41', questionId: '23' }),
     )
@@ -230,7 +343,14 @@ describe('requirements specification RFI list routes', () => {
       mocks.db,
       41,
       23,
-      { isIncluded: false, relevance: 'not_relevant' },
+      {
+        relevance: 'not_relevant',
+        assessedVersionId: 12,
+        expectedLockRevision: 1,
+        reason: 'Existing hosting agreement',
+        documentReference: 'Agreement 2026-14',
+        documentUrl: 'https://example.org/agreement',
+      },
       {
         displayName: 'RFI Steward',
         hsaId: 'SE5560000001-rfi-steward',
@@ -291,7 +411,11 @@ describe('requirements specification RFI list routes', () => {
           mutationRequest(
             'http://localhost/api/requirements-specifications/999/rfi-list/items/23',
             'PATCH',
-            { relevance: 'relevant' },
+            {
+              relevance: 'relevant',
+              assessedVersionId: 12,
+              expectedLockRevision: 1,
+            },
           ),
           params({ id: '999', questionId: '23' }),
         ),

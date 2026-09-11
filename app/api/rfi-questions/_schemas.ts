@@ -54,12 +54,7 @@ export const rfiQuestionParamsSchema = z
   })
   .strict()
 
-export const rfiListItemUpdateSchema = z
-  .object({
-    isIncluded: z.boolean().optional(),
-    relevance: z.enum(['relevant', 'not_relevant']).nullable().optional(),
-  })
-  .strict()
+export { rfiAssessmentUpdateSchema as rfiListItemUpdateSchema } from '@/lib/rfi/assessment'
 
 export const rfiListAreaUpdateSchema = z
   .object({

@@ -5,6 +5,11 @@ import {
   notFoundError,
   validationError,
 } from '@/lib/requirements/errors'
+import {
+  type RfiAssessment,
+  type RfiListItemUpdate,
+  rfiAssessmentUpdateSchema,
+} from '@/lib/rfi/assessment'
 import { toBoolean, toIsoString } from '@/lib/typeorm/value-mappers'
 
 export type RfiRelevance = 'not_relevant' | 'relevant'
@@ -85,10 +90,12 @@ export interface SpecificationRfiQuestionItemRow
   areaId: number
   areaName: string
   areaPrefix: string
+  assessment: RfiAssessment | null
   expectedAnswerFormat: string | null
   helpText: string | null
   isIncluded: boolean
   isVersionStale: boolean
+  previousAssessment: RfiAssessment | null
   questionCode: string
   questionId: number
   questionText: string
@@ -99,11 +106,13 @@ export interface SpecificationRfiQuestionItemRow
 }
 
 export interface SpecificationRfiListRow {
+  assessmentHistory: RfiAssessment[]
   isLocked: boolean
   items: SpecificationRfiQuestionItemRow[]
   lockedAt: string | null
   lockedByDisplayName: string | null
   lockedByHsaId: string | null
+  lockRevision: number
   specificationId: number
 }
 
@@ -316,6 +325,8 @@ function mapSpecificationRfiQuestionItemRow(
   row: SpecificationRfiQuestionItemDbRow,
 ): SpecificationRfiQuestionItemRow {
   return {
+    assessment: null,
+    previousAssessment: null,
     areaId: row.areaId,
     areaName: row.areaName,
     areaPrefix: row.areaPrefix,
@@ -874,7 +885,7 @@ async function ensureSpecificationRfiList(
   await executor.query(
     `
       IF NOT EXISTS (
-        SELECT 1 FROM specification_rfi_lists WHERE specification_id = @0
+        SELECT 1 FROM specification_rfi_lists WITH (UPDLOCK, HOLDLOCK) WHERE specification_id = @0
       )
       INSERT INTO specification_rfi_lists
         (specification_id, is_locked, created_at, updated_at)
@@ -887,20 +898,22 @@ async function ensureSpecificationRfiList(
 async function getSpecificationRfiListHeader(
   db: SqlExecutor,
   specificationId: number,
-): Promise<Omit<SpecificationRfiListRow, 'items'>> {
+): Promise<Omit<SpecificationRfiListRow, 'items' | 'assessmentHistory'>> {
   const rows = (await db.query(
     `
       SELECT TOP (1)
         specification_id AS specificationId,
         is_locked AS isLocked,
+        lock_revision AS lockRevision,
         locked_at AS lockedAt,
         locked_by_hsa_id AS lockedByHsaId,
         locked_by_display_name AS lockedByDisplayName
-      FROM specification_rfi_lists
+      FROM specification_rfi_lists WITH (UPDLOCK, HOLDLOCK)
       WHERE specification_id = @0
     `,
     [specificationId],
   )) as Array<{
+    lockRevision: number
     isLocked: boolean | number | string
     lockedAt: Date | string | null
     lockedByDisplayName: string | null
@@ -909,6 +922,7 @@ async function getSpecificationRfiListHeader(
   }>
   const row = rows[0]
   return {
+    lockRevision: row?.lockRevision ?? 0,
     isLocked: row ? toBoolean(row.isLocked) : false,
     lockedAt: row?.lockedAt == null ? null : toIsoString(row.lockedAt),
     lockedByDisplayName: row?.lockedByDisplayName ?? null,
@@ -924,6 +938,18 @@ export interface SpecificationRfiListItemLimitOptions {
 
 export async function getSpecificationRfiList(
   db: SqlServerDatabase,
+  specificationId: number,
+  options?: SpecificationRfiListItemLimitOptions,
+): Promise<SpecificationRfiListRow> {
+  // Hold the same per-specification lock as list writers until items and
+  // assessment history have been read from one consistent state.
+  return db.transaction('REPEATABLE READ', manager =>
+    readSpecificationRfiList(manager, specificationId, options),
+  )
+}
+
+async function readSpecificationRfiList(
+  db: SqlExecutor,
   specificationId: number,
   options?: SpecificationRfiListItemLimitOptions,
 ): Promise<SpecificationRfiListRow> {
@@ -1032,7 +1058,45 @@ export async function getSpecificationRfiList(
   }
   const items = rows.map(mapSpecificationRfiQuestionItemRow)
   await hydrateVersionLinks(db, items, selectedVersions)
-  return { ...header, items }
+  const assessmentHistory = await db.query<RfiAssessment[]>(
+    `
+    SELECT assessment.id, version.rfi_question_id AS questionId,
+      question.question_code AS questionCode, version.question_text AS questionText,
+      version.id AS versionId, version.version_number AS versionNumber,
+      assessment.relevance, assessment.reason,
+      assessment.document_reference AS documentReference,
+      assessment.document_url AS documentUrl,
+      assessment.created_at AS createdAt,
+      assessment.created_by_hsa_id AS createdByHsaId,
+      assessment.created_by_display_name AS createdByDisplayName
+    FROM specification_rfi_assessments assessment
+    INNER JOIN rfi_question_versions version ON version.id = assessment.rfi_question_version_id
+    INNER JOIN rfi_questions question ON question.id = version.rfi_question_id
+    WHERE assessment.specification_id = @0
+    ORDER BY assessment.id DESC
+  `,
+    [specificationId],
+  )
+  for (const assessment of assessmentHistory)
+    assessment.createdAt = toIsoString(assessment.createdAt)
+  const latestByQuestion = new Map<number, RfiAssessment>()
+  for (const assessment of assessmentHistory) {
+    if (!latestByQuestion.has(assessment.questionId))
+      latestByQuestion.set(assessment.questionId, assessment)
+  }
+  for (const item of items) {
+    const latest = latestByQuestion.get(item.questionId)
+    if (latest?.relevance != null) {
+      if (
+        item.isIncluded &&
+        item.relevance != null &&
+        latest.versionId === item.versionId
+      )
+        item.assessment = latest
+      else item.previousAssessment = latest
+    }
+  }
+  return { ...header, items, assessmentHistory }
 }
 
 export async function lockSpecificationRfiList(
@@ -1129,6 +1193,7 @@ export async function lockSpecificationRfiList(
       `
         UPDATE specification_rfi_lists
         SET is_locked = 1,
+            lock_revision = lock_revision + 1,
             locked_at = SYSUTCDATETIME(),
             locked_by_hsa_id = @1,
             locked_by_display_name = @2,
@@ -1151,6 +1216,7 @@ export async function unlockSpecificationRfiList(
       `
         UPDATE specification_rfi_lists
         SET is_locked = 0,
+            lock_revision = lock_revision + 1,
             locked_at = NULL,
             locked_by_hsa_id = NULL,
             locked_by_display_name = NULL,
@@ -1167,7 +1233,7 @@ export async function updateSpecificationRfiQuestionItem(
   db: SqlServerDatabase,
   specificationId: number,
   questionId: number,
-  data: { isIncluded?: boolean; relevance?: RfiRelevance | null },
+  data: RfiListItemUpdate,
   actor: ActorSnapshot,
 ): Promise<SpecificationRfiListRow> {
   await db.transaction(async manager => {
@@ -1201,6 +1267,12 @@ export async function updateSpecificationRfiQuestionItem(
       })
     }
 
+    const parsed = rfiAssessmentUpdateSchema.safeParse(data)
+    if (!parsed.success)
+      throw validationError('Invalid RFI assessment', {
+        reason: 'invalid_rfi_assessment',
+      })
+    data = parsed.data
     if (header.isLocked) {
       const itemRows = (await manager.query(
         `
@@ -1234,8 +1306,40 @@ export async function updateSpecificationRfiQuestionItem(
           },
         )
       }
+      if (
+        data.relevance !== undefined &&
+        (data.assessedVersionId !== itemRows[0].versionId ||
+          data.expectedLockRevision !== header.lockRevision)
+      ) {
+        throw conflictError(
+          'The assessed question version or RFI list lock has changed',
+          {
+            reason: 'rfi_assessment_context_changed',
+          },
+        )
+      }
     }
 
+    if (data.relevance !== undefined) {
+      await manager.query(
+        `
+        INSERT INTO specification_rfi_assessments
+          (specification_id, rfi_question_version_id, relevance, reason,
+           document_reference, document_url, created_at, created_by_hsa_id, created_by_display_name)
+        VALUES (@0, @1, @2, @3, @4, @5, SYSUTCDATETIME(), @6, @7)
+      `,
+        [
+          specificationId,
+          data.assessedVersionId,
+          data.relevance,
+          data.reason ?? null,
+          data.documentReference ?? null,
+          data.documentUrl ?? null,
+          actor.hsaId,
+          actor.displayName,
+        ],
+      )
+    }
     await manager.query(
       `
         MERGE specification_rfi_question_items AS target

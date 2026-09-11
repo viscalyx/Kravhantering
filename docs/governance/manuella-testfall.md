@@ -1746,6 +1746,13 @@ klickbara när de är redigerbara och uppdaterar ikon, visning och tooltip
 korrekt. Filtret döljer frågor som inte ingår på sidan men exportlänkarna finns
 kvar för listan.
 
+Spara både Relevant och Inte relevant med respektive utan frivillig
+relevansmotivering, dokumenthänvisning och dokumentlänk. Ladda om och kontrollera
+att uppgifterna finns kvar. Öppna bedömningshistoriken och kontrollera tidigare
+utfall, frågeversion, aktör och tid. Exportera CSV och PDF och kontrollera att
+aktuell bedömning och historik hålls isär. Kontrollera att text, länk och
+motivering kan lämnas tomma och att kravurvalet inte ändras.
+
 ### SPEC-15: lås upp RFI-lista och hantera ändrad frågeversion
 
 **Steg:** Lås upp RFI-listan, ändra en RFI-fråga i förvaltningen så att en ny
@@ -1753,6 +1760,16 @@ version skapas och lås listan igen.
 
 **Förväntat resultat:** Relevans behålls för oförändrade frågeversioner men
 rensas för den fråga vars version ändrats.
+
+Spara först Inte relevant med motiveringen ”Driften omfattas av befintligt
+avtal” och dokumenthänvisningen ”Driftavtal 2026-14, avsnitt 3”. Ändra frågan i
+banken medan listan är låst: den bevarade versionens bedömning ska gälla tills
+en annan version faktiskt låses in. Efter versionsbytet ska den tidigare
+bedömningen visas som stöd med tydligt behov av ny bekräftelse. Bekräfta utan
+omskrivning och kontrollera att den nya versionen får en egen bedömning medan
+originalet finns kvar i historiken. Spara därefter Relevant med tomma frivilliga
+fält, ladda om och kontrollera både aktuell bedömning och bevarad historik.
+CSV/PDF ska skilja väntande bekräftelse och historik från aktuella utfall.
 
 ### SPEC-16: skapa och hantera RFI-frågeförslag
 

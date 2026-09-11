@@ -158,6 +158,7 @@ const TABLE_ORDER = [
   'rfi_question_version_requirements',
   'specification_rfi_lists',
   'specification_rfi_question_items',
+  'specification_rfi_assessments',
   'rfi_question_suggestions',
 ]
 
@@ -13476,6 +13477,22 @@ const SEED_DATA = {
   rfi_question_version_requirements: {
     columns: ['rfi_question_version_id', 'requirement_id'],
     pk: ['rfi_question_version_id', 'requirement_id'],
+    rows: [],
+  },
+  specification_rfi_assessments: {
+    columns: [
+      'id',
+      'specification_id',
+      'rfi_question_version_id',
+      'relevance',
+      'reason',
+      'document_reference',
+      'document_url',
+      'created_at',
+      'created_by_hsa_id',
+      'created_by_display_name',
+    ],
+    pk: ['id'],
     rows: [],
   },
   specification_rfi_lists: {

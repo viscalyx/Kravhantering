@@ -7,6 +7,7 @@ export interface SpecificationRfiListEntity {
   lockedAt: Date | null
   lockedByDisplayName: string | null
   lockedByHsaId: string | null
+  lockRevision: number
   specification: RequirementsSpecificationEntity
   specificationId: number
   updatedAt: Date
@@ -22,6 +23,7 @@ export const specificationRfiListEntity =
         primary: true,
         type: 'int',
       },
+      lockRevision: { name: 'lock_revision', type: 'int', default: 0 },
       isLocked: { default: false, name: 'is_locked', type: 'bit' },
       lockedAt: { name: 'locked_at', nullable: true, type: 'datetime2' },
       lockedByHsaId: {

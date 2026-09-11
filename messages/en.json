@@ -277,7 +277,27 @@
     "viewQuestionSuggestions": "Show {count, plural, one {# RFI question suggestion} other {# RFI question suggestions}} for {code}",
     "viewSuggestionsTitle": "{count, plural, one {# suggestion} other {# suggestions}}",
     "unlock": "Unlock",
-    "unlocked": "Unlocked"
+    "unlocked": "Unlocked",
+    "assessment": {
+      "pending": "The question has changed or the assessment needs renewal. Confirm or edit the previous assessment below.",
+      "confirmed": "Confirmed assessment for this question version",
+      "unassessed": "Not assessed",
+      "reason": "Assessment reason (optional)",
+      "reasonHelp": "Explain why this question is relevant or not relevant for this specification. A reason is optional for both outcomes.",
+      "documentReference": "Document reference (optional)",
+      "documentReferenceHelp": "Enter a document title, agreement number or section. This reference belongs to this assessment. No file is uploaded.",
+      "documentUrl": "Document link (optional)",
+      "documentUrlHelp": "Enter an HTTP or HTTPS link without login credentials. A link or a text reference may be used independently.",
+      "relevanceHelp": "Choose the outcome for this question version. Saving confirms the outcome, reason and document support together. It does not select requirements.",
+      "confirm": "Confirm assessment for this version",
+      "save": "Save assessment",
+      "saving": "Saving assessment…",
+      "saved": "Assessment saved.",
+      "chooseOutcome": "Choose Relevant or Not relevant first.",
+      "history": "Assessment history (includes questions no longer in the list)",
+      "relevanceHelpLabel": "Help: Relevance",
+      "version": "Version {number}"
+    }
   },
   "rfiQuestions": {
     "active": "Active",
@@ -1783,7 +1803,8 @@
         "hsaVerificationQuotaBuckets": "HSA verification quotas",
         "requirementImportValidationRateBuckets": "MCP validation-session rate limits",
         "requirementImportValidationSessions": "MCP import validation sessions",
-        "exportActorQuotaEntries": "Export and report actor quotas"
+        "exportActorQuotaEntries": "Export and report actor quotas",
+        "rfiAssessments": "RFI assessments"
       },
       "fields": {
         "identity": "Identity",
@@ -3137,6 +3158,10 @@
       "specificationItemStatus": {
         "heading": "Usage status",
         "body": "Track how far each requirement has progressed within this specification: included, in progress, implemented, verified, or not applicable. Change the status inline in the table."
+      },
+      "rfiAssessment": {
+        "heading": "RFI relevance assessments",
+        "body": "Lock the RFI list and assess included questions. Reason, document reference and link are optional. Save confirms all fields for the displayed question version. Adopting another version requires confirmation of the earlier assessment. History and internal CSV/PDF retain the evidence; relevance does not select requirements."
       }
     },
     "specificationRequirementSelection": {

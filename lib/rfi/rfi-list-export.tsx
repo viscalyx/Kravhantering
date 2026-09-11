@@ -4,6 +4,8 @@ import type {
   SpecificationRfiListRow,
 } from '@/lib/dal/rfi-questions'
 import { exportToCsv } from '@/lib/export-csv'
+import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
+import type { RfiAssessment } from '@/lib/rfi/assessment'
 
 export interface RfiListSpecificationExportMeta {
   name: string
@@ -13,6 +15,19 @@ export interface RfiListSpecificationExportMeta {
 const labels = {
   en: {
     area: 'Requirement area',
+    rowType: 'Record type',
+    currentQuestion: 'Current question',
+    history: 'Assessment history',
+    confirmed: 'Confirmed',
+    pending: 'Pending confirmation',
+    assessmentState: 'Assessment state',
+    assessedVersion: 'Assessed version',
+    assessmentOutcome: 'Assessment outcome',
+    reason: 'Assessment reason',
+    documentReference: 'Document reference',
+    documentUrl: 'Document link',
+    actor: 'Assessed by',
+    assessedAt: 'Assessed at',
     expectedAnswerFormat: 'Expected answer format',
     excluded: 'Excluded',
     helpText: 'Purpose/help text',
@@ -34,6 +49,19 @@ const labels = {
   },
   sv: {
     area: 'Kravområde',
+    rowType: 'Posttyp',
+    currentQuestion: 'Aktuell fråga',
+    history: 'Bedömningshistorik',
+    confirmed: 'Bekräftad',
+    pending: 'Väntar på bekräftelse',
+    assessmentState: 'Bedömningsläge',
+    assessedVersion: 'Bedömd version',
+    assessmentOutcome: 'Bedömningsutfall',
+    reason: 'Relevansmotivering',
+    documentReference: 'Dokumenthänvisning',
+    documentUrl: 'Dokumentlänk',
+    actor: 'Bedömd av',
+    assessedAt: 'Bedömd tid',
     expectedAnswerFormat: 'Önskat svarsformat',
     excluded: 'Utesluten',
     helpText: 'Syfte/hjälptext',
@@ -159,10 +187,28 @@ export function buildSpecificationRfiListCsv(
     t.question,
     t.helpText,
     t.expectedAnswerFormat,
+    t.rowType,
+    t.assessmentState,
+    t.assessedVersion,
+    t.assessmentOutcome,
+    t.reason,
+    t.documentReference,
+    t.documentUrl,
+    t.actor,
+    t.assessedAt,
   ]
-  return exportToCsv(
-    headers,
-    list.items.map(item => ({
+  return exportToCsv(headers, [
+    ...list.items.map(item => ({
+      ...assessmentCsvFields(
+        item.assessment ?? item.previousAssessment,
+        locale,
+      ),
+      [t.rowType]: t.currentQuestion,
+      [t.assessmentState]: item.assessment
+        ? t.confirmed
+        : item.previousAssessment
+          ? t.pending
+          : t.unassessed,
       [t.area]: item.areaName,
       [t.expectedAnswerFormat]: item.expectedAnswerFormat ?? '',
       [t.helpText]: item.helpText ?? '',
@@ -173,6 +219,61 @@ export function buildSpecificationRfiListCsv(
       [t.version]: String(item.versionNumber),
       specification: `${specification.name} ${specification.specificationCode}`,
     })),
+    ...list.assessmentHistory.map(assessment => ({
+      ...assessmentCsvFields(assessment, locale),
+      [t.rowType]: t.history,
+      [t.assessmentState]: t.history,
+      [t.questionCode]: assessment.questionCode,
+      [t.question]: assessment.questionText,
+      [t.version]: String(assessment.versionNumber),
+      [t.relevance]: '',
+    })),
+  ])
+}
+
+function assessmentCsvFields(
+  assessment: RfiAssessment | null,
+  locale: string,
+): Record<string, string> {
+  const t = localeLabels(locale)
+  return {
+    [t.assessedVersion]: assessment ? String(assessment.versionNumber) : '',
+    [t.assessmentOutcome]: assessment
+      ? relevanceLabel(assessment.relevance, locale)
+      : '',
+    [t.reason]: assessment?.reason ?? '',
+    [t.documentReference]: assessment?.documentReference ?? '',
+    [t.documentUrl]: assessment?.documentUrl ?? '',
+    [t.actor]: assessment
+      ? (formatActorDisplayNameForLocale(
+          assessment.createdByDisplayName,
+          locale,
+        ) ?? '')
+      : '',
+    [t.assessedAt]: assessment?.createdAt ?? '',
+  }
+}
+
+function AssessmentPdf({
+  assessment,
+  state,
+  locale,
+}: {
+  assessment: RfiAssessment | null
+  state: string
+  locale: string
+}) {
+  const t = localeLabels(locale)
+  if (!assessment) return null
+  return (
+    <View>
+      <MetadataRow label={t.assessmentState} value={state} />
+      {Object.entries(assessmentCsvFields(assessment, locale))
+        .filter(([, value]) => value)
+        .map(([label, value]) => (
+          <MetadataRow key={label} label={label} value={value} />
+        ))}
+    </View>
   )
 }
 
@@ -225,6 +326,13 @@ export default function SpecificationRfiListPdfRenderer({
                   {t.relevance}: {relevanceLabel(item.relevance, locale)}
                 </Text>
                 <Text style={styles.questionText}>{item.questionText}</Text>
+                {item.assessment || item.previousAssessment ? (
+                  <AssessmentPdf
+                    assessment={item.assessment ?? item.previousAssessment}
+                    locale={locale}
+                    state={item.assessment ? t.confirmed : t.pending}
+                  />
+                ) : null}
                 {item.helpText ? (
                   <MetadataRow label={t.helpText} value={item.helpText} />
                 ) : null}
@@ -238,6 +346,26 @@ export default function SpecificationRfiListPdfRenderer({
             ))}
           </View>
         ))}
+        {list.assessmentHistory.length > 0 ? (
+          <View style={styles.section}>
+            <Text style={styles.areaTitle}>{t.history}</Text>
+            {list.assessmentHistory.map(assessment => (
+              <View key={assessment.id} style={styles.item}>
+                <Text style={styles.itemTitle}>
+                  {assessment.questionCode} v{assessment.versionNumber}
+                </Text>
+                <Text style={styles.questionText}>
+                  {assessment.questionText}
+                </Text>
+                <AssessmentPdf
+                  assessment={assessment}
+                  locale={locale}
+                  state={t.history}
+                />
+              </View>
+            ))}
+          </View>
+        ) : null}
       </Page>
     </Document>
   )

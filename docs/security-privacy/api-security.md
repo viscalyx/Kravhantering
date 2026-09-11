@@ -458,3 +458,31 @@ Its exact `native-csp-report` policy permits anonymous, bounded telemetry withou
 including Admin settings, retain session and same-origin CSRF protections.
 See [ADR 0062](../adr/0062-anonym-native-csp-rapportering.md) and the
 [collector contract](../operations/csp-reporting.md).
+
+## RFI assessment update contract
+
+RFI list routes retain their `focused` contract registration and authenticated
+specification assignment policies. Their focused route, SQL Server and browser
+tests cover the workflow; these routes are outside the current Schemathesis
+OpenAPI surface. The Security API workflow remains the gate for the covered
+OpenAPI surface.
+
+`PATCH /api/requirements-specifications/{id}/rfi-list/items/{questionId}` accepts
+either an `isIncluded` scope decision or a complete assessment. Assessment
+requests include `relevance`, `assessedVersionId` and `expectedLockRevision`.
+`reason` (10,000 characters), `documentReference` (2,000) and `documentUrl`
+(2,000) are optional nullable strings. Strings are trimmed. URLs must use HTTP
+or HTTPS without embedded credentials. A null outcome clears the assessment
+and cannot carry evidence. Scope and assessment cannot be mixed in one request.
+
+The server enforces included-question and locked-list rules for all evidence.
+It checks the displayed version and lock revision while holding the list's
+transaction lock; stale confirmation returns 409 with reason
+`rfi_assessment_context_changed`. History insertion and current relevance update
+commit or roll back together. Every lock/unlock increments `lockRevision`,
+including relocking the same version. Existing clients must send this context.
+
+List reads include `assessmentHistory`, `lockRevision`, and per-item
+`assessment` and `previousAssessment`. History has the same read authorization
+as the list, including entries for questions removed from it. Audit details
+record field names, not assessment text or document links.

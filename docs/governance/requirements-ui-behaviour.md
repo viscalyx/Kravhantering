@@ -1139,3 +1139,23 @@ the tooltip surface.
   - `tests/unit/developer-mode-provider.test.tsx`
   - `tests/unit/requirements-table.test.tsx`
   - `tests/integration/developer-mode/overlay.spec.ts`
+
+### RFI assessment evidence and history
+
+Included questions in a locked list have an assessment editor. Authors choose
+Relevant or Not relevant and save the complete assessment explicitly. Reason,
+document reference and HTTP/HTTPS link are independently optional. Fields have
+localized help, and readers see the saved evidence with version, author and
+time. Developer Mode identifies the editor, save action and history surface.
+
+A new bank version does not change an assessment of the retained locked
+version. Adopting a different version clears current relevance and shows the
+previous assessment as pending confirmation, with its fields prefilled. Saving
+confirms all fields for the displayed version. An empty reason does not affect
+assessment completeness. Unlocking and relocking the same included version
+preserves the assessment, while an outdated open editor must reload before
+saving. Inclusion and requirement selection remain separate.
+
+History includes earlier saves and questions removed from the current list.
+The CSV/PDF outputs distinguish current question rows, pending evidence and
+assessment history. Historical rows never add current questions or outcomes.

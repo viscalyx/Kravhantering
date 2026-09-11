@@ -513,3 +513,19 @@ Missing status names use the localized unknown-status label.
 Deleted versions show unavailable evidence. Motivation-only decisions have no
 implementation claim. The PDF history route requires requirement-history read
 access; the interactive suggestion link separately enforces version read access.
+
+## RFI assessment evidence in internal outputs
+
+RFI CSV keeps one `Current question` record per current list item and adds
+explicitly typed `Assessment history` records for saved assessments. Current
+relevance remains in the relevance column; historical outcomes have a separate
+assessment-outcome column. Evidence columns include reason, document reference,
+link, assessed version, author and time. `Pending confirmation` identifies
+previous evidence reused as support for a different adopted version. Such a
+question remains unassessed until confirmation. Consumers counting current
+questions must filter by record type.
+
+RFI PDF shows the same evidence under each current question and in a separate
+history section, including questions removed from the list. Actor names use
+localized anonymous display after privacy erasure. CSV cells retain the shared
+formula-injection protection. No document is uploaded or fetched by the export.

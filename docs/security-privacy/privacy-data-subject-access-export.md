@@ -152,3 +152,13 @@ Focused route tests cover the privacy role matrix, exact and excessive item
 boundaries, JSON byte limits, capacity admission and release, timeout and
 cancellation, PDF worker byte/memory failure, no-store response headers, and
 audit-redaction assertions.
+
+## RFI assessment authors
+
+The explicit source `specification_rfi_assessments.created_by` matches the
+assessment author's HSA-id. It exports that author's identity snapshot,
+assessment outcome, reason, document reference, link and timestamp, with the
+specification code and question version as context. Duplicate display names do
+not match another person's records. Free text mentioning other people is not
+automatically discovered. Privacy erasure anonymizes the two actor fields while
+preserving evidence and version history; retention remains a separate workflow.

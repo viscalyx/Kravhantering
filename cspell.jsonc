@@ -3,6 +3,9 @@
   "language": "en,sv",
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
+    "kravurvalet",
+    "relocking",
+    "rfiauthor",
     "kravtextkolumnens",
     "Historikrapporten",
     "filinläsning",
@@ -1736,6 +1739,9 @@
     {
       "filename": "scripts/guide/generate-guide.ts",
       "words": [
+        "kravurvalet",
+        "relocking",
+        "rfiauthor",
         "förväljs",
         "annot",
         "domcontentloaded",

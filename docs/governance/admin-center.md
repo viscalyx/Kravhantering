@@ -572,7 +572,7 @@ V1 supports direct deletion after preview and confirmation for:
 - archived requirement-selection questions and answers older than one year
   when no saved requirements-specification answers still reference them
 - historical RFI question versions and archived RFI questions older than two
-  years when no specification RFI-list rows or RFI question suggestions still
+  years when no RFI-list rows, assessment history or RFI question suggestions still
   reference them
 - unassigned requirement responsibility people older than the policy age when
   no live requirement area, specification or package assignment references
@@ -595,7 +595,8 @@ specification history remains intact.
 
 RFI retention deletes historical RFI question versions by their `updated_at`
 timestamp and archived RFI questions by their `archived_at` timestamp. Any
-`specification_rfi_question_items` reference blocks deletion, including unlocked
+`specification_rfi_question_items` or historical assessment reference blocks
+deletion, including unlocked
 lists that still use a historical version to show that a newer version exists.
 RFI question suggestions block deletion of the archived RFI question they refer
 to. RFI candidates do not require a separate archive export because those
@@ -874,3 +875,20 @@ with the suggestion so its history shows unavailable evidence. The preview and
 legal-hold rules for the version still apply. Removing the parent requirement
 removes its suggestions and evidence. No separate actor snapshot is introduced;
 attachment uses the existing Action log and its privacy/retention rules.
+
+### RFI assessment history in Privacy and Archiving
+
+Privacy includes an RFI assessments author group. Exact HSA-id matching permits
+anonymization or skipping; historical authors cannot be reassigned. Evidence
+and timestamps remain unchanged, and duplicate names do not broaden matching.
+Data subject access exports include the author's own evidence and version
+context. Embedded personal data in free text requires separate content review.
+
+Assessment history is retained for the specification's lifetime. Allowed
+specification deletion cascades to all assessments. Policy-based deletion
+requires archive JSON containing the RFI header, current item snapshots and
+assessment history, with actor fields anonymized in the export. Historical
+assessment references block deletion of referenced question versions and their
+archived questions in both preview and execution. Existing retention periods
+remain unchanged. `RETENTION-SEED` question `RSK-RFI915` demonstrates protection
+without a current list item.

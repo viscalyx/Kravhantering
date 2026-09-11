@@ -1362,13 +1362,24 @@ _Avoid_: Kravstatus, kravurvalsfilter, leverantörssvar.
 
 **Fullständigt relevansbedömd RFI-frågelista**:
 En låst RFI-frågelista med minst en inkluderad RFI-fråga där varje inkluderad
-fråga har RFI-relevans. Tillståndet beskriver inte att hela RFI-arbetet är
-slutfört.
+frågeversion har bekräftad RFI-relevans. En tidigare bedömning som väntar på
+ny bekräftelse uppfyller inte villkoret; en tom frivillig motivering påverkar
+inte fullständigheten.
 
 - `en`: Fully relevance-assessed RFI question list
 
 _Avoid_: Färdig RFI, låst RFI-frågelista utan inkluderade frågor, låst lista
 utan fullständig relevansbedömning.
+
+**RFI-relevansmotivering**:
+En frivillig förklaring till varför en RFI-fråga bedöms som relevant eller
+inte relevant för fortsatt kravurval i ett visst kravunderlag. Motiveringen
+hör till den bedömda RFI-frågeversionen.
+
+- `en`: RFI relevance assessment reason
+
+_Avoid_: Frågans hjälptext, leverantörssvar, anledning utan
+bedömningssammanhang.
 
 **RFI-frågeförslag**:
 Ett förslag om ny eller ändrad RFI-fråga riktat till ett kravområde, ofta

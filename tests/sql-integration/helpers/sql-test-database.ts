@@ -48,6 +48,7 @@ const TRANSACTIONAL_TABLES = [
   'access_review_runs',
   'action_audit_events',
   'rfi_question_suggestions',
+  'specification_rfi_assessments',
   'specification_rfi_question_items',
   'specification_rfi_lists',
   'rfi_question_version_requirement_selection_questions',

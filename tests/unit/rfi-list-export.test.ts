@@ -15,9 +15,13 @@ vi.mock('@react-pdf/renderer', () => ({
 }))
 
 const list: SpecificationRfiListRow = {
+  assessmentHistory: [],
+  lockRevision: 1,
   isLocked: true,
   items: [
     {
+      assessment: null,
+      previousAssessment: null,
       areaId: 1,
       areaName: 'Integration',
       areaPrefix: 'INT',
@@ -37,6 +41,8 @@ const list: SpecificationRfiListRow = {
       versionNumber: 2,
     },
     {
+      assessment: null,
+      previousAssessment: null,
       areaId: 2,
       areaName: 'Säkerhet',
       areaPrefix: 'SEC',
@@ -63,6 +69,49 @@ const list: SpecificationRfiListRow = {
 }
 
 describe('RFI list export', () => {
+  it('distinguishes pending evidence and versioned history from current relevance in CSV and PDF', () => {
+    const assessment = {
+      id: 1,
+      questionId: 10,
+      questionCode: 'INT-RFI001',
+      questionText: 'Earlier hosting question',
+      versionId: 90,
+      versionNumber: 1,
+      relevance: 'not_relevant' as const,
+      reason: 'Existing hosting agreement',
+      documentReference: 'Agreement 14',
+      documentUrl: 'https://example.org/evidence',
+      createdAt: '2026-09-11T10:00:00.000Z',
+      createdByHsaId: null,
+      createdByDisplayName: 'no-user',
+    }
+    const pending = {
+      ...list,
+      items: [
+        { ...list.items[0], relevance: null, previousAssessment: assessment },
+      ],
+      assessmentHistory: [assessment],
+    }
+    const specification = { name: 'Hosting', specificationCode: 'SPEC-004' }
+    const csv = buildSpecificationRfiListCsv(specification, pending, 'en')
+    expect(csv).toContain('Pending confirmation')
+    expect(csv).toContain('Assessment history')
+    expect(csv).toContain('Existing hosting agreement')
+    expect(csv).toContain('Agreement 14')
+    expect(csv).toContain('Anonymous')
+    const pdf = renderToStaticMarkup(
+      createElement(SpecificationRfiListPdfRenderer, {
+        list: pending,
+        locale: 'en',
+        specification,
+      }),
+    )
+    expect(pdf).toContain('Pending confirmation')
+    expect(pdf).toContain('Assessment history')
+    expect(pdf).toContain('Existing hosting agreement')
+    expect(pdf).toContain('https://example.org/evidence')
+    expect(pdf).toContain('Anonymous')
+  })
   it('exports locked RFI question versions with Swedish scope and relevance labels', () => {
     const csv = buildSpecificationRfiListCsv(
       { name: 'E-arkiv', specificationCode: 'SPEC-004' },
@@ -88,6 +137,8 @@ describe('RFI list export', () => {
         list.items[0],
         {
           ...list.items[1],
+          assessment: null,
+          previousAssessment: null,
           areaId: 1,
           areaName: 'Integration',
           relevance: null,

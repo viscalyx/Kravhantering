@@ -447,3 +447,26 @@ The implementing version FK uses NO ACTION because the feedback version already
 has a SET NULL path. Both draft deletion and version retention clear the new FK
 inside their transaction. Demo suggestion 1 links feedback row 1 to implementing
 row 2; seed execution records this evidence after its resolution transition.
+
+## RFI assessment persistence checks
+
+Migration `0068` introduces specification-owned assessment history and a list
+lock revision. Demo seeds include optional evidence, duplicate author names and
+an archived question protected solely by historical assessment references.
+The runtime permission manifest grants updates only to assessment author
+columns; business evidence is appended as a new record.
+
+Run the focused database contract with:
+
+```bash
+npm run test:sql-integration -- \
+  tests/sql-integration/rfi-assessments.sqlserver.test.ts \
+  tests/sql-integration/rfi-assessment-read.sqlserver.test.ts
+```
+
+The suite covers persistence, version adoption, stale confirmations, concurrent
+saves and coherent reads, rollback, privacy anonymization, archive export,
+historical retention references and cascading deletion.
+It uses the dedicated disposable SQL integration database, separate from the
+application database. Apply migrations and required runtime permission
+reconciliation before running the updated application.

@@ -51,6 +51,7 @@ export const RETENTION_SEED = Object.freeze({
     stillAssigned: 'SE5560000001-retentionlinked',
   },
   rfiQuestion: {
+    archivedBlockedAssessment: 910515,
     archivedBlockedList: 910513,
     archivedBlockedSuggestion: 910514,
     archivedFresh: 910512,
@@ -63,6 +64,8 @@ export const RETENTION_SEED = Object.freeze({
     archivedBlockedSuggestion: 910501,
   },
   rfiQuestionVersion: {
+    archivedBlockedAssessmentHistorical: 910517,
+    archivedBlockedAssessmentActive: 910518,
     archivedBlockedListActive: 910515,
     archivedBlockedSuggestionActive: 910516,
     archivedFreshActive: 910514,
@@ -763,6 +766,52 @@ function addRetentionRfi(seedData) {
       updated_at: question.updatedAt,
     })
   }
+
+  addRow(seedData, 'rfi_questions', {
+    id: RETENTION_SEED.rfiQuestion.archivedBlockedAssessment,
+    question_code: 'RSK-RFI915',
+    area_id: RETENTION_SEED.requirementArea.used,
+    sort_order: 915,
+    is_archived: 1,
+    archived_at: OLD_730_TS,
+    created_at: OLD_730_TS,
+    updated_at: OLD_730_TS,
+  })
+  for (const [id, versionNumber, isActive] of [
+    [
+      RETENTION_SEED.rfiQuestionVersion.archivedBlockedAssessmentHistorical,
+      1,
+      0,
+    ],
+    [RETENTION_SEED.rfiQuestionVersion.archivedBlockedAssessmentActive, 2, 1],
+  ]) {
+    addRow(seedData, 'rfi_question_versions', {
+      id,
+      rfi_question_id: RETENTION_SEED.rfiQuestion.archivedBlockedAssessment,
+      version_number: versionNumber,
+      is_active: isActive,
+      question_text: 'RETENTION-SEED fråga bevarad genom bedömningshistorik',
+      help_text: null,
+      expected_answer_format: null,
+      created_at: OLD_730_TS,
+      updated_at: OLD_730_TS,
+      created_by_hsa_id: null,
+      created_by_display_name: null,
+    })
+  }
+  addRow(seedData, 'specification_rfi_assessments', {
+    id: 910517,
+    specification_id: RETENTION_SEED.specification.management,
+    rfi_question_version_id:
+      RETENTION_SEED.rfiQuestionVersion.archivedBlockedAssessmentHistorical,
+    relevance: 'not_relevant',
+    reason: 'RETENTION-SEED befintligt avtal; frågan har lämnat listan.',
+    document_reference: 'Driftavtal 14',
+    document_url: null,
+    created_at: OLD_730_TS,
+    created_by_hsa_id: 'SE5560000001-retentionlinked',
+    created_by_display_name: 'Retention Linked',
+  })
 
   for (const version of [
     {

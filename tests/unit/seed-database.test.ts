@@ -628,6 +628,39 @@ describe('seed profiles', () => {
     })
   })
 
+  it('seeds optional assessment evidence, duplicate author names and history-only retention protection', async () => {
+    const { executor, rows } = collectSeedInsertRows()
+    await seedDemoDatabase(executor)
+    const history = rowById(seedRowsFor(rows, 'specification_rfi_assessments'))
+    expect(history.get(920001)).toMatchObject({
+      relevance: 'not_relevant',
+      document_reference: 'Driftavtal 2026-14, avsnitt 3',
+    })
+    expect(history.get(920002)).toMatchObject({
+      relevance: 'relevant',
+      reason: null,
+      document_reference: null,
+      document_url: null,
+    })
+    expect(history.get(920001)?.created_by_display_name).toBe(
+      history.get(920002)?.created_by_display_name,
+    )
+    expect(history.get(920001)?.created_by_hsa_id).not.toBe(
+      history.get(920002)?.created_by_hsa_id,
+    )
+    expect(history.get(910517)).toMatchObject({
+      rfi_question_version_id:
+        RETENTION_SEED.rfiQuestionVersion.archivedBlockedAssessmentHistorical,
+    })
+    expect(
+      seedRowsFor(rows, 'specification_rfi_question_items').some(
+        row =>
+          row.rfi_question_id ===
+          RETENTION_SEED.rfiQuestion.archivedBlockedAssessment,
+      ),
+    ).toBe(false)
+  })
+
   it('seeds every Improvement suggestion through legal ordered lifecycle transitions', async () => {
     const { executor, rows } = collectSeedInsertRows()
 

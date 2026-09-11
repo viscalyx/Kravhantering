@@ -52,10 +52,22 @@ function createTransactionalDb({
           ? isolationOrCallback
           : maybeCallback
       if (!callback) throw new Error('Missing transaction callback')
-      return callback(manager)
+      return callback(
+        isolationOrCallback === 'REPEATABLE READ' ? { query } : manager,
+      )
     },
   )
   return { db: { query, transaction }, managerQuery, query, transaction }
+}
+
+function readDatabase(query: QueryFn) {
+  return {
+    query,
+    transaction: async (
+      _isolation: string,
+      callback: (manager: MockManager) => Promise<unknown>,
+    ) => callback({ query }),
+  } as unknown as Parameters<typeof getSpecificationRfiList>[0]
 }
 
 const actor = {
@@ -436,7 +448,11 @@ describe('RFI questions DAL', () => {
         >[0],
         4,
         12,
-        { relevance: 'relevant' },
+        {
+          relevance: 'relevant',
+          assessedVersionId: 34,
+          expectedLockRevision: 0,
+        },
         actor,
       ),
     ).rejects.toMatchObject({
@@ -604,7 +620,11 @@ describe('RFI questions DAL', () => {
         >[0],
         4,
         12,
-        { relevance: 'not_relevant' },
+        {
+          relevance: 'not_relevant',
+          assessedVersionId: 34,
+          expectedLockRevision: 0,
+        },
         actor,
       ),
     ).rejects.toMatchObject({
@@ -644,7 +664,11 @@ describe('RFI questions DAL', () => {
         >[0],
         4,
         12,
-        { relevance: 'not_relevant' },
+        {
+          relevance: 'not_relevant',
+          assessedVersionId: 34,
+          expectedLockRevision: 0,
+        },
         actor,
       ),
     ).rejects.toMatchObject({
@@ -1191,10 +1215,7 @@ describe('RFI questions DAL', () => {
       [{ id: 5, relationKind: 'package', versionId: 34 }],
     ])
 
-    const result = await getSpecificationRfiList(
-      { query } as unknown as Parameters<typeof getSpecificationRfiList>[0],
-      4,
-    )
+    const result = await getSpecificationRfiList(readDatabase(query), 4)
 
     expect(result).toMatchObject({
       isLocked: true,
@@ -1238,13 +1259,10 @@ describe('RFI questions DAL', () => {
       Object.assign(new Error('limit'), { limit })
 
     await expect(
-      getSpecificationRfiList(
-        { query: exactQuery } as unknown as Parameters<
-          typeof getSpecificationRfiList
-        >[0],
-        4,
-        { createItemLimitError, maxItems: 1 },
-      ),
+      getSpecificationRfiList(readDatabase(exactQuery), 4, {
+        createItemLimitError,
+        maxItems: 1,
+      }),
     ).resolves.toMatchObject({ items: [{ questionId: 12 }] })
     expect(exactQuery.mock.calls[1][0]).toContain('TOP (@1)')
     expect(exactQuery.mock.calls[1][1]).toEqual([4, 2])
@@ -1254,13 +1272,10 @@ describe('RFI questions DAL', () => {
       [item, { ...item, questionId: 13, versionId: 35 }],
     ])
     await expect(
-      getSpecificationRfiList(
-        { query: excessQuery } as unknown as Parameters<
-          typeof getSpecificationRfiList
-        >[0],
-        4,
-        { createItemLimitError, maxItems: 1 },
-      ),
+      getSpecificationRfiList(readDatabase(excessQuery), 4, {
+        createItemLimitError,
+        maxItems: 1,
+      }),
     ).rejects.toMatchObject({ limit: 1 })
     expect(excessQuery).toHaveBeenCalledTimes(2)
   })
@@ -1371,7 +1386,7 @@ describe('RFI questions DAL', () => {
       >[0],
       4,
       12,
-      { relevance: null },
+      { relevance: null, assessedVersionId: 34, expectedLockRevision: 0 },
       actor,
     )
     expect(locked.managerQuery.mock.calls.at(-1)?.[1]).toEqual([

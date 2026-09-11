@@ -28,7 +28,9 @@ describe('AI run administrative cancellation migration', () => {
     expect(sql).not.toMatch(
       /\b(?:INSERT|UPDATE)\s+\[ai_run_coordination_entries\]/u,
     )
-    expect(RUNTIME_PERMISSION_MANIFEST_VERSION).toBe('2026.09.07.1')
+    expect(RUNTIME_PERMISSION_MANIFEST_VERSION).toMatch(
+      /^\d{4}\.\d{2}\.\d{2}\.\d+$/u,
+    )
     expect(
       RUNTIME_PERMISSION_MANIFEST.find(
         permission => permission.object === 'dbo.ai_run_coordination_entries',

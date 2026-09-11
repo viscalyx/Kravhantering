@@ -114,6 +114,26 @@ Apply these rules to all schema objects.
 <!-- markdownlint-disable MD013 -->
 ```mermaid
 erDiagram
+    specification_rfi_lists {
+        integer specification_id PK,FK
+        boolean is_locked
+        integer lock_revision
+    }
+    specification_rfi_assessments {
+        integer id PK
+        integer specification_id FK
+        integer rfi_question_version_id FK
+        text relevance
+        text reason
+        text document_reference
+        text document_url
+        datetime created_at
+        text created_by_hsa_id
+        text created_by_display_name
+    }
+    requirements_specifications ||--o{ specification_rfi_assessments : owns
+    rfi_question_versions ||--o{ specification_rfi_assessments : assessed_version
+    requirements_specifications ||--o| specification_rfi_lists : configures
     requirement_areas {
         integer id PK
         text prefix UK "e.g. INT, SAK, PRE"
@@ -1554,6 +1574,7 @@ or relevance-assessed.
 | -------- | ------ | ------------- |
 | `specification_id` | integer FK → `requirements_specifications.id` (CASCADE DELETE), PK | Owning specification |
 | `is_locked` | integer | `0` prepare mode, `1` locked mode |
+| `lock_revision` | integer, default `0` | Monotonically increases on lock/unlock; guards assessment confirmation |
 | `locked_at` | text (ISO 8601) | Lock timestamp |
 | `locked_by_hsa_id` | text | Actor HSA-id snapshot |
 | `locked_by_display_name` | text | Actor display-name snapshot |
@@ -1580,6 +1601,43 @@ version and included scope are unchanged.
 | `changed_by_hsa_id` | text | Actor HSA-id snapshot |
 | `changed_by_display_name` | text | Actor display-name snapshot |
 <!-- markdownlint-enable MD013 -->
+
+### `specification_rfi_assessments`
+
+Saved assessments belong to one specification and one question version.
+Each save appends a record, including confirmation without text changes.
+An explicit clearing of relevance appends a null outcome. Current list relevance
+is preserved only for the same included version; the latest earlier assessment
+is reusable support until explicitly confirmed. Removing an item never removes
+history. The specification FK cascades on allowed deletion; the version FK
+protects referenced versions and their questions. Retention checks these
+references in preview and execution.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| --- | --- | --- |
+| `id` | int identity PK | Stable saved-assessment identity |
+| `specification_id` | int FK | Owning specification; CASCADE DELETE |
+| `rfi_question_version_id` | int FK | Assessed version; NO ACTION DELETE |
+| `relevance` | nvarchar(16), nullable | `relevant`, `not_relevant`, or an explicit cleared outcome |
+| `reason` | nvarchar(MAX), nullable | Optional reason, at most 10,000 characters through the application |
+| `document_reference` | nvarchar(2000), nullable | Optional document title, agreement number or section |
+| `document_url` | nvarchar(2000), nullable | Optional HTTP/HTTPS URL without embedded credentials |
+| `created_at` | datetime2 | Server assessment timestamp |
+| `created_by_hsa_id` | nvarchar(64), nullable | Durable author identity for privacy matching |
+| `created_by_display_name` | nvarchar(MAX), nullable | Author snapshot; localized anonymous display after erasure |
+<!-- markdownlint-enable MD013 -->
+
+Migration `0068` copies existing non-null item relevance with its stored version,
+last-changing actor and timestamp into history. Earlier edits cannot be
+reconstructed from these snapshots. The runtime can insert, read and delete
+records, and update only the two author columns for privacy anonymization.
+No unique index suppresses repeated confirmations; each save is independent.
+
+Demo seeds include both outcomes, empty optional fields, document support and
+duplicate author names with different HSA-ids. `RETENTION-SEED` question
+`RSK-RFI915` has no current list item and is protected by a historical assessment;
+`RSK-RFI911` remains an unreferenced positive retention candidate.
 
 ### `rfi_question_suggestions`
 
@@ -3495,6 +3553,9 @@ its purpose and the table/column(s) it covers.
 <!-- markdownlint-disable MD013 -->
 | Index Name | Table | Column(s) | Purpose |
 | ---------- | ----- | --------- | ------- |
+| `idx_specification_rfi_assessments_specification_id` | `specification_rfi_assessments` | `specification_id, id` | Ordered history per specification |
+| `idx_specification_rfi_assessments_rfi_question_version_id` | `specification_rfi_assessments` | `rfi_question_version_id` | Retention reference protection |
+| `idx_specification_rfi_assessments_created_by_hsa_id` | `specification_rfi_assessments` | `created_by_hsa_id` | Exact identity privacy lookup |
 | `idx_requirement_areas_owner_hsa_id` | `requirement_areas` | `owner_hsa_id` | Speed up requirement-area owner privacy and authorization lookups |
 | `idx_quality_characteristics_requirement_type_id` | `quality_characteristics` | `requirement_type_id` | Speed up lookups of categories belonging to a type |
 | `idx_quality_characteristics_parent_id` | `quality_characteristics` | `parent_id` | Speed up tree traversal (parent → children) |
@@ -3623,6 +3684,8 @@ The following table lists every named FK constraint:
 <!-- markdownlint-disable MD013 -->
 | Constraint Name | Table | Column(s) | References | On Delete | On Update |
 | --------------- | ----- | --------- | ---------- | --------- | --------- |
+| `fk_specification_rfi_assessments_specification_id` | `specification_rfi_assessments` | `specification_id` | `requirements_specifications.id` | CASCADE | NO ACTION |
+| `fk_specification_rfi_assessments_rfi_question_version_id` | `specification_rfi_assessments` | `rfi_question_version_id` | `rfi_question_versions.id` | NO ACTION | NO ACTION |
 | `fk_requirement_areas_owner_hsa_id` | `requirement_areas` | `owner_hsa_id` | `requirement_responsibility_people.hsa_id` | NO ACTION | NO ACTION |
 | `fk_ai_safety_rule_terms_rule_id` | `ai_safety_rule_terms` | `rule_id` | `ai_safety_rules.id` | CASCADE | NO ACTION |
 | `fk_ai_connection_attestations_ai_connection_id` | `ai_connection_attestations` | `ai_connection_id` | `ai_connections.id` | NO ACTION | NO ACTION |
@@ -3709,6 +3772,9 @@ The following table lists every named FK constraint:
 <!-- markdownlint-disable MD013 -->
 ```mermaid
 graph LR
+    RFIASSESS[specification_rfi_assessments] -->|specification_id, id| RFISPEC[requirements_specifications]
+    RFIASSESS -->|rfi_question_version_id| RFIVERSION[rfi_question_versions]
+    RFIASSESS -->|created_by_hsa_id| RFIACTOR[Assessment author privacy lookup]
     subgraph Lookup Tables
         RC[requirement_categories]
         RT[requirement_types]

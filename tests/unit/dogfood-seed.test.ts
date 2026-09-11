@@ -335,6 +335,22 @@ function emptySeed() {
       pk: ['rfi_question_version_id', 'requirement_package_id'],
       rows: [],
     },
+    specification_rfi_assessments: {
+      columns: [
+        'id',
+        'specification_id',
+        'rfi_question_version_id',
+        'relevance',
+        'reason',
+        'document_reference',
+        'document_url',
+        'created_at',
+        'created_by_hsa_id',
+        'created_by_display_name',
+      ],
+      pk: ['id'],
+      rows: [],
+    },
     specification_rfi_lists: {
       columns: [
         'specification_id',

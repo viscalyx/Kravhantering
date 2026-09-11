@@ -1254,7 +1254,57 @@ async function collectExportActorQuotaEntries(
   )
 }
 
+async function collectRfiAssessmentAuthors(
+  db: QueryExecutor,
+  targetHsaId: string,
+): Promise<DataSubjectExportItem[]> {
+  const policy = policyFor('specification_rfi_assessments.created_by')
+  const rows = await db.query<ExportRow[]>(
+    `/* privacy:data-export:specification_rfi_assessments.created_by */
+    SELECT assessment.id,
+      CONCAT(spec.specification_code, N' / ', question.question_code, N' v', version.version_number) AS label,
+      assessment.created_by_hsa_id AS hsaId, assessment.created_by_display_name AS displayName,
+      assessment.created_at AS createdAt, assessment.relevance, assessment.reason,
+      assessment.document_reference AS documentReference, assessment.document_url AS documentUrl
+    FROM specification_rfi_assessments assessment
+    INNER JOIN requirements_specifications spec ON spec.id = assessment.specification_id
+    INNER JOIN rfi_question_versions version ON version.id = assessment.rfi_question_version_id
+    INNER JOIN rfi_questions question ON question.id = version.rfi_question_id
+    WHERE assessment.created_by_hsa_id = @0 ORDER BY assessment.id`,
+    [targetHsaId],
+  )
+  return rows.flatMap(row =>
+    fieldsForRow(
+      policy,
+      'historical_assessment_author',
+      [
+        { fieldName: 'created_by_hsa_id', value: stringValue(row.hsaId) },
+        {
+          fieldName: 'created_by_display_name',
+          value: stringValue(row.displayName),
+        },
+        { fieldName: 'relevance', value: stringValue(row.relevance) },
+        { fieldName: 'reason', value: stringValue(row.reason) },
+        {
+          fieldName: 'document_reference',
+          value: stringValue(row.documentReference),
+        },
+        { fieldName: 'document_url', value: stringValue(row.documentUrl) },
+      ],
+      {
+        relatedObject: relatedObject(row, 'rfi_assessment', 'id', 'label'),
+        timestamp: row.createdAt,
+      },
+    ),
+  )
+}
+
 const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
+  {
+    collect: collectRfiAssessmentAuthors,
+    policy: policyFor('specification_rfi_assessments.created_by'),
+    relationToSubject: 'historical_assessment_author',
+  },
   {
     collect: collectExportActorQuotaEntries,
     policy: policyFor('export_actor_quota_entries.subject'),

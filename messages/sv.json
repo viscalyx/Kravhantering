@@ -277,7 +277,27 @@
     "viewQuestionSuggestions": "Visa {count, plural, one {# RFI-frågeförslag} other {# RFI-frågeförslag}} för {code}",
     "viewSuggestionsTitle": "{count, plural, one {# förslag} other {# förslag}}",
     "unlock": "Lås upp",
-    "unlocked": "Upplåst"
+    "unlocked": "Upplåst",
+    "assessment": {
+      "pending": "Frågan har ändrats eller bedömningen behöver förnyas. Bekräfta eller ändra den tidigare bedömningen nedan.",
+      "confirmed": "Bekräftad bedömning av denna frågeversion",
+      "unassessed": "Ej bedömd",
+      "reason": "Relevansmotivering (frivillig)",
+      "reasonHelp": "Förklara varför frågan är relevant eller inte relevant för kravunderlaget. Motivering är frivillig för båda utfallen.",
+      "documentReference": "Dokumenthänvisning (frivillig)",
+      "documentReferenceHelp": "Ange dokumenttitel, avtalsnummer eller avsnitt. Hänvisningen hör till bedömningen. Ingen fil laddas upp.",
+      "documentUrl": "Dokumentlänk (frivillig)",
+      "documentUrlHelp": "Ange en HTTP- eller HTTPS-länk utan inloggningsuppgifter. Länk och texthänvisning kan användas var för sig.",
+      "relevanceHelp": "Välj utfall för denna frågeversion. När du sparar bekräftas utfall, motivering och dokumentstöd tillsammans. Inga krav väljs automatiskt.",
+      "confirm": "Bekräfta bedömning för denna version",
+      "save": "Spara bedömning",
+      "saving": "Sparar bedömning…",
+      "saved": "Bedömningen har sparats.",
+      "chooseOutcome": "Välj Relevant eller Inte relevant först.",
+      "history": "Bedömningshistorik (även frågor som lämnat listan)",
+      "relevanceHelpLabel": "Hjälp: Relevans",
+      "version": "Version {number}"
+    }
   },
   "rfiQuestions": {
     "active": "Aktiv",
@@ -1783,7 +1803,8 @@
         "hsaVerificationQuotaBuckets": "HSA-verifieringskvoter",
         "requirementImportValidationRateBuckets": "Anropsgränser för MCP-valideringssessioner",
         "requirementImportValidationSessions": "Valideringssessioner för MCP-import",
-        "exportActorQuotaEntries": "Aktörskvoter för exporter och rapporter"
+        "exportActorQuotaEntries": "Aktörskvoter för exporter och rapporter",
+        "rfiAssessments": "RFI-bedömningar"
       },
       "fields": {
         "identity": "Identitet",
@@ -3137,6 +3158,10 @@
       "specificationItemStatus": {
         "heading": "Användningsstatus",
         "body": "Spåra hur långt varje krav har kommit i underlaget: inkluderad, pågående, implementerad, verifierad eller ej tillämpbar. Ändra statusen direkt i tabellen."
+      },
+      "rfiAssessment": {
+        "heading": "RFI-relevansbedömningar",
+        "body": "Lås RFI-listan och bedöm inkluderade frågor. Motivering, dokumenthänvisning och länk är frivilliga. Spara bekräftar alla uppgifter för den visade frågeversionen. När en annan version tas in krävs ny bekräftelse. Historik och interna CSV/PDF bevarar underlaget; relevans väljer inga krav."
       }
     },
     "specificationRequirementSelection": {

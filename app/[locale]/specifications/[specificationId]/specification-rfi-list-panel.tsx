@@ -21,6 +21,9 @@ import {
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FormModal from '@/components/FormModal'
+import RfiAssessmentEditor, {
+  RfiAssessmentDetails,
+} from '@/components/rfi/RfiAssessmentEditor'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
@@ -29,28 +32,34 @@ import {
   shouldReloadRfiQuestionSuggestions,
 } from '@/lib/requirements/rfi-question-suggestion-conflicts'
 import { fetchRfiQuestionSuggestionPages } from '@/lib/requirements/rfi-question-suggestion-pages'
+import type { RfiAssessment, RfiListItemUpdate } from '@/lib/rfi/assessment'
 
 type RfiRelevance = 'not_relevant' | 'relevant'
 
 interface RfiListItem {
   areaId: number
   areaName: string
+  assessment: RfiAssessment | null
   expectedAnswerFormat: string | null
   helpText: string | null
   isIncluded: boolean
   isVersionStale: boolean
+  previousAssessment: RfiAssessment | null
   questionCode: string
   questionId: number
   questionText: string
   relevance: RfiRelevance | null
+  versionId: number
   versionNumber: number
 }
 
 interface RfiList {
+  assessmentHistory: RfiAssessment[]
   isLocked: boolean
   items: RfiListItem[]
   lockedAt: string | null
   lockedByDisplayName: string | null
+  lockRevision: number
   specificationId: number
 }
 
@@ -252,9 +261,10 @@ export default function SpecificationRfiListPanel({
     }
   }
 
-  const updateItem = async (item: RfiListItem, body: unknown) => {
+  const updateItem = async (item: RfiListItem, body: RfiListItemUpdate) => {
     setSaving(true)
     setError(null)
+    setStatusMessage(null)
     try {
       const response = await apiFetch(
         `/api/requirements-specifications/${encodedSpecificationId}/rfi-list/items/${item.questionId}`,
@@ -265,8 +275,11 @@ export default function SpecificationRfiListPanel({
       }
       const data = (await response.json()) as { list?: RfiList }
       if (data.list) setList(data.list)
+      if (body.relevance !== undefined) setStatusMessage(t('assessment.saved'))
+      return true
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : t('saveError'))
+      return false
     } finally {
       setSaving(false)
     }
@@ -701,6 +714,27 @@ export default function SpecificationRfiListPanel({
         </div>
       </FormModal>
 
+      {(list.assessmentHistory?.length ?? 0) > 0 ? (
+        <details
+          className="rounded-lg border border-secondary-200 p-3 dark:border-secondary-700"
+          {...devMarker({ name: 'rfi assessment history' })}
+        >
+          <summary className="min-h-6 cursor-pointer text-sm font-medium text-secondary-900 dark:text-secondary-100">
+            {t('assessment.history')}
+          </summary>
+          <ul className="mt-3 space-y-4">
+            {list.assessmentHistory.map(assessment => (
+              <li key={assessment.id}>
+                <p className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+                  {assessment.questionCode} · {assessment.questionText}
+                </p>
+                <RfiAssessmentDetails assessment={assessment} />
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+
       {groups.length === 0 ? (
         <p className="rounded-lg border border-secondary-200 px-4 py-6 text-center text-sm text-secondary-600 dark:border-secondary-800 dark:text-secondary-300">
           {t('empty')}
@@ -844,6 +878,8 @@ export default function SpecificationRfiListPanel({
                 </div>
                 <div className="divide-y divide-secondary-200 dark:divide-secondary-800">
                   {group.visibleItems.map(item => {
+                    const displayedAssessment =
+                      item.assessment ?? item.previousAssessment
                     const questionTarget: SuggestionTarget = {
                       item,
                       type: 'question',
@@ -990,43 +1026,26 @@ export default function SpecificationRfiListPanel({
                           </p>
                         ) : null}
 
-                        <div className="flex flex-wrap gap-3">
-                          {list.isLocked && item.isIncluded ? (
-                            <fieldset className="flex flex-wrap items-center gap-3 text-sm text-secondary-700 dark:text-secondary-200">
-                              <legend className="sr-only">
-                                {t('relevance')}
-                              </legend>
-                              <label className="inline-flex items-center gap-2">
-                                <input
-                                  checked={item.relevance === 'relevant'}
-                                  disabled={!canEdit || saving}
-                                  name={`rfi-relevance-${item.questionId}`}
-                                  onChange={() =>
-                                    void updateItem(item, {
-                                      relevance: 'relevant',
-                                    })
-                                  }
-                                  type="radio"
-                                />
-                                {t('relevant')}
-                              </label>
-                              <label className="inline-flex items-center gap-2">
-                                <input
-                                  checked={item.relevance === 'not_relevant'}
-                                  disabled={!canEdit || saving}
-                                  name={`rfi-relevance-${item.questionId}`}
-                                  onChange={() =>
-                                    void updateItem(item, {
-                                      relevance: 'not_relevant',
-                                    })
-                                  }
-                                  type="radio"
-                                />
-                                {t('notRelevant')}
-                              </label>
-                            </fieldset>
-                          ) : null}
-                        </div>
+                        {list.isLocked && item.isIncluded ? (
+                          <RfiAssessmentEditor
+                            assessment={item.assessment ?? null}
+                            canEdit={canEdit}
+                            key={`${item.versionId}-${list.lockRevision}-${item.assessment?.id ?? 'pending'}`}
+                            onSave={data =>
+                              updateItem(item, {
+                                ...data,
+                                assessedVersionId: item.versionId,
+                                expectedLockRevision: list.lockRevision,
+                              })
+                            }
+                            previousAssessment={item.previousAssessment ?? null}
+                            saving={saving}
+                          />
+                        ) : displayedAssessment ? (
+                          <RfiAssessmentDetails
+                            assessment={displayedAssessment}
+                          />
+                        ) : null}
                       </article>
                     )
                   })}

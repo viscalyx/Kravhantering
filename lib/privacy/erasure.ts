@@ -127,6 +127,30 @@ function requirementResponsibilityPersonNameSql(alias: string): string {
 
 const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   {
+    key: 'specification_rfi_assessments.created_by',
+    objectKey: 'rfiAssessments',
+    fieldKey: 'createdBy',
+    kind: 'simpleDisplay',
+    table: 'specification_rfi_assessments',
+    hsaColumn: 'created_by_hsa_id',
+    displayColumn: 'created_by_display_name',
+    allowedActions: ['anonymize', 'skip'],
+    defaultWithReplacement: 'anonymize',
+    defaultWithoutReplacement: 'anonymize',
+    warningKey: null,
+    countSql:
+      'SELECT COUNT(*) AS count FROM specification_rfi_assessments WHERE created_by_hsa_id = @0',
+    currentDisplaySql:
+      'SELECT TOP (1) created_by_display_name AS value FROM specification_rfi_assessments WHERE created_by_hsa_id = @0 ORDER BY id',
+    affectedReferencesSql: `/* privacy:affected:specification_rfi_assessments.created_by */
+      SELECT CONCAT(spec.specification_code, N' / ', question.question_code, N' v', version.version_number) AS value
+      FROM specification_rfi_assessments assessment
+      INNER JOIN requirements_specifications spec ON spec.id = assessment.specification_id
+      INNER JOIN rfi_question_versions version ON version.id = assessment.rfi_question_version_id
+      INNER JOIN rfi_questions question ON question.id = version.rfi_question_id
+      WHERE assessment.created_by_hsa_id = @0 ORDER BY assessment.id`,
+  },
+  {
     allowedActions: ['skip'],
     countSql:
       'SELECT COUNT(*) AS count FROM requirement_responsibility_people WHERE hsa_id = @0',

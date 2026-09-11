@@ -113,6 +113,11 @@ const REQUIREMENT_SPECIFICATION_DETAIL_HELP: HelpContent = {
   sections: [
     {
       kind: 'text',
+      headingKey: 'requirementsSpecificationDetail.rfiAssessment.heading',
+      bodyKey: 'requirementsSpecificationDetail.rfiAssessment.body',
+    },
+    {
+      kind: 'text',
       bodyKey: 'requirementsSpecificationDetail.requirements.body',
       headingKey: 'requirementsSpecificationDetail.requirements.heading',
     },

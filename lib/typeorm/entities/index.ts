@@ -1,3 +1,7 @@
+import { specificationRfiAssessmentEntity } from '@/lib/typeorm/entities/specification-rfi-assessment'
+
+export type { SpecificationRfiAssessmentEntity } from '@/lib/typeorm/entities/specification-rfi-assessment'
+
 import { exportActorQuotaEntryEntity } from './export-actor-quota-entry'
 
 export {
@@ -136,6 +140,7 @@ export const sqlServerEntities = [
   rfiQuestionVersionRequirementSelectionQuestionEntity,
   rfiQuestionVersionRequirementPackageEntity,
   rfiQuestionVersionRequirementEntity,
+  specificationRfiAssessmentEntity,
   specificationRfiListEntity,
   specificationRfiQuestionItemEntity,
   rfiQuestionSuggestionEntity,
@@ -305,6 +310,7 @@ export {
   specificationLocalRequirementNormReferenceEntity,
   specificationNeedsReferenceEntity,
   specificationRequirementSelectionAnswerEntity,
+  specificationRfiAssessmentEntity,
   specificationRfiListEntity,
   specificationRfiQuestionItemEntity,
 }
