@@ -3584,65 +3584,71 @@ test.describe('Requirements specification deterministic manual cases', () => {
         state: 'Bekräftad' | 'Väntar på bekräftelse',
         currentVersion: number,
       ) => {
-        const csvResponse = await specificationResponsibleRequest.get(
-          `/api/requirements-specifications/${rfiSpecificationId}/rfi-list/export?format=csv&locale=sv`,
-        )
-        await expectApiResponseOk(csvResponse, 'export RFI assessment CSV')
-        const [header, ...rows] = (await csvResponse.text()).split('\r\n')
-        const columns = header.replace(/^\uFEFF/u, '').split(';')
-        const questionRows = rows
-          .filter(row => row.startsWith(`${questionCode};`))
-          .map(row =>
-            Object.fromEntries(
-              row.split(';').map((value, index) => [columns[index], value]),
-            ),
+        await test.step(`check CSV and PDF exports: ${state}`, async () => {
+          const csvResponse = await specificationResponsibleRequest.get(
+            `/api/requirements-specifications/${rfiSpecificationId}/rfi-list/export?format=csv&locale=sv`,
           )
-        expect(questionRows).toEqual([
-          expect.objectContaining({
-            Posttyp: 'Aktuell fråga',
-            Version: String(currentVersion),
-            Relevans: currentVersion === 1 ? 'Inte relevant' : 'Ej bedömd',
-            Bedömningsläge: state,
-            'Bedömd version': '1',
-            Bedömningsutfall: 'Inte relevant',
-            Relevansmotivering: 'Driften omfattas av befintligt avtal',
-            Dokumenthänvisning: 'Driftavtal 2026-14, avsnitt 3',
-            Dokumentlänk: 'https://example.org/agreement',
-          }),
-          expect.objectContaining({
-            Posttyp: 'Bedömningshistorik',
-            Version: '1',
-            Relevans: '',
-            Bedömningsläge: 'Bedömningshistorik',
-            'Bedömd version': '1',
-            Bedömningsutfall: 'Inte relevant',
-            Relevansmotivering: 'Driften omfattas av befintligt avtal',
-          }),
-        ])
+          await expectApiResponseOk(csvResponse, 'export RFI assessment CSV')
+          const [header, ...rows] = (await csvResponse.text()).split('\r\n')
+          const columns = header.replace(/^\uFEFF/u, '').split(';')
+          const questionRows = rows
+            .filter(row => row.startsWith(`${questionCode};`))
+            .map(row =>
+              Object.fromEntries(
+                row.split(';').map((value, index) => [columns[index], value]),
+              ),
+            )
+          expect(questionRows).toEqual([
+            expect.objectContaining({
+              Posttyp: 'Aktuell fråga',
+              Version: String(currentVersion),
+              Relevans: currentVersion === 1 ? 'Inte relevant' : 'Ej bedömd',
+              Bedömningsläge: state,
+              'Bedömd version': '1',
+              Bedömningsutfall: 'Inte relevant',
+              Relevansmotivering: 'Driften omfattas av befintligt avtal',
+              Dokumenthänvisning: 'Driftavtal 2026-14, avsnitt 3',
+              Dokumentlänk: 'https://example.org/agreement',
+            }),
+            expect.objectContaining({
+              Posttyp: 'Bedömningshistorik',
+              Version: '1',
+              Relevans: '',
+              Bedömningsläge: 'Bedömningshistorik',
+              'Bedömd version': '1',
+              Bedömningsutfall: 'Inte relevant',
+              Relevansmotivering: 'Driften omfattas av befintligt avtal',
+            }),
+          ])
 
-        const pdfResponse = await specificationResponsibleRequest.get(
-          `/api/requirements-specifications/${rfiSpecificationId}/rfi-list/export?format=pdf&locale=sv`,
-        )
-        await expectApiResponseOk(pdfResponse, 'export RFI assessment PDF')
-        const { text } = await extractText(
-          new Uint8Array(await pdfResponse.body()),
-          { mergePages: true },
-        )
-        const normalizedText = text.replace(/\s+/gu, ' ')
-        const historyStart = normalizedText.indexOf('Bedömningshistorik')
-        expect(historyStart).toBeGreaterThan(0)
-        const currentQuestions = normalizedText.slice(0, historyStart)
-        const history = normalizedText.slice(historyStart)
-        expect(currentQuestions).toContain(`${questionCode} v${currentVersion}`)
-        const questionPdf = currentQuestions
-          .slice(currentQuestions.indexOf(`${questionCode} v${currentVersion}`))
-          .split('Önskat svarsformat')[0]
-        expect(questionPdf).toContain(`Bedömningsläge ${state}`)
-        expect(questionPdf).toContain('Bedömd version 1')
-        expect(questionPdf).toContain('Bedömningsutfall Inte relevant')
-        expect(questionPdf).toContain('Driftavtal 2026-14, avsnitt 3')
-        expect(history).toContain(`${questionCode} v1`)
-        expect(history).toContain('Driften omfattas av befintligt avtal')
+          const pdfResponse = await specificationResponsibleRequest.get(
+            `/api/requirements-specifications/${rfiSpecificationId}/rfi-list/export?format=pdf&locale=sv`,
+          )
+          await expectApiResponseOk(pdfResponse, 'export RFI assessment PDF')
+          const { text } = await extractText(
+            new Uint8Array(await pdfResponse.body()),
+            { mergePages: true },
+          )
+          const normalizedText = text.replace(/\s+/gu, ' ')
+          const historyStart = normalizedText.indexOf('Bedömningshistorik')
+          expect(historyStart).toBeGreaterThan(0)
+          const currentQuestions = normalizedText.slice(0, historyStart)
+          const history = normalizedText.slice(historyStart)
+          expect(currentQuestions).toContain(
+            `${questionCode} v${currentVersion}`,
+          )
+          const questionPdf = currentQuestions
+            .slice(
+              currentQuestions.indexOf(`${questionCode} v${currentVersion}`),
+            )
+            .split('Önskat svarsformat')[0]
+          expect(questionPdf).toContain(`Bedömningsläge ${state}`)
+          expect(questionPdf).toContain('Bedömd version 1')
+          expect(questionPdf).toContain('Bedömningsutfall Inte relevant')
+          expect(questionPdf).toContain('Driftavtal 2026-14, avsnitt 3')
+          expect(history).toContain(`${questionCode} v1`)
+          expect(history).toContain('Driften omfattas av befintligt avtal')
+        })
       }
 
       const resetResponse = await specificationResponsibleRequest.post(
@@ -3666,7 +3672,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       await expect(initialLockSwitch).not.toBeChecked()
       await expect(
         page.locator('article').filter({
-          hasText: createdQuestion.questionCode,
+          hasText: questionCode,
         }),
       ).toContainText(questionText, { timeout: 30_000 })
 
@@ -3690,152 +3696,200 @@ test.describe('Requirements specification deterministic manual cases', () => {
 
       const assessmentRow = page
         .locator('article')
-        .filter({ hasText: createdQuestion.questionCode })
-      await assessmentRow
-        .getByRole('radio', { name: 'Inte relevant', exact: true })
-        .check()
-      await assessmentRow
-        .getByRole('textbox', {
-          name: 'Relevansmotivering (frivillig)',
-          exact: true,
-        })
-        .fill('Driften omfattas av befintligt avtal')
-      await assessmentRow
-        .getByRole('textbox', {
-          name: 'Dokumenthänvisning (frivillig)',
-          exact: true,
-        })
-        .fill('Driftavtal 2026-14, avsnitt 3')
-      await assessmentRow
-        .getByRole('textbox', { name: 'Dokumentlänk (frivillig)', exact: true })
-        .fill('https://example.org/agreement')
-      await assessmentRow
-        .getByRole('button', { name: 'Spara bedömning', exact: true })
-        .click()
-      await expect(assessmentRow.getByRole('status')).toContainText(
-        'Bekräftad bedömning',
-      )
-      await page.reload()
-      await expect(
-        assessmentRow.getByRole('textbox', {
-          name: 'Relevansmotivering (frivillig)',
-          exact: true,
-        }),
-      ).toHaveValue('Driften omfattas av befintligt avtal')
+        .filter({ hasText: questionCode })
+      await test.step('save the initial assessment and reload its evidence', async () => {
+        await assessmentRow
+          .getByRole('radio', { name: 'Inte relevant', exact: true })
+          .check()
+        await assessmentRow
+          .getByRole('textbox', {
+            name: 'Relevansmotivering (frivillig)',
+            exact: true,
+          })
+          .fill('Driften omfattas av befintligt avtal')
+        await assessmentRow
+          .getByRole('textbox', {
+            name: 'Dokumenthänvisning (frivillig)',
+            exact: true,
+          })
+          .fill('Driftavtal 2026-14, avsnitt 3')
+        await assessmentRow
+          .getByRole('textbox', {
+            name: 'Dokumentlänk (frivillig)',
+            exact: true,
+          })
+          .fill('https://example.org/agreement')
+        await assessmentRow
+          .getByRole('button', { name: 'Spara bedömning', exact: true })
+          .click()
+        await expect(assessmentRow.getByRole('status')).toContainText(
+          'Bekräftad bedömning',
+        )
+        await page.reload()
+        await expect(
+          assessmentRow.getByRole('textbox', {
+            name: 'Relevansmotivering (frivillig)',
+            exact: true,
+          }),
+        ).toHaveValue('Driften omfattas av befintligt avtal')
+        await expect(
+          assessmentRow.getByRole('link', {
+            name: 'https://example.org/agreement',
+            exact: true,
+          }),
+        ).toHaveAttribute('href', 'https://example.org/agreement')
+      })
       await expectAssessmentExports('Bekräftad', 1)
 
-      await page.goto('/sv/requirements/stewardship?tab=information-requests')
-      await expect(
-        page.getByRole('heading', { level: 1, name: 'RFI-frågor' }),
-      ).toBeVisible()
-      const stewardshipRow = page
-        .locator('li')
-        .filter({ hasText: createdQuestion.questionCode })
-      await expect(stewardshipRow).toContainText(questionText, {
-        timeout: 30_000,
-      })
-      await stewardshipRow
-        .getByRole('button', {
-          name: `Redigera RFI-fråga: ${createdQuestion.questionCode}`,
-        })
-        .click()
-      const editDialog = page.getByRole('dialog', {
-        name: 'Redigera RFI-fråga',
-      })
-      await editDialog
-        .getByRole('textbox', { name: 'Frågetext' })
-        .fill(`${questionText} uppdaterad`)
-      await editDialog.getByRole('button', { name: 'Spara RFI-fråga' }).click()
-      await expect(editDialog).toBeHidden({ timeout: 30_000 })
-      await expect(stewardshipRow).toContainText('v2', { timeout: 30_000 })
-
-      await gotoSpecificationDetail(page, rfiSpecificationId)
-      await openDetailTab(page, 'RFI-frågelista')
       const staleQuestion = page.locator('article').filter({
-        hasText: createdQuestion.questionCode,
+        hasText: questionCode,
       })
 
-      await expect(staleQuestion.getByRole('status')).toContainText(
-        'Bekräftad bedömning',
-      )
-      await expect(
-        staleQuestion.getByRole('textbox', {
-          name: 'Relevansmotivering (frivillig)',
-          exact: true,
-        }),
-      ).toHaveValue('Driften omfattas av befintligt avtal')
-      const staleLockSwitch = page.getByRole('switch', { name: 'Låst' })
-      await expect(staleLockSwitch).toBeChecked()
-      await staleLockSwitch.click()
-      await expect(staleLockSwitch).not.toBeChecked()
-      await expect(staleQuestion).toContainText('Nyare version finns', {
-        timeout: 30_000,
+      await test.step('check stale versions and lock the updated question', async () => {
+        await page.goto('/sv/requirements/stewardship?tab=information-requests')
+        await expect(
+          page.getByRole('heading', { level: 1, name: 'RFI-frågor' }),
+        ).toBeVisible()
+        const stewardshipRow = page
+          .locator('li')
+          .filter({ hasText: questionCode })
+        await expect(stewardshipRow).toContainText(questionText, {
+          timeout: 30_000,
+        })
+        await stewardshipRow
+          .getByRole('button', {
+            name: `Redigera RFI-fråga: ${questionCode}`,
+          })
+          .click()
+        const editDialog = page.getByRole('dialog', {
+          name: 'Redigera RFI-fråga',
+        })
+        await editDialog
+          .getByRole('textbox', { name: 'Frågetext' })
+          .fill(`${questionText} uppdaterad`)
+        await editDialog
+          .getByRole('button', { name: 'Spara RFI-fråga' })
+          .click()
+        await expect(editDialog).toBeHidden({ timeout: 30_000 })
+        await expect(stewardshipRow).toContainText('v2', { timeout: 30_000 })
+
+        await gotoSpecificationDetail(page, rfiSpecificationId)
+        await openDetailTab(page, 'RFI-frågelista')
+
+        await expect(staleQuestion.getByRole('status')).toContainText(
+          'Bekräftad bedömning',
+        )
+        await expect(
+          staleQuestion.getByRole('textbox', {
+            name: 'Relevansmotivering (frivillig)',
+            exact: true,
+          }),
+        ).toHaveValue('Driften omfattas av befintligt avtal')
+        const staleLockSwitch = page.getByRole('switch', { name: 'Låst' })
+        await expect(staleLockSwitch).toBeChecked()
+        await staleLockSwitch.click()
+        await expect(staleLockSwitch).not.toBeChecked()
+        await expect(staleQuestion).toContainText('Nyare version finns', {
+          timeout: 30_000,
+        })
+        await expect(staleQuestion).toContainText(`${questionText} uppdaterad`)
+        await expect(
+          staleQuestion.getByText('Nyare version finns'),
+        ).toHaveCount(1)
+        await staleLockSwitch.click()
+        await expect(staleLockSwitch).toBeChecked()
+        await expect(
+          staleQuestion.getByText('Nyare version finns'),
+        ).toHaveCount(0)
+        await expect(staleQuestion.getByRole('status')).toContainText(
+          'Bekräfta eller ändra den tidigare bedömningen',
+        )
+        await expect(
+          staleQuestion.getByRole('link', {
+            name: 'https://example.org/agreement',
+            exact: true,
+          }),
+        ).toHaveAttribute('href', 'https://example.org/agreement')
       })
-      await expect(staleQuestion).toContainText(`${questionText} uppdaterad`)
-      await expect(staleQuestion.getByText('Nyare version finns')).toHaveCount(
-        1,
-      )
-      await staleLockSwitch.click()
-      await expect(staleLockSwitch).toBeChecked()
-      await expect(staleQuestion.getByText('Nyare version finns')).toHaveCount(
-        0,
-      )
-      await expect(staleQuestion.getByRole('status')).toContainText(
-        'Bekräfta eller ändra den tidigare bedömningen',
-      )
       await expectAssessmentExports('Väntar på bekräftelse', 2)
-      await expect(
-        staleQuestion.getByRole('textbox', {
-          name: 'Relevansmotivering (frivillig)',
-          exact: true,
-        }),
-      ).toHaveValue('Driften omfattas av befintligt avtal')
-      await staleQuestion
-        .getByRole('button', { name: 'Bekräfta bedömning för denna version' })
-        .click()
-      await expect(staleQuestion.getByRole('status')).toContainText(
-        'Bekräftad bedömning',
-      )
-      await staleQuestion
-        .getByRole('radio', { name: 'Relevant', exact: true })
-        .check()
-      await staleQuestion
-        .getByRole('textbox', {
-          name: 'Relevansmotivering (frivillig)',
-          exact: true,
-        })
-        .fill('')
-      await staleQuestion
-        .getByRole('textbox', {
-          name: 'Dokumenthänvisning (frivillig)',
-          exact: true,
-        })
-        .fill('')
-      await staleQuestion
-        .getByRole('textbox', { name: 'Dokumentlänk (frivillig)', exact: true })
-        .fill('')
-      await staleQuestion
-        .getByRole('button', { name: 'Spara bedömning', exact: true })
-        .click()
-      await expect(staleQuestion.getByRole('status')).toContainText(
-        'Bekräftad bedömning',
-      )
-      await page.reload()
-      await expect(
-        staleQuestion.getByRole('radio', { name: 'Relevant', exact: true }),
-      ).toBeChecked()
-      const history = page.locator('details').filter({
-        has: page.locator('summary', { hasText: 'Bedömningshistorik' }),
+      await test.step('confirm the assessment for the new version', async () => {
+        await expect(
+          staleQuestion.getByRole('textbox', {
+            name: 'Relevansmotivering (frivillig)',
+            exact: true,
+          }),
+        ).toHaveValue('Driften omfattas av befintligt avtal')
+        await staleQuestion
+          .getByRole('button', { name: 'Bekräfta bedömning för denna version' })
+          .click()
+        await expect(staleQuestion.getByRole('status')).toContainText(
+          'Bekräftad bedömning',
+        )
       })
-      await history.locator('summary').click()
-      await expect(history).toContainText(
-        'Driften omfattas av befintligt avtal',
-      )
-      await expect(history).toContainText(createdQuestion.questionCode)
-      await expect(history).toHaveAttribute(
-        'data-developer-mode-name',
-        'rfi assessment history',
-      )
+      await test.step('reassess with empty optional evidence', async () => {
+        await staleQuestion
+          .getByRole('radio', { name: 'Relevant', exact: true })
+          .check()
+        await staleQuestion
+          .getByRole('textbox', {
+            name: 'Relevansmotivering (frivillig)',
+            exact: true,
+          })
+          .fill('')
+        await staleQuestion
+          .getByRole('textbox', {
+            name: 'Dokumenthänvisning (frivillig)',
+            exact: true,
+          })
+          .fill('')
+        await staleQuestion
+          .getByRole('textbox', {
+            name: 'Dokumentlänk (frivillig)',
+            exact: true,
+          })
+          .fill('')
+        await staleQuestion
+          .getByRole('button', { name: 'Spara bedömning', exact: true })
+          .click()
+        await expect(staleQuestion.getByRole('status')).toContainText(
+          'Bekräftad bedömning',
+        )
+        await page.reload()
+        await expect(
+          staleQuestion.getByRole('radio', { name: 'Relevant', exact: true }),
+        ).toBeChecked()
+      })
+      await test.step('check preserved assessment history', async () => {
+        const history = page.locator('details').filter({
+          has: page.locator('summary', { hasText: 'Bedömningshistorik' }),
+        })
+        await history.locator('summary').click()
+        await expect(history).toContainText(
+          'Driften omfattas av befintligt avtal',
+        )
+        await expect(history).toContainText(questionCode)
+        const documentLinks = history.getByRole('link', {
+          name: 'https://example.org/agreement',
+          exact: true,
+        })
+        await expect(documentLinks).toHaveCount(2)
+        for (const link of await documentLinks.all()) {
+          await expect(link).toHaveAttribute(
+            'href',
+            'https://example.org/agreement',
+          )
+          await expect(link).toHaveAttribute('target', '_blank')
+          await expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+          await expect(link).toHaveAttribute(
+            'data-developer-mode-name',
+            'rfi assessment document link',
+          )
+        }
+        await expect(history).toHaveAttribute(
+          'data-developer-mode-name',
+          'rfi assessment history',
+        )
+      })
     } finally {
       const cleanupResponse = await specificationResponsibleRequest
         .post(

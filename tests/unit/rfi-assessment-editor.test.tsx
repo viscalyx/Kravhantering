@@ -3,7 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { NextIntlClientProvider } from 'next-intl'
 import type { ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import RfiAssessmentEditor from '@/components/rfi/RfiAssessmentEditor'
+import RfiAssessmentEditor, {
+  RfiAssessmentDetails,
+} from '@/components/rfi/RfiAssessmentEditor'
 import type { RfiAssessment } from '@/lib/rfi/assessment'
 import messages from '@/messages/en.json'
 
@@ -34,6 +36,52 @@ const previous: RfiAssessment = {
 }
 
 describe('RFI assessment editor', () => {
+  it.each([
+    ['current', 'https://example.org/agreement'],
+    ['pending', 'http://example.org/agreement'],
+    ['historical', 'https://example.org/agreement'],
+  ])('opens %s assessment documents safely', (state, documentUrl) => {
+    const assessment = { ...previous, documentUrl }
+    render(
+      state === 'historical' ? (
+        <RfiAssessmentDetails assessment={assessment} />
+      ) : (
+        <RfiAssessmentEditor
+          assessment={state === 'current' ? assessment : null}
+          canEdit={false}
+          onSave={vi.fn(async () => true)}
+          previousAssessment={state === 'pending' ? assessment : null}
+          saving={false}
+        />
+      ),
+    )
+    const link = screen.getByRole('link', { name: documentUrl })
+    expect(link).toHaveAttribute('href', documentUrl)
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(link).toHaveAttribute(
+      'data-developer-mode-name',
+      'rfi assessment document link',
+    )
+    expect(link.parentElement).toHaveTextContent(
+      `Document link (optional): ${documentUrl}`,
+    )
+  })
+
+  it.each([
+    'javascript:alert(1)',
+    'data:text/html,document',
+    'file:///tmp/agreement',
+    '//example.org/agreement',
+    'not a URL',
+  ])('keeps unsupported document destinations as text: %s', documentUrl => {
+    render(<RfiAssessmentDetails assessment={{ ...previous, documentUrl }} />)
+    expect(
+      screen.getByText(`Document link (optional): ${documentUrl}`),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
   it('explains relevance and saves edited evidence without requiring documents', async () => {
     const save = vi.fn(async () => true)
     render(

@@ -689,6 +689,8 @@ function addRfi(seedData) {
     })
   }
 
+  // SPEC-14 starts unlocked for scope editing, then explicitly locks before
+  // saving assessments. SPEC-15 begins with that locked list and its evidence.
   addRow(seedData, 'specification_rfi_lists', {
     created_at: SEED_TS,
     is_locked: 0,

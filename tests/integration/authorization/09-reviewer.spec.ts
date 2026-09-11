@@ -47,7 +47,11 @@ test('AUTHZ-09/AUTH-10/AUTH-11: Reviewers can read broadly without privileged ad
     await expect(page.getByRole('tab')).toHaveCount(0)
 
     await test.step('reviewer sees read-only requirement-selection questions', async () => {
-      await page.goto('/sv/requirements/stewardship?tab=questions')
+      // The first question-workspace request compiles its route in dev mode.
+      await page.goto('/sv/requirements/stewardship?tab=questions', {
+        timeout: 45_000,
+        waitUntil: 'domcontentloaded',
+      })
       await expect(
         page.getByRole('heading', { level: 1, name: 'Kravurvalsfrågor' }),
       ).toHaveText('Kravurvalsfrågor')

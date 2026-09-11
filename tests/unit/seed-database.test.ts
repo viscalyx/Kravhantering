@@ -634,7 +634,9 @@ describe('seed profiles', () => {
     const history = rowById(seedRowsFor(rows, 'specification_rfi_assessments'))
     expect(history.get(920001)).toMatchObject({
       relevance: 'not_relevant',
+      reason: 'PWT-MANUAL driften omfattas av befintligt avtal.',
       document_reference: 'Driftavtal 2026-14, avsnitt 3',
+      document_url: 'https://example.org/agreements/2026-14',
     })
     expect(history.get(920002)).toMatchObject({
       relevance: 'relevant',

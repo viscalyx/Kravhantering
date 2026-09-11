@@ -7,6 +7,7 @@ import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import FieldHelpButton from '@/components/FieldHelpButton'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { getBrowserLinkUri } from '@/lib/norm-references/browser-link-uri'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import type { RfiAssessment, RfiListItemUpdate } from '@/lib/rfi/assessment'
 
@@ -17,6 +18,7 @@ export function RfiAssessmentDetails({
 }) {
   const t = useTranslations('specificationRfiList')
   const locale = useLocale()
+  const documentHref = getBrowserLinkUri(assessment.documentUrl)
   return (
     <div className="space-y-1 whitespace-pre-wrap wrap-break-word text-sm text-secondary-700 dark:text-secondary-200">
       <p>
@@ -49,7 +51,20 @@ export function RfiAssessmentDetails({
       ) : null}
       {assessment.documentUrl ? (
         <p>
-          {t('assessment.documentUrl')}: {assessment.documentUrl}
+          {t('assessment.documentUrl')}:{' '}
+          {documentHref ? (
+            <a
+              className="underline hover:text-primary-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 dark:hover:text-primary-400"
+              href={documentHref}
+              rel="noopener noreferrer"
+              target="_blank"
+              {...devMarker({ name: 'rfi assessment document link' })}
+            >
+              {assessment.documentUrl}
+            </a>
+          ) : (
+            assessment.documentUrl
+          )}
         </p>
       ) : null}
     </div>
