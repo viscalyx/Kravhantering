@@ -127,11 +127,10 @@ for (const viewport of viewports) {
           ).toBeLessThanOrEqual(
             (tableBox?.x ?? 0) + (tableBox?.width ?? viewport.width) + 1,
           )
-          expect(buttonBox?.x ?? 0).toBeGreaterThanOrEqual(
+          const actionRightMargin =
             (viewportSize?.width ?? viewport.width) -
-              (buttonBox?.width ?? 0) -
-              16,
-          )
+            ((buttonBox?.x ?? 0) + (buttonBox?.width ?? 0))
+          expect(Math.abs(actionRightMargin - 32)).toBeLessThanOrEqual(1)
           expect(
             (buttonBox?.x ?? 0) + (buttonBox?.width ?? 0),
           ).toBeLessThanOrEqual((viewportSize?.width ?? viewport.width) + 1)
