@@ -32,6 +32,10 @@ pins in `containers/app/Dockerfile`, maintained by the `ubi-node-builder` and
 `ubi-node-runtime` dependency lanes. Public builds require no Red Hat account,
 subscription, credentials, or private package source.
 
+See [shared UBI runtime packaging](../../containers/node/README.md) for the
+complete image scope, build network access, and retained license files. Build
+and test hosts must meet the UBI 10 CPU requirements documented there.
+
 The builder installs the npm version selected by `packageManager` before
 `npm ci`. The application keeps the locked glibc native packages and Next.js
 standalone tracing. The shared `containers/node/ubi-compat.sh` adaptation creates
@@ -355,11 +359,12 @@ attempt, so normal GitHub failed-run status and notifications remain the alert.
 
 ## Dependency Drift Detection
 
-`.github/workflows/dependency-drift.yml` checks the npm toolchain,
-production Node base image, nginx, SQL Server, Keycloak, and Kong weekly from
-`main`. A manual run can select one maintenance unit or all units. Every image
-scan checks both newer supported tags and immutable identity drift for the
-current tag.
+`.github/workflows/dependency-drift.yml` checks the npm and Lychee toolchains,
+devcontainer base, remaining Docker Official Node input, independent UBI Node
+builder and runtime roles, nginx, SQL Server, Keycloak, and Kong weekly from
+`main`. A manual run can select one maintenance unit or all units. Image scans
+follow each lane's supported-tag and immutable-identity policy; a selected UBI
+`latest` channel reports digest drift within that channel.
 
 The workflow completes registry validation and all selected remote detection
 before changing any issue. A failure leaves existing detector-owned issues
@@ -383,8 +388,12 @@ workflow builds and publishes
 `container-hsa-integration-support.lock.json` together with the provisioner;
 the mock is recorded in
 `container-test-support.lock.json`. All three images get SBOM and provenance
-attestations. Their npm dependencies use native Dependabot lanes, while their
-shared production Node base image uses coordinated drift detection.
+attestations. Their npm dependencies use native Dependabot lanes. The adapter
+and mock consume both UBI Node roles; the provisioner consumes the minimal
+runtime role and records its RPM toolchain separately. The Docker Official Node
+lane continues to maintain the local HSA topology helper. Follow
+[UBI Node maintenance](dependency-workflow.md#ubi-node-builder-and-runtime-maintenance)
+to update one role and all of its consumers together.
 
 Detector-created issues carry `automation:dependency-drift`, `dependencies`,
 and `ready-for-agent`. A stable hidden marker owns deduplication. A successful

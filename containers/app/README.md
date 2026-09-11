@@ -39,7 +39,10 @@ The app build stage sets `NEXT_PUBLIC_SITE_URL` to
 developer `.env` file. Pass `--build-arg NEXT_PUBLIC_SITE_URL=<origin>` when
 building a deployable image for another origin.
 
-`app-runtime` is the long-running Next.js image. It is based on
+`app-runtime` is the long-running Next.js image. Its build stages use the
+public UBI 10 Node.js 24 builder and its final stage uses the minimal runtime.
+See [shared UBI runtime packaging](../node/README.md) for CPU requirements,
+build network access, and license files. It is based on
 `output: "standalone"` and only copies `.next/standalone`, `.next/static`, and
 `public` into the final runtime stage. The stage runs as the non-root `node`
 user and starts `node start-runtime.mjs` on port `3000`. The startup wrapper
@@ -72,8 +75,8 @@ for the disposable environment; do not substitute it for `db-job`.
 The UBI builder and minimal runtime are independent maintenance roles, pinned
 by tag and digest in the Dockerfile's ARG defaults. Update each role through
 the dependency maintenance workflow and rebuild every target that consumes it.
-The shared adaptation clears inherited S2I startup behavior and retains direct
-Node commands; neither the database nor demo runtime needs npm at startup.
+The Dockerfile clears inherited S2I startup behavior and retains direct Node
+commands; neither the database nor demo runtime needs npm at startup.
 
 ## Docker Tooling
 

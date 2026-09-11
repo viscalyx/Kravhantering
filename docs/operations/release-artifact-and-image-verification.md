@@ -223,10 +223,15 @@ published release tag. A stable tag is supported and monitored. A preview tag
 is monitored for early visibility but is not supported. The issue title is not
 its identity; the automation label and versioned marker are authoritative.
 
-Only already-public Debian or GitHub npm advisory facts that pass the closed
-authority classification appear in these issues. Use private vulnerability
-reporting for a newly discovered or sensitive vulnerability. Do not place
-confidential scanner observations in the public issue.
+Only already-public Debian, GitHub npm, or reviewed UBI 10 RPM advisory facts
+that pass the closed authority classification appear in these issues. RPM
+observations require matching Red Hat 10 package and version evidence and a
+canonical Red Hat CVE source; validated RHSA fix advisories can supply errata
+links. See the
+[public classification contract](../development/trusted-container-publishing.md#trusted-input-and-public-classification).
+Use private vulnerability reporting for a newly discovered or sensitive
+vulnerability. Do not place confidential scanner observations in the public
+issue.
 
 Interpret the lifecycle as follows:
 

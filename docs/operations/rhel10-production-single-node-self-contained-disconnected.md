@@ -20,6 +20,14 @@ not include the optional `kravhantering-demo-seed` image. Treat demo seed as a
 separate opt-in demonstration artifact if a disposable offline demo environment
 needs it.
 
+The project-owned Node images use UBI 10 Node.js 24. Export and verify the
+complete published images selected by the topology's locks. Disconnected hosts
+do not pull UBI bases, install RPMs, download license files, or need Red Hat
+registry credentials for those images. The nginx, SQL Server, Keycloak, and
+Kong images retain their separate vendor inputs. Size storage and transfer
+capacity from the selected release's artifacts. Hosts that run the images must
+meet the [runtime host prerequisites](production-quadlet-containment.md#host-prerequisites).
+
 Use this guide before starting a first install in a disconnected environment
 with
 [rhel10-production-single-node-self-contained-deploy.md](./rhel10-production-single-node-self-contained-deploy.md),

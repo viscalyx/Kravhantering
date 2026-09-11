@@ -22,6 +22,11 @@ To uninstall a first install, use
 
 ## Planned-Downtime Upgrade
 
+Before the downtime window, confirm the target images' CPU requirements in
+[Host prerequisites](production-quadlet-containment.md#host-prerequisites).
+The UBI 10 application and database-job images require x86-64-v3 on each host
+that runs them, including the CPU presented to a virtual machine.
+
 Use planned downtime unless a future release explicitly documents rolling
 compatibility. Keep the existing `/etc/kravhantering/*.env` files during
 upgrade. The first-install template-copy steps are intentionally not part of

@@ -4,6 +4,11 @@ This directory owns the source-controlled Compose template for the
 production-like container stack. The template is not run directly. Generate a
 runtime Compose file from a `container-stack.lock.json` artifact instead.
 
+The project-owned Node images use UBI 10. Hosts that build or run their AMD64
+images must expose x86-64-v3, including Docker or Podman virtual machines. See
+[shared UBI runtime packaging](../node/README.md) for image scope and build
+network prerequisites.
+
 ## Generated Files
 
 Generate a stack lock after `app-runtime` and `db-job` have been built and

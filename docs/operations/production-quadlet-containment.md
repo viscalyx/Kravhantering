@@ -7,6 +7,14 @@ in `single-node`.
 
 ## Host prerequisites
 
+The published project Node runtimes use UBI 10 for Linux AMD64. The container
+host must expose an **x86-64-v3** CPU, including when it is a virtual machine.
+Check the VM CPU configuration as well as the physical processor before
+installation or upgrade. Red Hat documents this hardware requirement in its
+[container compatibility policy](https://access.redhat.com/support/policy/rhel-container-compatibility).
+The supported production host remains RHEL 10; using UBI does not establish
+Red Hat certification or support for the derived Kravhantering images.
+
 Run the helper as the dedicated rootless service user before installing or
 reinstalling units:
 
@@ -20,6 +28,17 @@ manager, rootless Podman, delegated `cpu`, `memory`, and `pids` controllers, a
 compatible Quadlet generator, and finite journal retention. `install` repeats
 the check after rendering into a temporary directory and does not replace the
 active units when validation fails.
+
+This helper checks containment prerequisites; it does not validate the
+x86-64-v3 instruction set. Confirm CPU compatibility separately before starting
+the released images.
+
+Verify SQL Server, OIDC, enabled HSA lookup, and other configured external TLS
+connections with the target release images and site certificates before
+cutover. UBI 10's cryptographic libraries and defaults can reject peers that
+work in a different development image; see
+[RHEL 10 security changes](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10/html/considerations_in_adopting_rhel_10/security).
+Correct weak certificates or peer TLS settings when verification fails.
 
 Configure `SystemMaxUse` or `SystemKeepFree` in `journald.conf` on the host.
 Podman's journald log driver writes container records directly to the journal,

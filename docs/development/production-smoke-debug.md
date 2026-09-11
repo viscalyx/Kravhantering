@@ -14,10 +14,15 @@ host setup, smoke execution, evidence collection, and safe cleanup.
 
 Prerequisites:
 
-- a Linux x86_64 host with Docker, cgroup v2, and at least 10 GiB free;
+- a Linux x86_64 host with x86-64-v3 CPU support, Docker, cgroup v2, and at
+  least 10 GiB free;
 - Node.js and the repository dependencies already installed;
 - GitHub CLI authenticated with access to the workflow run; and
 - an internet connection for the pinned vendor image pulls.
+
+The candidate Node images use UBI 10. Nested containers use the outer host's
+CPU capabilities; an Ubuntu debug host does not remove the x86-64-v3
+requirement. See [shared UBI runtime packaging](../../containers/node/README.md).
 
 Run from the repository root while the branch containing the proposed fix is
 checked out:

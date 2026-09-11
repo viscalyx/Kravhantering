@@ -7,6 +7,11 @@ single-node RHEL 10 production topology from released artifacts, with nginx,
 `app-runtime`, SQL Server and Keycloak as rootless Podman Quadlet services.
 `db-job` remains an explicit release operation on the same network.
 
+Before the downtime window, confirm the target images' CPU requirements in
+[Host prerequisites](production-quadlet-containment.md#host-prerequisites).
+The UBI 10 application and database-job images require x86-64-v3, including
+the CPU presented to a virtual machine.
+
 Before the change, read `IDENTITY_PROVIDER_MODE` from
 `/etc/kravhantering/release.env` and record it in the change ticket:
 

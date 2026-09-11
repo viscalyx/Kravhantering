@@ -1,8 +1,15 @@
 # DB Job Container Contract
 
-This directory owns the runtime contract for one-shot database jobs. Later
-phases use the `db-job` target from the same app Dockerfile as the runtime app
-image.
+This directory owns the runtime contract for one-shot database jobs, built with
+the `db-job` target from the same app Dockerfile as the runtime app image.
+
+The dependency stage uses the pinned UBI 10 Node.js 24 builder; the final image
+uses the independent minimal runtime pin and
+[shared UBI adaptation](../node/README.md). It runs directly through Node.js
+without npm, as UID/GID `1000:1000`, with supported administrative user
+overrides. Read-only roots, writable `/tmp`, and SQL Server CA mounts selected
+with `NODE_EXTRA_CA_CERTS` retain their existing contract. Scheduled transient
+cleanup continues to use `/usr/local/bin/node` through the compatibility link.
 
 ## Owned Configuration
 

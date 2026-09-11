@@ -50,10 +50,13 @@ chance to assess and address them.
 ### Automated Public Container Tracking Is Not Reporting
 
 The repository's container monitor creates public issues only for
-already-public dependency advisories that pass its closed Debian or GitHub npm
-authority classification. One issue represents one exact release image role
-and published tag. Its current body, optional bounded continuation parts, and
-immutable material-change journals are automation-owned public tracking.
+already-public dependency advisories that pass its closed Debian, GitHub npm,
+or reviewed UBI 10 RPM authority classification. See the
+[public classification contract](docs/development/trusted-container-publishing.md#trusted-input-and-public-classification)
+for required evidence and accepted Red Hat CVE and RHSA links. One issue
+represents one exact release image role and published tag. Its current body,
+optional bounded continuation parts, and immutable material-change journals are
+automation-owned public tracking.
 
 Use private reporting above for newly discovered, sensitive, unpublished, or
 uncertain vulnerability information. Do not disclose confidential identifiers,
