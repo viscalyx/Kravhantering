@@ -1,6 +1,8 @@
+import Prototype1346 from '@/components/Prototype1346'
 export default function GlobalNotFound() {
   return (
     <main className="section-padding min-h-screen flex items-center justify-center">
+      <Prototype1346 />
       <div className="text-center">
         <h1 className="text-6xl font-bold text-gradient">404</h1>
         <p className="mt-4 text-lg text-secondary-700 dark:text-secondary-300">

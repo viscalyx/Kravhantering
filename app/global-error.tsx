@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import ErrorRecoveryPanel from '@/components/ErrorRecoveryPanel'
+import Prototype1346 from '@/components/Prototype1346'
 import {
   getErrorRecoveryCopy,
   getErrorRecoveryLocale,
@@ -31,6 +32,7 @@ export default function GlobalError({
       </head>
       <body className="min-h-screen bg-white text-secondary-900 antialiased dark:bg-secondary-950 dark:text-secondary-100">
         <main>
+          <Prototype1346 />
           <ErrorRecoveryPanel
             className="min-h-screen"
             copy={copy}

@@ -1,0 +1,116 @@
+/* THROWAWAY #1346. Every rule requires an explicitly enabled development skin. */
+html[data-prototype1346] {
+  --p1346-base: #fff;
+  --p1346-muted: #f8fafc;
+  --p1346-line: #e2e8f0;
+  --p1346-text: #0f172a;
+  --p1346-primary: #4338ca;
+}
+html.dark[data-prototype1346] {
+  --p1346-base: #0f172a;
+  --p1346-muted: #1e293b;
+  --p1346-line: #334155;
+  --p1346-text: #f1f5f9;
+  --p1346-primary: #4f46e5;
+}
+html[data-prototype1346] body {
+  padding-bottom: 110px;
+}
+html[data-prototype1346="after"]
+  :is(thead, [role="rowgroup"]):has([role="columnheader"]),
+html[data-prototype1346="after"] thead {
+  background-color: var(--p1346-muted) !important;
+}
+html[data-prototype1346="after"] h1:not([data-prototype1346-tools] *) {
+  font-size: 1.5rem !important;
+}
+html[data-prototype1346="after"] h2:not([data-prototype1346-tools] *) {
+  font-size: 1.25rem !important;
+}
+html[data-prototype1346="after"] :is(h1, h2):not([data-prototype1346-tools] *) {
+  font-weight: 600 !important;
+}
+html[data-prototype1346="after"]
+  label:not(:has(input[type="checkbox"], input[type="radio"])):not(
+    [data-prototype1346-tools] *
+  ) {
+  font-size: 0.875rem !important;
+}
+.prototype1346-tools {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  z-index: 2147483000;
+  width: min(1000px, calc(100vw - 24px));
+  padding: 10px 14px;
+  font:
+    13px / 1.4 system-ui,
+    sans-serif;
+  color: #f8fafc;
+  background: #172033;
+  border: 1px solid #64748b;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px #0005;
+  transform: translateX(-50%);
+}
+.prototype1346-tools button,
+.prototype1346-tools select,
+.prototype1346-tools a {
+  min-height: 28px;
+  padding: 3px 9px;
+  color: white;
+  cursor: pointer;
+  background: #273449;
+  border: 1px solid #64748b;
+  border-radius: 6px;
+}
+.prototype1346-tools button:focus-visible,
+.prototype1346-tools a:focus-visible,
+.prototype1346-tools select:focus-visible {
+  outline: 2px solid #c7d2fe;
+  outline-offset: 2px;
+}
+.prototype1346-tools button[aria-pressed="true"] {
+  background: #4338ca;
+  border-color: #a5b4fc;
+}
+.prototype1346-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.prototype1346-state {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #cbd5e1;
+  overflow-wrap: anywhere;
+}
+.prototype1346-review {
+  max-height: min(55vh, 480px);
+  padding-top: 10px;
+  margin-top: 12px;
+  overflow: auto;
+  border-top: 1px solid #64748b;
+}
+.prototype1346-review table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.prototype1346-review td,
+.prototype1346-review th {
+  padding: 6px;
+  vertical-align: top;
+  text-align: left;
+  border-bottom: 1px solid #475569;
+}
+.prototype1346-review h2 {
+  margin: 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+@media print {
+  .prototype1346-tools {
+    display: none;
+  }
+}

@@ -13,6 +13,7 @@ import Footer from '@/components/Footer'
 import { HelpProvider } from '@/components/HelpPanel'
 import LocaleStorageSync from '@/components/LocaleStorageSync'
 import Navigation from '@/components/Navigation'
+import Prototype1346 from '@/components/Prototype1346'
 import { routing } from '@/i18n/routing'
 import { readBuildMetadata } from '@/lib/build-metadata'
 import '@/app/globals.css'
@@ -82,6 +83,7 @@ export default async function LocaleLayout({
         <ConfirmModalProvider>
           <HelpProvider>
             <LocaleStorageSync />
+            <Prototype1346 />
             <AuthExpiryGuard />
             <div className="min-h-screen">
               <Navigation buildMetadata={buildMetadata} />

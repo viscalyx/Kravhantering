@@ -1,5 +1,6 @@
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import type { Metadata } from 'next'
+import Prototype1346 from '@/components/Prototype1346'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
@@ -85,6 +86,7 @@ export default async function AuthErrorPage({
 
   return (
     <main className="section-padding min-h-screen bg-white text-secondary-900 dark:bg-secondary-950 dark:text-secondary-100">
+      <Prototype1346 />
       <section
         aria-labelledby="auth-error-title"
         className="flex min-h-[calc(100vh-6rem)] items-center justify-center"
