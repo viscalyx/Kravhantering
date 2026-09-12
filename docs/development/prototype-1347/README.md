@@ -1,6 +1,7 @@
 # Prototype #1347: readable requirement-library headers
 
-THROWAWAY design exploration. No variant is selected for production.
+THROWAWAY design exploration. The maintainer selects revised A as the design
+reference for implementation in issue #1347.
 
 Question: which arrangement keeps column labels and controls clear, with
 compact headers and adjustable space for requirement text?
@@ -127,8 +128,8 @@ previous values. The six existing default
 visible columns remain; optional columns receive their supplied widths when
 shown. Requirement text has a 809 px base and grows to fill spare space.
 The width panel reports actual rendered widths, including that growth.
-B/C remain available as earlier alternatives. This is a prototype direction;
-production promotion remains a separate implementation step.
+B/C remain available as earlier alternatives. The maintainer approves this revised A as the implementation reference.
+Production implementation remains a separate step.
 
 ## Verification evidence and limits
 
@@ -169,8 +170,10 @@ prototype; the production implementation must retain the issue's persistence
 contract. Mobile uses the existing table-scrolling model and remains a review
 case rather than a promise that all columns fit on a small screen.
 
-Production promotion requires choosing a design and implementing it with the
-repository's normal automated tests, manual-case updates and full checks.
+Implement the selected A design with the repository's normal automated tests,
+manual-case updates and full checks. The switcher, width measurement panel,
+read-only guard and prototype launcher are review tools and are not part of
+the production design.
 
 ## Files and capture
 
