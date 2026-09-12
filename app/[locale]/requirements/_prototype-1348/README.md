@@ -95,6 +95,7 @@ For the requested sizes, use the browser's responsive viewport controls at
 | Full-width primary text in A | Open SÄK0010 in A at 1440 px and 1920 px. Requirement text, acceptance criteria and verification method use the full inner card width, including beneath the process steps. Compare the SÄK0010 before/after captures in the gallery. At narrow widths, text wraps without horizontal overflow. |
 | Verification method as a text section in A | Open SÄK0010. Verify the order: requirement text, acceptance criteria, verification method, metadata. The verification method has the same heading/body styles as acceptance criteria and appears once, outside the metadata grid. Compare desktop and mobile wrapping. |
 | More compact metadata | Inspect all metadata values, verification method and specification count. A uses a compact grid with area owner inside the info panel; B uses inline pairs; C uses a ruled definition table. |
+| Consistent property label size in A | Compare Kravtext, Acceptanskriterium, Verifieringsmetod, Normreferenser and Kravpaket with Verifierbar and the other metadata labels: all use 12 px. Check empty and populated sections in the gallery or live view. |
 | Compact empty references and packages | Choose empty sections. Both labels and their empty information stay visible on compact rows. Choose populated sections and hover the package to inspect its existing purpose/scope tooltip. |
 | Compact empty improvement suggestions | Choose empty sections and compare the card. Its title, empty information and registration button remain. Choose populated sections to inspect the existing suggestion pill and actions. |
 | Compact original-style process steps in A | On desktop, inspect the steps to the right of Kravtext on the same heading row. The original outline, icons and configured active color remain; height is 24 px and arrow depth 6 px (baseline: 40 px and 14 px). On narrow cards the steps wrap below the heading. B/C retain their 30 px flat strip. |
@@ -115,7 +116,7 @@ For the requested sizes, use the browser's responsive viewport controls at
 
 The user prefers A and asks for smaller ordinary process arrows beside
 Kravtext, plus an area info icon with description and owner in a panel.
-The revised desktop example is **577 px** high, compared with **588 px** for
+The revised desktop example is **574 px** high, compared with **588 px** for
 A before this refinement and **824 px** for the baseline. Both desktop sizes
 use the same actual ANV0002 text and forced empty sections.
 

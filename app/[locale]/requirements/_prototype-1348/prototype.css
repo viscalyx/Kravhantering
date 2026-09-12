@@ -110,6 +110,9 @@ html:where([data-detail-prototype]:not([data-detail-prototype="baseline"]))
   font-weight: 600;
   color: var(--prototype-muted);
 }
+.prototype-variant-a h3 {
+  font-size: 12px;
+}
 .prototype-primary-text {
   font-size: 16px;
   line-height: 1.5;

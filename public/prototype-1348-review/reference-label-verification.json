@@ -1,0 +1,243 @@
+{
+  "capturedAt": "2026-09-12T19:32:18.869Z",
+  "baseUrl": "http://localhost:3001",
+  "passed": true,
+  "results": [
+    {
+      "width": 1440,
+      "sections": "empty",
+      "labels": [
+        {
+          "label": "Kravtext",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Acceptanskriterium",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Verifieringsmetod",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kravområde",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kravområdesägare",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kategori",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Typ",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kvalitetsegenskap",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Prioritet",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Verifierbar",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Används i kravunderlag",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Normreferenser",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kravpaket",
+          "fontSize": "12px"
+        }
+      ],
+      "height": 574
+    },
+    {
+      "width": 1440,
+      "sections": "populated",
+      "labels": [
+        {
+          "label": "Kravtext",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Acceptanskriterium",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Verifieringsmetod",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kravområde",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kravområdesägare",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kategori",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Typ",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kvalitetsegenskap",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Prioritet",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Verifierbar",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Används i kravunderlag",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Normreferenser",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kravpaket",
+          "fontSize": "12px"
+        }
+      ],
+      "height": 781
+    },
+    {
+      "width": 1920,
+      "sections": "empty",
+      "labels": [
+        {
+          "label": "Kravtext",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Acceptanskriterium",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Verifieringsmetod",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kravområde",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kravområdesägare",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kategori",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Typ",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kvalitetsegenskap",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Prioritet",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Verifierbar",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Används i kravunderlag",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Normreferenser",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kravpaket",
+          "fontSize": "12px"
+        }
+      ],
+      "height": 574
+    },
+    {
+      "width": 1920,
+      "sections": "populated",
+      "labels": [
+        {
+          "label": "Kravtext",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Acceptanskriterium",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Verifieringsmetod",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kravområde",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kravområdesägare",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kategori",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Typ",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kvalitetsegenskap",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Prioritet",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Verifierbar",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Används i kravunderlag",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Normreferenser",
+          "fontSize": "12px"
+        },
+        {
+          "label": "Kravpaket",
+          "fontSize": "12px"
+        }
+      ],
+      "height": 781
+    }
+  ]
+}
