@@ -1,6 +1,6 @@
 // Throwaway browser evidence capture, not a production test suite.
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { chromium } from 'playwright'
 
 const root = new URL('./', import.meta.url)
