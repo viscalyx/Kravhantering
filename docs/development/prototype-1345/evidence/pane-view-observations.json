@@ -1,0 +1,57 @@
+[
+  {
+    "leftView": "needs-references",
+    "rightScrollBefore": 200,
+    "rightScrollAfter": 200,
+    "selected": "Tillgängliga krav"
+  },
+  {
+    "leftView": "rfi",
+    "rightScrollBefore": 200,
+    "rightScrollAfter": 200,
+    "selected": "Tillgängliga krav"
+  },
+  {
+    "leftView": "items",
+    "rightScrollBefore": 200,
+    "rightScrollAfter": 200,
+    "selected": "Tillgängliga krav"
+  },
+  {
+    "beforeCreate": [
+      26,
+      200
+    ],
+    "afterCreate": [
+      26,
+      200
+    ]
+  },
+  {
+    "rightView": "questions",
+    "leftView": "Krav i underlaget"
+  },
+  {
+    "rightView": "available",
+    "leftView": "Krav i underlaget"
+  },
+  {
+    "locale": "sv",
+    "mobile": {
+      "viewport": 390,
+      "page": 390
+    }
+  },
+  {
+    "locale": "en",
+    "mobile": {
+      "viewport": 390,
+      "page": 390
+    }
+  },
+  {
+    "beforeRetainsTabs": true,
+    "errors": [],
+    "exports": []
+  }
+]

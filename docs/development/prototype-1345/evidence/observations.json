@@ -339,44 +339,6 @@
     "writes": []
   },
   {
-    "detailQuestionPaneFilters": [
-      {
-        "pane": "rfi",
-        "scrollTop": 600,
-        "tabsBottom": 328.5,
-        "filtersTop": 344.5,
-        "gap": 16
-      },
-      {
-        "pane": "available",
-        "scrollTop": 600,
-        "tabsBottom": 328.5,
-        "filtersTop": 344.5,
-        "gap": 16
-      }
-    ],
-    "mobile": [
-      {
-        "pane": "rfi",
-        "headerBottom": 158.515625,
-        "tabsTop": 174.515625,
-        "filtersTop": 259.515625,
-        "gap": 16,
-        "width": 390
-      },
-      {
-        "pane": "available",
-        "headerBottom": 158.515625,
-        "tabsTop": 174.515625,
-        "filtersTop": 259.515625,
-        "gap": 16,
-        "width": 390
-      }
-    ],
-    "emptySearchCanBeCleared": true,
-    "errors": []
-  },
-  {
     "allListTitles": [
       {
         "view": "library",
@@ -519,5 +481,43 @@
         "occluded": false
       }
     ]
+  },
+  {
+    "detailQuestionPaneFilters": [
+      {
+        "pane": "rfi",
+        "scrollTop": 600,
+        "tabsBottom": 312.5,
+        "filtersTop": 328.5,
+        "gap": 16
+      },
+      {
+        "pane": "available",
+        "scrollTop": 600,
+        "tabsBottom": 312.5,
+        "filtersTop": 328.5,
+        "gap": 16
+      }
+    ],
+    "mobile": [
+      {
+        "pane": "rfi",
+        "headerBottom": 158.515625,
+        "tabsTop": 174.515625,
+        "filtersTop": 245.515625,
+        "gap": 16,
+        "width": 390
+      },
+      {
+        "pane": "available",
+        "headerBottom": 158.515625,
+        "tabsTop": 174.515625,
+        "filtersTop": 245.515625,
+        "gap": 16,
+        "width": 390
+      }
+    ],
+    "emptySearchCanBeCleared": true,
+    "errors": []
   }
 ]

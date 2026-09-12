@@ -26,6 +26,7 @@ import ListWorkspace from '@/components/ListWorkspace'
 import {
   Prototype1345Filters,
   Prototype1345Header,
+  Prototype1345Table,
   usePrototype1345,
 } from '@/components/Prototype1345'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
@@ -749,7 +750,7 @@ export default function RequirementsSpecificationsClient({
             ref={tableAnchorRef}
           >
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <Prototype1345Table className="w-full text-sm">
                 <colgroup>
                   <col />
                   <col />
@@ -948,7 +949,7 @@ export default function RequirementsSpecificationsClient({
                     </tr>
                   ) : null}
                 </tbody>
-              </table>
+              </Prototype1345Table>
             </div>
           </div>
         )}

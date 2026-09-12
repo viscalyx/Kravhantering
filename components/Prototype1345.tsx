@@ -6,6 +6,7 @@ import type { Route } from 'next'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import {
+  type ComponentProps,
   createContext,
   type ReactNode,
   useCallback,
@@ -88,7 +89,7 @@ export function Prototype1345Provider({ children }: { children: ReactNode }) {
         event.metaKey ||
         event.shiftKey ||
         target.closest(
-          'input, textarea, select, [contenteditable], [role="menu"], [role="dialog"], [role="slider"], [role="tablist"]',
+          'input, textarea, select, [contenteditable], [role="menu"], [role="dialog"], [role="slider"], [role="tablist"], .prototype-1345-view-switcher',
         )
       )
         return
@@ -350,6 +351,84 @@ interface VariantProps {
   button: ReactNode
   title: ReactNode
   tools: ReactNode
+}
+export function Prototype1345Table(props: ComponentProps<'table'>) {
+  const { active } = usePrototype1345()
+  const tableRef = useRef<HTMLTableElement>(null)
+  useEffect(() => {
+    const table = tableRef.current
+    const head = table?.tHead
+    if (!active || !table || !head) return
+    const surface = table.closest(
+      '[data-prototype-1345], [data-prototype-detail]',
+    )
+    const pane = table.closest<HTMLElement>(
+      '[data-specification-detail-list-panel]',
+    )
+    const tabs = pane?.firstElementChild
+    let translated = 0
+    let frame = 0
+    const update = () => {
+      frame = 0
+      if (tabs)
+        table.style.setProperty(
+          '--prototype-1345-table-tabs-height',
+          `${tabs.getBoundingClientRect().height}px`,
+        )
+      const paneTop =
+        pane && ['auto', 'scroll'].includes(getComputedStyle(pane).overflowY)
+          ? pane.getBoundingClientRect().top + pane.clientTop
+          : 0
+      const stop =
+        paneTop + Number.parseFloat(getComputedStyle(head).scrollMarginTop)
+      const bounds = head.getBoundingClientRect()
+      const naturalTop = bounds.top - translated
+      translated = Math.max(
+        0,
+        Math.min(
+          stop - naturalTop,
+          table.getBoundingClientRect().bottom - naturalTop - bounds.height,
+        ),
+      )
+      // Move the actual header so column widths, horizontal scrolling and controls remain native.
+      head.style.transform = `translateY(${translated}px)`
+    }
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update)
+    }
+    const observer = new ResizeObserver(schedule)
+    for (const element of [
+      table,
+      head,
+      tabs,
+      surface?.querySelector('.prototype-1345-header'),
+      surface?.querySelector('.prototype-1345-filters'),
+    ]) {
+      if (element) observer.observe(element)
+    }
+    document.addEventListener('scroll', schedule, true)
+    window.addEventListener('resize', schedule)
+    schedule()
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      document.removeEventListener('scroll', schedule, true)
+      window.removeEventListener('resize', schedule)
+      head.style.removeProperty('transform')
+    }
+  }, [active])
+  return (
+    <table
+      {...props}
+      data-prototype-table={active || undefined}
+      ref={tableRef}
+      {...(active &&
+        devMarker({
+          context: 'prototype 1345',
+          name: 'table with sticky column headers',
+        }))}
+    />
+  )
 }
 export function Prototype1345Filters({ children }: { children: ReactNode }) {
   const { active } = usePrototype1345()

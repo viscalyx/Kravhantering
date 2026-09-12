@@ -3826,9 +3826,11 @@
       "secondary": "Scroll the specifications, packages, norms and both question stewardship lists: search and filters stay below the command bar, with area headings below them.",
       "menus": "Open Reports, Columns and the detail panel action menus. Existing entries remain available without extra navigation.",
       "viewport": "Compare 1440 × 900 and 1920 × 1080, navigation expanded/collapsed, light/dark, English/Swedish and narrow windows.",
-      "keyboard": "Use Tab and the arrow switcher; reload the URL. In specification 8, switch panel tabs and scroll each pane independently.",
+      "keyboard": "Use Tab and the arrow switcher; reload the URL. In specification 8, switch pane views and scroll each pane independently.",
       "safety": "Creation and writes are simulated. Check the status below; the prototype does not save business data."
     },
-    "detailView": "Specification 8"
+    "detailView": "Specification 8",
+    "leftPaneView": "View in left list",
+    "rightPaneView": "View in right list"
   }
 }

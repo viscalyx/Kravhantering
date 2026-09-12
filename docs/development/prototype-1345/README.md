@@ -8,12 +8,18 @@ and removed. Before retains the original layout for comparison. No prototype
 code is promoted to production.
 
 B keeps each list title, creation button and toolbar commands available at
-the current scroll position. Search and filter bars also stay visible on specifications,
-packages, norms, selection questions and RFI questions. Area headings sit
-below the filters. Kravbiblioteket retains its existing sticky filter behavior.
-Specification 8 retains independent scrolling and controls in both panes.
-Its RFI and requirement-selection tabs also keep their filters below the
-pane tabs; narrow layouts place the pane controls below the page command bar.
+the current scroll position. Search and filter bars also stay visible on
+specifications, packages, norms, selection questions and RFI questions.
+Column headers and area headings sit below the filters. Column headings
+stay aligned with the table during horizontal scrolling. Kravbiblioteket
+retains its existing sticky filter behavior. Specification 8 retains
+independent scrolling and controls in both panes.
+
+In B, each specification pane shows every view choice as a compact button.
+View buttons and actions share one row, separated by space and a vertical
+divider. Primary creation keeps its label; secondary actions use icons.
+On narrow screens, the row scrolls horizontally to keep every action reachable.
+Search and filters stay below these controls. Before retains the original tabs.
 
 ## Open or restart
 
@@ -72,17 +78,18 @@ and narrow screenshots. Removed variants remain only in Git history.
 | P07 | Existing list behavior | Filter and clear the search, open available menus, select rows and sort. Kravbiblioteket keeps its existing sticky filters and optional Back to top |
 | P08 | Specification detail prototype | Open `/sv/specifications/8` and compare Before/B. Check the same name, description, governance type, responsible person/HSA-id, implementation type and lifecycle status |
 | P09 | Full-width detail metadata | Check that all metadata values remain available at desktop and narrow widths |
-| P10 | Existing detail tabs | Switch Krav i underlaget, Behovsreferenser, RFI-frågelista, Tillgängliga krav and Kravurvalsfrågor and inspect their content |
+| P10 | Visible independent pane views | Switch Krav i underlaget, Behovsreferenser, RFI-frågelista, Tillgängliga krav and Kravurvalsfrågor and inspect their content. All choices remain visible as buttons in B; switching one pane leaves the other unchanged |
 | P11 | Detail controls stay in context | Scroll both tables independently. Use Nytt unikt krav in the left pane; controls remain available and both pane positions stay unchanged after simulation |
-| P12 | Named detail edit action | Check the edit button beside the specification heading and its existing permission condition |
+| P12 | Compact detail actions | Check the named edit and creation actions. Pane view buttons and icon actions share one row with a divider. Select rows and confirm the extra action icons keep the same row; on narrow screens scroll the toolbar sideways or use Tab to reach them |
 | P13 | Review state and keyboard controls | Check variant, view/tab and simulated action status; open the review panel, switch by keyboard and reload the URL |
-| P14 | Responsive and theme behavior | Try desktop and 390/320 px, both themes and locales. Controls should fit; scroll the narrow review link strip to reach all eight views |
+| P14 | Responsive and theme behavior | Try desktop and 390/320 px, both themes and locales. Table-page titles wrap above creation controls on narrow screens. Controls should fit; scroll the narrow review link strip to reach all eight views |
 | P15 | Simulated writes | Creation and edit controls report simulation. Browser writes are intercepted; this does not verify real mutations |
-| P16 | Developer Mode coverage | Inspect the existing layout, primary action, toolbar and switcher markers, plus the new sticky search and filters marker |
+| P16 | Developer Mode coverage | Inspect the existing layout, primary action, toolbar and switcher markers, plus the sticky search, filters, column headers and pane view markers |
 | P17 | Worktree isolation | Confirm branch `prototype/issue-1345` and port 3001. Candidate rendering requires the development prototype flag |
 | P18 | Offline review | Select every gallery view, compare Before/B images and follow the matching live link |
 | P19 | Stable header spacing | Scroll the library slowly and return to the top. Its 48 px top gutter and 17 px header-to-table gap remain constant. Other list headers retain their top gutter, and opaque sticky surfaces hide passing rows |
 | P20 | Both question stewardship tabs | Open `tab=questions` and `tab=information-requests`. Check headings, filters, area grouping and question content; use the new switcher links and reload |
+| P21 | Sticky table column headers | Scroll specifications, packages, norms and areas down 300 px, 900 px and to the bottom. Column headings stay below the title/filter stack. On narrow screens, scroll sideways and check header/body alignment. Also inspect the needs-reference table in specification 8; Before retains its original behavior |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -92,7 +99,7 @@ and narrow screenshots. Removed variants remain only in Git history.
 
 | File or component | Purpose |
 | --- | --- |
-| `Prototype1345.tsx` / `Prototype1345.css` | B header, measured sticky filters, spacing, switcher, simulation and review panel |
+| `Prototype1345.tsx` / `Prototype1345.css` | B header, measured sticky filters and native table headings, spacing, switcher, simulation and review panel |
 | Locale layout | Mount prototype controls inside the existing authenticated shell |
 | `ListWorkspace` | Reclaim the old action-rail gutter and scope prototype styling on seven lists |
 | `RequirementsClient` | Add the library heading and named creation action |
@@ -100,7 +107,7 @@ and narrow screenshots. Removed variants remain only in Git history.
 | Package, norm and specification list clients | Add prototype headers and sticky search bars with existing data and permission behavior |
 | Selection question and RFI question clients | Add prototype headers and sticky filters; offset area headings below both |
 | `CrudAdminPanel` | Apply the prototype header only to areas; this list has no search bar |
-| Specification detail client and question panels | Add B's header, retain metadata and tabs, and keep pane search/filter controls below the tabs at desktop and narrow widths |
+| Specification detail client and question panels | Add B's header and visible pane view choices, retain metadata, and keep search/filter controls below the single control row |
 | Swedish/English message catalogs | B/Before labels and current verification guidance |
 | `package.json` / `prototype-1345.mjs` | One-command launcher on port 3001 |
 | This guide, `review.html`, `evidence` | Change inventory, visual comparison and browser observations |
@@ -132,6 +139,12 @@ additional scrolled, dark and narrow captures. Browser measurements verify
 sticky commands and filters, area offsets, preserved scroll position,
 filter/clear behavior, variant redirects, links and reload retention.
 
-See [browser observations](evidence/observations.json) for the exact cases
-and measurements. The checklist covers further review before approving a
-production design. B remains a throwaway prototype under review.
+See [browser observations](evidence/observations.json) and
+[column-header observations](evidence/column-header-observations.json)
+for the exact cases and measurements.
+[Pane view observations](evidence/pane-view-observations.json) cover independent
+view changes and preserved scroll.
+[Single-row observations](evidence/one-row-observations.json) cover selected
+actions and keyboard access at narrow widths. The checklist covers further
+review before approving a production design. B remains a throwaway prototype
+under review.

@@ -11,6 +11,7 @@ import ListWorkspace from '@/components/ListWorkspace'
 import { modalResizableTextareaClassName } from '@/components/modal-textarea-class'
 import {
   Prototype1345Header,
+  Prototype1345Table,
   usePrototype1345,
 } from '@/components/Prototype1345'
 import type { CrudAdminResourceController } from '@/hooks/useCrudAdminResource'
@@ -265,7 +266,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
             })}
           >
             <div className="w-full overflow-x-auto">
-              <table className="w-full text-sm">
+              <Prototype1345Table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
                     {columns.map(column => (
@@ -394,7 +395,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
                     })
                   )}
                 </tbody>
-              </table>
+              </Prototype1345Table>
             </div>
           </div>
         )}

@@ -3826,9 +3826,11 @@
       "secondary": "Rulla i kravunderlag, kravpaket, normbibliotek och båda frågelistorna: sökning och filter ligger kvar under kommandoraden, med områdesrubriker nedanför.",
       "menus": "Öppna Rapporter, Kolumner och detaljpanelernas åtgärdsmenyer. Befintliga alternativ finns kvar utan extra navigering.",
       "viewport": "Jämför 1440 × 900 och 1920 × 1080, utfälld/infälld navigation, ljust/mörkt, svenska/engelska och smala fönster.",
-      "keyboard": "Använd Tab och variantpilarna; ladda om länken. I kravunderlag 8: byt panelflikar och rulla panelerna oberoende av varandra.",
+      "keyboard": "Använd Tab och variantpilarna; ladda om länken. I kravunderlag 8: byt panelvyer och rulla panelerna oberoende av varandra.",
       "safety": "Skapande och skrivningar simuleras. Kontrollera statusraden nedan; prototypen sparar inga verksamhetsdata."
     },
-    "detailView": "Kravunderlag 8"
+    "detailView": "Kravunderlag 8",
+    "leftPaneView": "Vy i vänstra listan",
+    "rightPaneView": "Vy i högra listan"
   }
 }

@@ -38,6 +38,7 @@ import { modalResizableTextareaClassName } from '@/components/modal-textarea-cla
 import {
   Prototype1345Filters,
   Prototype1345Header,
+  Prototype1345Table,
   usePrototype1345,
 } from '@/components/Prototype1345'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
@@ -1206,7 +1207,7 @@ export default function RequirementPackagesClient() {
             })}
             ref={tableAnchorRef}
           >
-            <table className="w-full text-sm">
+            <Prototype1345Table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-secondary-50/80 text-left text-secondary-700 dark:bg-secondary-800/30 dark:text-secondary-300">
                   <th className="px-4 py-3 font-medium">{t('name')}</th>
@@ -1456,7 +1457,7 @@ export default function RequirementPackagesClient() {
                   })
                 )}
               </tbody>
-            </table>
+            </Prototype1345Table>
           </div>
         )}
       </ListWorkspace>

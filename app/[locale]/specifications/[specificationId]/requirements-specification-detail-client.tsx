@@ -54,6 +54,7 @@ import LazyRequirementsImportDialog, {
 } from '@/components/LazyRequirementsImportDialog'
 import {
   Prototype1345Header,
+  Prototype1345Table,
   usePrototype1345,
 } from '@/components/Prototype1345'
 import RequirementsTable, {
@@ -500,6 +501,7 @@ export default function KravunderlagDetailClient({
 }) {
   useHelpContent(REQUIREMENT_SPECIFICATION_DETAIL_HELP)
   const prototype = usePrototype1345()
+  const tPrototype = useTranslations('prototype1345')
   const t = useTranslations('specification')
   const tc = useTranslations('common')
   const td = useTranslations('deviation')
@@ -2882,72 +2884,140 @@ export default function KravunderlagDetailClient({
       </div>
     )
   }
-  const renderLeftPanelTabs = () => (
-    <div
-      aria-label={t('leftPanelTabs')}
-      className={splitPanelTabsClassName}
-      role="tablist"
-    >
-      <button
-        aria-selected={leftTab === 'items'}
-        className={splitPanelTabClassName(leftTab === 'items')}
-        onClick={() => handleLeftTabChange('items')}
-        role="tab"
-        type="button"
+  const renderLeftPanelTabs = () =>
+    prototype.active ? (
+      <fieldset
+        aria-label={tPrototype('leftPaneView')}
+        className="prototype-1345-view-switcher"
+        data-prototype-pane-view="left"
+        {...devMarker({
+          context: 'prototype 1345',
+          name: 'pane view choices',
+          value: 'left',
+        })}
       >
-        <span className="truncate">{t('itemsInSpecification')}</span>
-      </button>
-      <button
-        aria-selected={leftTab === 'needs-references'}
-        className={splitPanelTabClassName(leftTab === 'needs-references')}
-        onClick={() => handleLeftTabChange('needs-references')}
-        role="tab"
-        type="button"
+        <button
+          aria-controls="prototype-1345-left-list"
+          aria-pressed={leftTab === 'items'}
+          onClick={() => handleLeftTabChange('items')}
+          type="button"
+        >
+          {t('itemsInSpecification')}
+        </button>
+        <button
+          aria-controls="prototype-1345-left-list"
+          aria-pressed={leftTab === 'needs-references'}
+          onClick={() => handleLeftTabChange('needs-references')}
+          type="button"
+        >
+          {t('needsReferences')} ({availableNeedsRefs.length})
+        </button>
+        <button
+          aria-controls="prototype-1345-left-list"
+          aria-pressed={leftTab === 'rfi'}
+          onClick={() => handleLeftTabChange('rfi')}
+          type="button"
+        >
+          {t('rfiList')}
+        </button>
+      </fieldset>
+    ) : (
+      <div
+        aria-label={t('leftPanelTabs')}
+        className={splitPanelTabsClassName}
+        role="tablist"
       >
-        <span className="truncate">{t('needsReferences')}</span>
-        <span className="text-xs opacity-80">{availableNeedsRefs.length}</span>
-      </button>
-      <button
-        aria-selected={leftTab === 'rfi'}
-        className={splitPanelTabClassName(leftTab === 'rfi')}
-        onClick={() => handleLeftTabChange('rfi')}
-        role="tab"
-        type="button"
+        <button
+          aria-selected={leftTab === 'items'}
+          className={splitPanelTabClassName(leftTab === 'items')}
+          onClick={() => handleLeftTabChange('items')}
+          role="tab"
+          type="button"
+        >
+          <span className="truncate">{t('itemsInSpecification')}</span>
+        </button>
+        <button
+          aria-selected={leftTab === 'needs-references'}
+          className={splitPanelTabClassName(leftTab === 'needs-references')}
+          onClick={() => handleLeftTabChange('needs-references')}
+          role="tab"
+          type="button"
+        >
+          <span className="truncate">{t('needsReferences')}</span>
+          <span className="text-xs opacity-80">
+            {availableNeedsRefs.length}
+          </span>
+        </button>
+        <button
+          aria-selected={leftTab === 'rfi'}
+          className={splitPanelTabClassName(leftTab === 'rfi')}
+          onClick={() => handleLeftTabChange('rfi')}
+          role="tab"
+          type="button"
+        >
+          <span className="truncate">{t('rfiList')}</span>
+        </button>
+      </div>
+    )
+  const renderRightPanelTabs = () =>
+    prototype.active ? (
+      <fieldset
+        aria-label={tPrototype('rightPaneView')}
+        className="prototype-1345-view-switcher"
+        data-prototype-pane-view="right"
+        {...devMarker({
+          context: 'prototype 1345',
+          name: 'pane view choices',
+          value: 'right',
+        })}
       >
-        <span className="truncate">{t('rfiList')}</span>
-      </button>
-    </div>
-  )
-  const renderRightPanelTabs = () => (
-    <div
-      aria-label={t('rightPanelTabs')}
-      className={splitPanelTabsClassName}
-      role="tablist"
-    >
-      <button
-        aria-controls="right-panel-available"
-        aria-selected={rightPanelTab === 'available'}
-        className={splitPanelTabClassName(rightPanelTab === 'available')}
-        id="right-panel-tab-available"
-        onClick={() => setRightPanelTab('available')}
-        role="tab"
-        type="button"
+        <button
+          aria-controls="prototype-1345-right-list"
+          aria-pressed={rightPanelTab === 'available'}
+          onClick={() => setRightPanelTab('available')}
+          type="button"
+        >
+          {t('availableRequirements')}
+        </button>
+        <button
+          aria-controls="prototype-1345-right-list"
+          aria-pressed={rightPanelTab === 'questions'}
+          onClick={() => setRightPanelTab('questions')}
+          type="button"
+        >
+          {t('requirementSelectionQuestions')}
+        </button>
+      </fieldset>
+    ) : (
+      <div
+        aria-label={t('rightPanelTabs')}
+        className={splitPanelTabsClassName}
+        role="tablist"
       >
-        <span className="truncate">{t('availableRequirements')}</span>
-      </button>
-      <button
-        aria-controls="right-panel-questions"
-        aria-selected={rightPanelTab === 'questions'}
-        className={splitPanelTabClassName(rightPanelTab === 'questions')}
-        id="right-panel-tab-questions"
-        onClick={() => setRightPanelTab('questions')}
-        role="tab"
-        type="button"
-      >
-        <span className="truncate">{t('requirementSelectionQuestions')}</span>
-      </button>
-    </div>
-  )
+        <button
+          aria-controls="right-panel-available"
+          aria-selected={rightPanelTab === 'available'}
+          className={splitPanelTabClassName(rightPanelTab === 'available')}
+          id="right-panel-tab-available"
+          onClick={() => setRightPanelTab('available')}
+          role="tab"
+          type="button"
+        >
+          <span className="truncate">{t('availableRequirements')}</span>
+        </button>
+        <button
+          aria-controls="right-panel-questions"
+          aria-selected={rightPanelTab === 'questions'}
+          className={splitPanelTabClassName(rightPanelTab === 'questions')}
+          id="right-panel-tab-questions"
+          onClick={() => setRightPanelTab('questions')}
+          role="tab"
+          type="button"
+        >
+          <span className="truncate">{t('requirementSelectionQuestions')}</span>
+        </button>
+      </div>
+    )
   const leftPanelMoreActionMenuItems = buildMoreActionMenuItems({
     includeAddActions: canEditContent,
     includeOutputActions: specificationItems.length > 0,
@@ -3098,7 +3168,10 @@ export default function KravunderlagDetailClient({
             data-specification-detail-split-panel="true"
           >
             {/* Left panel: Krav i underlaget / Behovsreferenser */}
-            <div className="flex flex-col gap-3 xl:h-full xl:min-h-0 xl:overflow-hidden">
+            <div
+              className="flex flex-col gap-3 xl:h-full xl:min-h-0 xl:overflow-hidden"
+              id={prototype.active ? 'prototype-1345-left-list' : undefined}
+            >
               {leftTab === 'needs-references' ? (
                 <div
                   className={desktopSplitPanelCardClassName}
@@ -3110,6 +3183,9 @@ export default function KravunderlagDetailClient({
                       <button
                         aria-label={t('newNeedsReference')}
                         className={leftPanelActionPillClassName}
+                        data-prototype-pane-action={
+                          prototype.active || undefined
+                        }
                         {...devMarker({
                           context: 'requirements specification detail',
                           name: 'table action',
@@ -3141,7 +3217,7 @@ export default function KravunderlagDetailClient({
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-secondary-200 text-sm dark:divide-secondary-700">
+                      <Prototype1345Table className="min-w-full divide-y divide-secondary-200 text-sm dark:divide-secondary-700">
                         <thead className="bg-secondary-50 text-left text-xs font-semibold uppercase tracking-[0.08em] text-secondary-500 dark:bg-secondary-900 dark:text-secondary-400">
                           <tr>
                             <th className="w-11 px-3 py-2" scope="col">
@@ -3370,7 +3446,7 @@ export default function KravunderlagDetailClient({
                             )
                           })}
                         </tbody>
-                      </table>
+                      </Prototype1345Table>
                     </div>
                   )}
                 </div>
@@ -3717,6 +3793,9 @@ export default function KravunderlagDetailClient({
                           <button
                             aria-label={t('assignNeedsReferenceAction')}
                             className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-secondary-300 text-secondary-700 transition-colors hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                            data-prototype-pane-action={
+                              prototype.active || undefined
+                            }
                             disabled={
                               selectionActionLimitExceeded ||
                               bulkActionResolving ||
@@ -3736,10 +3815,16 @@ export default function KravunderlagDetailClient({
                             type="button"
                           >
                             <Link2 aria-hidden="true" className="h-4 w-4" />
+                            {prototype.active && (
+                              <span>{t('assignNeedsReferenceAction')}</span>
+                            )}
                           </button>
                           <button
                             aria-label={t('clearNeedsReferenceAction')}
                             className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-secondary-300 text-secondary-700 transition-colors hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                            data-prototype-pane-action={
+                              prototype.active || undefined
+                            }
                             disabled={
                               selectionActionLimitExceeded ||
                               bulkActionResolving ||
@@ -3763,12 +3848,18 @@ export default function KravunderlagDetailClient({
                             type="button"
                           >
                             <Link2Off aria-hidden="true" className="h-4 w-4" />
+                            {prototype.active && (
+                              <span>{t('clearNeedsReferenceAction')}</span>
+                            )}
                           </button>
                           <button
                             aria-label={td('requestDeviationSelected', {
                               count: leftSelectedItemRefs.size,
                             })}
                             className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-amber-300 text-amber-700 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-amber-700/60 dark:text-amber-400 dark:hover:bg-amber-950/20"
+                            data-prototype-pane-action={
+                              prototype.active || undefined
+                            }
                             disabled={
                               selectionActionLimitExceeded ||
                               bulkActionResolving ||
@@ -3793,12 +3884,22 @@ export default function KravunderlagDetailClient({
                               aria-hidden="true"
                               className="h-4 w-4"
                             />
+                            {prototype.active && (
+                              <span>
+                                {td('requestDeviationSelected', {
+                                  count: leftSelectedItemRefs.size,
+                                })}
+                              </span>
+                            )}
                           </button>
                           <button
                             aria-label={t('removeSelected', {
                               count: leftSelectedItemRefs.size,
                             })}
                             className="btn-destructive inline-flex h-11 w-11 items-center justify-center rounded-lg px-0 py-0 disabled:cursor-not-allowed disabled:opacity-40"
+                            data-prototype-pane-action={
+                              prototype.active || undefined
+                            }
                             disabled={
                               selectionActionLimitExceeded ||
                               bulkActionResolving ||
@@ -3824,6 +3925,13 @@ export default function KravunderlagDetailClient({
                             type="button"
                           >
                             <Trash2 aria-hidden="true" className="h-4 w-4" />
+                            {prototype.active && (
+                              <span>
+                                {t('removeSelected', {
+                                  count: leftSelectedItemRefs.size,
+                                })}
+                              </span>
+                            )}
                           </button>
                         </>
                       ) : null
@@ -3900,13 +4008,26 @@ export default function KravunderlagDetailClient({
             </div>
 
             {/* Right panel: Tillgängliga krav / Kravurvalsfrågor */}
-            <div className="flex flex-col gap-3 xl:h-full xl:min-h-0 xl:overflow-hidden">
+            <div
+              className="flex flex-col gap-3 xl:h-full xl:min-h-0 xl:overflow-hidden"
+              id={prototype.active ? 'prototype-1345-right-list' : undefined}
+            >
               <div
-                aria-labelledby={
-                  rightPanelTab === 'available'
-                    ? 'right-panel-tab-available'
-                    : 'right-panel-tab-questions'
-                }
+                {...(prototype.active
+                  ? {
+                      role: 'region',
+                      'aria-label':
+                        rightPanelTab === 'available'
+                          ? t('availableRequirements')
+                          : t('requirementSelectionQuestions'),
+                    }
+                  : {
+                      role: 'tabpanel',
+                      'aria-labelledby':
+                        rightPanelTab === 'available'
+                          ? 'right-panel-tab-available'
+                          : 'right-panel-tab-questions',
+                    })}
                 className={desktopSplitPanelCardClassName}
                 data-specification-detail-list-panel="available"
                 id={
@@ -3914,7 +4035,6 @@ export default function KravunderlagDetailClient({
                     ? 'right-panel-available'
                     : 'right-panel-questions'
                 }
-                role="tabpanel"
               >
                 {rightPanelTab === 'available' ? (
                   <>

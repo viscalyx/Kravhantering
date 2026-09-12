@@ -21,7 +21,10 @@ import {
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FormModal from '@/components/FormModal'
-import { Prototype1345Filters } from '@/components/Prototype1345'
+import {
+  Prototype1345Filters,
+  usePrototype1345,
+} from '@/components/Prototype1345'
 import RfiAssessmentEditor, {
   RfiAssessmentDetails,
 } from '@/components/rfi/RfiAssessmentEditor'
@@ -160,6 +163,7 @@ export default function SpecificationRfiListPanel({
   canEdit,
   specificationId,
 }: Props) {
+  const prototype = usePrototype1345()
   const t = useTranslations('specificationRfiList')
   const tc = useTranslations('common')
   const locale = useLocale()
@@ -541,6 +545,7 @@ export default function SpecificationRfiListPanel({
               aria-label={viewFilterSwitchLabel}
               aria-pressed={showIncludedOnly}
               className={viewFilterButtonClassName}
+              data-prototype-pane-action={prototype.active || undefined}
               onClick={() => setShowIncludedOnly(current => !current)}
               title={viewFilterSwitchLabel}
               type="button"
@@ -550,11 +555,16 @@ export default function SpecificationRfiListPanel({
               })}
             >
               <ListFilter aria-hidden="true" className="h-4 w-4" />
+              {prototype.active && <span>{viewFilterSwitchLabel}</span>}
             </button>
             <div className="flex flex-wrap items-center gap-2">
               <a
                 aria-label="CSV"
                 className={exportPillClassName}
+                data-floating-action-id={
+                  prototype.active ? 'export' : undefined
+                }
+                data-prototype-pane-action={prototype.active || undefined}
                 href={`/api/requirements-specifications/${encodedSpecificationId}/rfi-list/export?format=csv&locale=${locale}`}
                 title="CSV"
               >
@@ -564,6 +574,10 @@ export default function SpecificationRfiListPanel({
               <a
                 aria-label="PDF"
                 className={exportPillClassName}
+                data-floating-action-id={
+                  prototype.active ? 'export' : undefined
+                }
+                data-prototype-pane-action={prototype.active || undefined}
                 href={`/api/requirements-specifications/${encodedSpecificationId}/rfi-list/export?format=pdf&locale=${locale}`}
                 title="PDF"
               >
