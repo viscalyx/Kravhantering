@@ -4,6 +4,8 @@ import { AlertCircle, Clock, X } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import PrototypeAreaInfo from '@/app/[locale]/requirements/_prototype-1348/AreaInfo'
+import { usePrototypeState } from '@/app/[locale]/requirements/_prototype-1348/state'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationPill from '@/components/DeviationPill'
 import DeviationStepper from '@/components/DeviationStepper'
@@ -124,6 +126,8 @@ export default function RequirementDetailClient({
   requirementId,
 }: RequirementDetailClientProps) {
   useHelpContent(inline ? null : REQUIREMENT_DETAIL_HELP)
+  const prototypeState = usePrototypeState()
+  const isPrototypeA = prototypeState.enabled && prototypeState.variant === 'A'
   const t = useTranslations('requirement')
   const tf = useTranslations('improvementSuggestion')
   const tc = useTranslations('common')
@@ -218,7 +222,9 @@ export default function RequirementDetailClient({
     useVersionPillConnector(selectedVersionNumber)
 
   const restoreWorkflowStepperVisibility = useCallback(() => {
-    const anchor = workflowStepperAnchorRef.current
+    const anchor = isPrototypeA
+      ? cardRef.current?.querySelector<HTMLElement>('[data-prototype-stepper]')
+      : workflowStepperAnchorRef.current
     if (!anchor || typeof window === 'undefined') {
       return
     }
@@ -240,7 +246,7 @@ export default function RequirementDetailClient({
       block: 'nearest',
       inline: 'nearest',
     })
-  }, [inline])
+  }, [cardRef, inline, isPrototypeA])
 
   const scheduleWorkflowStepperVisibilityRestore = useCallback(() => {
     if (typeof window === 'undefined') {
@@ -434,6 +440,27 @@ export default function RequirementDetailClient({
   const buildDetailSectionContext = (sectionName: string) =>
     `${detailContext} > detail section: ${sectionName}`
 
+  const processSteps = !isSpecificationItemContext ? (
+    <StatusStepper
+      currentStatusId={currentStatusId}
+      developerModeContext={detailContext}
+      isArchiving={isArchiving}
+      prototypeCompact={isPrototypeA}
+      statuses={
+        statuses.length === 0
+          ? statuses
+          : isArchiving || currentStatusId === STATUS_ARCHIVED
+            ? [3, 2, 4]
+                .map(id => statuses.find(status => status.id === id))
+                .filter(
+                  (status): status is (typeof statuses)[number] =>
+                    status != null,
+                )
+            : statuses.filter(status => status.id !== STATUS_ARCHIVED)
+      }
+    />
+  ) : null
+
   const detailMetadata = [
     ...(req.area
       ? [
@@ -441,7 +468,13 @@ export default function RequirementDetailClient({
             id: 'area',
             label: t('area'),
             markerValue: 'area',
-            value: (
+            value: isPrototypeA ? (
+              <PrototypeAreaInfo
+                areaId={req.area.id}
+                name={req.area.name}
+                ownerName={areaOwnerName}
+              />
+            ) : (
               <>
                 {req.area.name}
                 {areaOwnerName ? (
@@ -945,7 +978,7 @@ export default function RequirementDetailClient({
         )}
 
         <div
-          className="mb-5 scroll-mt-32"
+          className={`mb-5 scroll-mt-32 ${isPrototypeA ? 'prototype-workflow-notices' : ''}`}
           data-requirement-detail-stepper-anchor="true"
           ref={workflowStepperAnchorRef}
         >
@@ -1025,23 +1058,9 @@ export default function RequirementDetailClient({
               developerModeContext={detailContext}
             />
           ) : !isSpecificationItemContext ? (
-            <StatusStepper
-              currentStatusId={currentStatusId}
-              developerModeContext={detailContext}
-              isArchiving={isArchiving}
-              statuses={
-                statuses.length === 0
-                  ? statuses
-                  : isArchiving || currentStatusId === STATUS_ARCHIVED
-                    ? [3, 2, 4]
-                        .map(id => statuses.find(status => status.id === id))
-                        .filter(
-                          (status): status is (typeof statuses)[number] =>
-                            status != null,
-                        )
-                    : statuses.filter(status => status.id !== STATUS_ARCHIVED)
-              }
-            />
+            isPrototypeA ? null : (
+              processSteps
+            )
           ) : null}
         </div>
 
@@ -1069,6 +1088,9 @@ export default function RequirementDetailClient({
                   developerModeContext={detailContext}
                   emptyLabel={tc('noneAvailable')}
                   metadata={detailMetadata}
+                  prototypeProcessSteps={
+                    isPrototypeA ? processSteps : undefined
+                  }
                   references={detailReferences}
                   referencesLabel={t('normReferences')}
                   requirementPackages={detailRequirementPackages}

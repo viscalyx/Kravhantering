@@ -3804,6 +3804,10 @@
     "imageOmitted": "Bild utelämnad"
   },
   "prototype1348": {
+    "areaInfo": "Information om {name}",
+    "areaDescriptionEmpty": "Det finns ingen beskrivning för kravområdet.",
+    "areaInfoLoading": "Hämtar områdesbeskrivning…",
+    "areaInfoError": "Kunde inte hämta områdesbeskrivningen.",
     "title": "Prototyp #1348",
     "previous": "Föregående variant",
     "next": "Nästa variant",

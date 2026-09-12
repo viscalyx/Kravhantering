@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-09-12T18:58:29.871Z",
+  "capturedAt": "2026-09-12T19:19:46.474Z",
   "baseCommit": "2d9ad75f",
   "results": [
     {
@@ -47,8 +47,8 @@
       },
       "scenario": "actual text, empty sections, light theme, collapsed navigation",
       "requirement": "ANV0002:v1",
-      "detailHeight": 588,
-      "cardHeight": 398,
+      "detailHeight": 538,
+      "cardHeight": 390,
       "suggestionsHeight": 74,
       "detailTop": 201,
       "steps": [
@@ -66,6 +66,7 @@
         }
       ],
       "controls": [
+        "",
         "Rapporter",
         "Lägg till i kravunderlag",
         "Dela",
@@ -195,8 +196,8 @@
       },
       "scenario": "actual text, empty sections, light theme, collapsed navigation",
       "requirement": "ANV0002:v1",
-      "detailHeight": 588,
-      "cardHeight": 398,
+      "detailHeight": 538,
+      "cardHeight": 390,
       "suggestionsHeight": 74,
       "detailTop": 201,
       "steps": [
@@ -214,6 +215,7 @@
         }
       ],
       "controls": [
+        "",
         "Rapporter",
         "Lägg till i kravunderlag",
         "Dela",

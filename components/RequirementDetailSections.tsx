@@ -37,6 +37,7 @@ export interface RequirementDetailSectionsProps {
   developerModeContext?: string
   emptyLabel: string
   metadata: RequirementDetailMetadataItem[]
+  prototypeProcessSteps?: ReactNode
   references: RequirementDetailChipItem[]
   referencesLabel: string
   requirementPackages: RequirementDetailChipItem[]

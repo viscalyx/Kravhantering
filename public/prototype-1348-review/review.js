@@ -1,10 +1,13 @@
 const data = {
-  capturedAt: '2026-09-12T18:58:29.871Z',
+  capturedAt: '2026-09-12T19:19:46.474Z',
   baseCommit: '2d9ad75f',
   results: [
     {
       variant: 'baseline',
-      viewport: { width: 1440, height: 900 },
+      viewport: {
+        width: 1440,
+        height: 900,
+      },
       scenario:
         'actual text, empty sections, light theme, collapsed navigation',
       requirement: 'ANV0002:v1',
@@ -13,9 +16,18 @@ const data = {
       suggestionsHeight: 130,
       detailTop: 201,
       steps: [
-        { label: 'Utkast', current: null },
-        { label: 'Granskning', current: null },
-        { label: 'Publicerad', current: 'step' },
+        {
+          label: 'Utkast',
+          current: null,
+        },
+        {
+          label: 'Granskning',
+          current: null,
+        },
+        {
+          label: 'Publicerad',
+          current: 'step',
+        },
       ],
       controls: [
         'Rapporter',
@@ -30,20 +42,33 @@ const data = {
     },
     {
       variant: 'A',
-      viewport: { width: 1440, height: 900 },
+      viewport: {
+        width: 1440,
+        height: 900,
+      },
       scenario:
         'actual text, empty sections, light theme, collapsed navigation',
       requirement: 'ANV0002:v1',
-      detailHeight: 588,
-      cardHeight: 398,
+      detailHeight: 538,
+      cardHeight: 390,
       suggestionsHeight: 74,
       detailTop: 201,
       steps: [
-        { label: 'Utkast', current: null },
-        { label: 'Granskning', current: null },
-        { label: 'Publicerad', current: 'step' },
+        {
+          label: 'Utkast',
+          current: null,
+        },
+        {
+          label: 'Granskning',
+          current: null,
+        },
+        {
+          label: 'Publicerad',
+          current: 'step',
+        },
       ],
       controls: [
+        '',
         'Rapporter',
         'Lägg till i kravunderlag',
         'Dela',
@@ -56,7 +81,10 @@ const data = {
     },
     {
       variant: 'B',
-      viewport: { width: 1440, height: 900 },
+      viewport: {
+        width: 1440,
+        height: 900,
+      },
       scenario:
         'actual text, empty sections, light theme, collapsed navigation',
       requirement: 'ANV0002:v1',
@@ -65,9 +93,18 @@ const data = {
       suggestionsHeight: 74,
       detailTop: 201,
       steps: [
-        { label: 'Utkast', current: null },
-        { label: 'Granskning', current: null },
-        { label: 'Publicerad', current: 'step' },
+        {
+          label: 'Utkast',
+          current: null,
+        },
+        {
+          label: 'Granskning',
+          current: null,
+        },
+        {
+          label: 'Publicerad',
+          current: 'step',
+        },
       ],
       controls: [
         'Rapporter',
@@ -82,7 +119,10 @@ const data = {
     },
     {
       variant: 'C',
-      viewport: { width: 1440, height: 900 },
+      viewport: {
+        width: 1440,
+        height: 900,
+      },
       scenario:
         'actual text, empty sections, light theme, collapsed navigation',
       requirement: 'ANV0002:v1',
@@ -91,9 +131,18 @@ const data = {
       suggestionsHeight: 74,
       detailTop: 201,
       steps: [
-        { label: 'Utkast', current: null },
-        { label: 'Granskning', current: null },
-        { label: 'Publicerad', current: 'step' },
+        {
+          label: 'Utkast',
+          current: null,
+        },
+        {
+          label: 'Granskning',
+          current: null,
+        },
+        {
+          label: 'Publicerad',
+          current: 'step',
+        },
       ],
       controls: [
         'Rapporter',
@@ -108,7 +157,10 @@ const data = {
     },
     {
       variant: 'baseline',
-      viewport: { width: 1920, height: 1080 },
+      viewport: {
+        width: 1920,
+        height: 1080,
+      },
       scenario:
         'actual text, empty sections, light theme, collapsed navigation',
       requirement: 'ANV0002:v1',
@@ -117,9 +169,18 @@ const data = {
       suggestionsHeight: 130,
       detailTop: 201,
       steps: [
-        { label: 'Utkast', current: null },
-        { label: 'Granskning', current: null },
-        { label: 'Publicerad', current: 'step' },
+        {
+          label: 'Utkast',
+          current: null,
+        },
+        {
+          label: 'Granskning',
+          current: null,
+        },
+        {
+          label: 'Publicerad',
+          current: 'step',
+        },
       ],
       controls: [
         'Rapporter',
@@ -134,20 +195,33 @@ const data = {
     },
     {
       variant: 'A',
-      viewport: { width: 1920, height: 1080 },
+      viewport: {
+        width: 1920,
+        height: 1080,
+      },
       scenario:
         'actual text, empty sections, light theme, collapsed navigation',
       requirement: 'ANV0002:v1',
-      detailHeight: 588,
-      cardHeight: 398,
+      detailHeight: 538,
+      cardHeight: 390,
       suggestionsHeight: 74,
       detailTop: 201,
       steps: [
-        { label: 'Utkast', current: null },
-        { label: 'Granskning', current: null },
-        { label: 'Publicerad', current: 'step' },
+        {
+          label: 'Utkast',
+          current: null,
+        },
+        {
+          label: 'Granskning',
+          current: null,
+        },
+        {
+          label: 'Publicerad',
+          current: 'step',
+        },
       ],
       controls: [
+        '',
         'Rapporter',
         'Lägg till i kravunderlag',
         'Dela',
@@ -160,7 +234,10 @@ const data = {
     },
     {
       variant: 'B',
-      viewport: { width: 1920, height: 1080 },
+      viewport: {
+        width: 1920,
+        height: 1080,
+      },
       scenario:
         'actual text, empty sections, light theme, collapsed navigation',
       requirement: 'ANV0002:v1',
@@ -169,9 +246,18 @@ const data = {
       suggestionsHeight: 74,
       detailTop: 201,
       steps: [
-        { label: 'Utkast', current: null },
-        { label: 'Granskning', current: null },
-        { label: 'Publicerad', current: 'step' },
+        {
+          label: 'Utkast',
+          current: null,
+        },
+        {
+          label: 'Granskning',
+          current: null,
+        },
+        {
+          label: 'Publicerad',
+          current: 'step',
+        },
       ],
       controls: [
         'Rapporter',
@@ -186,7 +272,10 @@ const data = {
     },
     {
       variant: 'C',
-      viewport: { width: 1920, height: 1080 },
+      viewport: {
+        width: 1920,
+        height: 1080,
+      },
       scenario:
         'actual text, empty sections, light theme, collapsed navigation',
       requirement: 'ANV0002:v1',
@@ -195,9 +284,18 @@ const data = {
       suggestionsHeight: 74,
       detailTop: 201,
       steps: [
-        { label: 'Utkast', current: null },
-        { label: 'Granskning', current: null },
-        { label: 'Publicerad', current: 'step' },
+        {
+          label: 'Utkast',
+          current: null,
+        },
+        {
+          label: 'Granskning',
+          current: null,
+        },
+        {
+          label: 'Publicerad',
+          current: 'step',
+        },
       ],
       controls: [
         'Rapporter',

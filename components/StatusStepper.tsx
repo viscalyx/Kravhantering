@@ -43,15 +43,12 @@ const FALLBACK_STEPS: StatusStep[] = [
   },
 ]
 
-/** Pixel depth of the arrow point / notch */
-const ARROW = 14
-
 const DROP_SHADOW =
   'drop-shadow(1px 0 0 var(--color-secondary-500)) drop-shadow(-1px 0 0 var(--color-secondary-500)) drop-shadow(0 1px 0 var(--color-secondary-500)) drop-shadow(0 -1px 0 var(--color-secondary-500))'
 
 /** Clip-path for background (inactive) chevron steps. */
-function stepClipPath(isFirst: boolean) {
-  const a = `${ARROW}px`
+function stepClipPath(isFirst: boolean, arrow: number) {
+  const a = `${arrow}px`
   if (isFirst)
     return `polygon(0 0, calc(100% - ${a}) 0, 100% 50%, calc(100% - ${a}) 100%, 0 100%)`
   return `polygon(0 0, calc(100% - ${a}) 0, 100% 50%, calc(100% - ${a}) 100%, 0 100%, ${a} 50%)`
@@ -62,8 +59,8 @@ function stepClipPath(isFirst: boolean) {
  * so CSS can smoothly interpolate between first (flat left) and
  * non-first (notched left) shapes.
  */
-function sliderClipPath(isFirst: boolean) {
-  const a = `${ARROW}px`
+function sliderClipPath(isFirst: boolean, arrow: number) {
+  const a = `${arrow}px`
   if (isFirst)
     return `polygon(0 0, calc(100% - ${a}) 0, 100% 50%, calc(100% - ${a}) 100%, 0 100%, 0 50%)`
   return `polygon(0 0, calc(100% - ${a}) 0, 100% 50%, calc(100% - ${a}) 100%, 0 100%, ${a} 50%)`
@@ -79,6 +76,8 @@ interface StatusStepperProps {
    * override in `lib/requirements/status-label.ts`.
    */
   isArchiving?: boolean
+  /** Throwaway compact presentation for prototype A. */
+  prototypeCompact?: boolean
   statuses?: StatusStep[]
 }
 
@@ -88,10 +87,12 @@ function getStatusStepDeveloperModeValue(step: StatusStep) {
 
 export default function StatusStepper({
   developerModeContext,
+  prototypeCompact = false,
   currentStatusId,
   isArchiving = false,
   statuses,
 }: StatusStepperProps) {
+  const arrow = prototypeCompact ? 6 : 14
   const t = useTranslations('requirement.statusLabel')
   const tStepper = useTranslations('requirement')
   const steps = useMemo(() => {
@@ -153,7 +154,7 @@ export default function StatusStepper({
     // biome-ignore lint/a11y/useSemanticElements: <fieldset> is for form controls; this is a workflow progress indicator
     <div
       aria-label={tStepper('statusStepperAriaLabel')}
-      className="flex w-full relative"
+      className={`flex w-full relative ${prototypeCompact ? 'prototype-compact-stepper' : ''}`}
       data-prototype-stepper="true"
       role="group"
       {...devMarker({
@@ -179,18 +180,18 @@ export default function StatusStepper({
             stepRefs.current[i] = el
           }}
           style={{
-            marginLeft: i === 0 ? 0 : -ARROW,
+            marginLeft: i === 0 ? 0 : -arrow,
             zIndex: i,
             filter: DROP_SHADOW,
           }}
         >
           <div
             className="h-10 flex items-center justify-center bg-secondary-300 dark:bg-secondary-600 text-secondary-600 dark:text-secondary-300"
-            style={{ clipPath: stepClipPath(i === 0) }}
+            style={{ clipPath: stepClipPath(i === 0, arrow) }}
           >
             <span
               className="flex items-center justify-center gap-1.5 text-sm select-none font-medium"
-              style={{ paddingLeft: i === 0 ? 0 : ARROW / 2 }}
+              style={{ paddingLeft: i === 0 ? 0 : arrow / 2 }}
             >
               <StatusIcon className="h-4 w-4 shrink-0" name={step.iconName} />
               {stepLabel(step)}
@@ -217,14 +218,14 @@ export default function StatusStepper({
             style={{
               backgroundColor: activeColor ?? undefined,
               color: sliderTextColor ?? undefined,
-              clipPath: sliderClipPath(targetIndex === 0),
+              clipPath: sliderClipPath(targetIndex === 0, arrow),
               transition:
                 'clip-path 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out',
             }}
           >
             <span
               className="flex items-center justify-center gap-1.5 text-sm select-none font-semibold"
-              style={{ paddingLeft: targetIndex === 0 ? 0 : ARROW / 2 }}
+              style={{ paddingLeft: targetIndex === 0 ? 0 : arrow / 2 }}
             >
               <StatusIcon
                 className="h-4 w-4 shrink-0"

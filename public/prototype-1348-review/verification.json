@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-09-12T18:57:37.910Z",
+  "capturedAt": "2026-09-12T19:18:20.234Z",
   "checks": [
     {
       "name": "Remember baseline across variant switch",
@@ -14,8 +14,8 @@
         "requirement": "ANV0002:v1",
         "theme": "light",
         "navigationWidth": "4.5rem",
-        "detailHeight": 588,
-        "cardHeight": 398,
+        "detailHeight": 538,
+        "cardHeight": 390,
         "suggestionsHeight": 74,
         "baselineHeight": 824,
         "steps": ["Utkast", "Granskning", "Publicerad (current)"],

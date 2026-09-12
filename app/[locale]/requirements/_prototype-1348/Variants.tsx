@@ -77,14 +77,23 @@ function References(props: RequirementDetailSectionsProps) {
 function TextBlock({
   label,
   children,
+  headerAside,
   ...attrs
 }: {
   label: string
   children: ReactNode
+  headerAside?: ReactNode
 }) {
   return (
     <section {...attrs}>
-      <h3>{label}</h3>
+      {headerAside ? (
+        <div className="prototype-text-heading">
+          <h3>{label}</h3>
+          {headerAside}
+        </div>
+      ) : (
+        <h3>{label}</h3>
+      )}
       <div className="reading-width prototype-primary-text">{children}</div>
     </section>
   )
@@ -95,6 +104,7 @@ export function VariantA(props: RequirementDetailSectionsProps) {
   return (
     <div className="prototype-sections prototype-variant-a">
       <TextBlock
+        headerAside={props.prototypeProcessSteps}
         label={props.descriptionLabel}
         {...marker(props, 'requirement text')}
       >

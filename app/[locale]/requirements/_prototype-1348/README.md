@@ -4,7 +4,8 @@ Question: which presentation makes a short expanded requirement easier to scan
 while leaving more of its surrounding list visible?
 
 This is throwaway UI code on `prototype/issue-1348`, based on
-`fix/issue-1347` at `2d9ad75f`. No variant is approved for production yet.
+`fix/issue-1347` at `2d9ad75f`. A is the preferred direction; this refinement
+remains a prototype.
 
 ## Start and show it
 
@@ -52,7 +53,9 @@ ends. Shortcuts leave text inputs, selects, dialogs and other protected
 keyboard widgets alone. The selected variant stays in `?variant=`.
 
 - **baseline — Nuvarande layout:** the original rendering.
-- **A — Kompakt kort:** a smaller card with grouped metadata tiles.
+- **A — Kompakt kort:** a smaller card with grouped metadata tiles, compact
+  original-style process arrows beside the requirement-text heading, and
+  area information available through an info button.
 - **B — Metadata på rad:** no card frame; primary text blocks followed by
   flowing label/value pairs.
 - **C — Dokumentlayout:** aligned label/content rows and ruled metadata.
@@ -89,10 +92,11 @@ For the requested sizes, use the browser's responsive viewport controls at
 | Three structural alternatives plus the actual baseline | Switch baseline/A/B/C on ANV0002. A groups metadata in a card, B flows pairs without a frame, C aligns rows in a document layout. |
 | Smaller outer spacing, card padding and gaps | Compare the same short requirement. Watch total detail height and how many following requirements fit in the viewport. |
 | Stronger primary text | In A/B/C, requirement text and acceptance text are 16 px with a 1.5 line height. Both precede metadata. Compare with the baseline and switch to long text to inspect wrapping. |
-| More compact metadata | Inspect all metadata values, area owner, verification method and specification count. A uses a compact grid; B uses inline pairs; C uses a ruled definition table. |
+| More compact metadata | Inspect all metadata values, verification method and specification count. A uses a compact grid with area owner inside the info panel; B uses inline pairs; C uses a ruled definition table. |
 | Compact empty references and packages | Choose empty sections. Both labels and their empty information stay visible on compact rows. Choose populated sections and hover the package to inspect its existing purpose/scope tooltip. |
 | Compact empty improvement suggestions | Choose empty sections and compare the card. Its title, empty information and registration button remain. Choose populated sections to inspect the existing suggestion pill and actions. |
-| Quieter status presentation | Baseline uses 40 px arrows; A/B/C use 30 px steps. A uses pale blocks; B/C use a flat strip. Verify every step label/icon and the active underline. The existing current-step semantics stay intact. |
+| Compact original-style process steps in A | On desktop, inspect the steps to the right of Kravtext on the same heading row. The original outline, icons and configured active color remain; height is 24 px and arrow depth 6 px (baseline: 40 px and 14 px). On narrow cards the steps wrap below the heading. B/C retain their 30 px flat strip. |
+| Area information on demand in A | Click the info icon beside the area name. A panel beneath it shows the real area description and area owner. The owner is absent from the closed detail view. Tab to the icon and press Enter; close with Escape or a click outside. Verify Swedish/English and light/dark themes. |
 | Existing actions and version history retained | Compare the right action rail and version pill. Available actions still come from the real permission/lifecycle model. Open the registration dialog and navigate it by keyboard. |
 | Samples and width stress controls | Switch real/long text and real/empty/populated sections; inspect the displayed state. Switch to 760 px simulation and check wrapping. Return to real data to restore loaded content. |
 | Baseline measurement and shareable variant | Remember baseline height, change variant, inspect the height difference and URL. Use arrows to wrap around; reload to verify the chosen variant. Add `selected=ANV0002` to a copied library URL to reopen the example. |
@@ -104,6 +108,22 @@ For the requested sizes, use the browser's responsive viewport controls at
 <!-- markdownlint-enable MD013 -->
 
 [Standalone English detail](http://localhost:3001/en/requirements/ANV0002/1?variant=A&sections=populated)
+
+## Current A refinement
+
+The user prefers A and asks for smaller ordinary process arrows beside
+Kravtext, plus an area info icon with description and owner in a panel.
+The revised desktop example is **538 px** high, compared with **588 px** for
+A before this refinement and **824 px** for the baseline. Both desktop sizes
+use the same actual ANV0002 text and forced empty sections.
+
+[Open refined A](http://localhost:3001/sv/requirements?variant=A&sections=empty&selected=ANV0002).
+The gallery includes open information panels in light/dark themes and at
+320/375 px. `refinement-verification.json` records the focused checks for
+alignment, arrow geometry, real area information and keyboard dismissal.
+The area's existing read API supplies the description when the panel opens;
+loading, unavailable-description and read-error messages stay inside it.
+The demo area's owner currently resolves to its stored HSA-id display value.
 
 ## Evidence and limits
 
@@ -144,6 +164,7 @@ implementation with the issue's production test and documentation coverage.
 
 ## Code map and decision
 
+- `AreaInfo.tsx` contains the read-only area information panel for A.
 - `Variants.tsx`, `state.ts` and `prototype.css` contain the alternative
   presentation, URL state and scoped styles.
 - `PrototypeSwitcher` is the floating comparison/inspection tool, mounted by
@@ -161,7 +182,7 @@ implementation with the issue's production test and documentation coverage.
   directory alias serves these assets through the existing authenticated
   Swedish requirements path without changing authentication rules.
 
-**Verdict:** all three structures are available for review. Select one or
-combine specific elements after inspecting the short and long cases. No
-visual preference is treated as validated, and nothing is promoted to the
-main branch by this prototype.
+**Verdict:** A is the user's preferred direction. This iteration refines its
+process steps and moves the area description and owner behind the info icon.
+The revision stays on the prototype branch for visual review; a production
+implementation still needs the issue's full tests and documentation.

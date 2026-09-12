@@ -3804,6 +3804,10 @@
     "imageOmitted": "Image omitted"
   },
   "prototype1348": {
+    "areaInfo": "Information about {name}",
+    "areaDescriptionEmpty": "No description is available for this requirement area.",
+    "areaInfoLoading": "Loading area description…",
+    "areaInfoError": "Could not load the area description.",
     "title": "Prototype #1348",
     "previous": "Previous variant",
     "next": "Next variant",

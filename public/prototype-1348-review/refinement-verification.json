@@ -1,0 +1,80 @@
+{
+  "capturedAt": "2026-09-12T19:19:14.754Z",
+  "baseUrl": "http://localhost:3001",
+  "checks": [
+    {
+      "name": "A: single ordinary chevron stepper beside requirement text",
+      "passed": true,
+      "details": {
+        "headingCenter": 241.5,
+        "stepCenter": 241.5,
+        "headingRight": 184.953125,
+        "stepLeft": 746.265625,
+        "height": 24,
+        "clip": "polygon(0px 0px, calc(100% - 6px) 0px, 100% 50%, calc(100% - 6px) 100%, 0px 100%)"
+      }
+    },
+    {
+      "name": "A: owner absent from visible card until information is opened",
+      "passed": true
+    },
+    {
+      "name": "Area information opens beneath icon with real description and owner",
+      "passed": true,
+      "details": {
+        "description": "Krav relaterade till användargränssnitt och användarupplevelse",
+        "content": "Användbarhet\n\nKrav relaterade till användargränssnitt och användarupplevelse\n\nKravområdesägare\nSE5560000001-marias"
+      }
+    },
+    {
+      "name": "Escape closes information and keeps detail open",
+      "passed": true
+    },
+    {
+      "name": "Keyboard opens information",
+      "passed": true
+    },
+    {
+      "name": "Click outside closes area information",
+      "passed": true
+    },
+    {
+      "name": "375px: area panel and compact steps fit",
+      "passed": true,
+      "details": {
+        "bounds": {
+          "x": 23,
+          "y": 348.078125,
+          "width": 336,
+          "height": 163
+        },
+        "card": {
+          "width": 341,
+          "scroll": 341
+        }
+      }
+    },
+    {
+      "name": "320px: area panel and compact steps fit",
+      "passed": true,
+      "details": {
+        "bounds": {
+          "x": 16,
+          "y": 396.078125,
+          "width": 288,
+          "height": 163
+        },
+        "card": {
+          "width": 286,
+          "scroll": 286
+        }
+      }
+    },
+    {
+      "name": "No browser exceptions",
+      "passed": true,
+      "details": []
+    }
+  ],
+  "errors": []
+}
