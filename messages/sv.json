@@ -3799,5 +3799,39 @@
   },
   "safeMarkdown": {
     "imageOmitted": "Bild utelämnad"
+  },
+  "prototype1345": {
+    "prototype": "PROTOTYP #1345",
+    "previous": "Föregående variant",
+    "next": "Nästa variant",
+    "compare": "Före / A",
+    "review": "Ändringar och verifiering",
+    "close": "Stäng granskning",
+    "tools": "Liståtgärder",
+    "none": "ingen",
+    "writeSimulated": "Prototyp: ändringen simuleras; ingenting sparas.",
+    "readOnly": "Tillfällig layoutstudie. Verkliga data läses från utvecklingsappen. Skapande och skrivningar simuleras. Ingen utformning är beslutad.",
+    "state": "Variant {variant} · Vy {view} · Senast simulerad åtgärd: {action}",
+    "variants": {
+      "before": "Nuvarande layout",
+      "A": "Kompakt sidhuvud",
+      "B": "Gemensam kommandorad",
+      "C": "Åtgärdspanel"
+    },
+    "tradeoffs": {
+      "before": "Nuläge: ursprungliga rubriker och flytande ikonknappar. Prototypens skrivskydd och granskningsrad är fortfarande aktiva.",
+      "A": "Rekommenderad utgångspunkt: tydlig rubrik och namngiven skapandeknapp ovanför listan; övriga ikoner i en egen rad. Tar mer höjd, men behåller välbekanta kontroller.",
+      "B": "En gemensam rad samlar rubrik, namngivna verktyg och skapandeknapp. Sparar höjd när allt får plats, men radbryts i smalare fönster.",
+      "C": "En egen åtgärdspanel gör varje kommando läsbart och lämnar tabellhuvudet lugnt. Kostar tabellbredd och prövar avsiktligt ett alternativ till issuens önskade horisontella verktygsrad."
+    },
+    "checks": {
+      "heading": "1. Jämför Före med A/B/C: hitta sidrubriken med utfälld och infälld navigation.",
+      "primary": "2. Kontrollera alla fem listor: plusikonen har nu en precis synlig etikett. Klicka för att se en simulerad åtgärd nedan.",
+      "secondary": "3. I kravbiblioteket: hitta AI-assisterat författande, rapporter, import, export och kolumner. A visar ikoner; B/C visar även text.",
+      "menus": "4. Öppna Rapporter och Kolumner. Befintliga alternativ och kolumnkontroller finns kvar; jämför placering och tangentbordsåtkomst.",
+      "viewport": "5. Jämför 1440 × 900 och 1920 × 1080; växla ljust/mörkt tema och pröva långt innehåll och ett smalt fönster.",
+      "keyboard": "6. Tabba genom kontrollerna. Vänster/höger växlar variant utanför fält och menyer. Ladda om eller kopiera länken för att behålla varianten.",
+      "safety": "7. Inget skapande eller skrivning genomförs. Statusraden visar simulerade åtgärder. Filtrering och urval för läsning fungerar fortfarande."
+    }
   }
 }

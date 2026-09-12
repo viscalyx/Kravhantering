@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Issue 1345 — visual comparison</title>
+<style>
+:root{color-scheme:light dark;font:16px system-ui;background:#0f172a;color:#f8fafc}body{margin:0}header{padding:24px 32px;background:#172033}h1{font-size:24px;margin:0 0 12px}p{max-width:85ch;line-height:1.6}nav{display:flex;gap:20px;flex-wrap:wrap;align-items:center}label{display:flex;gap:10px;align-items:center}select,button{font:inherit;padding:8px;border:1px solid #64748b;border-radius:6px;min-height:36px;background:#1e293b;color:white}a{color:#7dd3fc}main{padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px}figure{margin:0;min-width:0}figcaption{font-weight:600;margin-bottom:12px}img{display:block;width:100%;border:1px solid #64748b;border-radius:8px;background:white}footer{padding:0 32px 32px}#state{color:#cbd5e1}details{margin-top:16px}li{margin:8px 0}body.stacked main{grid-template-columns:1fr}@media(max-width:900px){main{grid-template-columns:1fr}header{padding:20px}}
+</style>
+</head>
+<body>
+<header>
+<h1>Issue 1345 · Before and after</h1>
+<p>Throwaway layout study. These are screenshots of the real development app with the same data at 1440 × 900. Choose a list and a candidate layout. Click either image to inspect it at full resolution. No design is approved yet.</p>
+<nav aria-label="Comparison controls">
+<label>List <select id="view"><option value="library">Kravbibliotek</option><option value="specifications">Kravunderlag</option><option value="packages">Kravpaket</option><option value="norms">Normbibliotek</option><option value="areas">Kravområden</option></select></label>
+<label>Design <select id="variant"><option value="A">A — Compact header</option><option value="B">B — Command band</option><option value="C">C — Action panel</option></select></label>
+<button id="stack" type="button" aria-pressed="false">Stack images</button>
+<a id="live" href="http://localhost:3001/sv/requirements?variant=A">Open this design in the running app</a>
+</nav>
+<p id="state" role="status"></p>
+</header>
+<main>
+<figure><figcaption>Before · original list layout</figcaption><a id="before-link"><img id="before" alt="Original list layout"></a></figure>
+<figure><figcaption id="after-caption">After · A</figcaption><a id="after-link"><img id="after" alt="Proposed list layout"></a></figure>
+</main>
+<footer>
+<p><a href="README.md">Full change list, launch instructions and verification checklist</a></p>
+<details><summary>Additional views: dark theme, wide screens, narrow screens and review controls</summary>
+<ul>
+<li><a href="evidence/library-A-1920-dark-collapsed.png">A at 1920 × 1080, dark theme, navigation collapsed</a></li>
+<li><a href="evidence/library-A-1920-dark-expanded.png">A at 1920 × 1080, dark theme, navigation expanded</a></li>
+<li><a href="evidence/library-B-1920-dark-expanded.png">B at 1920 × 1080, dark theme, navigation expanded</a></li>
+<li><a href="evidence/library-C-1920-dark-expanded.png">C at 1920 × 1080, dark theme, navigation expanded</a></li>
+<li><a href="evidence/library-A-320-dark.png">A at 320 px, dark theme</a></li>
+<li><a href="evidence/library-B-320-english.png">B at 320 px, English</a></li>
+<li><a href="evidence/library-C-320-english.png">C at 320 px, English</a></li>
+<li><a href="evidence/library-B-1440-english.png">B with English labels at 1440 × 900</a></li>
+<li><a href="evidence/library-A-review-guide.png">In-app change and verification panel</a></li>
+</ul>
+</details>
+</footer>
+<script>
+const view=document.getElementById('view'),variant=document.getElementById('variant');
+const descriptions={A:'Recommended starting point: familiar secondary icons below a named header action.',B:'Title, labelled secondary controls and creation action in one band; watch wrapping.',C:'Readable actions in a right panel; less table width. This explores a departure from the requested horizontal toolbar.'};
+const paths={library:'/requirements',specifications:'/specifications',packages:'/requirements/stewardship?tab=packages',norms:'/requirements/stewardship?tab=norms',areas:'/requirement-areas'};
+function render(){const before=`evidence/${view.value}-before-1440-light.png`,after=`evidence/${view.value}-${variant.value}-1440-light.png`;document.getElementById('before').src=before;document.getElementById('before-link').href=before;document.getElementById('after').src=after;document.getElementById('after-link').href=after;document.getElementById('after-caption').textContent=`After · ${variant.selectedOptions[0].text}`;document.getElementById('state').textContent=`${view.selectedOptions[0].text} · ${variant.value}: ${descriptions[variant.value]}`;const path=paths[view.value];document.getElementById('live').href=`http://localhost:3001/sv${path}${path.includes('?')?'&':'?'}variant=${variant.value}`;}
+view.addEventListener('change',render);variant.addEventListener('change',render);document.getElementById('stack').addEventListener('click',event=>{const stacked=document.body.classList.toggle('stacked');event.currentTarget.setAttribute('aria-pressed',String(stacked));event.currentTarget.textContent=stacked?'Side by side':'Stack images';});render();
+</script>
+</body>
+</html>

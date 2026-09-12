@@ -35,6 +35,10 @@ import HsaPersonChangeModal, {
 import type { HsaPersonVerification } from '@/components/HsaPersonVerifyField'
 import ListWorkspace from '@/components/ListWorkspace'
 import { modalResizableTextareaClassName } from '@/components/modal-textarea-class'
+import {
+  Prototype1345Header,
+  usePrototype1345,
+} from '@/components/Prototype1345'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
@@ -201,6 +205,7 @@ const rowActionButtonClassName =
 export default function RequirementPackagesClient() {
   useHelpContent(REQUIREMENT_PACKAGES_HELP)
   const t = useTranslations('requirementPackage')
+  const prototype = usePrototype1345()
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
   const tr = useTranslations('requirement')
@@ -964,27 +969,37 @@ export default function RequirementPackagesClient() {
         ref={contentRef}
         reserveActions
       >
-        <FloatingActionRail
-          anchorRef={tableAnchorRef}
-          developerModeContext="requirementPackages"
-          items={[
-            {
-              ariaLabel: t('newRequirementPackage'),
-              developerModeValue: 'new requirement package',
-              disabled: createDisabled,
-              icon: <Plus aria-hidden="true" className="h-4 w-4" />,
-              id: 'create',
-              onClick: openCreate,
-              tooltip: createActionTooltip,
-              variant: 'primary',
-            },
-          ]}
+        <Prototype1345Header
+          action={t('newRequirementPackage')}
+          disabled={createDisabled}
+          title={tn('requirementPackages')}
+          tooltip={createActionTooltip}
         />
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
-            {tn('requirementPackages')}
-          </h1>
-        </div>
+        {!prototype.active && (
+          <>
+            <FloatingActionRail
+              anchorRef={tableAnchorRef}
+              developerModeContext="requirementPackages"
+              items={[
+                {
+                  ariaLabel: t('newRequirementPackage'),
+                  developerModeValue: 'new requirement package',
+                  disabled: createDisabled,
+                  icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+                  id: 'create',
+                  onClick: openCreate,
+                  tooltip: createActionTooltip,
+                  variant: 'primary',
+                },
+              ]}
+            />
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
+                {tn('requirementPackages')}
+              </h1>
+            </div>
+          </>
+        )}
 
         <div className="mb-4">
           {!controller.loading && controller.items.length > 0 && (

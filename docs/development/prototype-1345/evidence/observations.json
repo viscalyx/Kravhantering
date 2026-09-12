@@ -1,0 +1,355 @@
+[
+  {
+    "key": "library",
+    "variant": "before",
+    "heading": [],
+    "primaryCount": 0,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": null
+  },
+  {
+    "key": "library",
+    "variant": "A",
+    "heading": [
+      "Kravbibliotek"
+    ],
+    "primary": "Nytt krav",
+    "primaryCount": 1,
+    "toolCount": 5,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": {
+      "left": 1281.953125,
+      "right": 1408,
+      "top": 48,
+      "bottom": 92
+    }
+  },
+  {
+    "key": "library",
+    "variant": "B",
+    "heading": [
+      "Kravbibliotek"
+    ],
+    "primary": "Nytt krav",
+    "primaryCount": 1,
+    "toolCount": 5,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": {
+      "left": 1265.953125,
+      "right": 1392,
+      "top": 60,
+      "bottom": 104
+    }
+  },
+  {
+    "key": "library",
+    "variant": "C",
+    "heading": [
+      "Kravbibliotek"
+    ],
+    "primary": "Nytt krav",
+    "primaryCount": 1,
+    "toolCount": 5,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": {
+      "left": 1209,
+      "right": 1391,
+      "top": 96.1875,
+      "bottom": 140.1875
+    }
+  },
+  {
+    "key": "specifications",
+    "variant": "before",
+    "heading": [
+      "Kravunderlag"
+    ],
+    "primaryCount": 0,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": null
+  },
+  {
+    "key": "specifications",
+    "variant": "A",
+    "heading": [
+      "Kravunderlag"
+    ],
+    "primary": "Nytt kravunderlag",
+    "primaryCount": 1,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": {
+      "left": 1221.890625,
+      "right": 1408,
+      "top": 48,
+      "bottom": 92
+    }
+  },
+  {
+    "key": "specifications",
+    "variant": "B",
+    "heading": [
+      "Kravunderlag"
+    ],
+    "primary": "Nytt kravunderlag",
+    "primaryCount": 1,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": {
+      "left": 1205.890625,
+      "right": 1392,
+      "top": 60,
+      "bottom": 104
+    }
+  },
+  {
+    "key": "specifications",
+    "variant": "C",
+    "heading": [
+      "Kravunderlag"
+    ],
+    "primary": "Nytt kravunderlag",
+    "primaryCount": 1,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": {
+      "left": 1209,
+      "right": 1391,
+      "top": 96.1875,
+      "bottom": 164.1875
+    }
+  },
+  {
+    "key": "packages",
+    "variant": "before",
+    "heading": [
+      "Kravpaket"
+    ],
+    "primaryCount": 0,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": null
+  },
+  {
+    "key": "packages",
+    "variant": "A",
+    "heading": [
+      "Kravpaket"
+    ],
+    "primary": "Nytt kravpaket",
+    "primaryCount": 1,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": {
+      "left": 1242.96875,
+      "right": 1408,
+      "top": 48,
+      "bottom": 92
+    }
+  },
+  {
+    "key": "packages",
+    "variant": "B",
+    "heading": [
+      "Kravpaket"
+    ],
+    "primary": "Nytt kravpaket",
+    "primaryCount": 1,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": {
+      "left": 1226.96875,
+      "right": 1392,
+      "top": 60,
+      "bottom": 104
+    }
+  },
+  {
+    "key": "packages",
+    "variant": "C",
+    "heading": [
+      "Kravpaket"
+    ],
+    "primary": "Nytt kravpaket",
+    "primaryCount": 1,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": {
+      "left": 1209,
+      "right": 1391,
+      "top": 96.1875,
+      "bottom": 140.1875
+    }
+  },
+  {
+    "key": "norms",
+    "variant": "before",
+    "heading": [
+      "Normbibliotek"
+    ],
+    "primaryCount": 0,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": null
+  },
+  {
+    "key": "norms",
+    "variant": "A",
+    "heading": [
+      "Normbibliotek"
+    ],
+    "primary": "Ny normreferens",
+    "primaryCount": 1,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": {
+      "left": 1227.640625,
+      "right": 1408,
+      "top": 48,
+      "bottom": 92
+    }
+  },
+  {
+    "key": "norms",
+    "variant": "B",
+    "heading": [
+      "Normbibliotek"
+    ],
+    "primary": "Ny normreferens",
+    "primaryCount": 1,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": {
+      "left": 1211.640625,
+      "right": 1392,
+      "top": 60,
+      "bottom": 104
+    }
+  },
+  {
+    "key": "norms",
+    "variant": "C",
+    "heading": [
+      "Normbibliotek"
+    ],
+    "primary": "Ny normreferens",
+    "primaryCount": 1,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": {
+      "left": 1209,
+      "right": 1391,
+      "top": 96.1875,
+      "bottom": 140.1875
+    }
+  },
+  {
+    "key": "areas",
+    "variant": "before",
+    "heading": [
+      "Kravområden"
+    ],
+    "primaryCount": 0,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": null
+  },
+  {
+    "key": "areas",
+    "variant": "A",
+    "heading": [
+      "Kravområden"
+    ],
+    "primary": "Nytt kravområde",
+    "primaryCount": 1,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": {
+      "left": 1229.234375,
+      "right": 1408,
+      "top": 48,
+      "bottom": 92
+    }
+  },
+  {
+    "key": "areas",
+    "variant": "B",
+    "heading": [
+      "Kravområden"
+    ],
+    "primary": "Nytt kravområde",
+    "primaryCount": 1,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": {
+      "left": 1213.234375,
+      "right": 1392,
+      "top": 60,
+      "bottom": 104
+    }
+  },
+  {
+    "key": "areas",
+    "variant": "C",
+    "heading": [
+      "Kravområden"
+    ],
+    "primary": "Nytt kravområde",
+    "primaryCount": 1,
+    "toolCount": 0,
+    "viewport": 1440,
+    "pageWidth": 1440,
+    "primaryBounds": {
+      "left": 1209,
+      "right": 1391,
+      "top": 96.1875,
+      "bottom": 140.1875
+    }
+  },
+  {
+    "key": "library",
+    "variant": "A",
+    "mobile": {
+      "viewport": 390,
+      "pageWidth": 390,
+      "primaryRight": 374,
+      "barRight": 382
+    }
+  },
+  {
+    "key": "library",
+    "variant": "A",
+    "mobile": {
+      "viewport": 320,
+      "pageWidth": 320,
+      "primaryRight": 304,
+      "barRight": 312
+    }
+  },
+  {
+    "keyboardCycleAndReload": true,
+    "url": "http://localhost:3001/en/requirements?variant=C",
+    "errors": []
+  }
+]

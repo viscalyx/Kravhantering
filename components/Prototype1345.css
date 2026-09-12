@@ -1,0 +1,236 @@
+/* Throwaway #1345. All layout overrides require the prototype's development-only context. */
+[data-prototype-1345] {
+  padding-bottom: 10rem;
+}
+.prototype-1345-header {
+  margin-bottom: 1rem;
+}
+.prototype-1345-header h1 {
+  min-width: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--color-secondary-900);
+  overflow-wrap: anywhere;
+}
+.prototype-1345-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+.prototype-1345-primary {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+}
+.prototype-1345-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.prototype-1345-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.prototype-1345-tools:empty {
+  display: none;
+}
+.prototype-1345-A > .prototype-1345-tools {
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--color-secondary-200);
+}
+.prototype-1345-B {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--color-secondary-100);
+  border-bottom: 3px solid var(--color-primary-500);
+  border-radius: 0.6rem;
+}
+.prototype-1345-B h1 {
+  flex: 1;
+  font-size: 1.05rem;
+}
+.prototype-1345-B .prototype-1345-tools {
+  justify-content: flex-end;
+}
+.prototype-1345-B [data-floating-action-item],
+.prototype-1345-C [data-floating-action-item] {
+  gap: 0.45rem;
+  width: auto;
+  height: auto;
+  min-height: 2.25rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.4rem;
+}
+.prototype-1345-B [data-floating-action-item] .sr-only,
+.prototype-1345-C [data-floating-action-item] .sr-only {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+  font-size: 0.8rem;
+  white-space: normal;
+  clip: auto;
+  clip-path: none;
+}
+.prototype-1345-C .prototype-1345-action-panel {
+  padding: 1rem;
+  margin-top: 1rem;
+  background: white;
+  border: 1px solid var(--color-secondary-200);
+  border-radius: 0.75rem;
+}
+.prototype-1345-action-panel h2 {
+  margin-bottom: 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-secondary-600);
+}
+.prototype-1345-C .prototype-1345-tools {
+  flex-direction: column;
+  align-items: stretch;
+  margin-top: 1rem;
+}
+.prototype-1345-C [data-floating-action-item] {
+  justify-content: flex-start;
+  width: 100%;
+}
+.prototype-1345-C .prototype-1345-primary {
+  width: 100%;
+  white-space: normal;
+}
+@media (min-width: 1100px) {
+  [data-prototype-1345="C"] {
+    position: relative;
+    padding-right: 15rem;
+  }
+  .prototype-1345-C .prototype-1345-action-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 13.5rem;
+    margin-top: 0;
+  }
+}
+.prototype-1345-switcher {
+  position: fixed;
+  bottom: 0.75rem;
+  left: 50%;
+  z-index: 90;
+  width: max-content;
+  max-width: calc(100vw - 1rem);
+  padding: 0.6rem 0.85rem;
+  font-size: 0.75rem;
+  color: #f8fafc;
+  background: #0f172a;
+  border: 1px solid #64748b;
+  border-radius: 0.8rem;
+  box-shadow: 0 8px 30px #0005;
+  transform: translateX(-50%);
+}
+.prototype-1345-switcher-main,
+.prototype-1345-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  justify-content: center;
+}
+.prototype-1345-switcher button,
+.prototype-1345-switcher a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 0.3rem;
+}
+.prototype-1345-switcher button {
+  background: #1e293b;
+  border: 1px solid #64748b;
+}
+.prototype-1345-switcher a {
+  color: #bae6fd;
+  text-decoration: underline;
+}
+.prototype-1345-switcher p {
+  margin-top: 0.3rem;
+  color: #cbd5e1;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.prototype-1345-variant {
+  min-width: 10rem;
+  text-align: center;
+}
+.prototype-1345-switcher :focus-visible,
+.prototype-1345-review :focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 3px;
+}
+.prototype-1345-review {
+  position: fixed;
+  right: 1rem;
+  bottom: 9rem;
+  z-index: 91;
+  width: min(32rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 11rem);
+  padding: 1.5rem;
+  overflow: auto;
+  font-size: 0.875rem;
+  color: #f8fafc;
+  background: #0f172a;
+  border: 1px solid #64748b;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 30px #0005;
+}
+.prototype-1345-review h2 {
+  padding-right: 2rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.prototype-1345-review ol {
+  padding-left: 1.2rem;
+  margin: 1rem 0;
+  list-style: decimal;
+}
+.prototype-1345-review li {
+  margin-bottom: 0.6rem;
+}
+.prototype-1345-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  padding: 0.4rem;
+}
+
+.dark .prototype-1345-header h1 {
+  color: var(--color-secondary-100);
+}
+.dark .prototype-1345-A > .prototype-1345-tools {
+  border-color: var(--color-secondary-700);
+}
+.dark .prototype-1345-B {
+  background: var(--color-secondary-800);
+}
+.dark .prototype-1345-C .prototype-1345-action-panel {
+  background: var(--color-secondary-900);
+  border-color: var(--color-secondary-700);
+}
+.dark .prototype-1345-action-panel h2 {
+  color: var(--color-secondary-300);
+}

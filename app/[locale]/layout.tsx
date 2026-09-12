@@ -13,6 +13,7 @@ import Footer from '@/components/Footer'
 import { HelpProvider } from '@/components/HelpPanel'
 import LocaleStorageSync from '@/components/LocaleStorageSync'
 import Navigation from '@/components/Navigation'
+import { Prototype1345Provider } from '@/components/Prototype1345'
 import { routing } from '@/i18n/routing'
 import { readBuildMetadata } from '@/lib/build-metadata'
 import '@/app/globals.css'
@@ -83,13 +84,15 @@ export default async function LocaleLayout({
           <HelpProvider>
             <LocaleStorageSync />
             <AuthExpiryGuard />
-            <div className="min-h-screen">
-              <Navigation buildMetadata={buildMetadata} />
-              <div className="flex min-h-screen flex-col transition-[padding-left] duration-200 md:pl-(--global-nav-width)">
-                <main className="flex-1">{children}</main>
-                <Footer />
+            <Prototype1345Provider>
+              <div className="min-h-screen">
+                <Navigation buildMetadata={buildMetadata} />
+                <div className="flex min-h-screen flex-col transition-[padding-left] duration-200 md:pl-(--global-nav-width)">
+                  <main className="flex-1">{children}</main>
+                  <Footer />
+                </div>
               </div>
-            </div>
+            </Prototype1345Provider>
           </HelpProvider>
         </ConfirmModalProvider>
       </DeveloperModeProvider>

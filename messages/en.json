@@ -3799,5 +3799,39 @@
   },
   "safeMarkdown": {
     "imageOmitted": "Image omitted"
+  },
+  "prototype1345": {
+    "prototype": "PROTOTYPE #1345",
+    "previous": "Previous variant",
+    "next": "Next variant",
+    "compare": "Before / A",
+    "review": "Changes & verification",
+    "close": "Close review",
+    "tools": "List actions",
+    "none": "none",
+    "writeSimulated": "Prototype: change simulated; nothing saved.",
+    "readOnly": "Throwaway layout study. Real data is read from the development app. Creation and write requests are simulated. No design has been approved.",
+    "state": "Variant {variant} · View {view} · Last simulated action: {action}",
+    "variants": {
+      "before": "Current layout",
+      "A": "Compact header",
+      "B": "Command band",
+      "C": "Action panel"
+    },
+    "tradeoffs": {
+      "before": "Baseline: original headings and floating icon controls. Prototype safeguards and this review bar remain active.",
+      "A": "Recommended starting point: clear title and named creation action above the list; secondary icons on a separate row. More vertical space, minimal change to familiar controls.",
+      "B": "One command band places the title, labelled tools and creation action together. It saves height when everything fits, but wraps on narrower screens.",
+      "C": "A dedicated action panel makes every command readable and keeps the table header quiet. It costs table width and deliberately explores an alternative to the issue’s requested horizontal toolbar."
+    },
+    "checks": {
+      "heading": "1. Compare Before with A/B/C: find the page title with navigation expanded and collapsed.",
+      "primary": "2. Check all five lists: the plus icon now has a precise visible creation label. Click it to see a simulated action below.",
+      "secondary": "3. In the library, locate AI authoring, reports, import, export and columns. A uses icons; B/C also show labels.",
+      "menus": "4. Open Reports and Columns. Existing options and column controls remain; compare their location and keyboard access.",
+      "viewport": "5. Compare 1440 × 900 and 1920 × 1080; toggle light/dark theme and try long content and a narrow window.",
+      "keyboard": "6. Tab through controls. Left/right cycles variants outside fields and menus. Reload or copy the URL to retain the variant.",
+      "safety": "7. No creation or write is committed. The status line reports simulated actions. Existing read-only filtering and selection still work."
+    }
   }
 }

@@ -23,6 +23,10 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import ListWorkspace from '@/components/ListWorkspace'
+import {
+  Prototype1345Header,
+  usePrototype1345,
+} from '@/components/Prototype1345'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -218,6 +222,7 @@ export default function RequirementsSpecificationsClient({
 }) {
   useHelpContent(REQUIREMENT_SPECIFICATIONS_HELP)
   const t = useTranslations('specification')
+  const prototype = usePrototype1345()
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
   const locale = useLocale()
@@ -567,27 +572,37 @@ export default function RequirementsSpecificationsClient({
   return (
     <div className="section-padding">
       <ListWorkspace context="specifications" ref={contentRef} reserveActions>
-        <FloatingActionRail
-          anchorRef={tableAnchorRef}
-          developerModeContext="specifications"
-          items={[
-            {
-              ariaLabel: t('newSpecification'),
-              developerModeValue: 'new specification',
-              disabled: createDisabled,
-              icon: <Plus aria-hidden="true" className="h-4 w-4" />,
-              id: 'create',
-              onClick: openCreateForm,
-              tooltip: createDisabledReason ?? t('newSpecification'),
-              variant: 'primary',
-            },
-          ]}
+        <Prototype1345Header
+          action={t('newSpecification')}
+          disabled={createDisabled}
+          title={tn('specifications')}
+          tooltip={createDisabledReason ?? t('newSpecification')}
         />
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
-            {tn('specifications')}
-          </h1>
-        </div>
+        {!prototype.active && (
+          <>
+            <FloatingActionRail
+              anchorRef={tableAnchorRef}
+              developerModeContext="specifications"
+              items={[
+                {
+                  ariaLabel: t('newSpecification'),
+                  developerModeValue: 'new specification',
+                  disabled: createDisabled,
+                  icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+                  id: 'create',
+                  onClick: openCreateForm,
+                  tooltip: createDisabledReason ?? t('newSpecification'),
+                  variant: 'primary',
+                },
+              ]}
+            />
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
+                {tn('specifications')}
+              </h1>
+            </div>
+          </>
+        )}
 
         {loadWarning ? (
           <p

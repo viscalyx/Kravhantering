@@ -20,6 +20,10 @@ import FormModal from '@/components/FormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import ListWorkspace from '@/components/ListWorkspace'
 import NormReferenceFormFields from '@/components/NormReferenceFormFields'
+import {
+  Prototype1345Header,
+  usePrototype1345,
+} from '@/components/Prototype1345'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
@@ -129,6 +133,7 @@ const externalUriLinkClassName =
 export default function NormReferencesClient() {
   useHelpContent(NORM_REFERENCES_HELP)
   const t = useTranslations('normReference')
+  const prototype = usePrototype1345()
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
   const tr = useTranslations('requirement')
@@ -478,28 +483,37 @@ export default function NormReferencesClient() {
   return (
     <div className="section-padding">
       <ListWorkspace context="normReferences" ref={contentRef} reserveActions>
-        <FloatingActionRail
-          anchorRef={tableAnchorRef}
-          developerModeContext="normReferences"
-          items={[
-            {
-              ariaLabel: t('newNormReference'),
-              developerModeValue: 'new norm reference',
-              disabled: controller.submitting,
-              icon: <Plus aria-hidden="true" className="h-4 w-4" />,
-              id: 'create',
-              onClick: () => {
-                void openCreate()
-              },
-              variant: 'primary',
-            },
-          ]}
+        <Prototype1345Header
+          action={t('newNormReference')}
+          disabled={controller.submitting}
+          title={tn('normLibrary')}
         />
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
-            {tn('normLibrary')}
-          </h1>
-        </div>
+        {!prototype.active && (
+          <>
+            <FloatingActionRail
+              anchorRef={tableAnchorRef}
+              developerModeContext="normReferences"
+              items={[
+                {
+                  ariaLabel: t('newNormReference'),
+                  developerModeValue: 'new norm reference',
+                  disabled: controller.submitting,
+                  icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+                  id: 'create',
+                  onClick: () => {
+                    void openCreate()
+                  },
+                  variant: 'primary',
+                },
+              ]}
+            />
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
+                {tn('normLibrary')}
+              </h1>
+            </div>
+          </>
+        )}
 
         <div className="mb-4">
           {!controller.loading && controller.items.length > 0 && (

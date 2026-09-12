@@ -9,6 +9,10 @@ import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
 import ListWorkspace from '@/components/ListWorkspace'
 import { modalResizableTextareaClassName } from '@/components/modal-textarea-class'
+import {
+  Prototype1345Header,
+  usePrototype1345,
+} from '@/components/Prototype1345'
 import type { CrudAdminResourceController } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
@@ -86,6 +90,9 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
   title,
 }: CrudAdminPanelProps<TItem, TForm>) {
   const common = useTranslations('common')
+  const area = useTranslations('area')
+  const prototype = usePrototype1345()
+  const prototypeArea = prototype.active && devContext === 'areas'
   const shouldReduceMotion = useReducedMotion()
   const visibleError = controller.deleteError ?? controller.loadError
   const formMode: CrudAdminFormMode =
@@ -170,27 +177,36 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
   return (
     <div className="section-padding">
       <ListWorkspace context={devContext}>
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
-            {title}
-          </h1>
-          {canCreate && (
-            <button
-              className="btn-primary inline-flex items-center gap-1.5"
-              {...devMarker({
-                context: devContext,
-                name: 'create button',
-                priority: 350,
-              })}
-              disabled={controller.submitting}
-              onClick={controller.openCreate}
-              type="button"
-            >
-              <Plus aria-hidden="true" className="h-4 w-4" />
-              {common('create')}
-            </button>
-          )}
-        </div>
+        {prototypeArea ? (
+          <Prototype1345Header
+            action={area('newArea')}
+            canCreate={canCreate}
+            disabled={controller.submitting}
+            title={title}
+          />
+        ) : (
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
+              {title}
+            </h1>
+            {canCreate && (
+              <button
+                className="btn-primary inline-flex items-center gap-1.5"
+                {...devMarker({
+                  context: devContext,
+                  name: 'create button',
+                  priority: 350,
+                })}
+                disabled={controller.submitting}
+                onClick={controller.openCreate}
+                type="button"
+              >
+                <Plus aria-hidden="true" className="h-4 w-4" />
+                {common('create')}
+              </button>
+            )}
+          </div>
+        )}
 
         {visibleError && (
           <div

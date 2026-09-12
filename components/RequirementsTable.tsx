@@ -43,6 +43,7 @@ import {
 import { useColumnState } from '@/components/_requirements-table/useColumnState'
 import { useFloatingRailPosition } from '@/components/_requirements-table/useFloatingRailPosition'
 import { useResizeHandles } from '@/components/_requirements-table/useResizeHandles'
+import { usePrototype1345 } from '@/components/Prototype1345'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import RequirementsPackageFilter from '@/components/RequirementsPackageFilter'
 import StatusBadge from '@/components/StatusBadge'
@@ -128,6 +129,7 @@ export interface RequirementsTableProps {
   onVisibleColumnsChange?: (value: RequirementColumnId[]) => void
   pinnedIds?: Set<number>
   priorityLevels?: PriorityLevelOption[]
+  prototypeLayout?: boolean
   qualityCharacteristics?: QualityCharacteristicOption[]
   renderExpanded?: (id: number) => ReactNode
   requirementPackageCatalogStatus?: 'failed' | 'loaded' | 'loading'
@@ -1508,6 +1510,7 @@ export default function RequirementsTable({
   filterValues,
   floatingActions = [],
   floatingActionRailPlacement = 'fixed-right',
+  prototypeLayout = false,
   getName = () => '',
   getStatusName = () => '',
   hasMore = false,
@@ -1551,6 +1554,11 @@ export default function RequirementsTable({
     getDefaultVisibleRequirementColumns(columnDefaults),
   wrapDescription = false,
 }: RequirementsTableProps) {
+  const prototype = usePrototype1345()
+  const prototypeActive = prototypeLayout && prototype.active
+  const layoutActions = prototypeActive
+    ? floatingActions.filter(action => action.id !== 'create')
+    : floatingActions
   const t = useTranslations('requirement')
   const tStatusLabel = useTranslations('requirement.statusLabel')
   const tc = useTranslations('common')
@@ -1727,18 +1735,19 @@ export default function RequirementsTable({
     : null
   const shouldRenderResizeHandles =
     canResizeColumns && (!hasExpandedDetailRow || clippedResizeHandleBounds)
-  const actionsBeforeColumns = floatingActions.filter(
+  const actionsBeforeColumns = layoutActions.filter(
     action => action.position === 'beforeColumns',
   )
-  const actionsAfterColumns = floatingActions.filter(
+  const actionsAfterColumns = layoutActions.filter(
     action => action.position !== 'beforeColumns',
   )
-  const shouldRenderInlineRail = floatingActionRailPlacement === 'inline-top'
+  const shouldRenderInlineRail =
+    prototypeActive || floatingActionRailPlacement === 'inline-top'
   const { floatingRailPosition, showScrollTopAction } = useFloatingRailPosition(
     {
       scrollContainerRef,
       scrollLayoutSignature,
-      shouldRenderInlineRail,
+      shouldRenderInlineRail: prototypeActive ? false : shouldRenderInlineRail,
       tableRef,
       tableRootRef,
     },
@@ -2866,7 +2875,7 @@ export default function RequirementsTable({
     </>
   )
   const scrollTopRailGroup =
-    !shouldRenderInlineRail && showScrollTopAction ? (
+    (!shouldRenderInlineRail || prototypeActive) && showScrollTopAction ? (
       <div
         className="mt-2 flex flex-col gap-3"
         data-floating-action-group="scroll-top"
@@ -2895,20 +2904,21 @@ export default function RequirementsTable({
         </button>
       </div>
     ) : null
-  const inlineFloatingRail = shouldRenderInlineRail ? (
-    <div
-      className="min-w-0 flex flex-wrap items-center gap-2 sm:flex-nowrap"
-      {...devMarker({
-        context: 'requirements table',
-        name: 'floating action rail',
-        priority: 340,
-      })}
-      data-floating-action-rail="true"
-      data-floating-action-rail-placement="inline-top"
-    >
-      {floatingRailItems}
-    </div>
-  ) : null
+  const inlineFloatingRail =
+    shouldRenderInlineRail && !prototypeActive ? (
+      <div
+        className="min-w-0 flex flex-wrap items-center gap-2 sm:flex-nowrap"
+        {...devMarker({
+          context: 'requirements table',
+          name: 'floating action rail',
+          priority: 340,
+        })}
+        data-floating-action-rail="true"
+        data-floating-action-rail-placement="inline-top"
+      >
+        {floatingRailItems}
+      </div>
+    ) : null
   const floatingRail =
     !shouldRenderInlineRail &&
     floatingRailPosition.visible &&
@@ -3264,7 +3274,17 @@ export default function RequirementsTable({
           </p>
         </output>
       )}
-      {floatingRail}
+      {prototypeActive && showScrollTopAction && typeof document !== 'undefined'
+        ? createPortal(
+            <div className="fixed right-4 bottom-40 z-40">
+              {scrollTopRailGroup}
+            </div>,
+            document.body,
+          )
+        : null}
+      {prototypeActive && prototype.toolsTarget
+        ? createPortal(floatingRailItems, prototype.toolsTarget)
+        : floatingRail}
       <div
         className={stickyTableChromeClassName}
         data-sticky-table-chrome="true"

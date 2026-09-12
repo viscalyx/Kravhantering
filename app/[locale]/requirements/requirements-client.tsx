@@ -26,6 +26,10 @@ import LazyRequirementsImportDialog, {
   type InitialRequirementsImport,
 } from '@/components/LazyRequirementsImportDialog'
 import ListWorkspace from '@/components/ListWorkspace'
+import {
+  Prototype1345Header,
+  usePrototype1345,
+} from '@/components/Prototype1345'
 import RequirementsTable from '@/components/RequirementsTable'
 import { useRequirementDetailPrefetchIntent } from '@/hooks/useRequirementDetailPrefetchIntent'
 import {
@@ -281,6 +285,8 @@ export default function RequirementsClient({
   useHelpContent(REQUIREMENTS_HELP)
   const tc = useTranslations('common')
   const t = useTranslations('requirement')
+  const tn = useTranslations('nav')
+  const prototype = usePrototype1345()
   const requirementListRefreshedMessage = tc('requirementListRefreshed')
   const locale = useLocale()
   const pdfDownload = useGeneratedOutputDownload()
@@ -1162,6 +1168,10 @@ export default function RequirementsClient({
     <>
       <div className="section-padding">
         <ListWorkspace context="requirements table" reserveActions>
+          <Prototype1345Header
+            action={t('newRequirement')}
+            title={tn('catalog')}
+          />
           <div className="relative rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm dark:border-secondary-700 dark:bg-secondary-900/60">
             {shouldShowInitialLoadingState ? (
               <div
@@ -1437,6 +1447,7 @@ export default function RequirementsClient({
                   onVisibleColumnsChange={setVisibleColumns}
                   pinnedIds={pinnedIds}
                   priorityLevels={priorityLevels}
+                  prototypeLayout={prototype.active}
                   qualityCharacteristics={qualityCharacteristics}
                   renderExpanded={id => (
                     <RequirementDetailClient
