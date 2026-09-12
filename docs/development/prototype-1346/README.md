@@ -7,7 +7,8 @@ This is throwaway code on `prototype/issue-1346`, based on main commit
 `49140e5e`. It lives in the separate worktree
 `/mnt/krav-azure-dev-data/.worktrees/prototype-1346`.
 It does not include the separate #1345 prototype or the current CI branch.
-**Verdict: awaiting your visual review.** No prototype code is promoted to main.
+**Decision: retain this prototype for reference; production implementation
+under #1346 is not planned.** No prototype code is promoted to main.
 
 ## Open it
 

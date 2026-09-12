@@ -271,7 +271,7 @@ const report = {
   capturedAt: new Date().toISOString(),
   question: 'Does the agreed visual style work throughout the application?',
   verdict:
-    'Awaiting user visual review; this is a throwaway DOM skin, not production implementation.',
+    'Retained as a reference prototype; production implementation under #1346 is not planned.',
   records,
   errors,
 }
