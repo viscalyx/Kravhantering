@@ -1,0 +1,167 @@
+# Issue 1348: requirement-detail layout prototype
+
+Question: which presentation makes a short expanded requirement easier to scan
+while leaving more of its surrounding list visible?
+
+This is throwaway UI code on `prototype/issue-1348`, based on
+`fix/issue-1347` at `2d9ad75f`. No variant is approved for production yet.
+
+## Start and show it
+
+The prepared worktree is:
+
+```text
+/mnt/krav-azure-dev-data/.worktrees/issue-1348-prototype
+```
+
+From any terminal in this environment, run:
+
+```sh
+npm --prefix /mnt/krav-azure-dev-data/.worktrees/issue-1348-prototype run prototype:1348
+```
+
+The command starts the separate checkout on port 3001. It uses the existing
+local SQL Server and Keycloak services and the ignored development environment
+configuration prepared in this worktree. Dependencies are copied into this
+worktree. It does not reset or seed the database. Stop with Ctrl+C. If another
+server owns port 3001, stop that server before launching this one; the command
+does not kill other processes. Port 3000 is reserved for your normal app.
+The launcher uses the existing local Keycloak client for port 3001 and a
+separate prototype session cookie, so both apps can run side by side.
+
+Open the [review gallery](http://localhost:3001/sv/requirements/prototype-1348-review/index.html)
+for screenshots, measurements, a before/after slider, and a verification
+checklist. The gallery also works offline: open the `index.html` in this
+worktree's `public/prototype-1348-review` directory directly in a browser.
+
+Open the [live baseline](http://localhost:3001/sv/requirements?variant=baseline&sections=empty&selected=ANV0002).
+Sign in as the existing demo administrator `ada.admin`, password `devpass`.
+For a remote workspace, forward port 3001 and the existing Keycloak port 8080
+to localhost. The development OIDC callback expects localhost:3001.
+
+The real requirements list, navigation, data loading, permissions and detail
+controls provide the context. `selected=ANV0002` opens the example automatically;
+the existing app consumes that parameter. After an ordinary page reload, you
+may need to click ANV0002 again.
+
+## Compare the alternatives
+
+Use the floating **Prototyp #1348** bar at the bottom. Its arrows or the left
+and right keyboard shortcuts cycle through all four views, wrapping at the
+ends. Shortcuts leave text inputs, selects, dialogs and other protected
+keyboard widgets alone. The selected variant stays in `?variant=`.
+
+- **baseline — Nuvarande layout:** the original rendering.
+- **A — Kompakt kort:** a smaller card with grouped metadata tiles.
+- **B — Metadata på rad:** no card frame; primary text blocks followed by
+  flowing label/value pairs.
+- **C — Dokumentlayout:** aligned label/content rows and ruled metadata.
+
+Expand **Jämförelse, exempeldata och granskningsläge** for the sample controls
+and the full inspection state. On the baseline, press **Kom ihåg baslinjens
+höjd**, then switch variants. The bar shows the current expanded-detail height
+and the saved pixels. Measurements update automatically. Baselines live only
+in memory and are matched to the requirement/version, sample settings,
+viewport and available detail width. Capture a fresh baseline when the data or
+view settings change. Reload clears remembered measurements.
+
+The sample controls apply to every variant, including the baseline:
+
+- **Text:** real requirement text or explicitly synthetic long text.
+- **Sektioner:** real sections, forced empty sections, or synthetic populated
+  norm references, requirement packages and one improvement suggestion.
+- **Detaljbredd:** available width or a **760 px split-width simulation**.
+  This is a width stress case inside the current page, not a replacement for
+  the real specification split workspace.
+
+Use the app's navigation expansion and theme controls to compare actual light
+and dark themes and collapsed/expanded navigation. Keep the data, locale,
+version, viewport, navigation and scroll position identical when comparing.
+For the requested sizes, use the browser's responsive viewport controls at
+**1440 × 900** and **1920 × 1080**, with browser zoom at 100%.
+
+## Every change and how to verify it
+
+<!-- markdownlint-disable MD013 -->
+
+| Change | How to verify |
+| --- | --- |
+| Three structural alternatives plus the actual baseline | Switch baseline/A/B/C on ANV0002. A groups metadata in a card, B flows pairs without a frame, C aligns rows in a document layout. |
+| Smaller outer spacing, card padding and gaps | Compare the same short requirement. Watch total detail height and how many following requirements fit in the viewport. |
+| Stronger primary text | In A/B/C, requirement text and acceptance text are 16 px with a 1.5 line height. Both precede metadata. Compare with the baseline and switch to long text to inspect wrapping. |
+| More compact metadata | Inspect all metadata values, area owner, verification method and specification count. A uses a compact grid; B uses inline pairs; C uses a ruled definition table. |
+| Compact empty references and packages | Choose empty sections. Both labels and their empty information stay visible on compact rows. Choose populated sections and hover the package to inspect its existing purpose/scope tooltip. |
+| Compact empty improvement suggestions | Choose empty sections and compare the card. Its title, empty information and registration button remain. Choose populated sections to inspect the existing suggestion pill and actions. |
+| Quieter status presentation | Baseline uses 40 px arrows; A/B/C use 30 px steps. A uses pale blocks; B/C use a flat strip. Verify every step label/icon and the active underline. The existing current-step semantics stay intact. |
+| Existing actions and version history retained | Compare the right action rail and version pill. Available actions still come from the real permission/lifecycle model. Open the registration dialog and navigate it by keyboard. |
+| Samples and width stress controls | Switch real/long text and real/empty/populated sections; inspect the displayed state. Switch to 760 px simulation and check wrapping. Return to real data to restore loaded content. |
+| Baseline measurement and shareable variant | Remember baseline height, change variant, inspect the height difference and URL. Use arrows to wrap around; reload to verify the chosen variant. Add `selected=ANV0002` to a copied library URL to reopen the example. |
+| Prototype writes stopped before the network | Register a sample suggestion and press Save. Expect the explicit prototype message that no data changed. The existing dialog/error presentation is used; successful persistence is not simulated. |
+| Developer Mode markers | Enable Developer Mode through the existing app control. Inspect the switcher, primary sections, metadata and reference chips. Marker labels remain English. |
+| Existing standalone detail route | Open the standalone link below. Verify section order, populated/empty states and variants outside the expanded table row. |
+| Production gate and isolation | The switcher and variant behavior require development mode and the prototype launch flag. Normal `npm run dev` uses the original rendering. All tracked changes belong to the throwaway branch. |
+
+<!-- markdownlint-enable MD013 -->
+
+[Standalone English detail](http://localhost:3001/en/requirements/ANV0002/1?variant=A&sections=populated)
+
+## Evidence and limits
+
+The gallery contains screenshots and machine-readable measurements from the
+running worktree. The baseline and candidate desktop screenshots use ANV0002
+version 1, its actual primary text, forced empty supporting sections, Swedish
+locale, the demo administrator, light theme and collapsed navigation. Their
+expanded rows start at the same screen position. Compare these measurements
+with each other, not with the historical 2026-09-05 screenshot coordinates.
+
+Additional captures cover long populated content, dark theme, expanded
+navigation, simulated split width, English standalone details and a narrow
+375 px viewport. Browser verification records live beside the screenshots.
+
+The isolated runtime readiness probe reports `tls_file_invalid` because its
+TLS runtime files are unavailable here. The preview verifies UI/database reads
+and Keycloak login, not deployment readiness.
+
+The normal data reads and authentication remain active. In this prototype
+process, non-authentication writes made through `apiFetch` return a local 409
+response before a request is sent. This is a preview convenience, not a server
+security boundary. Do not use direct APIs to exercise mutations. Existing
+browser preferences, such as navigation expansion and theme, retain their
+normal app behavior; sample data and prototype measurements are not saved.
+
+The shared detail-section renderer falls back to the baseline outside the
+requirements routes. Actual specification-local details and the real
+specification split workspace still require regression verification during
+production implementation. The 760 px simulation does not certify those
+workflows. Likewise this prototype does not certify lifecycle transitions,
+all roles, custom status catalogs, or full accessibility compliance.
+
+Per the prototype skill, no production test suite or official manual test
+cases are added for the throwaway variants. TypeScript, focused formatting,
+lint and spelling checks, plus browser interaction and visual inspection,
+validate that the prototype is runnable. A selected design needs a proper
+implementation with the issue's production test and documentation coverage.
+
+## Code map and decision
+
+- `Variants.tsx`, `state.ts` and `prototype.css` contain the alternative
+  presentation, URL state and scoped styles.
+- `PrototypeSwitcher` is the floating comparison/inspection tool, mounted by
+  the temporary requirements layout.
+- `RequirementDetailSections` keeps the original baseline and selects the
+  variants with optional in-memory sample props.
+- `RequirementDetailCard`, `StatusStepper`, `RequirementDetailClient` and
+  `ImprovementSuggestionsSection` expose presentation/measurement hooks.
+  The suggestions section also substitutes optional sample items.
+- `apiFetch` contains the development-only no-write stub.
+- Both locale message catalogs contain prototype controls and sample text.
+- The package runner adds `prototype:1348` without dependency changes.
+- The public review directory contains the offline gallery, its external script,
+  screenshots, measurement data and browser verification results. A public
+  directory alias serves these assets through the existing authenticated
+  Swedish requirements path without changing authentication rules.
+
+**Verdict:** all three structures are available for review. Select one or
+combine specific elements after inspecting the short and long cases. No
+visual preference is treated as validated, and nothing is promoted to the
+main branch by this prototype.

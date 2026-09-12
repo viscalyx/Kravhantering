@@ -3802,5 +3802,47 @@
   },
   "safeMarkdown": {
     "imageOmitted": "Image omitted"
+  },
+  "prototype1348": {
+    "title": "Prototype #1348",
+    "previous": "Previous variant",
+    "next": "Next variant",
+    "variant": "Variant",
+    "openRequirement": "Open a requirement",
+    "saved": "saved",
+    "controls": "Compare, sample data and inspection state",
+    "text": "Text",
+    "sections": "Sections",
+    "width": "Detail width",
+    "live": "Actual data",
+    "long": "Long sample text",
+    "empty": "Empty sample",
+    "populated": "Populated sample",
+    "full": "Full available width",
+    "split": "Split-width simulation (760 px)",
+    "capture": "Remember baseline height",
+    "guide": "Review guide",
+    "readOnly": "Throwaway preview. Sample content is in memory. API write actions show a preview message and are not saved. The surrounding app uses actual data.",
+    "noAction": "No simulated write yet.",
+    "state": "Prototype inspection state",
+    "variants": {
+      "baseline": "Current layout",
+      "A": "Compact card",
+      "B": "Inline metadata",
+      "C": "Document ledger"
+    },
+    "descriptions": {
+      "baseline": "Unmodified detail presentation. Use identical data and view settings to compare.",
+      "A": "Smaller card, grouped metadata grid, stronger text, compact empty rows and a quiet status strip.",
+      "B": "Unboxed text with inline metadata pairs. References and empty suggestions become slim bands.",
+      "C": "Aligned label/content rows and ruled metadata. A document layout with compact supporting sections."
+    },
+    "longDescription": "The service shall allow authorized users to find, review and reuse requirements while preserving version traceability and clear ownership. Long explanations must wrap without hiding content or pushing controls out of reach.\n\n",
+    "longAcceptance": "Given a user with access to the requirement area, when they open a requirement, all text, references, current version information and permitted actions remain readable and keyboard accessible.\n\n",
+    "sampleReference": "SAMPLE — Guideline for accessible services",
+    "sampleReferenceTitle": "Prototype reference with a longer title for wrapping inspection",
+    "samplePackage": "SAMPLE — Shared requirements for accessible digital services",
+    "samplePurpose": "Sample purpose and scope for verifying the existing requirement-package tooltip.",
+    "sampleSuggestion": "SAMPLE — Clarify how keyboard navigation is verified and describe the expected result."
   }
 }

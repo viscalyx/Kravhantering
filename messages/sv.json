@@ -3802,5 +3802,47 @@
   },
   "safeMarkdown": {
     "imageOmitted": "Bild utelämnad"
+  },
+  "prototype1348": {
+    "title": "Prototyp #1348",
+    "previous": "Föregående variant",
+    "next": "Nästa variant",
+    "variant": "Variant",
+    "openRequirement": "Öppna ett krav",
+    "saved": "sparat",
+    "controls": "Jämförelse, exempeldata och granskningsläge",
+    "text": "Text",
+    "sections": "Sektioner",
+    "width": "Detaljbredd",
+    "live": "Verkliga data",
+    "long": "Lång exempeltext",
+    "empty": "Tomt exempel",
+    "populated": "Befolkat exempel",
+    "full": "Hela tillgängliga bredden",
+    "split": "Simulerad delad bredd (760 px)",
+    "capture": "Kom ihåg baslinjens höjd",
+    "guide": "Granskningsguide",
+    "readOnly": "Tillfällig prototyp. Exempeldata finns i minnet. Skrivåtgärder via API visar ett prototypmeddelande och sparas inte. Den omgivande appen använder verkliga data.",
+    "noAction": "Ingen simulerad skrivåtgärd ännu.",
+    "state": "Prototypens granskningsläge",
+    "variants": {
+      "baseline": "Nuvarande layout",
+      "A": "Kompakt kort",
+      "B": "Metadata på rad",
+      "C": "Dokumentlayout"
+    },
+    "descriptions": {
+      "baseline": "Oförändrad detaljpresentation. Jämför med samma data och inställningar.",
+      "A": "Mindre kort, grupperad metadata, tydligare texter, kompakta tomma rader och en lugn statusrad.",
+      "B": "Text utan kortinramning och metadata som löpande par. Referenser och tomma förslag blir smala band.",
+      "C": "Justerade etikett- och innehållsrader med metadata i en linjerad tabell. En dokumentlayout med kompakta stödsektioner."
+    },
+    "longDescription": "Tjänsten ska låta behöriga användare hitta, granska och återanvända krav med bibehållen versionsspårbarhet och tydligt ansvar. Längre förklaringar ska radbrytas utan att innehåll döljs eller kontroller hamnar utom räckhåll.\n\n",
+    "longAcceptance": "Givet en användare med åtkomst till kravområdet, när användaren öppnar ett krav, ska all text, referenser, versionsinformation och tillåtna åtgärder vara läsbara och åtkomliga med tangentbord.\n\n",
+    "sampleReference": "EXEMPEL — Riktlinje för tillgängliga tjänster",
+    "sampleReferenceTitle": "Prototypreferens med en längre rubrik för kontroll av radbrytning",
+    "samplePackage": "EXEMPEL — Gemensamma krav för tillgängliga digitala tjänster",
+    "samplePurpose": "Exempel på syfte och omfattning för kontroll av kravpaketets befintliga informationsruta.",
+    "sampleSuggestion": "EXEMPEL — Förtydliga hur tangentbordsnavigering verifieras och beskriv det förväntade resultatet."
   }
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { usePrototypeState } from '@/app/[locale]/requirements/_prototype-1348/state'
 import SuggestionFormModal from '@/components/SuggestionFormModal'
 import SuggestionPill from '@/components/SuggestionPill'
 import SuggestionResolutionModal from '@/components/SuggestionResolutionModal'
@@ -20,12 +21,42 @@ export default function ImprovementSuggestionsSection({
   workflow,
 }: ImprovementSuggestionsSectionProps) {
   const tf = useTranslations('improvementSuggestion')
+  const prototype = usePrototypeState()
+  const tPrototype = useTranslations('prototype1348')
+  if (prototype.enabled && prototype.sections !== 'live') {
+    workflow = {
+      ...workflow,
+      versionSuggestionItems:
+        prototype.sections === 'empty'
+          ? []
+          : [
+              {
+                id: -1348,
+                content: tPrototype('sampleSuggestion'),
+                createdAt: '2026-09-05T12:00:00Z',
+                createdBy: 'Ada Admin',
+                isReviewRequested: 0,
+                requirementVersionId: null,
+                resolution: null,
+                resolutionMotivation: null,
+                resolvedAt: null,
+                resolvedBy: null,
+              },
+            ],
+    }
+  }
 
   return (
     <>
       <section
         aria-labelledby="improvementSuggestionsHeading"
         className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-6 space-y-4"
+        data-prototype-suggestions={
+          workflow.versionSuggestionItems.length === 0 &&
+          !workflow.suggestionError
+            ? 'empty'
+            : 'populated'
+        }
         {...devMarker({
           context: detailContext,
           name: 'detail section',

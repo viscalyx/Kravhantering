@@ -1,4 +1,13 @@
+'use client'
+
+import { useTranslations } from 'next-intl'
 import type { ReactNode } from 'react'
+import { usePrototypeState } from '@/app/[locale]/requirements/_prototype-1348/state'
+import {
+  VariantA,
+  VariantB,
+  VariantC,
+} from '@/app/[locale]/requirements/_prototype-1348/Variants'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import { devMarker } from '@/lib/developer-mode-markers'
 
@@ -20,7 +29,7 @@ export interface RequirementDetailChipItem {
   title?: string
 }
 
-interface RequirementDetailSectionsProps {
+export interface RequirementDetailSectionsProps {
   acceptanceCriteria: ReactNode
   acceptanceCriteriaLabel: string
   description: ReactNode
@@ -51,7 +60,7 @@ function getMarkerProps(
     : {}
 }
 
-export default function RequirementDetailSections({
+function BaselineDetailSections({
   acceptanceCriteria,
   acceptanceCriteriaLabel,
   description,
@@ -212,4 +221,52 @@ export default function RequirementDetailSections({
       ) : null}
     </>
   )
+}
+
+// The unmodified rendering above is also the baseline for identical sample data.
+export default function RequirementDetailSections(
+  props: RequirementDetailSectionsProps,
+) {
+  const state = usePrototypeState()
+  const t = useTranslations('prototype1348')
+  if (!state.enabled) return <BaselineDetailSections {...props} />
+  const sampleProps = {
+    ...props,
+    description:
+      state.text === 'long'
+        ? t('longDescription').repeat(5)
+        : props.description,
+    acceptanceCriteria:
+      state.text === 'long'
+        ? t('longAcceptance').repeat(3)
+        : props.acceptanceCriteria,
+    references:
+      state.sections === 'empty'
+        ? []
+        : state.sections === 'populated'
+          ? [
+              {
+                id: 'prototype-reference',
+                label: t('sampleReference'),
+                title: t('sampleReferenceTitle'),
+              },
+            ]
+          : props.references,
+    requirementPackages:
+      state.sections === 'empty'
+        ? []
+        : state.sections === 'populated'
+          ? [
+              {
+                id: 'prototype-package',
+                label: t('samplePackage'),
+                purposeAndScope: t('samplePurpose'),
+              },
+            ]
+          : props.requirementPackages,
+  }
+  if (state.variant === 'A') return <VariantA {...sampleProps} />
+  if (state.variant === 'B') return <VariantB {...sampleProps} />
+  if (state.variant === 'C') return <VariantC {...sampleProps} />
+  return <BaselineDetailSections {...sampleProps} />
 }

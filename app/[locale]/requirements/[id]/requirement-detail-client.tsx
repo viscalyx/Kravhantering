@@ -916,6 +916,7 @@ export default function RequirementDetailClient({
             ? 'px-6 py-4'
             : 'section-padding px-4 sm:px-6 lg:px-8'
       }
+      data-prototype-detail={`${req.uniqueId}:v${currentVersionNumber}`}
     >
       <div
         className={onClose && !inline ? '' : inline ? '' : 'container-custom'}

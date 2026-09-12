@@ -67,6 +67,27 @@ export async function apiFetch(
     init?.method ?? (input instanceof Request ? input.method : 'GET')
   ).toUpperCase()
 
+  // Throwaway #1348: stop prototype writes before the network, across variants.
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_DETAIL_PROTOTYPE === 'true' &&
+    !SAFE_METHODS.has(method) &&
+    isSameOriginApiRequest(input) &&
+    !new URL(requestUrl(input), window.location.href).pathname.startsWith(
+      '/api/auth/',
+    )
+  ) {
+    const message = window.location.pathname.startsWith('/sv')
+      ? 'Prototyp: åtgärden sparas inte. Inga uppgifter har ändrats.'
+      : 'Prototype: this action is not saved. No data has changed.'
+    window.dispatchEvent(
+      new CustomEvent('prototype-1348-action', {
+        detail: `${method} ${new URL(requestUrl(input), window.location.href).pathname}: ${message}`,
+      }),
+    )
+    return Response.json({ error: message, message }, { status: 409 })
+  }
+
   if (SAFE_METHODS.has(method)) {
     if (init === undefined) {
       return reportUnauthorizedResponse(input, await fetch(input))

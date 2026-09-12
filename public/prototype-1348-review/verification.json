@@ -1,0 +1,176 @@
+{
+  "capturedAt": "2026-09-12T18:57:37.910Z",
+  "checks": [
+    {
+      "name": "Remember baseline across variant switch",
+      "passed": true,
+      "details": {
+        "enabled": true,
+        "variant": "A",
+        "text": "live",
+        "sections": "empty",
+        "layout": "full",
+        "viewport": [1440, 900],
+        "requirement": "ANV0002:v1",
+        "theme": "light",
+        "navigationWidth": "4.5rem",
+        "detailHeight": 588,
+        "cardHeight": 398,
+        "suggestionsHeight": 74,
+        "baselineHeight": 824,
+        "steps": ["Utkast", "Granskning", "Publicerad (current)"],
+        "lastAction": ""
+      }
+    },
+    {
+      "name": "Variant switching preserves page scroll",
+      "passed": true,
+      "details": {
+        "before": 0,
+        "after": 0
+      }
+    },
+    {
+      "name": "Arrow key in select does not switch variant",
+      "passed": true
+    },
+    {
+      "name": "Left shortcut reaches baseline",
+      "passed": true
+    },
+    {
+      "name": "Left shortcut wraps to C",
+      "passed": true
+    },
+    {
+      "name": "Suggestion write is stopped before network",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "Prototype save explains no data changed",
+      "passed": true
+    },
+    {
+      "name": "Dark theme and expanded navigation",
+      "passed": true
+    },
+    {
+      "name": "A: long text wraps",
+      "passed": true,
+      "details": [
+        {
+          "scroll": 720,
+          "width": 720,
+          "textLength": 1125
+        },
+        {
+          "scroll": 720,
+          "width": 720,
+          "textLength": 582
+        }
+      ]
+    },
+    {
+      "name": "A: populated sections visible",
+      "passed": true
+    },
+    {
+      "name": "B: long text wraps",
+      "passed": true,
+      "details": [
+        {
+          "scroll": 720,
+          "width": 720,
+          "textLength": 1125
+        },
+        {
+          "scroll": 720,
+          "width": 720,
+          "textLength": 582
+        }
+      ]
+    },
+    {
+      "name": "B: populated sections visible",
+      "passed": true
+    },
+    {
+      "name": "C: long text wraps",
+      "passed": true,
+      "details": [
+        {
+          "scroll": 604,
+          "width": 604,
+          "textLength": 1125
+        },
+        {
+          "scroll": 604,
+          "width": 604,
+          "textLength": 582
+        }
+      ]
+    },
+    {
+      "name": "C: populated sections visible",
+      "passed": true
+    },
+    {
+      "name": "A: split width simulation fits",
+      "passed": true,
+      "details": {
+        "width": 760,
+        "scroll": 760,
+        "card": 513,
+        "cardScroll": 513
+      }
+    },
+    {
+      "name": "B: split width simulation fits",
+      "passed": true,
+      "details": {
+        "width": 760,
+        "scroll": 760,
+        "card": 515,
+        "cardScroll": 515
+      }
+    },
+    {
+      "name": "C: split width simulation fits",
+      "passed": true,
+      "details": {
+        "width": 760,
+        "scroll": 760,
+        "card": 513,
+        "cardScroll": 513
+      }
+    },
+    {
+      "name": "English standalone detail and switcher",
+      "passed": true
+    },
+    {
+      "name": "375px standalone card fits",
+      "passed": true,
+      "details": {
+        "width": 341,
+        "scroll": 341
+      }
+    },
+    {
+      "name": "No browser exceptions",
+      "passed": true,
+      "details": []
+    }
+  ],
+  "errors": [],
+  "writes": [],
+  "launchVerification": {
+    "baseUrl": "http://localhost:3001",
+    "login": "Verified using existing local Keycloak client",
+    "sessionCookie": "kravhantering_prototype_1348",
+    "liveRequirement": "ANV0002:v1",
+    "gallery": "Authenticated live gallery, external script, slider, image loading and viewport/variant controls verified",
+    "galleryUrl": "http://localhost:3001/sv/requirements/prototype-1348-review/index.html"
+  }
+}

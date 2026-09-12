@@ -154,6 +154,7 @@ export default function StatusStepper({
     <div
       aria-label={tStepper('statusStepperAriaLabel')}
       className="flex w-full relative"
+      data-prototype-stepper="true"
       role="group"
       {...devMarker({
         context: developerModeContext,

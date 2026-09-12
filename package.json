@@ -172,7 +172,8 @@
     "db:browse": "node scripts/db-sqlserver-admin.mjs browse-config",
     "check:port": "node ./scripts/check-port.js",
     "kill:port": "bash ./scripts/kill-dev-server.sh",
-    "lint:py": "pyright --project pyrightconfig.json"
+    "lint:py": "pyright --project pyrightconfig.json",
+    "prototype:1348": "cross-env NEXT_PUBLIC_DETAIL_PROTOTYPE=true AUTH_OIDC_CLIENT_ID=kravhantering-prodlike AUTH_OIDC_CLIENT_SECRET=prodlike-kc-app-secret AUTH_OIDC_REDIRECT_URI=http://localhost:3001/api/auth/callback AUTH_OIDC_POST_LOGOUT_REDIRECT_URI=http://localhost:3001/ AUTH_SESSION_COOKIE_NAME=kravhantering_prototype_1348 npm run dev -- --hostname 0.0.0.0 --port 3001"
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",
