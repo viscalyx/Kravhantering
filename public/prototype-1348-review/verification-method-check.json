@@ -1,0 +1,34 @@
+{
+  "capturedAt": "2026-09-12T19:27:49.816Z",
+  "baseUrl": "http://localhost:3001",
+  "passed": true,
+  "headings": ["Kravtext", "Acceptanskriterium", "Verifieringsmetod"],
+  "metadataLabels": [
+    "Kravområde",
+    "Kravområdesägare",
+    "Kategori",
+    "Typ",
+    "Kvalitetsegenskap",
+    "Prioritet",
+    "Verifierbar",
+    "Används i kravunderlag"
+  ],
+  "styles": [
+    {
+      "fontSize": "16px",
+      "lineHeight": "24px",
+      "width": 967
+    },
+    {
+      "fontSize": "16px",
+      "lineHeight": "24px",
+      "width": 967
+    },
+    {
+      "fontSize": "16px",
+      "lineHeight": "24px",
+      "width": 967
+    }
+  ],
+  "method": "Automatiserade e2e-tester som validerar identitetshantering och provisionering"
+}

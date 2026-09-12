@@ -101,6 +101,9 @@ function TextBlock({
 
 // A retains grouped metadata tiles inside a smaller card.
 export function VariantA(props: RequirementDetailSectionsProps) {
+  const verificationMethod = props.metadata.find(
+    item => item.id === 'verification-method',
+  )
   return (
     <div className="prototype-sections prototype-variant-a">
       <TextBlock
@@ -116,13 +119,23 @@ export function VariantA(props: RequirementDetailSectionsProps) {
       >
         {props.acceptanceCriteria}
       </TextBlock>
+      {verificationMethod && (
+        <TextBlock
+          label={verificationMethod.label}
+          {...marker(props, 'verification method')}
+        >
+          {verificationMethod.value}
+        </TextBlock>
+      )}
       <dl className="prototype-metadata-grid">
-        {props.metadata.map(item => (
-          <div key={item.id} {...marker(props, item.markerValue ?? item.id)}>
-            <dt>{item.label}</dt>
-            <dd>{item.value}</dd>
-          </div>
-        ))}
+        {props.metadata
+          .filter(item => item.id !== 'verification-method')
+          .map(item => (
+            <div key={item.id} {...marker(props, item.markerValue ?? item.id)}>
+              <dt>{item.label}</dt>
+              <dd>{item.value}</dd>
+            </div>
+          ))}
       </dl>
       <References {...props} />
     </div>

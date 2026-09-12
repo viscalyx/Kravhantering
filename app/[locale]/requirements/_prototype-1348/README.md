@@ -92,6 +92,8 @@ For the requested sizes, use the browser's responsive viewport controls at
 | Three structural alternatives plus the actual baseline | Switch baseline/A/B/C on ANV0002. A groups metadata in a card, B flows pairs without a frame, C aligns rows in a document layout. |
 | Smaller outer spacing, card padding and gaps | Compare the same short requirement. Watch total detail height and how many following requirements fit in the viewport. |
 | Stronger primary text | In A/B/C, requirement text and acceptance text are 16 px with a 1.5 line height. Both precede metadata. Compare with the baseline and switch to long text to inspect wrapping. |
+| Full-width primary text in A | Open SÄK0010 in A at 1440 px and 1920 px. Requirement text, acceptance criteria and verification method use the full inner card width, including beneath the process steps. Compare the SÄK0010 before/after captures in the gallery. At narrow widths, text wraps without horizontal overflow. |
+| Verification method as a text section in A | Open SÄK0010. Verify the order: requirement text, acceptance criteria, verification method, metadata. The verification method has the same heading/body styles as acceptance criteria and appears once, outside the metadata grid. Compare desktop and mobile wrapping. |
 | More compact metadata | Inspect all metadata values, verification method and specification count. A uses a compact grid with area owner inside the info panel; B uses inline pairs; C uses a ruled definition table. |
 | Compact empty references and packages | Choose empty sections. Both labels and their empty information stay visible on compact rows. Choose populated sections and hover the package to inspect its existing purpose/scope tooltip. |
 | Compact empty improvement suggestions | Choose empty sections and compare the card. Its title, empty information and registration button remain. Choose populated sections to inspect the existing suggestion pill and actions. |
@@ -113,7 +115,7 @@ For the requested sizes, use the browser's responsive viewport controls at
 
 The user prefers A and asks for smaller ordinary process arrows beside
 Kravtext, plus an area info icon with description and owner in a panel.
-The revised desktop example is **538 px** high, compared with **588 px** for
+The revised desktop example is **577 px** high, compared with **588 px** for
 A before this refinement and **824 px** for the baseline. Both desktop sizes
 use the same actual ANV0002 text and forced empty sections.
 
@@ -124,6 +126,26 @@ alignment, arrow geometry, real area information and keyboard dismissal.
 The area's existing read API supplies the description when the panel opens;
 loading, unavailable-description and read-error messages stay inside it.
 The demo area's owner currently resolves to its stored HSA-id display value.
+
+### Text wrapping in SÄK0010
+
+A removes the inherited `75ch` reading-width cap from the primary text
+blocks. Verification method is a third full-width section directly below
+acceptance criteria, using the same heading and body styles. Text uses the
+full inner card width beneath the process-step heading.
+At a 1440 px viewport, each block grows from 720 px to 967 px; at 1920 px,
+from 720 px to 1447 px. Stored line breaks remain intact.
+
+[Open SÄK0010 in A](http://localhost:3001/sv/requirements?variant=A&selected=S%C3%84K0010).
+Before/after screenshots and `sak0010-before.json` / `sak0010-after.json`
+record the real requirement text, available width and measured text height.
+Before images reconstruct the preceding A layout in the browser with its
+75ch cap and metadata placement, matching the initial measured geometry.
+The text sections alone save 48 px at 1440 px and 96 px at 1920 px; moving
+verification method into its own section also contributes to total height.
+`verification-method-check.json` records section order, matching styles and
+absence of a duplicate metadata entry. `wrap-stress-verification.json` covers
+long content, dark theme, simulated split width and narrow standalone views.
 
 ## Evidence and limits
 

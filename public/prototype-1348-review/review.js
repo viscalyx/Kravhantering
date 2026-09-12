@@ -1,5 +1,5 @@
 const data = {
-  capturedAt: '2026-09-12T19:19:46.474Z',
+  capturedAt: '2026-09-12T19:27:37.167Z',
   baseCommit: '2d9ad75f',
   results: [
     {
@@ -49,8 +49,8 @@ const data = {
       scenario:
         'actual text, empty sections, light theme, collapsed navigation',
       requirement: 'ANV0002:v1',
-      detailHeight: 538,
-      cardHeight: 390,
+      detailHeight: 577,
+      cardHeight: 429,
       suggestionsHeight: 74,
       detailTop: 201,
       steps: [
@@ -202,8 +202,8 @@ const data = {
       scenario:
         'actual text, empty sections, light theme, collapsed navigation',
       requirement: 'ANV0002:v1',
-      detailHeight: 538,
-      cardHeight: 390,
+      detailHeight: 577,
+      cardHeight: 429,
       suggestionsHeight: 74,
       detailTop: 201,
       steps: [

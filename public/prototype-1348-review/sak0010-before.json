@@ -1,0 +1,59 @@
+{
+  "capturedAt": "2026-09-12T19:26:57.883Z",
+  "baseUrl": "http://localhost:3001",
+  "results": [
+    {
+      "width": 1440,
+      "requirement": "SÄK0010:v1",
+      "height": 729.75,
+      "texts": [
+        {
+          "text": "Systemet ska implementera en heltäckande lösning för hantering av digitala identiteter och åtkomsträttigheter som möjliggör centraliserad administration av användarkonton, roller och behörigheter över samtliga anslutna delsystem. Lösningen ska stödja automatiserad provisionering och avprovisionering av konton baserat på händelser i HR-systemet samt integration med extern identitetsleverantör via SCIM-protokollet. [Version 1 testdata]",
+          "width": 720,
+          "available": 967,
+          "height": 120,
+          "scrollWidth": 720,
+          "maxWidth": "719.531px",
+          "right": 857.53125
+        },
+        {
+          "text": "Nya användarkonton skapas automatiskt inom 15 minuter efter registrering i HR-systemet och tilldelas korrekta roller baserat på organisatorisk tillhörighet och befattning. Vid avslutad anställning avaktiveras samtliga konton och behörigheter inom 60 minuter. Systemet ska logga alla provisioneringsåtgärder med fullständig spårbarhet inklusive tidsstämpel, källa och genomförd förändring för revisionsändamål. [Version 1 testdata]",
+          "width": 720,
+          "available": 967,
+          "height": 120,
+          "scrollWidth": 720,
+          "maxWidth": "719.531px",
+          "right": 857.53125
+        }
+      ],
+      "stepRight": 1105.265625
+    },
+    {
+      "width": 1920,
+      "requirement": "SÄK0010:v1",
+      "height": 729.75,
+      "texts": [
+        {
+          "text": "Systemet ska implementera en heltäckande lösning för hantering av digitala identiteter och åtkomsträttigheter som möjliggör centraliserad administration av användarkonton, roller och behörigheter över samtliga anslutna delsystem. Lösningen ska stödja automatiserad provisionering och avprovisionering av konton baserat på händelser i HR-systemet samt integration med extern identitetsleverantör via SCIM-protokollet. [Version 1 testdata]",
+          "width": 720,
+          "available": 1447,
+          "height": 120,
+          "scrollWidth": 720,
+          "maxWidth": "719.531px",
+          "right": 857.53125
+        },
+        {
+          "text": "Nya användarkonton skapas automatiskt inom 15 minuter efter registrering i HR-systemet och tilldelas korrekta roller baserat på organisatorisk tillhörighet och befattning. Vid avslutad anställning avaktiveras samtliga konton och behörigheter inom 60 minuter. Systemet ska logga alla provisioneringsåtgärder med fullständig spårbarhet inklusive tidsstämpel, källa och genomförd förändring för revisionsändamål. [Version 1 testdata]",
+          "width": 720,
+          "available": 1447,
+          "height": 120,
+          "scrollWidth": 720,
+          "maxWidth": "719.531px",
+          "right": 857.53125
+        }
+      ],
+      "stepRight": 1585.265625
+    }
+  ],
+  "errors": []
+}

@@ -116,6 +116,10 @@ html:where([data-detail-prototype]:not([data-detail-prototype="baseline"]))
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
+/* A uses the full card width below the process-step heading. */
+.prototype-variant-a .prototype-primary-text {
+  max-width: none;
+}
 .prototype-sections dt {
   font-size: 12px;
   color: var(--prototype-muted);

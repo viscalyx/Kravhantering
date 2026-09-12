@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-09-12T19:19:14.754Z",
+  "capturedAt": "2026-09-12T19:28:35.951Z",
   "baseUrl": "http://localhost:3001",
   "checks": [
     {
@@ -44,7 +44,7 @@
       "details": {
         "bounds": {
           "x": 23,
-          "y": 348.078125,
+          "y": 431.921875,
           "width": 336,
           "height": 163
         },
@@ -60,7 +60,7 @@
       "details": {
         "bounds": {
           "x": 16,
-          "y": 396.078125,
+          "y": 503.921875,
           "width": 288,
           "height": 163
         },
