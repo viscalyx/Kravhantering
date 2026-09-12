@@ -9,6 +9,10 @@ still open; no prototype code is promoted to production.
 
 Both B and D keep commands available at the user's current scroll position.
 Back to top is an optional convenience, not a prerequisite for creating an item.
+The space above the header and between the header and table stays visible
+while scrolling. Opaque gutters prevent rows from showing through these gaps
+in either theme. The specification detail retains its responsive top spacing
+and independent table scrolling.
 
 ## Open or restart
 
@@ -92,6 +96,7 @@ screens, dark theme and English narrow-screen layouts.
 | P16 | Developer Mode coverage | Enable Developer Mode and inspect the command bar, primary action, toolbar, switcher and specification detail layout markers |
 | P17 | Worktree and runtime isolation | Confirm branch `prototype/issue-1345`, port 3001, and no prototype edits in the main checkout. Rendering and switcher require the development prototype flag |
 | P18 | Offline review | Open every gallery view with B/D, compare screenshots and follow the matching live link |
+| P19 | Stable spacing while scrolling | In B/D, scroll the library slowly from the top, then down 900 px and back. The top gutter stays 48 px and the header-to-table gap stays 17 px including the table border. Neither gap closes or reveals rows. Repeat in dark theme and check the other list headers and specification panes |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -160,6 +165,9 @@ requirement for either candidate. No final variant is approved for production.
 - At a library scroll offset of 900 px, both B and D keep the primary and
   secondary commands visible. Clicking the simulated creation action and
   opening/closing Reports leaves the scroll offset unchanged.
+- Measurements at scroll offsets 0, 10, 45, 100 and 900 px, then back to 0,
+  confirm a constant 48 px top gutter and 17 px header-to-table gap in B/D.
+  See [spacing observations](evidence/spacing-observations.json).
 - In specification 8, the left and right panes are scrolled independently.
   Clicking Nytt unikt krav leaves both offsets unchanged in B and D. Detail
   tabs switch back to the existing lists correctly.
