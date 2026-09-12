@@ -375,7 +375,10 @@ subscription, resource group, and VM.
 After a start is submitted or an existing `starting` state is joined, the
 local lock is released and the independent running deadline begins. Empty or
 failed state reads (`unavailable`) keep polling within that same deadline;
-they do not reset it or submit another start. An initial `unavailable` state
+they do not reset it or submit another start. Each running-wait read uses the
+smaller of the Azure-call timeout and the remaining whole seconds. With less
+than one second left, polling waits out the remainder without another read.
+An initial `unavailable` state
 still fails before any mutation. Any later
 downward state—`stopping`, `stopped-allocated`, `deallocating`, or
 `deallocated`—is classified as `outside-interference` and terminates the local

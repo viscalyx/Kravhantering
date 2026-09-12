@@ -844,6 +844,97 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
     }
   }
 
+  Context 'When an unavailable read consumes the remaining running budget' {
+    BeforeDiscovery {
+      $mockDeadlineCases = @(
+        @{ DeadlineMilliseconds = 600000 },
+        @{ DeadlineMilliseconds = 600500 }
+      )
+    }
+
+    BeforeEach {
+      $script:mockStateReads = 0
+      $script:now = [System.Int64]0
+      Mock Get-AzureDevLifecycleState -MockWith {
+        $script:mockStateReads++
+        if ($script:mockStateReads -eq 1) {
+          return 'starting'
+        }
+        $script:now += $TimeoutSeconds * 1000
+        return 'unavailable'
+      }
+      Mock Complete-AzureDevLifecycleAttempt -MockWith { throw $Failure }
+    }
+
+    It 'Should finish within the <DeadlineMilliseconds> millisecond deadline' `
+      -ForEach $mockDeadlineCases {
+      $timing = & $script:newLifecycleTiming `
+        -PollIntervalMilliseconds 599000 `
+        -RunningDeadlineMilliseconds $DeadlineMilliseconds
+
+      {
+        Invoke-AzureDevLifecycleCommand `
+          -CommandName start `
+          -RepositoryRoot $TestDrive `
+          -Timing $timing
+      } | Should-Throw -ExceptionMessage '*did not reach running within*'
+
+      $script:now | Should-Be $DeadlineMilliseconds
+      Should-Invoke Get-AzureDevLifecycleState -Exactly -Times 2 -Scope It
+      Should-Invoke Get-AzureDevLifecycleState -Exactly -Times 1 -Scope It `
+        -ParameterFilter { $TimeoutSeconds -eq 1 }
+      Should-NotInvoke Invoke-AzCli -Scope It
+      Should-Invoke Complete-AzureDevLifecycleAttempt `
+        -Exactly -Times 1 -Scope It `
+        -ParameterFilter {
+          $Failure.TargetObject.Phase -ceq 'running-wait' -and
+          $Failure.TargetObject.ObservedState -ceq 'unavailable' -and
+          $Record.elapsedMilliseconds -eq $DeadlineMilliseconds
+        }
+    }
+  }
+
+  Context 'When the running read budget is exhausted after polling' {
+    BeforeDiscovery {
+      $mockRemainingCases = @(
+        @{ RemainingMilliseconds = 0 },
+        @{ RemainingMilliseconds = 500 }
+      )
+    }
+
+    BeforeEach {
+      $script:now = [System.Int64]0
+      Mock Get-AzureDevLifecycleState -MockWith { return 'starting' }
+      Mock Write-AzureDevLifecycleProgress
+      Mock Write-AzureDevLifecycleProgress -ParameterFilter {
+        $Event -ceq 'heartbeat'
+      } -MockWith {
+        $script:now = [System.Math]::Max(
+          $script:now,
+          600000 - $RemainingMilliseconds
+        )
+      }
+      Mock Complete-AzureDevLifecycleAttempt -MockWith { throw $Failure }
+    }
+
+    It 'Should skip a read with <RemainingMilliseconds> milliseconds left' `
+      -ForEach $mockRemainingCases {
+      $timing = & $script:newLifecycleTiming `
+        -PollIntervalMilliseconds 599000
+
+      {
+        Invoke-AzureDevLifecycleCommand `
+          -CommandName start `
+          -RepositoryRoot $TestDrive `
+          -Timing $timing
+      } | Should-Throw -ExceptionMessage '*did not reach running within*'
+
+      $script:now | Should-Be 600000
+      Should-Invoke Get-AzureDevLifecycleState -Exactly -Times 1 -Scope It
+      Should-NotInvoke Invoke-AzCli -Scope It
+    }
+  }
+
   Context 'When an upward transition is externally reversed' {
     BeforeDiscovery {
       $interferenceCases = @(

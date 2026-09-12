@@ -1733,9 +1733,21 @@ function Invoke-AzureDevLifecycleCommand {
           ))
       }
 
+      $remainingMilliseconds = $wait.DeadlineAt -
+        [long](& $getMonotonicMilliseconds)
+      $stateReadTimeoutSeconds = [int][Math]::Min(
+        $azureCallTimeoutSeconds,
+        [Math]::Floor([decimal]$remainingMilliseconds / 1000)
+      )
+      # The CLI timeout uses whole seconds. Leave any fractional remainder
+      # to the next poll instead of starting a read that can exceed it.
+      if ($stateReadTimeoutSeconds -le 0) {
+        continue
+      }
+
       $nextState = Get-AzureDevLifecycleState `
         -Configuration $configuration `
-        -TimeoutSeconds $azureCallTimeoutSeconds
+        -TimeoutSeconds $stateReadTimeoutSeconds
       $stateObservedAt = [long](& $getMonotonicMilliseconds)
       $stateElapsedMilliseconds = [Math]::Max(
         [long]0,
