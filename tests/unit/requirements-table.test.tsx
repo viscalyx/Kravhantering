@@ -21,7 +21,7 @@ import {
 const mockPush = vi.fn()
 const resizeObserverObserve = vi.fn()
 const resizeObserverDisconnect = vi.fn()
-const DEFAULT_COLUMN_WIDTHS = [150, 360, 136, 152, 148, 176]
+const DEFAULT_COLUMN_WIDTHS = [118, 809, 148, 130, 131, 144]
 const DEFAULT_VIEWPORT_HEIGHT = 768
 const DEFAULT_VIEWPORT_WIDTH = 1024
 
@@ -66,7 +66,7 @@ describe('RequirementsTable', () => {
     'type',
     'qualityCharacteristic',
     'priorityLevel',
-    'status',
+    'tableStatus',
     'verifiable',
     'needsReference',
     'specificationItemStatus',
@@ -707,10 +707,10 @@ describe('RequirementsTable', () => {
           bottom: contentHeight,
           height: contentHeight,
           left: 0,
-          right: 1122,
+          right: 1480,
           toJSON: () => ({}),
           top: 0,
-          width: 1122,
+          width: 1480,
           x: 0,
           y: 0,
         }) as DOMRect,
@@ -722,10 +722,10 @@ describe('RequirementsTable', () => {
           bottom,
           height: bottom - top,
           left: 0,
-          right: 1122,
+          right: 1480,
           toJSON: () => ({}),
           top,
-          width: 1122,
+          width: 1480,
           x: 0,
           y: top,
         }) as DOMRect,
@@ -1189,7 +1189,7 @@ describe('RequirementsTable', () => {
 
     const resetButton = screen.getByRole('button', { name: 'resetToDefault' })
     const statusLabel = screen
-      .getByRole('checkbox', { name: 'status' })
+      .getByRole('checkbox', { name: 'tableStatus' })
       .closest('label')
 
     expect(resetButton.className).toContain('min-h-11')
@@ -1275,10 +1275,10 @@ describe('RequirementsTable', () => {
     expect(getColumnPickerTrigger(container)).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'columns' }))
-    expect(screen.getByRole('checkbox', { name: 'status' })).toBeTruthy()
+    expect(screen.getByRole('checkbox', { name: 'tableStatus' })).toBeTruthy()
 
     fireEvent.mouseDown(document.body)
-    expect(screen.queryByRole('checkbox', { name: 'status' })).toBeNull()
+    expect(screen.queryByRole('checkbox', { name: 'tableStatus' })).toBeNull()
   })
 
   it('exposes developer-mode metadata for column picker options', () => {
@@ -2320,10 +2320,26 @@ describe('RequirementsTable', () => {
     expect(descriptionCell?.className).toContain('truncate')
   })
 
+  it('labels the wrapping state and exposes the control in Developer Mode', () => {
+    render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
+    const toggle = screen.getByRole('button', { name: 'wrapOff' })
+    expect(toggle).toHaveTextContent('wrapOff')
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    expect(toggle).toHaveAttribute(
+      'data-developer-mode-value',
+      'wrap requirement text',
+    )
+    fireEvent.click(toggle)
+    expect(screen.getByRole('button', { name: 'wrapOn' })).toHaveTextContent(
+      'wrapOn',
+    )
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  })
+
   it('adds a visible focus ring to the description wrap toggle', () => {
     render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
 
-    const wrapToggle = screen.getByRole('button', { name: 'showFullText' })
+    const wrapToggle = screen.getByRole('button', { name: 'wrapOff' })
 
     expect(wrapToggle.className).toContain('focus-visible:outline-none')
     expect(wrapToggle.className).toContain('focus-visible:ring-2')
@@ -2333,7 +2349,7 @@ describe('RequirementsTable', () => {
   it('marks the description wrap toggle icons as decorative in both states', () => {
     render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
 
-    let wrapToggle = screen.getByRole('button', { name: 'showFullText' })
+    let wrapToggle = screen.getByRole('button', { name: 'wrapOff' })
     let icon = wrapToggle.querySelector('svg')
 
     expect(icon).toHaveAttribute('aria-hidden', 'true')
@@ -2341,7 +2357,7 @@ describe('RequirementsTable', () => {
 
     fireEvent.click(wrapToggle)
 
-    wrapToggle = screen.getByRole('button', { name: 'showShortText' })
+    wrapToggle = screen.getByRole('button', { name: 'wrapOn' })
     icon = wrapToggle.querySelector('svg')
 
     expect(icon).toHaveAttribute('aria-hidden', 'true')
@@ -2366,7 +2382,7 @@ describe('RequirementsTable', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'columns' }))
-    fireEvent.click(screen.getByRole('checkbox', { name: 'status' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'tableStatus' }))
 
     expect(onVisibleColumnsChange).toHaveBeenCalledWith([
       'uniqueId',
@@ -2539,8 +2555,8 @@ describe('RequirementsTable', () => {
     )
 
     for (const button of screen.getAllByRole('button', { name: 'filterBy' })) {
-      expect(button.className).toContain('min-h-11')
-      expect(button.className).toContain('min-w-11')
+      expect(button.className).toContain('min-h-7')
+      expect(button.className).toContain('min-w-7')
       expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
     }
   })
@@ -2563,7 +2579,7 @@ describe('RequirementsTable', () => {
       />,
     )
 
-    const statusFilterButton = getHeaderFilterButton('status')
+    const statusFilterButton = getHeaderFilterButton('tableStatus')
     expect(statusFilterButton).toBeTruthy()
     if (!statusFilterButton) {
       throw new Error('Expected the status filter button to be rendered.')
@@ -2643,8 +2659,8 @@ describe('RequirementsTable', () => {
     expect(headerControl).toBeTruthy()
     expect(sortableButton).toBeTruthy()
     expect(headerControl?.className).not.toContain('min-h-11')
-    expect(sortableButton?.className).toContain('min-h-11')
-    expect(sortableButton?.className).toContain('min-w-11')
+    expect(sortableButton?.className).toContain('min-h-7')
+    expect(sortableButton?.className).toContain('min-w-7')
   })
 
   it('anchors active filter count badges to the filter icon instead of the full button shell', () => {
@@ -2723,7 +2739,7 @@ describe('RequirementsTable', () => {
 
     fireEvent.mouseDown(document.body)
 
-    const statusFilterButton = getHeaderFilterButton('status')
+    const statusFilterButton = getHeaderFilterButton('tableStatus')
     expect(statusFilterButton).toBeTruthy()
     if (!statusFilterButton) {
       throw new Error('Expected the status filter button to be rendered.')
@@ -2798,6 +2814,33 @@ describe('RequirementsTable', () => {
     ).toBe(0)
   })
 
+  it('renders the approved default column widths without manual overrides', () => {
+    const { container } = render(<ControlledResizableTable />)
+    expect(getColumnWidths(container)).toEqual([
+      '118px',
+      '809px',
+      '148px',
+      '130px',
+      '131px',
+      '144px',
+    ])
+  })
+
+  it('preserves grown requirement text when another column is resized', () => {
+    const { container } = render(<ControlledResizableTable />)
+    setHeaderMetrics(container, [118, 1020, 148, 130, 131, 144])
+    const handle = container.querySelector('[data-column-resize-handle="area"]')
+    fireEvent.keyDown(handle as Element, { key: 'ArrowRight' })
+    expect(getColumnWidths(container)).toEqual([
+      '118px',
+      '1020px',
+      '156px',
+      '130px',
+      '131px',
+      '144px',
+    ])
+  })
+
   it('widens the dragged column and keeps later columns at their width', () => {
     const { container } = render(<ControlledResizableTable />)
 
@@ -2808,31 +2851,31 @@ describe('RequirementsTable', () => {
 
     expect(handle).toBeTruthy()
     expect(getColumnWidths(container)).toEqual([
-      '150px',
-      '360px',
-      '136px',
-      '152px',
+      '118px',
+      '809px',
       '148px',
-      '176px',
+      '130px',
+      '131px',
+      '144px',
     ])
-    expect(tableContent?.style.width).toBe('1122px')
+    expect(tableContent?.style.width).toBe('1480px')
 
     firePrimaryPointerDown(handle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     fireEvent.pointerUp(window, { clientX: 132 })
 
     expect(screen.getByTestId('column-width-state').textContent).toBe(
-      '{"description":392}',
+      '{"description":841}',
     )
     expect(getColumnWidths(container)).toEqual([
-      '150px',
-      '392px',
-      '136px',
-      '152px',
+      '118px',
+      '841px',
       '148px',
-      '176px',
+      '130px',
+      '131px',
+      '144px',
     ])
-    expect(tableContent?.style.width).toBe('1154px')
+    expect(tableContent?.style.width).toBe('1512px')
   })
 
   it('shows the resized width during drag and commits it on pointer up', async () => {
@@ -2855,19 +2898,19 @@ describe('RequirementsTable', () => {
 
     expect(screen.getByTestId('column-width-state').textContent).toBe('{}')
     expect(getColumnWidths(container)).toEqual([
-      '150px',
-      '392px',
-      '136px',
-      '152px',
+      '118px',
+      '841px',
       '148px',
-      '176px',
+      '130px',
+      '131px',
+      '144px',
     ])
-    expect(tableContent?.style.width).toBe('1154px')
+    expect(tableContent?.style.width).toBe('1512px')
 
     fireEvent.pointerUp(window, { clientX: 132 })
 
     expect(screen.getByTestId('column-width-state').textContent).toBe(
-      '{"description":392}',
+      '{"description":841}',
     )
   })
 
@@ -2891,23 +2934,23 @@ describe('RequirementsTable', () => {
     })
 
     expect(getColumnWidths(container)).toEqual([
-      '150px',
-      '392px',
-      '136px',
-      '152px',
+      '118px',
+      '841px',
       '148px',
-      '176px',
+      '130px',
+      '131px',
+      '144px',
     ])
     expect(getStickyHeaderColumnWidths(container)).toEqual([
-      '150px',
-      '392px',
-      '136px',
-      '152px',
+      '118px',
+      '841px',
       '148px',
-      '176px',
+      '130px',
+      '131px',
+      '144px',
     ])
-    expect(tableContent?.style.width).toBe('1154px')
-    expect(stickyHeaderContent?.style.width).toBe('1154px')
+    expect(tableContent?.style.width).toBe('1512px')
+    expect(stickyHeaderContent?.style.width).toBe('1512px')
   })
 
   it('ignores pointer events from other pointers while a resize is active', async () => {
@@ -2918,7 +2961,7 @@ describe('RequirementsTable', () => {
     const handle = getResizeHandle(container, 'description')
 
     expect(handle).toBeTruthy()
-    expect(getResizeHandleLeft(container, 'description')).toBe('510px')
+    expect(getResizeHandleLeft(container, 'description')).toBe('927px')
 
     firePrimaryPointerDown(handle as Element, { clientX: 100, pointerId: 1 })
     fireEvent.pointerMove(window, { clientX: 132, pointerId: 2 })
@@ -2931,7 +2974,7 @@ describe('RequirementsTable', () => {
       })
     })
 
-    expect(getResizeHandleLeft(container, 'description')).toBe('510px')
+    expect(getResizeHandleLeft(container, 'description')).toBe('927px')
     expect(screen.getByTestId('column-width-state').textContent).toBe('{}')
 
     fireEvent.pointerMove(window, { clientX: 132, pointerId: 1 })
@@ -2941,12 +2984,12 @@ describe('RequirementsTable', () => {
       })
     })
 
-    expect(getResizeHandleLeft(container, 'description')).toBe('542px')
+    expect(getResizeHandleLeft(container, 'description')).toBe('959px')
 
     fireEvent.pointerUp(window, { clientX: 132, pointerId: 1 })
 
     expect(screen.getByTestId('column-width-state').textContent).toBe(
-      '{"description":392}',
+      '{"description":841}',
     )
   })
 
@@ -2958,8 +3001,8 @@ describe('RequirementsTable', () => {
     const descriptionHandle = getResizeHandle(container, 'description')
 
     expect(descriptionHandle).toBeTruthy()
-    expect(getResizeHandleLeft(container, 'description')).toBe('510px')
-    expect(getResizeHandleLeft(container, 'area')).toBe('646px')
+    expect(getResizeHandleLeft(container, 'description')).toBe('927px')
+    expect(getResizeHandleLeft(container, 'area')).toBe('1075px')
 
     firePrimaryPointerDown(descriptionHandle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
@@ -2970,21 +3013,21 @@ describe('RequirementsTable', () => {
     })
 
     expect(screen.getByTestId('column-width-state').textContent).toBe('{}')
-    expect(getResizeHandleLeft(container, 'description')).toBe('542px')
-    expect(getResizeHandleLeft(container, 'area')).toBe('678px')
+    expect(getResizeHandleLeft(container, 'description')).toBe('959px')
+    expect(getResizeHandleLeft(container, 'area')).toBe('1107px')
     expect(getColumnWidths(container)).toEqual([
-      '150px',
-      '392px',
-      '136px',
-      '152px',
+      '118px',
+      '841px',
       '148px',
-      '176px',
+      '130px',
+      '131px',
+      '144px',
     ])
 
     fireEvent.pointerUp(window, { clientX: 132 })
 
     expect(screen.getByTestId('column-width-state').textContent).toBe(
-      '{"description":392}',
+      '{"description":841}',
     )
   })
 
@@ -3028,7 +3071,7 @@ describe('RequirementsTable', () => {
     fireEvent.pointerUp(window, { clientX: 132 })
 
     expect(screen.getByTestId('column-width-state').textContent).toBe(
-      '{"description":392}',
+      '{"description":841}',
     )
   })
 
@@ -3082,7 +3125,7 @@ describe('RequirementsTable', () => {
     fireEvent.pointerUp(window, { clientX: 132, pointerId: 1 })
 
     expect(screen.getByTestId('column-width-state').textContent).toBe(
-      '{"description":392}',
+      '{"description":841}',
     )
   })
 
@@ -3120,8 +3163,8 @@ describe('RequirementsTable', () => {
     const descriptionHandle = getResizeHandle(container, 'description')
 
     expect(descriptionHandle).toBeTruthy()
-    expect(getResizeHandleLeft(container, 'description')).toBe('510px')
-    expect(getResizeHandleLeft(container, 'area')).toBe('646px')
+    expect(getResizeHandleLeft(container, 'description')).toBe('927px')
+    expect(getResizeHandleLeft(container, 'area')).toBe('1075px')
 
     firePrimaryPointerDown(descriptionHandle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
@@ -3131,22 +3174,22 @@ describe('RequirementsTable', () => {
       })
     })
 
-    expect(getResizeHandleLeft(container, 'description')).toBe('542px')
-    expect(getResizeHandleLeft(container, 'area')).toBe('678px')
+    expect(getResizeHandleLeft(container, 'description')).toBe('959px')
+    expect(getResizeHandleLeft(container, 'area')).toBe('1107px')
 
     fireEvent.pointerCancel(window, { clientX: 132 })
 
     expect(screen.getByTestId('column-width-state').textContent).toBe('{}')
     expect(getColumnWidths(container)).toEqual([
-      '150px',
-      '360px',
-      '136px',
-      '152px',
+      '118px',
+      '809px',
       '148px',
-      '176px',
+      '130px',
+      '131px',
+      '144px',
     ])
-    expect(getResizeHandleLeft(container, 'description')).toBe('510px')
-    expect(getResizeHandleLeft(container, 'area')).toBe('646px')
+    expect(getResizeHandleLeft(container, 'description')).toBe('927px')
+    expect(getResizeHandleLeft(container, 'area')).toBe('1075px')
   })
 
   it('keeps dragging active across multiple pointer moves', () => {
@@ -3165,17 +3208,17 @@ describe('RequirementsTable', () => {
     fireEvent.pointerUp(window, { clientX: 164 })
 
     expect(screen.getByTestId('column-width-state').textContent).toBe(
-      '{"description":424}',
+      '{"description":873}',
     )
     expect(getColumnWidths(container)).toEqual([
-      '150px',
-      '424px',
-      '136px',
-      '152px',
+      '118px',
+      '873px',
       '148px',
-      '176px',
+      '130px',
+      '131px',
+      '144px',
     ])
-    expect(tableContent?.style.width).toBe('1186px')
+    expect(tableContent?.style.width).toBe('1544px')
   })
 
   it('does not emit duplicate width updates for repeated pointer moves at the same position', () => {
@@ -3201,14 +3244,14 @@ describe('RequirementsTable', () => {
     fireEvent.pointerUp(window, { clientX: 132 })
 
     expect(onColumnWidthsChange).toHaveBeenCalledTimes(1)
-    expect(onColumnWidthsChange).toHaveBeenCalledWith({ description: 392 })
+    expect(onColumnWidthsChange).toHaveBeenCalledWith({ description: 841 })
   })
 
   it('does not emit a width change when resetting an explicit default-width override', () => {
     const onColumnWidthsChange = vi.fn()
     const { container } = render(
       <RequirementsTable
-        columnWidths={{ description: 360 }}
+        columnWidths={{ description: 809 }}
         locale="sv"
         onColumnWidthsChange={onColumnWidthsChange}
         rows={[makeRow()]}
@@ -3250,7 +3293,7 @@ describe('RequirementsTable', () => {
     fireEvent.pointerUp(window, { clientX: 120 })
 
     expect(onColumnWidthsChange).toHaveBeenCalledTimes(1)
-    expect(onColumnWidthsChange).toHaveBeenCalledWith({ description: 380 })
+    expect(onColumnWidthsChange).toHaveBeenCalledWith({ description: 829 })
   })
 
   it('shrinks the dragged column without changing later column widths', () => {
@@ -3268,17 +3311,17 @@ describe('RequirementsTable', () => {
     fireEvent.pointerUp(window, { clientX: 68 })
 
     expect(screen.getByTestId('column-width-state').textContent).toBe(
-      '{"description":328}',
+      '{"description":777}',
     )
     expect(getColumnWidths(container)).toEqual([
-      '150px',
-      '328px',
-      '136px',
-      '152px',
+      '118px',
+      '777px',
       '148px',
-      '176px',
+      '130px',
+      '131px',
+      '144px',
     ])
-    expect(tableContent?.style.width).toBe('1090px')
+    expect(tableContent?.style.width).toBe('1448px')
   })
 
   it('supports keyboard resizing and double-click reset', () => {
@@ -3298,28 +3341,28 @@ describe('RequirementsTable', () => {
       '{"status":220,"type":228}',
     )
     expect(getColumnWidths(container)).toEqual([
-      '150px',
-      '360px',
-      '136px',
-      '152px',
+      '118px',
+      '809px',
+      '148px',
+      '130px',
       '228px',
       '220px',
     ])
-    expect(tableContent?.style.width).toBe('1246px')
+    expect(tableContent?.style.width).toBe('1653px')
 
     fireEvent.doubleClick(handle as Element)
     expect(screen.getByTestId('column-width-state').textContent).toBe(
       '{"status":220}',
     )
     expect(getColumnWidths(container)).toEqual([
-      '150px',
-      '360px',
-      '136px',
-      '152px',
+      '118px',
+      '809px',
       '148px',
+      '130px',
+      '131px',
       '220px',
     ])
-    expect(tableContent?.style.width).toBe('1166px')
+    expect(tableContent?.style.width).toBe('1556px')
   })
 
   it('shows horizontal edge fades only when more content is off-screen', () => {
@@ -3727,6 +3770,9 @@ describe('RequirementsTable', () => {
     const header = container
       .querySelector('[data-requirement-header-label="uniqueId"]')
       ?.closest('th')
+    const headerControls = container.querySelector(
+      '[data-requirement-header-control="uniqueId"]',
+    )
     const chip = container.querySelector(
       '[data-developer-mode-name="header chip"]',
     )
@@ -3751,6 +3797,14 @@ describe('RequirementsTable', () => {
     )
     expect(columnsPill).toHaveAttribute('data-developer-mode-value', 'columns')
     expect(header).toHaveAttribute('data-developer-mode-name', 'column header')
+    expect(headerControls).toHaveAttribute(
+      'data-developer-mode-name',
+      'column header controls',
+    )
+    expect(headerControls).toHaveAttribute(
+      'data-developer-mode-value',
+      'requirement id',
+    )
     expect(header).toHaveAttribute(
       'data-developer-mode-value',
       'requirement id',

@@ -415,3 +415,40 @@ test('REQ-05, REQ-09: manual column widths and selection survive reload, navigat
     ).toBeLessThanOrEqual(375)
   })
 })
+
+test('REQ-05: resizing a metadata column preserves grown text and persisted widths', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.addInitScript(() => {
+    localStorage.setItem('requirements.navigationRail.expanded.v1', 'collapsed')
+  })
+  await page.goto('/sv/requirements')
+  const labels = page.locator('[data-requirement-header-label]')
+  const widths = () =>
+    labels.evaluateAll(nodes =>
+      nodes.map(node => node.closest('th')?.getBoundingClientRect().width ?? 0),
+    )
+  await expect(labels).toHaveCount(6)
+  await expect.poll(async () => (await widths())[1]).toBeGreaterThan(960)
+  const before = await widths()
+  const expected = [...before]
+  expected[2] += 8
+  await test.step('resize only the requirement-area column with the keyboard', async () => {
+    await page.locator('[data-column-resize-handle="area"]').first().focus()
+    await page.keyboard.press('ArrowRight')
+    await expect.poll(widths).toEqual(expected)
+  })
+  await test.step('retain manual widths after reload and a narrower viewport', async () => {
+    await page.reload()
+    await expect.poll(widths).toEqual(expected)
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await expect.poll(widths).toEqual(expected)
+    const navigation = page.getByRole('button', {
+      name: 'Expandera navigation',
+      exact: true,
+    })
+    await navigation.click()
+    await expect.poll(widths).toEqual(expected)
+  })
+})

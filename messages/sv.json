@@ -576,6 +576,9 @@
     "aiGenerateDisabledNoAuthorableArea": "AI-assisterat författande kräver minst ett kravområde där du får författa krav.",
     "editRequirement": "Redigera krav",
     "status": "Kravversionsstatus",
+    "tableStatus": "Status",
+    "wrapOn": "Radbrytning på",
+    "wrapOff": "Radbrytning av",
     "hasPendingVersionDraft": "Det arbetas på en ny version",
     "hasPendingVersionReview": "Det finns en nyare version som är under granskning",
     "statusLabel": {

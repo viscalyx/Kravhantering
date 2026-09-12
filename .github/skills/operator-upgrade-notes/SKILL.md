@@ -3,15 +3,14 @@ name: operator-upgrade-notes
 description: >-
   Review local PR changes against the target branch and decide whether
   production operators need upgrade notes, then write required guidance.
-  Use for committed, staged, unstaged, or untracked changes; breaking behavior;
-  deployment, configuration, or data migration impact; or proposed committed
-  operator guidance.
+  Use for deployment, configuration, data migration, recovery, or production
+  compatibility impact; proposed operator guidance.
 ---
 
 # Operator Upgrade Notes
 
-Assess whether a local PR has upgrade impact that production operators must
-prepare for before rollout.
+Assess what production operators must do or account for to upgrade the
+environment and keep it operating safely.
 
 ## Workflow
 
@@ -54,22 +53,38 @@ prepare for before rollout.
    roles, APIs, release artifacts, operational documentation, and
    compatibility. File names alone are not evidence. If the user requested
    committed changes only, report unrelated worktree changes as excluded.
-5. Apply every trigger below to the inspected behavior. The assessment is
-   complete when each operator-relevant change is either represented in the
-   notes or excluded by the no-notes rule.
+5. Apply the operational relevance test below before selecting note triggers.
+   For each candidate, identify the affected operational resource or contract,
+   the required action or constraint, and the consequence of overlooking it.
+   Complete the assessment when every relevant change has required guidance
+   or a supported no-notes decision.
 6. Compare required guidance with the Unreleased section in
    `docs/operations/operator-upgrade-notes.md`. Add or correct missing guidance
    in the Unreleased section only.
    For assessment-only requests, report adequacy against the requested review
    set and return proposed text for any gaps.
 
+## Operational Relevance
+
+Require notes when a change affects production upgrade preparation, rollout,
+compatibility, recovery, or continued operation. Ground the decision in an
+operational consequence found in the inspected changes. General requests to
+notify users, update training, or perform routine UI acceptance checks do not
+establish operational relevance.
+
+UI labels, column widths, scrolling, layout defaults, and other presentation
+changes belong in user-facing documentation. Return no operator notes for
+these changes unless they also change an operational contract. Internal
+refactors, tests, formatting, documentation cleanup, and CI bundle budgets
+also require no notes when production operation is unchanged.
+
 ## Note Triggers
 
-Create operator notes for:
+For changes that pass the operational relevance test, create notes for:
 
 - Required operator action before or during upgrade.
-- Breaking or removed behavior, renamed behavior, or changed defaults that
-  affect deployments, integrations, users, or support runbooks.
+- Breaking behavior or changed defaults that require deployment changes,
+  integration coordination, or revisions to operational recovery procedures.
 - Data migration preconditions, irreversible data changes, cleanup,
   rollback limits, or compatibility windows.
 - New or changed runtime configuration, secrets, certificates, networks,
@@ -77,18 +92,14 @@ Create operator notes for:
   services.
 - Permission, authentication, authorization, privacy, retention, export,
   action log, security audit log, reporting, or monitoring changes that
-  operators must communicate or validate.
+  require an operational response or targeted production verification.
 - API, MCP, report, export, file format, or integration contract changes that
   external consumers might need to accommodate.
-
-Return no notes for internal refactors, tests, formatting, copy-only UI polish,
-documentation cleanup, or fixes with no upgrade preparation or
-operator-visible behavior change.
 
 ## Notes Style
 
 - Write standalone, high-level guidance for production operators, release
-  managers, or support staff.
+  managers, or staff responsible for production operation.
 - State what needs attention before upgrade, during rollout, or soon after
   upgrade.
 - Write in ASD-STE100 Simplified Technical English. Use `CONTEXT-MAP.md` if it

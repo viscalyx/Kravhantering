@@ -742,9 +742,13 @@ arkiverad status väljs uttryckligen.
 
 ### REQ-04: sortera på sorterbar kolumn
 
-**Steg:** Klicka en sorterbar kolumnrubrik två gånger.
+**Steg:** Klicka en sorterbar kolumnrubrik två gånger. Sortera även med
+tangentbordet via kolumnen `Status` och använd dess filter. Kontrollera med
+skärmläsare att sorterings- och filterknapparnas namn anger vilken kolumn de
+tillhör.
 
 **Förväntat resultat:** Sorteringsindikator och radordning ändras konsekvent.
+Sorterings- och filterknapparnas tillgängliga namn innehåller hela kolumnnamnet.
 
 ### REQ-05: kolumnväljare sparar synliga kolumner
 
@@ -753,17 +757,23 @@ att verifierbara och inte verifierbara krav kan skiljas åt. Ändra
 kravtextkolumnens bredd med mus och piltangenter. Dölj därefter en valfri kolumn,
 ladda om sidan och kontrollera att kolumnen fortfarande är dold och avmarkerad
 i kolumnväljaren. Visa kolumnen igen. Växla sidonavigeringen och ändra
-fönstrets storlek.
+fönstrets storlek. Växla den namngivna radbrytningskontrollen med mus och
+tangentbord och läs en lång kravtext i båda lägena.
 
-**Förväntat resultat:** Båda verifierbarhetslägena har lokaliserade
+**Förväntat resultat:** Radbrytningskontrollen visar aktuellt läge och ändrar
+textens presentation utan att ändra innehållet. Kolumnväljaren, sorteringen
+och filtret använder namnet `Status`. Båda verifierbarhetslägena har lokaliserade
 hjälptexter. Kolumnval och manuella bredder ligger kvar efter omladdning,
-navigationsväxling och ändring av fönstret. Breda tabeller kan rullas i sidled.
+navigationsväxling och ändring av fönstret. Storleksändring påverkar endast
+kolumnen till vänster om avdelaren, även när kravtexten fyller ett brett
+fönster. Breda tabeller kan rullas i sidled.
 
 ### REQ-06: återställ lokala listinställningar
 
 **Steg:** Ändra filter eller kolumner och använd återställningsfunktionen.
 
-**Förväntat resultat:** Kravbiblioteket återgår till standardvy.
+**Förväntat resultat:** Kravbiblioteket återgår till organisationens
+standardkolumner med standardbredder. Statuskolumnen heter `Status`.
 
 ### REQ-08: inline-detalj tillåter fortsatt rullning
 

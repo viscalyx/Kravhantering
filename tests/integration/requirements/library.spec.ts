@@ -610,9 +610,10 @@ test.describe('Requirements library', () => {
       await filterRequirementId(page, 'INT0002')
       await page.getByRole('button', { name: 'Ta bort INT0002' }).click()
 
-      await page
-        .getByRole('button', { name: 'Filtrera efter Kravversionsstatus' })
-        .click()
+      // Clearing the chip can leave the pointer over the package-filter band.
+      await page.mouse.move(0, 0)
+      await collapsePackageFilter(page)
+      await page.getByRole('button', { name: 'Filtrera efter Status' }).click()
       await page.getByRole('button', { name: 'Rensa' }).click()
       const archivedStatusRequest = page.waitForRequest(request => {
         const url = new URL(request.url())

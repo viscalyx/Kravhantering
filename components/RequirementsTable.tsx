@@ -713,6 +713,9 @@ function clampPopoverLeft(anchorLeft: number, popoverWidth: number) {
 
 /* ── Filter popover for text search columns (uniqueId, description) ── */
 
+const headerFilterButtonClassName =
+  'inline-flex min-h-7 min-w-7 shrink-0 items-center justify-center rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500'
+
 function SearchFilterPopover({
   activeValue,
   developerModeValue,
@@ -808,7 +811,7 @@ function SearchFilterPopover({
     <div className="relative inline-flex" ref={ref}>
       <button
         aria-label={tc('filterBy', { label })}
-        className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded p-2 transition-colors ${isActive ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
+        className={`${headerFilterButtonClassName} ${isActive ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
         {...devMarker({
           name: 'filter button',
           priority: 300,
@@ -969,7 +972,7 @@ function MultiSelectFilterPopover({
     <div className="relative inline-flex" ref={ref}>
       <button
         aria-label={tc('filterBy', { label })}
-        className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded p-2 transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
+        className={`${headerFilterButtonClassName} ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
         {...devMarker({
           name: 'filter button',
           priority: 300,
@@ -1120,7 +1123,7 @@ function GroupedMultiSelectFilterPopover({
     <div className="relative inline-flex" ref={ref}>
       <button
         aria-label={tc('filterBy', { label })}
-        className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded p-2 transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
+        className={`${headerFilterButtonClassName} ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
         {...devMarker({
           name: 'filter button',
           priority: 300,
@@ -2153,7 +2156,7 @@ export default function RequirementsTable({
             activeCount={(fv.statuses ?? []).length}
             developerModeValue={developerModeValue}
             getLabel={option => statusLabel(option.id)}
-            label={t('status')}
+            label={getColumnLabel('status')}
             onChange={ids =>
               updateFilter({ statuses: ids.length > 0 ? ids : undefined })
             }
@@ -2961,8 +2964,8 @@ export default function RequirementsTable({
             scope="col"
           >
             {mode === 'interactive' && showSelectAll ? (
-              <div className="flex min-h-11 items-center justify-center">
-                {/* WCAG 2.5.8 target-size exception: spacing — the 44 CSS-pixel header row keeps its 24 CSS-pixel target circle separate; verified by requirements-table.test.tsx. */}
+              <div className="flex min-h-7 items-center justify-center">
+                {/* WCAG 2.5.8 target-size exception: spacing — the header row keeps its 24 CSS-pixel target circle separate; verified by requirements-table.test.tsx. */}
                 <input
                   aria-label={tc('selectAll')}
                   checked={
@@ -3046,13 +3049,21 @@ export default function RequirementsTable({
                 <>
                   <div className="flex items-center gap-2">
                     <div
-                      className={`flex min-w-0 flex-1 items-center gap-1 ${headerControlClass}`}
+                      className={`flex min-w-0 flex-1 items-center ${headerControlClass}`}
                       data-requirement-header-control={column.id}
+                      {...devMarker({
+                        context: 'requirements table',
+                        name: 'column header controls',
+                        priority: 325,
+                        value: getRequirementColumnDeveloperModeLabel(
+                          column.id,
+                        ),
+                      })}
                     >
                       {isSortable ? (
                         <button
                           aria-label={tc('sortBy', { label })}
-                          className="group inline-flex min-h-11 min-w-11 max-w-full flex-1 items-center gap-1 text-left"
+                          className="group inline-flex min-h-7 min-w-7 max-w-full flex-1 items-center rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                           {...devMarker({
                             name: 'sort button',
                             priority: 300,
@@ -3076,7 +3087,7 @@ export default function RequirementsTable({
                         </button>
                       ) : (
                         <span
-                          className="inline-flex min-h-11 min-w-0 flex-1 items-center truncate"
+                          className="inline-flex min-h-7 min-w-0 flex-1 items-center truncate"
                           data-requirement-header-label={column.id}
                         >
                           {label}
@@ -3085,13 +3096,16 @@ export default function RequirementsTable({
                       {renderFilterControl(column.id)}
                       {column.id === 'description' && (
                         <button
-                          aria-label={
-                            descriptionWrapped
-                              ? tc('showShortText')
-                              : tc('showFullText')
-                          }
+                          aria-label={t(
+                            descriptionWrapped ? 'wrapOn' : 'wrapOff',
+                          )}
                           aria-pressed={descriptionWrapped}
-                          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded text-secondary-400 hover:text-secondary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-secondary-50 dark:focus-visible:ring-offset-secondary-900"
+                          {...devMarker({
+                            context: 'requirements table',
+                            name: 'button',
+                            value: 'wrap requirement text',
+                          })}
+                          className={`inline-flex min-h-7 min-w-7 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded border px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-secondary-50 dark:focus-visible:ring-offset-secondary-900 ${descriptionWrapped ? 'border-primary-400 bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-200' : 'border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 dark:border-secondary-600 dark:bg-secondary-800 dark:text-secondary-100 dark:hover:bg-secondary-700'}`}
                           onClick={() => setDescriptionWrapped(v => !v)}
                           title={
                             descriptionWrapped
@@ -3113,6 +3127,9 @@ export default function RequirementsTable({
                               size={16}
                             />
                           )}
+                          <span>
+                            {t(descriptionWrapped ? 'wrapOn' : 'wrapOff')}
+                          </span>
                         </button>
                       )}
                     </div>

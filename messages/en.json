@@ -576,6 +576,9 @@
     "aiGenerateDisabledNoAuthorableArea": "AI-assisted authoring requires at least one requirement area where you may author requirements.",
     "editRequirement": "Edit requirement",
     "status": "Requirement version status",
+    "tableStatus": "Status",
+    "wrapOn": "Wrapping on",
+    "wrapOff": "Wrapping off",
     "hasPendingVersionDraft": "A new version is being worked on",
     "hasPendingVersionReview": "There is a newer version under review",
     "statusLabel": {

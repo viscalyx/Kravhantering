@@ -56,7 +56,11 @@ test('NAV-01: list workspace grows with the viewport and keeps actions beside th
   const description = page
     .locator('thead th[data-developer-mode-value="requirement text"]')
     .first()
-  const widths: number[] = []
+  // Documented defaults: requirement text is 809px; the checkbox and other
+  // visible columns use 36 + 118 + 148 + 130 + 131 + 144px.
+  const defaultDescriptionWidth = 809
+  const fixedColumnsWidth = 36 + 118 + 148 + 130 + 131 + 144
+  const workspaceWidths: number[] = []
   await test.step('resize the workspace and toggle navigation', async () => {
     for (const width of [1440, 1920]) {
       await page.setViewportSize({ width, height: width === 1440 ? 900 : 1080 })
@@ -83,14 +87,23 @@ test('NAV-01: list workspace grows with the viewport and keeps actions beside th
             )
           })
           .toBe(true)
-        if (!expanded)
-          widths.push(
-            await description.evaluate(el => el.getBoundingClientRect().width),
+        const workspaceWidth = await table.evaluate(el => el.clientWidth)
+        await expect
+          .poll(() =>
+            description.evaluate(el => el.getBoundingClientRect().width),
           )
+          .toBeCloseTo(
+            Math.max(
+              defaultDescriptionWidth,
+              workspaceWidth - fixedColumnsWidth,
+            ),
+            0,
+          )
+        if (!expanded) workspaceWidths.push(workspaceWidth)
       }
     }
   })
-  expect(widths[1] - widths[0]).toBeGreaterThan(400)
+  expect(workspaceWidths[1] - workspaceWidths[0]).toBeGreaterThan(400)
   await test.step('use list actions after scrolling', async () => {
     await page.mouse.wheel(0, 500)
     await expect

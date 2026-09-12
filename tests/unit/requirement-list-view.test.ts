@@ -221,7 +221,7 @@ describe('requirement list view helpers', () => {
     expect(
       parseRequirementColumnWidths(
         JSON.stringify({
-          category: 152,
+          category: 130,
           status: 999,
           unknown: 220,
           version: 20,
@@ -271,7 +271,7 @@ describe('requirement list view helpers', () => {
       JSON.parse(
         serializeRequirementColumnWidths({
           category: 190,
-          status: 176,
+          status: 144,
         }),
       ),
     ).toEqual({ category: 190 })

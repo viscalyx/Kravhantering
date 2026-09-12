@@ -25,14 +25,16 @@ async function expectHydratedTable(page: Page) {
         .evaluateAll(nodes =>
           nodes.map(
             node =>
-              node.textContent
+              (
+                node.querySelector('[data-requirement-header-label]') ?? node
+              ).textContent
                 ?.replace(/\s+/g, ' ')
                 .replace(/\d.*$/, '')
                 .trim() ?? '',
           ),
         ),
     )
-    .toEqual(['', 'Krav-ID', 'Kravtext', 'Kravområde', 'Kravversionsstatus'])
+    .toEqual(['', 'Krav-ID', 'Kravtext', 'Kravområde', 'Status'])
 
   // col index 4 = requirement version status (0=checkbox, 1=uniqueId, 2=description, 3=area, 4=status)
   await expect
@@ -110,7 +112,10 @@ for (const viewportConfig of [
             .evaluateAll(nodes =>
               nodes.map(
                 node =>
-                  node.textContent
+                  (
+                    node.querySelector('[data-requirement-header-label]') ??
+                    node
+                  ).textContent
                     ?.replace(/\s+/g, ' ')
                     .replace(/\d.*$/, '')
                     .trim() ?? '',
@@ -124,7 +129,7 @@ for (const viewportConfig of [
           'Kravområde',
           'Kategori',
           'Typ',
-          'Kravversionsstatus',
+          'Status',
         ])
     })
   })

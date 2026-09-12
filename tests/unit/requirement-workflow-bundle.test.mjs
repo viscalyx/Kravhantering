@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   evaluateRequirementWorkflowRoute,
   extractLazyRequirementWorkflowFeatureIds,
+  REQUIREMENT_WORKFLOW_GZIP_MAX_BYTES,
   readRequirementWorkflowBundleReport,
   requirementWorkflowBudgetFailures,
   runRequirementWorkflowBundleCheck,
@@ -309,7 +310,11 @@ describe('requirement workflow bundle contract', () => {
     write(
       root,
       '.next/static/chunks/library-ai.js',
-      deterministicBytes(290_000),
+      deterministicBytes(
+        REQUIREMENT_WORKFLOW_GZIP_MAX_BYTES['requirements-library'][
+          'ai-authoring'
+        ] + 16_384,
+      ),
     )
     vi.spyOn(console, 'log').mockImplementation(() => undefined)
     const errorSpy = vi
