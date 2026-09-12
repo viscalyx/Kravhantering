@@ -1780,9 +1780,10 @@ function Invoke-AzureDevLifecycleCommand {
           $interferenceFailure `
           ([Math]::Max([long]0, $stateObservedAt - $attemptStartedAt))
       }
+      # An empty or failed state read can be transient during startup. Keep
+      # polling unavailable observations within the existing running deadline.
       if ($terminalState -in @(
           'not-found',
-          'unavailable',
           'creating',
           'unrecognized'
         )) {

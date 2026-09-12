@@ -373,7 +373,10 @@ configuration snapshot keeps every reread and mutation on the original
 subscription, resource group, and VM.
 
 After a start is submitted or an existing `starting` state is joined, the
-local lock is released and the independent running deadline begins. Any later
+local lock is released and the independent running deadline begins. Empty or
+failed state reads (`unavailable`) keep polling within that same deadline;
+they do not reset it or submit another start. An initial `unavailable` state
+still fails before any mutation. Any later
 downward state—`stopping`, `stopped-allocated`, `deallocating`, or
 `deallocated`—is classified as `outside-interference` and terminates the local
 attempt without rollback or a second start. The failure records whether this
@@ -427,6 +430,19 @@ both transition timeouts, progress, diagnostic-write warning, outside
 interference, and interruption. Child-process cases verify exit behavior;
 in-process cases verify typed results, terminating errors, stream separation,
 and the lifecycle record schema.
+
+For a manual startup regression check on a development VM:
+
+1. With the VM deallocated, run `./scripts/azure-dev.ps1 start` once.
+2. If a poll reports `unavailable`, leave the command running. Verify it keeps
+   polling and reaches `running` with action `start-requested` when Azure
+   reports the VM running, without another `submission` event.
+3. If reads remain unavailable throughout the running deadline, verify the
+   command fails in phase `running-wait` after ten minutes and records
+   `unavailable` without submitting another mutation.
+
+The offline public-command cases reproduce failed and empty reads
+deterministically; a live VM may reach `running` without either observation.
 
 The injected monotonic clock and delay advance the waits without sleeping.
 Together with focused unit coverage, the suite fixes the timing contract at

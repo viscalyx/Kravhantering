@@ -769,6 +769,81 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
     }
   }
 
+  Context 'When state reads are unavailable during an upward transition' {
+    BeforeDiscovery {
+      $unavailableCases = @(
+        @{ InitialState = 'deallocated'; Action = 'start-requested'; Mutations = 1 },
+        @{ InitialState = 'starting'; Action = 'joined-start'; Mutations = 0 }
+      )
+    }
+
+    BeforeEach {
+      $script:mockStates =
+        [System.Collections.Generic.Queue[System.String]]::new()
+      $script:now = [System.Int64]0
+      Mock Get-AzureDevLifecycleState -MockWith {
+        if ($script:mockStates.Count -gt 0) {
+          return $script:mockStates.Dequeue()
+        }
+        return 'unavailable'
+      }
+      Mock Complete-AzureDevLifecycleAttempt -MockWith {
+        if ($null -ne $Failure) {
+          throw $Failure
+        }
+        return $LifecycleResult
+      }
+    }
+
+    It 'Should recover <Action> without another mutation' `
+      -ForEach $unavailableCases {
+      @($InitialState, 'unavailable', 'unavailable', 'starting', 'running') |
+        ForEach-Object { $script:mockStates.Enqueue($_) }
+      $timing = & $script:newLifecycleTiming
+
+      $result = Invoke-AzureDevLifecycleCommand `
+        -CommandName start `
+        -RepositoryRoot $TestDrive `
+        -Timing $timing
+
+      $result.Result | Should-Be 'running'
+      $result.ObservedState | Should-Be 'running'
+      $result.Action | Should-Be $Action
+      $script:now | Should-Be 20000
+      Should-Invoke Get-AzureDevLifecycleState -Exactly -Times 5 -Scope It
+      Should-Invoke Invoke-AzCli -Exactly -Times $Mutations -Scope It
+      Should-Invoke Complete-AzureDevLifecycleAttempt `
+        -Exactly -Times 1 -Scope It
+    }
+
+    It 'Should time out <Action> on the original running deadline' `
+      -ForEach $unavailableCases {
+      $script:mockStates.Enqueue($InitialState)
+      $timing = & $script:newLifecycleTiming `
+        -RunningDeadlineMilliseconds 20000
+
+      {
+        Invoke-AzureDevLifecycleCommand `
+          -CommandName start `
+          -RepositoryRoot $TestDrive `
+          -Timing $timing
+      } | Should-Throw -ExceptionMessage '*did not reach running within*'
+
+      $script:now | Should-Be 20000
+      Should-Invoke Get-AzureDevLifecycleState -Exactly -Times 4 -Scope It
+      Should-Invoke Invoke-AzCli -Exactly -Times $Mutations -Scope It
+      Should-Invoke Complete-AzureDevLifecycleAttempt `
+        -Exactly -Times 1 -Scope It `
+        -ParameterFilter {
+          $Failure.TargetObject.Phase -ceq 'running-wait' -and
+          $Failure.TargetObject.ObservedState -ceq 'unavailable' -and
+          $Failure.TargetObject.Action -ceq $Action -and
+          $Failure.TargetObject.MutationAccepted -eq ($Mutations -eq 1) -and
+          $Record.elapsedMilliseconds -eq 20000
+        }
+    }
+  }
+
   Context 'When an upward transition is externally reversed' {
     BeforeDiscovery {
       $interferenceCases = @(

@@ -1222,7 +1222,10 @@ rereads provide cross-workstation convergence.
 After joining or submitting an upward transition, the command releases the
 lock and uses a separate ten-minute deadline to wait for `running`. Both waits
 poll every five seconds, report state changes, and emit a heartbeat every 30
-seconds. Any later downward state—`stopping`, `stopped-allocated`,
+seconds. During the running wait, an empty or failed state read appears as
+`unavailable`; polling continues within the same deadline without another start
+request. An initial `unavailable` observation still fails before any mutation.
+Any later downward state—`stopping`, `stopped-allocated`,
 `deallocating`, or `deallocated`—is outside interference: the command fails
 without a second mutation and explains that Azure may still complete the
 earlier operation. A timeout has the same no-rollback, no-repeat rule.

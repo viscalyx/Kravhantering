@@ -1252,6 +1252,37 @@ Describe `
         Should-BeFalse
     }
 
+    It 'Should recover <Action> through failed and empty state reads' `
+      -ForEach $startCases {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE_SEQUENCE',
+        "$InitialState,read-failed,,PowerState/running",
+        'Process'
+      )
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_EXPECTED_LOCK_STATE_SEQUENCE',
+        'locked,unlocked,unlocked,unlocked',
+        'Process'
+      )
+
+      $result = @(
+        & $script:entryPoint `
+          start `
+          -RepositoryRoot $script:fixture.RepositoryRoot `
+          -LifecycleTiming $script:lifecycleTiming
+      )
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+      $startCalls = @($calls | Where-Object { $_ -match "CALL`tvm`tstart" })
+
+      $result.Count | Should-Be 1
+      $result[0].Result | Should-Be 'running'
+      $result[0].Action | Should-Be $Action
+      $startCalls.Count | Should-Be $MutationCount
+      $script:virtualClock.Milliseconds | Should-Be 15000
+      Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
+    }
+
     It 'Should report heartbeat and state-change progress with virtual time' {
       [System.Environment]::SetEnvironmentVariable(
         'FAKE_AZ_VM_STATE',
@@ -1483,7 +1514,8 @@ Describe `
       )
     }
 
-    It 'Should record <Action> without another start' -ForEach $waitFailureCases {
+    It 'Should time out <Action> after persistent state read failures' `
+      -ForEach $waitFailureCases {
       [System.Environment]::SetEnvironmentVariable(
         'FAKE_AZ_VM_STATE',
         $InitialState,
@@ -1500,7 +1532,9 @@ Describe `
           start `
           -RepositoryRoot $script:fixture.RepositoryRoot `
           -LifecycleTiming $script:lifecycleTiming
-      } | Should-Throw -ExceptionMessage '*can still complete*'
+      } | Should-Throw -ExceptionMessage (
+        '*did not reach running within ten minutes*can still complete*'
+      )
       $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
           -Fixture $script:fixture)
       $startCalls = @($calls | Where-Object { $_ -match "CALL`tvm`tstart" })
@@ -1511,7 +1545,9 @@ Describe `
         ConvertFrom-Json
 
       $startCalls.Count | Should-Be $MutationCount
+      $script:virtualClock.Milliseconds | Should-Be 600000
       $logRecord.failurePhase | Should-Be 'running-wait'
+      $logRecord.observedState | Should-Be 'unavailable'
       $logRecord.action | Should-Be $Action
       $logRecord.mutationAccepted | Should-Be $MutationAccepted
       Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
