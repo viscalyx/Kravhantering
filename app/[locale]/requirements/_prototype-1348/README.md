@@ -4,8 +4,8 @@ Question: which presentation makes a short expanded requirement easier to scan
 while leaving more of its surrounding list visible?
 
 This is throwaway UI code on `prototype/issue-1348`, based on
-`fix/issue-1347` at `2d9ad75f`. A is the preferred direction; this refinement
-remains a prototype.
+`fix/issue-1347` at `2d9ad75f`. A is approved as the design reference for
+implementation; the code remains a prototype.
 
 ## Start and show it
 
@@ -96,6 +96,7 @@ For the requested sizes, use the browser's responsive viewport controls at
 | Verification method as a text section in A | Open SÄK0010. Verify the order: requirement text, acceptance criteria, verification method, metadata. The verification method has the same heading/body styles as acceptance criteria and appears once, outside the metadata grid. Compare desktop and mobile wrapping. |
 | More compact metadata | Inspect all metadata values, verification method and specification count. A uses a compact grid with area owner inside the info panel; B uses inline pairs; C uses a ruled definition table. |
 | Consistent property label size in A | Compare Kravtext, Acceptanskriterium, Verifieringsmetod, Normreferenser and Kravpaket with Verifierbar and the other metadata labels: all use 12 px. Check empty and populated sections in the gallery or live view. |
+| Package pills in A | Populate sections and compare the package pills with the available options inside the package filter chooser: rounded ends, 24 px minimum height, 10 px text, 2 px gray border and neutral light/dark colors. Property labels remain 12 px. |
 | Compact empty references and packages | Choose empty sections. Both labels and their empty information stay visible on compact rows. Choose populated sections and hover the package to inspect its existing purpose/scope tooltip. |
 | Compact empty improvement suggestions | Choose empty sections and compare the card. Its title, empty information and registration button remain. Choose populated sections to inspect the existing suggestion pill and actions. |
 | Compact original-style process steps in A | On desktop, inspect the steps to the right of Kravtext on the same heading row. The original outline, icons and configured active color remain; height is 24 px and arrow depth 6 px (baseline: 40 px and 14 px). On narrow cards the steps wrap below the heading. B/C retain their 30 px flat strip. |
@@ -205,7 +206,14 @@ implementation with the issue's production test and documentation coverage.
   directory alias serves these assets through the existing authenticated
   Swedish requirements path without changing authentication rules.
 
-**Verdict:** A is the user's preferred direction. This iteration refines its
-process steps and moves the area description and owner behind the info icon.
-The revision stays on the prototype branch for visual review; a production
-implementation still needs the issue's full tests and documentation.
+**Verdict:** the user approves prototype A as the design reference for
+implementation of #1348. Use full-width requirement text, acceptance criteria
+and verification method in that order; compact original-style process steps
+beside the requirement-text heading; area description and owner behind the
+info icon; 12 px property labels; and package pills styled like the available
+options in the package filter chooser. The 10/11 px property-label experiments
+are discarded. Retain A's compact metadata and empty supporting sections.
+
+The prototype remains on `prototype/issue-1348`. Production implementation
+must apply the approved design to the real components, include the issue's
+required tests and documentation, and omit prototype controls and stubs.

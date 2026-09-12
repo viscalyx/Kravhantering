@@ -61,7 +61,10 @@ function References(props: RequirementDetailSectionsProps) {
         )}
       </section>
       {props.showRequirementPackages !== false && (
-        <section {...marker(props, 'requirementPackages')}>
+        <section
+          className="prototype-package-references"
+          {...marker(props, 'requirementPackages')}
+        >
           <h3>{props.requirementPackagesLabel}</h3>
           {props.requirementPackages.length ? (
             <Chips items={props.requirementPackages} />

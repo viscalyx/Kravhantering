@@ -171,6 +171,24 @@ html:where([data-detail-prototype]:not([data-detail-prototype="baseline"]))
 .dark .prototype-chips li {
   background: var(--color-secondary-800);
 }
+.prototype-variant-a .prototype-package-references li {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--color-secondary-700);
+  background: var(--color-secondary-50);
+  border: 2px solid var(--color-secondary-300);
+  border-radius: 9999px;
+}
+.dark .prototype-variant-a .prototype-package-references li {
+  color: var(--color-secondary-200);
+  background: var(--color-secondary-800);
+  border-color: var(--color-secondary-600);
+}
 .prototype-chips a {
   display: inline-flex;
   align-items: center;
