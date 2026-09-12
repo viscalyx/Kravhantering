@@ -3667,9 +3667,9 @@
       {
         "id": "description",
         "label": "Kravtext",
-        "width": 730,
-        "labelWidth": 561,
-        "textWidth": 561,
+        "width": 809,
+        "labelWidth": 640,
+        "textWidth": 640,
         "lines": 1,
         "clipped": false,
         "withinViewport": true
@@ -3687,9 +3687,9 @@
       {
         "id": "category",
         "label": "Kategori",
-        "width": 124,
-        "labelWidth": 57,
-        "textWidth": 57,
+        "width": 130,
+        "labelWidth": 63,
+        "textWidth": 63,
         "lines": 1,
         "clipped": false,
         "withinViewport": true
@@ -3702,7 +3702,7 @@
         "textWidth": 64,
         "lines": 1,
         "clipped": false,
-        "withinViewport": true
+        "withinViewport": false
       },
       {
         "id": "status",
@@ -3730,7 +3730,7 @@
       },
       {
         "label": "Sortera efter Kravtext",
-        "width": 579,
+        "width": 658,
         "height": 28,
         "withinViewport": true
       },
@@ -3760,7 +3760,7 @@
       },
       {
         "label": "Sortera efter Kategori",
-        "width": 75,
+        "width": 81,
         "height": 28,
         "withinViewport": true
       },
@@ -3774,7 +3774,7 @@
         "label": "Sortera efter Typ",
         "width": 82,
         "height": 28,
-        "withinViewport": true
+        "withinViewport": false
       },
       {
         "label": "Filtrera efter Typ",
@@ -3819,9 +3819,9 @@
       {
         "id": "description",
         "label": "Kravtext",
-        "width": 730,
-        "labelWidth": 561,
-        "textWidth": 561,
+        "width": 809,
+        "labelWidth": 640,
+        "textWidth": 640,
         "lines": 1,
         "clipped": false,
         "withinViewport": true
@@ -3839,9 +3839,9 @@
       {
         "id": "category",
         "label": "Kategori",
-        "width": 124,
-        "labelWidth": 57,
-        "textWidth": 57,
+        "width": 130,
+        "labelWidth": 63,
+        "textWidth": 63,
         "lines": 1,
         "clipped": false,
         "withinViewport": true
@@ -3854,7 +3854,7 @@
         "textWidth": 64,
         "lines": 1,
         "clipped": false,
-        "withinViewport": true
+        "withinViewport": false
       },
       {
         "id": "status",
@@ -3882,7 +3882,7 @@
       },
       {
         "label": "Sortera efter Kravtext",
-        "width": 579,
+        "width": 658,
         "height": 28,
         "withinViewport": true
       },
@@ -3912,7 +3912,7 @@
       },
       {
         "label": "Sortera efter Kategori",
-        "width": 75,
+        "width": 81,
         "height": 28,
         "withinViewport": true
       },
@@ -3926,7 +3926,7 @@
         "label": "Sortera efter Typ",
         "width": 82,
         "height": 28,
-        "withinViewport": true
+        "withinViewport": false
       },
       {
         "label": "Filtrera efter Typ",
@@ -3971,9 +3971,9 @@
       {
         "id": "description",
         "label": "Kravtext",
-        "width": 730,
-        "labelWidth": 561,
-        "textWidth": 561,
+        "width": 809,
+        "labelWidth": 640,
+        "textWidth": 640,
         "lines": 1,
         "clipped": false,
         "withinViewport": true
@@ -3991,9 +3991,9 @@
       {
         "id": "category",
         "label": "Kategori",
-        "width": 124,
-        "labelWidth": 57,
-        "textWidth": 57,
+        "width": 130,
+        "labelWidth": 63,
+        "textWidth": 63,
         "lines": 1,
         "clipped": false,
         "withinViewport": false
@@ -4034,7 +4034,7 @@
       },
       {
         "label": "Sortera efter Kravtext",
-        "width": 579,
+        "width": 658,
         "height": 28,
         "withinViewport": true
       },
@@ -4054,17 +4054,17 @@
         "label": "Sortera efter Kravområde",
         "width": 99,
         "height": 28,
-        "withinViewport": true
+        "withinViewport": false
       },
       {
         "label": "Filtrera efter Kravområde",
         "width": 28,
         "height": 28,
-        "withinViewport": true
+        "withinViewport": false
       },
       {
         "label": "Sortera efter Kategori",
-        "width": 75,
+        "width": 81,
         "height": 28,
         "withinViewport": false
       },
@@ -4123,9 +4123,9 @@
       {
         "id": "description",
         "label": "Kravtext",
-        "width": 730,
-        "labelWidth": 561,
-        "textWidth": 561,
+        "width": 809,
+        "labelWidth": 640,
+        "textWidth": 640,
         "lines": 1,
         "clipped": false,
         "withinViewport": true
@@ -4143,9 +4143,9 @@
       {
         "id": "category",
         "label": "Kategori",
-        "width": 124,
-        "labelWidth": 57,
-        "textWidth": 57,
+        "width": 130,
+        "labelWidth": 63,
+        "textWidth": 63,
         "lines": 1,
         "clipped": false,
         "withinViewport": false
@@ -4186,7 +4186,7 @@
       },
       {
         "label": "Sortera efter Kravtext",
-        "width": 579,
+        "width": 658,
         "height": 28,
         "withinViewport": true
       },
@@ -4206,17 +4206,17 @@
         "label": "Sortera efter Kravområde",
         "width": 99,
         "height": 28,
-        "withinViewport": true
+        "withinViewport": false
       },
       {
         "label": "Filtrera efter Kravområde",
         "width": 28,
         "height": 28,
-        "withinViewport": true
+        "withinViewport": false
       },
       {
         "label": "Sortera efter Kategori",
-        "width": 75,
+        "width": 81,
         "height": 28,
         "withinViewport": false
       },
@@ -4275,9 +4275,9 @@
       {
         "id": "description",
         "label": "Kravtext",
-        "width": 1025,
-        "labelWidth": 856,
-        "textWidth": 856,
+        "width": 1019,
+        "labelWidth": 850,
+        "textWidth": 850,
         "lines": 1,
         "clipped": false,
         "withinViewport": true
@@ -4295,9 +4295,9 @@
       {
         "id": "category",
         "label": "Kategori",
-        "width": 124,
-        "labelWidth": 57,
-        "textWidth": 57,
+        "width": 130,
+        "labelWidth": 63,
+        "textWidth": 63,
         "lines": 1,
         "clipped": false,
         "withinViewport": true
@@ -4338,7 +4338,7 @@
       },
       {
         "label": "Sortera efter Kravtext",
-        "width": 874,
+        "width": 868,
         "height": 28,
         "withinViewport": true
       },
@@ -4368,7 +4368,7 @@
       },
       {
         "label": "Sortera efter Kategori",
-        "width": 75,
+        "width": 81,
         "height": 28,
         "withinViewport": true
       },
@@ -4427,9 +4427,9 @@
       {
         "id": "description",
         "label": "Kravtext",
-        "width": 1025,
-        "labelWidth": 856,
-        "textWidth": 856,
+        "width": 1019,
+        "labelWidth": 850,
+        "textWidth": 850,
         "lines": 1,
         "clipped": false,
         "withinViewport": true
@@ -4447,9 +4447,9 @@
       {
         "id": "category",
         "label": "Kategori",
-        "width": 124,
-        "labelWidth": 57,
-        "textWidth": 57,
+        "width": 130,
+        "labelWidth": 63,
+        "textWidth": 63,
         "lines": 1,
         "clipped": false,
         "withinViewport": true
@@ -4490,7 +4490,7 @@
       },
       {
         "label": "Sortera efter Kravtext",
-        "width": 874,
+        "width": 868,
         "height": 28,
         "withinViewport": true
       },
@@ -4520,7 +4520,7 @@
       },
       {
         "label": "Sortera efter Kategori",
-        "width": 75,
+        "width": 81,
         "height": 28,
         "withinViewport": true
       },
@@ -4579,9 +4579,9 @@
       {
         "id": "description",
         "label": "Kravtext",
-        "width": 833,
-        "labelWidth": 664,
-        "textWidth": 664,
+        "width": 827,
+        "labelWidth": 658,
+        "textWidth": 658,
         "lines": 1,
         "clipped": false,
         "withinViewport": true
@@ -4599,9 +4599,9 @@
       {
         "id": "category",
         "label": "Kategori",
-        "width": 124,
-        "labelWidth": 57,
-        "textWidth": 57,
+        "width": 130,
+        "labelWidth": 63,
+        "textWidth": 63,
         "lines": 1,
         "clipped": false,
         "withinViewport": true
@@ -4642,7 +4642,7 @@
       },
       {
         "label": "Sortera efter Kravtext",
-        "width": 682,
+        "width": 676,
         "height": 28,
         "withinViewport": true
       },
@@ -4672,7 +4672,7 @@
       },
       {
         "label": "Sortera efter Kategori",
-        "width": 75,
+        "width": 81,
         "height": 28,
         "withinViewport": true
       },
@@ -4731,9 +4731,9 @@
       {
         "id": "description",
         "label": "Kravtext",
-        "width": 833,
-        "labelWidth": 664,
-        "textWidth": 664,
+        "width": 827,
+        "labelWidth": 658,
+        "textWidth": 658,
         "lines": 1,
         "clipped": false,
         "withinViewport": true
@@ -4751,9 +4751,9 @@
       {
         "id": "category",
         "label": "Kategori",
-        "width": 124,
-        "labelWidth": 57,
-        "textWidth": 57,
+        "width": 130,
+        "labelWidth": 63,
+        "textWidth": 63,
         "lines": 1,
         "clipped": false,
         "withinViewport": true
@@ -4794,7 +4794,7 @@
       },
       {
         "label": "Sortera efter Kravtext",
-        "width": 682,
+        "width": 676,
         "height": 28,
         "withinViewport": true
       },
@@ -4824,7 +4824,7 @@
       },
       {
         "label": "Sortera efter Kategori",
-        "width": 75,
+        "width": 81,
         "height": 28,
         "withinViewport": true
       },

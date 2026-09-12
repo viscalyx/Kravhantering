@@ -75,7 +75,7 @@ column preferences.
 | B: labels above controls | `?variant=B` | Labels have their own top row; filters and wrapping occupy a second row. |
 | C: shared filter strip | `?variant=C` | Find all existing column filters in the labelled strip. Headers retain sorting; active chips stay with their columns. |
 | Domain labels | A uses ellipsis; B/C allow wrapping | In A, inspect the full name through the existing sort tooltip or accessible name. B/C retain compound-boundary line breaks. |
-| Preferred default widths | A | Reset and compare with preferred-widths.json. Six columns remain visible by default; each optional column gets its supplied width when shown. Requirement text starts at 730 px and grows into spare space. |
+| Preferred default widths | A | Reset and compare with preferred-widths.json. Six columns remain visible by default; each optional column gets its supplied width when shown. Requirement text starts at 809 px and grows into spare space. |
 | Status label | A | Check Status in the header, column picker, width panel, sorting name and filter name. |
 | Live width panel | Kolumnbredder | Drag without releasing: the pixel value must update and highlight the selected column. Copy widths and compare the JSON with the panel; manual copying is available under Bredder att dela. |
 | Width tradeoffs | All proposed variants | A favors the supplied wider defaults and may need horizontal scrolling. B/C retain their narrower metadata columns. Compare actual widths and row-text truncation. |
@@ -101,10 +101,10 @@ no manual widths. Each row has matching light and dark captures.
 <!-- markdownlint-disable MD013 -->
 | Window | Navigation | Before: text | A: text | B/C: text |
 | --- | --- | --- | --- | --- |
-| 1440 × 900 | Collapsed | 448 px | 730 px | 634 px |
-| 1440 × 900 | Expanded | 360 px | 730 px | 442 px |
-| 1920 × 1080 | Collapsed | 928 px | 1025 px | 1114 px |
-| 1920 × 1080 | Expanded | 736 px | 833 px | 922 px |
+| 1440 × 900 | Collapsed | 448 px | 809 px | 634 px |
+| 1440 × 900 | Expanded | 360 px | 809 px | 442 px |
+| 1920 × 1080 | Collapsed | 928 px | 1019 px | 1114 px |
+| 1920 × 1080 | Expanded | 736 px | 827 px | 922 px |
 <!-- markdownlint-enable MD013 -->
 
 Before clips both reported labels in all eight combinations and requires
@@ -121,9 +121,11 @@ the package band and the active status chip, not just the label row.
 **Current review direction:** A uses single-line ellipsis to avoid extra
 header height, the maintainer's [preferred widths](preferred-widths.json), and
 **Status** as its shortened status-column label. The supplied ten widths come
-from a 1710 × 951 viewport with 4.5rem navigation. The six existing default
+from a 1710 × 951 viewport with 4.5rem navigation. The latest adjustment sets
+requirement text to 809 px and category to 130 px; other widths retain their
+previous values. The six existing default
 visible columns remain; optional columns receive their supplied widths when
-shown. Requirement text has a 730 px base and grows to fill spare space.
+shown. Requirement text has a 809 px base and grows to fill spare space.
 The width panel reports actual rendered widths, including that growth.
 B/C remain available as earlier alternatives. This is a prototype direction;
 production promotion remains a separate implementation step.
@@ -133,6 +135,8 @@ production promotion remains a separate implementation step.
 - [Measurements for every screenshot](evidence/observations.json).
 - [Interaction verification results](evidence/interactions.json).
 - [Additional browser verification](evidence/additional-verification.json).
+- [Latest six-column default-width verification](evidence/default-widths-verification.json).
+- [Latest default view with width panel](evidence/default-widths.png).
 - [Preferred widths and live-drag verification](evidence/preferred-widths-verification.json).
 - [All ten preferred widths in the live panel](evidence/preferred-widths.png).
 - [Header and checkbox alignment measurements](evidence/alignment-verification.json).
