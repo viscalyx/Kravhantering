@@ -138,6 +138,11 @@ Back up the database before upgrade. Apply database migrations and reconcile run
 Update assessment API clients to send the displayed question version and list lock revision. Update CSV consumers to distinguish current-question rows from assessment-history rows. Tell users that adopting a changed question requires explicit confirmation of the previous assessment.
 After rollout, verify that privacy export and anonymization include assessment authors. Verify that archived specification exports include assessment history and that retained history protects referenced questions and versions from deletion.
 <!-- operator-upgrade:source pr-1410 end -->
+
+<!-- operator-upgrade:source pr-1413 start -->
+The six project images now use Red Hat UBI 10 with Node.js 24. Package inventories and vulnerability evidence now include RPM packages. Review the release's exact image sizes, SBOMs and verification evidence before rollout.
+Prepare and verify the complete published images, deployment archive and release locks on a connected host before transfer to a disconnected site. Follow the existing installation, upgrade and recovery procedures. Installation needs no upstream UBI or RPM downloads. The destructive demo seed image remains a separate opt-in for disposable environments.
+<!-- operator-upgrade:source pr-1413 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
