@@ -1,0 +1,35 @@
+name: Report selected validation
+description: Report policy exclusions and reject unsuccessful selected jobs.
+inputs:
+  selection-result:
+    required: true
+    description: Result of the caller's selection job.
+  selection:
+    required: true
+    description: Serialized selection from this caller's event.
+  results:
+    required: true
+    description: Serialized native dependency results.
+  owner:
+    required: true
+    description: Complete validation owner being reported.
+  owner-jobs:
+    required: true
+    description: Explicit owner to dependency-job mapping.
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+      with:
+        node-version-file: .nvmrc
+        package-manager-cache: false
+    - name: Report selection and required result
+      shell: bash
+      run: node scripts/release/select-validation.mjs report
+      env:
+        SELECTION_RESULT: ${{ inputs.selection-result }}
+        SELECTION: ${{ inputs.selection }}
+        NEEDS: ${{ inputs.results }}
+        REPORT_OWNER: ${{ inputs.owner }}
+        OWNER_JOBS: ${{ inputs.owner-jobs }}

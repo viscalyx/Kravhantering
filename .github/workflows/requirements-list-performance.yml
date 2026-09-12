@@ -2,9 +2,9 @@ name: Requirement List Performance
 
 on:
   pull_request:
-    branches: [main]
+    branches: [ main ]
   push:
-    branches: [main]
+    branches: [ main ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   requirements-list-performance:
-    name: Requirement List SQL Server Baseline
+    name: Requirement List SQL Server Baseline (execution)
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -80,3 +80,36 @@ jobs:
       - name: Stop local database service
         if: always()
         run: npm run db:down
+    needs:
+      - select
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'performance') }}
+  select:
+    name: Select applicable validation
+    uses: ./.github/workflows/reusable-validation-selection.yml
+    permissions:
+      contents: read
+    with:
+      workflow: requirements-list-performance
+  requirements-list-performance-result:
+    name: Requirement List SQL Server Baseline
+    if: ${{ always() }}
+    needs:
+      - select
+      - requirements-list-performance
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: performance
+          owner-jobs: '{"performance":["requirements-list-performance"]}'

@@ -455,98 +455,68 @@ Only pull requests labeled `ignore-for-release` are excluded from the generated
 section. If GitHub-generated notes are unavailable, the release still publishes
 with the runtime evidence below.
 
-Operator upgrade notes are maintained in
-`docs/operations/operator-upgrade-notes.md`. A separate merged-pull-request
-workflow reads completed Operator Upgrade Impact evidence from the trusted pull
-request body and appends it under `## Unreleased` with hidden source markers.
-Level-two headings in the contributed notes are escaped before persistence so
-they remain visible text instead of becoming release-section boundaries.
-The Operator Upgrade gate and merged-pull-request workflow both skip pull
-requests authored by `dependabot[bot]` whose title starts with `build(deps):`;
-dependency-only updates therefore do not require or persist operator notes.
-Instead of pushing directly to protected `main`, the workflow opens or updates
-the `automation/operator-upgrade-notes` PR and requests auto-merge. The
-maintainer approves the notes by reviewing and merging the source PR. GitHub
-merges the generated PR after required checks and branch protection
-requirements are satisfied; no second approval review is needed under the
-current repository review policy.
+Contributors commit operator upgrade guidance under `## Unreleased` in
+`docs/operations/operator-upgrade-notes.md` with the source changes. Every PR,
+including automated PRs, selects exactly one declaration: **Operator notes
+updated** or **No operator notes needed**. Updated notes require a meaningful
+addition or correction; formatting alone is insufficient. No-notes requires no
+justification. Reviewers assess semantic adequacy.
 
-The workflow looks up the automation PR by its branch name and excludes PRs
-from forks. `gh pr list --head` requires the branch name alone; the
-`owner:branch` form is only used when creating the PR. A failed lookup stops
-the workflow before it requests auto-merge, even if PR creation succeeds.
+Both publishers validate notes from the exact release source before writes.
+The GitHub Release page contains the complete applicable Unreleased guidance,
+including entries shown in earlier previews. The deployment archive contains
+the full committed document, including release history. An empty Unreleased
+section is valid. Preview publication leaves the document intact.
 
-Enable **Allow auto-merge** in the repository's pull request settings, or run
-`gh repo edit viscalyx/Kravhantering --enable-auto-merge` as a repository
-administrator. Keep required status checks and branch protections enabled.
-The workflow does not submit approval reviews or use an administrator bypass.
-If requesting auto-merge fails, it emits a warning and leaves the PR for
-maintainer attention. Check repository auto-merge settings and token
-permissions, then retry the request or merge after required checks pass.
-Enabling the repository setting also allows the stable-release archive
-workflow's existing auto-merge request to succeed.
-
-Configure an `OPERATOR_UPGRADE_NOTES_TOKEN`
-secret from a fine-scoped PAT or GitHub App token for the `Viscalyxbot` machine
-user that can push branches and create pull requests so the normal PR checks
-run for that automation PR. The workflow commits those documentation changes as
-`Viscalyxbot <viscalyxbot@viscalyx.se>` before opening or updating the PR, and
-the PR title includes the latest source PR number. When the remote automation
-branch has no open pull request, the workflow treats it as stale and recreates
-its content from `main`. This prevents squash-merged automation commits from
-being rebased onto their equivalent changes on `main`. Stable release archives
-use the same token and protected-branch PR pattern, with a version-specific
-branch.
-The automation fails when that secret is absent or cannot authenticate against
-the repository; it does not fall back to `github.token`, because that would
-hide token expiry and can suppress downstream PR workflow runs. The container
-release job also runs a local best-effort sync for the merge commit before
-image publication so a preview release can include notes even when the
-persistence workflow is still catching up. That fallback only changes the
-release workspace; it does not push documentation commits.
-
-Stable releases consume the visible `## Unreleased` notes into the GitHub
-Release body and then open or update an automation PR that archives the same
-section under `## vX.Y.Z - YYYY-MM-DD`. Required checks run before auto-merge
-persists the archive on `main`. Preview releases include current
-`## Unreleased` notes but do not archive them.
+Stable archival uses the tagged document as its membership boundary. It removes
+only those exact delivered blocks from main and preserves newer entries and
+history. Changed shipped guidance requires manual reconciliation. Stable
+archive PRs retain the `OPERATOR_UPGRADE_NOTES_TOKEN` credential and existing
+protected-branch and auto-merge process. Maintain that credential for archival.
 
 ```mermaid
 sequenceDiagram
-    autonumber
-    participant Maintainer
+    participant Contributor
     participant PR as Pull request
-    participant Notes as Operator notes workflow
-    participant AutomationPR as Automation PR
-    participant Main as docs/operations/operator-upgrade-notes.md
-    participant Release as Container release workflow
+    participant Main
+    participant CI as Container release run
+    participant Registry
     participant GitHub as GitHub Release
-
-    Maintainer->>PR: Completes Operator Upgrade Impact
-    PR-->>Notes: Merged into main
-    par Persist notes through PR
-        Notes->>Notes: Append PR notes under Unreleased
-        Notes->>AutomationPR: Open or update automation PR
-        Notes->>AutomationPR: Request auto-merge
-        AutomationPR->>AutomationPR: Wait for required checks and protections
-        AutomationPR-->>Main: Auto-merge
-    and Prepare release
-        Release->>Release: Compute release plan
-        Release->>Release: Best-effort sync for merge commit PR
-    end
-
-    alt Preview release
-        Release->>Release: Read Unreleased notes from workspace
-        Release->>GitHub: Publish prerelease with current notes
-        Release-->>Main: Leave Unreleased unchanged
-    else Stable release
-        Release->>Release: Read Unreleased notes from workspace
-        Release->>GitHub: Publish stable release with current notes
-        Release->>AutomationPR: Open versioned archive PR
-        AutomationPR->>AutomationPR: Merge after required checks
-        AutomationPR-->>Main: Archive Unreleased under version date
+    Contributor->>PR: Commit source and required Unreleased guidance
+    PR->>PR: Check declaration and committed document
+    PR->>Main: Merge source and notes together
+    Main->>CI: Select event paths and pin source SHA
+    CI->>CI: Run fresh applicable validation
+    CI->>CI: Validate exact committed notes and publication evidence
+    CI->>Registry: Preserve matching images or publish missing images
+    CI->>GitHub: Complete release page and required assets
+    Note over CI,GitHub: Complete Unreleased page; full history in archive
+    opt Stable tag
+        CI->>PR: Open archive PR for tagged notes only
+        PR->>Main: Retain newer notes and existing history
     end
 ```
+
+Automatic previews require a main event with release-relevant inputs. A
+previous failed run does not make a documentation-only or test-only merge
+eligible. To publish current main explicitly, dispatch **Container Release**
+from main with **preview** enabled. The dispatch event SHA remains fixed even
+if main advances. Dispatch without preview requests validation. New previews
+have no alternate branch or historical-source selector.
+
+Both publishers inspect successful validation in the same trusted workflow
+run, verify source and content identities, and preserve matching remote
+content. Missing stages can be completed only when existing tags, pages,
+images and assets are consistent. Conflicts and unverifiable state stop writes.
+After an uncertain response, inspect remote state before recovery. Use GitHub's
+native failed-job rerun for the original source; a rebuild can produce different
+bytes and require manual reconciliation. Successful earlier stages are retained.
+
+The workflow/ref concurrency groups and pending-run replacement remain in
+force. An ineligible event can replace a pending eligible run. Publication is
+not guaranteed for every merge. Summaries distinguish candidate building,
+validation, image publication, release-page publication and asset delivery.
+Environment deployment requires separately observed evidence.
 
 Each trusted run also writes runtime evidence:
 

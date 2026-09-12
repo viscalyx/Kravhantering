@@ -5,18 +5,7 @@ name: Security DAST API
 
 on:
   pull_request:
-    branches: [main]
-    paths:
-      - '.github/actions/prodlike-*/action.yml'
-      - '.github/workflows/security-dast-api.yml'
-      - '.github/zap/rules.api.tsv'
-      - 'app/api/**'
-      - 'lib/dal/**'
-      - 'lib/mcp/**'
-      - 'lib/requirements/**'
-      - 'lib/typeorm/**'
-      - 'openapi/requirements-api.yaml'
-      - 'scripts/security/generate-zap-api-openapi.mjs'
+    branches: [ main ]
   workflow_dispatch:
 
 concurrency:
@@ -28,7 +17,7 @@ permissions:
 
 jobs:
   zap-api:
-    name: ZAP API
+    name: ZAP API (execution)
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -75,8 +64,7 @@ jobs:
 
       - name: Generate filtered OpenAPI contract
         run: >
-          node scripts/security/generate-zap-api-openapi.mjs
-          --output test-results/security-dast-api/openapi.json
+          node scripts/security/generate-zap-api-openapi.mjs --output test-results/security-dast-api/openapi.json
 
       - name: Prepare ZAP API scan target
         run: |
@@ -130,9 +118,7 @@ jobs:
           fail_action: true
           artifact_name: zap-api-scan
           cmd_options: >-
-            -a
-            -T 10
-            -z "-config replacer.full_list(0).description=session-cookie
+            -a -T 10 -z "-config replacer.full_list(0).description=session-cookie
                 -config replacer.full_list(0).enabled=true
                 -config replacer.full_list(0).matchtype=REQ_HEADER
                 -config replacer.full_list(0).matchstr=Cookie
@@ -171,3 +157,36 @@ jobs:
         uses: ./.github/actions/prodlike-cleanup
         with:
           results-dir: test-results/security-dast-api/app
+    needs:
+      - select
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'zap-api') }}
+  select:
+    name: Select applicable validation
+    uses: ./.github/workflows/reusable-validation-selection.yml
+    permissions:
+      contents: read
+    with:
+      workflow: security-dast-api
+  zap-api-result:
+    name: ZAP API
+    if: ${{ always() }}
+    needs:
+      - select
+      - zap-api
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: zap-api
+          owner-jobs: '{"zap-api":["zap-api"]}'

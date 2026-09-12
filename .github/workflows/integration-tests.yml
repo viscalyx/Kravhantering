@@ -2,9 +2,9 @@ name: Integration Tests
 
 on:
   pull_request:
-    branches: [main]
+    branches: [ main ]
   push:
-    branches: [main]
+    branches: [ main ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   dev-server-smoke:
-    name: Dev Server Smoke (Developer Mode)
+    name: Dev Server Smoke (Developer Mode) (execution)
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -112,9 +112,12 @@ jobs:
       - name: Stop local database service
         if: always()
         run: npm run db:down
+    needs:
+      - select
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'developer') }}
 
   sql-integration:
-    name: SQL Server Invariants
+    name: SQL Server Invariants (execution)
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -221,9 +224,12 @@ jobs:
       - name: Stop local database service
         if: always()
         run: npm run db:down
+    needs:
+      - select
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'sql') }}
 
   test-prodlike-pruned:
-    name: Pruned Runtime Contract
+    name: Pruned Runtime Contract (execution)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -368,8 +374,11 @@ jobs:
       - name: Stop local database service
         if: always()
         run: npm run db:down
+    needs:
+      - select
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'runtime') }}
   browser-functional:
-    name: Browser Functional Integration
+    name: Browser Functional Integration (execution)
     runs-on: ubuntu-latest
     timeout-minutes: 150
     steps:
@@ -441,3 +450,105 @@ jobs:
       - name: Stop local database service
         if: always()
         run: npm run db:down
+    needs:
+      - select
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'browser') }}
+  select:
+    name: Select applicable validation
+    uses: ./.github/workflows/reusable-validation-selection.yml
+    permissions:
+      contents: read
+    with:
+      workflow: integration-tests
+  dev-server-smoke-result:
+    name: Dev Server Smoke (Developer Mode)
+    if: ${{ always() }}
+    needs:
+      - select
+      - dev-server-smoke
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: developer
+          owner-jobs: '{"developer":["dev-server-smoke"]}'
+  sql-integration-result:
+    name: SQL Server Invariants
+    if: ${{ always() }}
+    needs:
+      - select
+      - sql-integration
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: sql
+          owner-jobs: '{"sql":["sql-integration"]}'
+  test-prodlike-pruned-result:
+    name: Pruned Runtime Contract
+    if: ${{ always() }}
+    needs:
+      - select
+      - test-prodlike-pruned
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: runtime
+          owner-jobs: '{"runtime":["test-prodlike-pruned"]}'
+  browser-functional-result:
+    name: Browser Functional Integration
+    if: ${{ always() }}
+    needs:
+      - select
+      - browser-functional
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: browser
+          owner-jobs: '{"browser":["browser-functional"]}'

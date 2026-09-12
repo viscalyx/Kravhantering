@@ -7,6 +7,19 @@ target version.
 
 ## Unreleased
 
+### Release delivery and recovery
+
+Release maintainers must commit required operator guidance with each source
+change. Check the complete guidance on the release page and in the downloaded
+deployment archive before rollout. For a preview of documentation-only changes,
+request a manual preview from current main. Check image publication, release
+page publication and asset delivery separately. Publication does not confirm
+environment deployment.
+
+For failed delivery, inspect remote content and rerun failed jobs for the
+original source. Preserve matching published content. Resolve conflicts
+manually before retrying. Keep the operator-note credential for stable archival.
+
 <!-- operator-upgrade:source pr-1240 start -->
 Before the upgrade, back up the Keycloak database. If a custom realm uses the
 deprecated client-initiated account-linking endpoint, migrate the integration

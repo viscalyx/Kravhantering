@@ -1,229 +1,215 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import { evaluateOperatorUpgradeGate } from '../operator-upgrade-gate.mjs'
+
+const document =
+  '# Operator Upgrade Notes\n\n## Unreleased\n\nBack up the database.\n'
+const declaration = id =>
+  `- [x] ${id === 'updated' ? 'Operator notes updated' : 'No operator notes needed'} <!-- operator-upgrade:${id} -->`
+describe('committed operator-note declaration', () => {
+  it('accepts a meaningful committed correction under Unreleased', () => {
+    expect(
+      evaluateOperatorUpgradeGate({
+        prBody: declaration('updated'),
+        baseNotes: document,
+        headNotes: document.replace('database.', 'database and keyring.'),
+      }).passed,
+    ).toBe(true)
+  })
+  it('requires exactly one declaration for every author', () => {
+    for (const prBody of [
+      '',
+      `${declaration('updated')}\n${declaration('no-notes')}`,
+      `${declaration('no-notes')}\n${declaration('no-notes')}`,
+    ]) {
+      expect(
+        evaluateOperatorUpgradeGate({
+          prBody,
+          baseNotes: document,
+          headNotes: document,
+        }).passed,
+      ).toBe(false)
+    }
+    expect(
+      evaluateOperatorUpgradeGate({
+        prBody: declaration('no-notes'),
+        baseNotes: document,
+        headNotes: document,
+        author: 'dependabot[bot]',
+      }).passed,
+    ).toBe(true)
+  })
+  it('rejects formatting-only changes and deletions as updated notes', () => {
+    for (const headNotes of [
+      document,
+      document.replace('the database', 'the\n database'),
+      document.replace('Back up the database.', ''),
+    ]) {
+      expect(
+        evaluateOperatorUpgradeGate({
+          prBody: declaration('updated'),
+          baseNotes: document,
+          headNotes,
+        }).passed,
+      ).toBe(false)
+    }
+  })
+  it('validates committed structure even when no new notes are needed', () => {
+    for (const headNotes of [
+      undefined,
+      '# Notes',
+      `${document}\n## Unreleased\n`,
+    ]) {
+      expect(
+        evaluateOperatorUpgradeGate({
+          prBody: declaration('no-notes'),
+          baseNotes: document,
+          headNotes,
+        }).passed,
+      ).toBe(false)
+    }
+    expect(
+      evaluateOperatorUpgradeGate({
+        prBody: declaration('no-notes'),
+        headNotes: '# Notes\n\n## Unreleased\n',
+      }).passed,
+    ).toBe(true)
+  })
+})
+
+import { vi } from 'vitest'
 import {
-  checkboxState,
-  evaluateOperatorUpgradeGate,
-  extractOperatorUpgradeNotes,
   formatGateReport,
   main,
   parseArgs,
   readPullRequestFromGitHub,
 } from '../operator-upgrade-gate.mjs'
 
-const noActionPrBody = `## Operator Upgrade Impact
-
-- [x] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->
-
-<!-- DO NOT REMOVE: operator-upgrade:notes start -->
-<!-- DO NOT REMOVE: operator-upgrade:notes end -->
-
-## SSDLC Gate
-`
-
-const operatorNotesPrBody = noActionPrBody
-  .replace(
-    '- [x] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
-    '- [ ] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
-  )
-  .replace(
-    '<!-- DO NOT REMOVE: operator-upgrade:notes start -->\n',
-    '<!-- DO NOT REMOVE: operator-upgrade:notes start -->\nAdded owner HSA-id pre-upgrade note.\n',
-  )
-
-const placeholderPrBody = noActionPrBody
-  .replace(
-    '- [x] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
-    '- [ ] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
-  )
-  .replace(
-    '<!-- DO NOT REMOVE: operator-upgrade:notes start -->\n',
-    '<!-- DO NOT REMOVE: operator-upgrade:notes start -->\nWrite operator upgrade notes here...\n',
-  )
-
-describe('Operator Upgrade gate', () => {
-  it('parses checkbox states and bounded notes block independently', () => {
-    expect(checkboxState(noActionPrBody, 'no-notes')).toBe('checked')
-    expect(
-      checkboxState(
-        noActionPrBody.replace(
-          '- [x] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
-          '- [ ] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
-        ),
-        'no-notes',
-      ),
-    ).toBe('unchecked')
-    expect(checkboxState(noActionPrBody, 'unknown')).toBe('missing')
-    expect(extractOperatorUpgradeNotes(operatorNotesPrBody)).toContain(
-      'Added owner HSA-id pre-upgrade note.',
+describe('operator gate script boundary', () => {
+  const env = {
+    GITHUB_REPOSITORY: 'viscalyx/Kravhantering',
+    GITHUB_TOKEN: 'test',
+    PR_NUMBER: '1',
+  }
+  const consoleObj = { log: vi.fn(), error: vi.fn() }
+  const pr = {
+    body: declaration('no-notes'),
+    base: { sha: 'a'.repeat(40) },
+    head: {
+      sha: 'b'.repeat(40),
+      repo: { full_name: 'contributor/Kravhantering' },
+    },
+  }
+  it('reads the declaration and both exact committed documents without executing PR code', async () => {
+    const urls = []
+    const fetchImpl = vi.fn(async url => {
+      urls.push(url)
+      return {
+        ok: true,
+        json: async () =>
+          url.includes('/pulls/')
+            ? pr
+            : {
+                encoding: 'base64',
+                content: Buffer.from(document).toString('base64'),
+              },
+      }
+    })
+    expect(await main([], { env, consoleObj, fetchImpl })).toBe(0)
+    expect(urls[1]).toContain(
+      `viscalyx/Kravhantering/contents/docs/operations/operator-upgrade-notes.md?ref=${pr.base.sha}`,
     )
-    expect(extractOperatorUpgradeNotes(noActionPrBody)).toBe('')
-    expect(extractOperatorUpgradeNotes(placeholderPrBody)).toBe(
-      'Write operator upgrade notes here...',
+    expect(urls[2]).toContain(
+      `contributor/Kravhantering/contents/docs/operations/operator-upgrade-notes.md?ref=${pr.head.sha}`,
     )
   })
-
-  it('fails when the PR body has no completed operator evidence', () => {
-    const result = evaluateOperatorUpgradeGate({
-      prBody: '',
-    })
-
-    expect(result.passed).toBe(false)
-    expect(result.requiresGate).toBe(true)
-    expect(result.failures).toEqual(
-      expect.arrayContaining([
-        'Missing Operator Upgrade checkbox marker "operator-upgrade:no-notes" in the PR body.',
-      ]),
-    )
-    expect(formatGateReport(result)).toContain(
-      'The PR body does not contain completed operator-upgrade evidence.',
-    )
-  })
-
-  it('requires operator notes when the no-notes checkbox is unchecked', () => {
-    const incompleteBody = noActionPrBody.replace(
-      '- [x] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
-      '- [ ] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
-    )
-
-    const result = evaluateOperatorUpgradeGate({
-      prBody: incompleteBody,
-    })
-
-    expect(result.passed).toBe(false)
-    expect(result.failures).toEqual(
-      expect.arrayContaining([
-        'Operator Upgrade evidence is missing. Check "No operator notes needed" or add operator notes between the operator-upgrade notes markers.',
-      ]),
-    )
-  })
-
-  it('rejects the unchanged operator notes placeholder', () => {
-    const result = evaluateOperatorUpgradeGate({
-      prBody: placeholderPrBody,
-    })
-
-    expect(result.passed).toBe(false)
-    expect(result.failures).toEqual(
-      expect.arrayContaining([
-        'Operator Upgrade notes still contain the default placeholder. Replace it with operator notes, or check "No operator notes needed".',
-      ]),
-    )
-  })
-
-  it('accepts operator upgrade notes in the current PR template format', () => {
-    const result = evaluateOperatorUpgradeGate({
-      prBody: operatorNotesPrBody,
-    })
-
-    expect(result.passed).toBe(true)
-  })
-
-  it('ignores notes and placeholders when no-notes is checked', () => {
-    const notesResult = evaluateOperatorUpgradeGate({
-      prBody: operatorNotesPrBody.replace(
-        '- [ ] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
-        '- [x] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
-      ),
-    })
-
-    expect(notesResult.passed).toBe(true)
-    expect(notesResult.noNotesCheckbox.state).toBe('checked')
-    expect(notesResult.notes).toContain('Added owner HSA-id pre-upgrade note.')
-
-    const placeholderResult = evaluateOperatorUpgradeGate({
-      prBody: placeholderPrBody.replace(
-        '- [ ] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
-        '- [x] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
-      ),
-    })
-
-    expect(placeholderResult.passed).toBe(true)
-    expect(placeholderResult.notes).toBe('Write operator upgrade notes here...')
-
-    const missingBlockResult = evaluateOperatorUpgradeGate({
-      prBody:
-        '## Operator Upgrade Impact\n\n- [x] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->\n',
-    })
-
-    expect(missingBlockResult.passed).toBe(true)
-    expect(missingBlockResult.notes).toBe('')
-  })
-
-  it('passes the no-notes checkbox', () => {
-    const result = evaluateOperatorUpgradeGate({
-      prBody: noActionPrBody,
-    })
-
-    expect(result.passed).toBe(true)
-    expect(result.requiresGate).toBe(true)
-    expect(result.noNotesCheckbox.state).toBe('checked')
-    expect(result.notes).toBe('')
-    expect(formatGateReport(result)).toBe('Operator Upgrade gate passed.')
-  })
-
-  it('reads pull request body from GitHub', async () => {
-    const fetchImpl = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({ body: noActionPrBody }),
-    }))
-
-    const input = await readPullRequestFromGitHub({
-      fetchImpl,
-      prNumber: '42',
-      repository: 'viscalyx/Kravhantering',
-      token: 'token',
-    })
-    const result = evaluateOperatorUpgradeGate(input)
-
-    expect(input).toEqual({ prBody: noActionPrBody })
-    expect(result.requiresGate).toBe(true)
-    expect(fetchImpl).toHaveBeenCalledTimes(1)
-  })
-
-  it('runs the local CLI path from PR-body input', async () => {
-    const consoleObj = { error: vi.fn(), log: vi.fn() }
-    const fsImpl = {
-      readFileSync: vi.fn(filePath => {
-        if (filePath === 'body.md') return noActionPrBody
-        throw new Error(`Unexpected file: ${filePath}`)
-      }),
+  it('reports invalid declarations and missing or malformed remote documents', async () => {
+    for (const response of [
+      { ok: false, status: 404 },
+      { ok: true, json: async () => ({ encoding: 'none' }) },
+    ]) {
+      const fetchImpl = vi.fn(async url =>
+        url.includes('/pulls/') ? { ok: true, json: async () => pr } : response,
+      )
+      expect(
+        await main(['--github-pr', '1'], { env, consoleObj, fetchImpl }),
+      ).toBe(1)
     }
-
-    const exitCode = await main(['--pr-body', 'body.md'], {
-      consoleObj,
-      fsImpl,
-    })
-
-    expect(exitCode).toBe(0)
-    expect(consoleObj.log).toHaveBeenCalledWith(
-      expect.stringContaining('Operator Upgrade gate passed'),
-    )
-    expect(consoleObj.error).not.toHaveBeenCalled()
+    const fetchImpl = vi.fn(async url => ({
+      ok: true,
+      json: async () =>
+        url.includes('/pulls/')
+          ? { ...pr, body: undefined }
+          : {
+              encoding: 'base64',
+              content: Buffer.from(document).toString('base64'),
+            },
+    }))
+    expect(
+      await main(['--github-pr', '1'], { env, consoleObj, fetchImpl }),
+    ).toBe(1)
+    expect(
+      formatGateReport({ passed: false, failures: ['incomplete'] }),
+    ).toContain('incomplete')
   })
-
-  it('reports CLI help and validation errors', async () => {
-    const consoleObj = { error: vi.fn(), log: vi.fn() }
-
-    expect(parseArgs(['--github-pr', '42'])).toEqual({ 'github-pr': '42' })
-    expect(() => parseArgs(['unexpected'])).toThrow('Unexpected argument')
-    expect(() => parseArgs(['--github-pr'])).toThrow(
-      'Missing value for --github-pr.',
-    )
-
-    await expect(main(['--help'], { consoleObj })).resolves.toBe(0)
-    expect(consoleObj.log).toHaveBeenCalledWith(
-      expect.stringContaining('Usage'),
-    )
-
-    const changedFilesExitCode = await main(
-      ['--changed-files', 'changed.txt'],
-      {
-        consoleObj,
-      },
-    )
-    expect(changedFilesExitCode).toBe(1)
-    expect(consoleObj.error).toHaveBeenCalledWith(
-      expect.stringContaining('--changed-files is no longer supported'),
-    )
+  it('supports local input, help and useful argument errors', async () => {
+    const fsImpl = {
+      readFileSync: file =>
+        file === 'pr.md'
+          ? declaration('updated')
+          : file === 'head.md'
+            ? document.replace('database.', 'database and keyring.')
+            : document,
+    }
+    expect(
+      await main(
+        [
+          '--pr-body',
+          'pr.md',
+          '--base-notes',
+          'base.md',
+          '--head-notes',
+          'head.md',
+        ],
+        { env: {}, consoleObj, fsImpl },
+      ),
+    ).toBe(0)
+    expect(await main(['--help'], { consoleObj })).toBe(0)
+    expect(await main(['--unknown', 'file'], { consoleObj })).toBe(1)
+    expect(parseArgs(['-h'])).toEqual({ help: true })
+    expect(() => parseArgs(['--pr-body'])).toThrow(/Missing/)
+    expect(() => parseArgs(['file'])).toThrow(/Unexpected/)
   })
+  it.each([
+    { repository: '' },
+    { token: '' },
+    { prNumber: '' },
+    { repository: 'invalid' },
+  ])('rejects missing API inputs %j', async override => {
+    await expect(
+      readPullRequestFromGitHub({
+        repository: env.GITHUB_REPOSITORY,
+        token: 'test',
+        prNumber: '1',
+        ...override,
+      }),
+    ).rejects.toThrow()
+  })
+})
+
+it.each([
+  ['* Restart the service.', '- Restart the service.'],
+  ['- Restart the service.', '1. Restart the service.'],
+  [
+    'See https://example.test.',
+    'See [https://example.test](https://example.test).',
+  ],
+  ['**Back up SQL.**', 'Back up SQL.'],
+])('rejects equivalent Markdown formatting from %s to %s', (before, after) => {
+  expect(
+    evaluateOperatorUpgradeGate({
+      prBody: declaration('updated'),
+      baseNotes: `# Notes\n\n## Unreleased\n\n${before}\n`,
+      headNotes: `# Notes\n\n## Unreleased\n\n${after}\n`,
+    }).passed,
+  ).toBe(false)
 })

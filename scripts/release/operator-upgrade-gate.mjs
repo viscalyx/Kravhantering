@@ -1,149 +1,39 @@
 import fs from 'node:fs'
 
-export const OPERATOR_UPGRADE_NOTES_START_MARKER =
-  '<!-- DO NOT REMOVE: operator-upgrade:notes start -->'
-export const OPERATOR_UPGRADE_NOTES_END_MARKER =
-  '<!-- DO NOT REMOVE: operator-upgrade:notes end -->'
-export const OPERATOR_UPGRADE_NOTES_PLACEHOLDER =
-  'Write operator upgrade notes here...'
-
-export const NO_OPERATOR_NOTES_CHECKBOX = {
-  id: 'no-notes',
-  label: 'No operator notes needed.',
-}
+import {
+  DEFAULT_OPERATOR_UPGRADE_NOTES_PATH,
+  meaningfulUnreleasedChange,
+  parseOperatorUpgradeNotes,
+} from './operator-upgrade-notes.mjs'
 
 function readNonEmpty(value) {
-  if (typeof value !== 'string') return undefined
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : undefined
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined
 }
 
-function markerCheckboxRegExp(markerId) {
-  return new RegExp(
-    `^[ \\t]*[-*][ \\t]*\\[([ xX])\\][^\\r\\n]*<!--[^\\r\\n]*operator-upgrade:${markerId}[^\\r\\n]*-->`,
-    'mu',
-  )
-}
-
-export function checkboxState(prBody, markerId) {
-  const match = String(prBody ?? '').match(markerCheckboxRegExp(markerId))
-  if (!match) return 'missing'
-  return match[1].toLowerCase() === 'x' ? 'checked' : 'unchecked'
-}
-
-function stripHtmlCommentMarkup(value) {
-  const input = String(value ?? '')
-  let output = ''
-  let index = 0
-
-  while (index < input.length) {
-    if (input.startsWith('<!--', index)) {
-      const commentEndIndex = input.indexOf('-->', index + 4)
-      if (commentEndIndex === -1) break
-      index = commentEndIndex + 3
-      continue
-    }
-
-    const character = input.at(index)
-    if (character !== '<' && character !== '>') {
-      output += character
-    }
-    index += 1
-  }
-
-  return output
-}
-
-function hasMeaningfulNoteText(line) {
-  return /[^\s!-]/u.test(line)
-}
-
-function escapeLevelTwoHeadings(notes) {
-  return notes.replace(/^##(?=[ \t]|$)/gmu, '\\##')
-}
-
-function operatorUpgradeNotesBlock(prBody) {
-  const body = String(prBody ?? '')
-  const startMarkerMatch = body.match(
-    /^[ \t]*<!--[^\r\n]*operator-upgrade:notes start[^\r\n]*-->[ \t]*$/mu,
-  )
-  if (!startMarkerMatch) {
-    return { notes: '', status: 'missing-start' }
-  }
-
-  const afterStartMarker = body.slice(
-    startMarkerMatch.index + startMarkerMatch[0].length,
-  )
-  const endMarkerMatch = afterStartMarker.match(
-    /^[ \t]*<!--[^\r\n]*operator-upgrade:notes end[^\r\n]*-->[ \t]*$/mu,
-  )
-  if (!endMarkerMatch) {
-    return { notes: '', status: 'missing-end' }
-  }
-
-  const notesSection = afterStartMarker.slice(0, endMarkerMatch.index)
-  const notes = escapeLevelTwoHeadings(
-    stripHtmlCommentMarkup(notesSection)
-      .split(/\r?\n/u)
-      .map(line => line.trim())
-      .filter(hasMeaningfulNoteText)
-      .join('\n'),
-  )
-
-  return { notes, status: 'found' }
-}
-
-export function extractOperatorUpgradeNotes(prBody) {
-  return operatorUpgradeNotesBlock(prBody).notes
-}
-
-export function evaluateOperatorUpgradeGate({ prBody }) {
-  const noNotesCheckbox = {
-    ...NO_OPERATOR_NOTES_CHECKBOX,
-    state: checkboxState(prBody, NO_OPERATOR_NOTES_CHECKBOX.id),
-  }
-  const notesBlock = operatorUpgradeNotesBlock(prBody)
-  const notes = notesBlock.notes
-  const hasDefaultPlaceholder = notes === OPERATOR_UPGRADE_NOTES_PLACEHOLDER
+export function evaluateOperatorUpgradeGate({ prBody, baseNotes, headNotes }) {
   const failures = []
-
-  if (noNotesCheckbox.state === 'missing') {
+  const declarations = [
+    ...String(prBody ?? '').matchAll(
+      /^[-*] \[([xX])\].*<!--(?: DO NOT REMOVE:)? operator-upgrade:(updated|no-notes) -->[ \t]*$/gmu,
+    ),
+  ]
+  if (declarations.length !== 1)
     failures.push(
-      'Missing Operator Upgrade checkbox marker "operator-upgrade:no-notes" in the PR body.',
+      'Select exactly one declaration: "Operator notes updated" or "No operator notes needed".',
     )
+  try {
+    parseOperatorUpgradeNotes(headNotes)
+    if (
+      declarations[0]?.[2] === 'updated' &&
+      !meaningfulUnreleasedChange(baseNotes, headNotes)
+    )
+      failures.push(
+        'Updated notes require a meaningful Unreleased addition or correction.',
+      )
+  } catch (error) {
+    failures.push(error.message)
   }
-
-  if (noNotesCheckbox.state !== 'checked') {
-    if (notesBlock.status === 'missing-start') {
-      failures.push(
-        `Missing Operator Upgrade notes start marker "${OPERATOR_UPGRADE_NOTES_START_MARKER}" in the PR body.`,
-      )
-    } else if (notesBlock.status === 'missing-end') {
-      failures.push(
-        `Missing Operator Upgrade notes end marker "${OPERATOR_UPGRADE_NOTES_END_MARKER}" in the PR body.`,
-      )
-    }
-
-    if (hasDefaultPlaceholder) {
-      failures.push(
-        'Operator Upgrade notes still contain the default placeholder. Replace it with operator notes, or check "No operator notes needed".',
-      )
-    }
-
-    if (notesBlock.status === 'found' && (!notes || hasDefaultPlaceholder)) {
-      failures.push(
-        'Operator Upgrade evidence is missing. Check "No operator notes needed" or add operator notes between the operator-upgrade notes markers.',
-      )
-    }
-  }
-
-  return {
-    failures,
-    noNotesCheckbox,
-    notes,
-    passed: failures.length === 0,
-    requiresGate: true,
-  }
+  return { failures, passed: failures.length === 0, requiresGate: true }
 }
 
 export function formatGateReport(result) {
@@ -154,7 +44,7 @@ export function formatGateReport(result) {
   return [
     'Operator Upgrade gate failed.',
     '',
-    'The PR body does not contain completed operator-upgrade evidence.',
+    'The PR declaration or committed operator guidance is incomplete.',
     '',
     'Required fixes:',
     ...result.failures.map(failure => `  - ${failure}`),
@@ -177,6 +67,8 @@ export function parseArgs(args) {
     }
 
     const key = arg.slice(2)
+    if (!['github-pr', 'pr-body', 'base-notes', 'head-notes'].includes(key))
+      throw new Error(`Unknown option: ${arg}`)
     const value = args[index + 1]
     if (!value || value.startsWith('--')) {
       throw new Error(`Missing value for --${key}.`)
@@ -192,7 +84,7 @@ export function parseArgs(args) {
 function usage() {
   return `Usage:
   node scripts/release/operator-upgrade-gate.mjs --github-pr <number>
-  node scripts/release/operator-upgrade-gate.mjs --pr-body <path>`
+  node scripts/release/operator-upgrade-gate.mjs --pr-body <path> --base-notes <path> --head-notes <path>`
 }
 
 async function fetchGitHubJson(url, { fetchImpl, token }) {
@@ -203,6 +95,7 @@ async function fetchGitHubJson(url, { fetchImpl, token }) {
       'user-agent': 'kravhantering-operator-upgrade-gate',
       'x-github-api-version': '2022-11-28',
     },
+    signal: AbortSignal.timeout(30_000),
   })
 
   if (!response.ok) {
@@ -242,6 +135,9 @@ export async function readPullRequestFromGitHub({
 
   return {
     prBody: pullRequest.body ?? '',
+    baseSha: pullRequest.base.sha,
+    headSha: pullRequest.head.sha,
+    headRepository: pullRequest.head.repo.full_name,
   }
 }
 
@@ -259,15 +155,11 @@ export async function main(args = process.argv.slice(2), options = {}) {
     }
 
     let input
-    if (parsedArgs['changed-files']) {
-      throw new Error(
-        '--changed-files is no longer supported; operator upgrade evidence is read from the PR body.',
-      )
-    }
-
     if (parsedArgs['pr-body']) {
       input = {
         prBody: fsImpl.readFileSync(parsedArgs['pr-body'], 'utf8'),
+        baseNotes: fsImpl.readFileSync(parsedArgs['base-notes'], 'utf8'),
+        headNotes: fsImpl.readFileSync(parsedArgs['head-notes'], 'utf8'),
       }
     } else {
       const prNumber =
@@ -280,6 +172,20 @@ export async function main(args = process.argv.slice(2), options = {}) {
       })
     }
 
+    if (input.headSha) {
+      const readSnapshot = async (repository, sha) => {
+        const url = `https://api.github.com/repos/${repository}/contents/${DEFAULT_OPERATOR_UPGRADE_NOTES_PATH}?ref=${encodeURIComponent(sha)}`
+        const file = await fetchGitHubJson(url, {
+          fetchImpl: options.fetchImpl ?? fetch,
+          token: env.GITHUB_TOKEN,
+        })
+        if (file.encoding !== 'base64' || typeof file.content !== 'string')
+          throw new Error('Committed notes content unavailable.')
+        return Buffer.from(file.content, 'base64').toString('utf8')
+      }
+      input.baseNotes = await readSnapshot(env.GITHUB_REPOSITORY, input.baseSha)
+      input.headNotes = await readSnapshot(input.headRepository, input.headSha)
+    }
     const result = evaluateOperatorUpgradeGate(input)
     const report = formatGateReport(result)
 

@@ -2,19 +2,9 @@ name: Devcontainer Image Smoke
 
 on:
   pull_request:
-    branches: [main]
-    paths:
-      - '.devcontainer/Dockerfile'
-      - 'scripts/azure-dev/templates/install-codex.sh'
-      - 'scripts/azure-dev/templates/install-dotenv-linter.sh'
-      - '.github/workflows/devcontainer-image-smoke.yml'
+    branches: [ main ]
   push:
-    branches: [main]
-    paths:
-      - '.devcontainer/Dockerfile'
-      - 'scripts/azure-dev/templates/install-codex.sh'
-      - 'scripts/azure-dev/templates/install-dotenv-linter.sh'
-      - '.github/workflows/devcontainer-image-smoke.yml'
+    branches: [ main ]
 
 permissions:
   contents: read
@@ -32,12 +22,7 @@ jobs:
 
       - name: Build observable development stage
         run: >-
-          docker buildx build
-          --file .devcontainer/Dockerfile
-          --target development
-          --tag localhost/kravhantering/devcontainer-tools:smoke
-          --load
-          .
+          docker buildx build --file .devcontainer/Dockerfile --target development --tag localhost/kravhantering/devcontainer-tools:smoke --load .
 
       - name: Observe installed development tools
         run: |
@@ -47,3 +32,37 @@ jobs:
           docker run --rm \
             localhost/kravhantering/devcontainer-tools:smoke \
             dotenv-linter --version
+    needs:
+      - select
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'devcontainer') }}
+    name: development-tools (execution)
+  select:
+    name: Select applicable validation
+    uses: ./.github/workflows/reusable-validation-selection.yml
+    permissions:
+      contents: read
+    with:
+      workflow: devcontainer-image-smoke
+  development-tools-result:
+    name: development-tools
+    if: ${{ always() }}
+    needs:
+      - select
+      - development-tools
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: devcontainer
+          owner-jobs: '{"devcontainer":["development-tools"]}'

@@ -2,17 +2,14 @@ import childProcess from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  assertPublicationAllowed,
+  RELEASE_IMAGE_ROLES,
+  readPublicationEvidence,
+} from './publication.mjs'
 
-const IMAGE_PATHS = [
-  ['appRuntime', 'app-runtime'],
-  ['dbJob', 'db-job'],
-  ['demoSeed', 'demo-seed'],
-  ['testSupport.hsaDirectoryMock', 'hsa-directory-mock'],
-  ['hsaIntegrationSupport.hsaMtlsProvisioner', 'hsa-mtls-provisioner'],
-  ['hsaIntegrationSupport.hsaPersonLookupAdapter', 'hsa-person-lookup-adapter'],
-]
 const USAGE = `Usage:
-  node scripts/release/promote-container-candidates.mjs --metadata <path> --output <path>`
+  node scripts/release/promote-container-candidates.mjs --plan <path> --metadata <path> --output <path>`
 
 export function parseArgs(args) {
   const options = {}
@@ -42,7 +39,7 @@ function repositoryFromTag(tag) {
 }
 
 export function promotionEntries(metadata) {
-  return IMAGE_PATHS.map(([objectPath, name]) => {
+  return RELEASE_IMAGE_ROLES.map(([objectPath, name]) => {
     const image = objectAtPath(metadata, objectPath)
     if (
       !image?.candidate?.artifactPath ||
@@ -91,71 +88,100 @@ function inspectDigest(tag, options = {}) {
       cwd: options.cwd,
       encoding: 'utf8',
       env: options.env ?? process.env,
-      stdio: ['ignore', 'pipe', 'inherit'],
+      stdio: ['ignore', 'pipe', 'pipe'],
     },
   ).trim()
 }
 
 export function promoteCandidates(metadata, options = {}) {
-  const entries = promotionEntries(metadata)
-  const staged = []
-  for (const entry of entries) {
-    execute(
-      'skopeo',
-      [
-        'copy',
-        '--all',
-        '--preserve-digests',
-        '--retry-times',
-        '3',
-        `oci-archive:${entry.artifactPath}`,
-        `docker://${entry.stagingTag}`,
-      ],
-      options,
-    )
-    const remoteManifestDigest = inspectDigest(entry.stagingTag, options)
-    if (remoteManifestDigest !== entry.manifestDigest) {
-      throw new Error(
-        `Staged digest mismatch for ${entry.stagingTag}: expected ${entry.manifestDigest}, received ${remoteManifestDigest}.`,
-      )
+  const plan = options.plan
+  const evidence = options.evidence ?? readPublicationEvidence(plan, options)
+  assertPublicationAllowed(plan, metadata, evidence)
+  const progress = { staged: [], promoted: [] }
+  try {
+    const entries = promotionEntries(metadata)
+    const remote = new Map()
+    const inspect = tag => {
+      try {
+        return inspectDigest(tag, options)
+      } catch (error) {
+        if (
+          /manifest unknown|name unknown|manifest_unknown|name_unknown/iu.test(
+            String(error.stderr ?? error.message),
+          )
+        )
+          return undefined
+        throw new Error(`Cannot verify ${tag}: ${error.message}`)
+      }
     }
-    staged.push({
-      manifestDigest: entry.manifestDigest,
-      name: entry.name,
-      tag: entry.stagingTag,
-    })
-  }
-
-  const promoted = []
-  for (const entry of entries) {
-    for (const tag of entry.tags) {
-      execute(
+    // Check all existing identities before writes. Never replace a conflicting tag.
+    for (const entry of entries) {
+      const execFileSync = options.execFileSync ?? childProcess.execFileSync
+      const local = execFileSync(
         'skopeo',
         [
-          'copy',
-          '--all',
-          '--preserve-digests',
-          '--retry-times',
-          '3',
-          `docker://${entry.stagingTag}`,
-          `docker://${tag}`,
+          'inspect',
+          '--format',
+          '{{.Digest}}',
+          `oci-archive:${entry.artifactPath}`,
         ],
-        options,
-      )
-      const remoteManifestDigest = inspectDigest(tag, options)
-      if (remoteManifestDigest !== entry.manifestDigest) {
-        throw new Error(
-          `Published digest mismatch for ${tag}: expected ${entry.manifestDigest}, received ${remoteManifestDigest}.`,
-        )
+        { cwd: options.cwd, encoding: 'utf8', env: options.env ?? process.env },
+      ).trim()
+      if (local !== entry.manifestDigest)
+        throw new Error(`Candidate content mismatch for ${entry.name}.`)
+      for (const tag of [entry.stagingTag, ...entry.tags]) {
+        const digest = inspect(tag)
+        if (digest && digest !== entry.manifestDigest)
+          throw new Error(
+            `Conflicting published content for ${tag}: ${digest}; expected ${entry.manifestDigest}. Preserve it and reconcile manually.`,
+          )
+        remote.set(tag, digest)
       }
-      promoted.push({
-        manifestDigest: entry.manifestDigest,
-        name: entry.name,
-        tag,
-      })
     }
+    const copy = (entry, source, tag) => {
+      if (remote.get(tag)) return 'preserved'
+      try {
+        execute(
+          'skopeo',
+          ['copy', '--all', '--preserve-digests', source, `docker://${tag}`],
+          options,
+        )
+      } catch (error) {
+        // A failed response is uncertain. Observe remote state without retrying the write.
+        if (inspect(tag) !== entry.manifestDigest)
+          throw new Error(
+            `Publication incomplete for ${tag}: ${error.message}. Inspect remote state and rerun failed jobs manually.`,
+          )
+      }
+      if (inspect(tag) !== entry.manifestDigest)
+        throw new Error(`Published digest mismatch for ${tag}.`)
+      return 'published'
+    }
+    for (const entry of entries)
+      progress.staged.push({
+        name: entry.name,
+        tag: entry.stagingTag,
+        manifestDigest: entry.manifestDigest,
+        outcome: copy(
+          entry,
+          `oci-archive:${entry.artifactPath}`,
+          entry.stagingTag,
+        ),
+      })
+    for (const entry of entries) {
+      for (const tag of entry.tags)
+        progress.promoted.push({
+          name: entry.name,
+          tag,
+          manifestDigest: entry.manifestDigest,
+          outcome: copy(entry, `docker://${entry.stagingTag}`, tag),
+        })
+    }
+    return progress
+  } catch (error) {
+    error.promotionResult = progress
+    throw error
   }
-  return { promoted, staged }
 }
 
 /* v8 ignore start -- File orchestration is exercised by the workflow contract. */
@@ -171,12 +197,13 @@ export async function main(args, dependencies = {}) {
   try {
     const options = parseArgs(args)
     output = options.output
-    if (!options.metadata || !output) {
+    if (!options.plan || !options.metadata || !output) {
       consoleObj.error(USAGE)
       return 1
     }
     const metadata = JSON.parse(fsImpl.readFileSync(options.metadata, 'utf8'))
-    const result = promoteCandidates(metadata, dependencies)
+    const plan = JSON.parse(fsImpl.readFileSync(options.plan, 'utf8'))
+    const result = promoteCandidates(metadata, { ...dependencies, plan })
     writeJson(
       output,
       {
@@ -196,6 +223,7 @@ export async function main(args, dependencies = {}) {
       writeJson(
         output,
         {
+          ...error.promotionResult,
           errors: [message],
           passed: false,
           schemaVersion: 1,

@@ -1,0 +1,43 @@
+name: Select applicable validation
+on:
+  workflow_call:
+    inputs:
+      workflow:
+        required: true
+        type: string
+    outputs:
+      selection:
+        value: ${{ jobs.select.outputs.selection }}
+      owners:
+        value: ${{ jobs.select.outputs.owners }}
+      release:
+        value: ${{ jobs.select.outputs.release }}
+permissions:
+  contents: read
+jobs:
+  select:
+    name: Select applicable validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      selection: ${{ steps.select.outputs.selection }}
+      owners: ${{ steps.select.outputs.owners }}
+      release: ${{ steps.select.outputs.release }}
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Classify complete changed paths
+        id: select
+        run: node scripts/release/select-validation.mjs "$WORKFLOW_SCOPE"
+        env:
+          WORKFLOW_SCOPE: ${{ inputs.workflow }}

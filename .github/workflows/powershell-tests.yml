@@ -2,21 +2,9 @@ name: PowerShell tests
 
 on:
   pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/powershell-tests.yml'
-      - 'package.json'
-      - 'scripts/azure-dev/**'
-      - 'scripts/test-powershell-integration.mjs'
-      - 'tests/powershell/Integration/**'
+    branches: [ main ]
   push:
-    branches: [main]
-    paths:
-      - '.github/workflows/powershell-tests.yml'
-      - 'package.json'
-      - 'scripts/azure-dev/**'
-      - 'scripts/test-powershell-integration.mjs'
-      - 'tests/powershell/Integration/**'
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -24,7 +12,7 @@ permissions:
 
 jobs:
   pester:
-    name: Pester 6
+    name: Pester 6 (execution)
     runs-on: ubuntu-latest
 
     steps:
@@ -53,3 +41,36 @@ jobs:
           path: test-results/pester/**
           if-no-files-found: error
           retention-days: 7
+    needs:
+      - select
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'powershell') }}
+  select:
+    name: Select applicable validation
+    uses: ./.github/workflows/reusable-validation-selection.yml
+    permissions:
+      contents: read
+    with:
+      workflow: powershell-tests
+  pester-result:
+    name: Pester 6
+    if: ${{ always() }}
+    needs:
+      - select
+      - pester
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: powershell
+          owner-jobs: '{"powershell":["pester"]}'

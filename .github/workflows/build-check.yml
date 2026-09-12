@@ -2,9 +2,9 @@ name: Build Check
 
 on:
   pull_request:
-    branches: [main]
+    branches: [ main ]
   push:
-    branches: [main]
+    branches: [ main ]
 
 permissions:
   contents: read
@@ -66,3 +66,37 @@ jobs:
             npm-debug.log*
             yarn-error.log*
           retention-days: 1
+    needs:
+      - select
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'build') }}
+    name: build (execution)
+  select:
+    name: Select applicable validation
+    uses: ./.github/workflows/reusable-validation-selection.yml
+    permissions:
+      contents: read
+    with:
+      workflow: build-check
+  build-result:
+    name: build
+    if: ${{ always() }}
+    needs:
+      - select
+      - build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: build
+          owner-jobs: '{"build":["build"]}'

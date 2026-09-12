@@ -6,7 +6,7 @@ name: Security DAST
 
 on:
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   zap-baseline:
-    name: Web DAST (ZAP + Nuclei)
+    name: Web DAST (ZAP + Nuclei) (execution)
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -101,11 +101,7 @@ jobs:
           #                cookie on every outgoing request so
           #                authenticated pages are scanned.
           cmd_options: >-
-            -j
-            --ajax-spider
-            -m 5
-            -T 10
-            -z "-config replacer.full_list(0).description=session-cookie
+            -j --ajax-spider -m 5 -T 10 -z "-config replacer.full_list(0).description=session-cookie
                 -config replacer.full_list(0).enabled=true
                 -config replacer.full_list(0).matchtype=REQ_HEADER
                 -config replacer.full_list(0).matchstr=Cookie
@@ -490,3 +486,36 @@ jobs:
         uses: ./.github/actions/prodlike-cleanup
         with:
           results-dir: test-results
+    needs:
+      - select
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'dast') }}
+  select:
+    name: Select applicable validation
+    uses: ./.github/workflows/reusable-validation-selection.yml
+    permissions:
+      contents: read
+    with:
+      workflow: security-dast
+  zap-baseline-result:
+    name: Web DAST (ZAP + Nuclei)
+    if: ${{ always() }}
+    needs:
+      - select
+      - zap-baseline
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: dast
+          owner-jobs: '{"dast":["zap-baseline"]}'

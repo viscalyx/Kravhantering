@@ -2,7 +2,7 @@ name: Container Release
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
     tags:
       - 'v[0-9]*.[0-9]*.[0-9]*'
       - '!v*-*'
@@ -12,6 +12,11 @@ on:
         description: 'Optional rollback source tag; defaults to the preceding published release and always requires compatibility verification'
         required: false
         type: string
+      preview:
+        description: Publish a preview of the dispatch event source on current main after full validation
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,8 +24,8 @@ concurrency:
 
 jobs:
   trusted-release:
-    name: Validate and Promote Trusted Container Stack
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    name: Validate and Promote Trusted Container Stack (execution)
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'trusted') && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     permissions:
@@ -47,6 +52,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+          ref: ${{ github.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
@@ -68,6 +74,27 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+      - name: Provision Azure Codex policy test prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends zsh
+          mapfile -t fixture_images < <(
+            sed -n 's/^FROM \(ubuntu:[^ ]*@sha256:[a-f0-9]\{64\}\)$/\1/p' \
+              scripts/containers/production-smoke-debug.Containerfile
+          )
+          test "${#fixture_images[@]}" -eq 1
+          docker pull "${fixture_images[0]}"
+      - name: Run trusted static and unit validation
+        run: |
+          npm run dependency-maintenance:check
+          npm run type-check
+          npm run lint:py
+          npm run format:check
+          npm run spell:check
+          npm run lint
+          npm run lint:md
+          npm run test:coverage
+          npm run test:hsa-support
 
       - name: Restore GitVersion tool
         run: dotnet tool restore
@@ -91,14 +118,6 @@ jobs:
       - name: Compute HSA mTLS provisioner candidate reference
         run: |
           echo "HSA_MTLS_PROVISIONER_CANDIDATE_REF=${HSA_MTLS_PROVISIONER_IMAGE}:${RELEASE_VERSION}" >> "${GITHUB_ENV}"
-
-      - name: Sync merged PR operator upgrade notes
-        if: env.RELEASE_CREATE_GITHUB_RELEASE == 'true' && env.RELEASE_PRERELEASE == 'true'
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          node scripts/release/operator-upgrade-notes.mjs sync-commit-prs \
-            --commit "${GITHUB_SHA}"
 
       - name: Write host build metadata artifact
         run: node scripts/prebuild.js
@@ -163,6 +182,7 @@ jobs:
             --tag "${APP_RUNTIME_CANDIDATE_REF}" \
             --output "type=oci,dest=${APP_RUNTIME_CANDIDATE_ARTIFACT}" \
             .
+        id: candidate-build
 
       - name: Build db-job candidate OCI artifact
         run: |
@@ -373,6 +393,7 @@ jobs:
 
       - name: Verify production stack
         run: scripts/containers/production-smoke.sh verify
+        id: validation
 
       - name: Collect production Quadlet evidence
         if: always()
@@ -390,24 +411,27 @@ jobs:
 
       - name: Log in to GHCR after validation gates
         id: ghcr-login
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         uses: ./.github/actions/ghcr-credential-helper
         with:
           token: ${{ github.token }}
           username: ${{ github.actor }}
 
       - name: Promote unchanged candidate OCI artifacts and verify digests
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         env:
           GHCR_TOKEN: ${{ github.token }}
           REGISTRY_AUTH_FILE: ${{ steps.ghcr-login.outputs.authfile }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           node scripts/release/promote-container-candidates.mjs \
+            --plan tmp/container-release-artifacts/metadata/release-plan.json \
             --metadata tmp/container-release-artifacts/metadata/release-metadata.json \
             --output tmp/container-release-artifacts/metadata/promotion-result.json
+        id: image-publication
 
       - name: Attest app-runtime provenance
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ env.APP_RUNTIME_IMAGE }}
@@ -415,7 +439,7 @@ jobs:
           push-to-registry: false
 
       - name: Attest db-job provenance
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ env.DB_JOB_IMAGE }}
@@ -423,7 +447,7 @@ jobs:
           push-to-registry: false
 
       - name: Attest demo seed provenance
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ env.DEMO_SEED_IMAGE }}
@@ -431,7 +455,7 @@ jobs:
           push-to-registry: false
 
       - name: Attest HSA directory mock provenance
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ env.HSA_DIRECTORY_MOCK_IMAGE }}
@@ -439,7 +463,7 @@ jobs:
           push-to-registry: false
 
       - name: Attest HSA person lookup adapter provenance
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_IMAGE }}
@@ -447,7 +471,7 @@ jobs:
           push-to-registry: false
 
       - name: Attest HSA mTLS provisioner provenance
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ env.HSA_MTLS_PROVISIONER_IMAGE }}
@@ -455,7 +479,7 @@ jobs:
           push-to-registry: false
 
       - name: Attest app-runtime SBOM
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ env.APP_RUNTIME_IMAGE }}
@@ -464,7 +488,7 @@ jobs:
           push-to-registry: false
 
       - name: Attest db-job SBOM
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ env.DB_JOB_IMAGE }}
@@ -473,7 +497,7 @@ jobs:
           push-to-registry: false
 
       - name: Attest demo seed SBOM
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ env.DEMO_SEED_IMAGE }}
@@ -482,7 +506,7 @@ jobs:
           push-to-registry: false
 
       - name: Attest HSA directory mock SBOM
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ env.HSA_DIRECTORY_MOCK_IMAGE }}
@@ -491,7 +515,7 @@ jobs:
           push-to-registry: false
 
       - name: Attest HSA person lookup adapter SBOM
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_IMAGE }}
@@ -500,7 +524,7 @@ jobs:
           push-to-registry: false
 
       - name: Attest HSA mTLS provisioner SBOM
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ env.HSA_MTLS_PROVISIONER_IMAGE }}
@@ -509,7 +533,7 @@ jobs:
           push-to-registry: false
 
       - name: Verify final artifact attestations
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -525,7 +549,7 @@ jobs:
           done
 
       - name: Write artifact hashes
-        if: always()
+        if: always() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         run: |
           node scripts/containers/write-hashes.mjs \
             --output hashes.sha256 \
@@ -553,7 +577,7 @@ jobs:
             tmp/container-release-artifacts/sbom/hsa-directory-mock.spdx.json || true
 
       - name: Stage production deployment bundle
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         run: |
           node scripts/release/container-release.mjs bundle \
             --plan tmp/container-release-artifacts/metadata/release-plan.json \
@@ -577,7 +601,7 @@ jobs:
             --guide docs/operations/release-artifact-and-image-verification.md
 
       - name: Archive production deployment bundle
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         run: |
           set -euo pipefail
           bundle="kravhantering-production-deploy-${RELEASE_VERSION}"
@@ -705,7 +729,7 @@ jobs:
             --trusted-root "${trusted_root}"
 
       - name: Write release notes
-        if: success()
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -724,7 +748,7 @@ jobs:
             --attestation-url "${{ steps.deployment-archive-attestation.outputs.attestation-url }}"
 
       - name: Stage release artifacts
-        if: always()
+        if: always() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         run: |
           set -euo pipefail
           mkdir -p \
@@ -764,68 +788,13 @@ jobs:
               tmp/container-release-artifacts/playwright/test-results
           fi
 
-      - name: Create preview tag when needed
-        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true' && env.RELEASE_PRERELEASE == 'true'
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          node scripts/release/container-release.mjs ensure-tag \
-            --plan tmp/container-release-artifacts/metadata/release-plan.json
-
       - name: Publish GitHub Release
         if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          release_flags=()
-          if [ "${RELEASE_PRERELEASE}" = "true" ]; then
-            release_flags+=(--prerelease --latest=false)
-          else
-            release_flags+=(--latest=true)
-          fi
-
-          if gh release view "${RELEASE_TAG_NAME}" >/dev/null 2>&1; then
-            gh release edit "${RELEASE_TAG_NAME}" \
-              --title "${RELEASE_TAG_NAME}" \
-              --notes-file tmp/container-release-artifacts/release-notes.md \
-              "${release_flags[@]}"
-          else
-            gh release create "${RELEASE_TAG_NAME}" \
-              --title "${RELEASE_TAG_NAME}" \
-              --notes-file tmp/container-release-artifacts/release-notes.md \
-              "${release_flags[@]}"
-          fi
-
-          gh release upload "${RELEASE_TAG_NAME}" \
-            container-stack.lock.json \
-            container-hsa-integration-support.lock.json \
-            container-test-support.lock.json \
-            hashes.sha256 \
-            public/build.json \
-            tmp/container-release-artifacts/metadata/release-metadata.json \
-            tmp/container-release-artifacts/metadata/grype-db-status.json \
-            tmp/container-release-artifacts/metadata/vulnerability-policy-decision.json \
-            tmp/container-release-artifacts/reports/app-runtime.json \
-            tmp/container-release-artifacts/reports/db-job.json \
-            tmp/container-release-artifacts/reports/demo-seed.json \
-            tmp/container-release-artifacts/reports/hsa-directory-mock.json \
-            tmp/container-release-artifacts/reports/hsa-mtls-provisioner.json \
-            tmp/container-release-artifacts/reports/hsa-person-lookup-adapter.json \
-            tmp/container-release-artifacts/sbom/app-runtime.spdx.json \
-            tmp/container-release-artifacts/sbom/db-job.spdx.json \
-            tmp/container-release-artifacts/sbom/demo-seed.spdx.json \
-            tmp/container-release-artifacts/sbom/hsa-mtls-provisioner.spdx.json \
-            tmp/container-release-artifacts/sbom/hsa-person-lookup-adapter.spdx.json \
-            tmp/container-release-artifacts/sbom/hsa-directory-mock.spdx.json \
-            tmp/container-release-artifacts/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz \
-            tmp/container-release-artifacts/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz.sha256 \
-            tmp/container-release-artifacts/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz.sigstore.json \
-            tmp/container-release-artifacts/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz.trusted-root.jsonl \
-            --clobber
+        run: |-
+          node scripts/release/publish-github-release.mjs
+        id: github-publication
 
       - name: Archive stable operator upgrade notes
         if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true' && env.RELEASE_IS_STABLE == 'true'
@@ -839,6 +808,8 @@ jobs:
             exit 1
           fi
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          source_notes="$(mktemp)"
+          git show "${GITHUB_SHA}:docs/operations/operator-upgrade-notes.md" > "${source_notes}"
           git fetch origin main
           git switch --force-create "${archive_branch}" origin/main
 
@@ -851,7 +822,8 @@ jobs:
 
           node scripts/release/operator-upgrade-notes.mjs archive-stable \
             --version "${RELEASE_TAG_NAME}" \
-            --date "${release_date}"
+            --date "${release_date}" \
+            --source-notes "${source_notes}"
 
           if git diff --quiet -- "docs/operations/operator-upgrade-notes.md"; then
             echo "No stable operator upgrade notes archive changes to commit."
@@ -955,6 +927,13 @@ jobs:
             tmp/container-release-artifacts/kravhantering-production-deploy-*.tar.gz.trusted-root.jsonl
           if-no-files-found: warn
           retention-days: 30
+      - name: Report delivery stages
+        if: always()
+        env:
+          STEPS: ${{ toJSON(steps) }}
+        run: node scripts/release/report-publication.mjs
+    needs:
+      - select
 
   runner-metadata:
     name: Capture Trusted Release Runner Metadata
@@ -968,4 +947,34 @@ jobs:
       artifact-name: container-release-runner-metadata-${{ github.run_id }}
       evidence-directory: tmp/container-release-runner-metadata
       retention-days: 30
-      target-job: Validate and Promote Trusted Container Stack
+      target-job: Validate and Promote Trusted Container Stack (execution)
+  select:
+    name: Select applicable validation
+    uses: ./.github/workflows/reusable-validation-selection.yml
+    permissions:
+      contents: read
+    with:
+      workflow: container-release
+  trusted-release-result:
+    name: Validate and Promote Trusted Container Stack
+    if: ${{ always() }}
+    needs:
+      - select
+      - trusted-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: trusted
+          owner-jobs: '{"trusted":["trusted-release"]}'

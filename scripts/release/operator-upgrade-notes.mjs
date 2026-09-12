@@ -1,319 +1,132 @@
 import fs from 'node:fs'
-import {
-  evaluateOperatorUpgradeGate,
-  formatGateReport,
-  readPullRequestFromGitHub,
-} from './operator-upgrade-gate.mjs'
 
 export const DEFAULT_OPERATOR_UPGRADE_NOTES_PATH =
   'docs/operations/operator-upgrade-notes.md'
 export const OPERATOR_UPGRADE_SOURCE_PREFIX = 'operator-upgrade:source'
+export const operatorUpgradeSourceStartMarker = id =>
+  `<!-- ${OPERATOR_UPGRADE_SOURCE_PREFIX} ${id} start -->`
+export const operatorUpgradeSourceEndMarker = id =>
+  `<!-- ${OPERATOR_UPGRADE_SOURCE_PREFIX} ${id} end -->`
 
-const GITHUB_API_TIMEOUT_MS = 30_000
-
-const USAGE = `Usage:
-  node scripts/release/operator-upgrade-notes.mjs sync-pr --github-pr <number> [--operator-notes <path>]
-  node scripts/release/operator-upgrade-notes.mjs sync-commit-prs --commit <sha> [--operator-notes <path>]
-  node scripts/release/operator-upgrade-notes.mjs archive-stable --version vX.Y.Z --date YYYY-MM-DD [--operator-notes <path>]`
-
-function readNonEmpty(value) {
-  if (typeof value !== 'string') return undefined
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : undefined
-}
-
-function requireNonEmpty(name, value) {
-  const trimmed = readNonEmpty(value)
-  if (!trimmed) throw new Error(`${name} is required.`)
-  return trimmed
-}
-
-function parseArgs(args) {
-  const [command, ...rest] = args
-  const options = {}
-
-  if (command === '--help' || command === '-h') {
-    return { command: 'help', options }
-  }
-
-  for (let index = 0; index < rest.length; index += 1) {
-    const arg = rest[index]
-    if (arg === '--help' || arg === '-h') {
-      options.help = true
-      continue
-    }
-    if (!arg.startsWith('--')) {
-      throw new Error(`Unexpected argument: ${arg}`)
-    }
-    const key = arg.slice(2)
-    const value = rest[index + 1]
-    if (!value || value.startsWith('--')) {
-      throw new Error(`Missing value for --${key}.`)
-    }
-    options[key] = value
-    index += 1
-  }
-
-  return { command, options }
-}
-
-function normalizedPullRequestNumber(prNumber) {
-  const value = requireNonEmpty('Pull request number', prNumber)
-  if (!/^\d+$/u.test(value)) {
-    throw new Error(`Invalid pull request number: ${value}`)
-  }
-  return value
-}
-
-function notesPath(options) {
-  return (
-    readNonEmpty(options['operator-notes']) ??
-    DEFAULT_OPERATOR_UPGRADE_NOTES_PATH
+export function stripOperatorUpgradeSourceMarkers(content) {
+  return String(content).replace(
+    /^\s*<!-- operator-upgrade:source \S+ (?:start|end) -->\s*$/gmu,
+    '',
   )
 }
 
-function readNotesFile(filePath, fsImpl = fs) {
-  try {
-    return fsImpl.readFileSync(filePath, 'utf8')
-  } catch (error) {
-    if (error?.code === 'ENOENT') {
-      throw new Error(`Operator upgrade notes file is missing: ${filePath}.`)
-    }
-    throw error
-  }
-}
-
-function writeNotesFile(filePath, content, fsImpl = fs) {
-  fsImpl.writeFileSync(filePath, content)
-}
-
-function sourceIdForPullRequest(prNumber) {
-  return `pr-${normalizedPullRequestNumber(prNumber)}`
-}
-
-export function operatorUpgradeSourceStartMarker(sourceId) {
-  return `<!-- ${OPERATOR_UPGRADE_SOURCE_PREFIX} ${sourceId} start -->`
-}
-
-export function operatorUpgradeSourceEndMarker(sourceId) {
-  return `<!-- ${OPERATOR_UPGRADE_SOURCE_PREFIX} ${sourceId} end -->`
-}
-
-function hasSourceMarker(content, sourceId) {
-  return String(content).includes(operatorUpgradeSourceStartMarker(sourceId))
-}
-
-export function stripOperatorUpgradeSourceMarkers(content) {
-  return String(content)
-    .split(/\r?\n/u)
-    .filter(
-      line =>
-        !new RegExp(
-          `^\\s*<!--\\s*${OPERATOR_UPGRADE_SOURCE_PREFIX}\\s+\\S+\\s+(?:start|end)\\s*-->\\s*$`,
-          'u',
-        ).test(line),
-    )
-    .join('\n')
-}
-
-function splitUnreleasedSection(content, filePath) {
-  const body = String(content ?? '')
-  const headingMatch = body.match(/^##[ \t]+Unreleased[ \t]*$/mu)
-  if (!headingMatch) {
-    throw new Error(
-      `Operator upgrade notes file ${filePath} must contain "## Unreleased".`,
-    )
-  }
-
-  const sectionStart = headingMatch.index + headingMatch[0].length
-  const afterHeading = body.slice(sectionStart)
-  const nextReleaseHeadingIndex = afterHeading.search(/^##[ \t]+\S/mu)
-  const sectionEnd =
-    nextReleaseHeadingIndex === -1
-      ? body.length
-      : sectionStart + nextReleaseHeadingIndex
-
-  return {
-    after: body.slice(sectionEnd),
-    before: body.slice(0, sectionStart),
-    section: body.slice(sectionStart, sectionEnd),
-  }
-}
-
-function withTrailingNewline(content) {
-  return content.endsWith('\n') ? content : `${content}\n`
-}
-
-function appendBlockToSection(section, block) {
-  const trimmedSection = section.trim()
-  if (!trimmedSection) return `\n\n${block}\n`
-  return `\n\n${trimmedSection}\n\n${block}\n`
-}
-
-export function addPullRequestNotesToContent(
+export function parseOperatorUpgradeNotes(
   content,
-  { prBody, prNumber, filePath },
+  filePath = DEFAULT_OPERATOR_UPGRADE_NOTES_PATH,
 ) {
-  const sourceId = sourceIdForPullRequest(prNumber)
-  if (hasSourceMarker(content, sourceId)) {
-    return { changed: false, content, reason: 'already-synced' }
-  }
-
-  const gateResult = evaluateOperatorUpgradeGate({ prBody })
-  if (!gateResult.passed) {
-    throw new Error(formatGateReport(gateResult))
-  }
-
+  if (typeof content !== 'string' || !/^# [^\n]+/u.test(content))
+    throw new Error(
+      `Operator upgrade notes file ${filePath} is missing or malformed.`,
+    )
+  const headings = [...content.matchAll(/^##[ \t]+(.+?)[ \t]*$/gmu)]
   if (
-    gateResult.noNotesCheckbox.state === 'checked' ||
-    !readNonEmpty(gateResult.notes)
-  ) {
-    return { changed: false, content, reason: 'no-notes' }
+    headings[0]?.[1] !== 'Unreleased' ||
+    headings.filter(match => match[1] === 'Unreleased').length !== 1
+  )
+    throw new Error(
+      `Operator upgrade notes file ${filePath} must contain exactly one leading "## Unreleased".`,
+    )
+  if (
+    headings
+      .slice(1)
+      .some(match => !/^v\d+\.\d+\.\d+ - \d{4}-\d{2}-\d{2}$/u.test(match[1]))
+  )
+    throw new Error('Malformed operator notes release history heading.')
+  let open
+  const sources = new Set()
+  for (const match of content.matchAll(
+    /<!-- operator-upgrade:source (\S+) (start|end) -->/gu,
+  )) {
+    if (match[2] === 'start') {
+      if (open || sources.has(match[1]))
+        throw new Error('Duplicate or nested operator notes source marker.')
+      open = match[1]
+      sources.add(open)
+    } else {
+      if (open !== match[1])
+        throw new Error('Unbalanced operator notes source marker.')
+      open = undefined
+    }
   }
-
-  const block = [
-    operatorUpgradeSourceStartMarker(sourceId),
-    gateResult.notes.trim(),
-    operatorUpgradeSourceEndMarker(sourceId),
-  ].join('\n')
-  const parts = splitUnreleasedSection(content, filePath)
-  const nextContent = `${parts.before}${appendBlockToSection(parts.section, block)}${parts.after}`
-
+  if (open) throw new Error('Unbalanced operator notes source marker.')
+  const start = headings[0].index + headings[0][0].length
+  const end = headings[1]?.index ?? content.length
+  const section = content.slice(start, end)
   return {
-    changed: nextContent !== content,
-    content: nextContent,
-    reason: 'synced',
+    content,
+    before: content.slice(0, start),
+    section,
+    history: content.slice(end),
+    unreleased: stripOperatorUpgradeSourceMarkers(section).trim(),
   }
+}
+
+export function meaningfulUnreleasedChange(baseNotes, headNotes) {
+  const normalize = value =>
+    value
+      .replace(/<!--[\s\S]*?-->/gu, '')
+      .replace(/^\s*(?:[-+*]|\d+[.)])\s+/gmu, '')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/gu, (_match, label, url) =>
+        label === url ? url : `${label} ${url}`,
+      )
+      .replace(/<([^>]+)>/gu, '$1')
+      .replace(/[*_#>`~]/gu, '')
+      .replace(/\s+/gu, ' ')
+      .trim()
+  const before = normalize(parseOperatorUpgradeNotes(baseNotes).unreleased)
+  const after = normalize(parseOperatorUpgradeNotes(headNotes).unreleased)
+  // New wording is required: whitespace and removal alone cannot assert an addition/correction.
+  return after.length > 0 && after !== before && !before.includes(after)
+}
+
+function unreleasedEntries(section) {
+  const blocks =
+    section.match(
+      /<!-- operator-upgrade:source \S+ start -->[\s\S]*?<!-- operator-upgrade:source \S+ end -->|(?:(?!<!-- operator-upgrade:source)[\s\S])+(?=<!-- operator-upgrade:source|$)/gu,
+    ) ?? []
+  return blocks
+    .flatMap(block =>
+      block.trimStart().startsWith('<!-- operator-upgrade:source')
+        ? [block]
+        : block.split(/(?=^### )/mu),
+    )
+    .map(value => value.trim())
+    .filter(Boolean)
 }
 
 export function archiveStableOperatorUpgradeNotesContent(
   content,
-  { date, filePath, version },
+  { date, filePath, version, sourceContent },
 ) {
-  const stableVersion = requireNonEmpty('Stable release version', version)
-  if (!/^v\d+\.\d+\.\d+$/u.test(stableVersion)) {
-    throw new Error(
-      `Stable release version must look like vX.Y.Z: ${stableVersion}`,
-    )
-  }
-
-  const releaseDate = requireNonEmpty('Release date', date)
-  if (!/^\d{4}-\d{2}-\d{2}$/u.test(releaseDate)) {
-    throw new Error(`Release date must use YYYY-MM-DD: ${releaseDate}`)
-  }
-
-  const archiveHeadingPattern = new RegExp(
-    `^##[ \\t]+${stableVersion.replaceAll('.', '\\.')}[ \\t]+-\\s+\\d{4}-\\d{2}-\\d{2}[ \\t]*$`,
-    'mu',
-  )
-  if (archiveHeadingPattern.test(content)) {
+  if (!/^v\d+\.\d+\.\d+$/u.test(version ?? ''))
+    throw new Error('Stable release version must look like vX.Y.Z.')
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(date ?? ''))
+    throw new Error('Release date must use YYYY-MM-DD.')
+  const current = parseOperatorUpgradeNotes(content, filePath)
+  const source = parseOperatorUpgradeNotes(sourceContent, 'tagged source notes')
+  const delivered = source.section.trim()
+  if (!delivered) return { changed: false, content, reason: 'no-notes' }
+  if (current.history.includes(`## ${version} - `))
     return { changed: false, content, reason: 'already-archived' }
-  }
-
-  const parts = splitUnreleasedSection(content, filePath)
-  const unreleasedNotes = parts.section.trim()
-  if (!unreleasedNotes) {
-    return { changed: false, content, reason: 'no-notes' }
-  }
-
-  const remainingContent = parts.after.trim()
-  const nextSections = [
-    parts.before,
-    '',
-    `## ${stableVersion} - ${releaseDate}\n\n${unreleasedNotes}`,
-  ]
-  if (remainingContent) {
-    nextSections.push('', remainingContent)
-  }
-  const nextContent = withTrailingNewline(nextSections.join('\n'))
-
-  return {
-    changed: nextContent !== content,
-    content: nextContent,
-    reason: 'archived',
-  }
-}
-
-function repositoryParts(repository) {
-  const cleanRepository = requireNonEmpty('GITHUB_REPOSITORY', repository)
-  const [owner, repo] = cleanRepository.split('/')
-  if (!owner || !repo) {
-    throw new Error(`Invalid GitHub repository: ${cleanRepository}`)
-  }
-  return { owner, repo }
-}
-
-async function fetchGitHubJson(url, { fetchImpl, token }) {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), GITHUB_API_TIMEOUT_MS)
-
-  try {
-    const response = await fetchImpl(url, {
-      headers: {
-        accept: 'application/vnd.github+json',
-        authorization: `Bearer ${token}`,
-        'user-agent': 'kravhantering-operator-upgrade-notes',
-        'x-github-api-version': '2022-11-28',
-      },
-      signal: controller.signal,
-    })
-
-    if (!response.ok) {
+  // Remove only exact delivered blocks. Changed shipped guidance requires manual reconciliation.
+  const remaining = unreleasedEntries(current.section)
+  for (const entry of unreleasedEntries(delivered)) {
+    const index = remaining.indexOf(entry)
+    if (index === -1)
       throw new Error(
-        `GitHub API request failed (${response.status}) for ${url}`,
+        'Delivered operator notes changed on main; reconcile archival manually.',
       )
-    }
-
-    return await response.json()
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(
-        `GitHub API request timed out after ${GITHUB_API_TIMEOUT_MS} ms for ${url}`,
-      )
-    }
-    throw error
-  } finally {
-    clearTimeout(timeout)
+    remaining.splice(index, 1)
   }
-}
-
-export async function readPullRequestsForCommitFromGitHub({
-  commit,
-  fetchImpl = fetch,
-  repository,
-  token,
-}) {
-  const cleanCommit = requireNonEmpty('Commit SHA', commit)
-  const cleanToken = requireNonEmpty('GITHUB_TOKEN', token)
-  const { owner, repo } = repositoryParts(repository)
-  const url =
-    `https://api.github.com/repos/${encodeURIComponent(owner)}/` +
-    `${encodeURIComponent(repo)}/commits/${encodeURIComponent(cleanCommit)}/pulls`
-
-  const pullRequests = await fetchGitHubJson(url, {
-    fetchImpl,
-    token: cleanToken,
-  })
-
-  return Array.isArray(pullRequests) ? pullRequests : []
-}
-
-export function syncPullRequestNotesFile({
-  filePath = DEFAULT_OPERATOR_UPGRADE_NOTES_PATH,
-  fsImpl = fs,
-  prBody,
-  prNumber,
-}) {
-  const content = readNotesFile(filePath, fsImpl)
-  const result = addPullRequestNotesToContent(content, {
-    filePath,
-    prBody,
-    prNumber,
-  })
-  if (result.changed) {
-    writeNotesFile(filePath, result.content, fsImpl)
-  }
-  return result
+  const next =
+    `${current.before}\n\n${remaining.join('\n\n')}\n\n## ${version} - ${date}\n\n${delivered}\n\n${current.history}`.trimEnd() +
+    '\n'
+  return { changed: true, content: next, reason: 'archived' }
 }
 
 export function archiveStableOperatorUpgradeNotesFile({
@@ -321,122 +134,46 @@ export function archiveStableOperatorUpgradeNotesFile({
   filePath = DEFAULT_OPERATOR_UPGRADE_NOTES_PATH,
   fsImpl = fs,
   version,
+  sourceContent,
 }) {
-  const content = readNotesFile(filePath, fsImpl)
-  const result = archiveStableOperatorUpgradeNotesContent(content, {
-    date,
-    filePath,
-    version,
-  })
-  if (result.changed) {
-    writeNotesFile(filePath, result.content, fsImpl)
-  }
+  const result = archiveStableOperatorUpgradeNotesContent(
+    fsImpl.readFileSync(filePath, 'utf8'),
+    { date, filePath, version, sourceContent },
+  )
+  if (result.changed) fsImpl.writeFileSync(filePath, result.content)
   return result
 }
 
-async function syncPrCommand(options, dependencies) {
-  const env = dependencies.env ?? process.env
-  const prNumber = normalizedPullRequestNumber(
-    options['github-pr'] ?? env.PR_NUMBER ?? env.GITHUB_PR_NUMBER,
-  )
-  const input = await readPullRequestFromGitHub({
-    fetchImpl: dependencies.fetchImpl ?? fetch,
-    prNumber,
-    repository: env.GITHUB_REPOSITORY,
-    token: env.GITHUB_TOKEN,
-  })
-  return syncPullRequestNotesFile({
-    filePath: notesPath(options),
-    fsImpl: dependencies.fsImpl ?? fs,
-    prBody: input.prBody,
-    prNumber,
-  })
-}
-
-async function syncCommitPrsCommand(options, dependencies) {
-  const env = dependencies.env ?? process.env
-  const consoleObj = dependencies.consoleObj ?? console
-  let pullRequests
-  try {
-    pullRequests = await readPullRequestsForCommitFromGitHub({
-      commit: options.commit ?? env.GITHUB_SHA,
-      fetchImpl: dependencies.fetchImpl ?? fetch,
-      repository: env.GITHUB_REPOSITORY,
-      token: env.GITHUB_TOKEN,
-    })
-  } catch (error) {
-    consoleObj.warn(
-      `Operator upgrade notes commit lookup skipped: ${error instanceof Error ? error.message : String(error)}`,
-    )
-    return { changed: false, reason: 'lookup-skipped' }
-  }
-
-  let changed = false
-  let synced = 0
-  for (const pullRequest of pullRequests) {
-    const prNumber = pullRequest?.number
-    if (!prNumber) continue
-
-    try {
-      const result = syncPullRequestNotesFile({
-        filePath: notesPath(options),
-        fsImpl: dependencies.fsImpl ?? fs,
-        prBody: pullRequest.body ?? '',
-        prNumber: String(prNumber),
-      })
-      changed = changed || result.changed
-      if (result.reason === 'synced') synced += 1
-    } catch (error) {
-      consoleObj.warn(
-        `Operator upgrade notes sync skipped for PR #${prNumber}: ${error instanceof Error ? error.message : String(error)}`,
-      )
-    }
-  }
-
-  return { changed, reason: synced > 0 ? 'synced' : 'no-pr-notes', synced }
-}
-
+/* v8 ignore start -- CLI file orchestration. */
 export async function main(args = process.argv.slice(2), dependencies = {}) {
   const consoleObj = dependencies.consoleObj ?? console
   const fsImpl = dependencies.fsImpl ?? fs
-
   try {
-    const { command, options } = parseArgs(args)
-    if (command === 'help' || options.help) {
-      consoleObj.log(USAGE)
-      return 0
-    }
-
-    let result
-    if (command === 'sync-pr') {
-      result = await syncPrCommand(options, dependencies)
-    } else if (command === 'sync-commit-prs') {
-      result = await syncCommitPrsCommand(options, dependencies)
-    } else if (command === 'archive-stable') {
-      result = archiveStableOperatorUpgradeNotesFile({
-        date: options.date,
-        filePath: notesPath(options),
-        fsImpl,
-        version: options.version,
-      })
-    } else {
-      consoleObj.error(USAGE)
-      return 1
-    }
-
-    consoleObj.log(
-      `Operator upgrade notes ${result.changed ? 'updated' : 'unchanged'} (${result.reason}).`,
+    const [command, ...rest] = args
+    if (command !== 'archive-stable' || rest.length % 2)
+      throw new Error(
+        'Usage: archive-stable --version vX.Y.Z --date YYYY-MM-DD --source-notes <tagged-document> [--operator-notes <path>]',
+      )
+    const options = Object.fromEntries(
+      Array.from({ length: rest.length / 2 }, (_, index) => [
+        rest[index * 2].replace(/^--/u, ''),
+        rest[index * 2 + 1],
+      ]),
     )
+    const result = archiveStableOperatorUpgradeNotesFile({
+      date: options.date,
+      version: options.version,
+      filePath: options['operator-notes'],
+      sourceContent: fsImpl.readFileSync(options['source-notes'], 'utf8'),
+      fsImpl,
+    })
+    consoleObj.log(`Operator notes ${result.reason}.`)
     return 0
   } catch (error) {
-    consoleObj.error(
-      `Operator upgrade notes error: ${error instanceof Error ? error.message : String(error)}`,
-    )
-    consoleObj.error(USAGE)
+    consoleObj.error(error.message)
     return 1
   }
 }
-
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === `file://${process.argv[1]}`)
   process.exitCode = await main()
-}
+/* v8 ignore stop */

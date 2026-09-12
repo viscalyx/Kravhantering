@@ -67,6 +67,7 @@ function getExpectedDatabaseSchemaVersion() {
 
 function createTestReleasePlan(input = {}) {
   return createReleasePlan({
+    changedFiles: [],
     expectedDatabaseSchemaVersion: getExpectedDatabaseSchemaVersion(),
     ...input,
   })
@@ -180,48 +181,27 @@ describe('trusted container release helpers', () => {
     )
   })
 
-  it('reads changed files for new and existing GitHub revisions', () => {
-    const existingRevision = vi.fn(() => 'app/page.tsx\n')
+  it('reads complete changed files and rejects unavailable change collection', () => {
     expect(
       readChangedFiles({
-        cwd: '/workspace',
-        env: {
-          GITHUB_EVENT_BEFORE: 'before-sha',
-          GITHUB_SHA: 'head-sha',
-        },
-        execFileSync: existingRevision,
+        env: env({ GITHUB_EVENT_BEFORE: 'b'.repeat(40) }),
+        execFileSync: () => 'R100\0old.ts\0docs/new.md\0D\0app/page.tsx\0',
       }),
-    ).toEqual(['app/page.tsx'])
-    expect(existingRevision).toHaveBeenCalledWith(
-      'git',
-      ['diff', '--name-only', 'before-sha', 'head-sha'],
-      expect.objectContaining({ cwd: '/workspace' }),
-    )
-
-    const newRevision = vi.fn(() => 'containers/app/Dockerfile\n')
+    ).toEqual(['docs/new.md', 'app/page.tsx'])
     expect(
       readChangedFiles({
-        cwd: '/workspace',
-        env: {
-          GITHUB_EVENT_BEFORE: '0000000000',
-          GITHUB_SHA: 'head-sha',
-        },
-        execFileSync: newRevision,
+        env: env({ GITHUB_EVENT_BEFORE: '0'.repeat(40) }),
+        execFileSync: () => 'containers/app/Dockerfile\0',
       }),
     ).toEqual(['containers/app/Dockerfile'])
-    expect(newRevision).toHaveBeenCalledWith(
-      'git',
-      ['diff-tree', '--no-commit-id', '--name-only', '-r', 'head-sha'],
-      expect.any(Object),
-    )
-    expect(
+    expect(() =>
       readChangedFiles({
         env: {},
-        execFileSync: vi.fn(() => {
-          throw new Error('not a git checkout')
-        }),
+        execFileSync: () => {
+          throw new Error('unavailable')
+        },
       }),
-    ).toEqual([])
+    ).toThrow()
   })
 
   it('supports explicit release-plan inputs and environment serialization', () => {
@@ -235,7 +215,7 @@ describe('trusted container release helpers', () => {
       refName: 'feature',
       repository: 'Example/Repository',
       runId: '100',
-      sha: 'abcdef',
+      sha: 'abcdef'.padEnd(40, '0'),
     })
 
     expect(plan).toMatchObject({
@@ -250,6 +230,8 @@ describe('trusted container release helpers', () => {
       createReleasePlan({
         env: {},
         expectedDatabaseSchemaVersion: 'Migration20260730120000',
+        sha: 'a'.repeat(40),
+        changedFiles: [],
         repository: 'Owner/Repository',
         repositoryOwner: '  OWNER  ',
       }).owner,
@@ -263,14 +245,18 @@ describe('trusted container release helpers', () => {
     expect(
       createReleasePlan({
         env: { GITHUB_REPOSITORY_OWNER: 'Trusted-Owner' },
+        sha: 'a'.repeat(40),
+        changedFiles: [],
         expectedDatabaseSchemaVersion: 'Migration20260730120000',
       }).owner,
     ).toBe('trusted-owner')
     expect(
       createReleasePlan({
-        env: {},
+        env: env(),
+        changedFiles: [],
+        repositoryOwner: 'repository-owner',
         expectedDatabaseSchemaVersion: 'Migration20260730120000',
-        repository: 'Repository-Owner/Repository',
+        repository: 'Viscalyx/Repository',
       }).owner,
     ).toBe('repository-owner')
     expect(() =>
@@ -501,68 +487,21 @@ describe('trusted container release helpers', () => {
     expect(plan.appRuntimeTags.join('\n')).not.toContain(':latest')
   })
 
-  it('identifies release-relevant paths conservatively', () => {
-    expect(isReleaseRelevantPath('containers/app/Dockerfile')).toBe(true)
-    expect(isReleaseRelevantPath('package-lock.json')).toBe(true)
-    expect(isReleaseRelevantPath('proxy.ts')).toBe(true)
-    expect(
-      isReleaseRelevantPath(
-        'docs/images/infographic-production-access-and-service-flow.png',
-      ),
-    ).toBe(true)
-    expect(
-      isReleaseRelevantPath('docs/operations/rhel10-production-deploy.md'),
-    ).toBe(true)
-    expect(
-      isReleaseRelevantPath('docs/operations/api-docs-edge-verification.md'),
-    ).toBe(true)
-    expect(
-      isReleaseRelevantPath(
-        'docs/operations/production-quadlet-containment.md',
-      ),
-    ).toBe(true)
-    expect(
-      isReleaseRelevantPath(
-        'docs/operations/rhel10-production-disconnected.md',
-      ),
-    ).toBe(true)
-    expect(
-      isReleaseRelevantPath('docs/operations/rhel10-production-upgrade.md'),
-    ).toBe(true)
-    expect(
-      isReleaseRelevantPath('docs/operations/rhel10-production-uninstall.md'),
-    ).toBe(true)
-    expect(
-      isReleaseRelevantPath('docs/operations/operator-upgrade-notes.md'),
-    ).toBe(true)
-    expect(
-      isReleaseRelevantPath(
-        'docs/operations/rhel10-production-single-node-self-contained-deploy.md',
-      ),
-    ).toBe(true)
-    expect(
-      isReleaseRelevantPath(
-        'docs/operations/rhel10-production-single-node-self-contained-disconnected.md',
-      ),
-    ).toBe(true)
-    expect(
-      isReleaseRelevantPath(
-        'docs/operations/rhel10-production-single-node-self-contained-upgrade.md',
-      ),
-    ).toBe(true)
-    expect(
-      isReleaseRelevantPath(
-        'docs/operations/rhel10-production-single-node-self-contained-uninstall.md',
-      ),
-    ).toBe(true)
-    expect(isReleaseRelevantPath('typeorm/ai-safety-seed-data.mjs')).toBe(true)
-    expect(isReleaseRelevantPath('typeorm/seed-dogfood.mjs')).toBe(true)
-    expect(isReleaseRelevantPath('scripts/keycloak-demo-users.mjs')).toBe(true)
-    expect(
-      isReleaseRelevantPath('dev/keycloak/realm-kravhantering-dev.json'),
-    ).toBe(true)
-    expect(isReleaseRelevantPath('docs/prompt-faser.md')).toBe(false)
-    expect(isReleaseRelevantPath('tests/unit/example.test.ts')).toBe(false)
+  it('identifies release eligibility through the common path policy', () => {
+    for (const file of [
+      'containers/app/Dockerfile',
+      'package-lock.json',
+      'proxy.ts',
+      'new-area/input',
+    ])
+      expect(isReleaseRelevantPath(file)).toBe(true)
+    for (const file of [
+      'docs/operations/operator-upgrade-notes.md',
+      'docs/images/diagram.png',
+      'tests/unit/example.test.ts',
+      'CONTRIBUTING.md',
+    ])
+      expect(isReleaseRelevantPath(file)).toBe(false)
   })
 
   it('reads Buildx image IDs from descriptor annotations', () => {
@@ -1046,7 +985,7 @@ describe('trusted container release helpers', () => {
     'docs/development/trusted-container-publishing.md',
     'docs/operations/rhel10-production-single-node-self-contained-upgrade.md',
     'docs/operations/release-artifact-and-image-verification.md',
-  ])('treats bundled guide %s as release-relevant', guide => {
+  ])('treats bundled guide %s as documentation-only', guide => {
     const plan = createTestReleasePlan({
       changedFiles: [guide],
       env: env(),
@@ -1054,10 +993,10 @@ describe('trusted container release helpers', () => {
     })
 
     expect(plan).toMatchObject({
-      createGitHubRelease: true,
-      hasRelevantChange: true,
-      releaseTagName: 'v1.2.0-preview.4',
-      shouldCreatePreviewRelease: true,
+      createGitHubRelease: false,
+      hasRelevantChange: false,
+      releaseTagName: '',
+      shouldCreatePreviewRelease: false,
     })
   })
 
@@ -1636,7 +1575,7 @@ describe('trusted container release helpers', () => {
         '',
         'Confirm owner HSA-id values before running `db-job migrate`.',
         '',
-        '## 0.1.0 - 2026-01-01',
+        '## v0.1.0 - 2026-01-01',
         '',
         'Earlier note.',
         '',
@@ -1667,7 +1606,7 @@ describe('trusted container release helpers', () => {
           '',
           '## Unreleased',
           '',
-          '## 0.1.0 - 2026-01-01',
+          '## v0.1.0 - 2026-01-01',
           '',
         ].join('\n'),
         DEFAULT_OPERATOR_UPGRADE_NOTES_PATH,
@@ -1678,7 +1617,7 @@ describe('trusted container release helpers', () => {
         '# Operator Upgrade Notes\n',
         DEFAULT_OPERATOR_UPGRADE_NOTES_PATH,
       ),
-    ).toThrow('must contain "## Unreleased"')
+    ).toThrow(/Unreleased|missing or malformed/)
     expect(() =>
       readOperatorUpgradeNotes(DEFAULT_OPERATOR_UPGRADE_NOTES_PATH, {
         existsSync: () => false,
@@ -1696,7 +1635,7 @@ describe('trusted container release helpers', () => {
     ).toBe('Current note.')
     expect(() =>
       extractUnreleasedOperatorUpgradeNotes(undefined, 'notes.md'),
-    ).toThrow('must contain "## Unreleased"')
+    ).toThrow(/Unreleased|missing or malformed/)
     expect(() =>
       readOperatorUpgradeNotes('missing.md', {
         readFileSync: () => {
@@ -2092,7 +2031,10 @@ describe('trusted container release helpers', () => {
           fs.writeFileSync(cleanupSourcePath, JSON.stringify(cleanupSource))
           fs.writeFileSync(cleanupContractPath, JSON.stringify(contract))
         }
+        const sourceNotesContent =
+          '# Operator Upgrade Notes\n\n## Unreleased\n\nExact source guidance.\n\n## v1.0.0 - 2026-01-01\n\nComplete history.\n'
         const result = stageProductionDeploymentBundle({
+          sourceNotesContent,
           ...(withCleanup ? { cleanupContractPath, cleanupSourcePath } : {}),
           buildJsonPath,
           generatedAt: '2026-05-23T00:00:00.000Z',
@@ -2110,6 +2052,12 @@ describe('trusted container release helpers', () => {
           testSupportLockPath,
         })
 
+        expect(
+          fs.readFileSync(
+            path.join(result.bundleRoot, DEFAULT_OPERATOR_UPGRADE_NOTES_PATH),
+            'utf8',
+          ),
+        ).toBe(sourceNotesContent)
         if (withCleanup) {
           expect(result.manifest.files).toContain('cleanup-source.json')
           expect(result.manifest.files).toContain('cleanup-compatibility.json')

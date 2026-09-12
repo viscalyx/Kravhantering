@@ -2,8 +2,8 @@ name: Operator Upgrade Gate
 
 on:
   pull_request_target:
-    branches: [main]
-    types: [opened, synchronize, reopened, edited, ready_for_review]
+    branches: [ main ]
+    types: [ opened, synchronize, reopened, edited, ready_for_review ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -15,7 +15,6 @@ permissions:
 
 jobs:
   operator-upgrade-gate:
-    if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 5
 

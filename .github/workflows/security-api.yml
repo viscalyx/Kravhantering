@@ -5,9 +5,9 @@ name: Security API
 
 on:
   pull_request:
-    branches: [main]
+    branches: [ main ]
   push:
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
   schedule:
     - cron: '27 4 * * 2'
@@ -21,10 +21,9 @@ permissions:
 
 jobs:
   schemathesis:
-    name: Schemathesis REST API
+    name: Schemathesis REST API (execution)
     if: >-
-      github.event_name != 'schedule' ||
-      github.repository == 'viscalyx/Kravhantering'
+      ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'api') && (github.event_name != 'schedule' || github.repository == 'viscalyx/Kravhantering') }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -215,3 +214,36 @@ jobs:
         uses: ./.github/actions/prodlike-cleanup
         with:
           results-dir: test-results/security-api
+    needs:
+      - select
+  select:
+    name: Select applicable validation
+    uses: ./.github/workflows/reusable-validation-selection.yml
+    permissions:
+      contents: read
+    with:
+      workflow: security-api
+    if: ${{ (github.event_name != 'schedule' || github.repository == 'viscalyx/Kravhantering') }}
+  schemathesis-result:
+    name: Schemathesis REST API
+    if: ${{ always() && (github.event_name != 'schedule' || github.repository == 'viscalyx/Kravhantering') }}
+    needs:
+      - select
+      - schemathesis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: api
+          owner-jobs: '{"api":["schemathesis"]}'

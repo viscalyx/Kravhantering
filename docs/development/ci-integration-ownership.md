@@ -1,6 +1,9 @@
 # CI integration ownership
 
-Each required result reports independently for the same commit. A failed
+Each required result reports independently for the same commit.
+[Shared event/path selection](ci-selection.md) selects complete owners and
+explains native exclusions. Required reporting rejects failed, cancelled,
+missing or unexpectedly skipped selected work. A failed
 candidate blocks only the assembly that needs that candidate. Browser chunks
 share a fresh seeded database and Keycloak, restart the development application
 between chunks, retain each chunk's artifacts, and continue after failures.
@@ -27,8 +30,10 @@ protection. Acceptance belongs to the repository owner; there is no additional
 proof window, runtime target, or mandatory local preflight.
 
 The existing `HSA mTLS topology required` result now lives in Container PR
-Smoke with its transport and rotation jobs. All pull requests still trigger
-these checks. They consume the same mock and adapter candidate archives,
+Smoke with its transport and rotation jobs.
+All pull requests still trigger selection and required reporting.
+Execution uses the selected complete owners.
+They consume the same mock and adapter candidate archives,
 convert their format for Docker, and check loaded image identities. Only the
 transport-test image and provisioner need separate security-fixture builds.
 Support-policy failure does not suppress available transport evidence; the

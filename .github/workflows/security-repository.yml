@@ -2,9 +2,9 @@ name: Repository Security
 
 on:
   pull_request:
-    branches: [main]
+    branches: [ main ]
   push:
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
   schedule:
     - cron: '23 2 * * 1'
@@ -19,10 +19,9 @@ permissions:
 
 jobs:
   supply-chain:
-    name: npm audit and Trivy
+    name: npm audit and Trivy (execution)
     if: >-
-      github.event_name != 'schedule' ||
-      github.repository == 'viscalyx/Kravhantering'
+      ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'repository-security') && (github.event_name != 'schedule' || github.repository == 'viscalyx/Kravhantering') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -156,3 +155,36 @@ jobs:
           fi
 
           exit "$failed"
+    needs:
+      - select
+  select:
+    name: Select applicable validation
+    uses: ./.github/workflows/reusable-validation-selection.yml
+    permissions:
+      contents: read
+    with:
+      workflow: security-repository
+    if: ${{ (github.event_name != 'schedule' || github.repository == 'viscalyx/Kravhantering') }}
+  supply-chain-result:
+    name: npm audit and Trivy
+    if: ${{ always() && (github.event_name != 'schedule' || github.repository == 'viscalyx/Kravhantering') }}
+    needs:
+      - select
+      - supply-chain
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: repository-security
+          owner-jobs: '{"repository-security":["supply-chain"]}'

@@ -1,162 +1,172 @@
 import { describe, expect, it, vi } from 'vitest'
+import { publicationFixture } from '../release/__tests__/publication-fixture.mjs'
 import {
   parseArgs,
   promoteCandidates,
   promotionEntries,
 } from '../release/promote-container-candidates.mjs'
 
-function image(name, digest = `sha256:${name}`) {
+function fixture() {
+  const context = publicationFixture()
+  const metadata = context.metadata
+  const remote = new Map()
+  const entries = promotionEntries(metadata)
+  const writes = []
+  const execFileSync = vi.fn((_command, args) => {
+    const ref = args.at(-1)
+    if (ref.startsWith('oci-archive:'))
+      return entries.find(entry => ref === `oci-archive:${entry.artifactPath}`)
+        .manifestDigest
+    const digest = remote.get(ref.replace('docker://', ''))
+    if (!digest) {
+      const error = new Error('Command failed: skopeo inspect')
+      error.stderr = Buffer.from('manifest unknown')
+      throw error
+    }
+    return digest
+  })
+  const spawnSync = vi.fn((_command, args) => {
+    const tag = args.at(-1).replace('docker://', '')
+    writes.push(tag)
+    remote.set(
+      tag,
+      entries.find(
+        entry => entry.stagingTag === tag || entry.tags.includes(tag),
+      ).manifestDigest,
+    )
+    return { status: 0 }
+  })
   return {
-    candidate: {
-      artifactPath: `candidates/${name}.oci.tar`,
-      manifestDigest: digest,
+    ...context,
+    metadata,
+    remote,
+    entries,
+    writes,
+    options: {
+      plan: context.plan,
+      evidence: context.evidence,
+      execFileSync,
+      spawnSync,
     },
-    manifestDigest: digest,
-    tags: [`ghcr.io/viscalyx/${name}:1.2.3`],
   }
 }
-
-function metadata() {
-  return {
-    appRuntime: image('app-runtime'),
-    dbJob: image('db-job'),
-    demoSeed: image('demo-seed'),
-    hsaIntegrationSupport: {
-      hsaMtlsProvisioner: image('hsa-mtls-provisioner'),
-      hsaPersonLookupAdapter: image('hsa-person-lookup-adapter'),
-    },
-    testSupport: {
-      hsaDirectoryMock: image('hsa-directory-mock'),
-    },
-  }
-}
-
-describe('container candidate promotion', () => {
-  it('parses promotion CLI options and rejects malformed arguments', () => {
+describe('candidate publication', () => {
+  it('publishes verified candidates and preserves complete matching publication on rerun', () => {
+    const f = fixture()
+    expect(promoteCandidates(f.metadata, f.options).promoted).toHaveLength(18)
+    expect(f.writes).toHaveLength(24)
+    f.writes.length = 0
     expect(
-      parseArgs([
-        '--metadata',
-        'release-metadata.json',
-        '--output',
-        'promotion-result.json',
-      ]),
-    ).toEqual({
-      metadata: 'release-metadata.json',
-      output: 'promotion-result.json',
-    })
-    expect(() => parseArgs(['metadata.json'])).toThrow('Unexpected argument')
-    expect(() => parseArgs(['--metadata'])).toThrow(
-      'Missing value for --metadata',
-    )
-  })
-
-  it('verifies every staged image before applying final release tags', () => {
-    const commands = []
-    const entries = promotionEntries(metadata())
-    const result = promoteCandidates(metadata(), {
-      execFileSync: vi.fn((_command, args) => {
-        const tag = args.at(-1).replace('docker://', '')
-        return `${
-          entries.find(
-            entry => entry.stagingTag === tag || entry.tags.includes(tag),
-          ).manifestDigest
-        }\n`
-      }),
-      spawnSync: vi.fn((command, args) => {
-        commands.push(`${command} ${args.join(' ')}`)
-        return { status: 0 }
-      }),
-    })
-
-    expect(result.staged).toHaveLength(6)
-    expect(result.promoted).toHaveLength(6)
-    expect(commands).toHaveLength(12)
-    expect(commands[0]).toContain(
-      'skopeo copy --all --preserve-digests --retry-times 3 oci-archive:candidates/app-runtime.oci.tar docker://ghcr.io/viscalyx/app-runtime:candidate-sha256-app-runtime',
-    )
-    expect(commands[4]).toContain(
-      'oci-archive:candidates/hsa-mtls-provisioner.oci.tar docker://ghcr.io/viscalyx/hsa-mtls-provisioner:candidate-sha256-hsa-mtls-provisioner',
-    )
-    expect(commands[5]).toContain(
-      'oci-archive:candidates/hsa-person-lookup-adapter.oci.tar docker://ghcr.io/viscalyx/hsa-person-lookup-adapter:candidate-sha256-hsa-person-lookup-adapter',
-    )
-    expect(commands[6]).toContain(
-      'docker://ghcr.io/viscalyx/app-runtime:candidate-sha256-app-runtime docker://ghcr.io/viscalyx/app-runtime:1.2.3',
-    )
-  })
-
-  it('applies no release tag when a staged digest does not match', () => {
-    const spawnSync = vi.fn(() => ({ status: 0 }))
-    expect(() =>
-      promoteCandidates(metadata(), {
-        execFileSync: vi.fn(() => 'sha256:unexpected\n'),
-        spawnSync,
-      }),
-    ).toThrow('Staged digest mismatch')
-    expect(spawnSync).toHaveBeenCalledTimes(1)
-    expect(
-      spawnSync.mock.calls.some(([_command, args]) =>
-        args.at(-1).endsWith(':1.2.3'),
+      promoteCandidates(f.metadata, f.options).promoted.every(
+        item => item.outcome === 'preserved',
       ),
-    ).toBe(false)
+    ).toBe(true)
+    expect(f.writes).toEqual([])
   })
-
-  it('stops final tagging when a promoted digest does not match', () => {
-    const entries = promotionEntries(metadata())
-    const spawnSync = vi.fn(() => ({ status: 0 }))
-    expect(() =>
-      promoteCandidates(metadata(), {
-        execFileSync: vi.fn((_command, args) => {
-          const tag = args.at(-1).replace('docker://', '')
-          const entry = entries.find(
-            candidate =>
-              candidate.stagingTag === tag || candidate.tags.includes(tag),
-          )
-          return tag.endsWith(':1.2.3')
-            ? 'sha256:unexpected\n'
-            : `${entry.manifestDigest}\n`
-        }),
-        spawnSync,
-      }),
-    ).toThrow('Published digest mismatch')
-    expect(spawnSync).toHaveBeenCalledTimes(7)
+  it('blocks all writes when validation or committed notes are missing', () => {
+    const f = fixture()
+    f.evidence.notesContent = undefined
+    expect(() => promoteCandidates(f.metadata, f.options)).toThrow(/notes/)
+    expect(f.writes).toEqual([])
   })
-
-  it('rejects metadata whose candidate and release digests differ', () => {
-    const invalid = metadata()
-    invalid.appRuntime.candidate.manifestDigest = 'sha256:different'
-
-    expect(() => promotionEntries(invalid)).toThrow(
-      'Release metadata is incomplete for app-runtime',
+  it('preserves existing material and completes missing stages', () => {
+    const f = fixture()
+    f.remote.set(f.entries[0].tags[0], f.entries[0].manifestDigest)
+    const result = promoteCandidates(f.metadata, f.options)
+    expect(result.promoted[0].outcome).toBe('preserved')
+    expect(f.writes).toHaveLength(23)
+  })
+  it('stops on conflicting or unverifiable remote content before writing', () => {
+    const f = fixture()
+    f.remote.set(f.entries[5].tags[0], 'sha256:different')
+    expect(() => promoteCandidates(f.metadata, f.options)).toThrow(
+      /Conflicting/,
+    )
+    expect(f.writes).toEqual([])
+    f.options.execFileSync.mockImplementation(() => {
+      throw new Error('unauthorized')
+    })
+    expect(() => promoteCandidates(f.metadata, f.options)).toThrow(
+      /unauthorized/,
+    )
+    expect(f.writes).toEqual([])
+  })
+  it('observes a successful write despite a failed response', () => {
+    const f = fixture()
+    const write = f.options.spawnSync.getMockImplementation()
+    f.options.spawnSync.mockImplementation((...args) => {
+      write(...args)
+      return { status: 1 }
+    })
+    expect(promoteCandidates(f.metadata, f.options).promoted).toHaveLength(18)
+    expect(f.writes).toHaveLength(24)
+  })
+  it('stops after incomplete publication without removing successful stages', () => {
+    const f = fixture()
+    const write = f.options.spawnSync.getMockImplementation()
+    f.options.spawnSync.mockImplementation((...args) =>
+      f.writes.length === 2 ? { status: 1 } : write(...args),
+    )
+    expect(() => promoteCandidates(f.metadata, f.options)).toThrow(/incomplete/)
+    expect(f.remote.size).toBe(2)
+  })
+  it('rejects malformed metadata, local candidates and arguments', () => {
+    const f = fixture()
+    expect(() => promotionEntries({})).toThrow(/incomplete/)
+    f.metadata.appRuntime.tags.push('ghcr.io/other/image:tag')
+    expect(() => promotionEntries(f.metadata)).toThrow(/multiple repositories/)
+    expect(parseArgs(['--plan', 'plan.json'])).toEqual({ plan: 'plan.json' })
+    expect(() => parseArgs(['value'])).toThrow(/Unexpected/)
+    expect(() => parseArgs(['--plan'])).toThrow(/Missing/)
+    const g = fixture()
+    g.options.execFileSync.mockReturnValue('sha256:different')
+    expect(() => promoteCandidates(g.metadata, g.options)).toThrow(
+      /Candidate content/,
     )
   })
+})
 
-  it('rejects release tags that do not name one repository', () => {
-    const invalidTag = metadata()
-    invalidTag.appRuntime.tags = ['ghcr.io/viscalyx/app-runtime']
-    expect(() => promotionEntries(invalidTag)).toThrow(
-      'Promoted image reference must include a tag',
-    )
+it('blocks images when the Git release tag already identifies another source', () => {
+  const f = fixture()
+  f.evidence.tagSha = 'c'.repeat(40)
+  expect(() => promoteCandidates(f.metadata, f.options)).toThrow(
+    /tag.*another source/,
+  )
+  expect(f.writes).toEqual([])
+})
+it('retains completed image stages in an incomplete-publication report', () => {
+  const f = fixture()
+  const write = f.options.spawnSync.getMockImplementation()
+  f.options.spawnSync.mockImplementation((...args) =>
+    f.writes.length === 2 ? { status: 1 } : write(...args),
+  )
+  try {
+    promoteCandidates(f.metadata, f.options)
+    expect.fail('Publication should stop')
+  } catch (error) {
+    expect(error.promotionResult.staged).toHaveLength(2)
+    expect(error.promotionResult.promoted).toEqual([])
+  }
+})
 
-    const multipleRepositories = metadata()
-    multipleRepositories.appRuntime.tags.push(
-      'ghcr.io/viscalyx/other-app-runtime:latest',
-    )
-    expect(() => promotionEntries(multipleRepositories)).toThrow(
-      'Release tags span multiple repositories for app-runtime',
-    )
+it('blocks unverifiable registry access without treating authorization failure as absence', () => {
+  const f = fixture()
+  const inspect = f.options.execFileSync.getMockImplementation()
+  f.options.execFileSync.mockImplementation((command, args) => {
+    if (args.at(-1).startsWith('docker://'))
+      throw new Error('authorization denied')
+    return inspect(command, args)
   })
-
-  it('propagates a failed Skopeo process before digest inspection', () => {
-    const execFileSync = vi.fn()
-    expect(() =>
-      promoteCandidates(metadata(), {
-        execFileSync,
-        spawnSync: vi.fn(() => ({
-          error: new Error('unable to start Skopeo'),
-        })),
-      }),
-    ).toThrow('unable to start Skopeo')
-    expect(execFileSync).not.toHaveBeenCalled()
-  })
+  expect(() => promoteCandidates(f.metadata, f.options)).toThrow(
+    /Cannot verify.*authorization denied/,
+  )
+  expect(f.writes).toEqual([])
+})
+it('reports a failed publisher process without deleting earlier stages', () => {
+  const f = fixture()
+  f.options.spawnSync.mockReturnValue({ error: new Error('broken pipe') })
+  expect(() => promoteCandidates(f.metadata, f.options)).toThrow(
+    /incomplete.*broken pipe/,
+  )
+  expect(f.remote.size).toBe(0)
 })

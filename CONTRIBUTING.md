@@ -173,3 +173,19 @@ Authentication is enforced for `/api/mcp`; clients must send
 Use the MCP [user guide](docs/integrations/mcp-server-user-guide.md) and
 [contributor guide](docs/integrations/mcp-server-contributor-guide.md) when
 working on MCP behavior.
+
+## Operator upgrade guidance
+
+Commit required operator guidance with the source change under `## Unreleased`
+in [Operator Upgrade Notes](docs/operations/operator-upgrade-notes.md). Every PR
+selects exactly one declaration: **Operator notes updated** or **No operator
+notes needed**. Updated notes need a meaningful addition or correction;
+no-notes needs no justification. Automated PRs follow the same rule.
+
+The push/PR skill shows missing proposed notes before adding and committing
+them. Approval permits the note commit and push. Declining guidance still
+judged required stops the push. A user no-notes determination or adequate
+committed notes allows the push to proceed without another addition prompt.
+
+See [CI selection and release verification](docs/development/ci-selection.md)
+for workflow behavior and the maintainer handoff.

@@ -2,9 +2,9 @@ name: Quality Checks
 
 on:
   pull_request:
-    branches: [main]
+    branches: [ main ]
   push:
-    branches: [main]
+    branches: [ main ]
 
 permissions:
   contents: read
@@ -16,6 +16,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Require complete selection
+        env:
+          RESULT: ${{ needs.select.result }}
+        run: test "$RESULT" = success
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -88,6 +92,7 @@ jobs:
 
       - name: Validate dependency maintenance
         run: npm run dependency-maintenance:check
+        if: contains(fromJSON(needs.select.outputs.owners), 'static')
 
       - name: Run formatting check
         run: npm run format:check
@@ -97,6 +102,7 @@ jobs:
 
       - name: Run lint check
         run: npm run lint
+        if: contains(fromJSON(needs.select.outputs.owners), 'static')
 
       - name: Run markdown lint check
         run: npm run lint:md
@@ -110,9 +116,11 @@ jobs:
 
       - name: Run type check
         run: npm run type-check
+        if: contains(fromJSON(needs.select.outputs.owners), 'static')
 
       - name: Run Python type check
         run: npm run lint:py
+        if: contains(fromJSON(needs.select.outputs.owners), 'static')
 
       # Must use the action to get the executable as it is not installed, and have
       # not a secure download URL to fetch it from.
@@ -122,6 +130,7 @@ jobs:
           dotenv_linter_flags: .
           filter_mode: nofilter
           fail_level: any
+        if: contains(fromJSON(needs.select.outputs.owners), 'static')
 
       # Must use the action to get the executable as it is not installed, and have
       # not a secure download URL to fetch it from.
@@ -131,9 +140,11 @@ jobs:
           dotenv_linter_flags: .devcontainer --recursive
           filter_mode: nofilter
           fail_level: any
+        if: contains(fromJSON(needs.select.outputs.owners), 'static')
 
       - name: Run HSA support package tests
         run: npm run test:hsa-support
+        if: contains(fromJSON(needs.select.outputs.owners), 'packages')
 
       - name: Provision Azure Codex policy test prerequisites
         run: |
@@ -145,12 +156,14 @@ jobs:
           )
           test "${#fixture_images[@]}" -eq 1
           docker pull "${fixture_images[0]}"
+        if: contains(fromJSON(needs.select.outputs.owners), 'unit')
 
       - name: Run tests and combined coverage
         run: npm run test:coverage
+        if: contains(fromJSON(needs.select.outputs.owners), 'unit')
 
       - name: Upload test results
-        if: always()
+        if: always() && contains(fromJSON(needs.select.outputs.owners), 'unit')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: test-results
@@ -158,7 +171,7 @@ jobs:
           retention-days: 7
 
       - name: Upload code coverage
-        if: always()
+        if: always() && contains(fromJSON(needs.select.outputs.owners), 'unit')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: code-coverage
@@ -166,7 +179,7 @@ jobs:
           retention-days: 7
 
       - name: Upload coverage to Codecov
-        if: always()
+        if: always() && contains(fromJSON(needs.select.outputs.owners), 'unit')
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6
         with:
           files: ./coverage/lcov.info
@@ -175,3 +188,13 @@ jobs:
           flags: combined
           verbose: true
           token: ${{ vars.CODECOV_TOKEN }}
+    needs:
+      - select
+    if: ${{ always() }}
+  select:
+    name: Select applicable validation
+    uses: ./.github/workflows/reusable-validation-selection.yml
+    permissions:
+      contents: read
+    with:
+      workflow: quality-checks

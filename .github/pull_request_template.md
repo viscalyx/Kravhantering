@@ -12,14 +12,12 @@
 
 ## Operator Upgrade Impact
 
-Complete this section for every PR. Check the box when no operator notes are
-needed; otherwise write the notes below.
+Select exactly one declaration for every PR, including automated PRs. Commit
+required guidance under `## Unreleased` in
+`docs/operations/operator-upgrade-notes.md` with the source changes.
 
+- [ ] Operator notes updated. <!-- DO NOT REMOVE: operator-upgrade:updated -->
 - [ ] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->
-
-<!-- DO NOT REMOVE: operator-upgrade:notes start -->
-Write operator upgrade notes here...
-<!-- DO NOT REMOVE: operator-upgrade:notes end -->
 
 ## SSDLC (Secure Software Development Life Cycle) Gate
 

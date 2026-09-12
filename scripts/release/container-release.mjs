@@ -13,7 +13,10 @@ import {
 } from '../keycloak-demo-users.mjs'
 import { generateHsaPersonLookupSwaggerUi } from '../openapi/generate-hsa-person-lookup-swagger-ui.mjs'
 import { verifyCleanupCompatibilityContract } from './cleanup-compatibility-contract.mjs'
-import { stripOperatorUpgradeSourceMarkers } from './operator-upgrade-notes.mjs'
+import { parseOperatorUpgradeNotes } from './operator-upgrade-notes.mjs'
+import { readCommittedOperatorNotes } from './publication.mjs'
+import { collectSelectionInput } from './select-validation.mjs'
+import { selectValidation } from './selection.mjs'
 
 export const APP_RUNTIME_PACKAGE = 'kravhantering-app-runtime'
 export const DB_JOB_PACKAGE = 'kravhantering-db-job'
@@ -48,57 +51,11 @@ const USAGE = `Usage:
 
 const { readExpectedDatabaseSchemaVersion } = buildMetadataTools
 
-const RELEVANT_PATH_PREFIXES = [
-  '.github/workflows/container-release.yml',
-  '.github/container-vulnerability-exceptions.json',
-  'app/',
-  'components/',
-  'containers/',
-  'containers/kong/',
-  'i18n/',
-  'lib/',
-  'messages/',
-  'proxy.ts',
-  'next.config.ts',
-  'package-lock.json',
-  'package.json',
-  'public/',
-  'docs/development/trusted-container-publishing.md',
-  'docs/images/',
-  'docs/operations/api-docs-edge-verification.md',
-  'docs/operations/operator-upgrade-notes.md',
-  'docs/operations/production-quadlet-containment.md',
-  'docs/operations/release-artifact-and-image-verification.md',
-  'docs/operations/rhel10-production-deploy.md',
-  'docs/operations/rhel10-production-disconnected.md',
-  'docs/operations/rhel10-production-uninstall.md',
-  'docs/operations/rhel10-production-upgrade.md',
-  'docs/operations/rhel10-production-single-node-self-contained-deploy.md',
-  'docs/operations/rhel10-production-single-node-self-contained-disconnected.md',
-  'docs/operations/rhel10-production-single-node-self-contained-uninstall.md',
-  'docs/operations/rhel10-production-single-node-self-contained-upgrade.md',
-  'dev/keycloak/realm-kravhantering-dev.json',
-  'scripts/build-metadata.js',
-  'scripts/containers/',
-  'scripts/db-sqlserver-admin.mjs',
-  'scripts/ai-provider-secret-restore-cli.mjs',
-  'scripts/ai-provider-secret-maintenance.mjs',
-  'lib/ai/provider-secret-crypto-core.mjs',
-  'lib/requirements/responsibility-person-verification-fingerprint.mjs',
-  'scripts/keycloak-demo-users.mjs',
-  'scripts/prebuild.js',
-  'scripts/release/',
-  'typeorm/seed.mjs',
-  'typeorm/seed-archiving-retention-build.mjs',
-  'typeorm/seed-dogfood.mjs',
-  'typeorm/seed-dogfood-build.mjs',
-  'typeorm/migrations/',
-  'typeorm/seed-required.mjs',
-  'typeorm/ai-safety-seed-data.mjs',
-  'typeorm/seed-runner.mjs',
-]
-
 export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
+  {
+    source: DEFAULT_OPERATOR_UPGRADE_NOTES_PATH,
+    target: DEFAULT_OPERATOR_UPGRADE_NOTES_PATH,
+  },
   {
     source: 'docs/development/trusted-container-publishing.md',
     target: 'docs/development/trusted-container-publishing.md',
@@ -213,23 +170,7 @@ function writeTextFile(filePath, value, fsImpl = fs) {
 }
 
 export function extractUnreleasedOperatorUpgradeNotes(content, filePath) {
-  const body = String(content ?? '')
-  const headingMatch = body.match(/^##[ \t]+Unreleased[ \t]*$/mu)
-  if (!headingMatch) {
-    throw new Error(
-      `Operator upgrade notes file ${filePath} must contain "## Unreleased".`,
-    )
-  }
-
-  const afterHeading = body.slice(headingMatch.index + headingMatch[0].length)
-  const nextReleaseHeadingIndex = afterHeading.search(/^##[ \t]+\S/mu)
-  const unreleasedSection =
-    nextReleaseHeadingIndex === -1
-      ? afterHeading
-      : afterHeading.slice(0, nextReleaseHeadingIndex)
-  const trimmed = stripOperatorUpgradeSourceMarkers(unreleasedSection).trim()
-
-  return trimmed.length > 0 ? trimmed : undefined
+  return parseOperatorUpgradeNotes(content, filePath).unreleased || undefined
 }
 
 export function readOperatorUpgradeNotes(
@@ -299,12 +240,12 @@ export function isMainRef(ref, refName) {
 }
 
 export function isReleaseRelevantPath(filePath) {
-  const normalized = String(filePath).replaceAll('\\', '/')
-  return RELEVANT_PATH_PREFIXES.some(prefix =>
-    prefix.endsWith('/')
-      ? normalized.startsWith(prefix)
-      : normalized === prefix || normalized.startsWith(`${prefix}/`),
-  )
+  return selectValidation({
+    eventName: 'push',
+    ref: 'refs/heads/main',
+    commitSha: '0'.repeat(40),
+    collection: { complete: true, files: [filePath] },
+  }).releaseEligible
 }
 
 export function changedFilesFromText(content) {
@@ -315,36 +256,8 @@ export function changedFilesFromText(content) {
 }
 
 export function readChangedFiles(options = {}) {
-  const env = options.env ?? process.env
-  const execFileSync = options.execFileSync ?? childProcess.execFileSync
-  const cwd = options.cwd ?? process.cwd()
-  const before = readNonEmpty(env.GITHUB_EVENT_BEFORE)
-  const head = readNonEmpty(env.GITHUB_SHA) ?? 'HEAD'
-
-  if (!before || /^0+$/u.test(before)) {
-    try {
-      return changedFilesFromText(
-        execFileSync(
-          'git',
-          ['diff-tree', '--no-commit-id', '--name-only', '-r', head],
-          {
-            cwd,
-            encoding: 'utf8',
-            stdio: ['ignore', 'pipe', 'ignore'],
-          },
-        ),
-      )
-    } catch {
-      return []
-    }
-  }
-
-  return changedFilesFromText(
-    execFileSync('git', ['diff', '--name-only', before, head], {
-      cwd,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }),
+  return collectSelectionInput(options).collection.files.map(file =>
+    typeof file === 'string' ? file : file.filename,
   )
 }
 
@@ -406,10 +319,20 @@ export function createReleasePlan(input = {}) {
   const changedFiles = input.changedFiles ?? []
   const isStableRelease = isStableReleaseRef(ref, refName)
   const isMain = isMainRef(ref, refName)
-  const hasRelevantChange =
-    changedFiles.length === 0 ? false : changedFiles.some(isReleaseRelevantPath)
+  const selection = selectValidation({
+    eventName,
+    ref,
+    commitSha: sha,
+    collection: input.collection ?? {
+      complete: Array.isArray(input.changedFiles),
+      files: changedFiles,
+    },
+    preview: input.preview ?? false,
+    workflow: 'container-release',
+  })
+  const hasRelevantChange = changedFiles.some(isReleaseRelevantPath)
   const shouldCreatePreviewRelease =
-    !isStableRelease && isMain && hasRelevantChange
+    !isStableRelease && selection.releaseEligible
   const rawVersion =
     (isStableRelease ? stableVersionFromRef(ref, refName) : undefined) ??
     gitVersionValue(gitVersion, 'FullSemVer', undefined) ??
@@ -455,6 +378,7 @@ export function createReleasePlan(input = {}) {
   }
 
   return {
+    selection,
     appRuntimeImage,
     appRuntimePackage: APP_RUNTIME_PACKAGE,
     appRuntimeTags: tags.map(tag => `${appRuntimeImage}:${tag}`),
@@ -462,7 +386,7 @@ export function createReleasePlan(input = {}) {
     candidates,
     changedFiles,
     commitSha: sha,
-    createGitHubRelease: isStableRelease || shouldCreatePreviewRelease,
+    createGitHubRelease: selection.releaseEligible,
     dbJobImage,
     dbJobPackage: DB_JOB_PACKAGE,
     dbJobTags: tags.map(tag => `${dbJobImage}:${tag}`),
@@ -1166,6 +1090,13 @@ export function stageProductionDeploymentBundle(options = {}) {
     throw new Error('--cleanup-source is required with --cleanup-contract.')
   }
 
+  const sourceNotesContent =
+    options.sourceNotesContent ??
+    fsImpl.readFileSync(
+      path.resolve(cwd, DEFAULT_OPERATOR_UPGRADE_NOTES_PATH),
+      'utf8',
+    )
+  parseOperatorUpgradeNotes(sourceNotesContent)
   const bundleName = deploymentBundleBaseName(plan.version)
   const bundleRoot = path.resolve(cwd, outputDir, bundleName)
   fsImpl.rmSync(bundleRoot, { force: true, recursive: true })
@@ -1175,6 +1106,11 @@ export function stageProductionDeploymentBundle(options = {}) {
     copyBundleEntry(entry, bundleRoot, { cwd, fsImpl })
     copyBundleMarkdownAssets(entry, bundleRoot, { cwd, fsImpl })
   }
+  writeTextFile(
+    path.join(bundleRoot, DEFAULT_OPERATOR_UPGRADE_NOTES_PATH),
+    sourceNotesContent,
+    fsImpl,
+  )
   generateHsaPersonLookupSwaggerUi({
     fsImpl,
     openapiPath: path.resolve(cwd, 'openapi/hsa-person-lookup.yaml'),
@@ -1853,15 +1789,21 @@ export async function main(args, dependencies = {}) {
 
     if (command === 'plan') {
       const gitVersion = readGitVersionFile(options['gitversion-json'], fsImpl)
-      const changedFiles =
-        readChangedFilesFile(options['changed-files'], fsImpl) ??
-        readChangedFiles({
-          cwd: dependencies.cwd,
-          env,
-          execFileSync: dependencies.execFileSync,
-        })
+      const changedFiles = readChangedFilesFile(
+        options['changed-files'],
+        fsImpl,
+      )
+      const selectionInput = changedFiles
+        ? {
+            collection: { complete: true, files: changedFiles },
+            preview: false,
+          }
+        : collectSelectionInput({ ...dependencies, env, fsImpl })
       const plan = createReleasePlan({
-        changedFiles,
+        ...selectionInput,
+        changedFiles: selectionInput.collection.files.map(file =>
+          typeof file === 'string' ? file : file.filename,
+        ),
         env,
         gitVersion,
       })
@@ -1975,9 +1917,8 @@ export async function main(args, dependencies = {}) {
         env,
         execFileSync: dependencies.execFileSync,
       })
-      const operatorUpgradeNotes = readOperatorUpgradeNotes(
-        options['operator-notes'] ?? DEFAULT_OPERATOR_UPGRADE_NOTES_PATH,
-        fsImpl,
+      const operatorUpgradeNotes = extractUnreleasedOperatorUpgradeNotes(
+        readCommittedOperatorNotes(plan, dependencies),
       )
       writeTextFile(
         options.output,
@@ -1995,6 +1936,11 @@ export async function main(args, dependencies = {}) {
     }
 
     if (command === 'bundle') {
+      if (
+        options['cleanup-contract'] &&
+        !readNonEmpty(options['cleanup-source'])
+      )
+        throw new Error('--cleanup-source is required with --cleanup-contract.')
       const plan = readJsonFile(options.plan, fsImpl)
       const metadata = readJsonFile(options.metadata, fsImpl)
       const stackLock = readJsonFile(options['stack-lock'], fsImpl)
@@ -2005,6 +1951,7 @@ export async function main(args, dependencies = {}) {
         ? readJsonFile(options['test-support-lock'], fsImpl)
         : undefined
       const result = stageProductionDeploymentBundle({
+        sourceNotesContent: readCommittedOperatorNotes(plan, dependencies),
         cleanupContractPath: options['cleanup-contract'],
         cleanupSourcePath: options['cleanup-source'],
         buildJsonPath: options['build-json'],

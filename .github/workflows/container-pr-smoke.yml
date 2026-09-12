@@ -6,7 +6,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   core-candidate:
-    name: Candidate Build and Vulnerability Policy (${{ matrix.label }})
+    name: Candidate Build and Vulnerability Policy (${{ matrix.label }}) (execution)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
@@ -58,8 +58,11 @@ jobs:
           name: container-candidate-${{ matrix.candidate }}
           path: tmp/container-candidate/
           retention-days: 2
+    needs:
+      - select
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'candidates') }}
   support-candidate:
-    name: Candidate Build and Vulnerability Policy (${{ matrix.label }})
+    name: Candidate Build and Vulnerability Policy (${{ matrix.label }}) (execution)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
@@ -115,8 +118,11 @@ jobs:
           name: container-candidate-${{ matrix.candidate }}
           path: tmp/container-candidate/
           retention-days: 2
+    needs:
+      - select
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'candidates') }}
   production-assembly:
-    name: Production Assembly Acceptance
+    name: Production Assembly Acceptance (execution)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
@@ -283,7 +289,9 @@ jobs:
             echo "Evidence: production-assembly-evidence"
           } >> "$GITHUB_STEP_SUMMARY"
     needs:
+      - select
       - core-candidate
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'assembly') }}
   runner-metadata:
     name: Capture Container Smoke Runner Metadata
     needs: production-assembly
@@ -296,10 +304,10 @@ jobs:
       artifact-name: container-pr-runner-metadata-${{ github.run_id }}
       evidence-directory: tmp/container-pr-runner-metadata
       retention-days: 7
-      target-job: Production Assembly Acceptance
+      target-job: Production Assembly Acceptance (execution)
 
   hsa-build:
-    name: Build current-commit OCI candidates
+    name: Build current-commit OCI candidates (execution)
     runs-on: ubuntu-24.04
     permissions:
       actions: read
@@ -334,11 +342,17 @@ jobs:
           name: hsa-mtls-current-commit-oci
           path: /tmp/hsa-oci
           retention-days: 1
+    needs:
+      - select
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'hsa') }}
 
   hsa-topology:
-    name: Authenticated topology and isolation
-    needs: [hsa-build, support-candidate]
-    if: ${{ !cancelled() && needs.hsa-build.result == 'success' }}
+    name: Authenticated topology and isolation (execution)
+    needs:
+      - select
+      - hsa-build
+      - support-candidate
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'hsa') && (!cancelled() && needs.hsa-build.result == 'success') }}
     runs-on: ubuntu-24.04
     permissions:
       actions: read
@@ -422,9 +436,12 @@ jobs:
         run: docker compose -f containers/hsa-mtls-topology/compose.yml down --volumes --remove-orphans
 
   hsa-rotation:
-    name: Rotation and rollback (${{ matrix.trust-domain }})
-    needs: [hsa-build, support-candidate]
-    if: ${{ !cancelled() && needs.hsa-build.result == 'success' }}
+    name: Rotation and rollback (${{ matrix.trust-domain }}) (execution)
+    needs:
+      - select
+      - hsa-build
+      - support-candidate
+    if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'hsa') && (!cancelled() && needs.hsa-build.result == 'success') }}
     runs-on: ubuntu-24.04
     permissions:
       actions: read
@@ -433,7 +450,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        trust-domain: [app-to-kong, kong-to-adapter, adapter-to-hsa]
+        trust-domain: [ app-to-kong, kong-to-adapter, adapter-to-hsa ]
     steps:
       - name: Check out current commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
@@ -494,22 +511,132 @@ jobs:
       - name: Remove ephemeral PKI material
         if: always()
         run: docker compose -f containers/hsa-mtls-topology/compose.yml down --volumes --remove-orphans
-
-  hsa-required:
-    name: HSA mTLS topology required
-    if: always()
-    needs: [hsa-build, hsa-topology, hsa-rotation]
-    runs-on: ubuntu-24.04
+  select:
+    name: Select applicable validation
+    uses: ./.github/workflows/reusable-validation-selection.yml
     permissions:
-      actions: read
+      contents: read
+    with:
+      workflow: container-pr-smoke
+  core-candidate-result:
+    name: Candidate Build and Vulnerability Policy (${{ matrix.label }})
+    if: ${{ always() }}
+    needs:
+      - select
+      - core-candidate
+    runs-on: ubuntu-latest
+    permissions:
       contents: read
     steps:
-      - name: Report stable required result
-        env:
-          ROTATION_RESULT: ${{ needs.hsa-rotation.result }}
-          TOPOLOGY_RESULT: ${{ needs.hsa-topology.result }}
-          BUILD_RESULT: ${{ needs.hsa-build.result }}
-        run: |
-          test "$BUILD_RESULT" = success
-          test "$TOPOLOGY_RESULT" = success
-          test "$ROTATION_RESULT" = success
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: candidates
+          owner-jobs: '{"candidates":["core-candidate"]}'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - candidate: app-runtime
+            label: app-runtime
+            dockerfile: containers/app/Dockerfile
+            target: app-runtime
+          - candidate: db-job
+            label: db-job
+            dockerfile: containers/app/Dockerfile
+            target: db-job
+  support-candidate-result:
+    name: Candidate Build and Vulnerability Policy (${{ matrix.label }})
+    if: ${{ always() }}
+    needs:
+      - select
+      - support-candidate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: candidates
+          owner-jobs: '{"candidates":["support-candidate"]}'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - candidate: demo-seed
+            label: demo-seed
+            dockerfile: containers/app/Dockerfile
+            target: demo-seed
+          - candidate: hsa-directory-mock
+            label: HSA directory mock
+            dockerfile: containers/hsa-directory-mock/Dockerfile
+            target: ""
+          - candidate: hsa-person-lookup-adapter
+            label: HSA person lookup adapter
+            dockerfile: containers/hsa-person-lookup-adapter/Dockerfile
+            target: ""
+  production-assembly-result:
+    name: Production Assembly Acceptance
+    if: ${{ always() }}
+    needs:
+      - select
+      - production-assembly
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: assembly
+          owner-jobs: '{"assembly":["production-assembly"]}'
+  hsa-required:
+    name: HSA mTLS topology required
+    if: ${{ always() }}
+    needs:
+      - select
+      - hsa-build
+      - hsa-topology
+      - hsa-rotation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report selection and required result
+        uses: ./.github/actions/report-validation
+        with:
+          selection-result: ${{ needs.select.result }}
+          selection: ${{ needs.select.outputs.selection }}
+          results: ${{ toJSON(needs) }}
+          owner: hsa
+          owner-jobs: '{"hsa":["hsa-build","hsa-topology","hsa-rotation"]}'

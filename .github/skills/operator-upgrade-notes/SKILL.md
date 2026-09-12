@@ -4,8 +4,7 @@ description: >-
   Review local PR changes against the target branch and decide whether
   production operators need upgrade notes. Use for committed, staged,
   unstaged, or untracked changes; breaking behavior; deployment,
-  configuration, or data migration impact; or paste-ready Operator Upgrade
-  Impact text.
+  configuration, or data migration impact; or proposed committed operator guidance.
 ---
 
 # Operator Upgrade Notes
@@ -57,7 +56,8 @@ prepare for before rollout.
 5. Apply every trigger below to the inspected behavior. The assessment is
    complete when each operator-relevant change is either represented in the
    notes or excluded by the no-notes rule.
-6. Return the exact no-notes response or the paste-ready notes structure.
+6. Compare required guidance with the committed Unreleased section. Report
+   adequate existing notes, a no-notes decision, or proposed missing text.
 
 ## Note Triggers
 
@@ -99,34 +99,21 @@ operator-visible behavior change.
 
 ## Delivery
 
-- On a pull request created by the current agent session, reconcile
-  `Operator Upgrade Impact` with existing text between the note markers. Keep
-  applicable notes, replace obsolete notes, and add missing notes.
-- Otherwise, return paste-ready notes and leave existing pull requests
-  unchanged.
+- Store required guidance in `docs/operations/operator-upgrade-notes.md` under
+  `## Unreleased`, committed with the source changes.
+- Select exactly one PR declaration: `Operator notes updated` with a meaningful
+  Unreleased addition or correction, or `No operator notes needed`.
+- No-notes requires no justification. Apply the declarations to automated PRs.
+- During push/PR preparation, show proposed missing text before adding and
+  committing it. Ask for approval only when required guidance is missing.
+- After approval, add and commit the approved guidance before pushing.
+- If required guidance is declined, stop the push. A user no-notes determination
+  or adequate already-committed notes permits progress without another prompt.
+- Preserve existing history and source markers; preview publication keeps the
+  Unreleased section intact.
 
 ## Output
 
-When no notes are needed, respond exactly with:
-
-```text
-No operator notes needed for Operator Upgrade Impact.
-```
-
-When notes are needed, use:
-
-```markdown
-Decision: Operator notes required
-
-Notes to paste:
-
-<standalone operator notes without code references>
-
-Rationale:
-<brief evidence summary for the maintainer; code references are allowed here>
-```
-
-When updating a pull request created by the current agent session, preserve the
-`operator-upgrade:no-notes`, `operator-upgrade:notes start`, and
-`operator-upgrade:notes end` markers. Check `No operator notes needed` only for
-a no-notes decision. Otherwise, leave it unchecked.
+Return the decision, whether committed guidance is adequate, any proposed text,
+and concise evidence for the maintainer. Keep operator guidance separate from
+implementation evidence. Put only the selected declaration in the PR body.
