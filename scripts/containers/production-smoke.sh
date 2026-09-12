@@ -788,6 +788,10 @@ verify_hsa_mtls_rotation_and_rollback() {
 
 database_job() {
   local command="$1" network
+  if [[ "$command" == wait ]]; then
+    # Quadlet reports the process started before SQL Server accepts connections.
+    wait_for_sqlserver_container kravhantering-sqlserver
+  fi
   network="$(as_service "$INSTALL_ROOT/current/bin/kravhantering-quadlet.sh" \
     print-network --topology single-node --purpose database)"
   as_service podman run --rm --pull=never --network "$network" \
@@ -2017,7 +2021,7 @@ collect_redacted_journal() {
     as_service cat "$CONFIG_ROOT/keycloak.env" "$CONFIG_ROOT/sqlserver.env"
     printf '\0'
     as_service journalctl --user -u 'kravhantering-*' --since=-30min \
-      --no-pager 2>&1
+      --all --no-pager 2>&1
   } | redact_configured_secrets >"$EVIDENCE_DIR/journal.redacted.txt"
 }
 

@@ -143,6 +143,13 @@ PKI release contract. PR assembly does not rebuild candidates or perform a
 second isolated OCI import. Diagnostics, teardown, and evidence collection run
 after failures. Runtime summaries are diagnostic data, not acceptance targets.
 
+SQL Server readiness first waits for the engine inside its container, then
+runs the database job with certificate verification enabled. This keeps engine
+startup outside the shorter verified connection deadline after a restart or
+certificate rotation. Captured journals include messages with control
+characters, with configured secrets redacted, so SQL Server diagnostics remain
+readable.
+
 Local commands and services remain available. `npm run test:integration`
 selects browser-functional chunks; `npm run test:integration:prodlike` selects
 the fixed runtime contract. Targeted development tests use the same command
