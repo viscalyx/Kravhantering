@@ -105,6 +105,18 @@ printf '4.0K\\t%s\\n' "$measured_path"
 `,
   )
   chmodSync(fakeDu, 0o755)
+  // Keep privileged retries on the fixture PATH; real sudo can select host du.
+  const fakeSudo = path.join(bin, 'sudo')
+  writeFileSync(
+    fakeSudo,
+    `#!/bin/sh
+if [ "$1" = '-n' ]; then
+  shift
+fi
+exec "$@"
+`,
+  )
+  chmodSync(fakeSudo, 0o755)
   for (const command of ['docker', 'podman']) {
     const fakeCommand = path.join(bin, command)
     writeFileSync(fakeCommand, '#!/bin/sh\nexit 0\n')
