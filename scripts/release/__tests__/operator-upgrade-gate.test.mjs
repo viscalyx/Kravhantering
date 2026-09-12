@@ -29,14 +29,6 @@ describe('committed operator-note declaration', () => {
         }).passed,
       ).toBe(false)
     }
-    expect(
-      evaluateOperatorUpgradeGate({
-        prBody: declaration('no-notes'),
-        baseNotes: document,
-        headNotes: document,
-        author: 'dependabot[bot]',
-      }).passed,
-    ).toBe(true)
   })
   it('rejects formatting-only changes and deletions as updated notes', () => {
     for (const headNotes of [

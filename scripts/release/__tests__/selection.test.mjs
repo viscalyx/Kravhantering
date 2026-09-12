@@ -21,6 +21,18 @@ describe('shared release selection', () => {
 
 describe('complete validation owners', () => {
   it.each([
+    ['tests/unit/query.test.ts', ['static', 'unit', 'sql']],
+    ['tests/unit/fixtures/query.ts', ['static', 'unit', 'sql']],
+    ['tests/other/query.test.ts', ['static', 'unit']],
+  ])('preserves the specific test owners for %s', (file, owners) => {
+    const result = selectValidation({
+      ...input,
+      collection: { complete: true, files: [file] },
+    })
+    expect(result.owners).toEqual(owners)
+    expect(result.releaseEligible).toBe(false)
+  })
+  it.each([
     ['lib/__tests__/nested/data.test.ts', ['static', 'unit'], false],
     ['packages/example/test/data.test.ts', ['static', 'unit'], false],
     [

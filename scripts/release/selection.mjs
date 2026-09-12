@@ -140,14 +140,14 @@ function classifyPath(file) {
       'sql',
       ...BROWSER_OWNERS,
     ])
+  if (/^vitest\.|^test-utils\/|^tests\/unit\//u.test(file))
+    return rule('unit configuration', ['static', 'unit', 'sql'])
   if (
     /(?:^|\/)(?:__tests__|test|tests)\/|\.(?:test|spec)\.[cm]?[jt]sx?$/u.test(
       file,
     )
   )
     return rule('unit tests', ['static', 'unit'])
-  if (/^vitest\.|^test-utils\/|^tests\/unit\//u.test(file))
-    return rule('unit configuration', ['static', 'unit', 'sql'])
   if (/^\.github\/workflows\//u.test(file)) {
     const name = file
       .split('/')

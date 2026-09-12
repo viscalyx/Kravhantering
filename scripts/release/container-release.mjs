@@ -45,7 +45,7 @@ export const HSA_MTLS_PROVISIONER_DESCRIPTION =
 const USAGE = `Usage:
   node scripts/release/container-release.mjs plan --gitversion-json <path> --output <path> [--github-env <path>] [--changed-files <path>]
   node scripts/release/container-release.mjs identities --plan <path> --app-metadata <path> --app-artifact <path> --db-job-metadata <path> --db-job-artifact <path> [--hsa-directory-mock-metadata <path> --hsa-directory-mock-artifact <path>] [--hsa-person-lookup-adapter-metadata <path> --hsa-person-lookup-adapter-artifact <path>] [--hsa-mtls-provisioner-metadata <path> --hsa-mtls-provisioner-artifact <path>] [--demo-seed-metadata <path> --demo-seed-artifact <path>] --output <path> [--github-env <path>]
-  node scripts/release/container-release.mjs notes --plan <path> --metadata <path> --hashes <path> --output <path> [--operator-notes <path>]
+  node scripts/release/container-release.mjs notes --plan <path> --metadata <path> --hashes <path> --output <path>
   node scripts/release/container-release.mjs bundle --plan <path> --metadata <path> --stack-lock <path> --output-dir <path> [--hsa-integration-support-lock <path>] [--test-support-lock <path>] [--build-json <path>] [--hashes <path>] [--sbom-dir <path>] [--cleanup-contract <path> --cleanup-source <path>]
   node scripts/release/container-release.mjs ensure-tag --plan <path>`
 

@@ -8,7 +8,8 @@ disable-model-invocation: true
 # Push PR
 
 Publish the current branch. Assess committed operator guidance before pushing.
-Do not run tests, linters, type checks, builds, or verification commands.
+Do not run repository validation commands: tests, linters, type checks, or builds.
+Allow Git and GitHub inspection, including PR-body verification with `gh pr view`.
 
 1. Resolve the current branch, both remote repositories, and `origin`'s default
    branch. Stop on a detached HEAD or the default branch.

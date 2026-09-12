@@ -18,7 +18,7 @@ if (fs.existsSync(githubResultPath)) {
   const result = JSON.parse(fs.readFileSync(githubResultPath, 'utf8'))
   lines.push(`- Release page publication: ${result.releasePage}`)
   lines.push(
-    `- Required asset delivery: ${steps['github-publication']?.outcome}; ${result.assets.length} assets verified`,
+    `- Required asset delivery: ${steps['github-publication']?.outcome ?? 'missing'}; ${result.assets.length} assets verified`,
   )
   for (const asset of result.assets)
     lines.push(`  - ${asset.name}: ${asset.outcome}`)
