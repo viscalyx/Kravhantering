@@ -173,12 +173,32 @@ for (const width of [1440, 1920]) {
               return {
                 label: label.textContent,
                 clipped: label.scrollWidth > label.clientWidth,
+                clientWidth: label.clientWidth,
+                scrollWidth: label.scrollWidth,
                 width: cell.getBoundingClientRect().width,
                 centre: rect.top + rect.height / 2,
               }
             }),
           )
-          expect(geometry.every(item => !item.clipped)).toBe(true)
+          await testInfo.attach('default-header-geometry', {
+            body: JSON.stringify(geometry, null, 2),
+            contentType: 'application/json',
+          })
+          expect(geometry.filter(item => item.clipped)).toEqual([])
+          await expect(
+            page.locator('[data-requirement-header-control="area"]'),
+          ).toHaveAttribute(
+            'data-developer-mode-name',
+            'column header controls',
+          )
+          for (const { label } of geometry) {
+            for (const action of ['Sortera efter', 'Filtrera efter']) {
+              const name = `${action} ${label}`
+              await expect(
+                page.getByRole('button', { name, exact: true }),
+              ).toHaveAccessibleName(name)
+            }
+          }
           expect(
             Math.max(...geometry.map(item => item.centre)) -
               Math.min(...geometry.map(item => item.centre)),
@@ -203,13 +223,9 @@ for (const width of [1440, 1920]) {
           )
           for (const control of await controls.all()) {
             const box = await control.boundingBox()
-            expect(box?.width).toBeGreaterThanOrEqual(24)
-            expect(box?.height).toBeGreaterThanOrEqual(24)
+            expect(box?.width).toBeGreaterThanOrEqual(28)
+            expect(box?.height).toBeGreaterThanOrEqual(28)
           }
-          await testInfo.attach('default-header-geometry', {
-            body: JSON.stringify(geometry, null, 2),
-            contentType: 'application/json',
-          })
           await testInfo.attach('default-view', {
             body: await page.screenshot(),
             contentType: 'image/png',

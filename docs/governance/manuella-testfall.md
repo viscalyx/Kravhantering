@@ -743,9 +743,12 @@ arkiverad status väljs uttryckligen.
 ### REQ-04: sortera på sorterbar kolumn
 
 **Steg:** Klicka en sorterbar kolumnrubrik två gånger. Sortera även med
-tangentbordet via kolumnen `Status` och använd dess filter.
+tangentbordet via kolumnen `Status` och använd dess filter. Kontrollera med
+skärmläsare att sorterings- och filterknapparnas namn anger vilken kolumn de
+tillhör.
 
 **Förväntat resultat:** Sorteringsindikator och radordning ändras konsekvent.
+Sorterings- och filterknapparnas tillgängliga namn innehåller hela kolumnnamnet.
 
 ### REQ-05: kolumnväljare sparar synliga kolumner
 

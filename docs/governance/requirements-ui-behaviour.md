@@ -291,7 +291,11 @@ an explicit in-modal error.
 
 ### Header layout and default widths
 
-Column headings use a single line and ellipsis when manually narrowed.
+Column headings fit on a single line at their default widths, including with
+wider fallback fonts. Sort and filter controls sit next to each other
+without extra gaps so the label has room. Headings use ellipsis when manually
+narrowed; the sort and filter buttons keep the full column name in their
+accessible names.
 The status column is labelled `Status`, including its picker, sort and filter
 controls. Sort and filter buttons use compact 28-pixel targets. The labelled
 requirement-text wrapping button displays its current state and supports mouse

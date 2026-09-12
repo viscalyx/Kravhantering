@@ -3049,13 +3049,21 @@ export default function RequirementsTable({
                 <>
                   <div className="flex items-center gap-2">
                     <div
-                      className={`flex min-w-0 flex-1 items-center gap-1 ${headerControlClass}`}
+                      className={`flex min-w-0 flex-1 items-center ${headerControlClass}`}
                       data-requirement-header-control={column.id}
+                      {...devMarker({
+                        context: 'requirements table',
+                        name: 'column header controls',
+                        priority: 325,
+                        value: getRequirementColumnDeveloperModeLabel(
+                          column.id,
+                        ),
+                      })}
                     >
                       {isSortable ? (
                         <button
                           aria-label={tc('sortBy', { label })}
-                          className="group inline-flex min-h-7 min-w-7 max-w-full flex-1 items-center gap-1 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                          className="group inline-flex min-h-7 min-w-7 max-w-full flex-1 items-center rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                           {...devMarker({
                             name: 'sort button',
                             priority: 300,

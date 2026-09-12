@@ -3770,6 +3770,9 @@ describe('RequirementsTable', () => {
     const header = container
       .querySelector('[data-requirement-header-label="uniqueId"]')
       ?.closest('th')
+    const headerControls = container.querySelector(
+      '[data-requirement-header-control="uniqueId"]',
+    )
     const chip = container.querySelector(
       '[data-developer-mode-name="header chip"]',
     )
@@ -3794,6 +3797,14 @@ describe('RequirementsTable', () => {
     )
     expect(columnsPill).toHaveAttribute('data-developer-mode-value', 'columns')
     expect(header).toHaveAttribute('data-developer-mode-name', 'column header')
+    expect(headerControls).toHaveAttribute(
+      'data-developer-mode-name',
+      'column header controls',
+    )
+    expect(headerControls).toHaveAttribute(
+      'data-developer-mode-value',
+      'requirement id',
+    )
     expect(header).toHaveAttribute(
       'data-developer-mode-value',
       'requirement id',
