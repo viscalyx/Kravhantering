@@ -1,0 +1,94 @@
+[
+  {
+    "theme": "light",
+    "labels": [
+      {
+        "id": "uniqueId",
+        "center": 172.5
+      },
+      {
+        "id": "description",
+        "center": 172.5
+      },
+      {
+        "id": "area",
+        "center": 172.5
+      },
+      {
+        "id": "category",
+        "center": 172.5
+      },
+      {
+        "id": "type",
+        "center": 172.5
+      },
+      {
+        "id": "qualityCharacteristic",
+        "center": 172.5
+      },
+      {
+        "id": "status",
+        "center": 172.5
+      },
+      {
+        "id": "verifiable",
+        "center": 172.5
+      },
+      {
+        "id": "version",
+        "center": 172.5
+      },
+      {
+        "id": "normReferences",
+        "center": 172.5
+      }
+    ],
+    "checkboxCenter": 173
+  },
+  {
+    "theme": "dark",
+    "labels": [
+      {
+        "id": "uniqueId",
+        "center": 172.5
+      },
+      {
+        "id": "description",
+        "center": 172.5
+      },
+      {
+        "id": "area",
+        "center": 172.5
+      },
+      {
+        "id": "category",
+        "center": 172.5
+      },
+      {
+        "id": "type",
+        "center": 172.5
+      },
+      {
+        "id": "qualityCharacteristic",
+        "center": 172.5
+      },
+      {
+        "id": "status",
+        "center": 172.5
+      },
+      {
+        "id": "verifiable",
+        "center": 172.5
+      },
+      {
+        "id": "version",
+        "center": 172.5
+      },
+      {
+        "id": "normReferences",
+        "center": 172.5
+      }
+    ],
+    "checkboxCenter": 173
+  }
+]

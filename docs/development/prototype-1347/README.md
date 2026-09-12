@@ -71,6 +71,7 @@ column preferences.
 | --- | --- | --- |
 | Original baseline | `?variant=before` | Check the original truncated labels and original column widths in the same page and data. |
 | A: compact inline controls | `?variant=A` | Labels stay on one line and use the original ellipsis when needed. Sorting and 28 px filters remain alongside them. Compare header height with Before. |
+| A: vertically aligned headers | A with Verifierbar and Normreferenser visible | Compare every header text center with the select-all checkbox. Sortable and plain labels use the same 28 px control row, including when filter chips add height below it. |
 | B: labels above controls | `?variant=B` | Labels have their own top row; filters and wrapping occupy a second row. |
 | C: shared filter strip | `?variant=C` | Find all existing column filters in the labelled strip. Headers retain sorting; active chips stay with their columns. |
 | Domain labels | A uses ellipsis; B/C allow wrapping | In A, inspect the full name through the existing sort tooltip or accessible name. B/C retain compound-boundary line breaks. |
@@ -134,6 +135,8 @@ production promotion remains a separate implementation step.
 - [Additional browser verification](evidence/additional-verification.json).
 - [Preferred widths and live-drag verification](evidence/preferred-widths-verification.json).
 - [All ten preferred widths in the live panel](evidence/preferred-widths.png).
+- [Header and checkbox alignment measurements](evidence/alignment-verification.json).
+- [Aligned optional headers](evidence/alignment-light-right.png).
 - [Offline comparison gallery](review.html).
 
 The capture program is a throwaway review aid, not a production regression

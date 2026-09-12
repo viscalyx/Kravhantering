@@ -7,6 +7,12 @@
   overflow-wrap: anywhere;
   white-space: normal;
 }
+[data-prototype1347="A"] [data-requirement-header-selection],
+[data-prototype1347="A"]
+  [data-requirement-header-control]
+  > [data-requirement-header-label] {
+  min-height: 28px;
+}
 :where([data-prototype1347]:not([data-prototype1347="before"]))
   [data-requirement-header-control] {
   gap: 4px;
