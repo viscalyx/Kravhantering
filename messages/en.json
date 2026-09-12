@@ -3810,7 +3810,7 @@
     },
     "A": {
       "name": "A · Compact",
-      "description": "Inline sorting and 28 px filter controls, two-line labels, narrower metadata columns, and a labelled wrap toggle. The shortest header."
+      "description": "Single-line headers use ellipsis when text does not fit, with your wider default columns and the shorter Status label. Sorting, 28 px filter controls and a labelled wrapping button keep the header compact."
     },
     "B": {
       "name": "B · Label first",
@@ -3831,12 +3831,23 @@
     "measure": "Measure layout",
     "state": "Current state and measured layout",
     "checks": {
-      "labels": "Compare Before with A, B and C. Read Requirement area and Requirement version status without a tooltip.",
+      "labels": "In A, check that long labels truncate with an ellipsis instead of wrapping. Hover or focus the sorting control to identify the full column name. Compare height with Before and the two-line B/C options.",
       "controls": "Sort by a header, open a column filter, select and clear a value. Check the direction icon, count and filter chips.",
       "text": "Toggle wrapping with click and Space. Compare long text and the space allocated to requirement text.",
       "resize": "Drag a divider, then focus it and press an arrow key. Only the column on its left should change.",
       "settings": "Change visible columns; switch variants to compare the same settings. Reset for a fair default comparison. Reload resets prototype column settings.",
       "matrix": "Review at 1440 × 900 and 1920 × 1080, with navigation expanded/collapsed and light/dark themes. Scroll and expand a row."
-    }
+    },
+    "widths": "Column widths",
+    "copyWidths": "Copy widths",
+    "copiedWidths": "Copied. Paste these widths into the conversation.",
+    "copyManually": "Copy is unavailable. Open “Widths to share” below and copy the selected text.",
+    "closeWidths": "Close column widths",
+    "widthsHelp": "Drag a column divider: every width updates live, before you release. Widen until the label fits. Copy the sizes you want as defaults; this does not save new defaults.",
+    "labelTruncated": "Label truncated",
+    "labelFits": "Label fits",
+    "totalWidth": "Columns: {width} px (excluding selection)",
+    "shareWidths": "Widths to share",
+    "statusColumn": "Status"
   }
 }

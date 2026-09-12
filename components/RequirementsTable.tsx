@@ -1900,6 +1900,8 @@ export default function RequirementsTable({
   )
 
   const getColumnLabel = (columnId: RequirementColumnId) => {
+    if (prototype1347Variant === 'A' && columnId === 'status')
+      return tp('statusColumn')
     const column = allColumns.find(item => item.id === columnId)
     if (!column) {
       return columnId
@@ -2181,7 +2183,7 @@ export default function RequirementsTable({
             activeCount={(fv.statuses ?? []).length}
             developerModeValue={developerModeValue}
             getLabel={option => statusLabel(option.id)}
-            label={t('status')}
+            label={getColumnLabel('status')}
             onChange={ids =>
               updateFilter({ statuses: ids.length > 0 ? ids : undefined })
             }
@@ -3051,8 +3053,7 @@ export default function RequirementsTable({
         {columnDefinitions.map((column, columnIndex) => {
           const label = getColumnLabel(column.id)
           const headerLabel =
-            prototype1347Variant &&
-            prototype1347Variant !== 'before' &&
+            (prototype1347Variant === 'B' || prototype1347Variant === 'C') &&
             locale === 'sv' ? (
               label === 'Kravområde' ? (
                 <>

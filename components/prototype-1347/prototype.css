@@ -1,5 +1,5 @@
 /* THROWAWAY #1347. All rules are confined to the opt-in requirements table. */
-:where([data-prototype1347]:not([data-prototype1347="before"]))
+:where([data-prototype1347="B"], [data-prototype1347="C"])
 [data-requirement-header-label] {
   overflow: visible;
   text-overflow: clip;

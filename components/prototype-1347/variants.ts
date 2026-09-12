@@ -17,7 +17,18 @@ export function getPrototype1347Variant(
 }
 
 export const prototypeWidths = {
-  A: { uniqueId: 112, area: 128, category: 116, type: 104, status: 152 },
+  A: {
+    uniqueId: 118,
+    description: 730,
+    area: 148,
+    category: 124,
+    type: 131,
+    qualityCharacteristic: 189,
+    status: 144,
+    verifiable: 124,
+    version: 85,
+    normReferences: 200,
+  },
   B: { uniqueId: 112, area: 112, category: 104, type: 104, status: 144 },
   C: { uniqueId: 112, area: 112, category: 104, type: 104, status: 144 },
 } as const

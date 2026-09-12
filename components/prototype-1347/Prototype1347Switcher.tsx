@@ -7,6 +7,22 @@ import { useCallback, useEffect, useState } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { type Prototype1347Variant, variants } from './variants'
 
+interface HeaderMeasurement {
+  clipped: boolean
+  column: string
+  columnWidth: number
+  label: string
+  labelWidth: number
+  lines: number
+}
+interface LayoutMeasurements {
+  headers: HeaderMeasurement[]
+  horizontalScroll: boolean | null
+  navigation: string
+  viewport: string
+  wrapping: string | null | undefined
+}
+
 interface ComponentProps {
   onReset: () => void
   state: object
@@ -20,7 +36,18 @@ export default function Prototype1347Switcher({
 }: ComponentProps) {
   const t = useTranslations('prototype1347')
   const [open, setOpen] = useState(false)
-  const [measurements, setMeasurements] = useState<object>({})
+  const [showWidths, setShowWidths] = useState(false)
+  const [activeColumn, setActiveColumn] = useState<string | null>(null)
+  const [copyState, setCopyState] = useState<
+    'copyWidths' | 'copiedWidths' | 'copyManually'
+  >('copyWidths')
+  const [measurements, setMeasurements] = useState<LayoutMeasurements>({
+    viewport: '',
+    navigation: '',
+    headers: [],
+    horizontalScroll: null,
+    wrapping: null,
+  })
   const measure = useCallback(() => {
     const root = document.querySelector('[data-prototype1347]')
     if (!root) return
@@ -32,6 +59,9 @@ export default function Prototype1347Switcher({
     )
     setMeasurements({
       viewport: `${window.innerWidth} × ${window.innerHeight}`,
+      navigation: getComputedStyle(document.documentElement)
+        .getPropertyValue('--global-nav-width')
+        .trim(),
       headers: labels.map(label => {
         const style = getComputedStyle(label)
         const range = document.createRange()
@@ -40,8 +70,8 @@ export default function Prototype1347Switcher({
         const textBoxes = Array.from(range.getClientRects())
         const lines = new Set(textBoxes.map(rect => Math.round(rect.top))).size
         return {
-          column: label.dataset.requirementHeaderLabel,
-          label: label.textContent,
+          column: label.dataset.requirementHeaderLabel ?? '',
+          label: label.textContent ?? '',
           columnWidth: Math.round(
             label.closest('th')?.getBoundingClientRect().width ?? 0,
           ),
@@ -101,23 +131,147 @@ export default function Prototype1347Switcher({
   }, [cycle])
   useEffect(() => {
     console.debug('Prototype #1347 state', { variant, ...state })
-    const timer = window.setTimeout(measure, 250)
-    const observer = new ResizeObserver(measure)
+    let frame = 0
+    const scheduleMeasure = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(measure)
+    }
+    const timer = window.setTimeout(scheduleMeasure, 250)
+    const observer = new ResizeObserver(scheduleMeasure)
     const table = document.querySelector('[data-prototype1347]')
-    if (table) observer.observe(table)
-    window.addEventListener('resize', measure)
+    if (table) {
+      observer.observe(table)
+      for (const label of table.querySelectorAll(
+        '[data-requirement-header-label]',
+      )) {
+        const cell = label.closest('th')
+        if (cell) observer.observe(cell)
+      }
+    }
+    const trackColumn = (event: Event) => {
+      const target = event.target as HTMLElement
+      const handle = target.closest<HTMLElement>('[data-column-resize-handle]')
+      if (handle) setActiveColumn(handle.dataset.columnResizeHandle ?? null)
+    }
+    document.addEventListener('pointerdown', trackColumn, true)
+    document.addEventListener('focusin', trackColumn, true)
+    window.addEventListener('resize', scheduleMeasure)
     return () => {
       clearTimeout(timer)
       observer.disconnect()
-      window.removeEventListener('resize', measure)
+      cancelAnimationFrame(frame)
+      document.removeEventListener('pointerdown', trackColumn, true)
+      document.removeEventListener('focusin', trackColumn, true)
+      window.removeEventListener('resize', scheduleMeasure)
     }
   }, [measure, variant, state])
+
+  const widthsToShare = JSON.stringify(
+    {
+      variant,
+      viewport: measurements.viewport,
+      navigation: measurements.navigation,
+      columnWidths: Object.fromEntries(
+        measurements.headers.map(header => [header.column, header.columnWidth]),
+      ),
+    },
+    null,
+    2,
+  )
+  const copyWidths = async () => {
+    try {
+      await navigator.clipboard.writeText(widthsToShare)
+      setCopyState('copiedWidths')
+    } catch {
+      setCopyState('copyManually')
+    }
+  }
 
   return (
     <aside
       data-prototype1347-switcher=""
       {...devMarker({ name: 'toolbar', value: 'prototype 1347 review' })}
     >
+      {showWidths && (
+        <section
+          aria-label={t('widths')}
+          data-prototype1347-widths=""
+          {...devMarker({
+            name: 'panel',
+            value: 'prototype live column widths',
+          })}
+          className="fixed bottom-24 left-1/2 z-[100] max-h-[55vh] w-[min(60rem,calc(100vw-2rem))] -translate-x-1/2 overflow-auto rounded-2xl border border-secondary-300 bg-white p-4 text-secondary-900 shadow-2xl dark:border-secondary-600 dark:bg-secondary-900 dark:text-secondary-100"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold">{t('widths')}</h2>
+            <div className="flex items-center gap-2">
+              <button
+                className="min-h-8 rounded border border-indigo-500 px-3 text-sm text-indigo-700 dark:text-indigo-200"
+                onClick={copyWidths}
+                type="button"
+              >
+                {t('copyWidths')}
+              </button>
+              <button
+                aria-label={t('closeWidths')}
+                className="min-h-8 min-w-8 rounded focus-visible:ring-2"
+                onClick={() => setShowWidths(false)}
+                type="button"
+              >
+                <X aria-hidden="true" size={18} />
+              </button>
+            </div>
+          </div>
+          <p className="my-2 text-xs text-secondary-600 dark:text-secondary-300">
+            {t('widthsHelp')}
+          </p>
+          <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {measurements.headers.map(header => (
+              <div
+                className={`rounded-lg border p-2 ${activeColumn === header.column ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950' : 'border-secondary-200 dark:border-secondary-700'}`}
+                data-prototype1347-width-column={header.column}
+                key={header.column}
+              >
+                <dt className="text-xs">{header.label}</dt>
+                <dd
+                  className="mt-1 font-mono text-lg font-semibold tabular-nums"
+                  data-prototype1347-width-value={header.column}
+                >
+                  {header.columnWidth} px
+                </dd>
+                <dd
+                  className={`text-xs ${header.clipped ? 'text-amber-800 dark:text-amber-300' : 'text-emerald-800 dark:text-emerald-300'}`}
+                >
+                  {t(header.clipped ? 'labelTruncated' : 'labelFits')}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-2 text-xs">
+            {t('totalWidth', {
+              width: measurements.headers.reduce(
+                (total, header) => total + header.columnWidth,
+                0,
+              ),
+            })}{' '}
+            · {measurements.viewport}
+          </p>
+          <p className="text-xs" role="status">
+            {copyState !== 'copyWidths' ? t(copyState) : ''}
+          </p>
+          <details className="mt-2 text-xs">
+            <summary className="cursor-pointer">{t('shareWidths')}</summary>
+            <textarea
+              aria-label={t('shareWidths')}
+              className="mt-2 w-full rounded border border-secondary-300 bg-secondary-50 p-2 font-mono dark:border-secondary-600 dark:bg-secondary-950"
+              onFocus={event => event.currentTarget.select()}
+              readOnly
+              rows={10}
+              value={widthsToShare}
+            />
+          </details>
+        </section>
+      )}
       {open && (
         <section
           aria-label={t('review')}
@@ -201,9 +355,25 @@ export default function Prototype1347Switcher({
           <ArrowRight aria-hidden="true" size={18} />
         </button>
         <button
+          aria-expanded={showWidths}
+          className="min-h-8 rounded-lg border border-indigo-400 px-3 text-xs hover:bg-indigo-800 focus-visible:ring-2"
+          onClick={() => {
+            setShowWidths(value => !value)
+            setOpen(false)
+            setCopyState('copyWidths')
+            measure()
+          }}
+          type="button"
+        >
+          {t('widths')}
+        </button>
+        <button
           aria-expanded={open}
           className="min-h-8 rounded-lg border border-indigo-400 px-3 text-xs hover:bg-indigo-800 focus-visible:ring-2"
-          onClick={() => setOpen(value => !value)}
+          onClick={() => {
+            setOpen(value => !value)
+            setShowWidths(false)
+          }}
           type="button"
         >
           {t('review')}

@@ -2,8 +2,8 @@
 
 THROWAWAY design exploration. No variant is selected for production.
 
-Question: which arrangement makes full column labels and existing controls
-clear, while giving requirement text more room?
+Question: which arrangement keeps column labels and controls clear, with
+compact headers and adjustable space for requirement text?
 
 The prototype uses the existing requirement-library page, authentication,
 development data and navigation. It starts from `5ca568bb`, which includes
@@ -35,8 +35,9 @@ HTML file: download or copy it, then open it in a browser.
 ## Five-minute walkthrough
 
 1. Open A at 1440 × 900 with navigation expanded. Select **Före** in the
-   bottom bar, then A. Read **Kravområde** and **Kravversionsstatus** and
-   compare the width of the first long requirement text.
+   bottom bar, then A. Check **Kravområde** and the renamed **Status**.
+   Labels use one line with an ellipsis when narrowed. Compare header height
+   and the width of the first long requirement text.
 2. Select B and C. B places filters below their column labels; C collects
    filters in a shared strip. Compare the extra height with A.
    The existing package chooser opens on hover. If it covers a control, press
@@ -46,7 +47,11 @@ HTML file: download or copy it, then open it in a browser.
 4. Sort by **Kravområde**, open its filter, select **Användbarhet**, and
    remove that filter using its chip. Drag a column divider and then use
    its arrow keys. Open the column picker and show **Version**.
-5. Open **Granska / tillstånd**. Inspect the selected variant, widths,
+5. Open **Kolumnbredder**, then drag a divider. Watch its pixel value change
+   before releasing the mouse. **Kopiera bredder** copies the visible column
+   widths, viewport and navigation width. **Bredder att dela** provides the
+   same JSON for manual copying.
+6. Open **Granska / tillstånd**. Inspect the selected variant, widths,
    filters, sort order, clipping measurements and horizontal overflow.
    Use **Återställ layout och filter** before comparing defaults again.
 
@@ -65,12 +70,14 @@ column preferences.
 | Change | Where to look | How to verify |
 | --- | --- | --- |
 | Original baseline | `?variant=before` | Check the original truncated labels and original column widths in the same page and data. |
-| A: compact inline controls | `?variant=A` | Labels, sorting and 28 px filter controls share a row. Compare header height with Before. |
+| A: compact inline controls | `?variant=A` | Labels stay on one line and use the original ellipsis when needed. Sorting and 28 px filters remain alongside them. Compare header height with Before. |
 | B: labels above controls | `?variant=B` | Labels have their own top row; filters and wrapping occupy a second row. |
 | C: shared filter strip | `?variant=C` | Find all existing column filters in the labelled strip. Headers retain sorting; active chips stay with their columns. |
-| Full Swedish domain labels | All proposed variants | Read Kravområde and Kravversionsstatus without a tooltip. Line breaks occur at compound boundaries; words are not abbreviated. |
-| More requirement-text space | All proposed variants | Reset first. Read actual widths under Review / state or compare the measurements below. |
-| Narrower metadata columns | All proposed variants | Compare category and type cell text with Before. These values may truncate sooner; this is an explicit tradeoff to evaluate. |
+| Domain labels | A uses ellipsis; B/C allow wrapping | In A, inspect the full name through the existing sort tooltip or accessible name. B/C retain compound-boundary line breaks. |
+| Preferred default widths | A | Reset and compare with preferred-widths.json. Six columns remain visible by default; each optional column gets its supplied width when shown. Requirement text starts at 730 px and grows into spare space. |
+| Status label | A | Check Status in the header, column picker, width panel, sorting name and filter name. |
+| Live width panel | Kolumnbredder | Drag without releasing: the pixel value must update and highlight the selected column. Copy widths and compare the JSON with the panel; manual copying is available under Bredder att dela. |
+| Width tradeoffs | All proposed variants | A favors the supplied wider defaults and may need horizontal scrolling. B/C retain their narrower metadata columns. Compare actual widths and row-text truncation. |
 | Labelled wrapping control | A/B in the text header; C at the end of the filter strip | Click and press Space; verify the visible on/off label, icon, pressed state and actual row wrapping. |
 | Existing sorting and filters | Each header or C's strip | Toggle sort direction, select a filter, inspect its count/chip, and clear it. |
 | Scoped prototype width limits | Proposed variants only | Resize narrow metadata columns without peers snapping wider. Requirement text can retain its grown width above the original 960 px drag cap. |
@@ -93,32 +100,40 @@ no manual widths. Each row has matching light and dark captures.
 <!-- markdownlint-disable MD013 -->
 | Window | Navigation | Before: text | A: text | B/C: text |
 | --- | --- | --- | --- | --- |
-| 1440 × 900 | Collapsed | 448 px | 598 px | 634 px |
-| 1440 × 900 | Expanded | 360 px | 406 px | 442 px |
-| 1920 × 1080 | Collapsed | 928 px | 1078 px | 1114 px |
-| 1920 × 1080 | Expanded | 736 px | 886 px | 922 px |
+| 1440 × 900 | Collapsed | 448 px | 730 px | 634 px |
+| 1440 × 900 | Expanded | 360 px | 730 px | 442 px |
+| 1920 × 1080 | Collapsed | 928 px | 1025 px | 1114 px |
+| 1920 × 1080 | Expanded | 736 px | 833 px | 922 px |
 <!-- markdownlint-enable MD013 -->
 
 Before clips both reported labels in all eight combinations and requires
-horizontal scrolling at 1440 px with expanded navigation. A, B and C have no
-clipped default labels, no offscreen header controls, and no horizontal
-scrolling in all eight combinations. Labels use at most two lines.
+horizontal scrolling at 1440 px with expanded navigation. A now fits all six
+default labels without wrapping in these captures. Its wider defaults require
+horizontal scrolling at 1440 px in both navigation states; at 1920 px they fit.
+Narrowing A columns uses single-line ellipsis. B/C retain full labels on at most
+two lines and avoid default horizontal scrolling in these eight combinations.
 
 At 1440 px with collapsed navigation, the measured sticky table area is
-123 px for Before, 114 px for A, 146 px for B and 159 px for C. This includes
+123 px for Before, 107 px for A, 146 px for B and 159 px for C. This includes
 the package band and the active status chip, not just the label row.
 
-**Provisional assessment:** A changes the least and preserves vertical
-space. B gives labels a clearer hierarchy. C exposes filter labels explicitly
-but adds height and separates filters from their column headers. The narrower
-category/type cells are a tradeoff in all three proposals. The reviewer's
-choice, including combinations of these approaches, remains open.
+**Current review direction:** A uses single-line ellipsis to avoid extra
+header height, the maintainer's [preferred widths](preferred-widths.json), and
+**Status** as its shortened status-column label. The supplied ten widths come
+from a 1710 × 951 viewport with 4.5rem navigation. The six existing default
+visible columns remain; optional columns receive their supplied widths when
+shown. Requirement text has a 730 px base and grows to fill spare space.
+The width panel reports actual rendered widths, including that growth.
+B/C remain available as earlier alternatives. This is a prototype direction;
+production promotion remains a separate implementation step.
 
 ## Verification evidence and limits
 
 - [Measurements for every screenshot](evidence/observations.json).
 - [Interaction verification results](evidence/interactions.json).
 - [Additional browser verification](evidence/additional-verification.json).
+- [Preferred widths and live-drag verification](evidence/preferred-widths-verification.json).
+- [All ten preferred widths in the live panel](evidence/preferred-widths.png).
 - [Offline comparison gallery](review.html).
 
 The capture program is a throwaway review aid, not a production regression
@@ -126,6 +141,8 @@ suite. With the preview running, reproduce the image matrix using:
 
 ```sh
 node docs/development/prototype-1347/capture.mjs
+# Refresh only the revised A captures:
+node docs/development/prototype-1347/capture.mjs --only-a
 ```
 
 The gallery embeds the captured images. Regenerate it after recapturing:
@@ -157,7 +174,9 @@ repository's normal automated tests, manual-case updates and full checks.
 - Requirement-library client: variant selection and in-memory column preferences.
 - English/Swedish messages: prototype labels and walkthrough.
 - Prototype launcher and development-only proxy guard: isolated preview runtime.
+- Next configuration: disables the disposable Turbopack disk cache only for
+  this development prototype to limit worktree disk usage.
 - This directory: review guide, screenshot capture, evidence and offline gallery.
 
 The full prototype lives on branch `prototype/issue-1347`, outside main.
-Issue #1347 is the implementation handoff. No winning design is recorded yet.
+Issue #1347 is the implementation handoff, including the revised A direction.

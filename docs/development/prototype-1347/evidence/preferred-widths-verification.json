@@ -1,0 +1,16 @@
+{
+  "suppliedWidthsMatch": true,
+  "statusLabelAndControls": true,
+  "singleLineEllipsis": true,
+  "liveWidthBeforeRelease": {
+    "before": "148 px",
+    "during": "196 px"
+  },
+  "neighborsUnchanged": true,
+  "copiedWidthsMatch": true,
+  "defaultVisibleColumnsPreserved": true,
+  "resetRestoresPreferredWidth": true,
+  "narrowedHeaderUsesEllipsis": true,
+  "englishStatusAndWidthPanel": true,
+  "updatedOfflineGallery": true
+}

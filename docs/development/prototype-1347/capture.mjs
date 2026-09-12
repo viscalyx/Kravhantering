@@ -1,11 +1,16 @@
 // THROWAWAY visual review capture, not a production regression suite.
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { chromium } from 'playwright'
 
 const out = new URL('./evidence/', import.meta.url)
 await mkdir(out, { recursive: true })
 const browser = await chromium.launch({ headless: true })
-const observations = []
+const onlyA = process.argv.includes('--only-a')
+const observations = onlyA
+  ? JSON.parse(
+      await readFile(new URL('observations.json', out), 'utf8'),
+    ).filter(row => row.variant !== 'A')
+  : []
 try {
   const login = await browser.newContext()
   const page = await login.newPage()
@@ -43,7 +48,7 @@ try {
         await page.goto('http://localhost:3003/sv/requirements?variant=before')
         await page.locator('[data-requirement-header-label="area"]').waitFor()
         await page.evaluate(() => document.fonts.ready)
-        for (const variant of ['before', 'A', 'B', 'C']) {
+        for (const variant of onlyA ? ['A'] : ['before', 'A', 'B', 'C']) {
           await page
             .locator('[data-prototype1347-switcher]')
             .getByRole('button', {
@@ -137,7 +142,7 @@ try {
   }
   await writeFile(
     new URL('observations.json', out),
-    JSON.stringify(observations, null, 2) + '\n',
+    `${JSON.stringify(observations, null, 2)}\n`,
   )
 } finally {
   await browser.close()

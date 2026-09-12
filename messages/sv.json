@@ -3810,7 +3810,7 @@
     },
     "A": {
       "name": "A · Kompakt",
-      "description": "Sortering och 28 px filterkontroller på samma rad, tvåradiga rubriker, smalare metadatakolumner och en namngiven radbrytningsknapp. Lägst tabellhuvud."
+      "description": "Enradiga rubriker med ellips när texten inte ryms, dina bredare standardkolumner och det kortare namnet Status. Sortering, 28 px filterkontroller och en namngiven radbrytningsknapp håller tabellhuvudet kompakt."
     },
     "B": {
       "name": "B · Etiketten först",
@@ -3831,12 +3831,23 @@
     "measure": "Mät layout",
     "state": "Aktuellt tillstånd och uppmätt layout",
     "checks": {
-      "labels": "Jämför Före med A, B och C. Läs Kravområde och Kravversionsstatus utan hjälp av en tooltip.",
+      "labels": "Kontrollera att långa rubriker i A kapas med ellips i stället för att radbrytas. Hovra eller fokusera sorteringskontrollen för att identifiera det fullständiga kolumnnamnet. Jämför höjden med Före och de tvåradiga alternativen B/C.",
       "controls": "Sortera via en rubrik, öppna ett kolumnfilter, välj och ta bort ett värde. Kontrollera sorteringsriktning, antal och filtermarkeringar.",
       "text": "Växla radbrytning med klick och mellanslag. Jämför långa texter och kravtextens utrymme.",
       "resize": "Dra en kolumnavdelare, fokusera den sedan och tryck en piltangent. Endast kolumnen till vänster ska ändras.",
       "settings": "Ändra synliga kolumner och växla variant med samma inställningar. Återställ för att jämföra standardvyn. Omladdning återställer prototypens kolumnval.",
       "matrix": "Granska vid 1440 × 900 och 1920 × 1080, med infälld/utfälld navigation och ljust/mörkt tema. Rulla och expandera en rad."
-    }
+    },
+    "widths": "Kolumnbredder",
+    "copyWidths": "Kopiera bredder",
+    "copiedWidths": "Kopierat. Klistra in bredderna i konversationen.",
+    "copyManually": "Kopiering är inte tillgänglig. Öppna ”Bredder att dela” nedan och kopiera den markerade texten.",
+    "closeWidths": "Stäng kolumnbredder",
+    "widthsHelp": "Dra en kolumnavdelare: alla bredder uppdateras direkt, innan du släpper. Bredda tills rubriken ryms. Kopiera de storlekar du vill ha som standard; inga nya standardvärden sparas.",
+    "labelTruncated": "Rubriken kapas",
+    "labelFits": "Rubriken ryms",
+    "totalWidth": "Kolumner: {width} px (utan markering)",
+    "shareWidths": "Bredder att dela",
+    "statusColumn": "Status"
   }
 }

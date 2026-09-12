@@ -129,6 +129,10 @@ const API_DOCS_CONTENT_SECURITY_POLICY = [
 ].join('; ')
 
 const nextConfig: NextConfig = {
+  // THROWAWAY #1347: keep the disposable preview from filling the worktree disk.
+  ...(process.env.NEXT_PUBLIC_PROTOTYPE_1347 === 'true' && !isProduction
+    ? { experimental: { turbopackFileSystemCacheForDev: false } }
+    : {}),
   // Avoids adding agent rules to AGENTS.md, this could be switched on in the future.
   agentRules: false,
   reactStrictMode: true,
