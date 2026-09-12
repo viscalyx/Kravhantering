@@ -1,0 +1,38 @@
+[
+  {
+    "variant": "A",
+    "sort": true,
+    "filterAndClear": true,
+    "wrapMouseKeyboard": true,
+    "keyboardResize": true,
+    "mouseResize": true,
+    "columnPicker": true,
+    "reset": true,
+    "variantArrow": true,
+    "inMemoryWidths": true
+  },
+  {
+    "variant": "B",
+    "sort": true,
+    "filterAndClear": true,
+    "wrapMouseKeyboard": true,
+    "keyboardResize": true,
+    "mouseResize": true,
+    "columnPicker": true,
+    "reset": true,
+    "variantArrow": true,
+    "inMemoryWidths": true
+  },
+  {
+    "variant": "C",
+    "sort": true,
+    "filterAndClear": true,
+    "wrapMouseKeyboard": true,
+    "keyboardResize": true,
+    "mouseResize": true,
+    "columnPicker": true,
+    "reset": true,
+    "variantArrow": true,
+    "inMemoryWidths": true
+  }
+]

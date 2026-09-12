@@ -1,0 +1,4866 @@
+[
+  {
+    "width": 1440,
+    "navigation": "collapsed",
+    "theme": "light",
+    "variant": "before",
+    "filename": "1440-collapsed-light-before.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 150,
+        "labelWidth": 68,
+        "textWidth": 68,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 448,
+        "labelWidth": 317,
+        "textWidth": 317,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 136,
+        "labelWidth": 53,
+        "textWidth": 73,
+        "lines": 1,
+        "clipped": true,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 152,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 148,
+        "labelWidth": 65,
+        "textWidth": 65,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 176,
+        "labelWidth": 94,
+        "textWidth": 117,
+        "lines": 1,
+        "clipped": true,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 86,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 335,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 71,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 83,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 112,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 123,
+    "workspaceWidth": 1246,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1440,
+    "navigation": "collapsed",
+    "theme": "light",
+    "variant": "A",
+    "filename": "1440-collapsed-light-A.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 46,
+        "textWidth": 46,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 598,
+        "labelWidth": 429,
+        "textWidth": 429,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 128,
+        "labelWidth": 61,
+        "textWidth": 61,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 116,
+        "labelWidth": 49,
+        "textWidth": 49,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 37,
+        "textWidth": 37,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 152,
+        "labelWidth": 86,
+        "textWidth": 86,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 64,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 447,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 79,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 67,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 55,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 104,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 114,
+    "workspaceWidth": 1246,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1440,
+    "navigation": "collapsed",
+    "theme": "light",
+    "variant": "B",
+    "filename": "1440-collapsed-light-B.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 78,
+        "textWidth": 78,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 634,
+        "labelWidth": 599,
+        "textWidth": 599,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 112,
+        "labelWidth": 77,
+        "textWidth": 77,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 144,
+        "labelWidth": 110,
+        "textWidth": 110,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 96,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 617,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 95,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 128,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 146,
+    "workspaceWidth": 1246,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1440,
+    "navigation": "collapsed",
+    "theme": "light",
+    "variant": "C",
+    "filename": "1440-collapsed-light-C.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 78,
+        "textWidth": 78,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 634,
+        "labelWidth": 599,
+        "textWidth": 599,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 112,
+        "labelWidth": 77,
+        "textWidth": 77,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 144,
+        "labelWidth": 110,
+        "textWidth": 110,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 96,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 617,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 95,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 128,
+        "height": 35,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 159,
+    "workspaceWidth": 1246,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1440,
+    "navigation": "collapsed",
+    "theme": "dark",
+    "variant": "before",
+    "filename": "1440-collapsed-dark-before.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 150,
+        "labelWidth": 68,
+        "textWidth": 68,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 448,
+        "labelWidth": 317,
+        "textWidth": 317,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 136,
+        "labelWidth": 53,
+        "textWidth": 73,
+        "lines": 1,
+        "clipped": true,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 152,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 148,
+        "labelWidth": 65,
+        "textWidth": 65,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 176,
+        "labelWidth": 94,
+        "textWidth": 117,
+        "lines": 1,
+        "clipped": true,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 86,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 335,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 71,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 83,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 112,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 123,
+    "workspaceWidth": 1246,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1440,
+    "navigation": "collapsed",
+    "theme": "dark",
+    "variant": "A",
+    "filename": "1440-collapsed-dark-A.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 46,
+        "textWidth": 46,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 598,
+        "labelWidth": 429,
+        "textWidth": 429,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 128,
+        "labelWidth": 61,
+        "textWidth": 61,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 116,
+        "labelWidth": 49,
+        "textWidth": 49,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 37,
+        "textWidth": 37,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 152,
+        "labelWidth": 86,
+        "textWidth": 86,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 64,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 447,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 79,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 67,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 55,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 104,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 114,
+    "workspaceWidth": 1246,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1440,
+    "navigation": "collapsed",
+    "theme": "dark",
+    "variant": "B",
+    "filename": "1440-collapsed-dark-B.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 78,
+        "textWidth": 78,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 634,
+        "labelWidth": 599,
+        "textWidth": 599,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 112,
+        "labelWidth": 77,
+        "textWidth": 77,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 144,
+        "labelWidth": 110,
+        "textWidth": 110,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 96,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 617,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 95,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 128,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 146,
+    "workspaceWidth": 1246,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1440,
+    "navigation": "collapsed",
+    "theme": "dark",
+    "variant": "C",
+    "filename": "1440-collapsed-dark-C.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 78,
+        "textWidth": 78,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 634,
+        "labelWidth": 599,
+        "textWidth": 599,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 112,
+        "labelWidth": 77,
+        "textWidth": 77,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 144,
+        "labelWidth": 110,
+        "textWidth": 110,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 96,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 617,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 95,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 128,
+        "height": 35,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 159,
+    "workspaceWidth": 1246,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1440,
+    "navigation": "expanded",
+    "theme": "light",
+    "variant": "before",
+    "filename": "1440-expanded-light-before.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 150,
+        "labelWidth": 68,
+        "textWidth": 68,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 360,
+        "labelWidth": 229,
+        "textWidth": 229,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 136,
+        "labelWidth": 53,
+        "textWidth": 73,
+        "lines": 1,
+        "clipped": true,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 152,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 148,
+        "labelWidth": 65,
+        "textWidth": 65,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 176,
+        "labelWidth": 94,
+        "textWidth": 117,
+        "lines": 1,
+        "clipped": true,
+        "withinViewport": false
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 86,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 247,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 71,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 83,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 112,
+        "height": 44,
+        "withinViewport": false
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 44,
+        "height": 44,
+        "withinViewport": false
+      }
+    ],
+    "headerHeight": 123,
+    "workspaceWidth": 1054,
+    "horizontalScroll": true
+  },
+  {
+    "width": 1440,
+    "navigation": "expanded",
+    "theme": "light",
+    "variant": "A",
+    "filename": "1440-expanded-light-A.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 46,
+        "textWidth": 46,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 406,
+        "labelWidth": 237,
+        "textWidth": 237,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 128,
+        "labelWidth": 61,
+        "textWidth": 61,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 116,
+        "labelWidth": 49,
+        "textWidth": 49,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 37,
+        "textWidth": 37,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 152,
+        "labelWidth": 86,
+        "textWidth": 86,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 64,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 255,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 79,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 67,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 55,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 104,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 114,
+    "workspaceWidth": 1054,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1440,
+    "navigation": "expanded",
+    "theme": "light",
+    "variant": "B",
+    "filename": "1440-expanded-light-B.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 78,
+        "textWidth": 78,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 442,
+        "labelWidth": 407,
+        "textWidth": 407,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 112,
+        "labelWidth": 77,
+        "textWidth": 77,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 144,
+        "labelWidth": 110,
+        "textWidth": 110,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 96,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 425,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 95,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 128,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 146,
+    "workspaceWidth": 1054,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1440,
+    "navigation": "expanded",
+    "theme": "light",
+    "variant": "C",
+    "filename": "1440-expanded-light-C.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 78,
+        "textWidth": 78,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 442,
+        "labelWidth": 407,
+        "textWidth": 407,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 112,
+        "labelWidth": 77,
+        "textWidth": 77,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 144,
+        "labelWidth": 110,
+        "textWidth": 110,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 96,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 425,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 95,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 128,
+        "height": 35,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 159,
+    "workspaceWidth": 1054,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1440,
+    "navigation": "expanded",
+    "theme": "dark",
+    "variant": "before",
+    "filename": "1440-expanded-dark-before.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 150,
+        "labelWidth": 68,
+        "textWidth": 68,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 360,
+        "labelWidth": 229,
+        "textWidth": 229,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 136,
+        "labelWidth": 53,
+        "textWidth": 73,
+        "lines": 1,
+        "clipped": true,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 152,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 148,
+        "labelWidth": 65,
+        "textWidth": 65,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 176,
+        "labelWidth": 94,
+        "textWidth": 117,
+        "lines": 1,
+        "clipped": true,
+        "withinViewport": false
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 86,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 247,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 71,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 83,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 112,
+        "height": 44,
+        "withinViewport": false
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 44,
+        "height": 44,
+        "withinViewport": false
+      }
+    ],
+    "headerHeight": 123,
+    "workspaceWidth": 1054,
+    "horizontalScroll": true
+  },
+  {
+    "width": 1440,
+    "navigation": "expanded",
+    "theme": "dark",
+    "variant": "A",
+    "filename": "1440-expanded-dark-A.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 46,
+        "textWidth": 46,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 406,
+        "labelWidth": 237,
+        "textWidth": 237,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 128,
+        "labelWidth": 61,
+        "textWidth": 61,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 116,
+        "labelWidth": 49,
+        "textWidth": 49,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 37,
+        "textWidth": 37,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 152,
+        "labelWidth": 86,
+        "textWidth": 86,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 64,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 255,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 79,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 67,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 55,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 104,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 114,
+    "workspaceWidth": 1054,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1440,
+    "navigation": "expanded",
+    "theme": "dark",
+    "variant": "B",
+    "filename": "1440-expanded-dark-B.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 78,
+        "textWidth": 78,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 442,
+        "labelWidth": 407,
+        "textWidth": 407,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 112,
+        "labelWidth": 77,
+        "textWidth": 77,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 144,
+        "labelWidth": 110,
+        "textWidth": 110,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 96,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 425,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 95,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 128,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 146,
+    "workspaceWidth": 1054,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1440,
+    "navigation": "expanded",
+    "theme": "dark",
+    "variant": "C",
+    "filename": "1440-expanded-dark-C.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 78,
+        "textWidth": 78,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 442,
+        "labelWidth": 407,
+        "textWidth": 407,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 112,
+        "labelWidth": 77,
+        "textWidth": 77,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 144,
+        "labelWidth": 110,
+        "textWidth": 110,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 96,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 425,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 95,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 128,
+        "height": 35,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 159,
+    "workspaceWidth": 1054,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1920,
+    "navigation": "collapsed",
+    "theme": "light",
+    "variant": "before",
+    "filename": "1920-collapsed-light-before.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 150,
+        "labelWidth": 68,
+        "textWidth": 68,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 928,
+        "labelWidth": 797,
+        "textWidth": 797,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 136,
+        "labelWidth": 53,
+        "textWidth": 73,
+        "lines": 1,
+        "clipped": true,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 152,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 148,
+        "labelWidth": 65,
+        "textWidth": 65,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 176,
+        "labelWidth": 94,
+        "textWidth": 117,
+        "lines": 1,
+        "clipped": true,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 86,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 815,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 71,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 83,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 112,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 123,
+    "workspaceWidth": 1726,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1920,
+    "navigation": "collapsed",
+    "theme": "light",
+    "variant": "A",
+    "filename": "1920-collapsed-light-A.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 46,
+        "textWidth": 46,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 1078,
+        "labelWidth": 909,
+        "textWidth": 909,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 128,
+        "labelWidth": 61,
+        "textWidth": 61,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 116,
+        "labelWidth": 49,
+        "textWidth": 49,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 37,
+        "textWidth": 37,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 152,
+        "labelWidth": 86,
+        "textWidth": 86,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 64,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 927,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 79,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 67,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 55,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 104,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 114,
+    "workspaceWidth": 1726,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1920,
+    "navigation": "collapsed",
+    "theme": "light",
+    "variant": "B",
+    "filename": "1920-collapsed-light-B.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 78,
+        "textWidth": 78,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 1114,
+        "labelWidth": 1079,
+        "textWidth": 1079,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 112,
+        "labelWidth": 77,
+        "textWidth": 77,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 144,
+        "labelWidth": 110,
+        "textWidth": 110,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 96,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 1097,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 95,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 128,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 146,
+    "workspaceWidth": 1726,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1920,
+    "navigation": "collapsed",
+    "theme": "light",
+    "variant": "C",
+    "filename": "1920-collapsed-light-C.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 78,
+        "textWidth": 78,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 1114,
+        "labelWidth": 1079,
+        "textWidth": 1079,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 112,
+        "labelWidth": 77,
+        "textWidth": 77,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 144,
+        "labelWidth": 110,
+        "textWidth": 110,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 96,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 1097,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 95,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 128,
+        "height": 35,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 159,
+    "workspaceWidth": 1726,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1920,
+    "navigation": "collapsed",
+    "theme": "dark",
+    "variant": "before",
+    "filename": "1920-collapsed-dark-before.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 150,
+        "labelWidth": 68,
+        "textWidth": 68,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 928,
+        "labelWidth": 797,
+        "textWidth": 797,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 136,
+        "labelWidth": 53,
+        "textWidth": 73,
+        "lines": 1,
+        "clipped": true,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 152,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 148,
+        "labelWidth": 65,
+        "textWidth": 65,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 176,
+        "labelWidth": 94,
+        "textWidth": 117,
+        "lines": 1,
+        "clipped": true,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 86,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 815,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 71,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 83,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 112,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 123,
+    "workspaceWidth": 1726,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1920,
+    "navigation": "collapsed",
+    "theme": "dark",
+    "variant": "A",
+    "filename": "1920-collapsed-dark-A.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 46,
+        "textWidth": 46,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 1078,
+        "labelWidth": 909,
+        "textWidth": 909,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 128,
+        "labelWidth": 61,
+        "textWidth": 61,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 116,
+        "labelWidth": 49,
+        "textWidth": 49,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 37,
+        "textWidth": 37,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 152,
+        "labelWidth": 86,
+        "textWidth": 86,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 64,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 927,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 79,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 67,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 55,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 104,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 114,
+    "workspaceWidth": 1726,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1920,
+    "navigation": "collapsed",
+    "theme": "dark",
+    "variant": "B",
+    "filename": "1920-collapsed-dark-B.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 78,
+        "textWidth": 78,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 1114,
+        "labelWidth": 1079,
+        "textWidth": 1079,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 112,
+        "labelWidth": 77,
+        "textWidth": 77,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 144,
+        "labelWidth": 110,
+        "textWidth": 110,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 96,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 1097,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 95,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 128,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 146,
+    "workspaceWidth": 1726,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1920,
+    "navigation": "collapsed",
+    "theme": "dark",
+    "variant": "C",
+    "filename": "1920-collapsed-dark-C.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 78,
+        "textWidth": 78,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 1114,
+        "labelWidth": 1079,
+        "textWidth": 1079,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 112,
+        "labelWidth": 77,
+        "textWidth": 77,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 144,
+        "labelWidth": 110,
+        "textWidth": 110,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 96,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 1097,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 95,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 128,
+        "height": 35,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 159,
+    "workspaceWidth": 1726,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1920,
+    "navigation": "expanded",
+    "theme": "light",
+    "variant": "before",
+    "filename": "1920-expanded-light-before.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 150,
+        "labelWidth": 68,
+        "textWidth": 68,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 736,
+        "labelWidth": 605,
+        "textWidth": 605,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 136,
+        "labelWidth": 53,
+        "textWidth": 73,
+        "lines": 1,
+        "clipped": true,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 152,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 148,
+        "labelWidth": 65,
+        "textWidth": 65,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 176,
+        "labelWidth": 94,
+        "textWidth": 117,
+        "lines": 1,
+        "clipped": true,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 86,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 623,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 71,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 83,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 112,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 123,
+    "workspaceWidth": 1534,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1920,
+    "navigation": "expanded",
+    "theme": "light",
+    "variant": "A",
+    "filename": "1920-expanded-light-A.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 46,
+        "textWidth": 46,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 886,
+        "labelWidth": 717,
+        "textWidth": 717,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 128,
+        "labelWidth": 61,
+        "textWidth": 61,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 116,
+        "labelWidth": 49,
+        "textWidth": 49,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 37,
+        "textWidth": 37,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 152,
+        "labelWidth": 86,
+        "textWidth": 86,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 64,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 735,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 79,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 67,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 55,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 104,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 114,
+    "workspaceWidth": 1534,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1920,
+    "navigation": "expanded",
+    "theme": "light",
+    "variant": "B",
+    "filename": "1920-expanded-light-B.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 78,
+        "textWidth": 78,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 922,
+        "labelWidth": 887,
+        "textWidth": 887,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 112,
+        "labelWidth": 77,
+        "textWidth": 77,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 144,
+        "labelWidth": 110,
+        "textWidth": 110,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 96,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 905,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 95,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 128,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 146,
+    "workspaceWidth": 1534,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1920,
+    "navigation": "expanded",
+    "theme": "light",
+    "variant": "C",
+    "filename": "1920-expanded-light-C.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 78,
+        "textWidth": 78,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 922,
+        "labelWidth": 887,
+        "textWidth": 887,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 112,
+        "labelWidth": 77,
+        "textWidth": 77,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 144,
+        "labelWidth": 110,
+        "textWidth": 110,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 96,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 905,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 95,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 128,
+        "height": 35,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 159,
+    "workspaceWidth": 1534,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1920,
+    "navigation": "expanded",
+    "theme": "dark",
+    "variant": "before",
+    "filename": "1920-expanded-dark-before.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 150,
+        "labelWidth": 68,
+        "textWidth": 68,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 736,
+        "labelWidth": 605,
+        "textWidth": 605,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 136,
+        "labelWidth": 53,
+        "textWidth": 73,
+        "lines": 1,
+        "clipped": true,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 152,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 148,
+        "labelWidth": 65,
+        "textWidth": 65,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 176,
+        "labelWidth": 94,
+        "textWidth": 117,
+        "lines": 1,
+        "clipped": true,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 86,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 623,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 71,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 83,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 112,
+        "height": 44,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 44,
+        "height": 44,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 123,
+    "workspaceWidth": 1534,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1920,
+    "navigation": "expanded",
+    "theme": "dark",
+    "variant": "A",
+    "filename": "1920-expanded-dark-A.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 46,
+        "textWidth": 46,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 886,
+        "labelWidth": 717,
+        "textWidth": 717,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 128,
+        "labelWidth": 61,
+        "textWidth": 61,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 116,
+        "labelWidth": 49,
+        "textWidth": 49,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 37,
+        "textWidth": 37,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 152,
+        "labelWidth": 86,
+        "textWidth": 86,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 64,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 735,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 79,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 67,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 55,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 104,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 114,
+    "workspaceWidth": 1534,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1920,
+    "navigation": "expanded",
+    "theme": "dark",
+    "variant": "B",
+    "filename": "1920-expanded-dark-B.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 78,
+        "textWidth": 78,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 922,
+        "labelWidth": 887,
+        "textWidth": 887,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 112,
+        "labelWidth": 77,
+        "textWidth": 77,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 144,
+        "labelWidth": 110,
+        "textWidth": 110,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 96,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 905,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 95,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 128,
+        "height": 35,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 146,
+    "workspaceWidth": 1534,
+    "horizontalScroll": false
+  },
+  {
+    "width": 1920,
+    "navigation": "expanded",
+    "theme": "dark",
+    "variant": "C",
+    "filename": "1920-expanded-dark-C.png",
+    "columns": [
+      {
+        "id": "uniqueId",
+        "label": "Krav-ID",
+        "width": 112,
+        "labelWidth": 78,
+        "textWidth": 78,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "description",
+        "label": "Kravtext",
+        "width": 922,
+        "labelWidth": 887,
+        "textWidth": 887,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "area",
+        "label": "Kravområde",
+        "width": 112,
+        "labelWidth": 77,
+        "textWidth": 77,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "category",
+        "label": "Kategori",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "type",
+        "label": "Typ",
+        "width": 104,
+        "labelWidth": 69,
+        "textWidth": 69,
+        "lines": 1,
+        "clipped": false,
+        "withinViewport": true
+      },
+      {
+        "id": "status",
+        "label": "Kravversionsstatus",
+        "width": 144,
+        "labelWidth": 110,
+        "textWidth": 110,
+        "lines": 2,
+        "clipped": false,
+        "withinViewport": true
+      }
+    ],
+    "controls": [
+      {
+        "label": "Filtrera efter Krav-ID",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravtext",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravområde",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kategori",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Typ",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Filtrera efter Kravversionsstatus",
+        "width": 28,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Visa fullständig text",
+        "width": 98,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Krav-ID",
+        "width": 96,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravtext",
+        "width": 905,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravområde",
+        "width": 95,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kategori",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Typ",
+        "width": 87,
+        "height": 28,
+        "withinViewport": true
+      },
+      {
+        "label": "Sortera efter Kravversionsstatus",
+        "width": 128,
+        "height": 35,
+        "withinViewport": true
+      }
+    ],
+    "headerHeight": 159,
+    "workspaceWidth": 1534,
+    "horizontalScroll": false
+  }
+]

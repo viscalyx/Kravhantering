@@ -1,0 +1,89 @@
+/* THROWAWAY #1347. All rules are confined to the opt-in requirements table. */
+:where([data-prototype1347]:not([data-prototype1347="before"]))
+[data-requirement-header-label] {
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+:where([data-prototype1347]:not([data-prototype1347="before"]))
+  [data-requirement-header-control] {
+  gap: 4px;
+  align-items: center;
+}
+:where([data-prototype1347]:not([data-prototype1347="before"]))
+  [data-requirement-header-control]
+  > button {
+  min-width: 28px;
+  min-height: 28px;
+}
+:where([data-prototype1347]:not([data-prototype1347="before"]))
+  [data-requirement-header-control]
+  > div
+  > button,
+[data-prototype1347-filter-strip]
+  > [data-prototype1347-filter-group]
+  > div
+  > button {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 6px;
+}
+[data-prototype1347-wrap] {
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--color-secondary-700);
+  background: var(--color-white);
+  border: 1px solid var(--color-secondary-300);
+}
+.dark [data-prototype1347-wrap] {
+  color: var(--color-secondary-100);
+  background: var(--color-secondary-800);
+  border-color: var(--color-secondary-600);
+}
+[data-prototype1347-wrap][aria-pressed="true"] {
+  color: var(--color-primary-700);
+  background: var(--color-primary-100);
+  border-color: var(--color-primary-400);
+}
+.dark [data-prototype1347-wrap][aria-pressed="true"] {
+  color: var(--color-primary-200);
+  background: var(--color-primary-950);
+}
+[data-prototype1347="B"] [data-requirement-header-control] {
+  display: grid;
+  grid-template-rows: minmax(32px, auto) 28px;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+}
+[data-prototype1347="B"] [data-requirement-header-control] > :first-child {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+[data-prototype1347="B"] [data-prototype1347-wrap] {
+  justify-self: start;
+}
+[data-prototype1347-filter-strip] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-secondary-200);
+}
+.dark [data-prototype1347-filter-strip] {
+  border-color: var(--color-secondary-700);
+}
+[data-prototype1347-filter-strip] > [data-prototype1347-filter-group] {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 12px;
+}
+[data-prototype1347-filter-strip] [data-prototype1347-wrap] {
+  min-width: 28px;
+  min-height: 28px;
+  margin-left: auto;
+}

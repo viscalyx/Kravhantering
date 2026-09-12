@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Issue 1347 · Header layout review</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f6fa;color:#182235;font:15px/1.55 system-ui,sans-serif}main{max-width:1600px;margin:auto;padding:28px}h1{margin:8px 0;font-size:30px;line-height:1.2}h2{font-size:21px}p{max-width:90ch}.tag{font-size:12px;letter-spacing:.1em;font-weight:750;color:#4932a9}a{color:#4436b5}section{background:#fff;border:1px solid #dce1ec;border-radius:16px;padding:20px;margin-top:20px}.controls{display:flex;gap:16px;flex-wrap:wrap;align-items:end}label{display:grid;gap:4px;font-size:13px;font-weight:650}select,button{min-height:36px;border:1px solid #b7c0d1;border-radius:7px;background:white;padding:6px 10px;color:inherit;font:inherit}button{cursor:pointer}button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #7666ed;outline-offset:2px}#note{padding:12px 0;margin:0}.metrics{display:flex;gap:12px;flex-wrap:wrap}.metric{padding:10px 14px;background:#eef0fb;border-radius:8px}.images{display:grid;grid-template-columns:1fr 1fr;gap:16px}.images figure{margin:0;min-width:0}.images img{width:100%;height:auto;border:1px solid #dce1ec;vertical-align:top}figcaption{font-weight:650;margin-bottom:6px}.overlay{position:relative;overflow:hidden;background:white;border:1px solid #dce1ec}.overlay img{display:block;width:100%}.overlay .after{position:absolute;inset:0;clip-path:inset(0 50% 0 0)}.overlay .line{position:absolute;top:0;bottom:0;left:50%;width:2px;background:#ef476f}.slider{display:flex;align-items:center;gap:12px;margin:12px 0}.slider input{flex:1}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;vertical-align:top;padding:10px;border-bottom:1px solid #e2e6ef}th{background:#f3f5fa}code{background:#eef0f5;padding:2px 5px;border-radius:4px}details{margin-top:20px}summary{cursor:pointer;font-weight:650}pre{overflow:auto;max-height:500px;background:#101829;color:#dce7fa;padding:16px;border-radius:8px;white-space:pre-wrap;font-size:13px}.hidden{display:none}.hint{color:#59657a;font-size:13px}.table-scroll{overflow:auto}@media(max-width:800px){main{padding:14px}.images{grid-template-columns:1fr}h1{font-size:25px}section{padding:14px}}
+</style>
+<main>
+<span class="tag">THROWAWAY PROTOTYPE · ISSUE #1347 · NO DESIGN SELECTED</span>
+<h1>Give requirement headers room to be understood</h1>
+<p>Compare the original page with three working layout options. These are actual Chromium captures with the same development data. This file works offline and contains every screenshot.</p>
+<p><a href="http://localhost:3003/sv/requirements?variant=A">Open the interactive preview</a> · Run <code>npm run prototype:1347</code> in the prototype worktree. Local login: <code>ada.admin</code> / <code>devpass</code>.</p>
+<section>
+<div class="controls">
+<label>Proposed layout<select id="variant"><option value="A">A · Compact inline controls</option><option value="B">B · Labels above controls</option><option value="C">C · Shared filter strip</option></select></label>
+<label>Window<select id="viewport"><option value="1440">1440 × 900</option><option value="1920">1920 × 1080</option></select></label>
+<label>Navigation<select id="nav"><option value="expanded">Expanded</option><option value="collapsed">Collapsed</option></select></label>
+<label>Theme<select id="theme"><option value="light">Light</option><option value="dark">Dark</option></select></label>
+<label>Comparison<select id="mode"><option value="overlay">Before/after overlay</option><option value="side">Side by side</option></select></label>
+</div>
+<p id="note"></p>
+<div class="metrics" id="metrics" aria-live="polite"></div>
+<div class="slider" id="sliderRow"><span>Proposed ←</span><input aria-label="Reveal proposed layout" id="reveal" type="range" min="0" max="100" value="50"><span>→ Before</span></div>
+<div id="overlay" class="overlay"><img id="base" alt="Original requirement-library layout"><div class="after" id="afterClip"><img id="proposal" alt="Proposed requirement-library layout"></div><div class="line" id="line"></div></div>
+<div id="side" class="images hidden"><figure><figcaption>Before</figcaption><img id="sideBefore" alt="Original layout"></figure><figure><figcaption id="sideCaption">Proposed</figcaption><img id="sideAfter" alt="Proposed layout"></figure></div>
+<p><button id="openBefore">Open original at full resolution</button> <button id="openAfter">Open proposal at full resolution</button></p>
+<p class="hint">The taller B/C headers shift rows down. The overlay intentionally preserves that difference. Narrower category/type columns are an explicit tradeoff; compare their row text as well as the headers.</p>
+</section>
+<section>
+<h2>Changes and how to verify each one</h2>
+<div class="table-scroll"><table><thead><tr><th>Change</th><th>Verification</th></tr></thead><tbody>
+<tr><td>A: compact inline controls</td><td>Read full labels beside smaller 28 px controls. Compare the low header height with Before.</td></tr>
+<tr><td>B: label-first header</td><td>Find labels in the top row and filter/wrap controls in the row below.</td></tr>
+<tr><td>C: shared filter strip</td><td>Open each labelled filter in the strip. Sorting remains in column headers and active chips remain with columns.</td></tr>
+<tr><td>Full domain terms</td><td>Read Kravområde and Kravversionsstatus without tooltips. Labels use at most two lines, with Swedish compound break opportunities.</td></tr>
+<tr><td>Text-first width allocation</td><td>Reset and compare measured text widths. At 1440 px with expanded navigation: 360 px Before, 406 px A, 442 px B/C.</td></tr>
+<tr><td>Narrower metadata columns</td><td>Compare category/type values. Decide whether the extra row-text truncation is acceptable.</td></tr>
+<tr><td>Labelled wrap toggle</td><td>Click Radbryt, then focus it and press Space. Check text wrapping and the visible on/off label.</td></tr>
+<tr><td>Existing sort/filter behavior</td><td>Sort by area, open its filter, select Användbarhet, inspect count/chip, then remove it.</td></tr>
+<tr><td>Scoped prototype width limits</td><td>Resize a narrow column: peers must not snap wider. Grown requirement text can retain widths above the original 960 px drag cap.</td></tr>
+<tr><td>Existing resizing</td><td>Drag a divider, then focus it and press arrow keys. Only the column on its left should change.</td></tr>
+<tr><td>Column selection and reset</td><td>Show Version, switch variants, then use Reset layout and filters in the review panel.</td></tr>
+<tr><td>In-memory state</td><td>Switch variants to retain experimental settings. Reload to restore defaults. The URL retains only the chosen variant.</td></tr>
+<tr><td>Bottom switcher</td><td>Use buttons and ←/→ to cycle through Before/A/B/C. Check URL updates and wraparound. Arrows in inputs/resize handles must keep their normal behavior.</td></tr>
+<tr><td>Review/state panel</td><td>Open Granska / tillstånd; inspect filters, sort, widths, label lines and clipping. Click Measure layout after changes.</td></tr>
+<tr><td>Page context and localization</td><td>Switch navigation and theme, scroll, expand a row, and inspect English labels. Use Developer Mode to inspect named controls.</td></tr>
+<tr><td>Isolated preview runtime</td><td>Open port 3003 and use the separate login session. Product-changing requests are blocked; reads and layout exploration work.</td></tr>
+<tr><td>Offline evidence</td><td>Use all eight combinations above. Compare full-resolution screenshots and inspect the recorded metrics below.</td></tr>
+</tbody></table></div>
+</section>
+<section><h2>What this settles</h2><p>All three designs remove default header clipping in the captured desktop matrix and give more space to requirement text. A uses the least height; B creates a clearer label/control hierarchy; C makes filter labels explicit. Choosing a winner, or combining ideas, remains a design decision.</p><p>Manual widths, custom columns and narrow screens may still require horizontal scrolling. Column preferences are deliberately temporary in this prototype. Production implementation must preserve saved preferences and receive normal regression and accessibility testing.</p><details><summary>Current capture measurements</summary><pre id="data"></pre></details><details><summary>Complete review guide</summary><pre id="guide"></pre></details></section>
+<p class="hint">Source: prototype/issue-1347 · base 5ca568bb · captures 2026-09-12. The review toolbar is prototype-only.</p>
+</main>
+<script id="payload" type="application/json">__PAYLOAD__</script>
+<script>
+const payload=JSON.parse(document.getElementById('payload').textContent);
+const el=id=>document.getElementById(id);let before,after;
+const descriptions={A:'A keeps sorting and filters inline; metadata columns become narrower and the wrap control gains a visible label.',B:'B gives the label its own row, with filters below. More vertical space buys a clearer hierarchy.',C:'C moves column filters into a shared labelled strip and leaves just sorting in each column header.'};
+function update(){const v=el('variant').value,w=Number(el('viewport').value),n=el('nav').value,t=el('theme').value;before=payload.rows.find(r=>r.variant==='before'&&r.width===w&&r.navigation===n&&r.theme===t);after=payload.rows.find(r=>r.variant===v&&r.width===w&&r.navigation===n&&r.theme===t);el('base').src=el('sideBefore').src=payload.images[before.filename];el('proposal').src=el('sideAfter').src=payload.images[after.filename];el('sideCaption').textContent=v+' · Proposed';el('note').textContent=descriptions[v];const text=r=>r.columns.find(c=>c.id==='description').width;el('metrics').replaceChildren(...[`Requirement text: ${text(before)} → ${text(after)} px`,`Clipped labels: ${before.columns.filter(c=>c.clipped).length} → ${after.columns.filter(c=>c.clipped).length}`,`Sticky area: ${before.headerHeight} → ${after.headerHeight} px`,`Horizontal scroll: ${before.horizontalScroll?'yes':'no'} → ${after.horizontalScroll?'yes':'no'}`].map(s=>{const d=document.createElement('span');d.className='metric';d.textContent=s;return d}));el('overlay').classList.toggle('hidden',el('mode').value==='side');el('sliderRow').classList.toggle('hidden',el('mode').value==='side');el('side').classList.toggle('hidden',el('mode').value!=='side');el('data').textContent=JSON.stringify({before,after},null,2)}
+for(const id of ['variant','viewport','nav','theme','mode'])el(id).addEventListener('change',update);
+el('reveal').addEventListener('input',()=>{el('afterClip').style.clipPath=`inset(0 ${100-el('reveal').value}% 0 0)`;el('line').style.left=el('reveal').value+'%'});
+function full(row){const win=window.open('','_blank');if(!win)return;win.document.title=row.filename;const img=win.document.createElement('img');img.src=payload.images[row.filename];img.alt=row.filename;win.document.body.style.margin='0';win.document.body.append(img)}
+el('openBefore').onclick=()=>full(before);el('openAfter').onclick=()=>full(after);el('guide').textContent=payload.guide;update();
+</script>
+</html>

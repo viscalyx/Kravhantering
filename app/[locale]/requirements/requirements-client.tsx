@@ -26,6 +26,11 @@ import LazyRequirementsImportDialog, {
   type InitialRequirementsImport,
 } from '@/components/LazyRequirementsImportDialog'
 import ListWorkspace from '@/components/ListWorkspace'
+import Prototype1347Switcher from '@/components/prototype-1347/Prototype1347Switcher'
+import {
+  getPrototype1347Variant,
+  prototype1347Enabled,
+} from '@/components/prototype-1347/variants'
 import RequirementsTable from '@/components/RequirementsTable'
 import { useRequirementDetailPrefetchIntent } from '@/hooks/useRequirementDetailPrefetchIntent'
 import {
@@ -332,7 +337,11 @@ export default function RequirementsClient({
     requirementListResourceReducer,
     INITIAL_REQUIREMENT_LIST_RESOURCE_STATE,
   )
+  const [prototypeResetVersion, setPrototypeResetVersion] = useState(0)
   const searchParams = useSearchParams()
+  const prototype1347Variant = prototype1347Enabled
+    ? getPrototype1347Variant(searchParams.get('variant'))
+    : undefined
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [pinnedRow, setPinnedRow] = useState<RequirementRow | null>(null)
   const [aiModalOpen, setAiModalOpen] = useState(false)
@@ -1000,9 +1009,11 @@ export default function RequirementsClient({
 
     try {
       nextVisibleColumns = parseRequirementVisibleColumns(
-        globalThis.localStorage.getItem(
-          REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
-        ),
+        prototype1347Enabled
+          ? null
+          : globalThis.localStorage.getItem(
+              REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
+            ),
         { columnDefaults: normalizedColumnDefaults },
       )
     } catch {
@@ -1027,7 +1038,9 @@ export default function RequirementsClient({
     try {
       setColumnWidths(
         parseRequirementColumnWidths(
-          globalThis.localStorage.getItem(columnWidthsStorageKey),
+          prototype1347Enabled
+            ? null
+            : globalThis.localStorage.getItem(columnWidthsStorageKey),
         ),
       )
     } catch {
@@ -1038,7 +1051,7 @@ export default function RequirementsClient({
   }, [columnWidthsStorageKey])
 
   useEffect(() => {
-    if (!hasLoadedColumnPreferences) {
+    if (prototype1347Enabled || !hasLoadedColumnPreferences) {
       return
     }
 
@@ -1055,7 +1068,10 @@ export default function RequirementsClient({
   }, [hasLoadedColumnPreferences, normalizedColumnDefaults, visibleColumns])
 
   useEffect(() => {
-    if (hydratedColumnWidthsStorageKey !== columnWidthsStorageKey) {
+    if (
+      prototype1347Enabled ||
+      hydratedColumnWidthsStorageKey !== columnWidthsStorageKey
+    ) {
       return
     }
 
@@ -1386,6 +1402,7 @@ export default function RequirementsClient({
                   getName={getName}
                   getStatusName={getStatusName}
                   hasMore={hasMore && resourceState.status === 'ready'}
+                  key={prototype1347Variant ? prototypeResetVersion : undefined}
                   loading={false}
                   loadingMore={resourceState.status === 'page-loading'}
                   locale={locale}
@@ -1437,6 +1454,7 @@ export default function RequirementsClient({
                   onVisibleColumnsChange={setVisibleColumns}
                   pinnedIds={pinnedIds}
                   priorityLevels={priorityLevels}
+                  prototype1347Variant={prototype1347Variant}
                   qualityCharacteristics={qualityCharacteristics}
                   renderExpanded={id => (
                     <RequirementDetailClient
@@ -1472,6 +1490,19 @@ export default function RequirementsClient({
           </div>
         </ListWorkspace>
       </div>
+      {prototype1347Variant && (
+        <Prototype1347Switcher
+          onReset={() => {
+            setPrototypeResetVersion(value => value + 1)
+            setColumnWidths({})
+            setVisibleColumns(defaultVisibleColumns)
+            setFilters(DEFAULT_FILTERS)
+            setSortState(DEFAULT_REQUIREMENT_SORT)
+          }}
+          state={{ visibleColumns, columnWidths, filters, sortState }}
+          variant={prototype1347Variant}
+        />
+      )}
       {pdfDownload.dialog}
       <LazyAiRequirementGenerator
         aiGenerationAvailability={aiGenerationAvailability}

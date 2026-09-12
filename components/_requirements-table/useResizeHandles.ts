@@ -50,6 +50,7 @@ interface ScrollFadeState {
 interface UseResizeHandlesParams {
   canResizeColumns: boolean
   checkboxColumnWidth: number
+  clampColumnWidth?: typeof clampRequirementColumnWidth
   columnDefinitions: ColumnDefinition[]
   columnState: UseColumnStateResult
   expandedDetailRowId: number | null
@@ -98,6 +99,7 @@ interface ResizeState {
  * expanded-detail cell bounds (which clip the resize handles).
  */
 export function useResizeHandles({
+  clampColumnWidth = clampRequirementColumnWidth,
   canResizeColumns,
   checkboxColumnWidth,
   columnDefinitions,
@@ -497,7 +499,7 @@ export function useResizeHandles({
         return
       }
 
-      const nextWidth = clampRequirementColumnWidth(
+      const nextWidth = clampColumnWidth(
         activeResize.columnId,
         activeResize.startWidth + (event.clientX - activeResize.startX),
       )
@@ -522,7 +524,12 @@ export function useResizeHandles({
       document.body.style.removeProperty('cursor')
       document.body.style.removeProperty('user-select')
     }
-  }, [handleResizePointerCancel, handleResizePointerUp, scheduleResizePreview])
+  }, [
+    handleResizePointerCancel,
+    handleResizePointerUp,
+    scheduleResizePreview,
+    clampColumnWidth,
+  ])
 
   // Scroll/resize listener wiring for fades + handle offsets + expanded bounds.
   useEffect(() => {
@@ -638,7 +645,7 @@ export function useResizeHandles({
       commitColumnWidthOverrides(
         buildColumnWidthOverrides({
           ...visibleWidths,
-          [columnId]: clampRequirementColumnWidth(
+          [columnId]: clampColumnWidth(
             columnId,
             visibleWidths[columnId] + delta,
           ),
@@ -646,6 +653,7 @@ export function useResizeHandles({
       )
     },
     [
+      clampColumnWidth,
       buildColumnWidthOverrides,
       canResizeColumns,
       cancelResizePreviewFrame,

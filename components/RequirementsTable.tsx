@@ -1,6 +1,12 @@
 'use client'
 
 import {
+  clampPrototype1347Width,
+  type Prototype1347Variant,
+  prototypeWidths,
+} from '@/components/prototype-1347/variants'
+import '@/components/prototype-1347/prototype.css'
+import {
   AlertCircle,
   AlignLeft,
   ArrowDown,
@@ -55,6 +61,7 @@ import {
 import { getStatusIconComponent } from '@/lib/icons/status-icon-components'
 import {
   type AreaOption,
+  clampRequirementColumnWidth,
   clearRequirementFiltersForHiddenColumns,
   DEFAULT_REQUIREMENT_SORT,
   type FilterOption,
@@ -128,6 +135,7 @@ export interface RequirementsTableProps {
   onVisibleColumnsChange?: (value: RequirementColumnId[]) => void
   pinnedIds?: Set<number>
   priorityLevels?: PriorityLevelOption[]
+  prototype1347Variant?: Prototype1347Variant
   qualityCharacteristics?: QualityCharacteristicOption[]
   renderExpanded?: (id: number) => ReactNode
   requirementPackageCatalogStatus?: 'failed' | 'loaded' | 'loading'
@@ -1497,6 +1505,7 @@ function FilterChips({
 }
 
 export default function RequirementsTable({
+  prototype1347Variant,
   areas = [],
   categories = [],
   columnDefaults,
@@ -1552,6 +1561,7 @@ export default function RequirementsTable({
   wrapDescription = false,
 }: RequirementsTableProps) {
   const t = useTranslations('requirement')
+  const tp = useTranslations('prototype1347')
   const tStatusLabel = useTranslations('requirement.statusLabel')
   const tc = useTranslations('common')
   const tfb = useTranslations('improvementSuggestion')
@@ -1596,10 +1606,26 @@ export default function RequirementsTable({
   const columnDefinitions = allColumns.filter(column =>
     visibleColumnSet.has(column.id),
   )
+  const clampColumnWidth =
+    prototype1347Variant && prototype1347Variant !== 'before'
+      ? clampPrototype1347Width
+      : clampRequirementColumnWidth
   const configuredColumnWidths = Object.fromEntries(
     columnDefinitions.map(column => [
       column.id,
-      getRequirementColumnWidth(column.id, columnWidths),
+      columnWidths[column.id] === undefined &&
+      prototype1347Variant &&
+      prototype1347Variant !== 'before'
+        ? ((
+            prototypeWidths[prototype1347Variant] as Partial<
+              Record<RequirementColumnId, number>
+            >
+          )[column.id] ?? getRequirementColumnWidth(column.id, columnWidths))
+        : clampColumnWidth(
+            column.id,
+            columnWidths[column.id] ??
+              getRequirementColumnWidth(column.id, columnWidths),
+          ),
     ]),
   ) as Record<RequirementColumnId, number>
   const tableRootRef = useRef<HTMLDivElement>(null)
@@ -1622,6 +1648,7 @@ export default function RequirementsTable({
     {} as Record<RequirementColumnId, number>,
   )
   const columnState = useColumnState({
+    clampColumnWidth,
     allColumns,
     columnDefinitions,
     columnWidths,
@@ -1651,6 +1678,7 @@ export default function RequirementsTable({
       : null
   const checkboxColumnWidth = selectable ? 36 : 0
   const resize = useResizeHandles({
+    clampColumnWidth,
     canResizeColumns,
     checkboxColumnWidth,
     columnDefinitions,
@@ -2945,6 +2973,36 @@ export default function RequirementsTable({
         )
       : null
 
+  const renderWrapControl = () => (
+    <button
+      aria-label={descriptionWrapped ? tc('showShortText') : tc('showFullText')}
+      aria-pressed={descriptionWrapped}
+      data-prototype1347-wrap={
+        prototype1347Variant && prototype1347Variant !== 'before'
+          ? ''
+          : undefined
+      }
+      {...devMarker({
+        context: 'requirements table',
+        name: 'button',
+        value: 'wrap requirement text',
+      })}
+      className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded text-secondary-400 hover:text-secondary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-secondary-50 dark:focus-visible:ring-offset-secondary-900"
+      onClick={() => setDescriptionWrapped(v => !v)}
+      title={descriptionWrapped ? tc('showShortText') : tc('showFullText')}
+      type="button"
+    >
+      {descriptionWrapped ? (
+        <WrapText aria-hidden="true" focusable={false} size={16} />
+      ) : (
+        <AlignLeft aria-hidden="true" focusable={false} size={16} />
+      )}
+      {prototype1347Variant && prototype1347Variant !== 'before' && (
+        <span>{tp(descriptionWrapped ? 'wrapOn' : 'wrapOff')}</span>
+      )}
+    </button>
+  )
+
   const renderTableHeader = (mode: 'interactive' | 'semantic') => (
     <thead className={mode === 'semantic' ? 'h-0 overflow-hidden' : undefined}>
       <tr className={mode === 'semantic' ? 'h-0 text-left' : 'text-left'}>
@@ -2992,6 +3050,28 @@ export default function RequirementsTable({
         )}
         {columnDefinitions.map((column, columnIndex) => {
           const label = getColumnLabel(column.id)
+          const headerLabel =
+            prototype1347Variant &&
+            prototype1347Variant !== 'before' &&
+            locale === 'sv' ? (
+              label === 'Kravområde' ? (
+                <>
+                  Krav
+                  <wbr />
+                  område
+                </>
+              ) : label === 'Kravversionsstatus' ? (
+                <>
+                  Kravversions
+                  <wbr />
+                  status
+                </>
+              ) : (
+                label
+              )
+            ) : (
+              label
+            )
           const isSortable = column.canSort
           const isActiveSort = isSortable && sortState.by === column.id
           const sortTooltip = getSortTooltip(label, isActiveSort)
@@ -3070,7 +3150,7 @@ export default function RequirementsTable({
                             className="min-w-0 flex-1 truncate"
                             data-requirement-header-label={column.id}
                           >
-                            {label}
+                            {headerLabel}
                           </span>
                           {getSortIcon(column.id as RequirementSortField)}
                         </button>
@@ -3079,42 +3159,14 @@ export default function RequirementsTable({
                           className="inline-flex min-h-11 min-w-0 flex-1 items-center truncate"
                           data-requirement-header-label={column.id}
                         >
-                          {label}
+                          {headerLabel}
                         </span>
                       )}
-                      {renderFilterControl(column.id)}
-                      {column.id === 'description' && (
-                        <button
-                          aria-label={
-                            descriptionWrapped
-                              ? tc('showShortText')
-                              : tc('showFullText')
-                          }
-                          aria-pressed={descriptionWrapped}
-                          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded text-secondary-400 hover:text-secondary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-secondary-50 dark:focus-visible:ring-offset-secondary-900"
-                          onClick={() => setDescriptionWrapped(v => !v)}
-                          title={
-                            descriptionWrapped
-                              ? tc('showShortText')
-                              : tc('showFullText')
-                          }
-                          type="button"
-                        >
-                          {descriptionWrapped ? (
-                            <WrapText
-                              aria-hidden="true"
-                              focusable={false}
-                              size={16}
-                            />
-                          ) : (
-                            <AlignLeft
-                              aria-hidden="true"
-                              focusable={false}
-                              size={16}
-                            />
-                          )}
-                        </button>
-                      )}
+                      {prototype1347Variant !== 'C' &&
+                        renderFilterControl(column.id)}
+                      {column.id === 'description' &&
+                        prototype1347Variant !== 'C' &&
+                        renderWrapControl()}
                     </div>
                   </div>
                   {renderFilterChips(column.id)}
@@ -3252,7 +3304,11 @@ export default function RequirementsTable({
   }
 
   return (
-    <div className="relative scroll-mt-20" ref={tableRootRef}>
+    <div
+      className="relative scroll-mt-20"
+      data-prototype1347={prototype1347Variant}
+      ref={tableRootRef}
+    >
       {showSpinner && (
         <output
           aria-live="polite"
@@ -3402,6 +3458,30 @@ export default function RequirementsTable({
               )}
             </div>
           )}
+        {prototype1347Variant === 'C' && (
+          <div
+            data-prototype1347-filter-strip=""
+            {...devMarker({
+              context: 'requirements table',
+              name: 'toolbar',
+              value: 'prototype shared filters',
+            })}
+          >
+            {columnDefinitions
+              .map(column => ({
+                column,
+                control: renderFilterControl(column.id),
+              }))
+              .filter(({ control }) => control !== null)
+              .map(({ column, control }) => (
+                <div data-prototype1347-filter-group="" key={column.id}>
+                  <span>{getColumnLabel(column.id)}</span>
+                  {control}
+                </div>
+              ))}
+            {renderWrapControl()}
+          </div>
+        )}
         <div className="overflow-hidden border-b border-secondary-200/35 bg-secondary-50 dark:border-secondary-700/35 dark:bg-secondary-900">
           <div
             className="relative"

@@ -465,6 +465,24 @@ export default async function proxy(request: NextRequest) {
     return finalizeResponse(request, csrfResponse, ids)
   }
 
+  // THROWAWAY #1347: real reads, in-memory layout exploration, no product writes.
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_PROTOTYPE_1347 === 'true' &&
+    !['GET', 'HEAD', 'OPTIONS'].includes(request.method) &&
+    !request.nextUrl.pathname.startsWith('/api/auth/') &&
+    !request.nextUrl.pathname.startsWith('/_next/')
+  ) {
+    return finalizeResponse(
+      request,
+      NextResponse.json(
+        { error: 'Prototype #1347 is read-only. No data saved.' },
+        { status: 409, headers: { 'Cache-Control': 'no-store' } },
+      ),
+      ids,
+    )
+  }
+
   if (deferTrailingSlashUntilAfterSecurity) {
     const trailingSlashResponse = handleTrailingSlash(request)
     if (trailingSlashResponse) {

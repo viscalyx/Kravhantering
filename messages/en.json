@@ -3799,5 +3799,44 @@
   },
   "safeMarkdown": {
     "imageOmitted": "Image omitted"
+  },
+  "prototype1347": {
+    "badge": "PROTOTYPE #1347",
+    "question": "Which header layout is easiest to read and use?",
+    "scope": "Real development data. Layout settings stay in memory; product writes are blocked. No design has been selected.",
+    "before": {
+      "name": "Before",
+      "description": "Original header layout and column widths. Labels truncate and controls compete with text."
+    },
+    "A": {
+      "name": "A · Compact",
+      "description": "Inline sorting and 28 px filter controls, two-line labels, narrower metadata columns, and a labelled wrap toggle. The shortest header."
+    },
+    "B": {
+      "name": "B · Label first",
+      "description": "Labels occupy the top of each column. Filter and wrap controls use a separate row below. More label space and more header height."
+    },
+    "C": {
+      "name": "C · Filter strip",
+      "description": "All existing column filters move into a shared labelled strip. Column headers contain only labels and sorting. Wrapping sits at the end of the strip."
+    },
+    "wrapOn": "Wrap: on",
+    "wrapOff": "Wrap: off",
+    "review": "Review / state",
+    "close": "Close review",
+    "previous": "Previous variant",
+    "next": "Next variant",
+    "switcher": "Prototype layout variants",
+    "reset": "Reset layout and filters",
+    "measure": "Measure layout",
+    "state": "Current state and measured layout",
+    "checks": {
+      "labels": "Compare Before with A, B and C. Read Requirement area and Requirement version status without a tooltip.",
+      "controls": "Sort by a header, open a column filter, select and clear a value. Check the direction icon, count and filter chips.",
+      "text": "Toggle wrapping with click and Space. Compare long text and the space allocated to requirement text.",
+      "resize": "Drag a divider, then focus it and press an arrow key. Only the column on its left should change.",
+      "settings": "Change visible columns; switch variants to compare the same settings. Reset for a fair default comparison. Reload resets prototype column settings.",
+      "matrix": "Review at 1440 × 900 and 1920 × 1080, with navigation expanded/collapsed and light/dark themes. Scroll and expand a row."
+    }
   }
 }

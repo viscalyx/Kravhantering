@@ -3799,5 +3799,44 @@
   },
   "safeMarkdown": {
     "imageOmitted": "Bild utelämnad"
+  },
+  "prototype1347": {
+    "badge": "PROTOTYP #1347",
+    "question": "Vilket tabellhuvud är lättast att läsa och använda?",
+    "scope": "Befintliga utvecklingsdata. Layoutval finns i minnet; verksamhetsändringar är spärrade. Ingen utformning är vald.",
+    "before": {
+      "name": "Före",
+      "description": "Ursprungligt tabellhuvud och ursprungliga kolumnbredder. Rubriker kapas och kontroller konkurrerar med texten."
+    },
+    "A": {
+      "name": "A · Kompakt",
+      "description": "Sortering och 28 px filterkontroller på samma rad, tvåradiga rubriker, smalare metadatakolumner och en namngiven radbrytningsknapp. Lägst tabellhuvud."
+    },
+    "B": {
+      "name": "B · Etiketten först",
+      "description": "Etiketten använder kolumnens översta rad. Filter och radbrytning får en egen rad nedanför. Mer plats för rubriken och högre tabellhuvud."
+    },
+    "C": {
+      "name": "C · Filterrad",
+      "description": "Befintliga kolumnfilter flyttas till en gemensam rad med etiketter. Kolumnrubrikerna innehåller endast text och sortering. Radbrytning finns sist i filterraden."
+    },
+    "wrapOn": "Radbryt: på",
+    "wrapOff": "Radbryt: av",
+    "review": "Granska / tillstånd",
+    "close": "Stäng granskning",
+    "previous": "Föregående variant",
+    "next": "Nästa variant",
+    "switcher": "Prototypens layoutvarianter",
+    "reset": "Återställ layout och filter",
+    "measure": "Mät layout",
+    "state": "Aktuellt tillstånd och uppmätt layout",
+    "checks": {
+      "labels": "Jämför Före med A, B och C. Läs Kravområde och Kravversionsstatus utan hjälp av en tooltip.",
+      "controls": "Sortera via en rubrik, öppna ett kolumnfilter, välj och ta bort ett värde. Kontrollera sorteringsriktning, antal och filtermarkeringar.",
+      "text": "Växla radbrytning med klick och mellanslag. Jämför långa texter och kravtextens utrymme.",
+      "resize": "Dra en kolumnavdelare, fokusera den sedan och tryck en piltangent. Endast kolumnen till vänster ska ändras.",
+      "settings": "Ändra synliga kolumner och växla variant med samma inställningar. Återställ för att jämföra standardvyn. Omladdning återställer prototypens kolumnval.",
+      "matrix": "Granska vid 1440 × 900 och 1920 × 1080, med infälld/utfälld navigation och ljust/mörkt tema. Rulla och expandera en rad."
+    }
   }
 }

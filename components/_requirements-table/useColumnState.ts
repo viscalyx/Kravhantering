@@ -25,6 +25,7 @@ interface UseColumnStateParams {
     id: RequirementColumnId
     resizable: boolean
   }[]
+  clampColumnWidth?: typeof clampRequirementColumnWidth
   columnDefinitions: ColumnDefinition[]
   columnWidths: RequirementColumnWidths
   filterValues: FilterValues
@@ -71,6 +72,7 @@ export interface UseColumnStateResult {
  * without re-renders.
  */
 export function useColumnState({
+  clampColumnWidth = clampRequirementColumnWidth,
   allColumns,
   columnDefinitions,
   columnWidths,
@@ -150,7 +152,7 @@ export function useColumnState({
           continue
         }
 
-        const nextWidth = clampRequirementColumnWidth(columnId, width)
+        const nextWidth = clampColumnWidth(columnId, width)
         if (nextWidth === column.defaultWidthPx) {
           delete nextWidths[columnId]
         } else {
@@ -160,7 +162,7 @@ export function useColumnState({
 
       return nextWidths
     },
-    [allColumns],
+    [allColumns, clampColumnWidth],
   )
 
   const commitColumnWidthOverrides = useCallback(
@@ -192,14 +194,19 @@ export function useColumnState({
         cell?.getBoundingClientRect().width ?? cell?.offsetWidth ?? 0,
       )
 
-      snapshot[column.id] = clampRequirementColumnWidth(
+      snapshot[column.id] = clampColumnWidth(
         column.id,
         measuredWidth > 0 ? measuredWidth : (fallback[column.id] ?? 0),
       )
     }
 
     return snapshot
-  }, [columnDefinitions, headerCellRefs, renderedColumnWidthsRef])
+  }, [
+    columnDefinitions,
+    headerCellRefs,
+    renderedColumnWidthsRef,
+    clampColumnWidth,
+  ])
 
   const cancelResizePreviewFrame = useCallback(() => {
     if (
