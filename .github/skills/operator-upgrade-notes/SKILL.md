@@ -2,9 +2,10 @@
 name: operator-upgrade-notes
 description: >-
   Review local PR changes against the target branch and decide whether
-  production operators need upgrade notes. Use for committed, staged,
-  unstaged, or untracked changes; breaking behavior; deployment,
-  configuration, or data migration impact; or proposed committed operator guidance.
+  production operators need upgrade notes, then write required guidance.
+  Use for committed, staged, unstaged, or untracked changes; breaking behavior;
+  deployment, configuration, or data migration impact; or proposed committed
+  operator guidance.
 ---
 
 # Operator Upgrade Notes
@@ -56,8 +57,11 @@ prepare for before rollout.
 5. Apply every trigger below to the inspected behavior. The assessment is
    complete when each operator-relevant change is either represented in the
    notes or excluded by the no-notes rule.
-6. Compare required guidance with the committed Unreleased section. Report
-   adequate existing notes, a no-notes decision, or proposed missing text.
+6. Compare required guidance with the Unreleased section in
+   `docs/operations/operator-upgrade-notes.md`. Add or correct missing guidance
+   in the Unreleased section only.
+   For assessment-only requests, report adequacy against the requested review
+   set and return proposed text for any gaps.
 
 ## Note Triggers
 
@@ -87,33 +91,47 @@ operator-visible behavior change.
   managers, or support staff.
 - State what needs attention before upgrade, during rollout, or soon after
   upgrade.
-- Write in ASD-STE100 Simplified Technical English, and use `CONTEXT-MAP.md` if it exists to select the ubiquitous language, otherwise use ubiquitous language from CONTEXT.md.
+- Write in ASD-STE100 Simplified Technical English. Use `CONTEXT-MAP.md` if it
+  exists to select the ubiquitous language; otherwise use `CONTEXT.md`.
 - Keep notes independent of implementation. Omit file paths, code symbols,
   migration numbers, table or column names, tests, commits, PRs, and issues.
 - Omit detailed commands, SQL, configuration-variable lists, and code
   references unless the user asks for a runbook.
 - Use one to three short paragraphs or bullets. Combine related impacts.
 - Use repository operator-note language. Default to English for
-  `.github/pull_request_template.md` and
   `docs/operations/operator-upgrade-notes.md`.
-
-## Delivery
-
-- Store required guidance in `docs/operations/operator-upgrade-notes.md` under
-  `## Unreleased`, committed with the source changes.
-- Select exactly one PR declaration: `Operator notes updated` with a meaningful
-  Unreleased addition or correction, or `No operator notes needed`.
-- No-notes requires no justification. Apply the declarations to automated PRs.
-- During push/PR preparation, show proposed missing text before adding and
-  committing it. Ask for approval only when required guidance is missing.
-- After approval, add and commit the approved guidance before pushing.
-- If required guidance is declined, stop the push. A user no-notes determination
-  or adequate already-committed notes permits progress without another prompt.
-- Preserve existing history and source markers; preview publication keeps the
-  Unreleased section intact.
 
 ## Output
 
-Return the decision, whether committed guidance is adequate, any proposed text,
-and concise evidence for the maintainer. Keep operator guidance separate from
-implementation evidence. Put only the selected declaration in the PR body.
+When no notes are needed, respond exactly with:
+
+```text
+No operator notes needed for Operator Upgrade Impact.
+```
+
+When notes are needed:
+
+- Lead with the warning and decision shown below.
+- State whether guidance is adequate, updated, or missing. Distinguish
+  committed guidance from uncommitted edits and link to the notes document.
+- Include new or revised guidance under `Notes written`, or missing guidance
+  under `Proposed notes` for assessment-only requests. Omit this section when
+  existing guidance is adequate.
+- End with concise evidence for the maintainer. Keep implementation references
+  in the evidence, separate from the standalone operator guidance.
+
+Use this structure, replacing placeholders and choosing the applicable label:
+
+```markdown
+⚠️ Decision: Operator Upgrade Impact — notes required
+
+Guidance: <adequate, updated, or missing; committed or uncommitted; document link>
+
+<Notes written or Proposed notes>:
+
+<standalone operator notes without code references>
+
+Evidence:
+
+<brief evidence summary for the maintainer; code references are allowed here>
+```
