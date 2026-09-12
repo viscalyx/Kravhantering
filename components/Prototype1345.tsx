@@ -1,6 +1,6 @@
 'use client'
 
-// Throwaway #1345: Before + B and D alternatives on the existing list routes.
+// Throwaway #1345: Before + B prototype on the existing list routes.
 import { ArrowLeft, ArrowRight, FlaskConical, Plus, X } from 'lucide-react'
 import type { Route } from 'next'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -17,8 +17,8 @@ import {
 import { devMarker } from '@/lib/developer-mode-markers'
 import './Prototype1345.css'
 
-export type PrototypeVariant = 'before' | 'B' | 'D'
-const variants: PrototypeVariant[] = ['before', 'B', 'D']
+export type PrototypeVariant = 'before' | 'B'
+const variants: PrototypeVariant[] = ['before', 'B']
 const PrototypeContext = createContext({
   enabled: false,
   active: false,
@@ -51,7 +51,7 @@ export function Prototype1345Provider({ children }: { children: ReactNode }) {
     ) ||
     /^\/specifications\/\d+$/.test(route) ||
     (route.startsWith('/requirements/stewardship') &&
-      ['packages', 'norms'].includes(
+      ['packages', 'norms', 'questions', 'information-requests'].includes(
         params.get('tab') ?? route.split('/').at(-1) ?? '',
       ))
   const enabled = prototypeBuild && supported
@@ -74,7 +74,7 @@ export function Prototype1345Provider({ children }: { children: ReactNode }) {
   )
 
   useEffect(() => {
-    if (enabled && (requested === 'A' || requested === 'C')) choose('B')
+    if (enabled && ['A', 'C', 'D'].includes(requested ?? '')) choose('B')
   }, [choose, enabled, requested])
 
   useEffect(() => {
@@ -161,6 +161,11 @@ export function Prototype1345Provider({ children }: { children: ReactNode }) {
     ['/requirements/stewardship?tab=packages', 'requirementPackages'],
     ['/requirements/stewardship?tab=norms', 'normLibrary'],
     ['/requirement-areas', 'areas'],
+    [
+      '/requirements/stewardship?tab=questions',
+      'requirementSelectionQuestions',
+    ],
+    ['/requirements/stewardship?tab=information-requests', 'rfiQuestions'],
   ] as const
 
   return (
@@ -247,7 +252,9 @@ export function Prototype1345Provider({ children }: { children: ReactNode }) {
             <p role="status">
               {t('state', {
                 variant,
-                view: route,
+                view: params.has('tab')
+                  ? `${route}?tab=${params.get('tab')}`
+                  : route,
                 action: lastAction || t('none'),
               })}
             </p>
@@ -308,7 +315,7 @@ export function Prototype1345Header({
   tooltip,
   canCreate = true,
 }: HeaderProps) {
-  const { active, variant, setToolsTarget, simulate } = usePrototype1345()
+  const { active, setToolsTarget, simulate } = usePrototype1345()
   const t = useTranslations('prototype1345')
   if (!active) return null
   const button = canCreate ? (
@@ -337,16 +344,55 @@ export function Prototype1345Header({
       {...devMarker({ context: 'prototype 1345', name: 'list toolbar' })}
     />
   )
-  return variant === 'D' ? (
-    <VariantD button={button} title={title} tools={tools} />
-  ) : (
-    <VariantB button={button} title={title} tools={tools} />
-  )
+  return <VariantB button={button} title={title} tools={tools} />
 }
 interface VariantProps {
   button: ReactNode
   title: ReactNode
   tools: ReactNode
+}
+export function Prototype1345Filters({ children }: { children: ReactNode }) {
+  const { active } = usePrototype1345()
+  const filterRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const filters = filterRef.current
+    const workspace = filters?.closest<HTMLElement>('[data-prototype-1345]')
+    const pane = filters?.closest('[data-specification-detail-list-panel]')
+    const tabs = pane?.firstElementChild
+    if (!active || !filters) return
+    const measure = () => {
+      workspace?.style.setProperty(
+        '--prototype-1345-filters-height',
+        `${filters.getBoundingClientRect().height}px`,
+      )
+      if (tabs)
+        filters.style.setProperty(
+          '--prototype-1345-pane-tabs-height',
+          `${tabs.getBoundingClientRect().height}px`,
+        )
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(filters)
+    if (tabs) observer.observe(tabs)
+    measure()
+    return () => {
+      observer.disconnect()
+      workspace?.style.removeProperty('--prototype-1345-filters-height')
+    }
+  }, [active])
+  if (!active) return children
+  return (
+    <div
+      className="prototype-1345-filters"
+      ref={filterRef}
+      {...devMarker({
+        context: 'prototype 1345',
+        name: 'sticky search and filters',
+      })}
+    >
+      {children}
+    </div>
+  )
 }
 function usePrototypeHeaderMeasure() {
   const headerRef = useRef<HTMLElement>(null)
@@ -377,18 +423,6 @@ export function VariantB({ title, button, tools }: VariantProps) {
       <h1>{title}</h1>
       {tools}
       {button}
-    </header>
-  )
-}
-export function VariantD({ title, button, tools }: VariantProps) {
-  const headerRef = usePrototypeHeaderMeasure()
-  return (
-    <header className="prototype-1345-header prototype-1345-D" ref={headerRef}>
-      <div className="prototype-1345-identity">
-        <h1>{title}</h1>
-        {button}
-      </div>
-      {tools}
     </header>
   )
 }

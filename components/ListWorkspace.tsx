@@ -25,6 +25,8 @@ export default function ListWorkspace({
       'normReferences',
       'specifications',
       'areas',
+      'requirement selection questions',
+      'rfiQuestions',
     ].includes(context)
   return (
     <div

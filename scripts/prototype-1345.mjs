@@ -39,7 +39,7 @@ probe.listen(port, '127.0.0.1', () =>
     })
     if (prepared.status !== 0) process.exit(prepared.status ?? 1)
     console.log(
-      '\nPrototype #1345 — Before / B / D\nOpen http://localhost:3001/sv/requirements?variant=B\nSign in: ada.admin / devpass (local development only).\nReview guide: docs/development/prototype-1345/README.md\nWrites are simulated in this throwaway browser UI.\n',
+      '\nPrototype #1345 — Before / B\nOpen http://localhost:3001/sv/requirements?variant=B\nSign in: ada.admin / devpass (local development only).\nReview guide: docs/development/prototype-1345/README.md\nWrites are simulated in this throwaway browser UI.\n',
     )
     const child = spawn(
       process.execPath,

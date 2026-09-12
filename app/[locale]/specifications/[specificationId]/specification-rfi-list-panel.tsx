@@ -21,6 +21,7 @@ import {
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FormModal from '@/components/FormModal'
+import { Prototype1345Filters } from '@/components/Prototype1345'
 import RfiAssessmentEditor, {
   RfiAssessmentDetails,
 } from '@/components/rfi/RfiAssessmentEditor'
@@ -523,73 +524,75 @@ export default function SpecificationRfiListPanel({
 
   return (
     <div className="space-y-4 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
-            {list.isLocked ? t('lockedMode') : t('prepareMode')}
-          </p>
-          <p className="text-xs text-secondary-500 dark:text-secondary-400">
-            {list.isLocked && list.lockedAt
-              ? t('lockedAt', { date: list.lockedAt })
-              : t('dynamicHint')}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-4">
-          <button
-            aria-label={viewFilterSwitchLabel}
-            aria-pressed={showIncludedOnly}
-            className={viewFilterButtonClassName}
-            onClick={() => setShowIncludedOnly(current => !current)}
-            title={viewFilterSwitchLabel}
-            type="button"
-            {...devMarker({
-              name: 'rfi list action',
-              value: 'included-only filter',
-            })}
-          >
-            <ListFilter aria-hidden="true" className="h-4 w-4" />
-          </button>
-          <div className="flex flex-wrap items-center gap-2">
-            <a
-              aria-label="CSV"
-              className={exportPillClassName}
-              href={`/api/requirements-specifications/${encodedSpecificationId}/rfi-list/export?format=csv&locale=${locale}`}
-              title="CSV"
+      <Prototype1345Filters>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+              {list.isLocked ? t('lockedMode') : t('prepareMode')}
+            </p>
+            <p className="text-xs text-secondary-500 dark:text-secondary-400">
+              {list.isLocked && list.lockedAt
+                ? t('lockedAt', { date: list.lockedAt })
+                : t('dynamicHint')}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <button
+              aria-label={viewFilterSwitchLabel}
+              aria-pressed={showIncludedOnly}
+              className={viewFilterButtonClassName}
+              onClick={() => setShowIncludedOnly(current => !current)}
+              title={viewFilterSwitchLabel}
+              type="button"
+              {...devMarker({
+                name: 'rfi list action',
+                value: 'included-only filter',
+              })}
             >
-              <Download aria-hidden="true" className="h-4 w-4" />
-              <span className="sr-only">CSV</span>
-            </a>
-            <a
-              aria-label="PDF"
-              className={exportPillClassName}
-              href={`/api/requirements-specifications/${encodedSpecificationId}/rfi-list/export?format=pdf&locale=${locale}`}
-              title="PDF"
-            >
-              <Printer aria-hidden="true" className="h-4 w-4" />
-              <span className="sr-only">PDF</span>
-            </a>
-            {canEdit ? (
-              <button
-                aria-checked={list.isLocked}
-                aria-label={t('lockedToggleAria')}
-                className={lockSwitchButtonClassName}
-                disabled={saving}
-                onClick={() =>
-                  void mutateList(list.isLocked ? 'unlock' : 'lock')
-                }
-                role="switch"
-                title={lockStateActionTitle}
-                type="button"
+              <ListFilter aria-hidden="true" className="h-4 w-4" />
+            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                aria-label="CSV"
+                className={exportPillClassName}
+                href={`/api/requirements-specifications/${encodedSpecificationId}/rfi-list/export?format=csv&locale=${locale}`}
+                title="CSV"
               >
-                <span>{t('lockedToggleLabel')}</span>
-                <span className={lockSwitchTrackClassName}>
-                  <span className={lockSwitchThumbClassName} />
-                </span>
-              </button>
-            ) : null}
+                <Download aria-hidden="true" className="h-4 w-4" />
+                <span className="sr-only">CSV</span>
+              </a>
+              <a
+                aria-label="PDF"
+                className={exportPillClassName}
+                href={`/api/requirements-specifications/${encodedSpecificationId}/rfi-list/export?format=pdf&locale=${locale}`}
+                title="PDF"
+              >
+                <Printer aria-hidden="true" className="h-4 w-4" />
+                <span className="sr-only">PDF</span>
+              </a>
+              {canEdit ? (
+                <button
+                  aria-checked={list.isLocked}
+                  aria-label={t('lockedToggleAria')}
+                  className={lockSwitchButtonClassName}
+                  disabled={saving}
+                  onClick={() =>
+                    void mutateList(list.isLocked ? 'unlock' : 'lock')
+                  }
+                  role="switch"
+                  title={lockStateActionTitle}
+                  type="button"
+                >
+                  <span>{t('lockedToggleLabel')}</span>
+                  <span className={lockSwitchTrackClassName}>
+                    <span className={lockSwitchThumbClassName} />
+                  </span>
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
-      </div>
+      </Prototype1345Filters>
 
       {error ? (
         <p

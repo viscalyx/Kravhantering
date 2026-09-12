@@ -20,6 +20,11 @@ import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import FormModal from '@/components/FormModal'
 import ListWorkspace from '@/components/ListWorkspace'
+import {
+  Prototype1345Filters,
+  Prototype1345Header,
+  usePrototype1345,
+} from '@/components/Prototype1345'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
@@ -214,6 +219,7 @@ interface RfiCopy {
 }
 
 export default function RfiQuestionsClient() {
+  const prototype = usePrototype1345()
   const locale = useLocale()
   const t = useTranslations('rfiQuestions')
   const tc = useTranslations('common')
@@ -1174,21 +1180,28 @@ export default function RfiQuestionsClient() {
   return (
     <main className="section-padding">
       <ListWorkspace context="rfiQuestions" reserveActions>
-        <FloatingActionRail
-          anchorRef={listAnchorRef}
-          developerModeContext="rfiQuestions"
-          items={[
-            {
-              ariaLabel: copy.newQuestion,
-              developerModeValue: 'new RFI question',
-              disabled: saving || editableAreas.length === 0,
-              icon: <Plus aria-hidden="true" className="h-4 w-4" />,
-              id: 'create',
-              onClick: openQuestionForm,
-              variant: 'primary',
-            },
-          ]}
+        <Prototype1345Header
+          action={copy.newQuestion}
+          disabled={saving || editableAreas.length === 0}
+          title={copy.title}
         />
+        {!prototype.active && (
+          <FloatingActionRail
+            anchorRef={listAnchorRef}
+            developerModeContext="rfiQuestions"
+            items={[
+              {
+                ariaLabel: copy.newQuestion,
+                developerModeValue: 'new RFI question',
+                disabled: saving || editableAreas.length === 0,
+                icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+                id: 'create',
+                onClick: openQuestionForm,
+                variant: 'primary',
+              },
+            ]}
+          />
+        )}
         <FormModal
           closeDisabled={saving}
           developerModeValue={
@@ -1284,9 +1297,11 @@ export default function RfiQuestionsClient() {
         </FormModal>
 
         <div className="mb-6 flex flex-col gap-2">
-          <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
-            {copy.title}
-          </h1>
+          {!prototype.active && (
+            <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
+              {copy.title}
+            </h1>
+          )}
           <p className="max-w-3xl text-sm leading-6 text-secondary-600 dark:text-secondary-300">
             {copy.intro}
           </p>
@@ -1301,57 +1316,59 @@ export default function RfiQuestionsClient() {
           </p>
         ) : null}
 
-        <div className="mb-5 grid gap-3 rounded-2xl border bg-white/80 p-4 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60 md:grid-cols-[minmax(0,1fr)_220px_180px_180px_190px]">
-          <label className="relative block">
-            <Search
-              aria-hidden="true"
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
-            />
-            <input
-              aria-label={copy.search}
-              className={`${inputClassName} pl-9`}
-              onChange={event => setQuestionSearch(event.target.value)}
-              placeholder={copy.search}
-              value={questionSearch}
-            />
-          </label>
-          <select
-            aria-label={copy.allAreas}
-            className={inputClassName}
-            onChange={event => setAreaFilter(event.target.value)}
-            value={areaFilter}
-          >
-            <option value="">{copy.allAreas}</option>
-            {areas.map(area => (
-              <option key={area.id} value={area.id}>
-                {area.prefix} {area.name}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label={copy.allStatuses}
-            className={inputClassName}
-            onChange={event =>
-              setStatusFilter(event.target.value as StatusFilter)
-            }
-            value={statusFilter}
-          >
-            <option value="">{copy.allStatuses}</option>
-            <option value="active">{copy.active}</option>
-            <option value="archived">{copy.archived}</option>
-          </select>
-          <select
-            aria-label={copy.suggestionFilter}
-            className={inputClassName}
-            onChange={event =>
-              setSuggestionFilter(event.target.value as SuggestionFilter)
-            }
-            value={suggestionFilter}
-          >
-            <option value="">{copy.allSuggestionStates}</option>
-            <option value="unresolved">{copy.unresolvedSuggestions}</option>
-          </select>
-        </div>
+        <Prototype1345Filters>
+          <div className="mb-5 grid gap-3 rounded-2xl border bg-white/80 p-4 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60 md:grid-cols-[minmax(0,1fr)_220px_180px_180px_190px]">
+            <label className="relative block">
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
+              />
+              <input
+                aria-label={copy.search}
+                className={`${inputClassName} pl-9`}
+                onChange={event => setQuestionSearch(event.target.value)}
+                placeholder={copy.search}
+                value={questionSearch}
+              />
+            </label>
+            <select
+              aria-label={copy.allAreas}
+              className={inputClassName}
+              onChange={event => setAreaFilter(event.target.value)}
+              value={areaFilter}
+            >
+              <option value="">{copy.allAreas}</option>
+              {areas.map(area => (
+                <option key={area.id} value={area.id}>
+                  {area.prefix} {area.name}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label={copy.allStatuses}
+              className={inputClassName}
+              onChange={event =>
+                setStatusFilter(event.target.value as StatusFilter)
+              }
+              value={statusFilter}
+            >
+              <option value="">{copy.allStatuses}</option>
+              <option value="active">{copy.active}</option>
+              <option value="archived">{copy.archived}</option>
+            </select>
+            <select
+              aria-label={copy.suggestionFilter}
+              className={inputClassName}
+              onChange={event =>
+                setSuggestionFilter(event.target.value as SuggestionFilter)
+              }
+              value={suggestionFilter}
+            >
+              <option value="">{copy.allSuggestionStates}</option>
+              <option value="unresolved">{copy.unresolvedSuggestions}</option>
+            </select>
+          </div>
+        </Prototype1345Filters>
 
         <div className="grid grid-cols-1 gap-6" ref={listAnchorRef}>
           <div className="space-y-4">
@@ -1391,6 +1408,9 @@ export default function RfiQuestionsClient() {
                   <section className="space-y-3" key={group.areaId}>
                     <div
                       className="sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-primary-200 bg-primary-50/95 px-3 py-2 shadow-[0_8px_18px_-14px_rgba(67,56,202,0.45)] backdrop-blur dark:border-primary-800/70 dark:bg-primary-950/80"
+                      data-prototype-area-heading={
+                        prototype.active || undefined
+                      }
                       {...devMarker({
                         context: 'rfiQuestions',
                         name: 'requirement area heading',

@@ -2,247 +2,169 @@
   {
     "view": "library",
     "variant": "before",
-    "heading": [],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
+    "heading": []
   },
   {
     "view": "library",
     "variant": "B",
     "heading": [
       "Kravbibliotek"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
+    ]
   },
   {
     "view": "library",
-    "variant": "B",
-    "persistentCommands": {
-      "y": 900,
-      "primary": {
-        "x": 1265.953125,
-        "y": 60,
-        "width": 126.046875,
-        "height": 44,
-        "top": 60,
-        "right": 1392,
-        "bottom": 104,
-        "left": 1265.953125
-      },
-      "tools": {
-        "x": 680.90625,
-        "y": 63.40625,
-        "width": 569.046875,
-        "height": 37.1875,
-        "top": 63.40625,
-        "right": 1249.953125,
-        "bottom": 100.59375,
-        "left": 680.90625
-      }
+    "sticky": {
+      "scrollY": 900,
+      "headerTop": 48,
+      "headerBottom": 119,
+      "filters": null,
+      "areaStickyTop": []
     },
-    "afterActionY": 900
+    "afterCreateY": 900
   },
   {
-    "view": "library",
-    "variant": "D",
+    "view": "specifications",
+    "variant": "before",
     "heading": [
-      "Kravbibliotek"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
+      "Kravunderlag"
+    ]
   },
   {
-    "view": "library",
-    "variant": "D",
-    "persistentCommands": {
-      "y": 900,
-      "primary": {
-        "x": 237.78125,
-        "y": 59.59375,
-        "width": 110.046875,
-        "height": 36.78125,
-        "top": 59.59375,
-        "right": 347.828125,
-        "bottom": 96.375,
-        "left": 237.78125
+    "view": "specifications",
+    "variant": "B",
+    "heading": [
+      "Kravunderlag"
+    ]
+  },
+  {
+    "view": "specifications",
+    "sticky": {
+      "scrollY": 900,
+      "headerTop": 48,
+      "headerBottom": 119,
+      "filters": {
+        "top": 135,
+        "bottom": 221,
+        "height": 86,
+        "gap": 16
       },
-      "tools": {
-        "x": 816.359375,
-        "y": 59.390625,
-        "width": 577.046875,
-        "height": 37.1875,
-        "top": 59.390625,
-        "right": 1393.40625,
-        "bottom": 96.578125,
-        "left": 816.359375
-      }
+      "areaStickyTop": []
     },
-    "afterActionY": 900
+    "afterCreateY": 900
   },
   {
     "view": "specifications",
-    "variant": "before",
-    "heading": [
-      "Kravunderlag"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
-  },
-  {
-    "view": "specifications",
-    "variant": "B",
-    "heading": [
-      "Kravunderlag"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
-  },
-  {
-    "view": "specifications",
-    "variant": "D",
-    "heading": [
-      "Kravunderlag"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
+    "filterAndClear": true
   },
   {
     "view": "packages",
     "variant": "before",
     "heading": [
       "Kravpaket"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
+    ]
   },
   {
     "view": "packages",
     "variant": "B",
     "heading": [
       "Kravpaket"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
+    ]
   },
   {
     "view": "packages",
-    "variant": "D",
-    "heading": [
-      "Kravpaket"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
+    "sticky": {
+      "scrollY": 900,
+      "headerTop": 48,
+      "headerBottom": 119,
+      "filters": {
+        "top": 135,
+        "bottom": 221,
+        "height": 86,
+        "gap": 16
+      },
+      "areaStickyTop": []
+    },
+    "afterCreateY": 900
+  },
+  {
+    "view": "packages",
+    "filterAndClear": true
   },
   {
     "view": "norms",
     "variant": "before",
     "heading": [
       "Normbibliotek"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
+    ]
   },
   {
     "view": "norms",
     "variant": "B",
     "heading": [
       "Normbibliotek"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
+    ]
   },
   {
     "view": "norms",
-    "variant": "D",
-    "heading": [
-      "Normbibliotek"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
+    "sticky": {
+      "scrollY": 799,
+      "headerTop": 48,
+      "headerBottom": 119,
+      "filters": {
+        "top": 135,
+        "bottom": 221,
+        "height": 86,
+        "gap": 16
+      },
+      "areaStickyTop": []
+    },
+    "afterCreateY": 799
+  },
+  {
+    "view": "norms",
+    "filterAndClear": true
   },
   {
     "view": "areas",
     "variant": "before",
     "heading": [
       "Kravområden"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
+    ]
   },
   {
     "view": "areas",
     "variant": "B",
     "heading": [
       "Kravområden"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
+    ]
   },
   {
     "view": "areas",
-    "variant": "D",
-    "heading": [
-      "Kravområden"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
+    "sticky": {
+      "scrollY": 900,
+      "headerTop": 48,
+      "headerBottom": 119,
+      "filters": null,
+      "areaStickyTop": []
+    },
+    "afterCreateY": 900
   },
   {
     "view": "detail",
     "variant": "before",
     "heading": [
       "Upphandling av e-tjänstplattform"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
+    ]
   },
   {
     "view": "detail",
     "variant": "B",
     "heading": [
       "Upphandling av e-tjänstplattform"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
+    ]
   },
   {
     "view": "detail",
-    "variant": "B",
     "paneBefore": [
       41,
       200
@@ -250,77 +172,352 @@
     "paneAfter": [
       41,
       200
-    ],
-    "createBounds": {
-      "x": 587,
-      "y": 270.5,
-      "width": 44,
-      "height": 44
-    }
+    ]
   },
   {
-    "view": "detail",
-    "variant": "D",
+    "view": "questions",
+    "variant": "before",
     "heading": [
-      "Upphandling av e-tjänstplattform"
-    ],
-    "width": {
-      "viewport": 1440,
-      "page": 1440
-    }
+      "Kravurvalsfrågor"
+    ]
   },
   {
-    "view": "detail",
-    "variant": "D",
-    "paneBefore": [
-      38,
-      200
-    ],
-    "paneAfter": [
-      38,
-      200
-    ],
-    "createBounds": {
-      "x": 85,
-      "y": 282.921875,
-      "width": 118.609375,
-      "height": 32.78125
-    }
-  },
-  {
-    "view": "library",
+    "view": "questions",
     "variant": "B",
-    "mobile": {
-      "viewport": 390,
-      "page": 390
-    }
+    "heading": [
+      "Kravurvalsfrågor"
+    ]
   },
   {
-    "view": "library",
-    "variant": "D",
-    "mobile": {
-      "viewport": 390,
-      "page": 390
-    }
+    "view": "questions",
+    "sticky": {
+      "scrollY": 900,
+      "headerTop": 48,
+      "headerBottom": 119,
+      "filters": {
+        "top": 135,
+        "bottom": 227,
+        "height": 92,
+        "gap": 16
+      },
+      "areaStickyTop": [
+        227,
+        227,
+        227,
+        227,
+        227,
+        227,
+        227
+      ]
+    },
+    "afterCreateY": 900
   },
   {
-    "view": "detail",
+    "view": "questions",
+    "filterAndClear": true
+  },
+  {
+    "view": "information-requests",
+    "variant": "before",
+    "heading": [
+      "RFI-frågor"
+    ]
+  },
+  {
+    "view": "information-requests",
     "variant": "B",
+    "heading": [
+      "RFI-frågor"
+    ]
+  },
+  {
+    "view": "information-requests",
+    "sticky": {
+      "scrollY": 900,
+      "headerTop": 48,
+      "headerBottom": 119,
+      "filters": {
+        "top": 135,
+        "bottom": 227,
+        "height": 92,
+        "gap": 16
+      },
+      "areaStickyTop": [
+        227,
+        227,
+        227,
+        227,
+        227,
+        227,
+        227,
+        227,
+        227,
+        227,
+        227
+      ]
+    },
+    "afterCreateY": 900
+  },
+  {
+    "view": "information-requests",
+    "filterAndClear": true
+  },
+  {
+    "view": "specifications",
     "mobile": {
       "viewport": 390,
       "page": 390
+    },
+    "sticky": {
+      "header": 48,
+      "gap": 16,
+      "filtersBottom": 435.671875,
+      "reviewTop": 697.625
     }
   },
   {
-    "view": "detail",
-    "variant": "D",
+    "view": "packages",
     "mobile": {
       "viewport": 390,
       "page": 390
+    },
+    "sticky": {
+      "header": 48,
+      "gap": 16,
+      "filtersBottom": 271.0625,
+      "reviewTop": 679.625
     }
   },
   {
-    "legacyRedirectAndKeyboardReload": true,
+    "view": "norms",
+    "mobile": {
+      "viewport": 390,
+      "page": 390
+    },
+    "sticky": {
+      "header": 48,
+      "gap": 16,
+      "filtersBottom": 221,
+      "reviewTop": 679.625
+    }
+  },
+  {
+    "view": "questions",
+    "mobile": {
+      "viewport": 390,
+      "page": 390
+    },
+    "sticky": {
+      "header": 48,
+      "gap": 16,
+      "filtersBottom": 372.515625,
+      "reviewTop": 679.625
+    }
+  },
+  {
+    "view": "information-requests",
+    "mobile": {
+      "viewport": 390,
+      "page": 390
+    },
+    "sticky": {
+      "header": 48,
+      "gap": 16,
+      "filtersBottom": 386,
+      "reviewTop": 679.625
+    }
+  },
+  {
+    "legacyRedirects": [
+      "A",
+      "C",
+      "D"
+    ],
+    "keyboardAndReload": true,
+    "questionLinks": true,
+    "errors": [],
+    "writes": []
+  },
+  {
+    "detailQuestionPaneFilters": [
+      {
+        "pane": "rfi",
+        "scrollTop": 600,
+        "tabsBottom": 328.5,
+        "filtersTop": 344.5,
+        "gap": 16
+      },
+      {
+        "pane": "available",
+        "scrollTop": 600,
+        "tabsBottom": 328.5,
+        "filtersTop": 344.5,
+        "gap": 16
+      }
+    ],
+    "mobile": [
+      {
+        "pane": "rfi",
+        "headerBottom": 158.515625,
+        "tabsTop": 174.515625,
+        "filtersTop": 259.515625,
+        "gap": 16,
+        "width": 390
+      },
+      {
+        "pane": "available",
+        "headerBottom": 158.515625,
+        "tabsTop": 174.515625,
+        "filtersTop": 259.515625,
+        "gap": 16,
+        "width": 390
+      }
+    ],
+    "emptySearchCanBeCleared": true,
     "errors": []
+  },
+  {
+    "allListTitles": [
+      {
+        "view": "library",
+        "at": "middle",
+        "title": "Kravbibliotek",
+        "top": 70.234375,
+        "bottom": 93.75,
+        "scrollY": 0,
+        "viewport": 900,
+        "occluded": false
+      },
+      {
+        "view": "library",
+        "at": "bottom",
+        "title": "Kravbibliotek",
+        "top": 70.234375,
+        "bottom": 93.75,
+        "scrollY": 0,
+        "viewport": 900,
+        "occluded": false
+      },
+      {
+        "view": "specifications",
+        "at": "middle",
+        "title": "Kravunderlag",
+        "top": 70.234375,
+        "bottom": 93.75,
+        "scrollY": 1229,
+        "viewport": 900,
+        "occluded": false
+      },
+      {
+        "view": "specifications",
+        "at": "bottom",
+        "title": "Kravunderlag",
+        "top": 70.234375,
+        "bottom": 93.75,
+        "scrollY": 1558,
+        "viewport": 900,
+        "occluded": false
+      },
+      {
+        "view": "packages",
+        "at": "middle",
+        "title": "Kravpaket",
+        "top": 70.234375,
+        "bottom": 93.75,
+        "scrollY": 1252,
+        "viewport": 900,
+        "occluded": false
+      },
+      {
+        "view": "packages",
+        "at": "bottom",
+        "title": "Kravpaket",
+        "top": 70.234375,
+        "bottom": 93.75,
+        "scrollY": 1603,
+        "viewport": 900,
+        "occluded": false
+      },
+      {
+        "view": "norms",
+        "at": "middle",
+        "title": "Normbibliotek",
+        "top": 70.234375,
+        "bottom": 93.75,
+        "scrollY": 799,
+        "viewport": 900,
+        "occluded": false
+      },
+      {
+        "view": "norms",
+        "at": "bottom",
+        "title": "Normbibliotek",
+        "top": 70.234375,
+        "bottom": 93.75,
+        "scrollY": 799,
+        "viewport": 900,
+        "occluded": false
+      },
+      {
+        "view": "areas",
+        "at": "middle",
+        "title": "Kravområden",
+        "top": 70.234375,
+        "bottom": 93.75,
+        "scrollY": 997,
+        "viewport": 900,
+        "occluded": false
+      },
+      {
+        "view": "areas",
+        "at": "bottom",
+        "title": "Kravområden",
+        "top": 70.234375,
+        "bottom": 93.75,
+        "scrollY": 1093,
+        "viewport": 900,
+        "occluded": false
+      },
+      {
+        "view": "questions",
+        "at": "middle",
+        "title": "Kravurvalsfrågor",
+        "top": 70.234375,
+        "bottom": 93.75,
+        "scrollY": 1111,
+        "viewport": 900,
+        "occluded": false
+      },
+      {
+        "view": "questions",
+        "at": "bottom",
+        "title": "Kravurvalsfrågor",
+        "top": 70.234375,
+        "bottom": 93.75,
+        "scrollY": 1322,
+        "viewport": 900,
+        "occluded": false
+      },
+      {
+        "view": "information-requests",
+        "at": "middle",
+        "title": "RFI-frågor",
+        "top": 70.234375,
+        "bottom": 93.75,
+        "scrollY": 2147,
+        "viewport": 900,
+        "occluded": false
+      },
+      {
+        "view": "information-requests",
+        "at": "bottom",
+        "title": "RFI-frågor",
+        "top": 70.234375,
+        "bottom": 93.75,
+        "scrollY": 3394,
+        "viewport": 900,
+        "occluded": false
+      }
+    ]
   }
 ]

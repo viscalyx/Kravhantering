@@ -24,6 +24,7 @@ import FloatingActionRail from '@/components/FloatingActionRail'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import ListWorkspace from '@/components/ListWorkspace'
 import {
+  Prototype1345Filters,
   Prototype1345Header,
   usePrototype1345,
 } from '@/components/Prototype1345'
@@ -670,51 +671,53 @@ export default function RequirementsSpecificationsClient({
           />
         ) : null}
 
-        <div className="mb-4">
-          {showSpecifications && specifications.length > 0 && (
-            <div className="w-full max-w-lg">
-              <label
-                className="mb-1.5 block text-sm font-medium text-secondary-700 dark:text-secondary-300"
-                htmlFor="specification-name-filter"
-              >
-                {t('filterByName')}
-              </label>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <div className="relative flex-1">
-                  <Search
-                    aria-hidden="true"
-                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
-                  />
-                  <input
-                    autoComplete="off"
-                    className="min-h-11 w-full rounded-xl border border-secondary-200 bg-white py-2.5 pr-3 pl-10 text-sm text-secondary-900 transition-all duration-200 placeholder:text-secondary-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100 dark:placeholder:text-secondary-500"
-                    {...devMarker({
-                      context: 'specifications',
-                      name: 'text field',
-                      priority: 330,
-                      value: 'name filter',
-                    })}
-                    id="specification-name-filter"
-                    onChange={e => setNameFilter(e.target.value)}
-                    placeholder={t('filterByNamePlaceholder')}
-                    type="text"
-                    value={nameFilter}
-                  />
+        <Prototype1345Filters>
+          <div className="mb-4">
+            {showSpecifications && specifications.length > 0 && (
+              <div className="w-full max-w-lg">
+                <label
+                  className="mb-1.5 block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                  htmlFor="specification-name-filter"
+                >
+                  {t('filterByName')}
+                </label>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="relative flex-1">
+                    <Search
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
+                    />
+                    <input
+                      autoComplete="off"
+                      className="min-h-11 w-full rounded-xl border border-secondary-200 bg-white py-2.5 pr-3 pl-10 text-sm text-secondary-900 transition-all duration-200 placeholder:text-secondary-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100 dark:placeholder:text-secondary-500"
+                      {...devMarker({
+                        context: 'specifications',
+                        name: 'text field',
+                        priority: 330,
+                        value: 'name filter',
+                      })}
+                      id="specification-name-filter"
+                      onChange={e => setNameFilter(e.target.value)}
+                      placeholder={t('filterByNamePlaceholder')}
+                      type="text"
+                      value={nameFilter}
+                    />
+                  </div>
+                  {hasActiveNameFilter && (
+                    <button
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-secondary-200 px-4 py-2.5 text-sm text-secondary-700 transition-all duration-200 hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800/60"
+                      onClick={() => setNameFilter('')}
+                      type="button"
+                    >
+                      <X aria-hidden="true" className="h-4 w-4" />
+                      {tc('clearSearch')}
+                    </button>
+                  )}
                 </div>
-                {hasActiveNameFilter && (
-                  <button
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-secondary-200 px-4 py-2.5 text-sm text-secondary-700 transition-all duration-200 hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800/60"
-                    onClick={() => setNameFilter('')}
-                    type="button"
-                  >
-                    <X aria-hidden="true" className="h-4 w-4" />
-                    {tc('clearSearch')}
-                  </button>
-                )}
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </Prototype1345Filters>
 
         {showSpinner && (
           <div

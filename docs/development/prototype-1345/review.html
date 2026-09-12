@@ -11,10 +11,10 @@
 <body>
 <header>
 <h1>Issue 1345 · Before and after</h1>
-<p>Throwaway layout study. These are screenshots of the real development app with the same data at 1440 × 900. Choose a list and a candidate layout. Click either image to inspect it at full resolution. A and C are removed. B is preferred so far; D is the new alternative. Commands remain available while scrolling, with stable space above the header and between the header and list.</p>
+<p>Throwaway layout study. These are screenshots of the real development app with the same data at 1440 × 900. Choose a list and a candidate layout. Click either image to inspect it at full resolution. B is the remaining prototype. A, C and D are removed. Search and filters stay below the command bar. Commands remain available while scrolling, with stable space above the header and between the header and list.</p>
 <nav aria-label="Comparison controls">
-<label>List <select id="view"><option value="library">Kravbibliotek</option><option value="specifications">Kravunderlag</option><option value="packages">Kravpaket</option><option value="norms">Normbibliotek</option><option value="areas">Kravområden</option><option value="detail">Kravunderlag 8</option></select></label>
-<label>Design <select id="variant"><option value="B">B — Command band</option><option value="D">D — Grouped command bar</option></select></label>
+<label>List <select id="view"><option value="library">Kravbibliotek</option><option value="specifications">Kravunderlag</option><option value="packages">Kravpaket</option><option value="norms">Normbibliotek</option><option value="areas">Kravområden</option><option value="questions">Kravurvalsfrågor</option><option value="information-requests">RFI-frågor</option><option value="detail">Kravunderlag 8</option></select></label>
+<strong>B — Command band</strong>
 <button id="stack" type="button" aria-pressed="false">Stack images</button>
 <a id="live" href="http://localhost:3001/sv/requirements?variant=B">Open this design in the running app</a>
 </nav>
@@ -29,22 +29,24 @@
 <details><summary>Scrolled, wide, dark and narrow comparisons</summary>
 <ul>
 <li><a href="evidence/library-B-scrolled.png">B: commands at the current library scroll position</a></li>
-<li><a href="evidence/library-D-scrolled.png">D: commands at the current library scroll position</a></li>
+<li><a href="evidence/questions-B-scrolled.png">B: requirement selection questions while scrolled</a></li>
+<li><a href="evidence/information-requests-B-scrolled.png">B: RFI questions while scrolled</a></li>
+<li><a href="evidence/detail-B-question-filters-scrolled.png">B: sticky filters in both specification question panes</a></li>
+<li><a href="evidence/detail-B-available-390-scrolled.png">B: question-pane filters at 390 px</a></li>
 <li><a href="evidence/detail-B-scrolled.png">B: independently scrolled specification panels</a></li>
-<li><a href="evidence/detail-D-scrolled.png">D: independently scrolled specification panels</a></li>
-<li><a href="evidence/library-D-1920-dark-expanded.png">D: library at 1920 × 1080, dark, expanded navigation</a></li>
-<li><a href="evidence/detail-D-1920-dark-expanded.png">D: specification detail at 1920 × 1080, dark</a></li>
-<li><a href="evidence/library-D-390-english.png">D: library at 390 px, English</a></li>
-<li><a href="evidence/detail-D-390-english.png">D: specification detail at 390 px, English</a></li>
+<li><a href="evidence/library-B-1920-dark-expanded.png">B: library at 1920 × 1080, dark, expanded navigation</a></li>
+<li><a href="evidence/detail-B-1920-dark-expanded.png">B: specification detail at 1920 × 1080, dark</a></li>
+<li><a href="evidence/library-B-390-english.png">B: library at 390 px, English</a></li>
+<li><a href="evidence/detail-B-390-english.png">B: specification detail at 390 px, English</a></li>
 </ul>
 </details>
 </footer>
 <script>
-const view=document.getElementById('view'),variant=document.getElementById('variant');
-const descriptions={B:'The preferred command band, now always visible while scrolling.',D:'Grouped authoring and output commands, a quieter sticky bar, and readable specification panels. Primary actions preserve your place in the list.'};
-const paths={library:'/requirements',specifications:'/specifications',packages:'/requirements/stewardship?tab=packages',norms:'/requirements/stewardship?tab=norms',areas:'/requirement-areas',detail:'/specifications/8'};
-function render(){const before=`evidence/${view.value}-before-1440-light.png`,after=`evidence/${view.value}-${variant.value}-1440-light.png`;document.getElementById('before').src=before;document.getElementById('before-link').href=before;document.getElementById('after').src=after;document.getElementById('after-link').href=after;document.getElementById('after-caption').textContent=`After · ${variant.selectedOptions[0].text}`;document.getElementById('state').textContent=`${view.selectedOptions[0].text} · ${variant.value}: ${descriptions[variant.value]}`;const path=paths[view.value];document.getElementById('live').href=`http://localhost:3001/sv${path}${path.includes('?')?'&':'?'}variant=${variant.value}`;}
-view.addEventListener('change',render);variant.addEventListener('change',render);document.getElementById('stack').addEventListener('click',event=>{const stacked=document.body.classList.toggle('stacked');event.currentTarget.setAttribute('aria-pressed',String(stacked));event.currentTarget.textContent=stacked?'Side by side':'Stack images';});render();
+const view=document.getElementById('view'),variant={value:'B'};
+const descriptions={B:'Persistent command band, search and filters. Actions preserve your position.'};
+const paths={library:'/requirements',specifications:'/specifications',packages:'/requirements/stewardship?tab=packages',norms:'/requirements/stewardship?tab=norms',areas:'/requirement-areas',questions:'/requirements/stewardship?tab=questions','information-requests':'/requirements/stewardship?tab=information-requests',detail:'/specifications/8'};
+function render(){const before=`evidence/${view.value}-before-1440-light.png`,after=`evidence/${view.value}-${variant.value}-1440-light.png`;document.getElementById('before').src=before;document.getElementById('before-link').href=before;document.getElementById('after').src=after;document.getElementById('after-link').href=after;document.getElementById('after-caption').textContent=`After · ${'B — Command band'}`;document.getElementById('state').textContent=`${view.selectedOptions[0].text} · ${variant.value}: ${descriptions[variant.value]}`;const path=paths[view.value];document.getElementById('live').href=`http://localhost:3001/sv${path}${path.includes('?')?'&':'?'}variant=${variant.value}`;}
+view.addEventListener('change',render);document.getElementById('stack').addEventListener('click',event=>{const stacked=document.body.classList.toggle('stacked');event.currentTarget.setAttribute('aria-pressed',String(stacked));event.currentTarget.textContent=stacked?'Side by side':'Stack images';});render();
 </script>
 </body>
 </html>

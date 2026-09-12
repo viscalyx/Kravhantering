@@ -3814,18 +3814,16 @@
     "state": "Variant {variant} · Vy {view} · Senast simulerad åtgärd: {action}",
     "variants": {
       "before": "Nuvarande layout",
-      "B": "Gemensam kommandorad",
-      "D": "Grupperad kommandorad"
+      "B": "Gemensam kommandorad"
     },
     "tradeoffs": {
       "before": "Nuläge: ursprungliga rubriker och flytande ikonknappar. Prototypens skrivskydd och granskningsrad är fortfarande aktiva.",
-      "B": "B: den föredragna kommandoraden, nu alltid tillgänglig vid rullning. Rubrik, namngivna verktyg och huvudåtgärd finns kvar där du arbetar.",
-      "D": "D utvecklar B med rubrik och huvudåtgärd i en grupp, åtskilda författar- och utdataverktyg samt en lugnare fast kommandorad. I kravunderlagets detaljvy blir metadata kompaktare och panelflikarnas namn läsbara."
+      "B": "B: den föredragna kommandoraden, nu alltid tillgänglig vid rullning. Rubrik, namngivna verktyg och huvudåtgärd finns kvar där du arbetar."
     },
     "checks": {
-      "heading": "Jämför Före, B och D i de fem listorna och kravunderlag 8. A och C är borttagna.",
+      "heading": "Jämför Före och B i de sju listorna och kravunderlag 8. A, C och D är borttagna.",
       "primary": "Rulla långt ned i listan: huvudåtgärd och verktyg finns kvar. Klicka på en simulerad åtgärd och kontrollera att rullningsläget bevaras.",
-      "secondary": "Jämför B och D i kravbiblioteket: D samlar AI/import före rapporter/export/kolumner och placerar huvudåtgärden bredvid rubriken.",
+      "secondary": "Rulla i kravunderlag, kravpaket, normbibliotek och båda frågelistorna: sökning och filter ligger kvar under kommandoraden, med områdesrubriker nedanför.",
       "menus": "Öppna Rapporter, Kolumner och detaljpanelernas åtgärdsmenyer. Befintliga alternativ finns kvar utan extra navigering.",
       "viewport": "Jämför 1440 × 900 och 1920 × 1080, utfälld/infälld navigation, ljust/mörkt, svenska/engelska och smala fönster.",
       "keyboard": "Använd Tab och variantpilarna; ladda om länken. I kravunderlag 8: byt panelflikar och rulla panelerna oberoende av varandra.",

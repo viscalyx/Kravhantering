@@ -31,6 +31,11 @@ import FormModal from '@/components/FormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import ListWorkspace from '@/components/ListWorkspace'
 import { modalResizableTextareaResizeClassName } from '@/components/modal-textarea-class'
+import {
+  Prototype1345Filters,
+  Prototype1345Header,
+  usePrototype1345,
+} from '@/components/Prototype1345'
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
@@ -815,6 +820,7 @@ function CompactRequirementDetail({
 }
 
 export default function RequirementSelectionQuestionsClient() {
+  const prototype = usePrototype1345()
   useHelpContent(REQUIREMENT_SELECTION_QUESTIONS_STEWARDSHIP_HELP)
   const { confirm } = useConfirmModal()
   const confirmDiscardChanges = useDiscardChangesConfirmation()
@@ -3590,25 +3596,33 @@ export default function RequirementSelectionQuestionsClient() {
       >
         {questionDragPreviewContent}
         {questionDropMarkerContent}
-        <FloatingActionRail
-          anchorRef={listAnchorRef}
-          developerModeContext="requirementSelectionQuestions"
-          items={
-            authorableAreas.length > 0
-              ? [
-                  {
-                    ariaLabel: copy.createQuestion,
-                    developerModeValue: 'new requirement selection question',
-                    disabled: submitting,
-                    icon: <Plus aria-hidden="true" className="h-4 w-4" />,
-                    id: 'create',
-                    onClick: openQuestionForm,
-                    variant: 'primary' as const,
-                  },
-                ]
-              : []
-          }
+        <Prototype1345Header
+          action={copy.createQuestion}
+          canCreate={authorableAreas.length > 0}
+          disabled={submitting}
+          title={copy.title}
         />
+        {!prototype.active && (
+          <FloatingActionRail
+            anchorRef={listAnchorRef}
+            developerModeContext="requirementSelectionQuestions"
+            items={
+              authorableAreas.length > 0
+                ? [
+                    {
+                      ariaLabel: copy.createQuestion,
+                      developerModeValue: 'new requirement selection question',
+                      disabled: submitting,
+                      icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+                      id: 'create',
+                      onClick: openQuestionForm,
+                      variant: 'primary' as const,
+                    },
+                  ]
+                : []
+            }
+          />
+        )}
         <FormModal
           closeDisabled={submitting}
           developerModeValue="new requirement selection question"
@@ -3659,11 +3673,13 @@ export default function RequirementSelectionQuestionsClient() {
         >
           {hierarchyDialogContent}
         </FormModal>
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
-            {copy.title}
-          </h1>
-        </div>
+        {!prototype.active && (
+          <div className="mb-6 flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
+              {copy.title}
+            </h1>
+          </div>
+        )}
 
         {error && (
           <p
@@ -3674,49 +3690,51 @@ export default function RequirementSelectionQuestionsClient() {
           </p>
         )}
 
-        <div className="mb-5 grid gap-3 rounded-2xl border bg-white/80 p-4 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60 md:grid-cols-[minmax(0,1fr)_220px_180px]">
-          <label className="relative block">
-            <Search
-              aria-hidden="true"
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
-            />
-            <input
-              aria-label={copy.search}
-              className={`${inputClassName} pl-9`}
-              onChange={event => setQuestionSearch(event.target.value)}
-              placeholder={copy.search}
-              value={questionSearch}
-            />
-          </label>
-          <select
-            aria-label={copy.allAreas}
-            className={inputClassName}
-            onChange={event => setAreaFilter(event.target.value)}
-            value={areaFilter}
-          >
-            <option value="">{copy.allAreas}</option>
-            {areas.map(area => (
-              <option key={area.id} value={area.id}>
-                {area.prefix} {area.name}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label={copy.allStatuses}
-            className={inputClassName}
-            onChange={event =>
-              setStatusFilter(
-                event.target.value as '' | 'active' | 'archived' | 'inactive',
-              )
-            }
-            value={statusFilter}
-          >
-            <option value="">{copy.allStatuses}</option>
-            <option value="active">{copy.active}</option>
-            <option value="inactive">{copy.inactive}</option>
-            <option value="archived">{copy.archived}</option>
-          </select>
-        </div>
+        <Prototype1345Filters>
+          <div className="mb-5 grid gap-3 rounded-2xl border bg-white/80 p-4 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60 md:grid-cols-[minmax(0,1fr)_220px_180px]">
+            <label className="relative block">
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
+              />
+              <input
+                aria-label={copy.search}
+                className={`${inputClassName} pl-9`}
+                onChange={event => setQuestionSearch(event.target.value)}
+                placeholder={copy.search}
+                value={questionSearch}
+              />
+            </label>
+            <select
+              aria-label={copy.allAreas}
+              className={inputClassName}
+              onChange={event => setAreaFilter(event.target.value)}
+              value={areaFilter}
+            >
+              <option value="">{copy.allAreas}</option>
+              {areas.map(area => (
+                <option key={area.id} value={area.id}>
+                  {area.prefix} {area.name}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label={copy.allStatuses}
+              className={inputClassName}
+              onChange={event =>
+                setStatusFilter(
+                  event.target.value as '' | 'active' | 'archived' | 'inactive',
+                )
+              }
+              value={statusFilter}
+            >
+              <option value="">{copy.allStatuses}</option>
+              <option value="active">{copy.active}</option>
+              <option value="inactive">{copy.inactive}</option>
+              <option value="archived">{copy.archived}</option>
+            </select>
+          </div>
+        </Prototype1345Filters>
 
         <div className="grid grid-cols-1 gap-6" ref={listAnchorRef}>
           <div className="space-y-4">
@@ -3742,6 +3760,7 @@ export default function RequirementSelectionQuestionsClient() {
                 <section className="space-y-3" key={group.areaId}>
                   <div
                     className="sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-primary-200 bg-primary-50/95 px-3 py-2 shadow-[0_8px_18px_-14px_rgba(67,56,202,0.45)] backdrop-blur dark:border-primary-800/70 dark:bg-primary-950/80"
+                    data-prototype-area-heading={prototype.active || undefined}
                     {...devMarker({
                       context: 'requirementSelectionQuestions',
                       name: 'requirement area heading',

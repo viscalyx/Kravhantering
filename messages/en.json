@@ -3814,18 +3814,16 @@
     "state": "Variant {variant} · View {view} · Last simulated action: {action}",
     "variants": {
       "before": "Current layout",
-      "B": "Command band",
-      "D": "Grouped command bar"
+      "B": "Command band"
     },
     "tradeoffs": {
       "before": "Baseline: original headings and floating icon controls. Prototype safeguards and this review bar remain active.",
-      "B": "B: the preferred command band, now kept visible during scrolling. Title, labelled tools and primary action stay available at your current position.",
-      "D": "D improves B with a title/primary-action group, separate authoring and output tools, and a quieter sticky command bar. In specification details, compact metadata and readable panel tabs make the two lists easier to scan."
+      "B": "B: the preferred command band, now kept visible during scrolling. Title, labelled tools and primary action stay available at your current position."
     },
     "checks": {
-      "heading": "Compare Before, B and D on all five lists and specification 8. A and C are removed.",
+      "heading": "Compare Before and B on all seven lists and specification 8. A, C and D are removed.",
       "primary": "Scroll well down each list: the primary action and tools stay visible. Click a simulated action and check that the scroll position stays unchanged.",
-      "secondary": "Compare B and D in the library: D groups AI/import before reports/export/columns and places the primary action beside the title.",
+      "secondary": "Scroll the specifications, packages, norms and both question stewardship lists: search and filters stay below the command bar, with area headings below them.",
       "menus": "Open Reports, Columns and the detail panel action menus. Existing entries remain available without extra navigation.",
       "viewport": "Compare 1440 × 900 and 1920 × 1080, navigation expanded/collapsed, light/dark, English/Swedish and narrow windows.",
       "keyboard": "Use Tab and the arrow switcher; reload the URL. In specification 8, switch panel tabs and scroll each pane independently.",

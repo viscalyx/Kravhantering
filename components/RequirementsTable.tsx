@@ -1557,13 +1557,7 @@ export default function RequirementsTable({
   const prototype = usePrototype1345()
   const prototypeActive = prototypeLayout && prototype.active
   const layoutActions = prototypeActive
-    ? floatingActions
-        .filter(action => action.id !== 'create')
-        .map(action =>
-          prototype.variant === 'D' && action.id === 'import'
-            ? { ...action, position: 'beforeColumns' as const }
-            : action,
-        )
+    ? floatingActions.filter(action => action.id !== 'create')
     : floatingActions
   const t = useTranslations('requirement')
   const tStatusLabel = useTranslations('requirement.statusLabel')

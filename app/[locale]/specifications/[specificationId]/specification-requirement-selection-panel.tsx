@@ -5,6 +5,10 @@ import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import {
+  Prototype1345Filters,
+  usePrototype1345,
+} from '@/components/Prototype1345'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 
@@ -132,6 +136,7 @@ export default function SpecificationRequirementSelectionPanel({
   specificationId,
 }: Props) {
   useHelpContent(SPECIFICATION_REQUIREMENT_SELECTION_HELP)
+  const prototype = usePrototype1345()
   const { confirm } = useConfirmModal()
   const t = useTranslations('specificationRequirementSelection')
   const encodedSpecificationId = encodeURIComponent(String(specificationId))
@@ -423,50 +428,57 @@ export default function SpecificationRequirementSelectionPanel({
         <p className="text-sm text-secondary-600 dark:text-secondary-400">
           {copy.loading}
         </p>
-      ) : groupedQuestions.length === 0 ? (
+      ) : groupedQuestions.length === 0 && !prototype.active ? (
         <p className="text-sm text-secondary-600 dark:text-secondary-400">
           {copy.noQuestions}
         </p>
       ) : (
         <div className="space-y-4">
-          <div className="space-y-3 rounded-xl border bg-white/80 p-3 dark:border-secondary-800 dark:bg-secondary-900/60">
-            <label className="relative block">
-              <Search
-                aria-hidden="true"
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
-              />
-              <input
-                className="w-full rounded-lg border bg-white py-2 pl-9 pr-3 text-sm dark:border-secondary-700 dark:bg-secondary-900"
-                onChange={event => setQuery(event.target.value)}
-                placeholder={copy.search}
-                value={query}
-              />
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <select
-                className="min-h-10 rounded-lg border bg-white px-3 text-sm dark:border-secondary-700 dark:bg-secondary-900"
-                onChange={event => setAreaFilter(event.target.value)}
-                value={areaFilter}
-              >
-                <option value="">{copy.allAreas}</option>
-                {areaOptions.map(area => (
-                  <option key={area} value={area}>
-                    {area}
-                  </option>
-                ))}
-              </select>
-              <label className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-sm dark:border-secondary-700">
-                {/* WCAG 2.5.8 target-size exception: spacing — the 40 CSS-pixel filter control keeps its 24 CSS-pixel target circle separate; verified by specification-requirement-selection-panel.test.tsx. */}
-                <input
-                  checked={unansweredOnly}
-                  className="h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-                  onChange={event => setUnansweredOnly(event.target.checked)}
-                  type="checkbox"
+          <Prototype1345Filters>
+            <div className="space-y-3 rounded-xl border bg-white/80 p-3 dark:border-secondary-800 dark:bg-secondary-900/60">
+              <label className="relative block">
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
                 />
-                {copy.unansweredOnly}
+                <input
+                  className="w-full rounded-lg border bg-white py-2 pl-9 pr-3 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                  onChange={event => setQuery(event.target.value)}
+                  placeholder={copy.search}
+                  value={query}
+                />
               </label>
+              <div className="flex flex-wrap gap-2">
+                <select
+                  className="min-h-10 rounded-lg border bg-white px-3 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                  onChange={event => setAreaFilter(event.target.value)}
+                  value={areaFilter}
+                >
+                  <option value="">{copy.allAreas}</option>
+                  {areaOptions.map(area => (
+                    <option key={area} value={area}>
+                      {area}
+                    </option>
+                  ))}
+                </select>
+                <label className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-sm dark:border-secondary-700">
+                  {/* WCAG 2.5.8 target-size exception: spacing — the 40 CSS-pixel filter control keeps its 24 CSS-pixel target circle separate; verified by specification-requirement-selection-panel.test.tsx. */}
+                  <input
+                    checked={unansweredOnly}
+                    className="h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+                    onChange={event => setUnansweredOnly(event.target.checked)}
+                    type="checkbox"
+                  />
+                  {copy.unansweredOnly}
+                </label>
+              </div>
             </div>
-          </div>
+          </Prototype1345Filters>
+          {groupedQuestions.length === 0 && (
+            <p className="text-sm text-secondary-600 dark:text-secondary-400">
+              {copy.noQuestions}
+            </p>
+          )}
           {groupedQuestions.map(([areaName, areaQuestions]) => (
             <section className="space-y-3" key={areaName}>
               <h3 className="text-sm font-semibold text-secondary-700 dark:text-secondary-200">
