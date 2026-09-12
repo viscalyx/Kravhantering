@@ -722,7 +722,8 @@ Kravets detalj visas och metadata är läslig.
 rensa sökfältet. Kontrollera sedan att kravpaketsbandet visar inaktivt läge.
 Öppna väljaren genom att hålla pekaren över bandet och genom att aktivera
 filterknappen med pekare, Enter och blanksteg. Lägg till flera alfabetiskt
-sorterade kravpaket i följd, ta bort ett valt paket och rensa alla. Kontrollera
+sorterade kravpaket i följd, även medan resultatlistan uppdateras. Ta bort ett
+valt paket och rensa alla. Kontrollera
 fokus efter varje åtgärd, stäng med Escape, klick utanför och flytta fokus
 utanför filtret. Upprepa i engelskt språk och med kravpaketskolumnen dold.
 Kontrollera även lägena tom katalog och alla paket valda samt hjälptexter,
@@ -2060,7 +2061,8 @@ fel.
 
 **Steg:** Öppna åtgärdslogg direkt och via fliken `Åtgärdslogg` i
 Admincenter. Ange en kombination av aktör, händelse, måltyp, mål-ID samt från-
-och till-datum, filtrera och exportera. Starta exporten igen medan den första
+och till-datum, filtrera och starta exporten direkt efter att den filtrerade
+listan visas. Starta exporten igen medan den första
 förbereds och prova även ett urval som överskrider den konfigurerade
 CSV-radgränsen.
 

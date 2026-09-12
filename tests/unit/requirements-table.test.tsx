@@ -26,7 +26,6 @@ const DEFAULT_VIEWPORT_HEIGHT = 768
 const DEFAULT_VIEWPORT_WIDTH = 1024
 
 let resizeObserverCallback: ResizeObserverCallback | null = null
-let resizeObserverCallbacks: ResizeObserverCallback[] = []
 
 function setViewportWidth(width: number) {
   Object.defineProperty(window, 'innerWidth', {
@@ -96,7 +95,6 @@ describe('RequirementsTable', () => {
     resizeObserverObserve.mockReset()
     resizeObserverDisconnect.mockReset()
     resizeObserverCallback = null
-    resizeObserverCallbacks = []
     setViewportHeight(DEFAULT_VIEWPORT_HEIGHT)
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
     vi.stubGlobal(
@@ -117,7 +115,6 @@ describe('RequirementsTable', () => {
       class ResizeObserver {
         constructor(callback: ResizeObserverCallback) {
           resizeObserverCallback = callback
-          resizeObserverCallbacks.push(callback)
         }
 
         disconnect() {
@@ -4521,7 +4518,7 @@ describe('RequirementsTable', () => {
     }
   })
 
-  it('clamps the floating chooser to a narrow viewport without moving the table', () => {
+  it('clamps the floating chooser to a narrow viewport without moving the table', async () => {
     setViewportWidth(320)
     setViewportHeight(300)
     render(<ControlledCompactPackageFilter />)
@@ -4562,15 +4559,12 @@ describe('RequirementsTable', () => {
         name: 'addRequirementPackageToFilter',
       })[0] as HTMLButtonElement,
     )
-    act(() => {
-      for (const callback of resizeObserverCallbacks) {
-        callback([], {} as ResizeObserver)
-      }
-    })
-    expect(chooser).toHaveStyle({
-      maxHeight: '144px',
-      top: '148px',
-    })
+    await waitFor(() =>
+      expect(chooser).toHaveStyle({
+        maxHeight: '144px',
+        top: '148px',
+      }),
+    )
   })
 
   it('renders the infinite-scroll sentinel when hasMore and onLoadMore are set', () => {

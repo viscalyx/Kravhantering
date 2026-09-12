@@ -679,6 +679,10 @@ test.describe('Requirements library', () => {
       await test.step('verify and activate the column-filter target size', async () => {
         const textbox = page.getByRole('textbox', { name: 'Krav-ID' })
         const clearButton = page.getByRole('button', { name: 'Rensa' })
+        await page.mouse.move(0, 0)
+        await expect(
+          page.getByRole('group', { name: 'Tillgängliga kravpaket' }),
+        ).toBeHidden()
         await expect(clearButton).toBeVisible()
 
         const clearButtonBox = await clearButton.boundingBox()

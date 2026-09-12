@@ -169,12 +169,20 @@ export default function RequirementsPackageFilter({
     )
     const top = rect.bottom
 
-    setChooserPosition({
+    const nextPosition = {
       left,
       maxHeight: Math.max(0, window.innerHeight - top - VIEWPORT_MARGIN),
       top,
       width,
-    })
+    }
+    setChooserPosition(current =>
+      current?.left === nextPosition.left &&
+      current.top === nextPosition.top &&
+      current.width === nextPosition.width &&
+      current.maxHeight === nextPosition.maxHeight
+        ? current
+        : nextPosition,
+    )
   }, [])
 
   const scheduleTransientClose = useCallback(() => {
@@ -220,20 +228,15 @@ export default function RequirementsPackageFilter({
     }
 
     updateChooserPosition()
-    const band = bandRef.current
-    const resizeObserver =
-      typeof ResizeObserver === 'undefined'
-        ? null
-        : new ResizeObserver(updateChooserPosition)
-    if (band) {
-      resizeObserver?.observe(band)
+    // Sticky layout can move the band without a resize or scroll event.
+    let frame: number
+    const followBand = () => {
+      updateChooserPosition()
+      frame = window.requestAnimationFrame(followBand)
     }
-    window.addEventListener('resize', updateChooserPosition)
-    window.addEventListener('scroll', updateChooserPosition, true)
+    frame = window.requestAnimationFrame(followBand)
     return () => {
-      resizeObserver?.disconnect()
-      window.removeEventListener('resize', updateChooserPosition)
-      window.removeEventListener('scroll', updateChooserPosition, true)
+      window.cancelAnimationFrame(frame)
     }
   }, [isOpen, updateChooserPosition])
 

@@ -95,6 +95,36 @@ describe('RequirementsPackageFilter', () => {
     Reflect.deleteProperty(HTMLElement.prototype, 'hidePopover')
   })
 
+  it('keeps the open chooser anchored when its band moves without resizing', async () => {
+    let nextFrame: FrameRequestCallback | undefined
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      nextFrame = callback
+      return 1
+    })
+    const cancelFrame = vi.spyOn(window, 'cancelAnimationFrame')
+    const { unmount } = render(<Harness />)
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Filter packages' }))
+    const chooser = screen.getByRole('group', { name: 'Package chooser' })
+    expect(chooser).toHaveStyle({ top: '120px' })
+    vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockReturnValue({
+      x: -10,
+      y: 174,
+      top: 174,
+      bottom: 214,
+      left: -10,
+      right: 490,
+      width: 500,
+      height: 40,
+      toJSON: () => ({}),
+    })
+    act(() => nextFrame?.(16))
+    expect(chooser).toHaveStyle({ top: '214px', maxHeight: '378px' })
+    unmount()
+    expect(cancelFrame).toHaveBeenCalledWith(1)
+  })
+
   it('shows delayed loading, failure, and empty catalog states', async () => {
     vi.useFakeTimers()
     const onChange = vi.fn()

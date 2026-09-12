@@ -154,6 +154,7 @@ export function useGeneratedOutputDownload(): UseGeneratedOutputDownloadResult {
   const [retrySeconds, setRetrySeconds] = useState(0)
   const [announcement, setAnnouncement] = useState('')
   const abortRef = useRef<AbortController | null>(null)
+  const mountedRef = useRef(true)
   const pendingRef = useRef<PendingDownload | null>(null)
 
   const restoreFocus = useCallback(() => {
@@ -198,7 +199,7 @@ export function useGeneratedOutputDownload(): UseGeneratedOutputDownloadResult {
                 type: responseBlob.type || 'application/json;charset=utf-8',
               })
             : responseBlob
-        if (controller.signal.aborted) {
+        if (controller.signal.aborted || !mountedRef.current) {
           setPhase(null)
           restoreFocus()
           return
@@ -282,7 +283,16 @@ export function useGeneratedOutputDownload(): UseGeneratedOutputDownloadResult {
     return () => window.clearTimeout(timer)
   }, [announcement])
 
-  useEffect(() => () => abortRef.current?.abort(), [])
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      // Strict Mode reconnects effects immediately; cancel only a real unmount.
+      queueMicrotask(() => {
+        if (!mountedRef.current) abortRef.current?.abort()
+      })
+    }
+  }, [])
 
   const error = useMemo(
     () => (errorState ? localizeOutputError(errorState, t) : null),
