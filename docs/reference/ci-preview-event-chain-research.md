@@ -267,8 +267,9 @@ runs inside CI and is not evidence of an external environment rollout.
 The read-only
 [repository hooks endpoint](https://api.github.com/repos/viscalyx/Kravhantering/hooks)
 exposes one active `web` hook, ID `602735223`, subscribed to all events (`*`).
-Only its metadata is inspected; its destination, configuration, and downstream
-behavior are not inspected. The
+The destination hostname is `api.reviewable.io`; URL paths, query parameters,
+credentials, and other configuration are not exposed. Delivery payloads and
+downstream behavior are not inspected. The
 [repository environments endpoint](https://api.github.com/repos/viscalyx/Kravhantering/environments)
 exposes only `copilot`, with no protection rules. Thus an external event
 consumer exists, but these observations do not establish that it deploys.
