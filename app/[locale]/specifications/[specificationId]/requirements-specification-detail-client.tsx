@@ -52,6 +52,10 @@ import LazyAiRequirementGenerator from '@/components/LazyAiRequirementGenerator'
 import LazyRequirementsImportDialog, {
   type InitialRequirementsImport,
 } from '@/components/LazyRequirementsImportDialog'
+import {
+  Prototype1345Header,
+  usePrototype1345,
+} from '@/components/Prototype1345'
 import RequirementsTable, {
   type FloatingActionItem,
   type FloatingActionMenuItem,
@@ -495,6 +499,7 @@ export default function KravunderlagDetailClient({
   specificationId: number
 }) {
   useHelpContent(REQUIREMENT_SPECIFICATION_DETAIL_HELP)
+  const prototype = usePrototype1345()
   const t = useTranslations('specification')
   const tc = useTranslations('common')
   const td = useTranslations('deviation')
@@ -2952,7 +2957,15 @@ export default function KravunderlagDetailClient({
     <>
       <div
         className={specificationDetailPageShellClassName}
+        data-prototype-detail={prototype.active ? prototype.variant : undefined}
         data-specification-detail-page-shell="true"
+        {...(prototype.active
+          ? devMarker({
+              context: 'prototype 1345',
+              name: 'specification detail layout',
+              value: prototype.variant,
+            })
+          : {})}
       >
         <div className={specificationDetailContainerClassName}>
           {loadWarning ? (
@@ -2972,45 +2985,60 @@ export default function KravunderlagDetailClient({
             </p>
           ) : null}
           {/* Header */}
+          {prototype.active && (
+            <Prototype1345Header
+              action={t('editSpecification')}
+              canCreate={canMutateSpecification}
+              icon={<Pencil aria-hidden="true" size={17} />}
+              title={specName}
+            />
+          )}
           <div className="mb-5">
             <div
               className="flex flex-col gap-3 xl:grid xl:grid-cols-[minmax(40vw,1fr)_minmax(0,1fr)] xl:items-start xl:gap-5"
               data-specification-detail-header-summary="true"
             >
-              <div className="min-w-0">
-                <div
-                  className="flex items-start gap-3"
-                  data-specification-detail-title-row="true"
-                >
-                  <h1 className="min-w-0 text-2xl font-bold text-secondary-900 dark:text-secondary-100 xl:text-[2rem] xl:leading-tight">
-                    {specName}
-                  </h1>
-                  {canMutateSpecification ? (
-                    <button
-                      aria-expanded={showEditSpecificationForm}
-                      aria-haspopup="dialog"
-                      aria-label={t('editSpecification')}
-                      className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-white/80 text-secondary-700 shadow-sm transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:bg-secondary-900/70 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                      {...devMarker({
-                        context: 'requirements specification detail',
-                        name: 'detail action',
-                        priority: 350,
-                        value: 'edit specification',
-                      })}
-                      onClick={() => setShowEditSpecificationForm(true)}
-                      title={t('editSpecification')}
-                      type="button"
-                    >
-                      <Pencil aria-hidden="true" className="h-4 w-4" />
-                    </button>
-                  ) : null}
+              {!prototype.active && (
+                <div className="min-w-0">
+                  <div
+                    className="flex items-start gap-3"
+                    data-specification-detail-title-row="true"
+                  >
+                    <h1 className="min-w-0 text-2xl font-bold text-secondary-900 dark:text-secondary-100 xl:text-[2rem] xl:leading-tight">
+                      {specName}
+                    </h1>
+                    {canMutateSpecification ? (
+                      <button
+                        aria-expanded={showEditSpecificationForm}
+                        aria-haspopup="dialog"
+                        aria-label={t('editSpecification')}
+                        className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-white/80 text-secondary-700 shadow-sm transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:bg-secondary-900/70 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                        {...devMarker({
+                          context: 'requirements specification detail',
+                          name: 'detail action',
+                          priority: 350,
+                          value: 'edit specification',
+                        })}
+                        onClick={() => setShowEditSpecificationForm(true)}
+                        title={t('editSpecification')}
+                        type="button"
+                      >
+                        <Pencil aria-hidden="true" className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                  </div>
+                  {spec.businessNeedsReference && (
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary-700 dark:text-secondary-200">
+                      {spec.businessNeedsReference}
+                    </p>
+                  )}
                 </div>
-                {spec.businessNeedsReference && (
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary-700 dark:text-secondary-200">
-                    {spec.businessNeedsReference}
-                  </p>
-                )}
-              </div>
+              )}
+              {prototype.active && spec.businessNeedsReference && (
+                <p className="prototype-1345-detail-description">
+                  {spec.businessNeedsReference}
+                </p>
+              )}
               <dl
                 className="grid grid-flow-col auto-cols-[minmax(12rem,1fr)] gap-3 overflow-x-auto pb-1 xl:auto-cols-fr"
                 data-specification-detail-header-metadata="true"

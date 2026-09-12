@@ -1,6 +1,6 @@
 'use client'
 
-// Throwaway #1345: Before + three structural alternatives on the existing list routes.
+// Throwaway #1345: Before + B and D alternatives on the existing list routes.
 import { ArrowLeft, ArrowRight, FlaskConical, Plus, X } from 'lucide-react'
 import type { Route } from 'next'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -11,13 +11,14 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
 import './Prototype1345.css'
 
-export type PrototypeVariant = 'before' | 'A' | 'B' | 'C'
-const variants: PrototypeVariant[] = ['before', 'A', 'B', 'C']
+export type PrototypeVariant = 'before' | 'B' | 'D'
+const variants: PrototypeVariant[] = ['before', 'B', 'D']
 const PrototypeContext = createContext({
   enabled: false,
   active: false,
@@ -48,6 +49,7 @@ export function Prototype1345Provider({ children }: { children: ReactNode }) {
     ['/requirements', '/specifications', '/requirement-areas'].includes(
       route,
     ) ||
+    /^\/specifications\/\d+$/.test(route) ||
     (route.startsWith('/requirements/stewardship') &&
       ['packages', 'norms'].includes(
         params.get('tab') ?? route.split('/').at(-1) ?? '',
@@ -58,7 +60,7 @@ export function Prototype1345Provider({ children }: { children: ReactNode }) {
     requested as PrototypeVariant,
   )
     ? (requested as PrototypeVariant)
-    : 'A'
+    : 'B'
   const active = enabled && variant !== 'before'
   const simulate = useCallback((label: string) => setLastAction(label), [])
   const choose = useCallback(
@@ -70,6 +72,10 @@ export function Prototype1345Provider({ children }: { children: ReactNode }) {
     },
     [params, pathname, router],
   )
+
+  useEffect(() => {
+    if (enabled && (requested === 'A' || requested === 'C')) choose('B')
+  }, [choose, enabled, requested])
 
   useEffect(() => {
     if (!enabled) return
@@ -90,7 +96,9 @@ export function Prototype1345Provider({ children }: { children: ReactNode }) {
       event.preventDefault()
       choose(
         variants[
-          (variants.indexOf(variant) + (event.key === 'ArrowRight' ? 1 : 3)) % 4
+          (variants.indexOf(variant) +
+            (event.key === 'ArrowRight' ? 1 : variants.length - 1)) %
+            variants.length
         ],
       )
     }
@@ -183,7 +191,12 @@ export function Prototype1345Provider({ children }: { children: ReactNode }) {
               <button
                 aria-label={t('previous')}
                 onClick={() =>
-                  choose(variants[(variants.indexOf(variant) + 3) % 4])
+                  choose(
+                    variants[
+                      (variants.indexOf(variant) + variants.length - 1) %
+                        variants.length
+                    ],
+                  )
                 }
                 type="button"
               >
@@ -195,7 +208,9 @@ export function Prototype1345Provider({ children }: { children: ReactNode }) {
               <button
                 aria-label={t('next')}
                 onClick={() =>
-                  choose(variants[(variants.indexOf(variant) + 1) % 4])
+                  choose(
+                    variants[(variants.indexOf(variant) + 1) % variants.length],
+                  )
                 }
                 type="button"
               >
@@ -203,7 +218,7 @@ export function Prototype1345Provider({ children }: { children: ReactNode }) {
               </button>
               <button
                 aria-pressed={variant === 'before'}
-                onClick={() => choose(variant === 'before' ? 'A' : 'before')}
+                onClick={() => choose(variant === 'before' ? 'B' : 'before')}
                 type="button"
               >
                 {t('compare')}
@@ -217,6 +232,9 @@ export function Prototype1345Provider({ children }: { children: ReactNode }) {
               </button>
             </div>
             <div className="prototype-1345-links">
+              <a href={`/${locale}/specifications/8?variant=${variant}`}>
+                {t('detailView')}
+              </a>
               {views.map(([path, key]) => (
                 <a
                   href={`/${locale}${path}${path.includes('?') ? '&' : '?'}variant=${variant}`}
@@ -278,6 +296,7 @@ interface HeaderProps {
   action: string
   canCreate?: boolean
   disabled?: boolean
+  icon?: ReactNode
   title: ReactNode
   tooltip?: string
 }
@@ -285,6 +304,7 @@ export function Prototype1345Header({
   title,
   action,
   disabled,
+  icon,
   tooltip,
   canCreate = true,
 }: HeaderProps) {
@@ -305,7 +325,7 @@ export function Prototype1345Header({
         value: action,
       })}
     >
-      <Plus aria-hidden="true" size={17} />
+      {icon ?? <Plus aria-hidden="true" size={17} />}
       {action}
     </button>
   ) : null
@@ -317,47 +337,58 @@ export function Prototype1345Header({
       {...devMarker({ context: 'prototype 1345', name: 'list toolbar' })}
     />
   )
-  if (variant === 'B')
-    return <VariantB button={button} title={title} tools={tools} />
-  if (variant === 'C')
-    return <VariantC button={button} title={title} tools={tools} />
-  return <VariantA button={button} title={title} tools={tools} />
+  return variant === 'D' ? (
+    <VariantD button={button} title={title} tools={tools} />
+  ) : (
+    <VariantB button={button} title={title} tools={tools} />
+  )
 }
 interface VariantProps {
   button: ReactNode
   title: ReactNode
   tools: ReactNode
 }
-export function VariantA({ title, button, tools }: VariantProps) {
-  return (
-    <header className="prototype-1345-header prototype-1345-A">
-      <div className="prototype-1345-title-row">
-        <h1>{title}</h1>
-        {button}
-      </div>
-      {tools}
-    </header>
-  )
+function usePrototypeHeaderMeasure() {
+  const headerRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const header = headerRef.current
+    if (!header) return
+    const measure = () =>
+      document.documentElement.style.setProperty(
+        '--prototype-1345-header-height',
+        `${header.getBoundingClientRect().height}px`,
+      )
+    const observer = new ResizeObserver(measure)
+    observer.observe(header)
+    measure()
+    return () => {
+      observer.disconnect()
+      document.documentElement.style.removeProperty(
+        '--prototype-1345-header-height',
+      )
+    }
+  }, [])
+  return headerRef
 }
 export function VariantB({ title, button, tools }: VariantProps) {
+  const headerRef = usePrototypeHeaderMeasure()
   return (
-    <header className="prototype-1345-header prototype-1345-B">
+    <header className="prototype-1345-header prototype-1345-B" ref={headerRef}>
       <h1>{title}</h1>
       {tools}
       {button}
     </header>
   )
 }
-export function VariantC({ title, button, tools }: VariantProps) {
-  const t = useTranslations('prototype1345')
+export function VariantD({ title, button, tools }: VariantProps) {
+  const headerRef = usePrototypeHeaderMeasure()
   return (
-    <header className="prototype-1345-header prototype-1345-C">
-      <h1>{title}</h1>
-      <aside className="prototype-1345-action-panel">
-        <h2>{t('tools')}</h2>
+    <header className="prototype-1345-header prototype-1345-D" ref={headerRef}>
+      <div className="prototype-1345-identity">
+        <h1>{title}</h1>
         {button}
-        {tools}
-      </aside>
+      </div>
+      {tools}
     </header>
   )
 }

@@ -1,355 +1,326 @@
 [
   {
-    "key": "library",
+    "view": "library",
     "variant": "before",
     "heading": [],
-    "primaryCount": 0,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": null
-  },
-  {
-    "key": "library",
-    "variant": "A",
-    "heading": [
-      "Kravbibliotek"
-    ],
-    "primary": "Nytt krav",
-    "primaryCount": 1,
-    "toolCount": 5,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": {
-      "left": 1281.953125,
-      "right": 1408,
-      "top": 48,
-      "bottom": 92
+    "width": {
+      "viewport": 1440,
+      "page": 1440
     }
   },
   {
-    "key": "library",
+    "view": "library",
     "variant": "B",
     "heading": [
       "Kravbibliotek"
     ],
-    "primary": "Nytt krav",
-    "primaryCount": 1,
-    "toolCount": 5,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": {
-      "left": 1265.953125,
-      "right": 1392,
-      "top": 60,
-      "bottom": 104
+    "width": {
+      "viewport": 1440,
+      "page": 1440
     }
   },
   {
-    "key": "library",
-    "variant": "C",
+    "view": "library",
+    "variant": "B",
+    "persistentCommands": {
+      "y": 900,
+      "primary": {
+        "x": 1265.953125,
+        "y": 12,
+        "width": 126.046875,
+        "height": 44,
+        "top": 12,
+        "right": 1392,
+        "bottom": 56,
+        "left": 1265.953125
+      },
+      "tools": {
+        "x": 680.90625,
+        "y": 15.40625,
+        "width": 569.046875,
+        "height": 37.1875,
+        "top": 15.40625,
+        "right": 1249.953125,
+        "bottom": 52.59375,
+        "left": 680.90625
+      }
+    },
+    "afterActionY": 900
+  },
+  {
+    "view": "library",
+    "variant": "D",
     "heading": [
       "Kravbibliotek"
     ],
-    "primary": "Nytt krav",
-    "primaryCount": 1,
-    "toolCount": 5,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": {
-      "left": 1209,
-      "right": 1391,
-      "top": 96.1875,
-      "bottom": 140.1875
+    "width": {
+      "viewport": 1440,
+      "page": 1440
     }
   },
   {
-    "key": "specifications",
+    "view": "library",
+    "variant": "D",
+    "persistentCommands": {
+      "y": 900,
+      "primary": {
+        "x": 237.78125,
+        "y": 11.59375,
+        "width": 110.046875,
+        "height": 36.78125,
+        "top": 11.59375,
+        "right": 347.828125,
+        "bottom": 48.375,
+        "left": 237.78125
+      },
+      "tools": {
+        "x": 816.359375,
+        "y": 11.390625,
+        "width": 577.046875,
+        "height": 37.1875,
+        "top": 11.390625,
+        "right": 1393.40625,
+        "bottom": 48.578125,
+        "left": 816.359375
+      }
+    },
+    "afterActionY": 900
+  },
+  {
+    "view": "specifications",
     "variant": "before",
     "heading": [
       "Kravunderlag"
     ],
-    "primaryCount": 0,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": null
-  },
-  {
-    "key": "specifications",
-    "variant": "A",
-    "heading": [
-      "Kravunderlag"
-    ],
-    "primary": "Nytt kravunderlag",
-    "primaryCount": 1,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": {
-      "left": 1221.890625,
-      "right": 1408,
-      "top": 48,
-      "bottom": 92
+    "width": {
+      "viewport": 1440,
+      "page": 1440
     }
   },
   {
-    "key": "specifications",
+    "view": "specifications",
     "variant": "B",
     "heading": [
       "Kravunderlag"
     ],
-    "primary": "Nytt kravunderlag",
-    "primaryCount": 1,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": {
-      "left": 1205.890625,
-      "right": 1392,
-      "top": 60,
-      "bottom": 104
+    "width": {
+      "viewport": 1440,
+      "page": 1440
     }
   },
   {
-    "key": "specifications",
-    "variant": "C",
+    "view": "specifications",
+    "variant": "D",
     "heading": [
       "Kravunderlag"
     ],
-    "primary": "Nytt kravunderlag",
-    "primaryCount": 1,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": {
-      "left": 1209,
-      "right": 1391,
-      "top": 96.1875,
-      "bottom": 164.1875
+    "width": {
+      "viewport": 1440,
+      "page": 1440
     }
   },
   {
-    "key": "packages",
+    "view": "packages",
     "variant": "before",
     "heading": [
       "Kravpaket"
     ],
-    "primaryCount": 0,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": null
-  },
-  {
-    "key": "packages",
-    "variant": "A",
-    "heading": [
-      "Kravpaket"
-    ],
-    "primary": "Nytt kravpaket",
-    "primaryCount": 1,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": {
-      "left": 1242.96875,
-      "right": 1408,
-      "top": 48,
-      "bottom": 92
+    "width": {
+      "viewport": 1440,
+      "page": 1440
     }
   },
   {
-    "key": "packages",
+    "view": "packages",
     "variant": "B",
     "heading": [
       "Kravpaket"
     ],
-    "primary": "Nytt kravpaket",
-    "primaryCount": 1,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": {
-      "left": 1226.96875,
-      "right": 1392,
-      "top": 60,
-      "bottom": 104
+    "width": {
+      "viewport": 1440,
+      "page": 1440
     }
   },
   {
-    "key": "packages",
-    "variant": "C",
+    "view": "packages",
+    "variant": "D",
     "heading": [
       "Kravpaket"
     ],
-    "primary": "Nytt kravpaket",
-    "primaryCount": 1,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": {
-      "left": 1209,
-      "right": 1391,
-      "top": 96.1875,
-      "bottom": 140.1875
+    "width": {
+      "viewport": 1440,
+      "page": 1440
     }
   },
   {
-    "key": "norms",
+    "view": "norms",
     "variant": "before",
     "heading": [
       "Normbibliotek"
     ],
-    "primaryCount": 0,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": null
-  },
-  {
-    "key": "norms",
-    "variant": "A",
-    "heading": [
-      "Normbibliotek"
-    ],
-    "primary": "Ny normreferens",
-    "primaryCount": 1,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": {
-      "left": 1227.640625,
-      "right": 1408,
-      "top": 48,
-      "bottom": 92
+    "width": {
+      "viewport": 1440,
+      "page": 1440
     }
   },
   {
-    "key": "norms",
+    "view": "norms",
     "variant": "B",
     "heading": [
       "Normbibliotek"
     ],
-    "primary": "Ny normreferens",
-    "primaryCount": 1,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": {
-      "left": 1211.640625,
-      "right": 1392,
-      "top": 60,
-      "bottom": 104
+    "width": {
+      "viewport": 1440,
+      "page": 1440
     }
   },
   {
-    "key": "norms",
-    "variant": "C",
+    "view": "norms",
+    "variant": "D",
     "heading": [
       "Normbibliotek"
     ],
-    "primary": "Ny normreferens",
-    "primaryCount": 1,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": {
-      "left": 1209,
-      "right": 1391,
-      "top": 96.1875,
-      "bottom": 140.1875
+    "width": {
+      "viewport": 1440,
+      "page": 1440
     }
   },
   {
-    "key": "areas",
+    "view": "areas",
     "variant": "before",
     "heading": [
       "Kravområden"
     ],
-    "primaryCount": 0,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": null
-  },
-  {
-    "key": "areas",
-    "variant": "A",
-    "heading": [
-      "Kravområden"
-    ],
-    "primary": "Nytt kravområde",
-    "primaryCount": 1,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": {
-      "left": 1229.234375,
-      "right": 1408,
-      "top": 48,
-      "bottom": 92
+    "width": {
+      "viewport": 1440,
+      "page": 1440
     }
   },
   {
-    "key": "areas",
+    "view": "areas",
     "variant": "B",
     "heading": [
       "Kravområden"
     ],
-    "primary": "Nytt kravområde",
-    "primaryCount": 1,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": {
-      "left": 1213.234375,
-      "right": 1392,
-      "top": 60,
-      "bottom": 104
+    "width": {
+      "viewport": 1440,
+      "page": 1440
     }
   },
   {
-    "key": "areas",
-    "variant": "C",
+    "view": "areas",
+    "variant": "D",
     "heading": [
       "Kravområden"
     ],
-    "primary": "Nytt kravområde",
-    "primaryCount": 1,
-    "toolCount": 0,
-    "viewport": 1440,
-    "pageWidth": 1440,
-    "primaryBounds": {
-      "left": 1209,
-      "right": 1391,
-      "top": 96.1875,
-      "bottom": 140.1875
+    "width": {
+      "viewport": 1440,
+      "page": 1440
     }
   },
   {
-    "key": "library",
-    "variant": "A",
+    "view": "detail",
+    "variant": "before",
+    "heading": [
+      "Upphandling av e-tjänstplattform"
+    ],
+    "width": {
+      "viewport": 1440,
+      "page": 1440
+    }
+  },
+  {
+    "view": "detail",
+    "variant": "B",
+    "heading": [
+      "Upphandling av e-tjänstplattform"
+    ],
+    "width": {
+      "viewport": 1440,
+      "page": 1440
+    }
+  },
+  {
+    "view": "detail",
+    "variant": "B",
+    "paneBefore": [
+      41,
+      200
+    ],
+    "paneAfter": [
+      41,
+      200
+    ],
+    "createBounds": {
+      "x": 587,
+      "y": 270.5,
+      "width": 44,
+      "height": 44
+    }
+  },
+  {
+    "view": "detail",
+    "variant": "D",
+    "heading": [
+      "Upphandling av e-tjänstplattform"
+    ],
+    "width": {
+      "viewport": 1440,
+      "page": 1440
+    }
+  },
+  {
+    "view": "detail",
+    "variant": "D",
+    "paneBefore": [
+      38,
+      200
+    ],
+    "paneAfter": [
+      38,
+      200
+    ],
+    "createBounds": {
+      "x": 85,
+      "y": 282.921875,
+      "width": 118.609375,
+      "height": 32.78125
+    }
+  },
+  {
+    "view": "library",
+    "variant": "B",
     "mobile": {
       "viewport": 390,
-      "pageWidth": 390,
-      "primaryRight": 374,
-      "barRight": 382
+      "page": 390
     }
   },
   {
-    "key": "library",
-    "variant": "A",
+    "view": "library",
+    "variant": "D",
     "mobile": {
-      "viewport": 320,
-      "pageWidth": 320,
-      "primaryRight": 304,
-      "barRight": 312
+      "viewport": 390,
+      "page": 390
     }
   },
   {
-    "keyboardCycleAndReload": true,
-    "url": "http://localhost:3001/en/requirements?variant=C",
+    "view": "detail",
+    "variant": "B",
+    "mobile": {
+      "viewport": 390,
+      "page": 390
+    }
+  },
+  {
+    "view": "detail",
+    "variant": "D",
+    "mobile": {
+      "viewport": 390,
+      "page": 390
+    }
+  },
+  {
+    "legacyRedirectAndKeyboardReload": true,
     "errors": []
   }
 ]

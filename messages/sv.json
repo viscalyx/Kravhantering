@@ -3804,7 +3804,7 @@
     "prototype": "PROTOTYP #1345",
     "previous": "Föregående variant",
     "next": "Nästa variant",
-    "compare": "Före / A",
+    "compare": "Före / B",
     "review": "Ändringar och verifiering",
     "close": "Stäng granskning",
     "tools": "Liståtgärder",
@@ -3814,24 +3814,23 @@
     "state": "Variant {variant} · Vy {view} · Senast simulerad åtgärd: {action}",
     "variants": {
       "before": "Nuvarande layout",
-      "A": "Kompakt sidhuvud",
       "B": "Gemensam kommandorad",
-      "C": "Åtgärdspanel"
+      "D": "Grupperad kommandorad"
     },
     "tradeoffs": {
       "before": "Nuläge: ursprungliga rubriker och flytande ikonknappar. Prototypens skrivskydd och granskningsrad är fortfarande aktiva.",
-      "A": "Rekommenderad utgångspunkt: tydlig rubrik och namngiven skapandeknapp ovanför listan; övriga ikoner i en egen rad. Tar mer höjd, men behåller välbekanta kontroller.",
-      "B": "En gemensam rad samlar rubrik, namngivna verktyg och skapandeknapp. Sparar höjd när allt får plats, men radbryts i smalare fönster.",
-      "C": "En egen åtgärdspanel gör varje kommando läsbart och lämnar tabellhuvudet lugnt. Kostar tabellbredd och prövar avsiktligt ett alternativ till issuens önskade horisontella verktygsrad."
+      "B": "B: den föredragna kommandoraden, nu alltid tillgänglig vid rullning. Rubrik, namngivna verktyg och huvudåtgärd finns kvar där du arbetar.",
+      "D": "D utvecklar B med rubrik och huvudåtgärd i en grupp, åtskilda författar- och utdataverktyg samt en lugnare fast kommandorad. I kravunderlagets detaljvy blir metadata kompaktare och panelflikarnas namn läsbara."
     },
     "checks": {
-      "heading": "1. Jämför Före med A/B/C: hitta sidrubriken med utfälld och infälld navigation.",
-      "primary": "2. Kontrollera alla fem listor: plusikonen har nu en precis synlig etikett. Klicka för att se en simulerad åtgärd nedan.",
-      "secondary": "3. I kravbiblioteket: hitta AI-assisterat författande, rapporter, import, export och kolumner. A visar ikoner; B/C visar även text.",
-      "menus": "4. Öppna Rapporter och Kolumner. Befintliga alternativ och kolumnkontroller finns kvar; jämför placering och tangentbordsåtkomst.",
-      "viewport": "5. Jämför 1440 × 900 och 1920 × 1080; växla ljust/mörkt tema och pröva långt innehåll och ett smalt fönster.",
-      "keyboard": "6. Tabba genom kontrollerna. Vänster/höger växlar variant utanför fält och menyer. Ladda om eller kopiera länken för att behålla varianten.",
-      "safety": "7. Inget skapande eller skrivning genomförs. Statusraden visar simulerade åtgärder. Filtrering och urval för läsning fungerar fortfarande."
-    }
+      "heading": "Jämför Före, B och D i de fem listorna och kravunderlag 8. A och C är borttagna.",
+      "primary": "Rulla långt ned i listan: huvudåtgärd och verktyg finns kvar. Klicka på en simulerad åtgärd och kontrollera att rullningsläget bevaras.",
+      "secondary": "Jämför B och D i kravbiblioteket: D samlar AI/import före rapporter/export/kolumner och placerar huvudåtgärden bredvid rubriken.",
+      "menus": "Öppna Rapporter, Kolumner och detaljpanelernas åtgärdsmenyer. Befintliga alternativ finns kvar utan extra navigering.",
+      "viewport": "Jämför 1440 × 900 och 1920 × 1080, utfälld/infälld navigation, ljust/mörkt, svenska/engelska och smala fönster.",
+      "keyboard": "Använd Tab och variantpilarna; ladda om länken. I kravunderlag 8: byt panelflikar och rulla panelerna oberoende av varandra.",
+      "safety": "Skapande och skrivningar simuleras. Kontrollera statusraden nedan; prototypen sparar inga verksamhetsdata."
+    },
+    "detailView": "Kravunderlag 8"
   }
 }

@@ -11,39 +11,38 @@
 <body>
 <header>
 <h1>Issue 1345 · Before and after</h1>
-<p>Throwaway layout study. These are screenshots of the real development app with the same data at 1440 × 900. Choose a list and a candidate layout. Click either image to inspect it at full resolution. No design is approved yet.</p>
+<p>Throwaway layout study. These are screenshots of the real development app with the same data at 1440 × 900. Choose a list and a candidate layout. Click either image to inspect it at full resolution. A and C are removed. B is preferred so far; D is the new alternative. Commands remain available while scrolling.</p>
 <nav aria-label="Comparison controls">
-<label>List <select id="view"><option value="library">Kravbibliotek</option><option value="specifications">Kravunderlag</option><option value="packages">Kravpaket</option><option value="norms">Normbibliotek</option><option value="areas">Kravområden</option></select></label>
-<label>Design <select id="variant"><option value="A">A — Compact header</option><option value="B">B — Command band</option><option value="C">C — Action panel</option></select></label>
+<label>List <select id="view"><option value="library">Kravbibliotek</option><option value="specifications">Kravunderlag</option><option value="packages">Kravpaket</option><option value="norms">Normbibliotek</option><option value="areas">Kravområden</option><option value="detail">Kravunderlag 8</option></select></label>
+<label>Design <select id="variant"><option value="B">B — Command band</option><option value="D">D — Grouped command bar</option></select></label>
 <button id="stack" type="button" aria-pressed="false">Stack images</button>
-<a id="live" href="http://localhost:3001/sv/requirements?variant=A">Open this design in the running app</a>
+<a id="live" href="http://localhost:3001/sv/requirements?variant=B">Open this design in the running app</a>
 </nav>
 <p id="state" role="status"></p>
 </header>
 <main>
 <figure><figcaption>Before · original list layout</figcaption><a id="before-link"><img id="before" alt="Original list layout"></a></figure>
-<figure><figcaption id="after-caption">After · A</figcaption><a id="after-link"><img id="after" alt="Proposed list layout"></a></figure>
+<figure><figcaption id="after-caption">After · B</figcaption><a id="after-link"><img id="after" alt="Proposed list layout"></a></figure>
 </main>
 <footer>
 <p><a href="README.md">Full change list, launch instructions and verification checklist</a></p>
-<details><summary>Additional views: dark theme, wide screens, narrow screens and review controls</summary>
+<details><summary>Scrolled, wide, dark and narrow comparisons</summary>
 <ul>
-<li><a href="evidence/library-A-1920-dark-collapsed.png">A at 1920 × 1080, dark theme, navigation collapsed</a></li>
-<li><a href="evidence/library-A-1920-dark-expanded.png">A at 1920 × 1080, dark theme, navigation expanded</a></li>
-<li><a href="evidence/library-B-1920-dark-expanded.png">B at 1920 × 1080, dark theme, navigation expanded</a></li>
-<li><a href="evidence/library-C-1920-dark-expanded.png">C at 1920 × 1080, dark theme, navigation expanded</a></li>
-<li><a href="evidence/library-A-320-dark.png">A at 320 px, dark theme</a></li>
-<li><a href="evidence/library-B-320-english.png">B at 320 px, English</a></li>
-<li><a href="evidence/library-C-320-english.png">C at 320 px, English</a></li>
-<li><a href="evidence/library-B-1440-english.png">B with English labels at 1440 × 900</a></li>
-<li><a href="evidence/library-A-review-guide.png">In-app change and verification panel</a></li>
+<li><a href="evidence/library-B-scrolled.png">B: commands at the current library scroll position</a></li>
+<li><a href="evidence/library-D-scrolled.png">D: commands at the current library scroll position</a></li>
+<li><a href="evidence/detail-B-scrolled.png">B: independently scrolled specification panels</a></li>
+<li><a href="evidence/detail-D-scrolled.png">D: independently scrolled specification panels</a></li>
+<li><a href="evidence/library-D-1920-dark-expanded.png">D: library at 1920 × 1080, dark, expanded navigation</a></li>
+<li><a href="evidence/detail-D-1920-dark-expanded.png">D: specification detail at 1920 × 1080, dark</a></li>
+<li><a href="evidence/library-D-390-english.png">D: library at 390 px, English</a></li>
+<li><a href="evidence/detail-D-390-english.png">D: specification detail at 390 px, English</a></li>
 </ul>
 </details>
 </footer>
 <script>
 const view=document.getElementById('view'),variant=document.getElementById('variant');
-const descriptions={A:'Recommended starting point: familiar secondary icons below a named header action.',B:'Title, labelled secondary controls and creation action in one band; watch wrapping.',C:'Readable actions in a right panel; less table width. This explores a departure from the requested horizontal toolbar.'};
-const paths={library:'/requirements',specifications:'/specifications',packages:'/requirements/stewardship?tab=packages',norms:'/requirements/stewardship?tab=norms',areas:'/requirement-areas'};
+const descriptions={B:'The preferred command band, now always visible while scrolling.',D:'Grouped authoring and output commands, a quieter sticky bar, and readable specification panels. Primary actions preserve your place in the list.'};
+const paths={library:'/requirements',specifications:'/specifications',packages:'/requirements/stewardship?tab=packages',norms:'/requirements/stewardship?tab=norms',areas:'/requirement-areas',detail:'/specifications/8'};
 function render(){const before=`evidence/${view.value}-before-1440-light.png`,after=`evidence/${view.value}-${variant.value}-1440-light.png`;document.getElementById('before').src=before;document.getElementById('before-link').href=before;document.getElementById('after').src=after;document.getElementById('after-link').href=after;document.getElementById('after-caption').textContent=`After · ${variant.selectedOptions[0].text}`;document.getElementById('state').textContent=`${view.selectedOptions[0].text} · ${variant.value}: ${descriptions[variant.value]}`;const path=paths[view.value];document.getElementById('live').href=`http://localhost:3001/sv${path}${path.includes('?')?'&':'?'}variant=${variant.value}`;}
 view.addEventListener('change',render);variant.addEventListener('change',render);document.getElementById('stack').addEventListener('click',event=>{const stacked=document.body.classList.toggle('stacked');event.currentTarget.setAttribute('aria-pressed',String(stacked));event.currentTarget.textContent=stacked?'Side by side':'Stack images';});render();
 </script>
