@@ -8,6 +8,9 @@ personality = "pragmatic"
 model = "gpt-6-astra"
 model_reasoning_effort = "high"
 
+[features]
+default_mode_request_user_input = false
+
 [permissions.kravhantering-development]
 description = "Workspace access including Git metadata."
 extends = ":workspace"
