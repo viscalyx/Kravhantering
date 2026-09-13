@@ -620,7 +620,19 @@ test.describe('Requirement collaboration', () => {
   }) => {
     const detailPane = await openRequirementDetail(page)
 
-    await expect(detailPane.getByText('Kravområdesägare:')).toHaveCount(1)
+    const areaInfoButton = detailPane.getByRole('button', {
+      name: /^Information om /u,
+    })
+    await areaInfoButton.click()
+    const areaInfoPanel = detailPane.getByRole('region', {
+      name: /^Information om /u,
+    })
+    await expect(areaInfoButton).toHaveAttribute('aria-expanded', 'true')
+    await expect(
+      areaInfoPanel.getByText('Kravområdesägare', { exact: true }),
+    ).toHaveCount(1)
+    await page.keyboard.press('Escape')
+    await expect(areaInfoButton).toHaveAttribute('aria-expanded', 'false')
     await expect(detailPane.getByText('Kategori')).toHaveCount(1)
     await expect(detailPane.getByText('Typ')).toHaveCount(1)
     await expect(detailPane.getByText('Kvalitetsegenskap')).toHaveCount(1)
