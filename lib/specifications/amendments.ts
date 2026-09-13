@@ -387,9 +387,10 @@ export async function cancelAmendment(
         ref.kind === 'library'
           ? 'requirements_specification_items'
           : 'specification_local_requirements'
-      await db.query(`UPDATE ${table} SET valid_until = NULL WHERE id = @0`, [
-        ref.id,
-      ])
+      await db.query(
+        `UPDATE ${table} SET valid_until = NULL, needs_reference_snapshot = NULL WHERE id = @0`,
+        [ref.id],
+      )
     }
   }
   await db.query(

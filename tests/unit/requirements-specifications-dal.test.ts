@@ -1262,6 +1262,8 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([{ id: 33, text: 'IAM-42' }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
@@ -1372,6 +1374,8 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     const disappearedUpdate = createSqlServerDb()
     disappearedUpdate.query
       .mockResolvedValueOnce([{ id: 33, text: 'Before' }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])

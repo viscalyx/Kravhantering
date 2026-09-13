@@ -153,7 +153,7 @@ async function allItems(db: SqlExecutor, id: number): Promise<AgreementItem[]> {
   const rows = await db.query<AgreementItem[]>(
     `SELECT CONCAT('lib:', item.id) AS itemRef, version.description AS description,
        item.requirement_id AS requirementId, item.requirement_version_id AS requirementVersionId,
-       version.version_number AS versionNumber, COALESCE(item.needs_reference_snapshot, needs.text) AS needsReference, item.note,
+       version.version_number AS versionNumber, CASE WHEN item.valid_until <= SYSUTCDATETIME() THEN item.needs_reference_snapshot ELSE needs.text END AS needsReference, item.note,
        item.specification_item_status_id AS specificationItemStatusId,
        item.is_reassessment_required AS reassessmentRequired, item.valid_from AS validFrom, item.valid_until AS validUntil, item.specification_amendment_id AS amendmentId, newer.id AS newerPublishedVersionId,
        version.acceptance_criteria AS acceptanceCriteria, version.verification_method AS verificationMethod,
@@ -169,7 +169,7 @@ async function allItems(db: SqlExecutor, id: number): Promise<AgreementItem[]> {
      LEFT JOIN specification_needs_references needs ON needs.id = item.needs_reference_id
      WHERE item.requirements_specification_id = @0
      UNION ALL
-     SELECT CONCAT('local:', item.id), item.description, NULL, NULL, NULL, COALESCE(item.needs_reference_snapshot, needs.text), item.note,
+     SELECT CONCAT('local:', item.id), item.description, NULL, NULL, NULL, CASE WHEN item.valid_until <= SYSUTCDATETIME() THEN item.needs_reference_snapshot ELSE needs.text END, item.note,
        item.specification_item_status_id, item.is_reassessment_required, item.valid_from, item.valid_until, item.specification_amendment_id, NULL,
        item.acceptance_criteria, item.verification_method, item.is_verifiable,
        item.requirement_category_id, item.requirement_type_id, item.quality_characteristic_id, item.priority_level_id,

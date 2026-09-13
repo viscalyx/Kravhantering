@@ -16,6 +16,7 @@ import {
 import { editRequirement, transitionStatus } from '@/lib/dal/requirements'
 import {
   createSpecificationLocalRequirement,
+  createSpecificationNeedsReference,
   deleteSpecification,
   deleteSpecificationLocalRequirement,
   linkRequirementsToSpecificationAtomically,
@@ -24,6 +25,7 @@ import {
   updateSpecificationItemFields,
   updateSpecificationLocalRequirement,
   updateSpecificationLocalRequirementFields,
+  updateSpecificationNeedsReference,
 } from '@/lib/dal/requirements-specifications'
 import {
   executePrivacyErasure,
@@ -949,4 +951,136 @@ describe('specification agreement workflow', () => {
       }),
     ).rejects.toMatchObject({ code: 'conflict' })
   })
+  it.each(['library', 'local'] as const)(
+    'keeps %s needs live through a future decision and cancellation while preserving retired context',
+    async kind => {
+      const db = database()
+      const specification = await createSpecificationFixture(
+        db,
+        `LIVE-NEEDS-${kind}`,
+      )
+      const firstNeeds = await createSpecificationNeedsReference(
+        db,
+        specification.id,
+        { text: 'Original need' },
+      )
+      const secondNeeds = await createSpecificationNeedsReference(
+        db,
+        specification.id,
+        { text: 'Updated need' },
+      )
+      if (kind === 'local') {
+        await createSpecificationLocalRequirement(db, specification.id, {
+          description: 'Agreed text',
+          needsReferenceId: firstNeeds.id,
+        })
+      } else {
+        const area = await createArea(db)
+        const requirement = await createPublishedRequirement(
+          db,
+          area.id,
+          'Agreed text',
+        )
+        await linkRequirementsToSpecificationAtomically(db, specification.id, {
+          requirementIds: [requirement.requirementId],
+          needsReferenceId: firstNeeds.id,
+        })
+      }
+      const context = await makeRequestContext()
+      let now = new Date()
+      const workflow = createSpecificationAgreementWorkflow(db, {
+        now: () => now,
+      })
+      const original = requireFixture(
+        (await workflow.read(context, specification.id)).currentItems[0],
+      )
+      const itemId = Number(original.itemRef.split(':')[1])
+      const update =
+        kind === 'local'
+          ? updateSpecificationLocalRequirementFields
+          : updateSpecificationItemFields
+      await workflow.mutate(context, specification.id, {
+        operation: 'establish',
+        reason: 'Signed',
+        agreementReference: 'LIVE',
+        effectiveDate: '2026-01-01',
+      })
+      const decideRemoval = async () => {
+        const draft = requireFixture(
+          await workflow.mutate(context, specification.id, {
+            operation: 'prepare_amendment',
+            reason: 'Remove later',
+            agreementReference: 'LIVE/T',
+            effectiveDate: '2099-01-01',
+            changes: [{ kind: 'remove', itemRef: original.itemRef }],
+          }),
+        )
+        await workflow.mutate(context, specification.id, {
+          operation: 'decide_amendment',
+          amendmentId: draft.amendmentId,
+        })
+        return draft.amendmentId
+      }
+      const amendmentId = await decideRemoval()
+      await update(db, itemId, {
+        needsReferenceId: secondNeeds.id,
+        note: 'Updated follow-up',
+      })
+      expect(
+        (await workflow.read(context, specification.id)).currentItems[0],
+      ).toMatchObject({
+        needsReference: 'Updated need',
+        note: 'Updated follow-up',
+      })
+      await updateSpecificationNeedsReference(
+        db,
+        specification.id,
+        secondNeeds.id,
+        { text: 'Renamed need' },
+      )
+      expect(
+        (await workflow.read(context, specification.id)).currentItems[0]
+          ?.needsReference,
+      ).toBe('Renamed need')
+      await workflow.mutate(context, specification.id, {
+        operation: 'cancel_amendment',
+        amendmentId,
+        reason: 'Replan',
+      })
+      await update(db, itemId, { needsReferenceId: firstNeeds.id })
+      expect(
+        (await workflow.read(context, specification.id)).currentItems[0]
+          ?.needsReference,
+      ).toBe('Original need')
+      await decideRemoval()
+      await updateSpecificationNeedsReference(
+        db,
+        specification.id,
+        firstNeeds.id,
+        { text: 'Final need before retirement' },
+      )
+      // Move the persisted retirement boundary past before editing the shared register.
+      const table =
+        kind === 'local'
+          ? 'specification_local_requirements'
+          : 'requirements_specification_items'
+      await db.query(
+        `UPDATE ${table} SET valid_until = SYSUTCDATETIME() WHERE id = @0`,
+        [itemId],
+      )
+      await updateSpecificationNeedsReference(
+        db,
+        specification.id,
+        firstNeeds.id,
+        { text: 'Register edit after retirement' },
+      )
+      now = new Date('2099-01-02T00:00:00Z')
+      const history = await workflow.read(context, specification.id)
+      expect(history.currentItems).toHaveLength(0)
+      expect(history.historyItems[0]?.needsReference).toBe(
+        'Final need before retirement',
+      )
+      expect(history.originalItems[0]?.needsReference).toBe('Original need')
+    },
+  )
 })

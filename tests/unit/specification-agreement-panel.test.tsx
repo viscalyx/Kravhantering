@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import SpecificationAgreementPanel from '@/components/SpecificationAgreementPanel'
@@ -10,6 +10,50 @@ vi.mock('next-intl', () => {
 
 describe('agreement author workflow', () => {
   afterEach(() => vi.unstubAllGlobals())
+
+  it('announces loading and ignores an obsolete specification response', async () => {
+    let resolveFirst = (_response: Response): void => {
+      throw new Error('First request not started')
+    }
+    const first = new Promise<Response>(resolve => {
+      resolveFirst = resolve
+    })
+    const view = (agreementReference: string) => ({
+      establishmentStatus: 'editable',
+      agreementReference,
+      canAuthor: false,
+      canDecide: false,
+      currentItems: [],
+      originalItems: [],
+      historyItems: [],
+      amendments: [],
+      deviations: [],
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockReturnValueOnce(first)
+        .mockResolvedValueOnce(new Response(JSON.stringify(view('SECOND')))),
+    )
+    const onChanged = vi.fn()
+    const { rerender } = render(
+      <SpecificationAgreementPanel onChanged={onChanged} specificationId={1} />,
+    )
+    expect(screen.getByRole('status')).toHaveTextContent('working')
+    expect(screen.getByRole('region')).toHaveAttribute('aria-busy', 'true')
+    rerender(
+      <SpecificationAgreementPanel onChanged={onChanged} specificationId={2} />,
+    )
+    expect(await screen.findByText(/SECOND/)).toHaveAttribute('role', 'status')
+    await act(async () => {
+      resolveFirst(new Response(JSON.stringify(view('FIRST'))))
+      await first
+    })
+    expect(screen.getByText(/SECOND/)).toBeVisible()
+    expect(screen.queryByText(/FIRST/)).not.toBeInTheDocument()
+    expect(screen.getByRole('region')).toHaveAttribute('aria-busy', 'false')
+  })
 
   it('lets the author compare versions and keep the pinned version without a mutation', async () => {
     const fetch = vi

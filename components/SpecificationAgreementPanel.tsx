@@ -2,7 +2,7 @@
 
 import { History } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -54,7 +54,10 @@ export default function SpecificationAgreementPanel({
   const [reason, setReason] = useState('')
   const [agreementReference, setAgreementReference] = useState('')
   const [effectiveDate, setEffectiveDate] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [mutating, setBusy] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const loadSequence = useRef(0)
+  const busy = mutating || loading
   const [comparedItemRef, setComparedItemRef] = useState('')
   const [tab, setTab] = useState<'current' | 'original' | 'history'>('current')
   const [changes, setChanges] = useState<
@@ -75,20 +78,31 @@ export default function SpecificationAgreementPanel({
   const loadErrorMessage = t('loadError')
   const load = useCallback(
     async (search = '') => {
+      const sequence = ++loadSequence.current
+      setLoading(true)
+      setError('')
       try {
         const response = await apiFetch(
           `${endpoint}?versionSearch=${encodeURIComponent(search)}`,
         )
         if (!response.ok) throw new Error(loadErrorMessage)
-        setView(await response.json())
+        const nextView = await response.json()
+        if (sequence === loadSequence.current) setView(nextView)
       } catch (error) {
-        setError(error instanceof Error ? error.message : loadErrorMessage)
+        if (sequence === loadSequence.current) {
+          setError(error instanceof Error ? error.message : loadErrorMessage)
+        }
+      } finally {
+        if (sequence === loadSequence.current) setLoading(false)
       }
     },
     [endpoint, loadErrorMessage],
   )
   useEffect(() => {
     void load()
+    return () => {
+      loadSequence.current += 1
+    }
   }, [load])
 
   async function compare(itemRef: string) {
@@ -232,6 +246,7 @@ export default function SpecificationAgreementPanel({
 
   return (
     <section
+      aria-busy={busy}
       aria-label={t('title')}
       className="mb-5 space-y-4 rounded-xl border border-secondary-200 bg-white p-4 text-secondary-900 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100"
       id="agreement-history"
@@ -242,7 +257,7 @@ export default function SpecificationAgreementPanel({
         {t('title')}
       </h2>
       {view && (
-        <p className="text-sm">
+        <p className="text-sm" role="status">
           {t(`states.${view.establishmentStatus}`)}
           {view.agreementReference ? ` · ${view.agreementReference}` : ''}
         </p>
@@ -799,7 +814,9 @@ export default function SpecificationAgreementPanel({
             >
               <h4 className="font-semibold">
                 {t('amendmentNumber', { id: amendment.id })} ·{' '}
-                {t(`amendmentStates.${amendment.status}`)}
+                <span role="status">
+                  {t(`amendmentStates.${amendment.status}`)}
+                </span>
               </h4>
               <p>
                 {t('recordedBy')}:{' '}

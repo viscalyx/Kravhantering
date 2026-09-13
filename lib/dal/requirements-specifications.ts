@@ -1925,37 +1925,65 @@ export async function updateSpecificationNeedsReference(
   id: number,
   data: SpecificationNeedsReferenceMutationInput,
 ): Promise<SpecificationNeedsReferenceSummary> {
-  const existingIdentity = await findSpecificationNeedsReferenceIdentity(
-    db,
-    specificationId,
-    id,
-  )
-  if (!existingIdentity) {
-    throw notFoundError('Needs reference not found')
-  }
+  return db.transaction(async manager => {
+    await manager.query(
+      'SELECT id FROM requirements_specifications WITH (UPDLOCK, HOLDLOCK) WHERE id = @0',
+      [specificationId],
+    )
+    const existingIdentity = await findSpecificationNeedsReferenceIdentity(
+      manager,
+      specificationId,
+      id,
+    )
+    if (!existingIdentity) {
+      throw notFoundError('Needs reference not found')
+    }
 
-  const normalized = normalizeSpecificationNeedsReferenceInput(data)
-  await assertSpecificationNeedsReferenceTextAvailable(
-    db,
-    specificationId,
-    normalized.text,
-    id,
-  )
+    const normalized = normalizeSpecificationNeedsReferenceInput(data)
+    await assertSpecificationNeedsReferenceTextAvailable(
+      manager,
+      specificationId,
+      normalized.text,
+      id,
+    )
 
-  await db.query(
-    `
+    await manager.query(
+      `
       UPDATE specification_needs_references
       SET text = @0, description = @1, updated_at = @2
       WHERE id = @3 AND specification_id = @4
     `,
-    [normalized.text, normalized.description, new Date(), id, specificationId],
-  )
+      [
+        normalized.text,
+        normalized.description,
+        new Date(),
+        id,
+        specificationId,
+      ],
+    )
 
-  const updated = await getSpecificationNeedsReference(db, specificationId, id)
-  if (!updated) {
-    throw notFoundError('Needs reference not found after update')
-  }
-  return updated
+    // Future retirement already has a snapshot; keep it current until effect.
+    for (const table of [
+      'requirements_specification_items',
+      'specification_local_requirements',
+    ]) {
+      await manager.query(
+        `UPDATE ${table} SET needs_reference_snapshot = @0
+       WHERE needs_reference_id = @1 AND valid_until > SYSUTCDATETIME()`,
+        [normalized.text, id],
+      )
+    }
+
+    const updated = await getSpecificationNeedsReference(
+      manager,
+      specificationId,
+      id,
+    )
+    if (!updated) {
+      throw notFoundError('Needs reference not found after update')
+    }
+    return updated
+  })
 }
 
 export async function deleteSpecificationNeedsReference(
@@ -3303,6 +3331,9 @@ export async function updateSpecificationItemFields(
 
   if ('needsReferenceId' in data) {
     setClauses.push(`needs_reference_id = @${params.length}`)
+    setClauses.push(
+      `needs_reference_snapshot = CASE WHEN valid_until IS NOT NULL THEN (SELECT text FROM specification_needs_references WHERE id = @${params.length}) ELSE NULL END`,
+    )
     params.push(data.needsReferenceId ?? null)
   }
 
@@ -3378,6 +3409,9 @@ export async function updateSpecificationLocalRequirementFields(
 
   if ('needsReferenceId' in data) {
     setClauses.push(`needs_reference_id = @${params.length}`)
+    setClauses.push(
+      `needs_reference_snapshot = CASE WHEN valid_until IS NOT NULL THEN (SELECT text FROM specification_needs_references WHERE id = @${params.length}) ELSE NULL END`,
+    )
     params.push(data.needsReferenceId ?? null)
   }
 
