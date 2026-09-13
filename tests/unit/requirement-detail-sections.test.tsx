@@ -1,13 +1,29 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import { Activity } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import RequirementAreaInfo from '@/components/RequirementAreaInfo'
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
 
 vi.mock('next-intl', () => ({ useTranslations: () => (key: string) => key }))
+const popoverDescriptors = {
+  showPopover: Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    'showPopover',
+  ),
+  hidePopover: Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    'hidePopover',
+  ),
+}
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
+  for (const [name, descriptor] of Object.entries(popoverDescriptors)) {
+    if (descriptor)
+      Object.defineProperty(HTMLElement.prototype, name, descriptor)
+    else Reflect.deleteProperty(HTMLElement.prototype, name)
+  }
 })
 
 const baseProps = {
@@ -26,6 +42,80 @@ const baseProps = {
 }
 
 describe('requirement detail presentation', () => {
+  it('balances the native area popover across effect replay, dismissal and unmount', () => {
+    const openPanels = new Set<HTMLElement>()
+    Object.defineProperties(HTMLElement.prototype, {
+      showPopover: {
+        configurable: true,
+        value(this: HTMLElement) {
+          openPanels.add(this)
+          this.style.display = 'block'
+        },
+      },
+      hidePopover: {
+        configurable: true,
+        value(this: HTMLElement) {
+          openPanels.delete(this)
+          this.style.display = 'none'
+        },
+      },
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise(() => {})),
+    )
+    const areaInfo = (
+      <RequirementAreaInfo areaId={7} name="Security" ownerName={null} />
+    )
+    const { rerender, unmount } = render(
+      <Activity mode="visible">{areaInfo}</Activity>,
+    )
+    const button = screen.getByRole('button', { name: 'areaInfo' })
+    fireEvent.click(button)
+    expect(
+      openPanels.has(screen.getByRole('region', { name: 'areaInfo' })),
+    ).toBe(true)
+    rerender(<Activity mode="hidden">{areaInfo}</Activity>)
+    expect(openPanels.size).toBe(0)
+    rerender(<Activity mode="visible">{areaInfo}</Activity>)
+    expect(
+      openPanels.has(screen.getByRole('region', { name: 'areaInfo' })),
+    ).toBe(true)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(openPanels.size).toBe(0)
+    expect(button).toHaveFocus()
+    fireEvent.click(button)
+    expect(
+      openPanels.has(screen.getByRole('region', { name: 'areaInfo' })),
+    ).toBe(true)
+    unmount()
+    expect(openPanels.size).toBe(0)
+  })
+
+  it('keeps dismissal working when native popover calls fail', () => {
+    const failPopover = vi.fn(() => {
+      throw new DOMException('Invalid popover state', 'InvalidStateError')
+    })
+    Object.defineProperties(HTMLElement.prototype, {
+      showPopover: { configurable: true, value: failPopover },
+      hidePopover: { configurable: true, value: failPopover },
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise(() => {})),
+    )
+    render(<RequirementAreaInfo areaId={7} name="Security" ownerName={null} />)
+    const button = screen.getByRole('button', { name: 'areaInfo' })
+    fireEvent.click(button)
+    expect(button).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.pointerDown(document.body)
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(button)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    expect(button).toHaveFocus()
+  })
+
   it('opens area description and owner information and dismisses it with Escape', async () => {
     vi.stubGlobal(
       'fetch',

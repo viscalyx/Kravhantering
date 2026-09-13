@@ -95,7 +95,14 @@ export default function RequirementAreaInfo({
       }
     }
     positionPanel()
-    if (supportsPopover) panelRef.current?.showPopover()
+    const panel = panelRef.current
+    if (supportsPopover) {
+      try {
+        panel?.showPopover()
+      } catch {
+        // Keep dismissal available if the native popover cannot be shown.
+      }
+    }
     document.addEventListener('pointerdown', dismiss)
     document.addEventListener('keydown', onKeyDown, true)
     window.addEventListener('resize', positionPanel)
@@ -105,6 +112,13 @@ export default function RequirementAreaInfo({
       document.removeEventListener('keydown', onKeyDown, true)
       window.removeEventListener('resize', positionPanel)
       window.removeEventListener('scroll', positionPanel, true)
+      if (supportsPopover) {
+        try {
+          panel?.hidePopover()
+        } catch {
+          // The panel may already have left the top layer during unmount.
+        }
+      }
     }
   }, [open, supportsPopover])
 
