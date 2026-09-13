@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Page, type TestInfo, test } from '@playwright/test'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'requirements.visibleColumns.v5'
@@ -26,6 +26,98 @@ async function expectStoredVersionColumn(page: Page, visible: boolean) {
       ),
     )
     .toBe(visible)
+}
+
+async function expectSelectAllSpacing(page: Page, testInfo: TestInfo) {
+  const selection = page.getByRole('checkbox', {
+    name: 'Markera alla',
+    exact: true,
+  })
+  await expect(
+    page.locator('[data-requirements-data-table] tbody tr').first(),
+  ).toContainText(/\S/)
+  await expect(page.locator('[data-requirements-data-table] tbody')).toHaveCSS(
+    'pointer-events',
+    'auto',
+  )
+  await expect(
+    page.getByRole('button', { name: 'Filtrera kravpaket', exact: true }),
+  ).toBeEnabled()
+  const geometry = await selection.evaluate(checkbox => {
+    const box = checkbox.getBoundingClientRect()
+    const x = box.x + box.width / 2
+    const y = box.y + box.height / 2
+    const label = document.querySelector(
+      '[data-requirement-header-label="uniqueId"]',
+    )
+    if (!label) throw new Error('Missing requirement-ID header label')
+    const labelBox = label.getBoundingClientRect()
+    // Include the hoverable package band, clickable rows and resize handles,
+    // as well as native controls, when checking nearby pointer targets.
+    const targets = document.querySelectorAll<HTMLElement>(
+      'button, a[href], input, select, textarea, [role="button"], ' +
+        '[role="checkbox"], [role="slider"], [role="link"], fieldset, ' +
+        '[data-column-resize-handle], [data-requirements-data-table] tbody tr',
+    )
+    const neighbors = Array.from(targets)
+      .filter(target => {
+        const style = getComputedStyle(target)
+        return (
+          !target.contains(checkbox) &&
+          !target.matches(':disabled') &&
+          style.visibility === 'visible' &&
+          style.pointerEvents !== 'none'
+        )
+      })
+      .flatMap(target => {
+        const rect = target.getBoundingClientRect()
+        if (rect.width === 0 || rect.height === 0) return []
+        // A 24px-diameter circle must clear every neighboring target rectangle.
+        const targetClearance =
+          Math.hypot(
+            Math.max(rect.left - x, 0, x - rect.right),
+            Math.max(rect.top - y, 0, y - rect.bottom),
+          ) - 12
+        // Undersized neighbors also have their own 24px-diameter circles.
+        const circleClearance =
+          rect.width < 24 || rect.height < 24
+            ? Math.hypot(
+                rect.x + rect.width / 2 - x,
+                rect.y + rect.height / 2 - y,
+              ) - 24
+            : null
+        return [
+          {
+            name:
+              target.getAttribute('aria-label') ??
+              target.textContent?.trim().slice(0, 80) ??
+              target.tagName,
+            width: rect.width,
+            height: rect.height,
+            clearance: Math.min(targetClearance, circleClearance ?? Infinity),
+          },
+        ]
+      })
+      .sort((left, right) => left.clearance - right.clearance)
+    return {
+      width: box.width,
+      height: box.height,
+      verticalOffset: y - (labelBox.y + labelBox.height / 2),
+      neighbors,
+    }
+  })
+  await testInfo.attach('select-all-spacing', {
+    body: JSON.stringify(geometry, null, 2),
+    contentType: 'application/json',
+  })
+  expect(geometry.width).toBe(16)
+  expect(geometry.height).toBe(16)
+  expect(Math.abs(geometry.verticalOffset)).toBeLessThanOrEqual(1)
+  expect(geometry.neighbors.length).toBeGreaterThan(0)
+  expect(
+    geometry.neighbors.filter(target => target.clearance < 0),
+    'The select-all 24px circle must not intersect adjacent targets or their 24px circles',
+  ).toEqual([])
 }
 
 test.describe('Requirements table column picker', () => {
@@ -207,17 +299,7 @@ for (const width of [1440, 1920]) {
           expect(
             geometry.filter((_, index) => index !== 1).map(item => item.width),
           ).toEqual([118, 148, 130, 131, 144])
-          const selection = page.getByRole('checkbox', {
-            name: 'Markera alla',
-            exact: true,
-          })
-          const selectionBox = await selection.boundingBox()
-          if (!selectionBox) throw new Error('Missing select-all geometry')
-          expect(
-            Math.abs(
-              selectionBox.y + selectionBox.height / 2 - geometry[0].centre,
-            ),
-          ).toBeLessThanOrEqual(1)
+          await expectSelectAllSpacing(page, testInfo)
           const controls = page.locator(
             '[data-requirement-header-control] button',
           )
@@ -317,6 +399,36 @@ for (const width of [1440, 1920]) {
       })
     }
   }
+}
+
+for (const width of [320, 375, 1440, 1920]) {
+  test(`REQ-05: select-all spacing and alignment without filter chips at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/sv/requirements')
+    await page.evaluate(() => document.fonts.ready)
+    await test.step('measure the existing header before and after clearing its filter chip', async () => {
+      await expectSelectAllSpacing(page, testInfo)
+      const refreshedRows = page.waitForResponse(
+        response =>
+          new URL(response.url()).pathname === '/api/requirements' &&
+          response.request().method() === 'GET',
+      )
+      await page
+        .getByRole('button', { name: 'Ta bort Publicerad', exact: true })
+        .click()
+      await refreshedRows
+      await expect(
+        page.getByRole('button', { name: 'Ta bort Publicerad', exact: true }),
+      ).toHaveCount(0)
+      await page.mouse.move(0, 0)
+      await expect(
+        page.getByRole('button', { name: 'Filtrera kravpaket', exact: true }),
+      ).toHaveAttribute('aria-expanded', 'false')
+      await expectSelectAllSpacing(page, testInfo)
+    })
+  })
 }
 
 test('REQ-05: optional headers share the row centre and retain their selected widths', async ({

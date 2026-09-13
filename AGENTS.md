@@ -16,6 +16,11 @@ Follow the rules in `.github/copilot-instructions.md` and the instructions in `.
 - Treat `.env.sqlserver` and `.env.development.local`, as read-only unless
   the user explicitly approves changing them. Use command-scoped environment
   overrides for temporary settings.
+- Prefer the existing integration test workflow and SQL Server/Keycloak services.
+  When separate test containers are needed, use isolated names, networks, volumes,
+  and unused host ports outside the normal development environment's ports.
+  Keep development services undisturbed. Ask for explicit user permission before
+  making any exception.
 
 ## Spelling
 

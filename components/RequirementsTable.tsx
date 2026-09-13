@@ -2965,7 +2965,7 @@ export default function RequirementsTable({
           >
             {mode === 'interactive' && showSelectAll ? (
               <div className="flex min-h-7 items-center justify-center">
-                {/* WCAG 2.5.8 target-size exception: spacing — the header row keeps its 24 CSS-pixel target circle separate; verified by requirements-table.test.tsx. */}
+                {/* WCAG 2.5.8 target-size exception: spacing — the select-all 24 CSS-pixel circle clears adjacent targets and their spacing circles; geometry verified by table-column-picker.spec.ts. */}
                 <input
                   aria-label={tc('selectAll')}
                   checked={
