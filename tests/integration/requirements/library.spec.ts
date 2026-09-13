@@ -377,6 +377,8 @@ test.describe('Requirements library', () => {
       await expect(
         page.getByRole('button', { name: 'Ta bort INT0001' }),
       ).toHaveCount(0)
+      // Clear hover from the filter interaction before checking the closed chooser.
+      await page.mouse.move(0, 0)
 
       await expect(band).toContainText('Inget kravpaketsfilter aktivt')
       if (developerModeMarkersEnabled) {

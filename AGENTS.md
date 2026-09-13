@@ -13,6 +13,9 @@ Follow the rules in `.github/copilot-instructions.md` and the instructions in `.
 - Create Git worktrees under `/mnt/krav-azure-dev-data/.worktrees/` when the
   `/mnt/krav-azure-dev-data` mount exists. Otherwise, use a writable temporary
   worktree root outside the repository checkout.
+- Treat `.env.sqlserver` and `.env.development.local`, as read-only unless
+  the user explicitly approves changing them. Use command-scoped environment
+  overrides for temporary settings.
 
 ## Spelling
 
