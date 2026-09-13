@@ -31,6 +31,7 @@ import FormModal from '@/components/FormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import ListWorkspace from '@/components/ListWorkspace'
 import { modalResizableTextareaResizeClassName } from '@/components/modal-textarea-class'
+import RequirementAreaInfo from '@/components/RequirementAreaInfo'
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
@@ -690,14 +691,13 @@ function CompactRequirementDetail({
             label: t('area'),
             markerValue: 'area',
             value: (
-              <>
-                {detail.area.name}
-                {areaOwnerName ? (
-                  <p className="mt-0.5 text-xs text-secondary-500 dark:text-secondary-400">
-                    {t('areaOwner')}: {areaOwnerName}
-                  </p>
-                ) : null}
-              </>
+              <RequirementAreaInfo
+                areaId={detail.area.id}
+                developerModeContext={detailContext}
+                key={detail.area.id}
+                name={detail.area.name}
+                ownerName={areaOwnerName}
+              />
             ),
           },
         ]
@@ -752,12 +752,7 @@ function CompactRequirementDetail({
       markerValue: 'verifiable',
       value: selectedVersion?.verifiable ? tc('yes') : tc('no'),
     },
-    {
-      id: 'verification-method',
-      label: t('verificationMethod'),
-      markerValue: 'verification method',
-      value: selectedVersion?.verificationMethod || '—',
-    },
+
     {
       id: 'specification-count',
       label: t('specificationCount'),
@@ -808,6 +803,8 @@ function CompactRequirementDetail({
           referencesLabel={t('normReferences')}
           requirementPackages={requirementPackages}
           requirementPackagesLabel={t('requirementPackage')}
+          verificationMethod={selectedVersion?.verificationMethod || '—'}
+          verificationMethodLabel={t('verificationMethod')}
         />
       </RequirementDetailCard>
     </div>

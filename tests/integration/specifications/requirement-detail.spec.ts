@@ -4193,3 +4193,42 @@ test.describe('Requirements specification deterministic manual cases', () => {
     ).toHaveCount(0)
   })
 })
+
+for (const width of [1440, 1920]) {
+  test(`SPEC-05: reads primary text and area information inside the real split workspace at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: width === 1440 ? 900 : 1080 })
+    await gotoSpecificationDetail(page)
+    const available = page.locator(
+      '[data-specification-detail-list-panel="available"]',
+    )
+    await available
+      .getByRole('button', { name: 'ANV0002', exact: true })
+      .click()
+    const heading = available.getByRole('heading', {
+      name: 'Kravtext',
+      exact: true,
+    })
+    await expect(heading).toHaveCount(1)
+    const card = heading.locator('../../..')
+    expect(
+      (await card.getByRole('heading').allTextContents()).slice(0, 3),
+    ).toEqual(['Kravtext', 'Acceptanskriterium', 'Verifieringsmetod'])
+    await expect
+      .poll(() => card.evaluate(el => el.scrollWidth <= el.clientWidth))
+      .toBe(true)
+    const info = card.getByRole('button', { name: /^Information om /u })
+    await info.focus()
+    await page.keyboard.press('Space')
+    await expect(
+      page.getByRole('region', { name: /^Information om /u }),
+    ).toContainText('Kravområdesägare')
+    await page.keyboard.press('Escape')
+    await expect(info).toBeFocused()
+    await testInfo.attach('split-detail', {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    })
+  })
+}

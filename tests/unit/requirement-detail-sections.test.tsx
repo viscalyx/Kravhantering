@@ -1,7 +1,14 @@
-import { render, screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import RequirementAreaInfo from '@/components/RequirementAreaInfo'
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
+
+vi.mock('next-intl', () => ({ useTranslations: () => (key: string) => key }))
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
 
 const baseProps = {
   acceptanceCriteria: 'Acceptance',
@@ -9,6 +16,8 @@ const baseProps = {
   description: 'Requirement text',
   descriptionLabel: 'Description label',
   emptyLabel: 'Nothing linked',
+  verificationMethod: 'Inspect the result',
+  verificationMethodLabel: 'Verification method',
   metadata: [{ id: 'area', label: 'Area', value: 'Security' }],
   references: [],
   referencesLabel: 'References',
@@ -17,6 +26,136 @@ const baseProps = {
 }
 
 describe('requirement detail presentation', () => {
+  it('opens area description and owner information and dismisses it with Escape', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          area: { description: 'Security requirements' },
+        }),
+      }),
+    )
+    render(
+      <RequirementDetailSections
+        {...baseProps}
+        metadata={[
+          {
+            id: 'area',
+            label: 'Area',
+            value: (
+              <RequirementAreaInfo
+                areaId={7}
+                name="Security"
+                ownerName="Area owner"
+              />
+            ),
+          },
+        ]}
+      />,
+    )
+    const button = screen.getByRole('button', { name: 'areaInfo' })
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(button)
+    expect(await screen.findByText('Security requirements')).toBeVisible()
+    expect(
+      within(screen.getByRole('region', { name: 'areaInfo' })).getByText(
+        'Area owner',
+      ),
+    ).toBeVisible()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    expect(button).toHaveFocus()
+  })
+
+  it('shows a read failure separately from an empty description and allows retry', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ area: { description: null } }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<RequirementAreaInfo areaId={7} name="Security" ownerName={null} />)
+    const button = screen.getByRole('button', { name: 'areaInfo' })
+    fireEvent.click(button)
+    expect(await screen.findByRole('alert')).toHaveTextContent('areaInfoError')
+    fireEvent.click(button)
+    fireEvent.click(button)
+    expect(await screen.findByText('areaDescriptionEmpty')).toBeVisible()
+    expect(screen.getByText('noneAvailable')).toBeVisible()
+    fireEvent.pointerDown(document.body)
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('keeps the area loading state until its read settles and ignores a dismissed read', async () => {
+    let finishRead!: (value: unknown) => void
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(
+        () =>
+          new Promise(resolve => {
+            finishRead = resolve
+          }),
+      ),
+    )
+    render(<RequirementAreaInfo areaId={7} name="Security" ownerName="Owner" />)
+    const button = screen.getByRole('button', { name: 'areaInfo' })
+    fireEvent.click(button)
+    expect(screen.getByRole('status')).toHaveTextContent('areaInfoLoading')
+    fireEvent.click(button)
+    finishRead({
+      ok: true,
+      json: async () => ({ area: { description: 'Description' } }),
+    })
+    await Promise.resolve()
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('anchors information above a low trigger and keeps the opposite viewport edge automatic', () => {
+    vi.stubGlobal('innerHeight', 900)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise(() => {})),
+    )
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 200,
+      y: 700,
+      left: 200,
+      right: 224,
+      top: 700,
+      bottom: 724,
+      width: 24,
+      height: 24,
+      toJSON: () => ({}),
+    })
+    render(<RequirementAreaInfo areaId={7} name="Security" ownerName="Owner" />)
+    fireEvent.click(screen.getByRole('button', { name: 'areaInfo' }))
+    const panel = screen.getByRole('region', { name: 'areaInfo' })
+    expect(panel).toHaveStyle({ top: 'auto', bottom: '208px', right: 'auto' })
+    fireEvent.pointerDown(panel)
+    expect(screen.getByRole('button', { name: 'areaInfo' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+  })
+
+  it('presents the three primary texts before metadata, with verification shown once', () => {
+    render(<RequirementDetailSections {...baseProps} />)
+    expect(
+      screen.getAllByRole('heading').map(heading => heading.textContent),
+    ).toEqual([
+      'Description label',
+      'Acceptance label',
+      'Verification method',
+      'Area',
+      'References',
+      'Packages',
+    ])
+    expect(screen.getAllByText('Inspect the result')).toHaveLength(1)
+  })
+
   it('renders accessible card content with native container attributes', () => {
     const { rerender } = render(
       <RequirementDetailCard

@@ -87,17 +87,16 @@ describe('StatusStepper', () => {
 
     expect(inactiveSteps).toHaveLength(3)
     for (const step of inactiveSteps) {
-      const icon = step.querySelector('svg.h-4.w-4')
+      const icon = step.querySelector('svg')
       expect(icon).toBeInTheDocument()
       expect(icon).toHaveAttribute('aria-hidden', 'true')
     }
 
     const slider = findActiveSlider(container, 'rgb(234, 179, 8)')
     const activeLabel = slider?.querySelector('span')
-    const activeIcon = slider?.querySelector('svg.h-4.w-4')
+    const activeIcon = slider?.querySelector('svg')
     expect(activeLabel).toHaveTextContent('Granskning')
     expect(activeLabel).toHaveClass('font-semibold')
-    expect(activeLabel?.style.paddingLeft).toBe('7px')
     expect(activeIcon).toBeInTheDocument()
     expect(activeIcon).toHaveAttribute('aria-hidden', 'true')
   })

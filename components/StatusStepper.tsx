@@ -44,7 +44,7 @@ const FALLBACK_STEPS: StatusStep[] = [
 ]
 
 /** Pixel depth of the arrow point / notch */
-const ARROW = 14
+const ARROW = 6
 
 const DROP_SHADOW =
   'drop-shadow(1px 0 0 var(--color-secondary-500)) drop-shadow(-1px 0 0 var(--color-secondary-500)) drop-shadow(0 1px 0 var(--color-secondary-500)) drop-shadow(0 -1px 0 var(--color-secondary-500))'
@@ -141,8 +141,12 @@ export default function StatusStepper({
     }
     const ro = new ResizeObserver(handleResizeObserver)
     if (containerRef.current) ro.observe(containerRef.current)
+    for (const index of steps.keys()) {
+      const step = stepRefs.current[index]
+      if (step) ro.observe(step)
+    }
     return () => ro.disconnect()
-  }, [targetIndex])
+  }, [targetIndex, steps])
 
   const stepLabel = (step: StatusStep) =>
     isArchiving && step.id === 2 ? t('Arkiveringsgranskning') : t(step.nameSv)
@@ -166,7 +170,7 @@ export default function StatusStepper({
       {steps.map((step, i) => (
         <div
           aria-current={i === targetIndex ? 'step' : undefined}
-          className="flex-1 min-w-0"
+          className="flex-1 min-w-max"
           key={`status-step-${step.id}`}
           {...devMarker({
             context: developerModeContext,
@@ -184,14 +188,14 @@ export default function StatusStepper({
           }}
         >
           <div
-            className="h-10 flex items-center justify-center bg-secondary-300 dark:bg-secondary-600 text-secondary-600 dark:text-secondary-300"
+            className="h-6 flex items-center justify-center bg-secondary-300 dark:bg-secondary-600 text-secondary-600 dark:text-secondary-300"
             style={{ clipPath: stepClipPath(i === 0) }}
           >
             <span
-              className="flex items-center justify-center gap-1.5 text-sm select-none font-medium"
-              style={{ paddingLeft: i === 0 ? 0 : ARROW / 2 }}
+              className="flex items-center justify-center gap-1 text-xs select-none font-medium"
+              style={{ paddingLeft: ARROW + 2, paddingRight: ARROW + 2 }}
             >
-              <StatusIcon className="h-4 w-4 shrink-0" name={step.iconName} />
+              <StatusIcon className="h-3 w-3 shrink-0" name={step.iconName} />
               {stepLabel(step)}
             </span>
           </div>
@@ -201,6 +205,7 @@ export default function StatusStepper({
       {/* Sliding active highlight */}
       {sliderPos && targetIndex >= 0 && (
         <div
+          aria-hidden="true"
           className="absolute top-0 pointer-events-none"
           style={{
             left: sliderPos.left,
@@ -212,7 +217,7 @@ export default function StatusStepper({
           }}
         >
           <div
-            className={`h-10 flex items-center justify-center ${activeColor ? '' : 'bg-secondary-700 text-white dark:bg-secondary-200 dark:text-secondary-900'}`}
+            className={`h-6 flex items-center justify-center ${activeColor ? '' : 'bg-secondary-700 text-white dark:bg-secondary-200 dark:text-secondary-900'}`}
             style={{
               backgroundColor: activeColor ?? undefined,
               color: sliderTextColor ?? undefined,
@@ -222,11 +227,11 @@ export default function StatusStepper({
             }}
           >
             <span
-              className="flex items-center justify-center gap-1.5 text-sm select-none font-semibold"
-              style={{ paddingLeft: targetIndex === 0 ? 0 : ARROW / 2 }}
+              className="flex items-center justify-center gap-1 text-xs select-none font-semibold"
+              style={{ paddingLeft: ARROW + 2, paddingRight: ARROW + 2 }}
             >
               <StatusIcon
-                className="h-4 w-4 shrink-0"
+                className="h-3 w-3 shrink-0"
                 name={steps[targetIndex].iconName}
               />
               {stepLabel(steps[targetIndex])}

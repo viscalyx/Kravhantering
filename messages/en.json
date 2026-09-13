@@ -692,7 +692,11 @@
       "restricted": "You no longer have permission to edit this requirement. Your unsaved work is still available to copy.",
       "empty": "(empty)",
       "dependentFields": "Requirement type and quality characteristic, and verifiable and verification method, are resolved together when their changes compete."
-    }
+    },
+    "areaInfo": "Information about {name}",
+    "areaInfoLoading": "Loading requirement area…",
+    "areaInfoError": "Could not load the requirement area description. Close and reopen to try again.",
+    "areaDescriptionEmpty": "No description available."
   },
   "requirementsTable": {
     "clear": "Clear",

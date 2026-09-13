@@ -8,6 +8,7 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationPill from '@/components/DeviationPill'
 import DeviationStepper from '@/components/DeviationStepper'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import RequirementAreaInfo from '@/components/RequirementAreaInfo'
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
 import StatusBadge from '@/components/StatusBadge'
@@ -442,14 +443,13 @@ export default function RequirementDetailClient({
             label: t('area'),
             markerValue: 'area',
             value: (
-              <>
-                {req.area.name}
-                {areaOwnerName ? (
-                  <p className="mt-0.5 text-xs text-secondary-500 dark:text-secondary-400">
-                    {t('areaOwner')}: {areaOwnerName}
-                  </p>
-                ) : null}
-              </>
+              <RequirementAreaInfo
+                areaId={req.area.id}
+                developerModeContext={detailContext}
+                key={req.area.id}
+                name={req.area.name}
+                ownerName={areaOwnerName}
+              />
             ),
           },
         ]
@@ -504,12 +504,7 @@ export default function RequirementDetailClient({
       markerValue: 'verifiable',
       value: selectedVersion?.verifiable ? tc('yes') : tc('no'),
     },
-    {
-      id: 'verification-method',
-      label: t('verificationMethod'),
-      markerValue: 'verification method',
-      value: selectedVersion?.verificationMethod || '—',
-    },
+
     ...(isSpecificationItemContext
       ? [
           {
@@ -913,7 +908,7 @@ export default function RequirementDetailClient({
         onClose && !inline
           ? 'p-6 sm:p-8'
           : inline
-            ? 'px-6 py-4'
+            ? 'px-4 py-3'
             : 'section-padding px-4 sm:px-6 lg:px-8'
       }
     >
@@ -944,9 +939,13 @@ export default function RequirementDetailClient({
         )}
 
         <div
-          className="mb-5 scroll-mt-32"
-          data-requirement-detail-stepper-anchor="true"
-          ref={workflowStepperAnchorRef}
+          className="mb-3 empty:hidden scroll-mt-32"
+          data-requirement-detail-stepper-anchor={
+            isSpecificationItemContext ? 'true' : undefined
+          }
+          ref={
+            isSpecificationItemContext ? workflowStepperAnchorRef : undefined
+          }
         >
           {showsArchivedVersionAvailabilityBanner &&
           archivedVersionPreferredVersion &&
@@ -1023,24 +1022,6 @@ export default function RequirementDetailClient({
               currentStep={deviationWorkflow.deviationStep}
               developerModeContext={detailContext}
             />
-          ) : !isSpecificationItemContext ? (
-            <StatusStepper
-              currentStatusId={currentStatusId}
-              developerModeContext={detailContext}
-              isArchiving={isArchiving}
-              statuses={
-                statuses.length === 0
-                  ? statuses
-                  : isArchiving || currentStatusId === STATUS_ARCHIVED
-                    ? [3, 2, 4]
-                        .map(id => statuses.find(status => status.id === id))
-                        .filter(
-                          (status): status is (typeof statuses)[number] =>
-                            status != null,
-                        )
-                    : statuses.filter(status => status.id !== STATUS_ARCHIVED)
-              }
-            />
           ) : null}
         </div>
 
@@ -1055,7 +1036,7 @@ export default function RequirementDetailClient({
         )}
 
         <div className="grid grid-cols-1 gap-6">
-          <div className="space-y-6">
+          <div className="space-y-3">
             <div className="relative flex flex-col sm:flex-row gap-3">
               <RequirementDetailCard ref={cardRef}>
                 <RequirementDetailSections
@@ -1068,10 +1049,48 @@ export default function RequirementDetailClient({
                   developerModeContext={detailContext}
                   emptyLabel={tc('noneAvailable')}
                   metadata={detailMetadata}
+                  processSteps={
+                    !isSpecificationItemContext ? (
+                      <div
+                        className="max-w-full overflow-x-auto py-px scroll-mt-32"
+                        data-requirement-detail-stepper-anchor="true"
+                        ref={workflowStepperAnchorRef}
+                      >
+                        <StatusStepper
+                          currentStatusId={currentStatusId}
+                          developerModeContext={detailContext}
+                          isArchiving={isArchiving}
+                          statuses={
+                            statuses.length === 0
+                              ? statuses
+                              : isArchiving ||
+                                  currentStatusId === STATUS_ARCHIVED
+                                ? [3, 2, 4]
+                                    .map(id =>
+                                      statuses.find(status => status.id === id),
+                                    )
+                                    .filter(
+                                      (
+                                        status,
+                                      ): status is (typeof statuses)[number] =>
+                                        status != null,
+                                    )
+                                : statuses.filter(
+                                    status => status.id !== STATUS_ARCHIVED,
+                                  )
+                          }
+                        />
+                      </div>
+                    ) : undefined
+                  }
                   references={detailReferences}
                   referencesLabel={t('normReferences')}
                   requirementPackages={detailRequirementPackages}
                   requirementPackagesLabel={t('requirementPackage')}
+                  verificationMethod={
+                    selectedVersion?.verificationMethod || '—'
+                  }
+                  verificationMethodLabel={t('verificationMethod')}
                 />
 
                 {triangleLeft !== null && (

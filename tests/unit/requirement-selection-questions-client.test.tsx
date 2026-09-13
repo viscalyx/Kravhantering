@@ -1598,14 +1598,16 @@ describe('RequirementSelectionQuestionsClient', () => {
     if (!(detailCard instanceof HTMLElement)) {
       throw new Error('Missing matched requirement detail card')
     }
-    expect(detailCard).toHaveClass(
-      'rounded-2xl',
-      'p-6',
-      'space-y-5',
-      'bg-white/80',
-      'text-sm',
-    )
-    expect(detailCard.parentElement).toHaveClass('px-6', 'py-4')
+    expect(
+      within(detailCard)
+        .getAllByRole('heading')
+        .slice(0, 3)
+        .map(heading => heading.textContent),
+    ).toEqual([
+      'Requirement text',
+      'Acceptance criterion',
+      'Verification method',
+    ])
     const priorityBadge = within(detailCard).getByText('P4')
     expect(priorityBadge.closest('.status-badge')).not.toHaveTextContent('–')
     expect(
@@ -3311,6 +3313,8 @@ describe('RequirementSelectionQuestionsClient', () => {
       ) {
         return okJson({ requirements: sampleAnswer.matchingRequirements })
       }
+      if (url === '/api/requirement-areas/1')
+        return okJson({ area: { description: null } })
       if (url === '/api/requirements/301') {
         if (detailMode === 'failed') {
           return { ok: false, status: 404, statusText: '' }
@@ -3395,6 +3399,12 @@ describe('RequirementSelectionQuestionsClient', () => {
     detailMode = 'empty'
     fireEvent.click(openDetail)
     expect(await within(dialog).findByText('Legacy area')).toBeInTheDocument()
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: /^Information about /u }),
+    )
+    expect(
+      await within(dialog).findByText('No description available.'),
+    ).toBeInTheDocument()
     expect(within(dialog).getByText(/Legacy Owner/)).toBeInTheDocument()
   })
 

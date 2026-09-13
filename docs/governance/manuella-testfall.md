@@ -786,10 +786,16 @@ rulla vidare.
 ### REQ-09: innehållsordning i inline-detalj
 
 **Steg:** Öppna ett krav med lång kravtext i inline-detalj och därefter på
-kravets egen sida. Läs texten och använd detaljens kontroller.
+kravets egen sida. Läs kravtext, acceptanskriterium och verifieringsmetod.
+Öppna infoikonen bredvid kravområdet med mus och tangentbord. Stäng med Escape
+och genom att klicka utanför. Använd detaljens befintliga kontroller.
 
-**Förväntat resultat:** Kravtext visas före acceptanskriterier och därefter
-metadata, referenser och paket. Hela texten går att läsa i båda vyerna.
+**Förväntat resultat:** Kravtext visas före acceptanskriterium, därefter
+verifieringsmetod en gång och sedan metadata, referenser och paket. Hela texten
+går att läsa i båda vyerna. Informationspanelen visar områdets beskrivning och
+kravområdesägare. Escape återför fokus till infoikonen. Saknad beskrivning och
+inläsningsfel får egna meddelanden; ett fel kan prövas igen genom att stänga och
+öppna panelen.
 
 ### REQ-10: skapa PDF från kravlistan
 
@@ -879,10 +885,13 @@ växling och varje historiksteg.
 ### REQ-14c: kravurvalsförhandsvisning visar skrivskyddat krav
 
 **Steg:** Öppna en seedad kravurvalsfråga, redigera ett svar och öppna ett
-krav från svarets kravurvalsförhandsvisning.
+krav från svarets kravurvalsförhandsvisning. Öppna områdesinformationen med
+Enter, tabba till panelen och stäng den med Escape.
 
 **Förväntat resultat:** Kravet visas skrivskyddat med `Kravtext` och utan
-arkiverings- eller livscykelåtgärder.
+arkiverings- eller livscykelåtgärder. Områdesinformationen kan läsas med
+tangentbord; Escape återför fokus till infoikonen och lämnar svarsredigeraren
+öppen.
 
 ### REQ-14d: borttagningsknappar i kravurvalsvar är användbara
 
@@ -1522,9 +1531,14 @@ och listan återkommer först när indikatorn har försvunnit.
 ### SPEC-05: delade listor scrollar oberoende
 
 **Steg:** Öppna kravunderlagsdetalj med långa listor och scrolla respektive
-panel.
+panel. Öppna ett tillgängligt krav i den delade vyn. Läs kravtext,
+acceptanskriterium och verifieringsmetod och öppna områdesinformationen med
+mellanslag. Stäng med Escape.
 
 **Förväntat resultat:** Panelerna påverkar inte varandras scrollposition.
+Kravets tre texter går att läsa i ordningen kravtext, acceptanskriterium och
+verifieringsmetod, före metadata. Områdesinformationen visar beskrivning och
+ägare; Escape återför fokus till infoikonen.
 
 ### SPEC-06: lägg till, markera och ta bort krav i kravunderlagsdetalj
 

@@ -3,6 +3,8 @@
   "language": "en,sv",
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
+    "infoikonen",
+    "hoverable",
     "stylesheet",
     "baseos",
     "rpms",

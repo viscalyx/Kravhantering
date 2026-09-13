@@ -787,10 +787,11 @@ describe('RequirementDetailClient', () => {
         .getByText('Published description')
         .closest('[data-developer-mode-name="detail section"]'),
     ).toHaveAttribute('data-developer-mode-value', 'requirement text')
-    const detailCard = screen
-      .getByText('Published description')
-      .closest('div[class~="rounded-2xl"]')
-    expect(detailCard).toHaveClass('rounded-2xl', 'p-6', 'space-y-5', 'text-sm')
+    expect(
+      screen.getByRole('heading', {
+        name: /Verification method|verificationMethod/u,
+      }),
+    ).toBeInTheDocument()
     expect(
       screen
         .getByText('Published acceptance')

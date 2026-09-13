@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { useId } from 'react'
 import SuggestionFormModal from '@/components/SuggestionFormModal'
 import SuggestionPill from '@/components/SuggestionPill'
 import SuggestionResolutionModal from '@/components/SuggestionResolutionModal'
@@ -20,12 +21,15 @@ export default function ImprovementSuggestionsSection({
   workflow,
 }: ImprovementSuggestionsSectionProps) {
   const tf = useTranslations('improvementSuggestion')
+  const headingId = useId()
+  const isEmpty =
+    !workflow.suggestionError && workflow.versionSuggestionItems.length === 0
 
   return (
     <>
       <section
-        aria-labelledby="improvementSuggestionsHeading"
-        className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-6 space-y-4"
+        aria-labelledby={headingId}
+        className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-xl border shadow-sm px-4 py-3 space-y-3"
         {...devMarker({
           context: detailContext,
           name: 'detail section',
@@ -33,20 +37,27 @@ export default function ImprovementSuggestionsSection({
           value: 'improvement-suggestions',
         })}
       >
-        <div className="flex items-center justify-between">
-          <h3
-            className="text-sm font-semibold text-secondary-900 dark:text-secondary-100"
-            id="improvementSuggestionsHeading"
-          >
-            {tf('title')}
-            {workflow.versionSuggestionItems.length > 0 && (
-              <span className="ml-2 text-xs font-normal text-secondary-500 dark:text-secondary-400">
-                ({workflow.versionSuggestionItems.length})
-              </span>
-            )}
-          </h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3
+              className="text-sm font-semibold text-secondary-900 dark:text-secondary-100"
+              id={headingId}
+            >
+              {tf('title')}
+              {workflow.versionSuggestionItems.length > 0 && (
+                <span className="ml-2 text-xs font-normal text-secondary-500 dark:text-secondary-400">
+                  ({workflow.versionSuggestionItems.length})
+                </span>
+              )}
+            </h3>
+            {isEmpty ? (
+              <p className="mt-1 text-sm text-secondary-500 dark:text-secondary-400">
+                {tf('noSuggestions')}
+              </p>
+            ) : null}
+          </div>
           <button
-            className="btn-primary text-xs px-3 py-1.5 min-h-11 inline-flex items-center"
+            className="btn-primary text-xs px-3 py-1.5 min-h-8 inline-flex items-center"
             disabled={workflow.suggestionSaving}
             onClick={workflow.openCreateDialog}
             type="button"
@@ -64,12 +75,7 @@ export default function ImprovementSuggestionsSection({
           </p>
         )}
 
-        {!workflow.suggestionError &&
-        workflow.versionSuggestionItems.length === 0 ? (
-          <p className="text-sm text-secondary-500 dark:text-secondary-400">
-            {tf('noSuggestions')}
-          </p>
-        ) : (
+        {!isEmpty ? (
           <div className="space-y-4">
             {workflow.versionSuggestionItems.map(suggestion => {
               const step = workflow.getSuggestionStep(suggestion)
@@ -177,7 +183,7 @@ export default function ImprovementSuggestionsSection({
               )
             })}
           </div>
-        )}
+        ) : null}
       </section>
 
       <SuggestionFormModal

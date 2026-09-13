@@ -35,7 +35,8 @@ Requirement text receives spare table width only without manual overrides
 on visible columns. Saved column choices and widths retain their existing
 meaning across reloads, navigation changes and viewport resizing. Package
 purpose and scope can also grow with the list. Requirement description and
-acceptance criteria in both inline and full-page details wrap within 75ch,
+acceptance criteria and verification method in inline and full-page details
+use the full inner card width,
 including unbroken text. Forms and dialogs retain their own width limits.
 
 ## Form Required Fields
@@ -657,17 +658,28 @@ clicked.
 
 The detail card renders sections in this fixed order:
 
-1. **Requirement text** (description) — always first
-2. **Acceptance criteria** — always second
-3. **Requirement area** with owner — shown after the primary text sections
-4. **Specification count** — read-only count of how many requirements specifications
-   include this requirement (always shown, displays 0 when unused)
-5. **References** — if any exist
-6. **Requirement packages** — if any exist
+1. **Requirement text** (description), with compact process arrows beside its
+   heading in library details
+2. **Acceptance criteria**
+3. **Verification method**, once, using the same heading and text style
+4. **Metadata grid**, including requirement area and specification count
+5. **Norm references** and **requirement packages**, including empty information
 
-Requirement text and acceptance criteria are the primary content. Classification
-metadata (area, owner, category, type, etc.) must not push the main content
-down.
+All three primary texts use the full inner card width, preserve line breaks
+and wrap long words. Property headings are 12 px; primary text is 16 px.
+Process arrows retain status labels, icons and configured colors at 24 px
+height with 6 px points. The stepper wraps below the heading when needed;
+long configured labels remain available through horizontal scrolling.
+Metadata columns respond to the card width. Requirement packages use the
+neutral available-option filter style: rounded pills with 10 px text, at
+least 24 px height and 2 px gray borders, with matching dark-theme colors.
+Empty references share compact rows. Empty improvement suggestions retain
+their message and registration button in a compact card; read errors remain
+errors. Existing actions and version history remain available.
+
+The same text order applies to expanded rows, actual specification split
+views, standalone details, specification-local details and requirement-selection
+previews.
 
 ### Lifecycle Refresh Scroll
 
@@ -685,10 +697,11 @@ down.
 
 - The requirement area owner is a property of the requirement area, not of the
   requirement itself.
-- In the inline pane, the requirement area and its owner are displayed as a
-  metadata section after the two primary text sections.
-- In the full-page detail sidebar, the requirement area owner is shown as small
-  text below the requirement area name.
+- The area name has an info button in the metadata grid. Mouse activation or
+  Enter/Space opens the area's description and owner. Escape dismisses the
+  panel and returns focus to the button; clicking outside also dismisses it.
+- Loading, missing descriptions and read failures appear inside the panel.
+  Close and reopen the panel to retry a failed read.
 
 ## Loading and Empty State
 
@@ -782,7 +795,8 @@ down.
   `KRAV0001`; the specification context itself disambiguates them.
 - The specification-local inline detail pane now reuses the same core content-card
   layout as the requirements library inline detail view: description first,
-  acceptance criteria second, then the shared metadata grid and references.
+  acceptance criteria second, verification method third, then the shared
+  metadata grid and references.
 - When a library requirement is opened from the specification list `Krav i underlaget`,
   its inline detail metadata also includes the specification-specific fields
   **Behovsreferens** and **Användningsstatus** in the same properties grid.

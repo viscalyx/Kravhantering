@@ -41,6 +41,19 @@ test.describe('Requirement selection question detail preview', () => {
       await expect(requirementButton).toHaveAttribute('aria-expanded', 'true')
     })
 
+    await test.step('read area information without closing the answer editor', async () => {
+      const info = dialog.getByRole('button', { name: /^Information om /u })
+      await info.focus()
+      await page.keyboard.press('Enter')
+      const panel = page.getByRole('region', { name: /^Information om /u })
+      await expect(panel).toContainText('Kravområdesägare')
+      await page.keyboard.press('Tab')
+      await expect(panel).toBeFocused()
+      await page.keyboard.press('Escape')
+      await expect(info).toBeFocused()
+      await expect(dialog).toHaveCount(1)
+    })
+
     await test.step('verify the read-only requirement detail', async () => {
       const expandedRequirement = dialog
         .getByRole('button', {

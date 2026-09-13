@@ -287,7 +287,7 @@ test.describe('Requirements table column resizing', () => {
   }
 })
 
-test('REQ-09: long requirement text wraps within a reading width in inline and full-page detail', async ({
+test('REQ-09: reads full-width primary texts and area information in inline and full-page detail', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1920, height: 1080 })
@@ -298,6 +298,7 @@ test('REQ-09: long requirement text wraps within a reading width in inline and f
     for (const version of body.versions) {
       version.description = longText
       version.acceptanceCriteria = longText
+      version.verificationMethod = longText
     }
     await route.fulfill({ response, json: body })
   })
@@ -307,17 +308,30 @@ test('REQ-09: long requirement text wraps within a reading width in inline and f
       '[data-developer-mode-name="detail section"][data-developer-mode-value="requirement text"]',
     )
     .first()
-  const assertReadingWidth = async () => {
+  const assertPrimaryTexts = async () => {
     await expect(section).toContainText(longText)
+    for (const label of ['Acceptanskriterium', 'Verifieringsmetod']) {
+      await expect(
+        page.getByRole('heading', { name: label, exact: true }),
+      ).toHaveCount(1)
+      await expect(
+        page
+          .getByRole('heading', { name: label, exact: true })
+          .locator('../..'),
+      ).toContainText(longText)
+    }
     await expect
       .poll(() =>
         section
-          .locator('div')
-          .first()
+          .locator(':scope > div')
+          .last()
           .evaluate(el => {
             const style = getComputedStyle(el)
             return (
-              el.getBoundingClientRect().width <= 750 &&
+              Math.abs(
+                el.getBoundingClientRect().width -
+                  (el.parentElement?.getBoundingClientRect().width ?? 0),
+              ) < 1 &&
               el.scrollWidth <= el.clientWidth &&
               el.clientHeight > 100 &&
               style.whiteSpace === 'pre-wrap' &&
@@ -327,10 +341,40 @@ test('REQ-09: long requirement text wraps within a reading width in inline and f
       )
       .toBe(true)
   }
-  await test.step('read expanded requirement text', assertReadingWidth)
+  await test.step('read expanded requirement text', assertPrimaryTexts)
+  await test.step('open area information with keyboard and dismiss with Escape', async () => {
+    const button = page
+      .getByRole('button', { name: /^Information om /u })
+      .first()
+    await button.focus()
+    await page.keyboard.press('Enter')
+    const panel = page.getByRole('region', { name: /^Information om /u })
+    await expect(button).toHaveAttribute('aria-expanded', 'true')
+    await expect(panel).toContainText('Kravområdesägare')
+    await page.keyboard.press('Escape')
+    await expect(button).toHaveAttribute('aria-expanded', 'false')
+    await expect(button).toBeFocused()
+    await button.click()
+    await expect(panel).toContainText('Kravområdesägare')
+    await page.getByRole('heading', { name: 'Kravtext', exact: true }).click()
+    await expect(button).toHaveAttribute('aria-expanded', 'false')
+    await page.route(/\/api\/requirement-areas\/\d+$/, route =>
+      route.fulfill({ status: 503, json: { error: 'Unavailable' } }),
+    )
+    await button.click()
+    await expect(panel.getByRole('alert')).toContainText('Kunde inte läsa in')
+    await page.keyboard.press('Escape')
+    await page.unroute(/\/api\/requirement-areas\/\d+$/)
+    await page.route(/\/api\/requirement-areas\/\d+$/, route =>
+      route.fulfill({ json: { area: { description: null } } }),
+    )
+    await button.click()
+    await expect(panel.getByRole('status')).toHaveText('Beskrivning saknas.')
+    await page.keyboard.press('Escape')
+  })
   await test.step('read the full-page requirement text', async () => {
     await page.goto('/sv/requirements/INT0001')
-    await assertReadingWidth()
+    await assertPrimaryTexts()
   })
 })
 
@@ -452,3 +496,138 @@ test('REQ-05: resizing a metadata column preserves grown text and persisted widt
     await expect.poll(widths).toEqual(expected)
   })
 })
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 1920, height: 1080 },
+  { width: 375, height: 812 },
+  { width: 320, height: 740 },
+]) {
+  for (const dark of [false, true]) {
+    test(`REQ-09: compact detail remains readable at ${viewport.width}px in ${dark ? 'dark' : 'light'} theme`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize(viewport)
+      await page.addInitScript(
+        ({ dark }) => {
+          localStorage.setItem('theme', dark ? 'dark' : 'light')
+        },
+        { dark },
+      )
+      for (const expanded of [false, true]) {
+        await test.step(`${expanded ? 'expanded' : 'collapsed'} navigation`, async () => {
+          await page.goto('/sv/requirements/ANV0002/1')
+          await page.evaluate(
+            expanded =>
+              localStorage.setItem(
+                'requirements.navigationRail.expanded.v1',
+                expanded ? 'expanded' : 'collapsed',
+              ),
+            expanded,
+          )
+          for (const uniqueId of ['ANV0002', 'SÄK0010']) {
+            await page.goto(
+              viewport.width < 600
+                ? `/sv/requirements/${encodeURIComponent(uniqueId)}/1`
+                : `/sv/requirements?selected=${encodeURIComponent(uniqueId)}`,
+            )
+            const heading = page.getByRole('heading', {
+              name: 'Kravtext',
+              exact: true,
+            })
+            await expect(heading).toHaveCount(1)
+            const card = heading.locator('../../..')
+            expect(
+              (await card.getByRole('heading').allTextContents()).slice(0, 3),
+            ).toEqual(['Kravtext', 'Acceptanskriterium', 'Verifieringsmetod'])
+            await expect
+              .poll(() =>
+                card.evaluate(el => {
+                  const sections = Array.from(
+                    el.querySelectorAll(
+                      ':scope > [data-developer-mode-name="detail section"]',
+                    ),
+                  ).slice(0, 3)
+                  return (
+                    sections.every(section => {
+                      const text = section.lastElementChild as HTMLElement
+                      const label = section.querySelector('h3')
+                      if (!label) return false
+                      return (
+                        getComputedStyle(label).fontSize === '12px' &&
+                        getComputedStyle(text).fontSize === '16px' &&
+                        text.scrollWidth <= text.clientWidth &&
+                        Math.abs(
+                          text.getBoundingClientRect().width -
+                            section.getBoundingClientRect().width,
+                        ) < 1
+                      )
+                    }) && sections.length === 3
+                  )
+                }),
+              )
+              .toBe(true)
+            for (const label of await card.getByRole('heading').all())
+              await expect(label).toHaveCSS('font-size', '12px')
+            const cardBounds = await card.boundingBox()
+            if (!cardBounds) throw new Error('Detail card has no bounds')
+            expect(cardBounds.x + cardBounds.width).toBeLessThanOrEqual(
+              viewport.width,
+            )
+            for (const chip of await card
+              .locator(
+                '[data-developer-mode-name="requirement package chip"] > span > span',
+              )
+              .all()) {
+              await expect(chip).toHaveCSS('font-size', '10px')
+              await expect(chip).toHaveCSS('border-top-width', '2px')
+              await expect(chip).toHaveCSS('min-height', '24px')
+            }
+            const stepper = card.getByRole('group')
+            await expect(stepper.locator('[aria-current="step"]')).toHaveCount(
+              1,
+            )
+            for (const step of await stepper
+              .locator(
+                ':scope > [data-developer-mode-name="status step"] > div',
+              )
+              .all()) {
+              await expect(step).toHaveCSS('height', '24px')
+              expect(
+                await step.evaluate(el => getComputedStyle(el).clipPath),
+              ).toContain('6px')
+            }
+            const info = card.getByRole('button', { name: /^Information om /u })
+            await info.click()
+            const panel = page.getByRole('region', {
+              name: /^Information om /u,
+            })
+            await expect(panel).toContainText('Kravområdesägare')
+            const bounds = await panel.boundingBox()
+            if (!bounds) throw new Error('Area information panel has no bounds')
+            expect(bounds.x).toBeGreaterThanOrEqual(0)
+            expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width)
+            expect(bounds.y).toBeGreaterThanOrEqual(0)
+            expect(bounds.y + bounds.height).toBeLessThanOrEqual(
+              viewport.height,
+            )
+            await page.keyboard.press('Escape')
+            await expect(info).toBeFocused()
+            if (viewport.width >= 1440 && uniqueId === 'ANV0002') {
+              const detail = page.locator('[data-expanded-detail-cell="true"]')
+              const detailBounds = await detail.boundingBox()
+              if (!detailBounds)
+                throw new Error('Expanded detail has no bounds')
+              expect(detailBounds.height).toBeLessThan(825)
+            }
+            await heading.scrollIntoViewIfNeeded()
+            await testInfo.attach(
+              `${uniqueId}-${expanded ? 'expanded' : 'collapsed'}`,
+              { body: await page.screenshot(), contentType: 'image/png' },
+            )
+          }
+        })
+      }
+    })
+  }
+}

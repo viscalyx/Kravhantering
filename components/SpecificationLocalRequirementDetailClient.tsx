@@ -1139,15 +1139,7 @@ export default function SpecificationLocalRequirementDetailClient({
       markerValue: 'verifiable',
       value: requirement.verifiable ? tc('yes') : tc('no'),
     },
-    {
-      id: 'verification-method',
-      label: t('verificationMethod'),
-      markerValue: 'verification method',
-      value:
-        requirement.verifiable && requirement.verificationMethod
-          ? requirement.verificationMethod
-          : '—',
-    },
+
     {
       id: 'needs-reference',
       label: tp('needsReference'),
@@ -1291,6 +1283,12 @@ export default function SpecificationLocalRequirementDetailClient({
                     requirementPackages={[]}
                     requirementPackagesLabel={t('requirementPackage')}
                     showRequirementPackages={false}
+                    verificationMethod={
+                      requirement.verifiable && requirement.verificationMethod
+                        ? requirement.verificationMethod
+                        : '—'
+                    }
+                    verificationMethodLabel={t('verificationMethod')}
                   />
                 </RequirementDetailCard>
 

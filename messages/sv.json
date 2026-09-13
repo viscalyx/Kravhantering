@@ -692,7 +692,11 @@
       "restricted": "Du har inte längre behörighet att redigera detta krav. Ditt osparade arbete finns kvar och kan kopieras.",
       "empty": "(tomt)",
       "dependentFields": "Typ och kvalitetsegenskap samt verifierbar och verifieringsmetod löses tillsammans när ändringarna står i konflikt."
-    }
+    },
+    "areaInfo": "Information om {name}",
+    "areaInfoLoading": "Läser in kravområde…",
+    "areaInfoError": "Kunde inte läsa in kravområdets beskrivning. Stäng och öppna igen för att försöka på nytt.",
+    "areaDescriptionEmpty": "Beskrivning saknas."
   },
   "requirementsTable": {
     "clear": "Rensa",
