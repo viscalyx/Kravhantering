@@ -1197,3 +1197,26 @@ saving. Inclusion and requirement selection remain separate.
 History includes earlier saves and questions removed from the current list.
 The CSV/PDF outputs distinguish current question rows, pending evidence and
 assessment history. Historical rows never add current questions or outcomes.
+
+## Avtal och versionshistorik
+
+Kravunderlagets fastställelsestatus är skild från processens livscykelstatus.
+I panelen **Avtal och versionshistorik** kan ansvarig bedöma befintliga underlag,
+fastställa känt innehåll med avtalsreferens, datum och skäl samt registrera avslut.
+Författare jämför bunden och ny publicerad version, behåller utan ändring eller
+väljer version med skäl. Fastställt innehåll ändras genom grupperade avtalstillägg.
+Medförfattare förbereder; ansvarig beslutar och avbryter. Beslut gäller idag vid
+registrering eller från midnatt i Stockholm ett framtida datum. Bakdatering av
+tillägg tillåts inte. Framtida beslut måste avbrytas före avtalsavslut.
+
+Ursprungligt, aktuellt och tidigare innehåll har egna vyer och JSON-export.
+Ändrade krav blir Inkluderade och kräver uttrycklig omprövning; gamla resultat
+eller godkända avsteg följer inte med som godkännande. Alla aktiva avsteg måste
+avbrytas med skäl före ändring eller borttagning. Avbrutna avsteg behåller person,
+tid, skäl och ursprunglig bindning. Följ länken för att hantera avbrott från
+kravdetaljen. Fastställelse hindrar direkt innehållsändring, men uppföljning kan
+fortsätta. Historiska bindningar är skrivskyddade.
+
+Demonstration: PRESTANDA-UTV har noll tillägg, TILLGANG-FORV-Q3 ett och
+LAGRING-UPP-2026 tre. Det sistnämnda visar gammalt godkännande, borttagning,
+avbrott med länkat ersättande tillägg och framtida lokalt innehåll.

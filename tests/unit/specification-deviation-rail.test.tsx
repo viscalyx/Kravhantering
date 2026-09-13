@@ -109,7 +109,7 @@ describe('SpecificationDeviationRail', () => {
     expect(current.openCreateDialog).toHaveBeenCalled()
   })
 
-  it('offers edit, delete, and review actions for a draft deviation', async () => {
+  it('offers edit, cancellation navigation, and review actions for a draft deviation', async () => {
     const current = workflow(false)
     current.deviationStep = 'draft'
 
@@ -129,15 +129,15 @@ describe('SpecificationDeviationRail', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'deviation.editDeviation' }),
     )
-    await userEvent.click(
-      screen.getByRole('button', { name: 'deviation.deleteDeviation' }),
-    )
+    expect(
+      screen.getByRole('link', { name: 'deviation.manageCancellation' }),
+    ).toHaveAttribute('href', '/en/specifications/5#agreement-history')
     await userEvent.click(
       screen.getByRole('button', { name: 'deviation.requestReview' }),
     )
 
     expect(current.openEditDialog).toHaveBeenCalled()
-    expect(current.handleDeleteDeviation).toHaveBeenCalledOnce()
+    expect(current.handleDeleteDeviation).not.toHaveBeenCalled()
     expect(current.handleRequestReview).toHaveBeenCalled()
   })
 

@@ -7,7 +7,7 @@
     "areasPerChunk": 1,
     "targetSpecs": 10
   },
-  "discoveredSpecCount": 50,
+  "discoveredSpecCount": 52,
   "suites": {
     "dev": {
       "chunks": [
@@ -29,7 +29,7 @@
         {
           "id": "dev-authorization",
           "paths": ["tests/integration/authorization"],
-          "specCount": 10
+          "specCount": 11
         },
         {
           "id": "dev-deviations",
@@ -64,7 +64,7 @@
         {
           "id": "dev-specifications",
           "paths": ["tests/integration/specifications"],
-          "specCount": 2
+          "specCount": 3
         },
         {
           "id": "dev-stewardship",
@@ -82,7 +82,7 @@
         "tests/integration/platform/error-boundary-smoke.spec.ts",
         "tests/integration/platform/smoke.spec.ts"
       ],
-      "includedSpecCount": 42
+      "includedSpecCount": 44
     },
     "prodlike": {
       "chunks": [
@@ -120,6 +120,7 @@
         "tests/integration/authorization/08-admin.spec.ts",
         "tests/integration/authorization/09-reviewer.spec.ts",
         "tests/integration/authorization/10-privacy-officer.spec.ts",
+        "tests/integration/authorization/12-specification-agreements.spec.ts",
         "tests/integration/developer-mode/overlay.spec.ts",
         "tests/integration/deviations/lifecycle.spec.ts",
         "tests/integration/mcp/seeded-scan.spec.ts",
@@ -141,6 +142,7 @@
         "tests/integration/requirements/table-column-picker.spec.ts",
         "tests/integration/requirements/table-hydration.spec.ts",
         "tests/integration/requirements/table-resize.spec.ts",
+        "tests/integration/specifications/agreements.spec.ts",
         "tests/integration/specifications/list.spec.ts",
         "tests/integration/specifications/requirement-detail.spec.ts",
         "tests/integration/stewardship/navigation.spec.ts"

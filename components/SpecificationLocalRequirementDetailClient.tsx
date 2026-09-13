@@ -98,6 +98,7 @@ interface SpecificationLocalRequirementDetailClientProps {
   onChange?: () => void | Promise<void>
   permissions?: {
     canEditContent: boolean
+    canChangeContent?: boolean
     canReviewDecisions: boolean
   }
   specificationId: number
@@ -966,34 +967,6 @@ export default function SpecificationLocalRequirementDetailClient({
     [latestDeviation, performDeviationMutation, td],
   )
 
-  const handleDeleteDeviation = useCallback(
-    async (event?: React.MouseEvent<HTMLButtonElement>) => {
-      if (!latestDeviation) {
-        return
-      }
-
-      const anchorEl = event?.currentTarget
-      const confirmed = await confirm({
-        anchorEl,
-        icon: 'caution',
-        message: td('deleteDeviationConfirm'),
-        title: td('deleteDeviationConfirmTitle'),
-        variant: 'danger',
-      })
-
-      if (!confirmed) {
-        return
-      }
-
-      await performDeviationMutation(
-        `/api/specification-local-deviations/${latestDeviation.id}`,
-        { method: 'DELETE' },
-        td('deleteFailed'),
-      )
-    },
-    [confirm, latestDeviation, performDeviationMutation, td],
-  )
-
   const handleRequestReview = useCallback(async () => {
     if (!latestDeviation) {
       return
@@ -1202,9 +1175,11 @@ export default function SpecificationLocalRequirementDetailClient({
   const hasPendingDeviation =
     deviationStep === 'draft' || deviationStep === 'review_requested'
   const canEditContent = permissions?.canEditContent === true
+  const canChangeContent =
+    canEditContent && permissions?.canChangeContent !== false
   const canReviewDecisions = permissions?.canReviewDecisions === true
   const canMutateLocalRequirement =
-    canEditContent &&
+    canChangeContent &&
     requirement.specificationItemStatusId ===
       DEFAULT_SPECIFICATION_ITEM_STATUS_ID &&
     !hasPendingDeviation
@@ -1330,15 +1305,7 @@ export default function SpecificationLocalRequirementDetailClient({
                             <Pencil aria-hidden="true" className="h-4 w-4" />
                             {td('editDeviation')}
                           </button>
-                          <button
-                            className={railDangerButtonClass}
-                            disabled={deviationSaving}
-                            onClick={event => void handleDeleteDeviation(event)}
-                            type="button"
-                          >
-                            <Trash2 aria-hidden="true" className="h-4 w-4" />
-                            {td('deleteDeviation')}
-                          </button>
+
                           <button
                             className={railPrimaryButtonClass}
                             disabled={deviationSaving}
@@ -1373,7 +1340,17 @@ export default function SpecificationLocalRequirementDetailClient({
                         </>
                       ) : null}
 
-                      {canEditContent && graduationTargetAreas.length > 0 ? (
+                      {canEditContent &&
+                        (deviationStep === 'draft' ||
+                          deviationStep === 'review_requested') && (
+                          <a
+                            className={railSecondaryButtonClass}
+                            href={`/${locale}/specifications/${specificationId}#agreement-history`}
+                          >
+                            {td('manageCancellation')}
+                          </a>
+                        )}
+                      {canChangeContent && graduationTargetAreas.length > 0 ? (
                         <>
                           <span className="inline-flex w-full">
                             <button
@@ -1410,7 +1387,7 @@ export default function SpecificationLocalRequirementDetailClient({
                         </>
                       ) : null}
 
-                      {canEditContent ? (
+                      {canChangeContent ? (
                         <>
                           <span
                             className="inline-flex w-full"

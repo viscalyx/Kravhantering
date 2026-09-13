@@ -54,7 +54,7 @@ export function createRequirementVersionDatabase(
         sql.includes('INSERT INTO action_audit_events') ||
         sql.includes('FROM requirement_version_norm_references') ||
         sql.includes('FROM requirement_version_requirement_packages') ||
-        sql.includes('FROM requirements_specification_items')
+        sql.includes('FROM current_requirement_applications')
       )
         return []
       throw new Error(`Unexpected fixture query: ${sql}`)

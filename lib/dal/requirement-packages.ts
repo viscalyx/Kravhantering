@@ -336,7 +336,7 @@ const specificationRequirementPackageMembershipCte = `
       requirement_package.id AS id,
       requirement_package.name AS name,
       requirement_package.purpose_and_scope AS purposeAndScope
-    FROM requirements_specification_items AS specification_item
+    FROM current_requirement_applications AS specification_item
     INNER JOIN requirement_versions AS current_version
       ON current_version.requirement_id = specification_item.requirement_id
      AND current_version.requirement_status_id = @1

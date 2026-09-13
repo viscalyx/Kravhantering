@@ -24,14 +24,18 @@ import {
   updateDeviation,
   updateSpecificationLocalDeviation,
 } from '@/lib/dal/deviations'
+import { withEditableAgreementState } from '../support/editable-agreement-database'
 
 function createSqlServerDb() {
   const query =
     vi.fn<(sql: string, parameters?: unknown[]) => Promise<unknown[]>>()
   const getRepository = vi.fn()
+  const guardedQuery = withEditableAgreementState(query)
   const db = {
+    transaction: async (callback: (manager: unknown) => Promise<unknown>) =>
+      callback({ query: guardedQuery }),
     getRepository,
-    query,
+    query: guardedQuery,
   } as unknown as Parameters<typeof listDeviationsForSpecificationItem>[0]
 
   return { db, getRepository, query }
@@ -336,42 +340,29 @@ describe('deviations DAL (SQL Server path)', () => {
     ])
   })
 
-  it('deletes deviations using atomic draft-only guards', async () => {
+  it.each([deleteDeviation, deleteSpecificationLocalDeviation])(
+    'requires explicit cancellation instead of draft deletion',
+    async remove => {
+      const { db, query } = createSqlServerDb()
+      query.mockResolvedValueOnce([
+        { id: 7, decision: null, isReviewRequested: 0 },
+      ])
+      await expect(remove(db, 7)).rejects.toMatchObject({
+        code: 'conflict',
+        details: { reason: 'deviation_cancellation_required' },
+      })
+      expect(query.mock.calls.every(([sql]) => !sql.includes('DELETE'))).toBe(
+        true,
+      )
+    },
+  )
+
+  it('reports not found when the deviation does not exist', async () => {
     const { db, query } = createSqlServerDb()
-    query.mockResolvedValueOnce([{ id: 7 }]).mockResolvedValueOnce([{ id: 9 }])
-
-    await deleteDeviation(db, 7)
-    await deleteSpecificationLocalDeviation(db, 9)
-
-    const librarySql = compactSql(query.mock.calls[0][0])
-    expect(librarySql).toContain('DELETE FROM deviations')
-    expect(librarySql).toContain('OUTPUT DELETED.id AS id')
-    expect(librarySql).toContain('AND decision IS NULL')
-    expect(librarySql).toContain('AND is_review_requested = 0')
-    expect(query.mock.calls[0][1]).toEqual([7])
-
-    const localSql = compactSql(query.mock.calls[1][0])
-    expect(localSql).toContain(
-      'DELETE FROM specification_local_requirement_deviations',
-    )
-    expect(localSql).toContain('OUTPUT DELETED.id AS id')
-    expect(localSql).toContain('AND decision IS NULL')
-    expect(localSql).toContain('AND is_review_requested = 0')
-    expect(query.mock.calls[1][1]).toEqual([9])
-  })
-
-  it('reports not found when a guarded delete affects no rows and fallback finds none', async () => {
-    const { db, query } = createSqlServerDb()
-    query.mockResolvedValueOnce([]).mockResolvedValueOnce([])
-
+    query.mockResolvedValueOnce([])
     await expect(deleteDeviation(db, 7)).rejects.toMatchObject({
       code: 'not_found',
-      message: 'Deviation 7 not found',
     })
-
-    expect(compactSql(query.mock.calls[1][0])).toContain(
-      'FROM deviations deviation',
-    )
   })
 
   it('reports decided conflicts when a guarded decision update affects no rows', async () => {
@@ -393,15 +384,14 @@ describe('deviations DAL (SQL Server path)', () => {
     })
   })
 
-  it('reports review-state conflicts when a guarded delete affects no rows', async () => {
+  it('keeps submitted deviations when a stale draft deletion arrives', async () => {
     const { db, query } = createSqlServerDb()
-    query
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ decision: null, id: 7, isReviewRequested: 1 }])
-
+    query.mockResolvedValueOnce([
+      { decision: null, id: 7, isReviewRequested: 1 },
+    ])
     await expect(deleteDeviation(db, 7)).rejects.toMatchObject({
       code: 'conflict',
-      message: 'Cannot delete a deviation that has been submitted for review',
+      details: { reason: 'deviation_cancellation_required' },
     })
   })
 
@@ -818,13 +808,13 @@ describe('deviations DAL (SQL Server path)', () => {
     })
 
     const decided = createSqlServerDb()
-    decided.query
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ decision: 2, id: 7, isReviewRequested: 1 }])
+    decided.query.mockResolvedValueOnce([
+      { decision: 2, id: 7, isReviewRequested: 1 },
+    ])
     await expect(
       deleteSpecificationLocalDeviation(decided.db, 7),
     ).rejects.toMatchObject({
-      message: 'Cannot delete a deviation after a decision has been recorded',
+      details: { reason: 'deviation_cancellation_required' },
     })
   })
 

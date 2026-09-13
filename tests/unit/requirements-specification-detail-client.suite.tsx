@@ -1060,6 +1060,21 @@ describe('RequirementsSpecificationDetailClient', () => {
         const method =
           init?.method ?? (typeof input === 'string' ? 'GET' : input.method)
 
+        if (/\/agreement(?:\?|$)/.test(url)) {
+          return Promise.resolve(
+            okJson({
+              establishmentStatus: 'editable',
+              canAuthor: false,
+              canDecide: false,
+              currentItems: [],
+              originalItems: [],
+              historyItems: [],
+              amendments: [],
+              deviations: [],
+              availableVersions: [],
+            }),
+          )
+        }
         if (url === '/api/auth/me') {
           return Promise.resolve(
             okJson({

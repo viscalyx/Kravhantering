@@ -49,11 +49,13 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import { ARRAY_INPUT_MAX_ITEMS } from '@/lib/http/validation'
 import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
+import { withEditableAgreementState } from '../support/editable-agreement-database'
 
 function createSqlServerDb() {
   const query =
     vi.fn<(sql: string, parameters?: unknown[]) => Promise<unknown[]>>()
   const getRepository = vi.fn()
+  const guardedQuery = withEditableAgreementState(query)
   const transaction = vi.fn(async (...args: unknown[]) => {
     const callback =
       typeof args[0] === 'function'
@@ -62,11 +64,11 @@ function createSqlServerDb() {
           ? args[1]
           : null
     if (!callback) throw new Error('Missing transaction callback')
-    return (callback as (manager: unknown) => unknown)({ query })
+    return (callback as (manager: unknown) => unknown)({ query: guardedQuery })
   })
   const db = {
     getRepository,
-    query,
+    query: guardedQuery,
     transaction,
   } as unknown as Parameters<typeof listSpecifications>[0]
 
@@ -106,12 +108,8 @@ describe('requirement application deviation status', () => {
   ] as const)(
     'rejects Deviated without approval for a %s requirement',
     async (_kind, update) => {
-      const db = {
-        query: vi
-          .fn()
-          .mockResolvedValueOnce([{ id: 5 }])
-          .mockResolvedValueOnce([]),
-      }
+      const { db, query } = createSqlServerDb()
+      query.mockResolvedValueOnce([{ id: 5 }]).mockResolvedValueOnce([])
       await expect(
         update(db as never, 42, { specificationItemStatusId: 5 }),
       ).rejects.toMatchObject({
@@ -428,6 +426,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(result).toEqual({
       id: 2,
       specificationCode: 'PKG-002',
+      establishmentStatus: 'editable',
       name: 'Specification B',
       specificationGovernanceObjectTypeId: 1,
       specificationImplementationTypeId: 5,
@@ -1160,7 +1159,9 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     )
     expect(query).toHaveBeenNthCalledWith(
       4,
-      'DELETE FROM specification_needs_references WHERE specification_id = @0',
+      expect.stringContaining(
+        'DELETE FROM specification_needs_references WHERE specification_id = @0',
+      ),
       [7],
     )
     expect(query).toHaveBeenNthCalledWith(
@@ -1541,11 +1542,12 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         { id: 41, specificationId: 5, sequenceNumber: 1, uniqueId: 'LOK-001' },
       ])
-      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 41 }])
+      .mockResolvedValueOnce([{ id: 42 }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
-          id: 41,
+          id: 42,
           specificationId: 5,
           uniqueId: 'LOK-001',
           description: 'Updated local requirement',
@@ -1592,7 +1594,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       specificationItemStatusId: DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
     })
     expect(updated).toMatchObject({
-      id: 41,
+      id: 42,
       description: 'Updated local requirement',
       acceptanceCriteria: 'Updated AC',
       verifiable: true,
@@ -1784,7 +1786,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
 
     expect(transaction).not.toHaveBeenCalled()
     expect(query.mock.calls.map(([sql]) => String(sql))).toEqual([
-      expect.stringContaining('FROM specification_local_requirements'),
+      expect.stringContaining('FROM current_specification_local_requirements'),
       expect.stringContaining('FROM quality_characteristics'),
     ])
   })
@@ -1802,7 +1804,8 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           verificationMethod: 'Checklist',
         },
       ])
-      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 41 }])
+      .mockResolvedValueOnce([{ id: 42 }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
@@ -2134,14 +2137,14 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(query).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining(
-        'FROM requirements_specification_items specification_item',
+        'FROM current_requirement_applications specification_item',
       ),
       [5, 1, 2, 31],
     )
     expect(query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining(
-        'FROM specification_local_requirements local_requirement',
+        'FROM current_specification_local_requirements local_requirement',
       ),
       [5, 1, 2, 41],
     )
@@ -2332,7 +2335,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(query).toHaveBeenCalledTimes(1)
     expect(query).toHaveBeenCalledWith(
       expect.stringMatching(
-        /DELETE FROM requirements_specification_items[\s\S]*WHERE requirements_specification_id = @0 AND requirement_id IN \(@1,[\s\S]*@200\)/u,
+        /UPDATE item SET[\s\S]*WHERE item.requirements_specification_id = @0 AND item.requirement_id IN \(@1,[\s\S]*@200\)/u,
       ),
       [5, ...requirementIds],
     )
@@ -2352,14 +2355,14 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(query).toHaveBeenNthCalledWith(
       1,
       expect.stringMatching(
-        /DELETE FROM requirements_specification_items[\s\S]*WHERE requirements_specification_id = @0 AND id IN \(@1\)/u,
+        /UPDATE item SET[\s\S]*FROM requirements_specification_items item[\s\S]*WHERE item.requirements_specification_id = @0 AND item.id IN \(@1\)/u,
       ),
       [5, 31],
     )
     expect(query).toHaveBeenNthCalledWith(
       2,
       expect.stringMatching(
-        /DELETE FROM specification_local_requirements[\s\S]*WHERE specification_id = @0 AND id IN \(@1\)/u,
+        /UPDATE item SET[\s\S]*FROM specification_local_requirements item[\s\S]*WHERE item.specification_id = @0 AND item.id IN \(@1\)/u,
       ),
       [5, 4],
     )

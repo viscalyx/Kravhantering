@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle2, Clock, XCircle } from 'lucide-react'
+import { Ban, CheckCircle2, Clock, XCircle } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -42,35 +42,43 @@ function DeviationPillContent({
   )
   const isDecided = deviation.decision !== null
   const isApproved = deviation.decision === 1
+  const isCancelled = deviation.decision === 3
 
   // Non-color status cue (WCAG 1.4.1): every state pairs an icon with the
   // translated status text so color-blind users and AT can identify state.
-  const statusChip = isDecided
-    ? isApproved
-      ? {
-          Icon: CheckCircle2,
-          label: t('statusApproved'),
-          className:
-            'text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/40',
-        }
-      : {
-          Icon: XCircle,
-          label: t('statusRejected'),
-          className:
-            'text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/40',
-        }
-    : {
-        Icon: Clock,
-        label: t('statusPending'),
+  const statusChip = isCancelled
+    ? {
+        Icon: Ban,
+        label: t('statusCancelled'),
         className:
-          'text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40',
+          'text-secondary-700 dark:text-secondary-300 bg-secondary-100 dark:bg-secondary-800',
       }
+    : isDecided
+      ? isApproved
+        ? {
+            Icon: CheckCircle2,
+            label: t('statusApproved'),
+            className:
+              'text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/40',
+          }
+        : {
+            Icon: XCircle,
+            label: t('statusRejected'),
+            className:
+              'text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/40',
+          }
+      : {
+          Icon: Clock,
+          label: t('statusPending'),
+          className:
+            'text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40',
+        }
 
   return (
     <div
       aria-label={t('deviationRequested')}
       className={`rounded-xl border px-4 py-3 text-sm ${
-        muted
+        muted || isCancelled
           ? 'border-secondary-200 dark:border-secondary-700 bg-secondary-50 dark:bg-secondary-800/50 opacity-75'
           : isDecided
             ? isApproved
@@ -83,7 +91,13 @@ function DeviationPillContent({
         context: developerModeContext,
         name: 'deviation pill',
         priority: 350,
-        value: isDecided ? (isApproved ? 'approved' : 'rejected') : 'pending',
+        value: isCancelled
+          ? 'cancelled'
+          : isDecided
+            ? isApproved
+              ? 'approved'
+              : 'rejected'
+            : 'pending',
       })}
     >
       <div className="flex items-center justify-between gap-2 mb-1">
@@ -121,12 +135,14 @@ function DeviationPillContent({
             {t('decisionHeading')}{' '}
             <span
               className={
-                isApproved
-                  ? 'text-green-700 dark:text-green-400'
-                  : 'text-red-700 dark:text-red-400'
+                isCancelled
+                  ? 'text-secondary-700 dark:text-secondary-300'
+                  : isApproved
+                    ? 'text-green-700 dark:text-green-400'
+                    : 'text-red-700 dark:text-red-400'
               }
             >
-              {isApproved ? t('statusApproved') : t('statusRejected')}
+              {statusChip.label}
             </span>
           </p>
           {deviation.decisionMotivation && (

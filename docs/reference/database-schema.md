@@ -739,6 +739,38 @@ erDiagram
         text responsible_hsa_id FK
         text created_at
         text updated_at
+        text establishment_status
+        text agreement_reference
+        text agreement_reason
+        text agreement_date
+        text assessed_at
+        text assessed_by_hsa_id
+        text assessment_reason
+        text established_at
+        text established_by_hsa_id
+        text original_content_json
+        text ended_at
+        text ended_by_hsa_id
+        text agreement_end_date
+        text agreement_end_reason
+    }
+
+    specification_amendments {
+        integer id PK
+        integer specification_id FK
+        integer replaces_amendment_id FK
+        text reason
+        text agreement_reference
+        text effective_date
+        text effective_at
+        text created_at
+        text created_by_hsa_id
+        text decided_at
+        text decided_by_hsa_id
+        text cancelled_at
+        text cancelled_by_hsa_id
+        text cancellation_reason
+        text changes_json
     }
 
     specification_needs_references {
@@ -769,6 +801,16 @@ erDiagram
         text status_updated_at
         text created_at
         text updated_at
+        text valid_from
+        text valid_until
+        text is_reassessment_required
+        text binding_reason
+        text binding_created_by_hsa_id
+        integer specification_amendment_id FK
+        text reassessed_at
+        text reassessed_by_hsa_id
+        text reassessment_reason
+        text needs_reference_snapshot
     }
 
     specification_local_requirement_norm_references {
@@ -802,6 +844,16 @@ erDiagram
         text note
         text status_updated_at
         text created_at
+        text valid_from
+        text valid_until
+        text is_reassessment_required
+        text binding_reason
+        text binding_created_by_hsa_id
+        integer specification_amendment_id FK
+        text reassessed_at
+        text reassessed_by_hsa_id
+        text reassessment_reason
+        text needs_reference_snapshot
     }
 
     deviations {
@@ -995,6 +1047,10 @@ erDiagram
     requirements_specifications ||--o{ specification_requirement_selection_answers : "stores selections"
     requirement_selection_questions ||--o{ specification_requirement_selection_answers : "historical question"
     requirement_selection_answers ||--o{ specification_requirement_selection_answers : "historical answer"
+    requirements_specifications ||--o{ specification_amendments : "records agreed changes"
+    specification_amendments ||--o{ specification_amendments : "corrected by"
+    specification_amendments |o--o{ requirements_specification_items : "introduces binding"
+    specification_amendments |o--o{ specification_local_requirements : "introduces local binding"
     requirements_specifications ||--o{ specification_needs_references : "stores needs references"
     requirements_specifications ||--o{ specification_co_authors : "has co-authors"
     requirements_specifications ||--o{ requirements_specification_items : "contains"
@@ -2876,6 +2932,20 @@ specific procurement or project.
 | `responsible_hsa_id` | text FK → `requirement_responsibility_people.hsa_id` | HSA-id for the live specification lead |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `establishment_status` | nvarchar(20) | Required; assessment, editable, established or ended. Independent of process lifecycle. |
+| `agreement_reference` | nvarchar(2000), nullable | Supplier agreement reference. |
+| `agreement_reason` | nvarchar(MAX), nullable | Reason for establishment. |
+| `agreement_date` | date, nullable | Recorded agreement date; may predate registration. |
+| `assessed_at` | datetime2, nullable | Explicit owner assessment registration time. |
+| `assessed_by_hsa_id` | nvarchar(64), nullable | Assessment actor; anonymizable by exact HSA identity. |
+| `assessment_reason` | nvarchar(MAX), nullable | Reason for confirming editable work. |
+| `established_at` | datetime2, nullable | Establishment registration time in UTC. |
+| `established_by_hsa_id` | nvarchar(64), nullable | Establishment actor; anonymizable. |
+| `original_content_json` | nvarchar(MAX), nullable | Known agreed content at establishment, including pinned bindings, local text and needs context; never reconstructed as an earlier state. |
+| `ended_at` | datetime2, nullable | Agreement-end registration time in UTC. |
+| `ended_by_hsa_id` | nvarchar(64), nullable | Agreement-end actor; anonymizable. |
+| `agreement_end_date` | date, nullable | Recorded agreement end date. |
+| `agreement_end_reason` | nvarchar(MAX), nullable | Reason for ending active-agreement protection. |
 <!-- markdownlint-enable MD013 -->
 
 `specification_code` is the stable human-readable code for a
@@ -2892,6 +2962,69 @@ includes `KRAV0001` and `KRAV0002`.
 **Index:** `idx_requirements_specifications_responsible_hsa_id`.
 
 ---
+
+### `specification_amendments`
+
+Groups immutable agreed additions, replacements, local text changes and removals.
+The specification owner decides and cancels; co-authors may prepare. The
+specification row is the transaction lock shared with content mutations and new
+deviations. Drafts have no effect. Decisions materialize all successor intervals
+in one transaction; reads use the same UTC boundary, without a background worker.
+Today's changes start on decision; future changes start at Stockholm midnight,
+including daylight-saving transitions. Past effective dates are rejected.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type / Constraints | Description |
+| --- | --- | --- |
+| `id` | integer identity PK | Amendment identity |
+| `specification_id` | integer FK → requirements_specifications.id, NO ACTION | Continuing specification |
+| `reason` | nvarchar(MAX) NOT NULL | Shared business reason |
+| `agreement_reference` | nvarchar(2000) NOT NULL | Agreement reference |
+| `effective_date` | date NOT NULL | Agreed calendar date |
+| `effective_at` | datetime2, nullable | Resolved exclusive/inclusive UTC boundary, recorded on decision |
+| `created_at` | datetime2 NOT NULL | Actual registration time |
+| `created_by_hsa_id` | nvarchar(64), nullable | Preparing actor |
+| `decided_at` | datetime2, nullable | Decision registration time |
+| `decided_by_hsa_id` | nvarchar(64), nullable | Responsible person recording agreement |
+| `cancelled_at` | datetime2, nullable | Cancellation registration time |
+| `cancelled_by_hsa_id` | nvarchar(64), nullable | Responsible person recording cancellation |
+| `cancellation_reason` | nvarchar(MAX), nullable | Required reason for cancellation |
+| `changes_json` | nvarchar(MAX) NOT NULL | Strict discriminated changes: add_library, replace_library, add_local, change_local, remove; exact source bindings and target versions |
+| `replaces_amendment_id` | integer self FK, nullable, NO ACTION | Cancelled or already-effective amendment being corrected |
+<!-- markdownlint-enable MD013 -->
+
+Actor HSA columns participate in Admin Privacy erasure and data-subject export.
+The mandatory specification archive includes amendments and all binding history,
+with actor identities anonymized. Active agreements and unresolved establishment
+assessments cannot be purged. Ended agreements remain frozen and enter ordinary
+retention eligibility, including existing holds. Purge deletes application rows
+before amendments and the owning specification.
+
+The views `current_requirement_applications` and
+`current_specification_local_requirements` select intervals containing
+`SYSUTCDATETIME()`. Catalogs, current reports and application counts use these
+views. History and archives read the base tables. A zero-length cancelled
+successor never appears as applicable or as an earlier effective binding.
+The runtime manifest grants SELECT on both views and explicit CRUD on amendments.
+These views require no separately mapped writable TypeORM entity.
+
+Direct application removal ends membership instead of cascading deviations.
+Deviation outcome `3` means Cancelled for both deviation tables. Cancellation
+uses the existing decision actor, time and motivation columns; it is immutable,
+clears the review queue flag, and differs from rejection (`2`). Draft deletion
+is refused; authors must cancel with a reason.
+
+Demo profiles extend existing specifications: `PRESTANDA-UTV` (id 3) is
+established with zero amendments; `TILLGANG-FORV-Q3` (id 4) has one effective
+local addition; `LAGRING-UPP-2026` (id 5) has three amendments: an effective
+group containing version replacement, removal and local addition, a cancelled
+future change, and its linked decided replacement. One library requirement is
+unchanged. Old approved and cancelled deviations stay on old bindings. Future
+examples use December of the year after initial seeding; repeat seeding preserves
+stored dates and identities. Other existing fixture identities and authoring
+scenarios remain editable. The optional demo image carries
+`typeorm/seed-specification-agreements.mjs`; required production seeding adds no
+agreements or inferred historical decisions.
 
 ### `specification_needs_references`
 
@@ -2944,6 +3077,16 @@ version/review/publication lifecycle.
 | `status_updated_at` | text (ISO 8601) | When the usage status last changed |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `valid_from` | datetime2 NOT NULL | Inclusive UTC effective boundary; initialized from created_at for existing rows. |
+| `valid_until` | datetime2, nullable | Exclusive UTC end; null reserves the latest binding. Equal boundaries retain a cancelled, never-effective successor. |
+| `is_reassessment_required` | bit NOT NULL DEFAULT 0 | Changed content is Included and requires explicit reassessment before Implemented or Verified. |
+| `binding_reason` | nvarchar(MAX), nullable | Reason for the new binding. |
+| `binding_created_by_hsa_id` | nvarchar(64), nullable | Binding actor; anonymizable. |
+| `specification_amendment_id` | integer FK → specification_amendments.id, nullable, NO ACTION | Amendment that introduced this binding. |
+| `reassessed_at` | datetime2, nullable | Explicit reassessment registration time. |
+| `reassessed_by_hsa_id` | nvarchar(64), nullable | Reassessment actor; anonymizable. |
+| `reassessment_reason` | nvarchar(MAX), nullable | Explicit assessment evidence. |
+| `needs_reference_snapshot` | nvarchar(MAX), nullable | Needs-reference text captured when the binding ends. |
 <!-- markdownlint-enable MD013 -->
 
 `specification_item_status_id` is required. UI, API, DAL, and database
@@ -3353,6 +3496,16 @@ Links individual requirements (pinned to a specific version) into a specificatio
 | `note` | text | Optional free-text note (nullable) |
 | `status_updated_at` | text (ISO 8601) | When the usage status was last changed (nullable) |
 | `created_at` | text (ISO 8601) | When the item was added |
+| `valid_from` | datetime2 NOT NULL | Inclusive UTC effective boundary; initialized from created_at for existing rows. |
+| `valid_until` | datetime2, nullable | Exclusive UTC end; null reserves the latest binding. Equal boundaries retain a cancelled, never-effective successor. |
+| `is_reassessment_required` | bit NOT NULL DEFAULT 0 | Changed content is Included and requires explicit reassessment before Implemented or Verified. |
+| `binding_reason` | nvarchar(MAX), nullable | Reason for the new binding. |
+| `binding_created_by_hsa_id` | nvarchar(64), nullable | Binding actor; anonymizable. |
+| `specification_amendment_id` | integer FK → specification_amendments.id, nullable, NO ACTION | Amendment that introduced this binding. |
+| `reassessed_at` | datetime2, nullable | Explicit reassessment registration time. |
+| `reassessed_by_hsa_id` | nvarchar(64), nullable | Reassessment actor; anonymizable. |
+| `reassessment_reason` | nvarchar(MAX), nullable | Explicit assessment evidence. |
+| `needs_reference_snapshot` | nvarchar(MAX), nullable | Needs-reference text captured when the binding ends. |
 <!-- markdownlint-enable MD013 -->
 
 `specification_item_status_id` is required. UI, API, DAL, and database
@@ -3489,6 +3642,13 @@ its purpose and the table/column(s) it covers.
 
 ### Unique Indexes
 
+Application membership indexes
+`uq_requirements_specification_items_specification_requirement`,
+`uq_specification_local_requirements_specification_id_sequence_number` and
+`uq_specification_local_requirements_specification_id_unique_id` are filtered
+with `WHERE valid_until IS NULL`. Historical and cancelled successors preserve
+their logical identity while only one final binding may be reserved.
+
 <!-- markdownlint-disable MD013 -->
 | Index Name | Table | Column(s) | Purpose |
 | ---------- | ----- | --------- | ------- |
@@ -3549,6 +3709,8 @@ its purpose and the table/column(s) it covers.
 <!-- markdownlint-enable MD013 -->
 
 ### Non-Unique Indexes
+
+`idx_specification_amendments_specification_id` indexes the amendment owner.
 
 <!-- markdownlint-disable MD013 -->
 | Index Name | Table | Column(s) | Purpose |
@@ -3664,6 +3826,12 @@ its purpose and the table/column(s) it covers.
 
 ### Named Foreign Key Constraints
 
+Agreement constraints use explicit `ON DELETE NO ACTION`:
+`fk_specification_amendments_specification_id`,
+`fk_specification_amendments_replaces_amendment_id`,
+`fk_requirements_specification_items_specification_amendment_id`, and
+`fk_specification_local_requirements_specification_amendment_id`.
+
 Every foreign key is declared on TypeORM `@ManyToOne` /
 `@JoinColumn` decorators with an explicit
 `foreignKeyConstraintName` and explicit `onDelete` /
@@ -3767,6 +3935,14 @@ The following table lists every named FK constraint:
 <!-- markdownlint-enable MD013 -->
 
 ### Index Relationship Diagram
+
+```mermaid
+flowchart LR
+    S[requirements_specifications]
+    A[specification_amendments] -->|index by specification| S
+    I[requirements_specification_items] -->|unique final binding| R[requirements]
+    L[specification_local_requirements] -->|unique local identity| S
+```
 
 <!-- cSpell:disable -->
 <!-- markdownlint-disable MD013 -->

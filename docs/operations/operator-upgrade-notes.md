@@ -7,6 +7,25 @@ target version.
 
 ## Unreleased
 
+<!-- operator-upgrade:source issue-1323 start -->
+Drain all application nodes before migration 0069 and reconcile runtime
+permissions before starting the new release. Old releases read historical rows
+as current and must not run alongside this release. The runtime role needs
+SELECT on the two current-application views and access to specification amendments.
+Existing specifications enter establishment assessment: their responsible person
+must confirm editable work or record the agreement before content changes or
+deletion resume. Lifecycle status does not resolve that assessment.
+Take a restorable database backup before migration. Once agreement and binding
+history exists, rollback requires the matching database backup and application
+release; the down migration deliberately refuses to discard that history.
+Verify that current exports exclude removed/future bindings, that active agreements
+are excluded from retention, and that mandatory archives include agreement history.
+Clients must replace draft-deviation DELETE with explicit cancellation and handle
+409 for locked content, reserved requirements and reassessment. Local content edits
+can return a successor application ID; clients must use the returned identity.
+No new service, scheduled job, secret or configuration setting is required.
+<!-- operator-upgrade:source issue-1323 end -->
+
 
 
 ## v0.7.0 - 2026-09-13

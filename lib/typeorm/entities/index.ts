@@ -1,3 +1,10 @@
+import { specificationAmendmentEntity } from './specification-amendment'
+
+export {
+  type SpecificationAmendmentEntity,
+  specificationAmendmentEntity,
+} from './specification-amendment'
+
 import { specificationRfiAssessmentEntity } from '@/lib/typeorm/entities/specification-rfi-assessment'
 
 export type { SpecificationRfiAssessmentEntity } from '@/lib/typeorm/entities/specification-rfi-assessment'
@@ -85,6 +92,7 @@ import { specificationRfiListEntity } from '@/lib/typeorm/entities/specification
 import { specificationRfiQuestionItemEntity } from '@/lib/typeorm/entities/specification-rfi-question-item'
 
 export const sqlServerEntities = [
+  specificationAmendmentEntity,
   exportActorQuotaEntryEntity,
   aiModelVerificationAttemptEntity,
   actionAuditEventEntity,

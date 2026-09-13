@@ -1011,6 +1011,33 @@ upphandling, införande, utveckling eller förvaltning.
 
 _Avoid_: Kravversionsstatus, genomförandeform.
 
+**Fastställelsestatus**:
+Status som beskriver om ett kravunderlags innehåll är fastställt som del av
+ett avtal. Fastställelsestatus är oberoende av kravunderlagets livscykelstatus.
+
+- `en`: Specification establishment status
+
+_Avoid_: Kravunderlagets livscykelstatus, användningsstatus.
+
+**Avtalstillägg**:
+En avtalad ändring av ett fastställt kravunderlag som samlar en eller flera
+kravunderlagsändringar med en gemensam motivering. Avtalstillägget hör till
+ett kravunderlag och beskriver förändringen mot dess tidigare avtalade
+innehåll.
+
+- `en`: Agreement amendment
+
+_Avoid_: Kravunderlagsrevision, kravversion, avsteg.
+
+**Kravunderlagsändring**:
+Ett tillägg, en ändring eller ett borttagande av ett enskilt krav i ett
+fastställt kravunderlag, knutet till ett specifikt avtalstillägg.
+
+- `en`: Specification requirement change
+
+_Avoid_: Kravändring utan kravunderlagssammanhang, avsteg, kravversion,
+generell ändring i kravbiblioteket.
+
 **Kravpaket**:
 En återanvändbar gruppering av krav i kravbiblioteket för ett visst
 användningsområde, scenario eller leveransbehov. Ett kravpaket samlar krav,
@@ -1485,12 +1512,21 @@ Avstegsutkast ingår inte.
 _Avoid_: Alla obeslutade avsteg, avstegsutkast, väntande avsteg.
 
 **Aktivt avsteg**:
-Ett avsteg utan registrerat beslut som är ett avstegsutkast eller ingår i
-avstegsbeslutsarbetskön. Ett krav i underlaget får ha högst ett aktivt avsteg.
+Ett avsteg utan registrerat beslut som inte har avbrutits och som är ett
+avstegsutkast eller ingår i avstegsbeslutsarbetskön. Ett krav i underlaget
+får ha högst ett aktivt avsteg.
 
 - `en`: Active deviation
 
 _Avoid_: Tidigare beslutat avsteg, alla historiska avsteg.
+
+**Avbrutet avsteg**:
+Ett avsteg vars hantering har avslutats utan beslut om godkännande eller
+avslag. Ett avbrutet avsteg ingår inte längre i avstegsbeslutsarbetskön.
+
+- `en`: Cancelled deviation
+
+_Avoid_: Avslaget avsteg, avstegsutkast, raderat avsteg.
 
 **Förbättringsförslag**:
 Återkoppling om att ett krav i kravbiblioteket kan förbättras, förtydligas

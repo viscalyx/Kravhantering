@@ -80,15 +80,7 @@ export default function SpecificationDeviationRail({
             <Edit aria-hidden="true" className="h-4 w-4" />
             {td('editDeviation')}
           </button>
-          <button
-            className="btn-destructive inline-flex items-center gap-1.5 w-full justify-center"
-            disabled={workflow.deviationSaving}
-            onClick={event => void workflow.handleDeleteDeviation(event)}
-            type="button"
-          >
-            <Trash2 aria-hidden="true" className="h-4 w-4" />
-            {td('deleteDeviation')}
-          </button>
+
           <button
             className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
             disabled={workflow.deviationSaving}
@@ -122,6 +114,17 @@ export default function SpecificationDeviationRail({
           ) : null}
         </>
       ) : null}
+      {canManageDeviationDrafts &&
+        ['draft', 'review_requested'].includes(
+          workflow.deviationStep ?? '',
+        ) && (
+          <a
+            className="btn-secondary"
+            href={`/${locale}/specifications/${specificationId}#agreement-history`}
+          >
+            {td('manageCancellation')}
+          </a>
+        )}
       {onRemoveFromSpecification ? (
         <button
           className="btn-destructive inline-flex items-center gap-1.5 w-full justify-center"

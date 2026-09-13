@@ -9,6 +9,7 @@ import {
   notFoundError,
   validationError,
 } from '@/lib/requirements/errors'
+import { assertNewDeviationAllowed } from '@/lib/specifications/agreement-policy'
 
 export const DEVIATION_APPROVED = 1
 export const DEVIATION_REJECTED = 2
@@ -238,18 +239,6 @@ function editDeviationConflictMessage(state: DeviationState): string {
   return 'Cannot edit a deviation because it changed before the update completed'
 }
 
-function deleteDeviationConflictMessage(state: DeviationState): string {
-  if (state.decision !== null) {
-    return 'Cannot delete a deviation after a decision has been recorded'
-  }
-
-  if (state.isReviewRequested === 1) {
-    return 'Cannot delete a deviation that has been submitted for review'
-  }
-
-  return 'Cannot delete a deviation because it changed before the delete completed'
-}
-
 function recordDecisionConflictMessage(state: DeviationState): string {
   if (state.decision !== null) {
     return 'A decision has already been recorded for this deviation'
@@ -443,25 +432,31 @@ export async function createDeviation(
   if (!data.motivation.trim()) {
     throw validationError('Motivation is required')
   }
+  return db.transaction(async manager => {
+    await assertNewDeviationAllowed(
+      manager,
+      'library',
+      data.specificationItemId,
+    )
 
-  const itemRows = (await db.query(
-    `
+    const itemRows = (await manager.query(
+      `
       SELECT TOP (1) specification_item.id AS id
       FROM requirements_specification_items specification_item
       WHERE specification_item.id = @0
     `,
-    [data.specificationItemId],
-  )) as Array<Record<string, unknown>>
+      [data.specificationItemId],
+    )) as Array<Record<string, unknown>>
 
-  if (itemRows.length === 0) {
-    throw notFoundError(
-      `Requirement application ${data.specificationItemId} not found`,
-    )
-  }
+    if (itemRows.length === 0) {
+      throw notFoundError(
+        `Requirement application ${data.specificationItemId} not found`,
+      )
+    }
 
-  const now = new Date()
-  const insertedRows = (await db.query(
-    `
+    const now = new Date()
+    const insertedRows = (await manager.query(
+      `
       INSERT INTO deviations (
         specification_item_id,
         motivation,
@@ -472,16 +467,17 @@ export async function createDeviation(
       OUTPUT INSERTED.id AS id
       VALUES (@0, @1, @2, @3, @4)
     `,
-    [
-      data.specificationItemId,
-      data.motivation.trim(),
-      data.createdBy ?? null,
-      data.createdByHsaId ?? null,
-      now,
-    ],
-  )) as Array<Record<string, unknown>>
+      [
+        data.specificationItemId,
+        data.motivation.trim(),
+        data.createdBy ?? null,
+        data.createdByHsaId ?? null,
+        now,
+      ],
+    )) as Array<Record<string, unknown>>
 
-  return { id: Number(insertedRows[0]?.id) }
+    return { id: Number(insertedRows[0]?.id) }
+  })
 }
 
 export async function listDeviationsForSpecificationLocalRequirement(
@@ -537,25 +533,31 @@ export async function createSpecificationLocalDeviation(
   if (!data.motivation.trim()) {
     throw validationError('Motivation is required')
   }
+  return db.transaction(async manager => {
+    await assertNewDeviationAllowed(
+      manager,
+      'specificationLocal',
+      data.specificationLocalRequirementId,
+    )
 
-  const requirementRows = (await db.query(
-    `
+    const requirementRows = (await manager.query(
+      `
       SELECT TOP (1) requirement.id AS id
       FROM specification_local_requirements requirement
       WHERE requirement.id = @0
     `,
-    [data.specificationLocalRequirementId],
-  )) as Array<Record<string, unknown>>
+      [data.specificationLocalRequirementId],
+    )) as Array<Record<string, unknown>>
 
-  if (requirementRows.length === 0) {
-    throw notFoundError(
-      `Specification-local requirement ${data.specificationLocalRequirementId} not found`,
-    )
-  }
+    if (requirementRows.length === 0) {
+      throw notFoundError(
+        `Specification-local requirement ${data.specificationLocalRequirementId} not found`,
+      )
+    }
 
-  const now = new Date()
-  const insertedRows = (await db.query(
-    `
+    const now = new Date()
+    const insertedRows = (await manager.query(
+      `
       INSERT INTO specification_local_requirement_deviations (
         specification_local_requirement_id,
         motivation,
@@ -566,16 +568,17 @@ export async function createSpecificationLocalDeviation(
       OUTPUT INSERTED.id AS id
       VALUES (@0, @1, @2, @3, @4)
     `,
-    [
-      data.specificationLocalRequirementId,
-      data.motivation.trim(),
-      data.createdBy ?? null,
-      data.createdByHsaId ?? null,
-      now,
-    ],
-  )) as Array<Record<string, unknown>>
+      [
+        data.specificationLocalRequirementId,
+        data.motivation.trim(),
+        data.createdBy ?? null,
+        data.createdByHsaId ?? null,
+        now,
+      ],
+    )) as Array<Record<string, unknown>>
 
-  return { id: Number(insertedRows[0]?.id) }
+    return { id: Number(insertedRows[0]?.id) }
+  })
 }
 
 export async function createDeviationForItemRef(
@@ -852,23 +855,12 @@ export async function deleteDeviation(
   db: SqlServerDatabase,
   deviationId: number,
 ): Promise<void> {
-  await runGuardedDeviationMutation({
-    conflictMessageForState: deleteDeviationConflictMessage,
-    db,
-    deviationId,
-    findState: findSqlServerDeviationState,
-    mutationSql: `
-      DELETE FROM deviations
-      OUTPUT DELETED.id AS id
-      WHERE
-        id = @0
-        AND decision IS NULL
-        AND is_review_requested = 0
-    `,
-    notFoundMessage: `Deviation ${deviationId} not found`,
-    parameters: [deviationId],
-  })
-  return
+  const state = await findSqlServerDeviationState(db, deviationId)
+  if (!state) throw notFoundError(`Deviation ${deviationId} not found`)
+  throw conflictError(
+    'Cancel the deviation with a reason to preserve its history',
+    { reason: 'deviation_cancellation_required' },
+  )
 }
 
 export async function updateSpecificationLocalDeviation(
@@ -1073,23 +1065,18 @@ export async function deleteSpecificationLocalDeviation(
   db: SqlServerDatabase,
   deviationId: number,
 ): Promise<void> {
-  await runGuardedDeviationMutation({
-    conflictMessageForState: deleteDeviationConflictMessage,
+  const state = await findSqlServerSpecificationLocalDeviationState(
     db,
     deviationId,
-    findState: findSqlServerSpecificationLocalDeviationState,
-    mutationSql: `
-      DELETE FROM specification_local_requirement_deviations
-      OUTPUT DELETED.id AS id
-      WHERE
-        id = @0
-        AND decision IS NULL
-        AND is_review_requested = 0
-    `,
-    notFoundMessage: `Specification-local deviation ${deviationId} not found`,
-    parameters: [deviationId],
-  })
-  return
+  )
+  if (!state)
+    throw notFoundError(
+      `Specification-local deviation ${deviationId} not found`,
+    )
+  throw conflictError(
+    'Cancel the deviation with a reason to preserve its history',
+    { reason: 'deviation_cancellation_required' },
+  )
 }
 
 export async function countDeviationsBySpecification(
@@ -1104,7 +1091,7 @@ export async function countDeviationsBySpecification(
         SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved,
         SUM(CASE WHEN deviation.decision = @2 THEN 1 ELSE 0 END) AS rejected
       FROM deviations deviation
-      INNER JOIN requirements_specification_items specification_item
+      INNER JOIN current_requirement_applications specification_item
         ON specification_item.id = deviation.specification_item_id
       WHERE specification_item.requirements_specification_id = @0
 
@@ -1116,7 +1103,7 @@ export async function countDeviationsBySpecification(
         SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved,
         SUM(CASE WHEN deviation.decision = @2 THEN 1 ELSE 0 END) AS rejected
       FROM specification_local_requirement_deviations deviation
-      INNER JOIN specification_local_requirements specification_local_requirement
+      INNER JOIN current_specification_local_requirements specification_local_requirement
         ON specification_local_requirement.id = deviation.specification_local_requirement_id
       WHERE specification_local_requirement.specification_id = @0
     `,
@@ -1143,7 +1130,7 @@ export async function countDeviationsPerItem(
         SUM(CASE WHEN deviation.decision IS NULL THEN 1 ELSE 0 END) AS pending,
         SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved
       FROM deviations deviation
-      INNER JOIN requirements_specification_items specification_item
+      INNER JOIN current_requirement_applications specification_item
         ON specification_item.id = deviation.specification_item_id
       WHERE specification_item.requirements_specification_id = @0
       GROUP BY deviation.specification_item_id
@@ -1179,7 +1166,7 @@ export async function countDeviationsPerItemRef(
         SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved,
         SUM(CASE WHEN deviation.decision = @2 THEN 1 ELSE 0 END) AS rejected
       FROM deviations deviation
-      INNER JOIN requirements_specification_items specification_item
+      INNER JOIN current_requirement_applications specification_item
         ON specification_item.id = deviation.specification_item_id
       WHERE specification_item.requirements_specification_id = @0
       GROUP BY deviation.specification_item_id
@@ -1194,7 +1181,7 @@ export async function countDeviationsPerItemRef(
         SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved,
         SUM(CASE WHEN deviation.decision = @2 THEN 1 ELSE 0 END) AS rejected
       FROM specification_local_requirement_deviations deviation
-      INNER JOIN specification_local_requirements specification_local_requirement
+      INNER JOIN current_specification_local_requirements specification_local_requirement
         ON specification_local_requirement.id = deviation.specification_local_requirement_id
       WHERE specification_local_requirement.specification_id = @0
       GROUP BY deviation.specification_local_requirement_id

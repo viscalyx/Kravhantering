@@ -130,7 +130,7 @@ async function listNormReferencesByItemRef(
           norm_reference.name AS name,
           norm_reference.norm_reference_id AS normReferenceId,
           norm_reference.uri AS uri
-        FROM requirements_specification_items specification_item
+        FROM current_requirement_applications specification_item
         INNER JOIN requirement_version_norm_references version_norm_reference
           ON version_norm_reference.requirement_version_id = specification_item.requirement_version_id
         INNER JOIN norm_references norm_reference
@@ -200,7 +200,7 @@ async function listRequirementPackagesByItemRef(
         SELECT
           specification_item.id AS itemId,
           requirement_package.name AS name
-        FROM requirements_specification_items specification_item
+        FROM current_requirement_applications specification_item
         INNER JOIN requirement_version_requirement_packages version_requirement_package
           ON version_requirement_package.requirement_version_id = specification_item.requirement_version_id
         INNER JOIN requirement_packages requirement_package
@@ -236,7 +236,7 @@ async function countSuggestionsByLibraryItemRef(
       SELECT
         specification_item.id AS itemId,
         COUNT(suggestion.id) AS count
-      FROM requirements_specification_items specification_item
+      FROM current_requirement_applications specification_item
       LEFT JOIN improvement_suggestions suggestion
         ON suggestion.requirement_id = specification_item.requirement_id
       WHERE specification_item.id IN (${buildInClause(0, libraryItemIds)})
@@ -368,7 +368,7 @@ async function collectSpecificationOutputPage(
           specification_item.specification_item_status_id AS specificationItemStatusId,
           specification_item_status.name_en AS specificationItemStatusNameEn,
           specification_item_status.name_sv AS specificationItemStatusNameSv
-        FROM requirements_specification_items specification_item
+        FROM current_requirement_applications specification_item
         INNER JOIN requirements requirement
           ON requirement.id = specification_item.requirement_id
         INNER JOIN requirement_versions requirement_version
@@ -419,7 +419,7 @@ async function collectSpecificationOutputPage(
           local_requirement.specification_item_status_id AS specificationItemStatusId,
           specification_item_status.name_en AS specificationItemStatusNameEn,
           specification_item_status.name_sv AS specificationItemStatusNameSv
-        FROM specification_local_requirements local_requirement
+        FROM current_specification_local_requirements local_requirement
         LEFT JOIN requirement_categories requirement_category
           ON requirement_category.id = local_requirement.requirement_category_id
         LEFT JOIN requirement_types requirement_type

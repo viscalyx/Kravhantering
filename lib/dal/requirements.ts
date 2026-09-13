@@ -1797,7 +1797,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
 
   const specificationRows = (await db.query(
     `SELECT COUNT(DISTINCT requirements_specification_id) AS specificationCount
-      FROM requirements_specification_items
+      FROM current_requirement_applications
       WHERE requirement_id = @0`,
     [id],
   )) as Array<Record<string, unknown>>

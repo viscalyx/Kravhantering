@@ -21,7 +21,7 @@ describe('disposable demo reset', () => {
     ).rejects.toThrow('Only draft RFI question suggestions can be deleted.')
 
     await expect(resetDemoSqlServerData(appDb())).resolves.toEqual({
-      tablesCleared: 59,
+      tablesCleared: 60,
     })
     expect(
       await appDb().query(

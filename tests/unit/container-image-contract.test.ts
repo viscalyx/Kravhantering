@@ -126,6 +126,9 @@ describe('container image contract', () => {
     expect(dockerignore).toContain('.devcontainer/')
     expect(dockerignore).toContain('public/api-docs/')
     expect(dockerignore).not.toContain('typeorm/seed.mjs')
+    expect(dockerignore).not.toContain(
+      'typeorm/seed-specification-agreements.mjs',
+    )
     expect(dockerignore).not.toContain('typeorm/seed-dogfood.mjs')
     expect(dockerignore).not.toContain(
       'typeorm/seed-playwright-manual-cases-build.mjs',

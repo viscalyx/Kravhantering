@@ -57,6 +57,7 @@ import RequirementsTable, {
   type FloatingActionMenuItem,
   FloatingActionPill,
 } from '@/components/RequirementsTable'
+import SpecificationAgreementPanel from '@/components/SpecificationAgreementPanel'
 import SpecificationLocalRequirementDetailClient from '@/components/SpecificationLocalRequirementDetailClient'
 import SpecificationLocalRequirementForm, {
   type SpecificationLocalRequirementSubmitPayload,
@@ -111,6 +112,11 @@ import { SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT } from '@/lib/specifications/
 
 const REQUIREMENT_SPECIFICATION_DETAIL_HELP: HelpContent = {
   sections: [
+    {
+      kind: 'text',
+      headingKey: 'requirementsSpecificationDetail.agreements.heading',
+      bodyKey: 'requirementsSpecificationDetail.agreements.body',
+    },
     {
       kind: 'text',
       headingKey: 'requirementsSpecificationDetail.rfiAssessment.heading',
@@ -2240,11 +2246,13 @@ export default function KravunderlagDetailClient({
     canUseAi: false,
   }
   const canEditContent = permissions.canEditContent === true
+  const canChangeContent =
+    canEditContent && (spec?.establishmentStatus ?? 'editable') === 'editable'
   const canMutateSpecification =
     permissions.canEditContent === true ||
     permissions.canManageAssignments === true
   const canOpenAiLocalRequirements =
-    canEditContent &&
+    canChangeContent &&
     permissions.canUseAi === true &&
     initialData.aiGenerationAvailability.effectiveRequirementGenerationEnabled
   const aiLocalRequirementsDisabledTooltip = !initialData
@@ -2812,7 +2820,7 @@ export default function KravunderlagDetailClient({
     locale,
   )
   const openNeedsReferenceForm = () => {
-    if (!canEditContent) return
+    if (!canChangeContent) return
     setNeedsReferenceError(null)
     const nextForm = {
       description: '',
@@ -2834,11 +2842,11 @@ export default function KravunderlagDetailClient({
     'inline-flex h-11 w-11 items-center justify-center rounded-full border border-primary-600/80 bg-primary-700 text-white shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all hover:-translate-y-px hover:border-primary-700 hover:bg-primary-800 hover:shadow-[0_14px_36px_-20px_rgba(67,56,202,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-primary-500/80 dark:bg-primary-600 dark:hover:border-primary-400 dark:hover:bg-primary-700 dark:focus-visible:ring-offset-secondary-950'
   const renderEmptySpecificationActions = () => {
     const moreActionMenuItems = buildMoreActionMenuItems({
-      includeAddActions: canEditContent,
+      includeAddActions: canChangeContent,
       includeOutputActions: false,
     })
     const actions: FloatingActionItem[] = [
-      ...(canEditContent
+      ...(canChangeContent
         ? [
             {
               ariaLabel: t('newLocalRequirement'),
@@ -2944,7 +2952,7 @@ export default function KravunderlagDetailClient({
     </div>
   )
   const leftPanelMoreActionMenuItems = buildMoreActionMenuItems({
-    includeAddActions: canEditContent,
+    includeAddActions: canChangeContent,
     includeOutputActions: specificationItems.length > 0,
   })
 
@@ -3064,6 +3072,13 @@ export default function KravunderlagDetailClient({
             </div>
           </div>
 
+          <SpecificationAgreementPanel
+            onChanged={() => {
+              void fetchSpecificationMeta()
+              void fetchSpecificationItems()
+            }}
+            specificationId={specificationId}
+          />
           {/* Split panel */}
           <div
             className={specificationDetailSplitPanelClassName}
@@ -3413,7 +3428,7 @@ export default function KravunderlagDetailClient({
                     filterValues={leftFilters}
                     floatingActionRailPlacement="inline-top"
                     floatingActions={[
-                      ...(canEditContent
+                      ...(canChangeContent
                         ? [
                             {
                               ariaLabel: t('newLocalRequirement'),
@@ -3537,6 +3552,7 @@ export default function KravunderlagDetailClient({
                               }}
                               permissions={{
                                 canEditContent,
+                                canChangeContent,
                                 canReviewDecisions:
                                   permissions.canReviewDecisions === true,
                               }}
@@ -3566,7 +3582,7 @@ export default function KravunderlagDetailClient({
                                 await fetchSpecificationItems()
                               }}
                               onRemoveFromSpecification={
-                                canEditContent &&
+                                canChangeContent &&
                                 item.itemRef &&
                                 !item.isSpecificationLocal
                                   ? anchorEl =>
@@ -3684,7 +3700,7 @@ export default function KravunderlagDetailClient({
                     }
                     stickyTitle={renderLeftPanelTabs()}
                     stickyTitleActions={
-                      leftSelectedItemRefs.size > 0 && canEditContent ? (
+                      leftSelectedItemRefs.size > 0 && canChangeContent ? (
                         <>
                           <button
                             aria-label={t('assignNeedsReferenceAction')}
@@ -4011,7 +4027,7 @@ export default function KravunderlagDetailClient({
                               }
                             />
                           )}
-                          {rightSelectedIds.size > 0 && canEditContent ? (
+                          {rightSelectedIds.size > 0 && canChangeContent ? (
                             <button
                               className="btn-primary inline-flex items-center gap-1.5"
                               onClick={handleOpenAddModal}

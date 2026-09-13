@@ -539,6 +539,7 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
     action: 'delete',
     executeSql: `DELETE FROM specification_local_requirements WHERE specification_id = @0;
       DELETE FROM requirements_specification_items WHERE requirements_specification_id = @0;
+      DELETE FROM specification_amendments WHERE specification_id = @0;
       DELETE FROM specification_needs_references WHERE specification_id = @0;
       DELETE FROM requirements_specifications WHERE id = @0;`,
     fieldKey: 'specificationArchive',
@@ -556,6 +557,7 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
           specification.updated_at AS age_basis
         FROM requirements_specifications specification
         WHERE specification.updated_at <= @0
+          AND specification.establishment_status IN (N'editable', N'ended')
           AND (
             specification.specification_lifecycle_status_id IS NULL
             OR specification.specification_lifecycle_status_id <> ${SPECIFICATION_MANAGEMENT_STATUS_ID}
@@ -1398,6 +1400,15 @@ async function exportSpecification(
         specification.specification_code AS specificationCode,
         specification.name,
         specification.business_needs_reference AS businessNeedsReference,
+        specification.establishment_status AS establishmentStatus,
+        specification.agreement_reference AS agreementReference,
+        specification.agreement_reason AS agreementReason,
+        specification.agreement_date AS agreementDate,
+        specification.established_at AS establishedAt,
+        specification.original_content_json AS originalContentJson,
+        specification.ended_at AS endedAt,
+        specification.agreement_end_date AS agreementEndDate,
+        specification.agreement_end_reason AS agreementEndReason,
         specification.created_at AS createdAt,
         specification.updated_at AS updatedAt,
         CASE WHEN specification.responsible_hsa_id IS NULL THEN NULL ELSE N'no-user' END AS responsibleDisplayName,
@@ -1511,6 +1522,12 @@ async function exportSpecification(
           specification_item.created_at AS specificationItemCreatedAt,
           specification_item.note AS specificationItemNote,
           specification_item.status_updated_at AS specificationItemStatusUpdatedAt,
+          specification_item.needs_reference_snapshot AS needsReferenceSnapshot,
+          specification_item.valid_from AS validFrom, specification_item.valid_until AS validUntil,
+          specification_item.specification_amendment_id AS amendmentId,
+          specification_item.is_reassessment_required AS reassessmentRequired,
+          specification_item.binding_reason AS bindingReason,
+          specification_item.reassessed_at AS reassessedAt, specification_item.reassessment_reason AS reassessmentReason,
           needs_reference.id AS needsReferenceId,
           needs_reference.text AS needsReferenceText,
           specification_item_status.id AS specificationItemStatusId,
@@ -1626,6 +1643,12 @@ async function exportSpecification(
     db.query(
       `SELECT
           local_requirement.id,
+          local_requirement.valid_from AS validFrom, local_requirement.valid_until AS validUntil,
+          local_requirement.specification_amendment_id AS amendmentId,
+          local_requirement.is_reassessment_required AS reassessmentRequired,
+          local_requirement.binding_reason AS bindingReason,
+          local_requirement.reassessed_at AS reassessedAt, local_requirement.reassessment_reason AS reassessmentReason,
+          local_requirement.needs_reference_snapshot AS needsReferenceSnapshot,
           local_requirement.unique_id AS uniqueId,
           local_requirement.sequence_number AS sequenceNumber,
           local_requirement.description,
@@ -1708,7 +1731,24 @@ async function exportSpecification(
     ) as Promise<Row[]>,
   ])
 
+  const amendments = (await db.query(
+    `SELECT id, reason, agreement_reference AS agreementReference,
+    effective_date AS effectiveDate, effective_at AS effectiveAt, created_at AS createdAt,
+    decided_at AS decidedAt, cancelled_at AS cancelledAt, cancellation_reason AS cancellationReason,
+    replaces_amendment_id AS replacesAmendmentId, changes_json AS changesJson,
+    CAST(NULL AS nvarchar(64)) AS createdByHsaId, CAST(NULL AS nvarchar(64)) AS decidedByHsaId,
+    CAST(NULL AS nvarchar(64)) AS cancelledByHsaId
+    FROM specification_amendments WHERE specification_id = @0 ORDER BY id`,
+    [specificationId],
+  )) as Row[]
   return {
+    amendments: amendments.map(amendment => ({
+      ...amendment,
+      changes: JSON.parse(String(amendment.changesJson)),
+    })),
+    originalItems: JSON.parse(
+      String(specification.originalContentJson ?? '[]'),
+    ),
     rfiList: rfiList[0] ?? null,
     rfiItems,
     rfiAssessmentHistory,

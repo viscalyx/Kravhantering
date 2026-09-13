@@ -101,7 +101,17 @@ interface SafePrivacyErasureHttpDetails {
   reason: SafePrivacyErasureReason
 }
 
+const SAFE_AGREEMENT_REASONS = [
+  'specification_content_locked',
+  'active_deviations',
+  'deviation_cancellation_required',
+  'reassessment_required',
+  'binding_reserved',
+] as const
+type SafeAgreementReason = (typeof SAFE_AGREEMENT_REASONS)[number]
+
 type SafeHttpErrorDetails =
+  | { reason: SafeAgreementReason }
   | { blocker: 'attempt_expired' | 'attempt_mismatch' | 'attempt_unavailable' }
   | SafeAiAdminBlockerHttpDetails
   | SafeAiAdminModelDependencyHttpDetails
@@ -213,6 +223,13 @@ function toSafeHttpErrorDetails(
   details: Record<string, unknown> | undefined,
   safeDetails: HttpErrorPayloadOptions['safeDetails'],
 ): SafeHttpErrorDetails | undefined {
+  if (
+    code === 'conflict' &&
+    SAFE_AGREEMENT_REASONS.includes(details?.reason as SafeAgreementReason)
+  ) {
+    return { reason: details?.reason as SafeAgreementReason }
+  }
+
   if (code === 'validation' && safeDetails === 'ai_admin_blockers') {
     const blockers = toSafeAiAdminBlockers(details?.blockers)
     if (blockers) return { blockers }

@@ -892,3 +892,13 @@ assessment references block deletion of referenced question versions and their
 archived questions in both preview and execution. Existing retention periods
 remain unchanged. `RETENTION-SEED` question `RSK-RFI915` demonstrates protection
 without a current list item.
+
+### Dataskydd och avtalshistorik
+
+Dataskyddets förhandsvisning och anonymisering omfattar aktörer som bedömt,
+fastställt eller avslutat avtal, förberett, beslutat eller avbrutit tillägg samt
+skapat bindningar eller omprövat krav. Matchning sker med exakt HSA-id. Dessa
+historiska roller kan anonymiseras utan ersättare; avtalsinnehåll och beslut
+bevaras. Samma roller ingår i registerutdrag. Aktiva avtal och underlag som väntar
+på fastställelsebedömning skyddas från gallring. Efter avslut gäller ordinarie
+regler och undantag, med obligatorisk JSON-export inklusive hela avtalshistoriken.

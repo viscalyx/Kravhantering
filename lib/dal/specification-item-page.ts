@@ -657,7 +657,7 @@ async function enrichLibraryItems(
         (SELECT COUNT(*) FROM deviations deviation WHERE deviation.specification_item_id = specification_item.id) AS deviationTotal,
         (SELECT COUNT(*) FROM deviations deviation WHERE deviation.specification_item_id = specification_item.id AND deviation.decision IS NULL) AS deviationPending,
         (SELECT COUNT(*) FROM deviations deviation WHERE deviation.specification_item_id = specification_item.id AND deviation.decision = 1) AS deviationApproved
-      FROM requirements_specification_items specification_item
+      FROM current_requirement_applications specification_item
       INNER JOIN requirements requirement ON requirement.id = specification_item.requirement_id
       INNER JOIN requirement_versions requirement_version ON requirement_version.id = specification_item.requirement_version_id
       LEFT JOIN requirement_areas requirement_area ON requirement_area.id = requirement.requirement_area_id
@@ -722,7 +722,7 @@ async function enrichLocalItems(
         (SELECT COUNT(*) FROM specification_local_requirement_deviations deviation WHERE deviation.specification_local_requirement_id = local_requirement.id) AS deviationTotal,
         (SELECT COUNT(*) FROM specification_local_requirement_deviations deviation WHERE deviation.specification_local_requirement_id = local_requirement.id AND deviation.decision IS NULL) AS deviationPending,
         (SELECT COUNT(*) FROM specification_local_requirement_deviations deviation WHERE deviation.specification_local_requirement_id = local_requirement.id AND deviation.decision = 1) AS deviationApproved
-      FROM specification_local_requirements local_requirement
+      FROM current_specification_local_requirements local_requirement
       LEFT JOIN requirement_categories requirement_category ON requirement_category.id = local_requirement.requirement_category_id
       LEFT JOIN requirement_types requirement_type ON requirement_type.id = local_requirement.requirement_type_id
       LEFT JOIN quality_characteristics quality_characteristic ON quality_characteristic.id = local_requirement.quality_characteristic_id

@@ -1016,7 +1016,9 @@
     "priorityLevel": "Prioritet",
     "priorityLevels": "Prioriteter",
     "affectedRequirementIds": "Berörda krav-ID:n",
-    "bulkDeviationPartialFail": "Avstegsförfrågningar misslyckades för krav-ID:n: {ids}. De kraven är fortfarande markerade."
+    "bulkDeviationPartialFail": "Avstegsförfrågningar misslyckades för krav-ID:n: {ids}. De kraven är fortfarande markerade.",
+    "statusCancelled": "Avbrutet",
+    "manageCancellation": "Avbryt i kravunderlaget"
   },
   "improvementSuggestion": {
     "attachImplementation": "Koppla genomförandeversion",
@@ -1811,7 +1813,8 @@
         "requirementImportValidationRateBuckets": "Anropsgränser för MCP-valideringssessioner",
         "requirementImportValidationSessions": "Valideringssessioner för MCP-import",
         "exportActorQuotaEntries": "Aktörskvoter för exporter och rapporter",
-        "rfiAssessments": "RFI-bedömningar"
+        "rfiAssessments": "RFI-bedömningar",
+        "specificationAmendments": "Avtalstillägg"
       },
       "fields": {
         "identity": "Identitet",
@@ -1836,7 +1839,13 @@
         "specificationArchive": "Kravunderlag",
         "requirementSelection": "Kravurval",
         "rfiQuestion": "RFI-fråga",
-        "rfiQuestionVersion": "Historisk RFI-frågeversion"
+        "rfiQuestionVersion": "Historisk RFI-frågeversion",
+        "assessedBy": "Fastställelse bedömd av",
+        "establishedBy": "Fastställt av",
+        "endedBy": "Avtalsavslut registrerat av",
+        "cancelledBy": "Avbrutet av",
+        "bindingCreatedBy": "Bindning registrerad av",
+        "reassessedBy": "Omprövat av"
       },
       "warnings": {
         "ownerSwitch": "Byt referenser till en ersättande ägare, eller anonymisera till den raderade användaren när ingen ersättare anges.",
@@ -3169,6 +3178,10 @@
       "rfiAssessment": {
         "heading": "RFI-relevansbedömningar",
         "body": "Lås RFI-listan och bedöm inkluderade frågor. Motivering, dokumenthänvisning och länk är frivilliga. Spara bekräftar alla uppgifter för den visade frågeversionen. När en annan version tas in krävs ny bekräftelse. Historik och interna CSV/PDF bevarar underlaget; relevans väljer inga krav."
+      },
+      "agreements": {
+        "heading": "Avtal och versionshistorik",
+        "body": "Publicering i kravbiblioteket ändrar aldrig underlaget automatiskt. Fastställt innehåll ändras genom avtalstillägg. Tidigare bindning och beslut bevaras. Den nya tillämpningen börjar som Inkluderad och kräver omprövning. Godkända avsteg kräver ett nytt beslut för den ändrade versionen. Avbryt alla aktiva avsteg först. Avtalstillägg får börja gälla idag eller senare. Dagens ändring gäller från beslutet; framtida datum från midnatt i Stockholm. Fastställelse kan registrera ett historiskt avtalsdatum. Vid avtalsavslut anges dagen då avtalet upphörde."
       }
     },
     "specificationRequirementSelection": {
@@ -3806,5 +3819,122 @@
   },
   "safeMarkdown": {
     "imageOmitted": "Bild utelämnad"
+  },
+  "agreement": {
+    "title": "Avtal och versionshistorik",
+    "overview": "Publicering i kravbiblioteket ändrar aldrig underlaget automatiskt. Fastställt innehåll ändras genom avtalstillägg.",
+    "loadError": "Avtalshistoriken kunde inte hämtas.",
+    "comparisonUnavailable": "Det finns ingen nyare publicerad version att jämföra med.",
+    "mutationError": "Åtgärden kunde inte genomföras. Kontrollera avtalsläge, aktiva avsteg, datum och valda bindningar. Läs sedan in uppgifterna igen och försök på nytt.",
+    "working": "Sparar…",
+    "comparison": "Jämför kravversioner",
+    "field": "Egenskap",
+    "pinned": "Bunden version",
+    "published": "Nyare publicerad version",
+    "compare": "Jämför versioner",
+    "keep": "Behåll nuvarande version",
+    "adopt": "Ta den jämförda versionen i bruk",
+    "adoptionHelp": "Tidigare bindning och beslut bevaras. Den nya tillämpningen börjar som Inkluderad och kräver omprövning. Godkända avsteg kräver ett nytt beslut för den ändrade versionen. Avbryt alla aktiva avsteg först.",
+    "stageReplacement": "Lägg versionsbytet i avtalstillägg",
+    "reason": "Motivering",
+    "reasonHelp": "Förklara åtgärden som du ska bekräfta. Motiveringen bevaras i verksamhetshistoriken.",
+    "agreementReference": "Avtalsreferens",
+    "agreementReferenceHelp": "Ange leverantörsavtalet eller dess tillägg. Ett kravunderlag hör till ett avtal.",
+    "effectiveDate": "Ikraftträdandedatum",
+    "effectiveDateHelp": "Avtalstillägg får börja gälla idag eller senare. Dagens ändring gäller från beslutet; framtida datum från midnatt i Stockholm. Fastställelse kan registrera ett historiskt avtalsdatum. Vid avtalsavslut anges dagen då avtalet upphörde.",
+    "current": "Aktuellt innehåll",
+    "original": "Ursprungligen avtalat innehåll",
+    "history": "Tidigare bindningar",
+    "export": "Exportera vald vy som JSON",
+    "reassessmentRequired": "Omprövning krävs",
+    "reassess": "Bekräfta omprövning",
+    "needsReference": "Behovsreferens",
+    "note": "Anteckning",
+    "changedThrough": "Ändrat genom T-{id}",
+    "confirmEditable": "Bekräfta redigerbart arbetsmaterial",
+    "establish": "Fastställ avtal",
+    "endAgreement": "Registrera att avtalet upphört",
+    "usageStatus": "Användningsstatus efter omprövning",
+    "usageStatusHelp": "Välj resultatet av din uttryckliga bedömning mot det ändrade innehållet. Ett tidigare godkännande medger inte Avviken för denna bindning.",
+    "prepare": "Bered avtalstillägg",
+    "changeKind": "Ändringstyp",
+    "changeKindHelp": "Samla tillägg, versionsbyten och borttagningar med samma avtal, motivering och datum. Använd Jämför versioner för bibliotekskrav.",
+    "application": "Kravtillämpning",
+    "applicationHelp": "Välj den nuvarande kravbindning som ändringen gäller.",
+    "libraryVersion": "Publicerat krav",
+    "libraryVersionHelp": "Välj den exakta publicerade kravversionen som ska läggas till. Senare publicering ersätter inte valet.",
+    "localText": "Lokal kravtext",
+    "localTextHelp": "Ange hela den nya kravtexten. Befintliga metadata bevaras vid textändring.",
+    "select": "Välj…",
+    "stageChange": "Lägg till ändring",
+    "discardChange": "Ta bort beredd ändring",
+    "amendments": "Avtalstillägg",
+    "amendmentNumber": "T-{id}",
+    "corrects": "Rättar T-{id}",
+    "cancellationReason": "Motivering till avbrott",
+    "decide": "Registrera avtalsbeslut",
+    "cancelAmendment": "Avbryt avtalstillägg",
+    "prepareCorrection": "Bered länkad rättelse",
+    "cancelDeviation": "Avbryt avsteg",
+    "newRequirement": "Nytt krav",
+    "yes": "Ja",
+    "no": "Nej",
+    "states": {
+      "assessment": "Fastställelsebedömning krävs",
+      "editable": "Redigerbart arbetsmaterial",
+      "established": "Fastställt leverantörsavtal",
+      "ended": "Avtalet har upphört — innehållet förblir låst"
+    },
+    "amendmentStates": {
+      "draft": "Utkast",
+      "decided": "Beslutat — framtida ikraftträdande",
+      "effective": "Gällande",
+      "cancelled": "Avbrutet"
+    },
+    "changes": {
+      "add_library": "Lägg till bibliotekskrav",
+      "replace_library": "Ta nyare version i bruk",
+      "change_local": "Ändra lokal kravtext",
+      "add_local": "Lägg till lokalt krav",
+      "remove": "Ta bort krav"
+    },
+    "usage": {
+      "1": "Inkluderad",
+      "2": "Pågående",
+      "3": "Implementerad",
+      "4": "Verifierad",
+      "5": "Avviken",
+      "6": "Ej tillämpbar"
+    },
+    "deviation": {
+      "active": "Aktivt avsteg",
+      "1": "Godkänt avsteg",
+      "2": "Avslaget avsteg",
+      "3": "Avbrutet avsteg"
+    },
+    "fields": {
+      "versionNumber": "Version",
+      "description": "Kravtext",
+      "acceptanceCriteria": "Acceptanskriterier",
+      "verificationMethod": "Verifieringsmetod",
+      "verifiable": "Verifierbar",
+      "category": "Kategori",
+      "type": "Typ",
+      "qualityCharacteristic": "Kvalitetsegenskap",
+      "priority": "Prioritet",
+      "normReferences": "Normhänvisningar"
+    },
+    "errors": {
+      "specification_content_locked": "Fastställt eller ej bedömt innehåll är låst. Använd avtalsflödet.",
+      "deviation_cancellation_required": "Avbryt aktiva avsteg med en motivering innan du fortsätter.",
+      "active_deviations": "Avbryt aktiva avsteg först.",
+      "reassessment_required": "Bekräfta omprövning innan ändrat innehåll markeras som implementerat eller verifierat.",
+      "binding_reserved": "Bindningen är historisk eller reserverad för ett framtida tillägg."
+    },
+    "recordedBy": "Registrerat av",
+    "anonymousActor": "Anonym användare",
+    "versionSearch": "Sök i biblioteket",
+    "versionSearchHelp": "Sök med krav-id eller text. Högst 100 publicerade versioner visas.",
+    "searchVersions": "Sök versioner"
   }
 }

@@ -1016,7 +1016,9 @@
     "priorityLevel": "Priority",
     "priorityLevels": "Priorities",
     "affectedRequirementIds": "Affected Requirement IDs",
-    "bulkDeviationPartialFail": "Deviation requests failed for Requirement IDs: {ids}. Those requirements remain selected."
+    "bulkDeviationPartialFail": "Deviation requests failed for Requirement IDs: {ids}. Those requirements remain selected.",
+    "statusCancelled": "Cancelled",
+    "manageCancellation": "Cancel in specification"
   },
   "improvementSuggestion": {
     "attachImplementation": "Attach implementing version",
@@ -1811,7 +1813,8 @@
         "requirementImportValidationRateBuckets": "MCP validation-session rate limits",
         "requirementImportValidationSessions": "MCP import validation sessions",
         "exportActorQuotaEntries": "Export and report actor quotas",
-        "rfiAssessments": "RFI assessments"
+        "rfiAssessments": "RFI assessments",
+        "specificationAmendments": "Agreement amendments"
       },
       "fields": {
         "identity": "Identity",
@@ -1836,7 +1839,13 @@
         "specificationArchive": "Specification",
         "requirementSelection": "Requirement selection",
         "rfiQuestion": "RFI question",
-        "rfiQuestionVersion": "Historical RFI question version"
+        "rfiQuestionVersion": "Historical RFI question version",
+        "assessedBy": "Establishment assessed by",
+        "establishedBy": "Established by",
+        "endedBy": "Agreement end recorded by",
+        "cancelledBy": "Cancelled by",
+        "bindingCreatedBy": "Binding recorded by",
+        "reassessedBy": "Reassessed by"
       },
       "warnings": {
         "ownerSwitch": "Switch references to a replacement owner, or anonymize to the deleted-user sentinel when no replacement is supplied.",
@@ -3169,6 +3178,10 @@
       "rfiAssessment": {
         "heading": "RFI relevance assessments",
         "body": "Lock the RFI list and assess included questions. Reason, document reference and link are optional. Save confirms all fields for the displayed question version. Adopting another version requires confirmation of the earlier assessment. History and internal CSV/PDF retain the evidence; relevance does not select requirements."
+      },
+      "agreements": {
+        "heading": "Agreement and version history",
+        "body": "Library publications never change this specification automatically. Agreed content changes only through an agreement amendment. Adoption preserves the previous binding and its decisions. The successor starts Included and requires reassessment. Approved deviations require a new decision for the changed version. Cancel all active deviations first. Amendments may take effect today or later. Today means at decision; future dates start at midnight in Stockholm. Agreement establishment may record a historical agreement date. For agreement end, enter the date it ended."
       }
     },
     "specificationRequirementSelection": {
@@ -3806,5 +3819,122 @@
   },
   "safeMarkdown": {
     "imageOmitted": "Image omitted"
+  },
+  "agreement": {
+    "title": "Agreement and version history",
+    "overview": "Library publications never change this specification automatically. Agreed content changes only through an agreement amendment.",
+    "loadError": "Could not load agreement history.",
+    "comparisonUnavailable": "There is no newer published version available for comparison.",
+    "mutationError": "The action could not be completed. Check the agreement state, active deviations, dates and selected bindings, then reload and try again.",
+    "working": "Saving…",
+    "comparison": "Compare requirement versions",
+    "field": "Property",
+    "pinned": "Pinned version",
+    "published": "Newer published version",
+    "compare": "Compare versions",
+    "keep": "Keep current version",
+    "adopt": "Adopt compared version",
+    "adoptionHelp": "Adoption preserves the previous binding and its decisions. The successor starts Included and requires reassessment. Approved deviations require a new decision for the changed version. Cancel all active deviations first.",
+    "stageReplacement": "Add replacement to amendment",
+    "reason": "Reason",
+    "reasonHelp": "Explain the action you are about to confirm. This reason is retained in the business history.",
+    "agreementReference": "Agreement reference",
+    "agreementReferenceHelp": "Identify the supplier agreement or its amendment. One specification belongs to one agreement.",
+    "effectiveDate": "Effective date",
+    "effectiveDateHelp": "Amendments may take effect today or later. Today means at decision; future dates start at midnight in Stockholm. Agreement establishment may record a historical agreement date. For agreement end, enter the date it ended.",
+    "current": "Current content",
+    "original": "Original agreed content",
+    "history": "Previous bindings",
+    "export": "Export selected view as JSON",
+    "reassessmentRequired": "Reassessment required",
+    "reassess": "Confirm reassessment",
+    "needsReference": "Needs reference",
+    "note": "Note",
+    "changedThrough": "Changed through T-{id}",
+    "confirmEditable": "Confirm editable working material",
+    "establish": "Establish agreement",
+    "endAgreement": "Record agreement end",
+    "usageStatus": "Reassessed usage status",
+    "usageStatusHelp": "Choose the result of your explicit assessment against the changed content. An old approval does not authorize Deviated for this binding.",
+    "prepare": "Prepare amendment",
+    "changeKind": "Change type",
+    "changeKindHelp": "Group additions, replacements and removals that share an agreement, reason and effective date. Use Compare versions to stage library replacements.",
+    "application": "Requirement application",
+    "applicationHelp": "Select the current requirement binding affected by this change.",
+    "libraryVersion": "Published requirement",
+    "libraryVersionHelp": "Select the exact published requirement version to add. Later publication will not substitute another version.",
+    "localText": "Local requirement text",
+    "localTextHelp": "Enter the complete replacement or new local requirement text. Existing metadata is preserved when changing text.",
+    "select": "Select…",
+    "stageChange": "Add change",
+    "discardChange": "Discard prepared change",
+    "amendments": "Agreement amendments",
+    "amendmentNumber": "T-{id}",
+    "corrects": "Corrects T-{id}",
+    "cancellationReason": "Cancellation reason",
+    "decide": "Record agreement decision",
+    "cancelAmendment": "Cancel amendment",
+    "prepareCorrection": "Prepare linked correction",
+    "cancelDeviation": "Cancel deviation",
+    "newRequirement": "New requirement",
+    "yes": "Yes",
+    "no": "No",
+    "states": {
+      "assessment": "Establishment assessment required",
+      "editable": "Editable working material",
+      "established": "Established supplier agreement",
+      "ended": "Ended agreement — content remains locked"
+    },
+    "amendmentStates": {
+      "draft": "Draft",
+      "decided": "Decided — future effect",
+      "effective": "In effect",
+      "cancelled": "Cancelled"
+    },
+    "changes": {
+      "add_library": "Add library requirement",
+      "replace_library": "Adopt a newer version",
+      "change_local": "Change local text",
+      "add_local": "Add local requirement",
+      "remove": "Remove requirement"
+    },
+    "usage": {
+      "1": "Included",
+      "2": "In progress",
+      "3": "Implemented",
+      "4": "Verified",
+      "5": "Deviated",
+      "6": "Not applicable"
+    },
+    "deviation": {
+      "active": "Active deviation",
+      "1": "Approved deviation",
+      "2": "Rejected deviation",
+      "3": "Cancelled deviation"
+    },
+    "fields": {
+      "versionNumber": "Version",
+      "description": "Requirement text",
+      "acceptanceCriteria": "Acceptance criteria",
+      "verificationMethod": "Verification method",
+      "verifiable": "Verifiable",
+      "category": "Category",
+      "type": "Type",
+      "qualityCharacteristic": "Quality characteristic",
+      "priority": "Priority",
+      "normReferences": "Norm references"
+    },
+    "errors": {
+      "specification_content_locked": "Agreed or unassessed content is locked. Use the agreement workflow.",
+      "deviation_cancellation_required": "Cancel active deviations with a reason before continuing.",
+      "active_deviations": "Cancel active deviations first.",
+      "reassessment_required": "Confirm reassessment before marking the changed content implemented or verified.",
+      "binding_reserved": "This binding is historical or reserved for a future amendment."
+    },
+    "recordedBy": "Recorded by",
+    "anonymousActor": "Anonymous user",
+    "versionSearch": "Search library",
+    "versionSearchHelp": "Search by requirement ID or text. Up to 100 published versions are shown.",
+    "searchVersions": "Search versions"
   }
 }

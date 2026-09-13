@@ -56,6 +56,7 @@ export const DEMO_RESET_TABLES = Object.freeze([
   'access_review_items',
   'access_review_runs',
   'specification_co_authors',
+  'specification_amendments',
   'requirements_specifications',
   'hsa_id_prefixes',
   'requirement_import_validation_rate_buckets',

@@ -88,7 +88,7 @@ function createDb(
       }
 
       if (
-        sql.includes('FROM requirements_specification_items specification_item')
+        sql.includes('FROM current_requirement_applications specification_item')
       ) {
         return [
           {
@@ -120,7 +120,9 @@ function createDb(
       }
 
       if (
-        sql.includes('FROM specification_local_requirements local_requirement')
+        sql.includes(
+          'FROM current_specification_local_requirements local_requirement',
+        )
       ) {
         return [
           {
@@ -357,7 +359,7 @@ describe('specification output data', () => {
       if (sql.includes('requirement_version_requirement_packages')) return []
       if (sql.includes('improvement_suggestions')) return []
       if (
-        sql.includes('FROM requirements_specification_items specification_item')
+        sql.includes('FROM current_requirement_applications specification_item')
       ) {
         return [
           {
@@ -369,7 +371,9 @@ describe('specification output data', () => {
         ]
       }
       if (
-        sql.includes('FROM specification_local_requirements local_requirement')
+        sql.includes(
+          'FROM current_specification_local_requirements local_requirement',
+        )
       ) {
         return [
           {

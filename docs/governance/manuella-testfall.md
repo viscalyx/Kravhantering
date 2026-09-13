@@ -1963,6 +1963,33 @@ detaljdata med ett inaktuellt antal kravunderlag.
 Det gäller även när detaljen öppnas automatiskt genom den bevarade
 expanderingen; ingen extra stängning och öppning ska behövas.
 
+### SPEC-22: fastställ avtal och bevara originalet
+
+Skapa ett kravunderlag med ett lokalt krav som kravunderlagsansvarig. Öppna
+Avtal och versionshistorik. Ange skäl, avtalsreferens och historiskt avtalsdatum;
+fastställ. Kontrollera att direkta innehållsåtgärder försvinner och att aktuellt
+innehåll är läsbart. Processens livscykelstatus ska inte låsa upp avtalet.
+
+### SPEC-23: gruppera lokal ändring och ompröva
+
+I SPEC-22, förbered en lokal textändring med skäl, referens och dagens datum.
+Kontrollera förslaget före beslut: originaltexten gäller fortfarande. Registrera
+beslut. Den nya texten ska gälla och visa Inkluderad samt Omprövning krävs.
+Bekräfta uttrycklig omprövning med skäl och status Verifierad. Öppna Ursprungligt
+innehåll och kontrollera den tidigare texten. Exportera den valda vyn som JSON.
+Versionsjämförelse ska visa bunden och ny publicerad text med metadata; Behåll
+ska lämna bindningen orörd. Versionsval ska kräva skäl och behålla behov och notering.
+
+### SPEC-24: ansvarig beslutar och medförfattare förbereder
+
+Som medförfattare, öppna ett fastställt underlag med ett aktivt lokalt avsteg.
+Avbryt avsteget med skäl; kontrollera det bestående utfallet Avbrutet avsteg.
+Förbered en borttagning med skäl, referens och datum. Beslut och avtalsavslut ska
+inte vara tillgängliga. Kravunderlagsansvarig kan besluta förslaget och aktuellt
+innehåll ska därefter sakna kravet. Originalet och avbrottet ska finnas kvar.
+Kontrollera AUTHZ-04 och AUTHZ-05 samt att Reviewer, enbart Admin och otilldelad
+användare inte kan fastställa avtalet i den ansvariges ställe.
+
 ## Avsteg
 
 ### DEV-01: skapa avstegsutkast

@@ -126,6 +126,56 @@ function requirementResponsibilityPersonNameSql(alias: string): string {
 }
 
 const GROUP_POLICIES: PrivacyGroupPolicy[] = [
+  ...(
+    [
+      ['requirements_specifications', 'assessed_by_hsa_id', 'assessedBy'],
+      ['requirements_specifications', 'established_by_hsa_id', 'establishedBy'],
+      ['requirements_specifications', 'ended_by_hsa_id', 'endedBy'],
+      ['specification_amendments', 'created_by_hsa_id', 'createdBy'],
+      ['specification_amendments', 'decided_by_hsa_id', 'decidedBy'],
+      ['specification_amendments', 'cancelled_by_hsa_id', 'cancelledBy'],
+      [
+        'requirements_specification_items',
+        'binding_created_by_hsa_id',
+        'bindingCreatedBy',
+      ],
+      [
+        'requirements_specification_items',
+        'reassessed_by_hsa_id',
+        'reassessedBy',
+      ],
+      [
+        'specification_local_requirements',
+        'binding_created_by_hsa_id',
+        'bindingCreatedBy',
+      ],
+      [
+        'specification_local_requirements',
+        'reassessed_by_hsa_id',
+        'reassessedBy',
+      ],
+    ] as const
+  ).map(
+    ([table, hsaColumn, fieldKey]): PrivacyGroupPolicy => ({
+      key: `${table}.${hsaColumn.replace('_hsa_id', '')}`,
+      objectKey:
+        table === 'specification_amendments'
+          ? 'specificationAmendments'
+          : 'specifications',
+      fieldKey,
+      kind: 'hsaOnly',
+      table,
+      hsaColumn,
+      allowedActions: ['anonymize', 'skip'],
+      defaultWithReplacement: 'anonymize',
+      defaultWithoutReplacement: 'anonymize',
+      warningKey: 'historySwitch',
+      countSql: `SELECT COUNT(*) AS count FROM ${table} WHERE ${hsaColumn} = @0`,
+      currentDisplaySql: `SELECT TOP (1) ${hsaColumn} AS value FROM ${table} WHERE ${hsaColumn} = @0 ORDER BY id`,
+      affectedReferencesSql: `SELECT CAST(id AS nvarchar(120)) AS value FROM ${table} WHERE ${hsaColumn} = @0 ORDER BY id`,
+    }),
+  ),
+
   {
     key: 'specification_rfi_assessments.created_by',
     objectKey: 'rfiAssessments',

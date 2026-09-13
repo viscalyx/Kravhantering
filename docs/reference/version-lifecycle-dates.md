@@ -336,3 +336,13 @@ The version history pills show the relevant date per status:
   Draft copy of the selected historical version. If the
   requirement was archived, `is_archived` remains `true`
   until the restored replacement version is published.
+
+## Specification agreement dates
+
+Agreement establishment records the supplied agreement date separately from the
+UTC registration timestamp and captures current known content. It does not infer
+historical versions. Amendment dates cannot be backdated: today's date resolves
+to decision time; future dates resolve to midnight Europe/Stockholm. Binding
+intervals use inclusive valid_from and exclusive valid_until in UTC. Changing
+process lifecycle does not unlock an established agreement. Requirement-version
+edited_at and publication dates retain their existing meanings.

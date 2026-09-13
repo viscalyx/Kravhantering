@@ -304,3 +304,13 @@ Fritext och dokumentreferenser genomsöks inte automatiskt efter andra personers
 uppgifter. Kravunderlagsansvarig ansvarar för innehållet och eventuell separat
 manuell bedömning. Dataskyddsanonymisering är skild från arkivering och gallring;
 arkivexport anonymiserar aktörsfält i exporten utan att ändra databasen.
+
+### Avtalstillägg och bindningshistorik
+
+Fastställelse, originalinnehåll, tillägg, tidigare biblioteksversioner och lokala
+kravtexter tillhör kravunderlagets befintliga informationsmängd och gallringsregel.
+Aktiva avtal och obesvarad fastställelsebedömning hindrar gallring oavsett
+inaktivitet. Avtalsavslut tar bort avtalsskyddet men bevarar innehåll och övriga
+undantag. Obligatorisk arkivexport innehåller original, alla bindningar, tillägg,
+rättelser och avbrott. Nya HSA-aktörsfält anonymiseras i arkivet och hanteras av
+befintligt dataskydd; verksamhetshistorik raderas inte genom anonymisering.

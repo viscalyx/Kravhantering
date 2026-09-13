@@ -230,6 +230,7 @@ COPY --chown=1000:1000 typeorm/seed-runner.mjs ./typeorm/seed-runner.mjs
 COPY --chown=1000:1000 lib/mcp/import-validation-fingerprint.mjs ./lib/mcp/import-validation-fingerprint.mjs
 COPY --chown=1000:1000 lib/requirements/responsibility-person-verification-fingerprint.mjs ./lib/requirements/responsibility-person-verification-fingerprint.mjs
 COPY --chown=1000:1000 typeorm/seed.mjs ./typeorm/seed.mjs
+COPY --chown=1000:1000 typeorm/seed-specification-agreements.mjs ./typeorm/seed-specification-agreements.mjs
 COPY --chown=1000:1000 typeorm/seed-dogfood.mjs ./typeorm/seed-dogfood.mjs
 COPY --chown=1000:1000 typeorm/seed-dogfood-build.mjs ./typeorm/seed-dogfood-build.mjs
 COPY --chown=1000:1000 typeorm/seed-playwright-manual-cases-build.mjs ./typeorm/seed-playwright-manual-cases-build.mjs

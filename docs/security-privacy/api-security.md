@@ -486,3 +486,18 @@ List reads include `assessmentHistory`, `lockRevision`, and per-item
 `assessment` and `previousAssessment`. History has the same read authorization
 as the list, including entries for questions removed from it. Audit details
 record field names, not assessment text or document links.
+
+### Specification agreement operations
+
+`GET/POST /api/requirements-specifications/{id}/agreement` use the session,
+no-store responses and the common mutation CSRF policy. Read access follows the
+specification. The responsible person alone confirms assessment, establishes,
+decides/cancels amendments and ends the agreement. Authors may prepare amendments,
+adopt in editable work, cancel active deviations and reassess current bindings.
+The workflow checks ownership under the same specification transaction lock as
+membership mutation and new deviations. Assignment permissions do not bypass
+content protection. The strict OpenAPI request union rejects unknown fields;
+general application PATCH still cannot replace versions. Historic draft DELETE
+returns a cancellation-required conflict. Actor erasure/export covers all new
+agreement roles by exact HSA-id. Allowed agreement actions use the existing action
+audit transaction; free-text reasons remain in business history.

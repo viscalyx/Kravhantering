@@ -108,7 +108,7 @@ export const PUT = secureMutationRoute<
   policy: requirementsMutationPolicy(({ params }) =>
     specificationLocalRequirementAction('update', params),
   ),
-  handler: async ({ body, db: authorizationDb, params }) => {
+  handler: async ({ body, context, db: authorizationDb, params }) => {
     const { id, localRequirementId: numericLocalRequirementId } = params
     const db = authorizationDb ?? (await getRequestSqlServerDataSource())
     const specification = await getSpecificationById(db, id)
@@ -133,6 +133,7 @@ export const PUT = secureMutationRoute<
           priorityLevelId: body.priorityLevelId ?? null,
           verificationMethod: body.verificationMethod,
         },
+        context.actor.hsaId,
       )
 
       return NextResponse.json({ localRequirement, ok: true })

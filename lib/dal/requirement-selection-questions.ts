@@ -2386,7 +2386,7 @@ export async function getExistingSpecificationRequirementIds(
   const rows = (await db.query(
     `
       SELECT DISTINCT version.requirement_id AS requirementId
-      FROM requirements_specification_items item
+      FROM current_requirement_applications item
       INNER JOIN requirement_versions version
         ON version.id = item.requirement_version_id
       WHERE item.requirements_specification_id = @0

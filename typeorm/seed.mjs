@@ -5,6 +5,7 @@ import {
 } from '../lib/requirements/responsibility-person-verification-fingerprint.mjs'
 import { REQUIRED_SEED_TABLES, seedRequiredDatabase } from './seed-required.mjs'
 import { runSeedData, seedPositionDetail } from './seed-runner.mjs'
+import { applySpecificationAgreementSeed } from './seed-specification-agreements.mjs'
 
 const DEMO_MCP_PRINCIPAL_HSA_ID = 'SE5560000001-mcp1'
 const DEMO_HSA_QUOTA_SUBJECT_HSA_ID = 'SE5560000001-linneab'
@@ -14784,6 +14785,7 @@ function applyPrivacyIdentitySeed() {
 applyPrivacyIdentitySeed()
 applyArchivingRetentionSeed()
 applyActionAuditSeed()
+applySpecificationAgreementSeed(SEED_DATA, TABLE_ORDER)
 
 export { REQUIRED_SEED_TABLES, seedRequiredDatabase }
 
@@ -14822,6 +14824,11 @@ async function seedDemoLifecycleRow({
   }
 
   const value = column => row[columns.indexOf(column)]
+  const existing = await query(
+    `SELECT id FROM [${table}] WITH (UPDLOCK, HOLDLOCK) WHERE id = @0`,
+    [value('id')],
+  )
+  if (existing?.some(record => record.id === value('id'))) return true
   const resolvedByDisplayColumn =
     table === 'improvement_suggestions'
       ? 'resolved_by'

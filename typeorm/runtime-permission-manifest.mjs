@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 
 export const SQL_SERVER_RUNTIME_ROLE = 'kravhantering_runtime'
-export const RUNTIME_PERMISSION_MANIFEST_VERSION = '2026.09.11.1'
+export const RUNTIME_PERMISSION_MANIFEST_VERSION = '2026.09.13.1'
 
 const CRUD = Object.freeze(['SELECT', 'INSERT', 'UPDATE', 'DELETE'])
 const READ_CREATE = Object.freeze(['SELECT', 'INSERT'])
@@ -207,6 +207,23 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
             ]),
           })
         : entry
+    if (entry.object === 'dbo.requirements_specifications') {
+      return [
+        Object.freeze({
+          object: 'dbo.specification_amendments',
+          permissions: CRUD,
+        }),
+        Object.freeze({
+          object: 'dbo.current_requirement_applications',
+          permissions: ['SELECT'],
+        }),
+        Object.freeze({
+          object: 'dbo.current_specification_local_requirements',
+          permissions: ['SELECT'],
+        }),
+        currentEntry,
+      ]
+    }
     if (entry.object === 'dbo.specification_rfi_lists') {
       return [
         Object.freeze({
@@ -324,7 +341,7 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
           currentEntry,
         ]
       : [currentEntry]
-  }),
+  }).sort((left, right) => left.object.localeCompare(right.object)),
 )
 
 export const RUNTIME_PERMISSION_MANIFEST_DIGEST = createHash('sha256')
@@ -378,7 +395,7 @@ export function buildRuntimePermissionReconcileSql(
   const expectedObjectChecks = manifest
     .map(entry => {
       const { schema, table } = objectParts(entry.object)
-      return `IF OBJECT_ID(N'${schema}.${table}', N'U') IS NULL
+      return `IF OBJECT_ID(N'${schema}.${table}', N'U') IS NULL AND OBJECT_ID(N'${schema}.${table}', N'V') IS NULL
     THROW 51022, 'Runtime permission manifest object is missing: ${schema}.${table}.', 1;`
     })
     .join('\n  ')

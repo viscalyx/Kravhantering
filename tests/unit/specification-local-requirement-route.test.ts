@@ -344,6 +344,7 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
         requirementCategoryId: null,
         requirementTypeId: null,
       }),
+      mockContext.actor.hsaId,
     )
   })
 

@@ -1159,7 +1159,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(onChange).toHaveBeenCalledTimes(2)
   })
 
-  it('deletes a draft deviation and requests its review', async () => {
+  it('links to durable cancellation and can still request review', async () => {
     confirmMock.mockResolvedValue(true)
     const onChange = vi.fn()
     mockWorkflow({ deviations: [draftDeviation()] })
@@ -1174,15 +1174,12 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     )
 
     const user = userEvent.setup()
-    await user.click(
-      await screen.findByRole('button', { name: 'Delete deviation' }),
-    )
-    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1))
+    expect(
+      await screen.findByRole('link', { name: 'deviation.manageCancellation' }),
+    ).toHaveAttribute('href', '/sv/specifications/1#agreement-history')
     await user.click(screen.getByRole('button', { name: 'Request review' }))
-    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(2))
-    expect(confirmMock).toHaveBeenCalledWith(
-      expect.objectContaining({ variant: 'danger' }),
-    )
+    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1))
+    expect(confirmMock).not.toHaveBeenCalled()
     expect(
       vi
         .mocked(fetch)

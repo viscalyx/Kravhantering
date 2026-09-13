@@ -6,25 +6,36 @@ import type { RequirementTypeEntity } from '@/lib/typeorm/entities/requirement-t
 import type { RequirementsSpecificationEntity } from '@/lib/typeorm/entities/requirements-specification'
 import type { SpecificationItemStatusEntity } from '@/lib/typeorm/entities/specification-item-status'
 import type { SpecificationNeedsReferenceEntity } from '@/lib/typeorm/entities/specification-needs-reference'
+import type { SpecificationAmendmentEntity } from './specification-amendment'
 
 export interface SpecificationLocalRequirementEntity {
   acceptanceCriteria: string | null
+  bindingCreatedByHsaId: string | null
+  bindingReason: string | null
   createdAt: Date
   description: string
   id: number
+  isReassessmentRequired: boolean
   isVerifiable: boolean
   needsReference: SpecificationNeedsReferenceEntity | null
+  needsReferenceSnapshot: string | null
   note: string | null
   priorityLevel: PriorityLevelEntity | null
   qualityCharacteristic: QualityCharacteristicEntity | null
+  reassessedAt: Date | null
+  reassessedByHsaId: string | null
+  reassessmentReason: string | null
   requirementCategory: RequirementCategoryEntity | null
   requirementType: RequirementTypeEntity | null
   sequenceNumber: number
   specification: RequirementsSpecificationEntity
+  specificationAmendment: SpecificationAmendmentEntity | null
   specificationItemStatus: SpecificationItemStatusEntity
   statusUpdatedAt: Date | null
   uniqueId: string
   updatedAt: Date
+  validFrom: Date
+  validUntil: Date | null
   verificationMethod: string | null
 }
 
@@ -33,6 +44,52 @@ export const specificationLocalRequirementEntity =
     name: 'SpecificationLocalRequirement',
     tableName: 'specification_local_requirements',
     columns: {
+      needsReferenceSnapshot: {
+        name: 'needs_reference_snapshot',
+        type: 'nvarchar',
+        length: 'MAX',
+        nullable: true,
+      },
+      reassessedAt: {
+        name: 'reassessed_at',
+        type: 'datetime2',
+        nullable: true,
+      },
+      reassessedByHsaId: {
+        name: 'reassessed_by_hsa_id',
+        type: 'nvarchar',
+        length: 64,
+        nullable: true,
+      },
+      reassessmentReason: {
+        name: 'reassessment_reason',
+        type: 'nvarchar',
+        length: 'MAX',
+        nullable: true,
+      },
+      validFrom: {
+        name: 'valid_from',
+        type: 'datetime2',
+        default: () => 'SYSUTCDATETIME()',
+      },
+      validUntil: { name: 'valid_until', type: 'datetime2', nullable: true },
+      isReassessmentRequired: {
+        name: 'is_reassessment_required',
+        type: 'bit',
+        default: false,
+      },
+      bindingReason: {
+        name: 'binding_reason',
+        type: 'nvarchar',
+        length: 'MAX',
+        nullable: true,
+      },
+      bindingCreatedByHsaId: {
+        name: 'binding_created_by_hsa_id',
+        type: 'nvarchar',
+        length: 64,
+        nullable: true,
+      },
       id: {
         name: 'id',
         primary: true,
@@ -73,17 +130,19 @@ export const specificationLocalRequirementEntity =
       createdAt: { name: 'created_at', type: 'datetime2' },
       updatedAt: { name: 'updated_at', type: 'datetime2' },
     },
-    uniques: [
+    indices: [
       {
         name: 'uq_specification_local_requirements_specification_id_sequence_number',
         columns: ['specification', 'sequenceNumber'],
+        unique: true,
+        where: '[valid_until] IS NULL',
       },
       {
         name: 'uq_specification_local_requirements_specification_id_unique_id',
         columns: ['specification', 'uniqueId'],
+        unique: true,
+        where: '[valid_until] IS NULL',
       },
-    ],
-    indices: [
       {
         name: 'idx_specification_local_requirements_specification_id',
         columns: ['specification'],
@@ -94,6 +153,17 @@ export const specificationLocalRequirementEntity =
       },
     ],
     relations: {
+      specificationAmendment: {
+        type: 'many-to-one',
+        target: 'SpecificationAmendment',
+        nullable: true,
+        onDelete: 'NO ACTION',
+        joinColumn: {
+          name: 'specification_amendment_id',
+          foreignKeyConstraintName:
+            'fk_specification_local_requirements_specification_amendment_id',
+        },
+      },
       specification: {
         type: 'many-to-one',
         target: 'RequirementsSpecification',

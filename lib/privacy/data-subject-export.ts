@@ -1300,6 +1300,43 @@ async function collectRfiAssessmentAuthors(
 }
 
 const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
+  ...PRIVACY_ERASURE_GROUP_POLICIES.filter(
+    policy =>
+      policy.table === 'specification_amendments' ||
+      [
+        'requirements_specifications.assessed_by',
+        'requirements_specifications.established_by',
+        'requirements_specifications.ended_by',
+        'requirements_specification_items.binding_created_by',
+        'requirements_specification_items.reassessed_by',
+        'specification_local_requirements.binding_created_by',
+        'specification_local_requirements.reassessed_by',
+      ].includes(policy.key),
+  ).map(policy => ({
+    policy,
+    relationToSubject: 'historical_agreement_actor',
+    collect: async (db: QueryExecutor, targetHsaId: string) => {
+      if (!policy.table || !policy.hsaColumn)
+        throw new Error(
+          'Agreement actor source requires a table and HSA column',
+        )
+      const rows = await db.query<ExportRow[]>(
+        `SELECT id, ${policy.hsaColumn} AS hsaId FROM ${policy.table} WHERE ${policy.hsaColumn} = @0`,
+        [targetHsaId],
+      )
+      return rows.map(row =>
+        item(
+          policy,
+          'historical_agreement_actor',
+          policy.hsaColumn ?? policy.key,
+          stringValue(row.hsaId),
+          {
+            relatedObject: relatedObject(row, policy.table ?? policy.key, 'id'),
+          },
+        ),
+      )
+    },
+  })),
   {
     collect: collectRfiAssessmentAuthors,
     policy: policyFor('specification_rfi_assessments.created_by'),
