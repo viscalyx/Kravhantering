@@ -52,7 +52,7 @@ async function expectSelectAllSpacing(page: Page, testInfo: TestInfo) {
     )
     if (!label) throw new Error('Missing requirement-ID header label')
     const labelBox = label.getBoundingClientRect()
-    // Include the hoverable package band, clickable rows and resize handles,
+    // Include the package band with hover actions, clickable rows and resize handles,
     // as well as native controls, when checking nearby pointer targets.
     const targets = document.querySelectorAll<HTMLElement>(
       'button, a[href], input, select, textarea, [role="button"], ' +

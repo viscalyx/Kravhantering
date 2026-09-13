@@ -7,7 +7,7 @@ import {
   type TestInfo,
   test,
 } from '@playwright/test'
-import { delay, escapeRegExp } from '@/tests/helpers/common'
+import { escapeRegExp } from '@/tests/helpers/common'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { expectApiResponseStatus } from '../api-response-assertions'
 import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
@@ -209,47 +209,37 @@ async function openSpecificationFixtureRow(
     name: new RegExp(`^${escapeRegExp(uniqueId)}\\b`),
   })
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      await page.goto(`/sv/specifications/${specificationId}`, {
-        waitUntil: 'commit',
-      })
-      await expect(
-        page.getByRole('heading', {
-          level: 1,
-          name: heading,
-        }),
-      ).toBeVisible()
-      await expect(rowButton).toBeVisible()
-      const detailPaneId = await rowButton.getAttribute('aria-controls')
-      if (!detailPaneId) {
-        throw new Error(
-          `Requirement application row ${uniqueId} does not control a detail pane`,
-        )
-      }
-
-      const detailPane = itemsPanel.locator(`#${detailPaneId}`)
-      for (let clickAttempt = 0; clickAttempt < 3; clickAttempt += 1) {
-        if ((await rowButton.getAttribute('aria-expanded')) !== 'true') {
-          await rowButton.click()
-        }
-
-        if (await detailPane.isVisible().catch(() => false)) {
-          await expect(
-            detailPane.getByRole('heading', { name: 'Kravtext' }),
-          ).toBeVisible()
-          return detailPane
-        }
-      }
-
-      throw new Error(`Requirement application row ${uniqueId} did not expand`)
-    } catch (error) {
-      if (attempt === 2) throw error
-      await delay(750 * (attempt + 1))
-    }
+  await page.goto(`/sv/specifications/${specificationId}`, {
+    waitUntil: 'commit',
+  })
+  await expect(
+    page.getByRole('heading', {
+      level: 1,
+      name: heading,
+    }),
+  ).toBeVisible()
+  await expect(rowButton).toBeVisible()
+  const detailPaneId = await rowButton.getAttribute('aria-controls')
+  if (!detailPaneId) {
+    throw new Error(
+      `Requirement application row ${uniqueId} does not control a detail pane`,
+    )
   }
 
-  throw new Error(`Requirement application row ${uniqueId} did not load`)
+  const detailPane = itemsPanel.locator(`#${detailPaneId}`)
+  await expect(async () => {
+    if ((await rowButton.getAttribute('aria-expanded')) !== 'true') {
+      await rowButton.click()
+    }
+    await expect(rowButton).toHaveAttribute('aria-expanded', 'true', {
+      timeout: 1_500,
+    })
+  }).toPass({ timeout: 15_000 })
+  await expect(detailPane).toBeVisible()
+  await expect(
+    detailPane.getByRole('heading', { name: 'Kravtext' }),
+  ).toBeVisible()
+  return detailPane
 }
 
 async function newRolePage(
@@ -387,10 +377,6 @@ for (const viewport of viewports) {
               .click()
             await expect(dialog).toBeHidden()
 
-            detailPane = await openSpecificationFixtureRow(
-              page,
-              fixture.uniqueId,
-            )
             if (deviationCase.itemKind === 'specification-local') {
               await expect(
                 detailPane.getByRole('button', { name: 'Granskning ↗' }),
@@ -409,10 +395,6 @@ for (const viewport of viewports) {
               isReviewRequested: 1,
               motivation,
             })
-            detailPane = await openSpecificationFixtureRow(
-              page,
-              fixture.uniqueId,
-            )
             if (deviationCase.itemKind === 'specification-local') {
               await expect(
                 detailPane.getByRole('button', { name: '← Utkast' }),
@@ -428,7 +410,7 @@ for (const viewport of viewports) {
           })
 
           await test.step(`record a ${deviationCase.expectedStatus.toLowerCase()} decision as Reviewer`, async () => {
-            let reviewerDetailPane = await openSpecificationFixtureRow(
+            const reviewerDetailPane = await openSpecificationFixtureRow(
               reviewer.page,
               fixture.uniqueId,
             )
@@ -462,10 +444,6 @@ for (const viewport of viewports) {
               .getByRole('button', { name: 'Registrera beslut' })
               .click()
             await expect(decisionDialog).toBeHidden()
-            reviewerDetailPane = await openSpecificationFixtureRow(
-              reviewer.page,
-              fixture.uniqueId,
-            )
 
             if (deviationCase.itemKind === 'specification-local') {
               await expect(
