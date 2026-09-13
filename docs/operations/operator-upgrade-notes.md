@@ -7,6 +7,10 @@ target version.
 
 ## Unreleased
 
+
+
+## v0.7.0 - 2026-09-13
+
 ### Release delivery and recovery
 
 Release maintainers must commit required operator guidance with each source
@@ -156,6 +160,7 @@ After rollout, verify that privacy export and anonymization include assessment a
 The six project images now use Red Hat UBI 10 with Node.js 24. Package inventories and vulnerability evidence now include RPM packages. Review the release's exact image sizes, SBOMs and verification evidence before rollout.
 Prepare and verify the complete published images, deployment archive and release locks on a connected host before transfer to a disconnected site. Follow the existing installation, upgrade and recovery procedures. Installation needs no upstream UBI or RPM downloads. The destructive demo seed image remains a separate opt-in for disposable environments.
 <!-- operator-upgrade:source pr-1413 end -->
+
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
