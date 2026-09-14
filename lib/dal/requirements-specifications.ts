@@ -3299,6 +3299,8 @@ export async function updateSpecificationItemFields(
   itemId: number,
   data: SpecificationItemFieldUpdate,
 ): Promise<number> {
+  if (Object.keys(data).length === 0) return 0
+
   return db.transaction(manager =>
     updateSpecificationItemFieldsWithExecutor(manager, itemId, data),
   )
@@ -3387,6 +3389,8 @@ export async function updateSpecificationLocalRequirementFields(
   specificationLocalRequirementId: number,
   data: SpecificationItemFieldUpdate,
 ): Promise<number> {
+  if (Object.keys(data).length === 0) return 0
+
   return db.transaction(manager =>
     updateSpecificationLocalRequirementFieldsWithExecutor(
       manager,

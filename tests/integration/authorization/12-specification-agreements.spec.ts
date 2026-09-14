@@ -8,6 +8,7 @@ import {
 test.use({ storageState: ROLE_STORAGE_STATE.specificationCoauthor })
 
 test('AUTHZ-04/AUTHZ-05/SPEC-24: co-authors prepare and cancel deviations while only the responsible person decides the agreement', async ({
+  baseURL,
   browser,
   page,
 }, testInfo) => {
@@ -16,6 +17,7 @@ test('AUTHZ-04/AUTHZ-05/SPEC-24: co-authors prepare and cancel deviations while 
       createAuthorizationFixture(testInfo))
   const owner = await newRoleContext(testInfo, 'specificationResponsible')
   const ownerContext = await browser.newContext({
+    baseURL,
     storageState: ROLE_STORAGE_STATE.specificationResponsible,
   })
   const ownerPage = await ownerContext.newPage()
@@ -39,6 +41,7 @@ test('AUTHZ-04/AUTHZ-05/SPEC-24: co-authors prepare and cancel deviations while 
         'noRoles',
       ] as const) {
         const caller = await browser.newContext({
+          baseURL,
           storageState: ROLE_STORAGE_STATE[role],
         })
         try {

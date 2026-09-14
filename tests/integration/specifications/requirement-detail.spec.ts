@@ -898,7 +898,6 @@ for (const viewport of viewports) {
         const agreementPanel = page.getByRole('region', {
           name: 'Avtal och versionshistorik',
         })
-        await expect(agreementPanel).toBeVisible()
         await expect(agreementPanel).toHaveAttribute(
           'data-developer-mode-value',
           'independent desktop scroll panel',

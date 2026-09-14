@@ -2604,10 +2604,13 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
   })
 
   it('updates library and local item fields through validated SQL paths', async () => {
-    const { db, query } = createSqlServerDb()
+    const { db, query, transaction } = createSqlServerDb()
 
-    await updateSpecificationItemFields(db, 31, {})
-    await updateSpecificationLocalRequirementFields(db, 41, {})
+    await expect(updateSpecificationItemFields(db, 31, {})).resolves.toBe(0)
+    await expect(
+      updateSpecificationLocalRequirementFields(db, 41, {}),
+    ).resolves.toBe(0)
+    expect(transaction).not.toHaveBeenCalled()
     expect(query).not.toHaveBeenCalled()
 
     await expect(

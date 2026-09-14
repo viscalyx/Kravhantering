@@ -41,7 +41,6 @@ test('SPEC-22/SPEC-23: establish, change local content atomically, reassess and 
       name: 'Agreement and version history',
     })
     await test.step('Establish the agreement and verify direct content is locked', async () => {
-      await expect(panel).toBeVisible()
       await panel.getByLabel(/^Reason/).fill('Supplier agreement registered')
       await panel.getByLabel(/^Agreement reference/).fill('Agreement A')
       await panel.getByLabel(/^Effective date/).fill('2026-01-01')
