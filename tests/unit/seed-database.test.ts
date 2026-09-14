@@ -15,6 +15,7 @@ import {
   seedPositionDetail,
   seedRequiredDatabase,
 } from '../../typeorm/seed-required.mjs'
+import { runSeedData } from '../../typeorm/seed-runner.mjs'
 
 // cspell:ignore linneab manualarea manualpkg manualspec pkglead repobehörighetsöversyn specco
 // cspell:ignore resprefresh retentionfresh retentionlinked retentionorphan
@@ -39,6 +40,7 @@ function collectSeedInsertRows(
 ) {
   const rows: SeedInsertRow[] = []
   const executor = {
+    queryRunner: { isTransactionActive: true },
     query: vi.fn(async (sql: string, params: unknown[] = []) => {
       const lifecycleTable = sql.includes('UPDATE [rfi_question_suggestions]')
         ? 'rfi_question_suggestions'
@@ -136,6 +138,7 @@ describe('seed profiles', () => {
 
   it('reports seed failures without serializing the full seed row', async () => {
     const executor = {
+      queryRunner: { isTransactionActive: true },
       query: vi.fn(async () => {
         throw new Error('insert failed')
       }),
@@ -1379,5 +1382,58 @@ describe('seed profiles', () => {
       rfi_question_id: RETENTION_SEED.rfiQuestion.archivedBlockedSuggestion,
       specification_id: RETENTION_SEED.specification.management,
     })
+  })
+})
+
+describe('seed executor transaction boundary', () => {
+  const data = { examples: { columns: ['id'], pk: ['id'], rows: [[1]] } }
+  it.each([undefined, { isTransactionActive: false }])(
+    'rejects an unbound query-only executor before any lookup or insert',
+    async queryRunner => {
+      const query = vi.fn()
+      const insertRow = vi.fn()
+      await expect(
+        runSeedData({ query, queryRunner }, data, ['examples'], { insertRow }),
+      ).rejects.toThrow('transaction-bound')
+      expect(query).not.toHaveBeenCalled()
+      expect(insertRow).not.toHaveBeenCalled()
+    },
+  )
+  it('uses the caller transaction for both the lock lookup and insertion', async () => {
+    const query = vi.fn().mockResolvedValue([])
+    await runSeedData(
+      { query, queryRunner: { isTransactionActive: true } },
+      data,
+      ['examples'],
+      {
+        insertRow: async ({
+          query: execute,
+          defaultSql,
+          row,
+        }: {
+          query: (sql: string, params: number[]) => Promise<unknown>
+          defaultSql: string
+          row: number[]
+        }) => {
+          await execute(
+            'SELECT id FROM examples WITH (UPDLOCK, HOLDLOCK) WHERE id = @0',
+            row,
+          )
+          await execute(defaultSql, row)
+          return true
+        },
+      },
+    )
+    expect(query).toHaveBeenCalledTimes(2)
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('UPDLOCK, HOLDLOCK'),
+      [1],
+    )
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('INSERT INTO [examples]'),
+      [1],
+    )
   })
 })

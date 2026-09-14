@@ -305,7 +305,7 @@ uppgifter. Kravunderlagsansvarig ansvarar för innehållet och eventuell separat
 manuell bedömning. Dataskyddsanonymisering är skild från arkivering och gallring;
 arkivexport anonymiserar aktörsfält i exporten utan att ändra databasen.
 
-### Avtalstillägg och bindningshistorik
+## Avtalstillägg och bindningshistorik
 
 Fastställelse, originalinnehåll, tillägg, tidigare biblioteksversioner och lokala
 kravtexter tillhör kravunderlagets befintliga informationsmängd och gallringsregel.

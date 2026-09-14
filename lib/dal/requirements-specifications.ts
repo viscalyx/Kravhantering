@@ -3295,6 +3295,16 @@ export type SpecificationItemFieldUpdate = {
 }
 
 export async function updateSpecificationItemFields(
+  db: SqlServerDatabase,
+  itemId: number,
+  data: SpecificationItemFieldUpdate,
+): Promise<number> {
+  return db.transaction(manager =>
+    updateSpecificationItemFieldsWithExecutor(manager, itemId, data),
+  )
+}
+
+export async function updateSpecificationItemFieldsWithExecutor(
   db: SqlExecutor,
   itemId: number,
   data: SpecificationItemFieldUpdate,
@@ -3373,6 +3383,20 @@ export async function updateSpecificationItemFields(
 }
 
 export async function updateSpecificationLocalRequirementFields(
+  db: SqlServerDatabase,
+  specificationLocalRequirementId: number,
+  data: SpecificationItemFieldUpdate,
+): Promise<number> {
+  return db.transaction(manager =>
+    updateSpecificationLocalRequirementFieldsWithExecutor(
+      manager,
+      specificationLocalRequirementId,
+      data,
+    ),
+  )
+}
+
+export async function updateSpecificationLocalRequirementFieldsWithExecutor(
   db: SqlExecutor,
   specificationLocalRequirementId: number,
   data: SpecificationItemFieldUpdate,

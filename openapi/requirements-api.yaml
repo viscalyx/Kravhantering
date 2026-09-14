@@ -548,10 +548,17 @@ paths:
           description: Compare this current library application with the newer published version.
           schema: { type: string, pattern: '^lib:[1-9][0-9]*$' }
       responses:
-        '200': { $ref: '#/components/responses/JsonObject' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+        '200':
+          description: JSON response.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LooseObject' }
+        '400': { $ref: '#/components/responses/NoStoreBadRequest' }
+        '401': { $ref: '#/components/responses/NoStoreUnauthorized' }
+        '403': { $ref: '#/components/responses/NoStoreForbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
     post:
       x-auth: session
@@ -577,12 +584,19 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/SpecificationAgreementMutation' }
       responses:
-        '200': { $ref: '#/components/responses/JsonObject' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+        '200':
+          description: JSON response.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LooseObject' }
+        '400': { $ref: '#/components/responses/NoStoreBadRequest' }
+        '401': { $ref: '#/components/responses/NoStoreUnauthorized' }
+        '403': { $ref: '#/components/responses/NoStoreForbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
+        '409': { $ref: '#/components/responses/NoStoreConflict' }
 
   /api/requirements-specifications/{id}/items:
     parameters:

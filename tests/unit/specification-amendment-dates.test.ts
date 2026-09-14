@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest'
-import { amendmentEffectiveAt } from '@/lib/specifications/amendments'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  amendmentEffectiveAt,
+  decideAmendment,
+} from '@/lib/specifications/amendments'
 
 describe('agreement calendar boundary', () => {
   it.each([
@@ -25,5 +28,33 @@ describe('agreement calendar boundary', () => {
     expect(() => amendmentEffectiveAt('2027-02-30', now)).toThrow(
       'valid calendar date',
     )
+  })
+})
+
+describe('amendment decision dates', () => {
+  it('requires cancellation and re-preparation when the stored date has passed in Stockholm', async () => {
+    const query = vi.fn().mockResolvedValueOnce([
+      {
+        id: 17,
+        effectiveDate: new Date('2027-06-01T00:00:00Z'),
+        cancelledAt: null,
+        decidedAt: null,
+        changesJson: '[]',
+      },
+    ])
+    await expect(
+      decideAmendment(
+        { query },
+        {} as Parameters<typeof decideAmendment>[1],
+        5,
+        17,
+        new Date('2027-06-01T22:30:00Z'),
+      ),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      message:
+        'The amendment effective date has passed; cancel it and prepare a new amendment',
+    })
+    expect(query).toHaveBeenCalledTimes(1)
   })
 })

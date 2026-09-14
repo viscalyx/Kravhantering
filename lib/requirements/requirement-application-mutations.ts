@@ -9,8 +9,8 @@ import {
   type SpecificationItemFieldUpdate,
   type SqlExecutor,
   unlinkRequirementsFromSpecification,
-  updateSpecificationItemFields,
-  updateSpecificationLocalRequirementFields,
+  updateSpecificationItemFieldsWithExecutor,
+  updateSpecificationLocalRequirementFieldsWithExecutor,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import type {
@@ -238,12 +238,12 @@ export function createRequirementApplicationMutationWorkflow({
                 for (const itemRef of targets) {
                   updatedCount +=
                     itemRef.kind === 'library'
-                      ? await updateSpecificationItemFields(
+                      ? await updateSpecificationItemFieldsWithExecutor(
                           manager,
                           itemRef.id,
                           input.fields,
                         )
-                      : await updateSpecificationLocalRequirementFields(
+                      : await updateSpecificationLocalRequirementFieldsWithExecutor(
                           manager,
                           itemRef.id,
                           input.fields,

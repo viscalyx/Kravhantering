@@ -15,8 +15,8 @@ const dal = vi.hoisted(() => ({
   getSpecificationItemById: vi.fn(),
   getSpecificationLocalRequirementParentById: vi.fn(),
   unlinkRequirementsFromSpecification: vi.fn(),
-  updateSpecificationItemFields: vi.fn(),
-  updateSpecificationLocalRequirementFields: vi.fn(),
+  updateSpecificationItemFieldsWithExecutor: vi.fn(),
+  updateSpecificationLocalRequirementFieldsWithExecutor: vi.fn(),
 }))
 
 const audit = vi.hoisted(() => ({
@@ -46,9 +46,10 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
     }
   },
   unlinkRequirementsFromSpecification: dal.unlinkRequirementsFromSpecification,
-  updateSpecificationItemFields: dal.updateSpecificationItemFields,
-  updateSpecificationLocalRequirementFields:
-    dal.updateSpecificationLocalRequirementFields,
+  updateSpecificationItemFieldsWithExecutor:
+    dal.updateSpecificationItemFieldsWithExecutor,
+  updateSpecificationLocalRequirementFieldsWithExecutor:
+    dal.updateSpecificationLocalRequirementFieldsWithExecutor,
 }))
 
 vi.mock('@/lib/requirements/security-audit', () => ({
@@ -122,8 +123,10 @@ describe('requirement application mutation workflow', () => {
       specificationId: 5,
     })
     dal.unlinkRequirementsFromSpecification.mockResolvedValue(2)
-    dal.updateSpecificationItemFields.mockResolvedValue(1)
-    dal.updateSpecificationLocalRequirementFields.mockResolvedValue(1)
+    dal.updateSpecificationItemFieldsWithExecutor.mockResolvedValue(1)
+    dal.updateSpecificationLocalRequirementFieldsWithExecutor.mockResolvedValue(
+      1,
+    )
     audit.recordSensitiveMutationActionAuditEvent.mockResolvedValue(undefined)
   })
 
@@ -157,8 +160,10 @@ describe('requirement application mutation workflow', () => {
       context,
     )
     expect(transaction).not.toHaveBeenCalled()
-    expect(dal.updateSpecificationItemFields).not.toHaveBeenCalled()
-    expect(dal.updateSpecificationLocalRequirementFields).not.toHaveBeenCalled()
+    expect(dal.updateSpecificationItemFieldsWithExecutor).not.toHaveBeenCalled()
+    expect(
+      dal.updateSpecificationLocalRequirementFieldsWithExecutor,
+    ).not.toHaveBeenCalled()
     expect(audit.recordAuthorizationDeniedWithDatabase).toHaveBeenCalledWith(
       expect.anything(),
       context,
@@ -190,8 +195,10 @@ describe('requirement application mutation workflow', () => {
       },
     })
 
-    expect(dal.updateSpecificationItemFields).not.toHaveBeenCalled()
-    expect(dal.updateSpecificationLocalRequirementFields).not.toHaveBeenCalled()
+    expect(dal.updateSpecificationItemFieldsWithExecutor).not.toHaveBeenCalled()
+    expect(
+      dal.updateSpecificationLocalRequirementFieldsWithExecutor,
+    ).not.toHaveBeenCalled()
     expect(audit.recordSensitiveMutationActionAuditEvent).not.toHaveBeenCalled()
     expect(audit.recordAuthorizationDeniedWithDatabase).toHaveBeenCalledWith(
       expect.anything(),
@@ -357,16 +364,17 @@ describe('requirement application mutation workflow', () => {
       5,
       7,
     )
-    expect(dal.updateSpecificationItemFields).toHaveBeenCalledWith(
+    expect(dal.updateSpecificationItemFieldsWithExecutor).toHaveBeenCalledWith(
       manager,
       31,
       { needsReferenceId: 7, note: 'Shared follow-up' },
     )
-    expect(dal.updateSpecificationLocalRequirementFields).toHaveBeenCalledWith(
-      manager,
-      41,
-      { needsReferenceId: 7, note: 'Shared follow-up' },
-    )
+    expect(
+      dal.updateSpecificationLocalRequirementFieldsWithExecutor,
+    ).toHaveBeenCalledWith(manager, 41, {
+      needsReferenceId: 7,
+      note: 'Shared follow-up',
+    })
     expect(audit.recordSensitiveMutationActionAuditEvent).toHaveBeenCalledWith(
       manager,
       context,
@@ -382,7 +390,9 @@ describe('requirement application mutation workflow', () => {
 
   it('rolls back when an application disappears during update', async () => {
     const { workflow } = makeWorkflow()
-    dal.updateSpecificationLocalRequirementFields.mockResolvedValueOnce(0)
+    dal.updateSpecificationLocalRequirementFieldsWithExecutor.mockResolvedValueOnce(
+      0,
+    )
 
     await expect(
       workflow.mutate(context, {
@@ -413,8 +423,10 @@ describe('requirement application mutation workflow', () => {
       details: { reason: 'requirement_applications_changed' },
     })
 
-    expect(dal.updateSpecificationItemFields).toHaveBeenCalledTimes(1)
-    expect(dal.updateSpecificationItemFields).toHaveBeenCalledWith(
+    expect(dal.updateSpecificationItemFieldsWithExecutor).toHaveBeenCalledTimes(
+      1,
+    )
+    expect(dal.updateSpecificationItemFieldsWithExecutor).toHaveBeenCalledWith(
       manager,
       31,
       { note: 'Duplicate update' },

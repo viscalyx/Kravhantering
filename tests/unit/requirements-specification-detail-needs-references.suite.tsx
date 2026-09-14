@@ -6,6 +6,55 @@ export function registerNeedsReferenceTests(
   context: SpecDetailWorkflowContext,
 ) {
   describe('needs-reference register and application links', () => {
+    it.each(['established', 'assessment', 'ended'] as const)(
+      'keeps %s content readable without direct content controls',
+      async establishmentStatus => {
+        const initialData = context.createInitialData()
+        context.renderRequirementsSpecificationDetailClient({
+          ...initialData,
+          spec: { ...context.initialSpec, establishmentStatus },
+          availableNeedsRefs: [
+            {
+              createdAt: '2026-04-20T10:00:00.000Z',
+              description: null,
+              id: 81,
+              libraryItemCount: 1,
+              linkedItemCount: 1,
+              specificationLocalRequirementCount: 0,
+              text: 'IAM-42',
+              updatedAt: '2026-04-20T10:00:00.000Z',
+            },
+          ],
+        })
+        await context.settleInitialEditorEffects()
+        context.toggleRequirementColumn('items', 'specificationItemStatus')
+        expect(
+          within(context.requirementRow('items', 'BEH0001')).queryByRole(
+            'combobox',
+            { name: 'requirement.specificationItemStatus' },
+          ),
+        ).toBeNull()
+        expect(
+          screen.queryByRole('button', {
+            name: 'specification.newLocalRequirement',
+          }),
+        ).toBeNull()
+        fireEvent.click(
+          screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+        )
+        expect(screen.getByText('IAM-42')).toBeInTheDocument()
+        expect(
+          screen.queryByRole('button', {
+            name: 'specification.newNeedsReference',
+          }),
+        ).toBeNull()
+        expect(screen.queryByRole('button', { name: 'common.edit' })).toBeNull()
+        expect(
+          screen.queryByRole('button', { name: 'common.delete' }),
+        ).toBeNull()
+      },
+    )
+
     it('opens the needs references tab, persists the URL parameter, and shows usage details', async () => {
       const replaceStateSpy = vi.spyOn(window.history, 'replaceState')
       context.renderRequirementsSpecificationDetailClient({

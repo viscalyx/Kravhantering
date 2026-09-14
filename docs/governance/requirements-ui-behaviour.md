@@ -1207,7 +1207,9 @@ Författare jämför bunden och ny publicerad version, behåller utan ändring e
 väljer version med skäl. Fastställt innehåll ändras genom grupperade avtalstillägg.
 Medförfattare förbereder; ansvarig beslutar och avbryter. Beslut gäller idag vid
 registrering eller från midnatt i Stockholm ett framtida datum. Bakdatering av
-tillägg tillåts inte. Framtida beslut måste avbrytas före avtalsavslut.
+tillägg tillåts inte. Om förslagets giltighetsdatum har passerat när beslutet
+registreras visas en konflikt: avbryt förslaget och förbered ett nytt tillägg.
+Framtida beslut måste avbrytas före avtalsavslut.
 
 Ursprungligt, aktuellt och tidigare innehåll har egna vyer och JSON-export.
 Ändrade krav blir Inkluderade och kräver uttrycklig omprövning; gamla resultat

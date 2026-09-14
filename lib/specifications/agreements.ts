@@ -121,6 +121,7 @@ interface VersionContent {
 async function agreementRecord(
   db: SqlExecutor,
   id: number,
+  lock: 'read' | 'update',
 ): Promise<AgreementRecord> {
   const rows = await db.query<AgreementRecord[]>(
     `SELECT establishment_status AS establishmentStatus,
@@ -130,7 +131,7 @@ async function agreementRecord(
        ended_at AS endedAt, ended_by_hsa_id AS endedByHsaId,
        agreement_end_date AS agreementEndDate, agreement_end_reason AS agreementEndReason,
        original_content_json AS originalContentJson
-     FROM requirements_specifications WITH (UPDLOCK, HOLDLOCK) WHERE id = @0`,
+     FROM requirements_specifications WITH (${lock === 'update' ? 'UPDLOCK, HOLDLOCK' : 'HOLDLOCK'}) WHERE id = @0`,
     [id],
   )
   if (!rows[0]) throw notFoundError('Requirements specification not found')
@@ -288,7 +289,7 @@ export function createSpecificationAgreementWorkflow(
       versionSearch = '',
     ) {
       return db.transaction(async manager => {
-        const record = await agreementRecord(manager, specificationId)
+        const record = await agreementRecord(manager, specificationId, 'read')
         const target = await permissionTarget(manager, specificationId, record)
         if (
           !context.actor.isAuthenticated ||
@@ -385,7 +386,7 @@ export function createSpecificationAgreementWorkflow(
       itemRef: string,
     ) {
       return db.transaction(async manager => {
-        const record = await agreementRecord(manager, specificationId)
+        const record = await agreementRecord(manager, specificationId, 'read')
         const target = await permissionTarget(manager, specificationId, record)
         if (
           !context.actor.isAuthenticated ||
@@ -415,7 +416,11 @@ export function createSpecificationAgreementWorkflow(
     ) {
       return db.transaction(async manager => {
         const perform = async () => {
-          const record = await agreementRecord(manager, specificationId)
+          const record = await agreementRecord(
+            manager,
+            specificationId,
+            'update',
+          )
           const target = await permissionTarget(
             manager,
             specificationId,

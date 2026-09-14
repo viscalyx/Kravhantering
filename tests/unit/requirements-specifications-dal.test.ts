@@ -2339,7 +2339,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(query).toHaveBeenCalledTimes(1)
     expect(query).toHaveBeenCalledWith(
       expect.stringMatching(
-        /UPDATE item SET[\s\S]*WHERE item.requirements_specification_id = @0 AND item.requirement_id IN \(@1,[\s\S]*@200\)/u,
+        /UPDATE item SET valid_until = SYSUTCDATETIME\(\)[\s\S]*WHERE item.requirements_specification_id = @0 AND item.requirement_id IN \(@1,[\s\S]*@200\)/u,
       ),
       [5, ...requirementIds],
     )
@@ -2359,14 +2359,14 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(query).toHaveBeenNthCalledWith(
       1,
       expect.stringMatching(
-        /UPDATE item SET[\s\S]*FROM requirements_specification_items item[\s\S]*WHERE item.requirements_specification_id = @0 AND item.id IN \(@1\)/u,
+        /UPDATE item SET valid_until = SYSUTCDATETIME\(\)[\s\S]*FROM requirements_specification_items item[\s\S]*WHERE item.requirements_specification_id = @0 AND item.id IN \(@1\)/u,
       ),
       [5, 31],
     )
     expect(query).toHaveBeenNthCalledWith(
       2,
       expect.stringMatching(
-        /UPDATE item SET[\s\S]*FROM specification_local_requirements item[\s\S]*WHERE item.specification_id = @0 AND item.id IN \(@1\)/u,
+        /UPDATE item SET valid_until = SYSUTCDATETIME\(\)[\s\S]*FROM specification_local_requirements item[\s\S]*WHERE item.specification_id = @0 AND item.id IN \(@1\)/u,
       ),
       [5, 4],
     )
@@ -2655,4 +2655,57 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     ).resolves.toBe(0)
     expect(transaction).not.toHaveBeenCalled()
   })
+})
+
+describe('application follow-up transaction boundary', () => {
+  it.each([
+    ['library', updateSpecificationItemFields],
+    ['local', updateSpecificationLocalRequirementFields],
+  ] as const)(
+    'keeps %s policy checks and writes on the transaction manager',
+    async (_kind, update) => {
+      let active = false
+      const transactionalQuery = vi.fn(async (sql: string) => {
+        expect(active).toBe(true)
+        if (sql.includes('AS specificationId')) return [{ specificationId: 5 }]
+        if (sql.includes('AS requiresReassessment'))
+          return [{ requiresReassessment: false }]
+        return [{ id: 17 }]
+      })
+      const query = vi.fn()
+      const transaction = vi.fn(
+        async (
+          work: (manager: {
+            query: typeof transactionalQuery
+          }) => Promise<number>,
+        ) => {
+          active = true
+          try {
+            return await work({ query: transactionalQuery })
+          } finally {
+            active = false
+          }
+        },
+      )
+      const db = { query, transaction } as unknown as Parameters<
+        typeof update
+      >[0]
+      await expect(
+        update(db, 17, { specificationItemStatusId: 2 }),
+      ).resolves.toBe(1)
+      expect(query).not.toHaveBeenCalled()
+      expect(transactionalQuery).toHaveBeenCalledWith(
+        expect.stringContaining('UPDLOCK, HOLDLOCK'),
+        [5],
+      )
+      expect(transactionalQuery).toHaveBeenLastCalledWith(
+        expect.stringMatching(/UPDATE[\s\S]*SET specification_item_status_id/),
+        [2, expect.any(String), 17],
+      )
+      const failure = new Error('update failed')
+      transactionalQuery.mockRejectedValueOnce(failure)
+      await expect(update(db, 17, { note: 'Follow-up' })).rejects.toBe(failure)
+      expect(active).toBe(false)
+    },
+  )
 })

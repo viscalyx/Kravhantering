@@ -1968,7 +1968,10 @@ expanderingen; ingen extra stängning och öppning ska behövas.
 Skapa ett kravunderlag med ett lokalt krav som kravunderlagsansvarig. Öppna
 Avtal och versionshistorik. Ange skäl, avtalsreferens och historiskt avtalsdatum;
 fastställ. Kontrollera att direkta innehållsåtgärder försvinner och att aktuellt
-innehåll är läsbart. Processens livscykelstatus ska inte låsa upp avtalet.
+innehåll är läsbart. Öppna Behovsreferenser: skapa, redigera och ta bort ska
+inte vara tillgängliga. Direkt ändring av behovskoppling och användningsstatus
+ska inte vara tillgänglig i kravtabellen. Processens livscykelstatus ska inte
+låsa upp avtalet.
 
 ### SPEC-23: gruppera lokal ändring och ompröva
 
@@ -1988,7 +1991,9 @@ Förbered en borttagning med skäl, referens och datum. Beslut och avtalsavslut 
 inte vara tillgängliga. Kravunderlagsansvarig kan besluta förslaget och aktuellt
 innehåll ska därefter sakna kravet. Originalet och avbrottet ska finnas kvar.
 Kontrollera AUTHZ-04 och AUTHZ-05 samt att Reviewer, enbart Admin och otilldelad
-användare inte kan fastställa avtalet i den ansvariges ställe.
+användare inte kan fastställa avtalet i den ansvariges ställe. Kontrollera
+rollernas synliga kontroller; otilldelad användare får åtkomst nekad. Utför
+fastställande och beslut via den ansvariges knappar i Avtal och versionshistorik.
 
 ## Avsteg
 

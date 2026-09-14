@@ -176,10 +176,15 @@ export async function decideAmendment(
   if (!amendment) throw notFoundError('Amendment not found')
   if (amendment.cancelledAt) throw conflictError('The amendment is cancelled')
   if (amendment.decidedAt) return { amendmentId }
-  const effectiveAt = amendmentEffectiveAt(
-    new Date(amendment.effectiveDate).toISOString().slice(0, 10),
-    now,
-  )
+  const effectiveDate = new Date(amendment.effectiveDate)
+    .toISOString()
+    .slice(0, 10)
+  if (effectiveDate < stockholmDate(now)) {
+    throw conflictError(
+      'The amendment effective date has passed; cancel it and prepare a new amendment',
+    )
+  }
+  const effectiveAt = amendmentEffectiveAt(effectiveDate, now)
   const changes = JSON.parse(amendment.changesJson) as AmendmentChange[]
   for (const change of changes) {
     const ref =

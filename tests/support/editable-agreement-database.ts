@@ -9,7 +9,7 @@ export function withEditableAgreementState(
     )
       return [{ establishmentStatus: 'editable' }]
     if (
-      /^SELECT (requirements_specification_id|specification_id) AS specificationId FROM \w+ WHERE id = @0$/.test(
+      /^SELECT (requirements_specification_id|specification_id) AS specificationId FROM (requirements_specification_items|specification_local_requirements) WHERE id = @0$/.test(
         statement,
       )
     )

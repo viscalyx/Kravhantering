@@ -14,6 +14,7 @@ function collectSeedRows(): {
 } {
   const rows: SeedRow[] = []
   const executor = {
+    queryRunner: { isTransactionActive: true },
     query: vi.fn(async (sql: string, params: unknown[] = []) => {
       if (sql.includes('SELECT @@ROWCOUNT AS [affectedRows]')) {
         return [{ affectedRows: 1 }]

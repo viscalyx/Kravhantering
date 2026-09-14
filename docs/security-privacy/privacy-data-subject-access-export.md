@@ -163,7 +163,7 @@ not match another person's records. Free text mentioning other people is not
 automatically discovered. Privacy erasure anonymizes the two actor fields while
 preserving evidence and version history; retention remains a separate workflow.
 
-### Agreement actors
+## Agreement actors
 
 Register extracts also include specification assessment, establishment and end
 actors, amendment preparation/decision/cancellation actors, and binding creation

@@ -537,6 +537,15 @@ export default function KravunderlagDetailClient({
         : 'items'
 
   const [spec, setSpec] = useState<SpecificationMeta | null>(initialData.spec)
+  const permissions = spec?.permissions ?? {
+    canEditContent: false,
+    canManageAssignments: false,
+    canReviewDecisions: false,
+    canUseAi: false,
+  }
+  const canEditContent = permissions.canEditContent === true
+  const canChangeContent =
+    canEditContent && (spec?.establishmentStatus ?? 'editable') === 'editable'
   const [
     restoreSpecificationItemsRetryFocus,
     setRestoreSpecificationItemsRetryFocus,
@@ -1577,6 +1586,7 @@ export default function KravunderlagDetailClient({
 
   // Open add modal
   const handleOpenAddModal = useCallback(async () => {
+    if (!canChangeContent) return
     setPendingAddIds(Array.from(rightSelectedIds))
     setPendingAddRequirementUniqueIds(
       availableRows
@@ -1591,9 +1601,15 @@ export default function KravunderlagDetailClient({
     setOpenHelp(new Set())
     setShowAddModal(true)
     await needsReferencesResource.reload()
-  }, [availableRows, needsReferencesResource, rightSelectedIds])
+  }, [
+    canChangeContent,
+    availableRows,
+    needsReferencesResource,
+    rightSelectedIds,
+  ])
 
   const handleOpenCreateLocalRequirementModal = useCallback(async () => {
+    if (!canChangeContent) return
     setCreateLocalRequirementFormDirty(false)
     setShowCreateLocalRequirementModal(true)
 
@@ -1602,9 +1618,10 @@ export default function KravunderlagDetailClient({
     }
 
     await needsReferencesResource.reload()
-  }, [needsReferencesResource])
+  }, [canChangeContent, needsReferencesResource])
 
   const handleConfirmAdd = useCallback(async () => {
+    if (!canChangeContent) return
     if (pendingAddIds.length === 0) return
     setAddModalLoading(true)
     try {
@@ -1667,6 +1684,7 @@ export default function KravunderlagDetailClient({
       setAddModalLoading(false)
     }
   }, [
+    canChangeContent,
     addNeedsRefId,
     addNeedsRefDescription,
     addNeedsRefMode,
@@ -1684,6 +1702,7 @@ export default function KravunderlagDetailClient({
 
   const handleCreateLocalRequirement = useCallback(
     async (payload: SpecificationLocalRequirementSubmitPayload) => {
+      if (!canChangeContent) return
       const response = await apiFetch(
         `/api/requirements-specifications/${specificationId}/local-requirements`,
         {
@@ -1706,7 +1725,7 @@ export default function KravunderlagDetailClient({
         'local-requirements-changed',
       )
     },
-    [editorWorkflow, specificationId, tc],
+    [canChangeContent, editorWorkflow, specificationId, tc],
   )
 
   const handleImportLocalRequirementsClose = useCallback(
@@ -1740,6 +1759,7 @@ export default function KravunderlagDetailClient({
   )
 
   const handleSaveNeedsReference = useCallback(async () => {
+    if (!canChangeContent) return
     if (!needsReferenceForm) return
     if (!needsReferenceFormDirty) return
     setNeedsReferenceSaving(true)
@@ -1779,6 +1799,7 @@ export default function KravunderlagDetailClient({
       setNeedsReferenceSaving(false)
     }
   }, [
+    canChangeContent,
     editorWorkflow,
     needsReferenceForm,
     needsReferenceFormDirty,
@@ -1792,6 +1813,7 @@ export default function KravunderlagDetailClient({
       needsReference: SpecificationNeedsReference,
       anchorEl?: HTMLElement,
     ) => {
+      if (!canChangeContent) return
       const confirmed = await confirm({
         anchorEl,
         confirmText: tc('delete'),
@@ -1826,11 +1848,20 @@ export default function KravunderlagDetailClient({
       )
       await fetchNeedsReferences({ throwOnError: true })
     },
-    [confirm, fetchNeedsReferences, localDetailCache, specificationId, t, tc],
+    [
+      canChangeContent,
+      confirm,
+      fetchNeedsReferences,
+      localDetailCache,
+      specificationId,
+      t,
+      tc,
+    ],
   )
 
   const handleNeedsReferenceAssignment = useCallback(
     async (itemRef: string, needsReferenceId: number | null) => {
+      if (!canChangeContent) return
       const originalItem =
         specificationItems.find(item => item.itemRef === itemRef) ?? null
       const nextNeedsReference =
@@ -1846,6 +1877,7 @@ export default function KravunderlagDetailClient({
       if (updated && originalItem) invalidateItemDetail(originalItem)
     },
     [
+      canChangeContent,
       availableNeedsRefs,
       editorWorkflow,
       invalidateItemDetail,
@@ -1854,6 +1886,7 @@ export default function KravunderlagDetailClient({
   )
 
   const openBulkNeedsReferenceModal = useCallback(async () => {
+    if (!canChangeContent) return
     editorWorkflow.actions.cancelBulkAction()
     try {
       const items = await editorWorkflow.actions.prepareBulkAction(
@@ -1868,13 +1901,14 @@ export default function KravunderlagDetailClient({
     } catch {
       // The workflow exposes the failure through its observable state.
     }
-  }, [editorWorkflow])
+  }, [canChangeContent, editorWorkflow])
 
   const applyBulkNeedsReference = useCallback(
     async (
       needsReferenceId: number | null,
       confirmedItems: SpecificationListItem[],
     ) => {
+      if (!canChangeContent) return
       try {
         const successfulItems = confirmedItems.filter(
           item => item.needsReferenceId !== needsReferenceId,
@@ -1890,11 +1924,12 @@ export default function KravunderlagDetailClient({
         // The workflow exposes the failure through its observable state.
       }
     },
-    [editorWorkflow, invalidateItemDetail],
+    [canChangeContent, editorWorkflow, invalidateItemDetail],
   )
 
   const handleClearNeedsReferences = useCallback(
     async (anchorEl?: HTMLElement) => {
+      if (!canChangeContent) return
       editorWorkflow.actions.cancelBulkAction()
       try {
         const items = await editorWorkflow.actions.prepareBulkAction(
@@ -1923,11 +1958,12 @@ export default function KravunderlagDetailClient({
         // The workflow exposes the failure through its observable state.
       }
     },
-    [applyBulkNeedsReference, confirm, editorWorkflow, t],
+    [canChangeContent, applyBulkNeedsReference, confirm, editorWorkflow, t],
   )
 
   const handleSpecificationItemStatusChange = useCallback(
     async (itemRef: string, statusId: number) => {
+      if (!canChangeContent) return
       if (!spec) return
       const status = specificationItemStatuses.find(s => s.id === statusId)
       if (!status) return
@@ -1940,6 +1976,7 @@ export default function KravunderlagDetailClient({
       if (updated && originalItem) invalidateItemDetail(originalItem)
     },
     [
+      canChangeContent,
       editorWorkflow,
       invalidateItemDetail,
       spec,
@@ -1950,6 +1987,7 @@ export default function KravunderlagDetailClient({
 
   const handleRemoveItems = useCallback(
     async (requestedItems: SpecificationListItem[], anchorEl?: HTMLElement) => {
+      if (!canChangeContent) return
       const requestedRefs = new Set(
         requestedItems
           .map(item => item.itemRef)
@@ -2032,7 +2070,7 @@ export default function KravunderlagDetailClient({
         // The workflow exposes the failure through its observable state.
       }
     },
-    [confirm, editorWorkflow, t, tc],
+    [canChangeContent, confirm, editorWorkflow, t, tc],
   )
 
   const handleRemoveSelected = useCallback(
@@ -2239,15 +2277,6 @@ export default function KravunderlagDetailClient({
   )
 
   const specName = spec ? spec.name : '…'
-  const permissions = spec?.permissions ?? {
-    canEditContent: false,
-    canManageAssignments: false,
-    canReviewDecisions: false,
-    canUseAi: false,
-  }
-  const canEditContent = permissions.canEditContent === true
-  const canChangeContent =
-    canEditContent && (spec?.establishmentStatus ?? 'editable') === 'editable'
   const canMutateSpecification =
     permissions.canEditContent === true ||
     permissions.canManageAssignments === true
@@ -2273,10 +2302,11 @@ export default function KravunderlagDetailClient({
 
   const handleOpenImportLocalRequirements = useCallback(
     (returnFocusTarget?: HTMLButtonElement | null) => {
+      if (!canChangeContent) return
       importReturnFocusTargetRef.current = returnFocusTarget ?? null
       setShowImportLocalRequirementsModal(true)
     },
-    [],
+    [canChangeContent],
   )
 
   const buildMoreActionMenuItems = ({
@@ -2739,6 +2769,7 @@ export default function KravunderlagDetailClient({
                         className="btn-primary"
                         dirty={needsReferenceFormDirty}
                         disabled={
+                          !canChangeContent ||
                           needsReferenceSaving ||
                           !needsReferenceForm.text.trim()
                         }
@@ -3093,7 +3124,7 @@ export default function KravunderlagDetailClient({
                 >
                   <div className={splitPanelHeaderClassName}>
                     {renderLeftPanelTabs()}
-                    {canEditContent ? (
+                    {canChangeContent ? (
                       <button
                         aria-label={t('newNeedsReference')}
                         className={leftPanelActionPillClassName}
@@ -3205,7 +3236,7 @@ export default function KravunderlagDetailClient({
                                   </td>
                                   <td className="px-3 py-2">
                                     <div className="flex justify-end gap-2">
-                                      {canEditContent ? (
+                                      {canChangeContent ? (
                                         <button
                                           aria-label={t('editNeedsReference')}
                                           className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-secondary-200 text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
@@ -3232,7 +3263,7 @@ export default function KravunderlagDetailClient({
                                           />
                                         </button>
                                       ) : null}
-                                      {canEditContent ? (
+                                      {canChangeContent ? (
                                         <button
                                           aria-label={t('deleteNeedsReference')}
                                           className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-red-200 text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/20"
@@ -3370,7 +3401,7 @@ export default function KravunderlagDetailClient({
                     {renderLeftPanelTabs()}
                   </div>
                   <SpecificationRfiListPanel
-                    canEdit={canEditContent}
+                    canEdit={canChangeContent}
                     specificationId={specificationId}
                   />
                 </div>
@@ -3471,7 +3502,7 @@ export default function KravunderlagDetailClient({
                     onFilterChange={setLeftFilters}
                     onLoadMore={() => void loadMoreSpecificationItems()}
                     onNeedsReferenceChange={
-                      canEditContent
+                      canChangeContent
                         ? handleNeedsReferenceAssignment
                         : undefined
                     }
@@ -3524,7 +3555,7 @@ export default function KravunderlagDetailClient({
                     onSelectionChange={handleLeftSelectionChange}
                     onSortChange={setLeftSort}
                     onSpecificationItemStatusChange={
-                      canEditContent
+                      canChangeContent
                         ? handleSpecificationItemStatusChange
                         : undefined
                     }
@@ -3624,7 +3655,7 @@ export default function KravunderlagDetailClient({
                     requirementPackageFilterPresentation="compact-band"
                     requirementPackages={leftRequirementPackages}
                     rows={filteredSpecificationItems}
-                    selectable={canEditContent}
+                    selectable={canChangeContent}
                     selectedIds={leftSelectedIds}
                     showSelectAll={false}
                     sortState={leftSort}

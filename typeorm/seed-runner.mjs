@@ -33,6 +33,15 @@ export async function runSeedData(
     }
     queryTarget = runner
   }
+  if (
+    !runner &&
+    executor?.isTransactionActive !== true &&
+    executor?.queryRunner?.isTransactionActive !== true
+  ) {
+    throw new Error(
+      'runSeedData requires a transaction-bound QueryRunner or EntityManager when no DataSource is provided',
+    )
+  }
   const query = queryTarget?.query
     ? (sql, params) => queryTarget.query(sql, params)
     : null

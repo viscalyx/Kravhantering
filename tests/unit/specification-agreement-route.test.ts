@@ -182,4 +182,104 @@ describe('specification agreement REST contract', () => {
       (await GET(new NextRequest(`${url}?itemRef=local:1`), params())).status,
     ).toBe(400)
   })
+  it.each([
+    ['co-author', [], true],
+    ['reviewer', ['Reviewer'], false],
+    ['admin', ['Admin'], false],
+    ['unassigned', [], false],
+  ] as const)(
+    'rejects establishment and amendment decisions by a %s through the real workflow',
+    async (_name, roles, coAuthor) => {
+      const { createSpecificationAgreementWorkflow } = await vi.importActual<
+        typeof import('@/lib/specifications/agreements')
+      >('@/lib/specifications/agreements')
+      const query = vi.fn(async (sql: string) =>
+        sql.includes('SELECT establishment_status')
+          ? [
+              {
+                establishmentStatus: 'editable',
+                responsibleHsaId: 'SE5560000001-responsible',
+              },
+            ]
+          : coAuthor
+            ? [{ hsaId: context.actor.hsaId }]
+            : [],
+      )
+      const transaction = vi.fn(
+        async (work: (manager: { query: typeof query }) => Promise<unknown>) =>
+          work({ query }),
+      )
+      const workflow = createSpecificationAgreementWorkflow({
+        transaction,
+      } as unknown as Parameters<
+        typeof createSpecificationAgreementWorkflow
+      >[0])
+      boundary.context.mockResolvedValue({
+        ...context,
+        actor: { ...context.actor, roles: [...roles] },
+      })
+      boundary.mutate.mockImplementation(workflow.mutate)
+      for (const body of [
+        {
+          operation: 'establish',
+          reason: 'Agreement',
+          agreementReference: 'A',
+          effectiveDate: '2027-06-01',
+        },
+        { operation: 'decide_amendment', amendmentId: 17 },
+      ]) {
+        const response = await POST(mutation(body), params())
+        expect(response.status).toBe(403)
+        expect(response.headers.get('Cache-Control')).toContain('no-store')
+        expect(await response.json()).toMatchObject({
+          code: 'forbidden',
+          error: 'Forbidden',
+        })
+      }
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining('UPDLOCK, HOLDLOCK'),
+        [5],
+      )
+      expect(
+        query.mock.calls.every(([sql]) => sql.trimStart().startsWith('SELECT')),
+      ).toBe(true)
+    },
+  )
+  it.each(['read', 'compare'] as const)(
+    '%s uses a shared transaction lock when checking agreement access',
+    async operation => {
+      const { createSpecificationAgreementWorkflow } = await vi.importActual<
+        typeof import('@/lib/specifications/agreements')
+      >('@/lib/specifications/agreements')
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce([
+          {
+            establishmentStatus: 'editable',
+            responsibleHsaId: 'SE5560000001-other',
+          },
+        ])
+        .mockResolvedValue([])
+      const transaction = vi.fn(
+        async (work: (manager: { query: typeof query }) => Promise<unknown>) =>
+          work({ query }),
+      )
+      const workflow = createSpecificationAgreementWorkflow({
+        transaction,
+      } as unknown as Parameters<
+        typeof createSpecificationAgreementWorkflow
+      >[0])
+      const actorContext = context as Parameters<typeof workflow.read>[0]
+      await expect(
+        operation === 'read'
+          ? workflow.read(actorContext, 5)
+          : workflow.compare(actorContext, 5, 'lib:1'),
+      ).rejects.toMatchObject({ code: 'forbidden' })
+      expect(transaction).toHaveBeenCalledOnce()
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining('WITH (HOLDLOCK)'),
+        [5],
+      )
+    },
+  )
 })

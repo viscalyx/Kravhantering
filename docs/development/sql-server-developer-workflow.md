@@ -183,6 +183,12 @@ applies the migrations in `typeorm/migrations/`, and seeds via the required
 profile in `typeorm/seed-required.mjs` or the demo-capable profile in
 `typeorm/seed.mjs`.
 
+Seed execution requires a DataSource that creates a transaction-owning
+QueryRunner, or a QueryRunner/EntityManager already bound to an active
+transaction. Query-only executors without an active transaction are rejected
+before seeding so lookup locks remain held through the associated insert and
+lifecycle transitions.
+
 Use `npm run db:migrate` plus `npm run db:seed:required` for an empty
 production-like database. Add `npm run db:seed:demo` only when you need the
 local development, integration-test, guide, or smoke-test fixtures. The demo
