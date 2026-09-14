@@ -2798,21 +2798,53 @@ test.describe('Requirements specification deterministic manual cases', () => {
         return localRequirement
       })
 
-    await test.step('edit the specification-local requirement', async () => {
-      const localDetailRow = page
-        .getByRole('row')
-        .filter({ hasText: 'Lyft till kravbiblioteket' })
-      await localDetailRow.getByRole('button', { name: 'Redigera' }).click()
+    const editedLocalRequirement =
+      await test.step('edit the specification-local requirement', async () => {
+        const localDetailRow = page
+          .getByRole('row')
+          .filter({ hasText: 'Lyft till kravbiblioteket' })
+        await localDetailRow.getByRole('button', { name: 'Redigera' }).click()
 
-      const editDialog = page.getByRole('dialog', {
-        name: 'Redigera unikt krav',
+        const editDialog = page.getByRole('dialog', {
+          name: 'Redigera unikt krav',
+        })
+        await editDialog
+          .getByRole('textbox', { name: /Kravtext/u })
+          .fill(editedDescription)
+        const updateResponsePromise = page.waitForResponse(response => {
+          const url = new URL(response.url())
+          return (
+            response.request().method() === 'PUT' &&
+            url.pathname ===
+              `/api/requirements-specifications/${editSpecificationId}/local-requirements/${localRequirement.id}`
+          )
+        })
+        await editDialog.getByRole('button', { name: 'Spara' }).click()
+        const updateResponse = await updateResponsePromise
+        expect(updateResponse.ok()).toBe(true)
+        const updated = (await updateResponse.json()) as {
+          localRequirement: {
+            id: number
+            uniqueId: string
+            description: string
+          }
+        }
+        expect(updated.localRequirement).toMatchObject({
+          uniqueId: localRequirement.uniqueId,
+          description: editedDescription,
+        })
+        await expect(editDialog).toBeHidden()
+        const currentRow = page
+          .getByRole('row')
+          .filter({ hasText: editedDescription })
+        await expect(currentRow).toBeVisible()
+        await currentRow
+          .getByRole('button', {
+            name: new RegExp(`^${localRequirement.uniqueId}\\b`, 'u'),
+          })
+          .click()
+        return updated.localRequirement
       })
-      await editDialog
-        .getByRole('textbox', { name: /Kravtext/u })
-        .fill(editedDescription)
-      await editDialog.getByRole('button', { name: 'Spara' }).click()
-      await expect(editDialog).toBeHidden()
-    })
 
     const graduation =
       await test.step('graduate the requirement to the library', async () => {
@@ -2834,7 +2866,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
           return (
             response.request().method() === 'POST' &&
             url.pathname ===
-              `/api/requirements-specifications/${editSpecificationId}/local-requirements/${localRequirement.id}/graduate`
+              `/api/requirements-specifications/${editSpecificationId}/local-requirements/${editedLocalRequirement.id}/graduate`
           )
         })
         await liftDialog.getByRole('button', { name: 'Lyft' }).click()
@@ -2856,13 +2888,25 @@ test.describe('Requirements specification deterministic manual cases', () => {
 
     await test.step('verify source preservation and the graduated draft', async () => {
       const sourceResponse = await request.get(
-        `/api/requirements-specifications/${editSpecificationId}/local-requirements/${localRequirement.id}`,
+        `/api/requirements-specifications/${editSpecificationId}/local-requirements/${editedLocalRequirement.id}`,
       )
       expect(sourceResponse.ok()).toBe(true)
       expect(await sourceResponse.json()).toMatchObject({
         description: editedDescription,
-        id: localRequirement.id,
+        id: editedLocalRequirement.id,
         uniqueId: localRequirement.uniqueId,
+      })
+      const previousResponse = await request.get(
+        `/api/requirements-specifications/${editSpecificationId}/agreement`,
+      )
+      expect(previousResponse.ok()).toBe(true)
+      expect(await previousResponse.json()).toMatchObject({
+        historyItems: expect.arrayContaining([
+          expect.objectContaining({
+            description,
+            itemRef: `local:${localRequirement.id}`,
+          }),
+        ]),
       })
 
       await page.goto(

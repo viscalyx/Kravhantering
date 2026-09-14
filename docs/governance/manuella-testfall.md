@@ -1591,14 +1591,16 @@ fungera.
 
 **Steg:** Skapa ett nytt krav direkt från kravunderlaget. Ändra
 kravtexten via Redigera i det unika kravets inline-detalj och kontrollera att
-formuläret öppnas i modal med kravets ID i huvudet. Öppna därefter åtgärden
+formuläret öppnas i modal med kravets ID i huvudet. Spara och öppna den aktuella
+kravradens inline-detalj igen. Öppna därefter åtgärden
 `Lyft till kravbiblioteket`, välj ett kravområde och genomför lyftet.
 
 **Förväntat resultat:** Kravet får unikt ID och kopplas till underlaget.
 Redigering sker i modal och lyftåtgärden är tillgänglig från det
 kravunderlagslokala kravets inline-detalj. Ett nytt utkast visas i valt
 kravområde i kravbiblioteket medan det ursprungliga kravunderlagslokala kravet
-finns kvar oförändrat.
+finns kvar oförändrat av lyftet. Den tidigare bindningen före redigeringen
+behåller sin ursprungliga text i historiken.
 
 ### SPEC-07A: referensdata återhämtas för unikt krav
 
