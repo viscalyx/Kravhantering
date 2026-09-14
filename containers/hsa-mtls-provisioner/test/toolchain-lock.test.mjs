@@ -15,17 +15,17 @@ const lock = Object.freeze({
     {
       name: 'openssl',
       epoch: '1',
-      version: '3.5.5-6.el10_2',
+      version: '3.5.8-1.el10_2',
       architecture: 'x86_64',
-      sourceRpm: 'openssl-3.5.5-6.el10_2.src.rpm',
+      sourceRpm: 'openssl-3.5.8-1.el10_2.src.rpm',
       vendor: 'Red Hat, Inc.',
     },
     {
       name: 'openssl-libs',
       epoch: '1',
-      version: '3.5.5-6.el10_2',
+      version: '3.5.8-1.el10_2',
       architecture: 'x86_64',
-      sourceRpm: 'openssl-3.5.5-6.el10_2.src.rpm',
+      sourceRpm: 'openssl-3.5.8-1.el10_2.src.rpm',
       vendor: 'Red Hat, Inc.',
     },
     {
@@ -37,8 +37,8 @@ const lock = Object.freeze({
       vendor: 'Red Hat, Inc.',
     },
   ],
-  opensslPackageVersion: '3.5.5-6.el10_2',
-  opensslVersion: '3.5.5',
+  opensslPackageVersion: '3.5.8-1.el10_2',
+  opensslVersion: '3.5.8',
   schemaVersion: 2,
 })
 
