@@ -895,6 +895,28 @@ for (const viewport of viewports) {
         const beforeRightScrollTop = await rightPanel.evaluate(
           node => node.scrollTop,
         )
+        const agreementPanel = page.getByRole('region', {
+          name: 'Avtal och versionshistorik',
+        })
+        await expect(agreementPanel).toBeVisible()
+        await expect(agreementPanel).toHaveAttribute(
+          'data-developer-mode-value',
+          'independent desktop scroll panel',
+        )
+        await agreementPanel.evaluate(node => {
+          node.scrollTop = node.scrollHeight
+        })
+        expect(
+          await agreementPanel.evaluate(node => node.scrollTop),
+        ).toBeGreaterThan(0)
+        expect(await rightPanel.evaluate(node => node.scrollTop)).toBe(
+          beforeRightScrollTop,
+        )
+        if (hasLeftPanel) {
+          expect(await leftPanel.evaluate(node => node.scrollTop)).toBe(
+            beforeLeftScrollTop,
+          )
+        }
         const desktopNavRailBox = await page
           .locator('[data-global-navigation-rail="desktop"]')
           .boundingBox()

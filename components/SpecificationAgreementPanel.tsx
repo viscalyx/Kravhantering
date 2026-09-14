@@ -248,9 +248,13 @@ export default function SpecificationAgreementPanel({
     <section
       aria-busy={busy}
       aria-label={t('title')}
-      className="mb-5 space-y-4 rounded-xl border border-secondary-200 bg-white p-4 text-secondary-900 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100"
+      className="mb-5 space-y-4 rounded-xl border border-secondary-200 bg-white p-4 text-secondary-900 xl:max-h-[30dvh] xl:shrink-0 xl:overflow-y-auto xl:overscroll-contain dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100"
       id="agreement-history"
-      {...devMarker({ name: 'agreement and version history', priority: 350 })}
+      {...devMarker({
+        name: 'agreement and version history',
+        value: 'independent desktop scroll panel',
+        priority: 350,
+      })}
     >
       <h2 className="flex items-center gap-2 text-lg font-semibold">
         <History aria-hidden="true" className="h-5 w-5" />

@@ -110,6 +110,10 @@ describe('agreement author workflow', () => {
       'data-developer-mode-name',
       'agreement and version history',
     )
+    expect(screen.getByRole('region', { name: 'title' })).toHaveAttribute(
+      'data-developer-mode-value',
+      'independent desktop scroll panel',
+    )
     await user.click(await screen.findByRole('button', { name: 'compare' }))
     expect(await screen.findByText('New published text')).toBeVisible()
     expect(screen.getByText('Function')).toBeVisible()

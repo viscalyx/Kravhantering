@@ -1531,7 +1531,9 @@ och listan återkommer först när indikatorn har försvunnit.
 ### SPEC-05: delade listor scrollar oberoende
 
 **Steg:** Öppna kravunderlagsdetalj med långa listor och scrolla respektive
-panel. Öppna ett tillgängligt krav i den delade vyn. Läs kravtext,
+panel. Scrolla även Avtal och versionshistorik på dator och kontrollera att
+kravlistorna behåller sina scrollpositioner. Öppna ett tillgängligt krav i den
+delade vyn. Läs kravtext,
 acceptanskriterium och verifieringsmetod och öppna områdesinformationen med
 mellanslag. Stäng med Escape.
 

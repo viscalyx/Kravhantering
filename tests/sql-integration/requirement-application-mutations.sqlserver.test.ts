@@ -146,15 +146,29 @@ describe('requirement application mutation workflow', () => {
     })
     const remaining = (await appDb().query(
       `SELECT (
-         SELECT COUNT(*) FROM requirements_specification_items
+         SELECT COUNT(*) FROM current_requirement_applications
          WHERE requirements_specification_id = @0
        ) + (
-         SELECT COUNT(*) FROM specification_local_requirements
+         SELECT COUNT(*) FROM current_specification_local_requirements
          WHERE specification_id = @0
        ) AS count`,
       [specification.id],
     )) as Array<{ count: number }>
     expect(Number(remaining[0]?.count)).toBe(0)
+    await expect(
+      appDb().query(
+        `SELECT id FROM requirements_specification_items
+         WHERE id = @0 AND valid_until IS NOT NULL`,
+        [libraryItemId],
+      ),
+    ).resolves.toEqual([{ id: libraryItemId }])
+    await expect(
+      appDb().query(
+        `SELECT id FROM specification_local_requirements
+         WHERE id = @0 AND valid_until IS NOT NULL`,
+        [local.id],
+      ),
+    ).resolves.toEqual([{ id: local.id }])
 
     const auditRows = await removalAuditRows(appDb(), specification.id)
     expect(auditRows).toHaveLength(1)
@@ -201,7 +215,7 @@ describe('requirement application mutation workflow', () => {
     await expect(
       appDb().query(
         `SELECT COUNT(*) AS count
-         FROM requirements_specification_items
+         FROM current_requirement_applications
          WHERE requirements_specification_id = @0`,
         [specification.id],
       ),
@@ -209,7 +223,7 @@ describe('requirement application mutation workflow', () => {
     await expect(
       appDb().query(
         `SELECT id
-         FROM specification_local_requirements
+         FROM current_specification_local_requirements
          WHERE specification_id = @0`,
         [specification.id],
       ),

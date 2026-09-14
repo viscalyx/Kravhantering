@@ -1203,6 +1203,8 @@ assessment history. Historical rows never add current questions or outcomes.
 Kravunderlagets fastställelsestatus är skild från processens livscykelstatus.
 I panelen **Avtal och versionshistorik** kan ansvarig bedöma befintliga underlag,
 fastställa känt innehåll med avtalsreferens, datum och skäl samt registrera avslut.
+På dator har panelen begränsad höjd och egen scrollning så att kravlistorna
+fortsätter vara tillgängliga och behåller sina oberoende scrollpositioner.
 Författare jämför bunden och ny publicerad version, behåller utan ändring eller
 väljer version med skäl. Fastställt innehåll ändras genom grupperade avtalstillägg.
 Medförfattare förbereder; ansvarig beslutar och avbryter. Beslut gäller idag vid

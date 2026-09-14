@@ -305,7 +305,7 @@ function getPlaywrightSqlServerEnv(): SqlServerRuntimeEnv {
   } as SqlServerRuntimeEnv
 }
 
-async function withPlaywrightSqlServerDataSource<T>(
+export async function withPlaywrightSqlServerDataSource<T>(
   callback: (dataSource: DataSource) => Promise<T>,
 ): Promise<T> {
   const env = getPlaywrightSqlServerEnv()

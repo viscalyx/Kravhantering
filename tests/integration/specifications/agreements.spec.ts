@@ -3,6 +3,7 @@ import {
   expectOk,
   newRoleContext,
   ROLE_STORAGE_STATE,
+  withPlaywrightSqlServerDataSource,
 } from '../authorization/authorization-test-helpers'
 
 test.use({ storageState: ROLE_STORAGE_STATE.specificationResponsible })
@@ -130,18 +131,10 @@ test('SPEC-22/SPEC-23: establish, change local content atomically, reassess and 
 test('SPEC-23: compare a pinned version, keep it, then explicitly adopt with its original needs and note', async ({
   page,
 }, testInfo) => {
-  const { createSqlServerDataSource, getSqlServerDatabaseUrl } = await import(
-    '@/lib/typeorm/sqlserver-config'
-  )
-  const db = createSqlServerDataSource({
-    url: getSqlServerDatabaseUrl(process.env),
-    env: process.env,
-  })
   const owner = await newRoleContext(testInfo, 'specificationResponsible')
   try {
     const specification =
       await test.step('Set up an editable specification pinned to the older version', async () => {
-        await db.initialize()
         const response = await owner.post('/api/requirements-specifications', {
           data: {
             name: `Version adoption ${Date.now()}`,
@@ -152,12 +145,14 @@ test('SPEC-23: compare a pinned version, keep it, then explicitly adopt with its
         await expectOk(response, 'create editable adoption fixture')
         const specification = (await response.json()) as { id: number }
         // Pin the old published seed version to exercise the visible upgrade path.
-        await db.query(
-          `INSERT INTO requirements_specification_items
+        await withPlaywrightSqlServerDataSource(db =>
+          db.query(
+            `INSERT INTO requirements_specification_items
       (requirements_specification_id, requirement_id, requirement_version_id, note, specification_item_status_id, created_at)
       SELECT @0, requirement_id, requirement_version_id, N'Preserved delivery note', 4, SYSUTCDATETIME()
       FROM requirements_specification_items WHERE id = 20`,
-          [specification.id],
+            [specification.id],
+          ),
         )
         return specification
       })
@@ -201,6 +196,5 @@ test('SPEC-23: compare a pinned version, keep it, then explicitly adopt with its
     })
   } finally {
     await owner.dispose()
-    if (db.isInitialized) await db.destroy()
   }
 })

@@ -240,15 +240,16 @@ describe('least-privilege SQL Server runtime role', () => {
         unexpectedGrants: [],
         unexpectedParentRoles: [],
       })
-      const currentTables = (await adminDb.query(
-        `SELECT schemas.[name] + N'.' + tables.[name] AS objectName
-         FROM sys.tables AS tables
-         INNER JOIN sys.schemas AS schemas ON tables.schema_id = schemas.schema_id
-         WHERE schemas.[name] = N'dbo' AND tables.is_ms_shipped = 0`,
+      const currentObjects = (await adminDb.query(
+        `SELECT schemas.[name] + N'.' + objects.[name] AS objectName
+         FROM sys.objects AS objects
+         INNER JOIN sys.schemas AS schemas ON objects.schema_id = schemas.schema_id
+         WHERE schemas.[name] = N'dbo' AND objects.is_ms_shipped = 0
+           AND objects.[type] IN ('U', 'V')`,
       )) as Array<{ objectName: string }>
       expect(
         RUNTIME_PERMISSION_MANIFEST.map(entry => entry.object).sort(),
-      ).toEqual(currentTables.map(row => row.objectName).sort())
+      ).toEqual(currentObjects.map(row => row.objectName).sort())
 
       await migrationDb.query(
         'CREATE TABLE [runtime_future_table_probe] ([id] int NOT NULL)',
