@@ -20,6 +20,7 @@ interface HistoryBinding {
   membershipId: number
   needsReference: string | null
   note: string | null
+  previousAgreementReference: string | null
   previousMembershipId: number | null
   specificationItemStatusId: number
 }
@@ -117,6 +118,7 @@ export async function readAgreementRequirementHistory(
       CASE WHEN lineage.specification_item_id IS NOT NULL THEN CONCAT('lib:', lineage.specification_item_id)
         ELSE CONCAT('local:', lineage.specification_local_requirement_id) END AS itemRef,
       lineage.previous_item_id AS previousMembershipId,
+      predecessor.agreement_reference AS previousAgreementReference,
       (SELECT MIN(id) FROM specification_agreements WHERE specification_id = @0) AS firstAgreementId,
       lineage.has_followup_snapshot AS hasFollowupSnapshot, lineage.deviation_state_json AS deviationStateJson,
       lineage.specification_item_status_id AS specificationItemStatusId,
@@ -124,6 +126,7 @@ export async function readAgreementRequirementHistory(
       lineage.change_kind AS changeKind, lineage.is_removed AS isRemoved,
       CONVERT(varchar(10), changed.effective_date, 23) AS changeDate
     FROM lineage INNER JOIN specification_agreements agreement ON agreement.id = lineage.specification_agreement_id
+    LEFT JOIN specification_agreements predecessor ON predecessor.id = agreement.previous_agreement_id AND predecessor.specification_id = @0
     LEFT JOIN specification_agreements changed ON changed.id = lineage.changed_in_agreement_id
     WHERE agreement.specification_id = @0 ORDER BY agreement.effective_date DESC, agreement.id DESC OPTION (MAXRECURSION 0)`,
     [specificationId, agreementId, itemRef],
@@ -187,7 +190,7 @@ export async function readAgreementRequirementHistory(
         agreementReference: binding.agreementReference,
         effectiveDate: binding.effectiveDate,
         kind,
-        previousAgreementReference: previous?.agreementReference ?? null,
+        previousAgreementReference: binding.previousAgreementReference,
         previousVersion: previous?.item.versionNumber ?? null,
         version: current.item.versionNumber,
       })

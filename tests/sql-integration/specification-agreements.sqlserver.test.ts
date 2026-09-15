@@ -207,8 +207,9 @@ describe('whole-specification agreement contexts', () => {
       newHistory.changes.map(change => [
         change.agreementReference,
         change.kind,
+        change.previousAgreementReference,
       ]),
-    ).toEqual([['E', 'added']])
+    ).toEqual([['E', 'added', 'D']])
     expect(newHistory.previous).toBeNull()
     expect((await historyFromA()).changes).toEqual(history.changes)
     const other = await createSpecificationFixture(db, 'OTHER-HISTORY')
