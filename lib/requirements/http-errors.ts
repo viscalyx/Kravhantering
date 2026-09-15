@@ -105,8 +105,16 @@ const SAFE_AGREEMENT_REASONS = [
   'specification_content_locked',
   'active_deviations',
   'deviation_cancellation_required',
-  'reassessment_required',
   'binding_reserved',
+  'approved_deviations',
+  'pending_agreement',
+  'agreement_date_passed',
+  'activation_confirmation_required',
+  'agreement_identity_conflict',
+  'agreement_date_locked',
+  'agreement_date_invalid',
+  'agreement_date_order',
+  'agreement_end_date_invalid',
 ] as const
 type SafeAgreementReason = (typeof SAFE_AGREEMENT_REASONS)[number]
 
@@ -224,7 +232,7 @@ function toSafeHttpErrorDetails(
   safeDetails: HttpErrorPayloadOptions['safeDetails'],
 ): SafeHttpErrorDetails | undefined {
   if (
-    code === 'conflict' &&
+    (code === 'conflict' || code === 'validation') &&
     SAFE_AGREEMENT_REASONS.includes(details?.reason as SafeAgreementReason)
   ) {
     return { reason: details?.reason as SafeAgreementReason }

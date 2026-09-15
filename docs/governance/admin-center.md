@@ -895,10 +895,15 @@ without a current list item.
 
 ### Dataskydd och avtalshistorik
 
-Dataskyddets förhandsvisning och anonymisering omfattar aktörer som bedömt,
-fastställt eller avslutat avtal, förberett, beslutat eller avbrutit tillägg samt
-skapat bindningar eller omprövat krav. Matchning sker med exakt HSA-id. Dessa
-historiska roller kan anonymiseras utan ersättare; avtalsinnehåll och beslut
-bevaras. Samma roller ingår i registerutdrag. Aktiva avtal och underlag som väntar
-på fastställelsebedömning skyddas från gallring. Efter avslut gäller ordinarie
-regler och undantag, med obligatorisk JSON-export inklusive hela avtalshistoriken.
+Dataskyddets förhandsvisning och anonymisering omfattar aktörer som registrerat,
+bekräftat, avbrutit eller avslutat avtal, skapat kravversioner eller godkänt och
+avbrutit planer för avstegsavslut. Matchning sker med exakt HSA-id. Historiska
+aktörer kan anonymiseras utan ersättare; avtalsinnehåll, ursprungliga beslut och
+separata avslutshändelser bevaras. Samma aktörer ingår i registerutdrag.
+Rättelsernas aktörer ingår som en egen källa för registerutdrag och
+anonymisering, separat från åtgärdsloggen. Sparade aktörsnamn och HSA-id
+anonymiseras tillsammans medan rättelsernas verksamhetshistorik bevaras.
+
+Aktuella avtal och väntande utkast eller kommande avtal skyddas från gallring.
+Efter avslut gäller ordinarie regler och undantag, med obligatorisk JSON-export
+inklusive bevarade avtal, kravuppsättningar, uppföljning och avstegshistorik.

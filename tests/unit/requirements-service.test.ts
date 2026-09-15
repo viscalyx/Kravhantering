@@ -1924,12 +1924,18 @@ describe('createRequirementsService', () => {
 
     expect(
       mocks.linkRequirementsToSpecificationAtomically,
-    ).toHaveBeenCalledWith(expect.anything(), 7, {
-      requirementIds: [10, 11],
-      needsReferenceDescription: undefined,
-      needsReferenceId: undefined,
-      needsReferenceText: undefined,
-    })
+    ).toHaveBeenCalledWith(
+      expect.anything(),
+      7,
+      {
+        agreementId: undefined,
+        requirementIds: [10, 11],
+        needsReferenceDescription: undefined,
+        needsReferenceId: undefined,
+        needsReferenceText: undefined,
+      },
+      'SE5560000001-alice1',
+    )
     expect(result.addedCount).toBe(1)
     expect(result.skippedCount).toBe(0)
     expect(JSON.parse(result.message)).toMatchObject({
@@ -2305,6 +2311,7 @@ describe('createRequirementsService', () => {
       expect.anything(),
       7,
       expect.objectContaining({ requirementIds: [11] }),
+      'SE5560000001-alice1',
     )
   })
 
@@ -2497,8 +2504,8 @@ describe('createRequirementsService', () => {
       41, -12, -9,
     ])
     expect(JSON.parse(result.message)).toEqual({
-      lines: ['3 avvikelse(r): 1 väntande, 1 godkända, 1 avvisade.'],
-      title: 'Avvikelser',
+      lines: ['3 avsteg: 1 väntande, 1 godkända, 1 avslagna.'],
+      title: 'Avsteg',
     })
   })
 

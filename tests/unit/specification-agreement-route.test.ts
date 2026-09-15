@@ -1,7 +1,11 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CsrfError } from '@/lib/auth/csrf'
-import { conflictError, forbiddenError } from '@/lib/requirements/errors'
+import {
+  conflictError,
+  forbiddenError,
+  validationError,
+} from '@/lib/requirements/errors'
 
 const boundary = vi.hoisted(() => ({
   authorize: vi.fn(),
@@ -10,6 +14,7 @@ const boundary = vi.hoisted(() => ({
   denied: vi.fn(),
   read: vi.fn(),
   compare: vi.fn(),
+  history: vi.fn(),
   mutate: vi.fn(),
 }))
 const context = {
@@ -49,6 +54,7 @@ vi.mock('@/lib/specifications/agreements', () => ({
   createSpecificationAgreementWorkflow: () => ({
     read: boundary.read,
     compare: boundary.compare,
+    history: boundary.history,
     mutate: boundary.mutate,
   }),
 }))
@@ -83,49 +89,71 @@ describe('specification agreement REST contract', () => {
     boundary.database.mockResolvedValue({})
     boundary.authorize.mockResolvedValue(undefined)
     boundary.read.mockResolvedValue({
-      establishmentStatus: 'editable',
-      currentItems: [],
+      agreements: [],
+      selectedAgreement: null,
+      items: [],
     })
-    boundary.mutate.mockResolvedValue({ amendmentId: 17 })
+    boundary.mutate.mockResolvedValue({ agreementId: 17 })
   })
   it('maps authentication-boundary CSRF rejection before entering the mutation interface', async () => {
     boundary.context.mockRejectedValueOnce(
       new CsrfError('Cross-origin request rejected.'),
     )
     const response = await POST(
-      mutation({ operation: 'confirm_editable', reason: 'Assessment' }, false),
+      mutation({ operation: 'confirm', agreementId: 17 }, false),
       params(),
     )
     expect(response.status).toBe(403)
     expect(boundary.mutate).not.toHaveBeenCalled()
   })
   it.each([
-    { operation: 'adopt', itemRef: 'lib:1', targetVersionId: 4, reason: '' },
+    { operation: 'adopt', itemRef: 'lib:1', targetVersionId: 0 },
     {
       operation: 'adopt',
       itemRef: 'lib:1',
       targetVersionId: 4,
-      reason: 'Reason',
       specificationItemStatusId: 4,
     },
     {
-      operation: 'prepare_amendment',
-      reason: 'Reason',
+      operation: 'create_draft',
       agreementReference: 'A',
       effectiveDate: '2027-02-30',
-      changes: [],
     },
-    { operation: 'decide_amendment', amendmentId: -1 },
+    { operation: 'confirm', agreementId: -1 },
   ])('rejects malformed or unsupported mutation fields', async body => {
     expect((await POST(mutation(body), params())).status).toBe(400)
     expect(boundary.mutate).not.toHaveBeenCalled()
   })
+  it.each([
+    [conflictError, 'agreement_identity_conflict', 409],
+    [validationError, 'agreement_date_order', 400],
+  ] as const)(
+    'exposes a safe reason so agreement errors can be localized',
+    async (error, reason, status) => {
+      boundary.mutate.mockRejectedValueOnce(
+        error('Server diagnostic text', {
+          reason,
+          internalContext: 'Not public',
+        }),
+      )
+      const response = await POST(
+        mutation({
+          operation: 'create_draft',
+          agreementReference: 'A',
+          effectiveDate: '2035-01-01',
+        }),
+        params(),
+      )
+      expect(response.status).toBe(status)
+      expect((await response.json()).details).toEqual({ reason })
+    },
+  )
   it('preserves authorization denial and workflow conflicts', async () => {
     boundary.authorize.mockRejectedValueOnce(forbiddenError())
     expect(
       (
         await POST(
-          mutation({ operation: 'decide_amendment', amendmentId: 17 }),
+          mutation({ operation: 'confirm', agreementId: 17 }),
           params(),
         )
       ).status,
@@ -135,19 +163,20 @@ describe('specification agreement REST contract', () => {
     expect(
       (
         await POST(
-          mutation({ operation: 'decide_amendment', amendmentId: 17 }),
+          mutation({ operation: 'confirm', agreementId: 17 }),
           params(),
         )
       ).status,
     ).toBe(409)
   })
-  it('passes the exact selected target and trimmed reason and returns no-store JSON', async () => {
+  it('passes the exact selected target and explicit ending consent and returns no-store JSON', async () => {
     const response = await POST(
       mutation({
         operation: 'adopt',
         itemRef: 'lib:1',
         targetVersionId: 4,
-        reason: '  Clarification  ',
+        agreementId: 17,
+        authorizeDeviationEndings: true,
       }),
       params(),
     )
@@ -160,9 +189,50 @@ describe('specification agreement REST contract', () => {
         operation: 'adopt',
         itemRef: 'lib:1',
         targetVersionId: 4,
-        reason: 'Clarification',
+        agreementId: 17,
+        authorizeDeviationEndings: true,
       },
     )
+  })
+  it('loads requirement history in an explicit agreement context', async () => {
+    boundary.history.mockResolvedValue({
+      entries: [{ agreementReference: 'A' }],
+      previous: null,
+    })
+    const response = await GET(
+      new NextRequest(`${url}?historyItemRef=local:9&agreementId=2`),
+      params(),
+    )
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      entries: [{ agreementReference: 'A' }],
+      previous: null,
+    })
+    expect(boundary.history).toHaveBeenCalledWith(context, 5, 2, 'local:9')
+    expect(
+      (await GET(new NextRequest(`${url}?historyItemRef=local:9`), params()))
+        .status,
+    ).toBe(400)
+  })
+  it('loads header metadata without requirement bodies unless a bounded item scope is requested', async () => {
+    await GET(new NextRequest(url), params())
+    expect(boundary.read).toHaveBeenLastCalledWith(context, 5, {
+      agreementId: undefined,
+      itemRefs: [],
+    })
+    await GET(new NextRequest(`${url}?itemRefs=lib:1,local:2`), params())
+    expect(boundary.read).toHaveBeenLastCalledWith(context, 5, {
+      agreementId: undefined,
+      itemRefs: ['lib:1', 'local:2'],
+    })
+    const tooMany = Array.from(
+      { length: 201 },
+      (_, index) => `lib:${index + 1}`,
+    ).join(',')
+    expect(
+      (await GET(new NextRequest(`${url}?itemRefs=${tooMany}`), params()))
+        .status,
+    ).toBe(400)
   })
   it('reads agreement context and compares only a valid library binding', async () => {
     expect((await GET(new NextRequest(url), params())).status).toBe(200)
@@ -188,16 +258,15 @@ describe('specification agreement REST contract', () => {
     ['admin', ['Admin'], false],
     ['unassigned', [], false],
   ] as const)(
-    'rejects establishment and amendment decisions by a %s through the real workflow',
+    'reserves agreement confirmation for the assigned responsible person even for a %s through the real workflow',
     async (_name, roles, coAuthor) => {
       const { createSpecificationAgreementWorkflow } = await vi.importActual<
         typeof import('@/lib/specifications/agreements')
       >('@/lib/specifications/agreements')
       const query = vi.fn(async (sql: string) =>
-        sql.includes('SELECT establishment_status')
+        sql.includes('SELECT responsible_hsa_id AS responsibleHsaId')
           ? [
               {
-                establishmentStatus: 'editable',
                 responsibleHsaId: 'SE5560000001-responsible',
               },
             ]
@@ -222,11 +291,10 @@ describe('specification agreement REST contract', () => {
       for (const body of [
         {
           operation: 'establish',
-          reason: 'Agreement',
           agreementReference: 'A',
           effectiveDate: '2027-06-01',
         },
-        { operation: 'decide_amendment', amendmentId: 17 },
+        { operation: 'confirm', agreementId: 17 },
       ]) {
         const response = await POST(mutation(body), params())
         expect(response.status).toBe(403)
@@ -246,7 +314,7 @@ describe('specification agreement REST contract', () => {
     },
   )
   it.each(['read', 'compare'] as const)(
-    '%s uses a shared transaction lock when checking agreement access',
+    '%s checks agreement access under the parent transaction lock',
     async operation => {
       const { createSpecificationAgreementWorkflow } = await vi.importActual<
         typeof import('@/lib/specifications/agreements')
@@ -255,7 +323,6 @@ describe('specification agreement REST contract', () => {
         .fn()
         .mockResolvedValueOnce([
           {
-            establishmentStatus: 'editable',
             responsibleHsaId: 'SE5560000001-other',
           },
         ])
@@ -277,7 +344,7 @@ describe('specification agreement REST contract', () => {
       ).rejects.toMatchObject({ code: 'forbidden' })
       expect(transaction).toHaveBeenCalledOnce()
       expect(query).toHaveBeenCalledWith(
-        expect.stringContaining('WITH (HOLDLOCK)'),
+        expect.stringContaining('WITH (UPDLOCK, HOLDLOCK)'),
         [5],
       )
     },

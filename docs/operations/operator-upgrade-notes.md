@@ -8,25 +8,29 @@ target version.
 ## Unreleased
 
 <!-- operator-upgrade:source issue-1323 start -->
-Drain all application nodes before migration 0069 and reconcile runtime
-permissions before starting the new release. Old releases read historical rows
-as current and must not run alongside this release. The runtime role needs
-SELECT on the two current-application views and access to specification amendments.
-Existing specifications enter establishment assessment: their responsible person
-must confirm editable work or record the agreement before content changes or
-deletion resume. Lifecycle status does not resolve that assessment.
-Take a restorable database backup before migration. Once agreement and binding
-history exists, rollback requires the matching database backup and application
-release; the down migration deliberately refuses to discard that history.
-Verify that current exports exclude removed/future bindings, that active agreements
-are excluded from retention, and that mandatory archives include agreement history.
-Clients must replace draft-deviation DELETE with explicit cancellation and handle
-409 for locked content, reserved requirements and reassessment. Local content edits
-can return a successor application ID; clients must use the returned identity.
-No new service, scheduled job, secret or configuration setting is required.
+
+### Whole-specification agreements and preserved history
+
+Stop write traffic and drain all application nodes before the database upgrade.
+Do not run the previous and new releases together: the previous release can read
+historical requirement versions as current work. Apply the new runtime database
+permissions before starting the application. Keep a tested database backup with
+the matching application release. Recovery after agreement history is recorded
+requires both; a schema rollback cannot preserve the new history.
+
+Existing specifications remain editable working sets until their first agreement
+is confirmed. After upgrade, verify agreement access with the runtime database
+role. Verify that current and pending agreements are protected from retention,
+that archives contain the full retained agreement and deviation history, and that
+privacy export and anonymization include the new agreement actors.
+
+Coordinate external clients that edit requirement applications or handle
+deviations. They must use the selected agreement context, handle locked content
+and pending agreement conflicts, and use returned application identities after
+content changes. Pending deviations require explicit cancellation with a reason.
+Verify that reports identify the selected agreement and use its preserved
+content and follow-up. No additional service or scheduled job is required.
 <!-- operator-upgrade:source issue-1323 end -->
-
-
 
 ## v0.7.0 - 2026-09-13
 

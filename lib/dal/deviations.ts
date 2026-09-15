@@ -2,6 +2,7 @@ import {
   createLibraryItemRef,
   createSpecificationLocalItemRef,
   parseSpecificationItemRef,
+  type SqlExecutor,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
@@ -9,6 +10,7 @@ import {
   notFoundError,
   validationError,
 } from '@/lib/requirements/errors'
+import { assertDeviationMutationAllowed } from '@/lib/specifications/agreement-deviation-policy'
 import { assertNewDeviationAllowed } from '@/lib/specifications/agreement-policy'
 
 export const DEVIATION_APPROVED = 1
@@ -122,7 +124,7 @@ function mapSqlServerDeviationRow(row: Record<string, unknown>): DeviationRow {
 }
 
 async function findSqlServerDeviationState(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   deviationId: number,
 ): Promise<{
   decision: number | null
@@ -153,7 +155,7 @@ async function findSqlServerDeviationState(
 }
 
 async function findSqlServerSpecificationLocalDeviationState(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   deviationId: number,
 ): Promise<DeviationState | null> {
   const rows = (await db.query(
@@ -186,17 +188,19 @@ interface DeviationState {
 }
 
 type DeviationStateFinder = (
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   deviationId: number,
 ) => Promise<DeviationState | null>
 
 export type ConflictMessageForDeviationState = (state: DeviationState) => string
 
 export interface RunGuardedDeviationMutationOptions {
+  agreementId?: number
   conflictMessageForState: ConflictMessageForDeviationState
   db: SqlServerDatabase
   deviationId: number
   findState: DeviationStateFinder
+  kind?: 'library' | 'local'
   mutationSql: string
   notFoundMessage: string
   parameters: unknown[]
@@ -210,21 +214,25 @@ async function runGuardedDeviationMutation({
   notFoundMessage,
   parameters,
   deviationId,
+  agreementId,
+  kind = 'library',
 }: RunGuardedDeviationMutationOptions): Promise<void> {
-  const mutatedRows = (await db.query(mutationSql, parameters)) as Array<
-    Record<string, unknown>
-  >
-
-  if (mutatedRows[0]) {
-    return
-  }
-
-  const row = await findState(db, deviationId)
-  if (!row) {
-    throw notFoundError(notFoundMessage)
-  }
-
-  throw conflictError(conflictMessageForState(row))
+  await db.transaction(async manager => {
+    await assertDeviationMutationAllowed(
+      manager,
+      kind,
+      deviationId,
+      agreementId,
+    )
+    const mutatedRows = await manager.query<Array<Record<string, unknown>>>(
+      mutationSql,
+      parameters,
+    )
+    if (mutatedRows[0]) return
+    const row = await findState(manager, deviationId)
+    if (!row) throw notFoundError(notFoundMessage)
+    throw conflictError(conflictMessageForState(row))
+  })
 }
 
 function editDeviationConflictMessage(state: DeviationState): string {
@@ -423,6 +431,7 @@ export async function getDeviation(
 export async function createDeviation(
   db: SqlServerDatabase,
   data: {
+    agreementId?: number
     specificationItemId: number
     motivation: string
     createdBy?: string | null
@@ -437,6 +446,7 @@ export async function createDeviation(
       manager,
       'library',
       data.specificationItemId,
+      data.agreementId,
     )
 
     const itemRows = (await manager.query(
@@ -524,6 +534,7 @@ export async function listDeviationsForSpecificationLocalRequirement(
 export async function createSpecificationLocalDeviation(
   db: SqlServerDatabase,
   data: {
+    agreementId?: number
     createdBy?: string | null
     createdByHsaId?: string | null
     motivation: string
@@ -538,6 +549,7 @@ export async function createSpecificationLocalDeviation(
       manager,
       'specificationLocal',
       data.specificationLocalRequirementId,
+      data.agreementId,
     )
 
     const requirementRows = (await manager.query(
@@ -584,6 +596,7 @@ export async function createSpecificationLocalDeviation(
 export async function createDeviationForItemRef(
   db: SqlServerDatabase,
   data: {
+    agreementId?: number
     createdBy?: string | null
     createdByHsaId?: string | null
     itemRef: string
@@ -597,6 +610,7 @@ export async function createDeviationForItemRef(
 
   if (parsed.kind === 'library') {
     return createDeviation(db, {
+      agreementId: data.agreementId,
       createdBy: data.createdBy,
       createdByHsaId: data.createdByHsaId,
       motivation: data.motivation,
@@ -605,6 +619,7 @@ export async function createDeviationForItemRef(
   }
 
   return createSpecificationLocalDeviation(db, {
+    agreementId: data.agreementId,
     createdBy: data.createdBy,
     createdByHsaId: data.createdByHsaId,
     motivation: data.motivation,
@@ -662,6 +677,7 @@ export async function updateDeviation(
   db: SqlServerDatabase,
   deviationId: number,
   data: {
+    agreementId?: number
     createdBy?: string | null
     createdByHsaId?: string | null
     motivation?: string
@@ -693,6 +709,7 @@ export async function updateDeviation(
 
     if (data.createdBy !== undefined) {
       await runGuardedDeviationMutation({
+        agreementId: data.agreementId,
         conflictMessageForState: editDeviationConflictMessage,
         db,
         deviationId,
@@ -721,6 +738,7 @@ export async function updateDeviation(
       })
     } else {
       await runGuardedDeviationMutation({
+        agreementId: data.agreementId,
         conflictMessageForState: editDeviationConflictMessage,
         db,
         deviationId,
@@ -745,6 +763,7 @@ export async function updateDeviation(
 
   if (data.createdBy !== undefined) {
     await runGuardedDeviationMutation({
+      agreementId: data.agreementId,
       conflictMessageForState: editDeviationConflictMessage,
       db,
       deviationId,
@@ -773,6 +792,7 @@ export async function updateDeviation(
   }
 
   await runGuardedDeviationMutation({
+    agreementId: data.agreementId,
     conflictMessageForState: editDeviationConflictMessage,
     db,
     deviationId,
@@ -796,6 +816,7 @@ export async function recordDecision(
   db: SqlServerDatabase,
   deviationId: number,
   data: {
+    agreementId?: number
     decision: number
     decisionMotivation: string
     decidedBy: string
@@ -819,6 +840,7 @@ export async function recordDecision(
 
   const now = new Date()
   await runGuardedDeviationMutation({
+    agreementId: data.agreementId,
     conflictMessageForState: recordDecisionConflictMessage,
     db,
     deviationId,
@@ -867,6 +889,7 @@ export async function updateSpecificationLocalDeviation(
   db: SqlServerDatabase,
   deviationId: number,
   data: {
+    agreementId?: number
     createdBy?: string | null
     createdByHsaId?: string | null
     motivation?: string
@@ -903,9 +926,11 @@ export async function updateSpecificationLocalDeviation(
 
     if (data.createdBy !== undefined) {
       await runGuardedDeviationMutation({
+        agreementId: data.agreementId,
         conflictMessageForState: editDeviationConflictMessage,
         db,
         deviationId,
+        kind: 'local',
         findState: findSqlServerSpecificationLocalDeviationState,
         mutationSql: `
           UPDATE specification_local_requirement_deviations
@@ -931,9 +956,11 @@ export async function updateSpecificationLocalDeviation(
       })
     } else {
       await runGuardedDeviationMutation({
+        agreementId: data.agreementId,
         conflictMessageForState: editDeviationConflictMessage,
         db,
         deviationId,
+        kind: 'local',
         findState: findSqlServerSpecificationLocalDeviationState,
         mutationSql: `
           UPDATE specification_local_requirement_deviations
@@ -955,9 +982,11 @@ export async function updateSpecificationLocalDeviation(
 
   if (data.createdBy !== undefined) {
     await runGuardedDeviationMutation({
+      agreementId: data.agreementId,
       conflictMessageForState: editDeviationConflictMessage,
       db,
       deviationId,
+      kind: 'local',
       findState: findSqlServerSpecificationLocalDeviationState,
       mutationSql: `
         UPDATE specification_local_requirement_deviations
@@ -983,9 +1012,11 @@ export async function updateSpecificationLocalDeviation(
   }
 
   await runGuardedDeviationMutation({
+    agreementId: data.agreementId,
     conflictMessageForState: editDeviationConflictMessage,
     db,
     deviationId,
+    kind: 'local',
     findState: findSqlServerSpecificationLocalDeviationState,
     mutationSql: `
       UPDATE specification_local_requirement_deviations
@@ -1006,6 +1037,7 @@ export async function recordSpecificationLocalDecision(
   db: SqlServerDatabase,
   deviationId: number,
   data: {
+    agreementId?: number
     decision: number
     decisionMotivation: string
     decidedBy: string
@@ -1029,9 +1061,11 @@ export async function recordSpecificationLocalDecision(
 
   const now = new Date()
   await runGuardedDeviationMutation({
+    agreementId: data.agreementId,
     conflictMessageForState: recordDecisionConflictMessage,
     db,
     deviationId,
+    kind: 'local',
     findState: findSqlServerSpecificationLocalDeviationState,
     mutationSql: `
       UPDATE specification_local_requirement_deviations
@@ -1210,10 +1244,18 @@ export async function countDeviationsPerItemRef(
 export async function requestReview(
   db: SqlServerDatabase,
   deviationId: number,
+  options: { agreementId?: number } = {},
 ): Promise<void> {
-  const now = new Date()
-  const updatedRows = (await db.query(
-    `
+  await db.transaction(async manager => {
+    await assertDeviationMutationAllowed(
+      manager,
+      'library',
+      deviationId,
+      options.agreementId,
+    )
+    const now = new Date()
+    const updatedRows = (await manager.query(
+      `
       UPDATE deviations
       SET
         is_review_requested = 1,
@@ -1224,32 +1266,41 @@ export async function requestReview(
         AND decision IS NULL
         AND is_review_requested = 0
     `,
-    [now, deviationId],
-  )) as Array<Record<string, unknown>>
+      [now, deviationId],
+    )) as Array<Record<string, unknown>>
 
-  if (updatedRows[0]) {
-    return
-  }
+    if (updatedRows[0]) {
+      return
+    }
 
-  const row = await findSqlServerDeviationState(db, deviationId)
-  if (!row) {
-    throw notFoundError(`Deviation ${deviationId} not found`)
-  }
-  if (row.decision !== null) {
-    throw conflictError(
-      'Cannot request review for a deviation that already has a decision',
-    )
-  }
-  throw conflictError('Review has already been requested for this deviation')
+    const row = await findSqlServerDeviationState(manager, deviationId)
+    if (!row) {
+      throw notFoundError(`Deviation ${deviationId} not found`)
+    }
+    if (row.decision !== null) {
+      throw conflictError(
+        'Cannot request review for a deviation that already has a decision',
+      )
+    }
+    throw conflictError('Review has already been requested for this deviation')
+  })
 }
 
 export async function requestSpecificationLocalReview(
   db: SqlServerDatabase,
   deviationId: number,
+  options: { agreementId?: number } = {},
 ): Promise<void> {
-  const now = new Date()
-  const updatedRows = (await db.query(
-    `
+  await db.transaction(async manager => {
+    await assertDeviationMutationAllowed(
+      manager,
+      'local',
+      deviationId,
+      options.agreementId,
+    )
+    const now = new Date()
+    const updatedRows = (await manager.query(
+      `
       UPDATE specification_local_requirement_deviations
       SET
         is_review_requested = 1,
@@ -1260,37 +1311,46 @@ export async function requestSpecificationLocalReview(
         AND decision IS NULL
         AND is_review_requested = 0
     `,
-    [now, deviationId],
-  )) as Array<Record<string, unknown>>
+      [now, deviationId],
+    )) as Array<Record<string, unknown>>
 
-  if (updatedRows[0]) {
-    return
-  }
+    if (updatedRows[0]) {
+      return
+    }
 
-  const row = await findSqlServerSpecificationLocalDeviationState(
-    db,
-    deviationId,
-  )
-  if (!row) {
-    throw notFoundError(
-      `Specification-local deviation ${deviationId} not found`,
+    const row = await findSqlServerSpecificationLocalDeviationState(
+      manager,
+      deviationId,
     )
-  }
-  if (row.decision !== null) {
-    throw conflictError(
-      'Cannot request review for a deviation that already has a decision',
-    )
-  }
-  throw conflictError('Review has already been requested for this deviation')
+    if (!row) {
+      throw notFoundError(
+        `Specification-local deviation ${deviationId} not found`,
+      )
+    }
+    if (row.decision !== null) {
+      throw conflictError(
+        'Cannot request review for a deviation that already has a decision',
+      )
+    }
+    throw conflictError('Review has already been requested for this deviation')
+  })
 }
 
 export async function revertToDraft(
   db: SqlServerDatabase,
   deviationId: number,
+  options: { agreementId?: number } = {},
 ): Promise<void> {
-  const now = new Date()
-  const updatedRows = (await db.query(
-    `
+  await db.transaction(async manager => {
+    await assertDeviationMutationAllowed(
+      manager,
+      'library',
+      deviationId,
+      options.agreementId,
+    )
+    const now = new Date()
+    const updatedRows = (await manager.query(
+      `
       UPDATE deviations
       SET
         is_review_requested = 0,
@@ -1301,30 +1361,41 @@ export async function revertToDraft(
         AND decision IS NULL
         AND is_review_requested = 1
     `,
-    [now, deviationId],
-  )) as Array<Record<string, unknown>>
+      [now, deviationId],
+    )) as Array<Record<string, unknown>>
 
-  if (updatedRows[0]) {
-    return
-  }
+    if (updatedRows[0]) {
+      return
+    }
 
-  const row = await findSqlServerDeviationState(db, deviationId)
-  if (!row) {
-    throw notFoundError(`Deviation ${deviationId} not found`)
-  }
-  if (row.decision !== null) {
-    throw conflictError('Cannot revert a deviation that already has a decision')
-  }
-  throw conflictError('Deviation is already in draft state')
+    const row = await findSqlServerDeviationState(manager, deviationId)
+    if (!row) {
+      throw notFoundError(`Deviation ${deviationId} not found`)
+    }
+    if (row.decision !== null) {
+      throw conflictError(
+        'Cannot revert a deviation that already has a decision',
+      )
+    }
+    throw conflictError('Deviation is already in draft state')
+  })
 }
 
 export async function revertSpecificationLocalToDraft(
   db: SqlServerDatabase,
   deviationId: number,
+  options: { agreementId?: number } = {},
 ): Promise<void> {
-  const now = new Date()
-  const updatedRows = (await db.query(
-    `
+  await db.transaction(async manager => {
+    await assertDeviationMutationAllowed(
+      manager,
+      'local',
+      deviationId,
+      options.agreementId,
+    )
+    const now = new Date()
+    const updatedRows = (await manager.query(
+      `
       UPDATE specification_local_requirement_deviations
       SET
         is_review_requested = 0,
@@ -1335,24 +1406,27 @@ export async function revertSpecificationLocalToDraft(
         AND decision IS NULL
         AND is_review_requested = 1
     `,
-    [now, deviationId],
-  )) as Array<Record<string, unknown>>
+      [now, deviationId],
+    )) as Array<Record<string, unknown>>
 
-  if (updatedRows[0]) {
-    return
-  }
+    if (updatedRows[0]) {
+      return
+    }
 
-  const row = await findSqlServerSpecificationLocalDeviationState(
-    db,
-    deviationId,
-  )
-  if (!row) {
-    throw notFoundError(
-      `Specification-local deviation ${deviationId} not found`,
+    const row = await findSqlServerSpecificationLocalDeviationState(
+      manager,
+      deviationId,
     )
-  }
-  if (row.decision !== null) {
-    throw conflictError('Cannot revert a deviation that already has a decision')
-  }
-  throw conflictError('Deviation is already in draft state')
+    if (!row) {
+      throw notFoundError(
+        `Specification-local deviation ${deviationId} not found`,
+      )
+    }
+    if (row.decision !== null) {
+      throw conflictError(
+        'Cannot revert a deviation that already has a decision',
+      )
+    }
+    throw conflictError('Deviation is already in draft state')
+  })
 }

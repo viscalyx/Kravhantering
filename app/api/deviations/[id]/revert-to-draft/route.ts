@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { revertToDraft } from '@/lib/dal/deviations'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { readOptionalAgreementContext } from '@/lib/http/agreement-context'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
@@ -14,6 +15,7 @@ import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 export const dynamic = 'force-dynamic'
 
 export const POST = secureMutationRoute({
+  bodyReader: readOptionalAgreementContext,
   errorMessage: 'Failed to revert to draft',
   paramsSchema: idParamSchema,
   policy: requirementsMutationPolicy<unknown, { id: number }>(({ params }) => ({
@@ -22,11 +24,11 @@ export const POST = secureMutationRoute({
     kind: 'manage_deviation',
     operation: 'revert_to_draft',
   })),
-  handler: async ({ context, db: authorizedDb, params }) => {
+  handler: async ({ body, context, db: authorizedDb, params }) => {
     try {
       requireHumanActorSnapshot(context)
       const db = authorizedDb ?? (await getRequestSqlServerDataSource())
-      await revertToDraft(db, params.id)
+      await revertToDraft(db, params.id, { agreementId: body?.agreementId })
       return NextResponse.json({ ok: true })
     } catch (error) {
       if (isRequirementsServiceError(error)) {

@@ -350,6 +350,7 @@ describe('requirement application mutation workflow', () => {
 
     await expect(
       workflow.mutate(context, {
+        agreementId: 20,
         fields: { needsReferenceId: 7, note: 'Shared follow-up' },
         itemRefs: ['lib:31', 'local:41'],
         operation: 'update',
@@ -368,13 +369,19 @@ describe('requirement application mutation workflow', () => {
       manager,
       31,
       { needsReferenceId: 7, note: 'Shared follow-up' },
+      { agreementId: 20 },
     )
     expect(
       dal.updateSpecificationLocalRequirementFieldsWithExecutor,
-    ).toHaveBeenCalledWith(manager, 41, {
-      needsReferenceId: 7,
-      note: 'Shared follow-up',
-    })
+    ).toHaveBeenCalledWith(
+      manager,
+      41,
+      {
+        needsReferenceId: 7,
+        note: 'Shared follow-up',
+      },
+      { agreementId: 20 },
+    )
     expect(audit.recordSensitiveMutationActionAuditEvent).toHaveBeenCalledWith(
       manager,
       context,
@@ -430,6 +437,7 @@ describe('requirement application mutation workflow', () => {
       manager,
       31,
       { note: 'Duplicate update' },
+      { agreementId: undefined },
     )
     expect(audit.recordSensitiveMutationActionAuditEvent).not.toHaveBeenCalled()
   })
@@ -452,11 +460,13 @@ describe('requirement application mutation workflow', () => {
       manager,
       5,
       [31],
+      { actorHsaId: context.actor.hsaId, authorizeDeviationEndings: undefined },
     )
     expect(dal.deleteSpecificationLocalRequirementsByIds).toHaveBeenCalledWith(
       manager,
       5,
       [41],
+      { actorHsaId: context.actor.hsaId, authorizeDeviationEndings: undefined },
     )
     expect(audit.recordSensitiveMutationActionAuditEvent).not.toHaveBeenCalled()
     expect(audit.recordSensitiveMutationSecurityEvent).not.toHaveBeenCalled()
@@ -510,6 +520,7 @@ describe('requirement application mutation workflow', () => {
       manager,
       5,
       [7, 8],
+      { actorHsaId: context.actor.hsaId, authorizeDeviationEndings: undefined },
     )
     expect(audit.recordSensitiveMutationActionAuditEvent).toHaveBeenCalledWith(
       manager,
@@ -558,6 +569,7 @@ describe('requirement application mutation workflow', () => {
       manager,
       5,
       [31],
+      { actorHsaId: context.actor.hsaId, authorizeDeviationEndings: undefined },
     )
     expect(audit.recordSensitiveMutationActionAuditEvent).not.toHaveBeenCalled()
   })

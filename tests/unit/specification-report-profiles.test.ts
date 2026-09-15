@@ -273,7 +273,7 @@ describe('specification report profiles', () => {
       procurementFormatter.serializeRow(item),
     ].join('\r\n')
     expect(procurementCsv.split('\r\n')[0]).toBe(
-      'Krav-ID;Kravtext;Kvalitetsegenskap;Normreferenser;Norm-URI',
+      'Avtalsreferens;Avtalsdatum;Avtalsstatus;Krav-ID;Kravtext;Kvalitetsegenskap;Normreferenser;Norm-URI',
     )
     expect(procurementCsv).toContain('https://example.test/iso')
     expect(procurementCsv).not.toContain('Underlagssyfte')
@@ -284,7 +284,7 @@ describe('specification report profiles', () => {
       fullFormatter.serializeRow(item),
     ].join('\r\n')
     expect(fullCsv.split('\r\n')[0]).toBe(
-      'Krav-ID;Kravtext;Kravområde;Kategori;Typ;Kvalitetsegenskap;Prioritet;Kravversionsstatus;Verifierbar;Version;Behovsreferens;Användningsstatus;Normreferenser;Kravpaket;Förbättringsförslag;ISO-kapitel;Norm-URI;Avstegssignal',
+      'Avtalsreferens;Avtalsdatum;Avtalsstatus;Krav-ID;Kravtext;Kravområde;Kategori;Typ;Kvalitetsegenskap;Prioritet;Kravversionsstatus;Verifierbar;Version;Behovsreferens;Användningsstatus;Normreferenser;Kravpaket;Förbättringsförslag;ISO-kapitel;Norm-URI;Avstegssignal',
     )
     expect(fullCsv).toContain('2')
     expect(fullCsv).toContain('Väntande')
@@ -303,7 +303,7 @@ describe('specification report profiles', () => {
     const formatter = createSpecificationCsvFormatter('procurement', 'en')
 
     expect(formatter.headers.join(';')).toBe(
-      'Requirement ID;Requirement text;Quality characteristic;Norm references;Norm URI',
+      'Agreement reference;Agreement effective date;Agreement status;Requirement ID;Requirement text;Quality characteristic;Norm references;Norm URI',
     )
     expect(formatter.serializeRow(item)).toContain(
       '"\'=SUM(A1;A2)\n""quoted"""',

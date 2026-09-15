@@ -537,9 +537,11 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
   },
   {
     action: 'delete',
-    executeSql: `DELETE FROM specification_local_requirements WHERE specification_id = @0;
+    executeSql: `DELETE FROM specification_deviation_endings WHERE specification_id = @0;
+      DELETE FROM specification_agreement_items WHERE specification_agreement_id IN (SELECT id FROM specification_agreements WHERE specification_id = @0);
+      DELETE FROM specification_agreements WHERE specification_id = @0;
+      DELETE FROM specification_local_requirements WHERE specification_id = @0;
       DELETE FROM requirements_specification_items WHERE requirements_specification_id = @0;
-      DELETE FROM specification_amendments WHERE specification_id = @0;
       DELETE FROM specification_needs_references WHERE specification_id = @0;
       DELETE FROM requirements_specifications WHERE id = @0;`,
     fieldKey: 'specificationArchive',
@@ -557,7 +559,7 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
           specification.updated_at AS age_basis
         FROM requirements_specifications specification
         WHERE specification.updated_at <= @0
-          AND specification.establishment_status IN (N'editable', N'ended')
+          AND NOT EXISTS (SELECT 1 FROM specification_agreements agreement WHERE agreement.specification_id = specification.id AND (agreement.is_current = 1 OR agreement.is_pending = 1))
           AND (
             specification.specification_lifecycle_status_id IS NULL
             OR specification.specification_lifecycle_status_id <> ${SPECIFICATION_MANAGEMENT_STATUS_ID}
@@ -1400,15 +1402,6 @@ async function exportSpecification(
         specification.specification_code AS specificationCode,
         specification.name,
         specification.business_needs_reference AS businessNeedsReference,
-        specification.establishment_status AS establishmentStatus,
-        specification.agreement_reference AS agreementReference,
-        specification.agreement_reason AS agreementReason,
-        specification.agreement_date AS agreementDate,
-        specification.established_at AS establishedAt,
-        specification.original_content_json AS originalContentJson,
-        specification.ended_at AS endedAt,
-        specification.agreement_end_date AS agreementEndDate,
-        specification.agreement_end_reason AS agreementEndReason,
         specification.created_at AS createdAt,
         specification.updated_at AS updatedAt,
         CASE WHEN specification.responsible_hsa_id IS NULL THEN NULL ELSE N'no-user' END AS responsibleDisplayName,
@@ -1524,10 +1517,9 @@ async function exportSpecification(
           specification_item.status_updated_at AS specificationItemStatusUpdatedAt,
           specification_item.needs_reference_snapshot AS needsReferenceSnapshot,
           specification_item.valid_from AS validFrom, specification_item.valid_until AS validUntil,
-          specification_item.specification_amendment_id AS amendmentId,
-          specification_item.is_reassessment_required AS reassessmentRequired,
-          specification_item.binding_reason AS bindingReason,
-          specification_item.reassessed_at AS reassessedAt, specification_item.reassessment_reason AS reassessmentReason,
+          specification_item.owning_agreement_id AS owningAgreementId,
+          specification_item.origin_agreement_item_id AS originAgreementItemId,
+
           needs_reference.id AS needsReferenceId,
           needs_reference.text AS needsReferenceText,
           specification_item_status.id AS specificationItemStatusId,
@@ -1644,10 +1636,10 @@ async function exportSpecification(
       `SELECT
           local_requirement.id,
           local_requirement.valid_from AS validFrom, local_requirement.valid_until AS validUntil,
-          local_requirement.specification_amendment_id AS amendmentId,
-          local_requirement.is_reassessment_required AS reassessmentRequired,
-          local_requirement.binding_reason AS bindingReason,
-          local_requirement.reassessed_at AS reassessedAt, local_requirement.reassessment_reason AS reassessmentReason,
+          local_requirement.owning_agreement_id AS owningAgreementId,
+          local_requirement.origin_agreement_item_id AS originAgreementItemId,
+          local_requirement.source_requirement_version_id AS sourceRequirementVersionId,
+
           local_requirement.needs_reference_snapshot AS needsReferenceSnapshot,
           local_requirement.unique_id AS uniqueId,
           local_requirement.sequence_number AS sequenceNumber,
@@ -1731,23 +1723,43 @@ async function exportSpecification(
     ) as Promise<Row[]>,
   ])
 
-  const amendments = (await db.query(
-    `SELECT id, reason, agreement_reference AS agreementReference,
-    effective_date AS effectiveDate, effective_at AS effectiveAt, created_at AS createdAt,
-    decided_at AS decidedAt, cancelled_at AS cancelledAt, cancellation_reason AS cancellationReason,
-    replaces_amendment_id AS replacesAmendmentId, changes_json AS changesJson,
-    CAST(NULL AS nvarchar(64)) AS createdByHsaId, CAST(NULL AS nvarchar(64)) AS decidedByHsaId,
-    CAST(NULL AS nvarchar(64)) AS cancelledByHsaId
-    FROM specification_amendments WHERE specification_id = @0 ORDER BY id`,
+  const agreements = await db.query<Row[]>(
+    `SELECT id, agreement_reference AS agreementReference, effective_date AS effectiveDate,
+      description, created_at AS createdAt, confirmed_at AS confirmedAt, effective_at AS effectiveAt,
+      activated_at AS activatedAt, replaced_at AS replacedAt, cancelled_at AS cancelledAt,
+      cancellation_reason AS cancellationReason, ended_at AS endedAt, end_date AS endDate,
+      end_reason AS endReason, previous_agreement_id AS previousAgreementId,
+      is_pending AS isPending, is_current AS isCurrent
+     FROM specification_agreements WHERE specification_id = @0 ORDER BY id`,
     [specificationId],
-  )) as Row[]
+  )
+  const agreementCorrections = await db.query<Row[]>(
+    `SELECT correction.id, correction.agreement_id AS agreementId,
+      correction.old_agreement_reference AS oldAgreementReference, correction.new_agreement_reference AS newAgreementReference,
+      correction.old_effective_date AS oldEffectiveDate, correction.new_effective_date AS newEffectiveDate,
+      correction.old_description AS oldDescription, correction.new_description AS newDescription,
+      correction.corrected_at AS correctedAt
+     FROM specification_agreement_corrections correction
+     INNER JOIN specification_agreements agreement ON agreement.id = correction.agreement_id
+     WHERE agreement.specification_id = @0 ORDER BY correction.id`,
+    [specificationId],
+  )
+  const agreementItems = await db.query<Row[]>(
+    `SELECT membership.* FROM specification_agreement_items membership
+     INNER JOIN specification_agreements agreement ON agreement.id = membership.specification_agreement_id
+     WHERE agreement.specification_id = @0 ORDER BY membership.id`,
+    [specificationId],
+  )
   return {
-    amendments: amendments.map(amendment => ({
-      ...amendment,
-      changes: JSON.parse(String(amendment.changesJson)),
-    })),
-    originalItems: JSON.parse(
-      String(specification.originalContentJson ?? '[]'),
+    agreements,
+    agreementCorrections,
+    agreementItems,
+    deviationEndings: await db.query<Row[]>(
+      `SELECT id, agreement_id AS agreementId, agreement_reference AS agreementReference,
+      agreement_item_id AS agreementItemId, deviation_id AS deviationId, local_deviation_id AS localDeviationId,
+      planned_effective_date AS plannedEffectiveDate, recorded_at AS recordedAt, cancelled_at AS cancelledAt, ended_at AS endedAt
+      FROM specification_deviation_endings WHERE specification_id = @0 ORDER BY id`,
+      [specificationId],
     ),
     rfiList: rfiList[0] ?? null,
     rfiItems,

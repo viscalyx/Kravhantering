@@ -57,7 +57,11 @@ import RequirementsTable, {
   type FloatingActionMenuItem,
   FloatingActionPill,
 } from '@/components/RequirementsTable'
-import SpecificationAgreementPanel from '@/components/SpecificationAgreementPanel'
+import SpecificationAgreementBox, {
+  type SpecificationAgreementView,
+} from '@/components/SpecificationAgreementBox'
+import SpecificationAgreementRequirement from '@/components/SpecificationAgreementRequirement'
+import SpecificationLibraryVersionUpdate from '@/components/SpecificationLibraryVersionUpdate'
 import SpecificationLocalRequirementDetailClient from '@/components/SpecificationLocalRequirementDetailClient'
 import SpecificationLocalRequirementForm, {
   type SpecificationLocalRequirementSubmitPayload,
@@ -501,6 +505,7 @@ export default function KravunderlagDetailClient({
   specificationId: number
 }) {
   useHelpContent(REQUIREMENT_SPECIFICATION_DETAIL_HELP)
+  const ta = useTranslations('agreement')
   const t = useTranslations('specification')
   const tc = useTranslations('common')
   const td = useTranslations('deviation')
@@ -544,8 +549,20 @@ export default function KravunderlagDetailClient({
     canUseAi: false,
   }
   const canEditContent = permissions.canEditContent === true
+  const [agreementContext, setAgreementContext] =
+    useState<SpecificationAgreementView | null>(null)
+  const [agreementRefreshKey, setAgreementRefreshKey] = useState(0)
   const canChangeContent =
-    canEditContent && (spec?.establishmentStatus ?? 'editable') === 'editable'
+    canEditContent && agreementContext?.canEditContent === true
+  const canFollowUp = canEditContent && agreementContext?.canFollowUp === true
+  const canManageNeedsReferences = canChangeContent || canFollowUp
+  const canManageDeviations =
+    canEditContent &&
+    !!agreementContext &&
+    (!agreementContext.selectedAgreement ||
+      ['draft', 'upcoming', 'current'].includes(
+        agreementContext.selectedAgreement.state,
+      ))
   const [
     restoreSpecificationItemsRetryFocus,
     setRestoreSpecificationItemsRetryFocus,
@@ -822,19 +839,25 @@ export default function KravunderlagDetailClient({
   const availableRequirementsKeyRef = useRef(availableRequirementsParams)
 
   const specificationItemsQuery = useMemo<SpecificationEditorWorkflowQuery>(
-    () => ({ filters: leftFilters, locale, sort: leftSort }),
-    [leftFilters, leftSort, locale],
+    () => ({
+      agreementId: agreementContext?.selectedAgreement?.id,
+      filters: leftFilters,
+      locale,
+      sort: leftSort,
+    }),
+    [agreementContext?.selectedAgreement?.id, leftFilters, leftSort, locale],
   )
-  const specificationItemsParams = useMemo(
-    () =>
-      buildRequirementListParams({
-        filters: leftFilters,
-        limit: 50,
-        locale,
-        sort: leftSort,
-      }).toString(),
-    [leftFilters, leftSort, locale],
-  )
+  const specificationItemsParams = useMemo(() => {
+    const params = buildRequirementListParams({
+      filters: leftFilters,
+      limit: 50,
+      locale,
+      sort: leftSort,
+    })
+    if (agreementContext?.selectedAgreement)
+      params.set('agreementId', String(agreementContext.selectedAgreement.id))
+    return params.toString()
+  }, [agreementContext?.selectedAgreement, leftFilters, leftSort, locale])
   const [editorWorkflow] = useState(() => {
     const editorAdapter = createHttpSpecificationEditorAdapter({
       loadItemsFailedMessage: t('loadSpecificationItemsFailed'),
@@ -1626,11 +1649,14 @@ export default function KravunderlagDetailClient({
     setAddModalLoading(true)
     try {
       const body: {
+        agreementId?: number
         requirementIds: number[]
         needsReferenceId?: number | null
         needsReferenceDescription?: string | null
         needsReferenceText?: string | null
       } = { requirementIds: pendingAddIds }
+      if (agreementContext?.selectedAgreement)
+        body.agreementId = agreementContext.selectedAgreement.id
       if (addNeedsRefMode === 'existing' && addNeedsRefId !== '') {
         body.needsReferenceId = Number(addNeedsRefId)
       } else if (addNeedsRefMode === 'new' && addNeedsRefText.trim()) {
@@ -1666,6 +1692,7 @@ export default function KravunderlagDetailClient({
           : Promise.resolve(new Set(pendingAddIds)),
       ])
       setAddModalError(null)
+      setAgreementRefreshKey(key => key + 1)
       setRightSelectedIds(new Set())
       setShowAddModal(false)
       const addedRequirementsHidden =
@@ -1686,6 +1713,7 @@ export default function KravunderlagDetailClient({
   }, [
     canChangeContent,
     addNeedsRefId,
+    agreementContext?.selectedAgreement,
     addNeedsRefDescription,
     addNeedsRefMode,
     addNeedsRefText,
@@ -1703,12 +1731,17 @@ export default function KravunderlagDetailClient({
   const handleCreateLocalRequirement = useCallback(
     async (payload: SpecificationLocalRequirementSubmitPayload) => {
       if (!canChangeContent) return
+      const agreementId = agreementContext?.selectedAgreement?.id
       const response = await apiFetch(
-        `/api/requirements-specifications/${specificationId}/local-requirements`,
+        `/api/requirements-specifications/${specificationId}/${agreementId === undefined ? 'local-requirements' : 'agreement'}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(
+            agreementId === undefined
+              ? payload
+              : { operation: 'add_local', agreementId, content: payload },
+          ),
         },
       )
 
@@ -1721,17 +1754,25 @@ export default function KravunderlagDetailClient({
 
       setCreateLocalRequirementFormDirty(false)
       setShowCreateLocalRequirementModal(false)
+      setAgreementRefreshKey(key => key + 1)
       await editorWorkflow.actions.refreshAfterExternalMutation(
         'local-requirements-changed',
       )
     },
-    [canChangeContent, editorWorkflow, specificationId, tc],
+    [
+      canChangeContent,
+      agreementContext?.selectedAgreement?.id,
+      editorWorkflow,
+      specificationId,
+      tc,
+    ],
   )
 
   const handleImportLocalRequirementsClose = useCallback(
     async (importSucceeded: boolean) => {
       setShowImportLocalRequirementsModal(false)
       if (importSucceeded) {
+        setAgreementRefreshKey(key => key + 1)
         await editorWorkflow.actions.refreshAfterExternalMutation(
           'local-requirements-changed',
         )
@@ -1759,7 +1800,7 @@ export default function KravunderlagDetailClient({
   )
 
   const handleSaveNeedsReference = useCallback(async () => {
-    if (!canChangeContent) return
+    if (!canManageNeedsReferences) return
     if (!needsReferenceForm) return
     if (!needsReferenceFormDirty) return
     setNeedsReferenceSaving(true)
@@ -1799,7 +1840,7 @@ export default function KravunderlagDetailClient({
       setNeedsReferenceSaving(false)
     }
   }, [
-    canChangeContent,
+    canManageNeedsReferences,
     editorWorkflow,
     needsReferenceForm,
     needsReferenceFormDirty,
@@ -1813,7 +1854,7 @@ export default function KravunderlagDetailClient({
       needsReference: SpecificationNeedsReference,
       anchorEl?: HTMLElement,
     ) => {
-      if (!canChangeContent) return
+      if (!canManageNeedsReferences) return
       const confirmed = await confirm({
         anchorEl,
         confirmText: tc('delete'),
@@ -1849,7 +1890,7 @@ export default function KravunderlagDetailClient({
       await fetchNeedsReferences({ throwOnError: true })
     },
     [
-      canChangeContent,
+      canManageNeedsReferences,
       confirm,
       fetchNeedsReferences,
       localDetailCache,
@@ -1861,7 +1902,7 @@ export default function KravunderlagDetailClient({
 
   const handleNeedsReferenceAssignment = useCallback(
     async (itemRef: string, needsReferenceId: number | null) => {
-      if (!canChangeContent) return
+      if (!canFollowUp) return
       const originalItem =
         specificationItems.find(item => item.itemRef === itemRef) ?? null
       const nextNeedsReference =
@@ -1874,10 +1915,13 @@ export default function KravunderlagDetailClient({
         needsReferenceId,
         nextNeedsReference?.text ?? null,
       )
-      if (updated && originalItem) invalidateItemDetail(originalItem)
+      if (updated && originalItem) {
+        invalidateItemDetail(originalItem)
+        setAgreementRefreshKey(key => key + 1)
+      }
     },
     [
-      canChangeContent,
+      canFollowUp,
       availableNeedsRefs,
       editorWorkflow,
       invalidateItemDetail,
@@ -1886,7 +1930,7 @@ export default function KravunderlagDetailClient({
   )
 
   const openBulkNeedsReferenceModal = useCallback(async () => {
-    if (!canChangeContent) return
+    if (!canFollowUp) return
     editorWorkflow.actions.cancelBulkAction()
     try {
       const items = await editorWorkflow.actions.prepareBulkAction(
@@ -1901,14 +1945,14 @@ export default function KravunderlagDetailClient({
     } catch {
       // The workflow exposes the failure through its observable state.
     }
-  }, [canChangeContent, editorWorkflow])
+  }, [canFollowUp, editorWorkflow])
 
   const applyBulkNeedsReference = useCallback(
     async (
       needsReferenceId: number | null,
       confirmedItems: SpecificationListItem[],
     ) => {
-      if (!canChangeContent) return
+      if (!canFollowUp) return
       try {
         const successfulItems = confirmedItems.filter(
           item => item.needsReferenceId !== needsReferenceId,
@@ -1919,17 +1963,18 @@ export default function KravunderlagDetailClient({
           }
         }
         await editorWorkflow.actions.assignNeedsReference(needsReferenceId)
+        setAgreementRefreshKey(key => key + 1)
         setShowBulkNeedsReferenceModal(false)
       } catch {
         // The workflow exposes the failure through its observable state.
       }
     },
-    [canChangeContent, editorWorkflow, invalidateItemDetail],
+    [canFollowUp, editorWorkflow, invalidateItemDetail],
   )
 
   const handleClearNeedsReferences = useCallback(
     async (anchorEl?: HTMLElement) => {
-      if (!canChangeContent) return
+      if (!canFollowUp) return
       editorWorkflow.actions.cancelBulkAction()
       try {
         const items = await editorWorkflow.actions.prepareBulkAction(
@@ -1958,12 +2003,12 @@ export default function KravunderlagDetailClient({
         // The workflow exposes the failure through its observable state.
       }
     },
-    [canChangeContent, applyBulkNeedsReference, confirm, editorWorkflow, t],
+    [canFollowUp, applyBulkNeedsReference, confirm, editorWorkflow, t],
   )
 
   const handleSpecificationItemStatusChange = useCallback(
     async (itemRef: string, statusId: number) => {
-      if (!canChangeContent) return
+      if (!canFollowUp) return
       if (!spec) return
       const status = specificationItemStatuses.find(s => s.id === statusId)
       if (!status) return
@@ -1973,10 +2018,13 @@ export default function KravunderlagDetailClient({
         itemRef,
         status,
       )
-      if (updated && originalItem) invalidateItemDetail(originalItem)
+      if (updated && originalItem) {
+        invalidateItemDetail(originalItem)
+        setAgreementRefreshKey(key => key + 1)
+      }
     },
     [
-      canChangeContent,
+      canFollowUp,
       editorWorkflow,
       invalidateItemDetail,
       spec,
@@ -1990,6 +2038,7 @@ export default function KravunderlagDetailClient({
       if (!canChangeContent) return
       const requestedRefs = new Set(
         requestedItems
+          .filter(item => !item.isRemoved)
           .map(item => item.itemRef)
           .filter((itemRef): itemRef is string => Boolean(itemRef)),
       )
@@ -2017,12 +2066,55 @@ export default function KravunderlagDetailClient({
       const libraryCount = libraryItems.length
       const specificationLocalCount = specificationLocalItems.length
 
+      const affectedApprovals =
+        agreementContext?.deviations.filter(
+          deviation =>
+            requestedRefs.has(deviation.itemRef) &&
+            deviation.decision === 1 &&
+            !agreementContext.deviationEndings.some(
+              ending =>
+                ending.itemRef === deviation.itemRef &&
+                ending.deviationId === deviation.id &&
+                ending.endedAt,
+            ),
+        ) ?? []
+      const authorizeDeviationEndings = affectedApprovals.length > 0
+      if (authorizeDeviationEndings && !agreementContext?.canDecide) {
+        editorWorkflow.actions.cancelBulkAction()
+        await confirm({
+          anchorEl,
+          message: ta('responsibleEndingRequired'),
+          showCancel: false,
+          icon: 'warning',
+        })
+        return
+      }
+      const endingWarning = authorizeDeviationEndings
+        ? [
+            ...new Set(
+              affectedApprovals.map(deviation => {
+                const requirement = agreementContext?.items.find(
+                  item => item.itemRef === deviation.itemRef,
+                )
+                return `${requirement?.uniqueId ?? deviation.itemRef}: ${ta(requirement?.currentAgreementReference ? 'plannedEndingWarning' : agreementContext?.selectedAgreement ? 'draftEndingWarning' : 'workingContentEndingWarning')}`
+              }),
+            ),
+          ].join('\n')
+        : null
+
       const confirmed = await confirm({
         anchorEl,
-        confirmText: tc('delete'),
+        confirmText: authorizeDeviationEndings
+          ? ta(
+              agreementContext?.selectedAgreement
+                ? 'saveAndPlanEnding'
+                : 'saveAndEndDeviation',
+            )
+          : tc('delete'),
         icon: 'caution',
         message:
-          specificationLocalCount === 0
+          endingWarning ??
+          (specificationLocalCount === 0
             ? t('removeConfirm', {
                 count: libraryCount,
                 ids: libraryItems.map(item => item.uniqueId).join(', '),
@@ -2043,7 +2135,7 @@ export default function KravunderlagDetailClient({
                   specificationLocalIds: specificationLocalItems
                     .map(item => item.uniqueId)
                     .join(', '),
-                }),
+                })),
         title:
           specificationLocalCount === 0
             ? t('removeSelected', { count: libraryCount })
@@ -2058,7 +2150,10 @@ export default function KravunderlagDetailClient({
       }
 
       try {
-        const outcome = await editorWorkflow.actions.removeItems()
+        const outcome = await editorWorkflow.actions.removeItems(
+          authorizeDeviationEndings,
+        )
+        setAgreementRefreshKey(key => key + 1)
         const failedIds = new Set(outcome.failedUniqueIds)
         const removedItems = items.filter(item => !failedIds.has(item.uniqueId))
         setLeftExpandedItemRef(current =>
@@ -2070,7 +2165,7 @@ export default function KravunderlagDetailClient({
         // The workflow exposes the failure through its observable state.
       }
     },
-    [canChangeContent, confirm, editorWorkflow, t, tc],
+    [agreementContext, canChangeContent, confirm, editorWorkflow, t, ta, tc],
   )
 
   const handleRemoveSelected = useCallback(
@@ -2163,15 +2258,16 @@ export default function KravunderlagDetailClient({
     )
     editorWorkflow.actions.deselectItemRefs(hiddenRefs)
   }, [editorWorkflow, hiddenSelectedSpecificationItems])
-  const traceabilityQueryParams = useMemo(
-    () =>
-      buildRequirementListParams({
-        filters: leftFilters,
-        locale,
-        sort: leftSort,
-      }).toString(),
-    [leftFilters, leftSort, locale],
-  )
+  const traceabilityQueryParams = useMemo(() => {
+    const params = buildRequirementListParams({
+      filters: leftFilters,
+      locale,
+      sort: leftSort,
+    })
+    if (agreementContext?.selectedAgreement)
+      params.set('agreementId', String(agreementContext.selectedAgreement.id))
+    return params.toString()
+  }, [agreementContext?.selectedAgreement, leftFilters, leftSort, locale])
   const hasTraceabilityReportActions = filteredSpecificationItems.length > 0
 
   const specificationReportProfile = useMemo(
@@ -2217,12 +2313,13 @@ export default function KravunderlagDetailClient({
           specificationId,
         )}/exports?profile=${encodeURIComponent(
           profile,
-        )}&locale=${encodeURIComponent(locale)}`,
+        )}&locale=${encodeURIComponent(locale)}${agreementContext?.selectedAgreement ? `&agreementId=${agreementContext.selectedAgreement.id}` : ''}`,
       })
     },
     [
       exportProfileLabel,
       generatedOutputDownload,
+      agreementContext?.selectedAgreement,
       locale,
       spec,
       specificationId,
@@ -2241,11 +2338,12 @@ export default function KravunderlagDetailClient({
         restoreFocusTo,
         url: `/${locale}/specifications/${encodeURIComponent(
           specificationPathId,
-        )}/reports/pdf/${profile}`,
+        )}/reports/pdf/${profile}${agreementContext?.selectedAgreement ? `?agreementId=${agreementContext.selectedAgreement.id}` : ''}`,
       })
     },
     [
       generatedOutputDownload,
+      agreementContext?.selectedAgreement,
       locale,
       reportProfileLabel,
       specificationPathId,
@@ -2851,7 +2949,7 @@ export default function KravunderlagDetailClient({
     locale,
   )
   const openNeedsReferenceForm = () => {
-    if (!canChangeContent) return
+    if (!canManageNeedsReferences) return
     setNeedsReferenceError(null)
     const nextForm = {
       description: '',
@@ -3013,7 +3111,7 @@ export default function KravunderlagDetailClient({
           {/* Header */}
           <div className="mb-5">
             <div
-              className="flex flex-col gap-3 xl:grid xl:grid-cols-[minmax(40vw,1fr)_minmax(0,1fr)] xl:items-start xl:gap-5"
+              className="flex flex-col gap-3 xl:grid xl:grid-cols-[minmax(18rem,1fr)_minmax(0,2fr)] xl:items-start xl:gap-5"
               data-specification-detail-header-summary="true"
             >
               <div className="min-w-0">
@@ -3054,9 +3152,25 @@ export default function KravunderlagDetailClient({
                 className="grid grid-flow-col auto-cols-[minmax(12rem,1fr)] gap-3 overflow-x-auto pb-1 xl:auto-cols-fr"
                 data-specification-detail-header-metadata="true"
               >
+                <SpecificationAgreementBox
+                  itemRefs={leftExpandedItemRef ?? ''}
+                  onContextChange={(view, refreshItems) => {
+                    const stateChanged =
+                      agreementContext !== null &&
+                      agreementContext.selectedAgreement?.id ===
+                        view.selectedAgreement?.id &&
+                      agreementContext.selectedAgreement?.state !==
+                        view.selectedAgreement?.state
+                    setAgreementContext(view)
+                    if (refreshItems || stateChanged)
+                      void fetchSpecificationItems()
+                  }}
+                  refreshKey={agreementRefreshKey}
+                  specificationId={specificationId}
+                />
                 {spec.governanceObjectType && (
                   <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
+                    <dt className="text-[11px] font-semibold uppercase tracking-normal text-secondary-500 wrap-break-word dark:text-secondary-400">
                       {t('governanceObjectType')}
                     </dt>
                     <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">
@@ -3066,7 +3180,7 @@ export default function KravunderlagDetailClient({
                 )}
                 {responsibleDisplayName && (
                   <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
+                    <dt className="text-[11px] font-semibold uppercase tracking-normal text-secondary-500 wrap-break-word dark:text-secondary-400">
                       {t('responsible')}
                     </dt>
                     <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">
@@ -3081,7 +3195,7 @@ export default function KravunderlagDetailClient({
                 )}
                 {spec.implementationType && (
                   <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
+                    <dt className="text-[11px] font-semibold uppercase tracking-normal text-secondary-500 wrap-break-word dark:text-secondary-400">
                       {t('implementationType')}
                     </dt>
                     <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">
@@ -3091,7 +3205,7 @@ export default function KravunderlagDetailClient({
                 )}
                 {spec.lifecycleStatus && (
                   <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
+                    <dt className="text-[11px] font-semibold uppercase tracking-normal text-secondary-500 wrap-break-word dark:text-secondary-400">
                       {t('lifecycleStatus')}
                     </dt>
                     <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">
@@ -3103,13 +3217,6 @@ export default function KravunderlagDetailClient({
             </div>
           </div>
 
-          <SpecificationAgreementPanel
-            onChanged={() => {
-              void fetchSpecificationMeta()
-              void fetchSpecificationItems()
-            }}
-            specificationId={specificationId}
-          />
           {/* Split panel */}
           <div
             className={specificationDetailSplitPanelClassName}
@@ -3124,7 +3231,7 @@ export default function KravunderlagDetailClient({
                 >
                   <div className={splitPanelHeaderClassName}>
                     {renderLeftPanelTabs()}
-                    {canChangeContent ? (
+                    {canManageNeedsReferences ? (
                       <button
                         aria-label={t('newNeedsReference')}
                         className={leftPanelActionPillClassName}
@@ -3236,7 +3343,7 @@ export default function KravunderlagDetailClient({
                                   </td>
                                   <td className="px-3 py-2">
                                     <div className="flex justify-end gap-2">
-                                      {canChangeContent ? (
+                                      {canManageNeedsReferences ? (
                                         <button
                                           aria-label={t('editNeedsReference')}
                                           className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-secondary-200 text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
@@ -3263,7 +3370,7 @@ export default function KravunderlagDetailClient({
                                           />
                                         </button>
                                       ) : null}
-                                      {canChangeContent ? (
+                                      {canManageNeedsReferences ? (
                                         <button
                                           aria-label={t('deleteNeedsReference')}
                                           className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-red-200 text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/20"
@@ -3401,7 +3508,7 @@ export default function KravunderlagDetailClient({
                     {renderLeftPanelTabs()}
                   </div>
                   <SpecificationRfiListPanel
-                    canEdit={canChangeContent}
+                    canEdit={canEditContent}
                     specificationId={specificationId}
                   />
                 </div>
@@ -3502,9 +3609,7 @@ export default function KravunderlagDetailClient({
                     onFilterChange={setLeftFilters}
                     onLoadMore={() => void loadMoreSpecificationItems()}
                     onNeedsReferenceChange={
-                      canChangeContent
-                        ? handleNeedsReferenceAssignment
-                        : undefined
+                      canFollowUp ? handleNeedsReferenceAssignment : undefined
                     }
                     onRowActivate={row => {
                       if (leftExpandedId === row.id) {
@@ -3555,18 +3660,116 @@ export default function KravunderlagDetailClient({
                     onSelectionChange={handleLeftSelectionChange}
                     onSortChange={setLeftSort}
                     onSpecificationItemStatusChange={
-                      canChangeContent
+                      canFollowUp
                         ? handleSpecificationItemStatusChange
                         : undefined
                     }
                     onVisibleColumnsChange={setLeftVisibleCols}
                     renderExpanded={id => {
                       const item = specificationItems.find(r => r.id === id)
+                      const agreementItem = agreementContext?.items.find(
+                        requirement => requirement.itemRef === item?.itemRef,
+                      )
+                      if (
+                        item &&
+                        /^(lib|local):/.test(item.itemRef ?? '') &&
+                        (!agreementContext || !agreementItem)
+                      ) {
+                        return (
+                          <p
+                            className="p-4 text-sm text-secondary-600 dark:text-secondary-300"
+                            role="status"
+                          >
+                            {tc('loading')}
+                          </p>
+                        )
+                      }
                       return (
                         <div className="space-y-3">
-                          {item?.isSpecificationLocal &&
-                          item.specificationLocalRequirementId != null ? (
+                          {!agreementContext?.selectedAgreement &&
+                            agreementItem?.newerPublishedVersionId &&
+                            canChangeContent && (
+                              <SpecificationLibraryVersionUpdate
+                                authorizeDeviationEndings={
+                                  item?.hasApprovedDeviation
+                                }
+                                disabled={
+                                  item?.hasPendingDeviation ||
+                                  (item?.hasApprovedDeviation &&
+                                    !agreementContext?.canDecide)
+                                }
+                                disabledReason={
+                                  item?.hasPendingDeviation
+                                    ? ta('pendingDeviationWarning')
+                                    : item?.hasApprovedDeviation &&
+                                        !agreementContext?.canDecide
+                                      ? ta('responsibleEndingRequired')
+                                      : undefined
+                                }
+                                endingWarning={
+                                  item?.hasApprovedDeviation ? (
+                                    <p>{ta('workingEndingWarning')}</p>
+                                  ) : undefined
+                                }
+                                itemRef={agreementItem.itemRef}
+                                onChange={async itemRef => {
+                                  if (item) invalidateItemDetail(item)
+                                  setAgreementRefreshKey(key => key + 1)
+                                  await fetchSpecificationItems()
+                                  if (itemRef) setLeftExpandedItemRef(itemRef)
+                                }}
+                                specificationId={specificationId}
+                                submitLabel={
+                                  item?.hasApprovedDeviation
+                                    ? ta('saveAndEndDeviation')
+                                    : undefined
+                                }
+                              />
+                            )}
+                          {agreementContext &&
+                          agreementItem &&
+                          (agreementContext.selectedAgreement ||
+                            !item?.isSpecificationLocal) ? (
+                            <SpecificationAgreementRequirement
+                              item={agreementItem}
+                              key={`${agreementContext.selectedAgreement?.id ?? 'working'}:${agreementItem.itemRef}`}
+                              needsReferencesResource={needsReferencesResource}
+                              onChange={async itemRef => {
+                                setAgreementRefreshKey(key => key + 1)
+                                await Promise.all([
+                                  fetchSpecificationItems(),
+                                  fetchNeedsReferences(),
+                                ])
+                                if (itemRef) setLeftExpandedItemRef(itemRef)
+                              }}
+                              onRemoveFromSpecification={
+                                !agreementContext.selectedAgreement &&
+                                canChangeContent &&
+                                item
+                                  ? anchor => handleRemoveItems([item], anchor)
+                                  : undefined
+                              }
+                              removeFromSpecificationDisabled={
+                                bulkActionResolving || bulkActionSaving
+                              }
+                              row={item}
+                              specificationId={specificationId}
+                              view={agreementContext}
+                            />
+                          ) : item?.isSpecificationLocal &&
+                            item.specificationLocalRequirementId != null ? (
                             <SpecificationLocalRequirementDetailClient
+                              approvedDeviationEndingRequired={agreementContext?.deviations.some(
+                                deviation =>
+                                  deviation.itemRef === item.itemRef &&
+                                  deviation.decision === 1 &&
+                                  !agreementContext.deviationEndings.some(
+                                    ending =>
+                                      ending.itemRef === deviation.itemRef &&
+                                      ending.deviationId === deviation.id &&
+                                      ending.endedAt,
+                                  ),
+                              )}
                               detailCache={localDetailCache}
                               detailPrefetchContext={
                                 SPECIFICATION_LEFT_LOCAL_DETAIL_CONTEXT
@@ -3575,13 +3778,18 @@ export default function KravunderlagDetailClient({
                                 item.specificationLocalRequirementId
                               }
                               needsReferencesResource={needsReferencesResource}
-                              onChange={async () => {
+                              onChange={async successorId => {
+                                setAgreementRefreshKey(key => key + 1)
+                                if (successorId)
+                                  setLeftExpandedItemRef(`local:${successorId}`)
                                 await Promise.all([
                                   fetchSpecificationItems(),
                                   fetchNeedsReferences(),
                                 ])
                               }}
                               permissions={{
+                                canAuthorizeDeviationEndings:
+                                  agreementContext?.canDecide === true,
                                 canEditContent,
                                 canChangeContent,
                                 canReviewDecisions:
@@ -3604,9 +3812,13 @@ export default function KravunderlagDetailClient({
                           ) : item?.specificationItemId != null ? (
                             <RequirementDetailClient
                               currentActorName={currentActorName}
+                              defaultVersion={item.version?.versionNumber}
                               detailCache={libraryDetailCache}
                               detailPrefetchContext={
                                 SPECIFICATION_LEFT_LIBRARY_DETAIL_CONTEXT
+                              }
+                              expectedVersionId={
+                                agreementItem?.requirementVersionId ?? undefined
                               }
                               inline
                               onChange={async () => {
@@ -3655,7 +3867,9 @@ export default function KravunderlagDetailClient({
                     requirementPackageFilterPresentation="compact-band"
                     requirementPackages={leftRequirementPackages}
                     rows={filteredSpecificationItems}
-                    selectable={canChangeContent}
+                    selectable={
+                      canChangeContent || canFollowUp || canManageDeviations
+                    }
                     selectedIds={leftSelectedIds}
                     showSelectAll={false}
                     sortState={leftSort}
@@ -3731,119 +3945,135 @@ export default function KravunderlagDetailClient({
                     }
                     stickyTitle={renderLeftPanelTabs()}
                     stickyTitleActions={
-                      leftSelectedItemRefs.size > 0 && canChangeContent ? (
+                      leftSelectedItemRefs.size > 0 &&
+                      (canChangeContent ||
+                        canFollowUp ||
+                        canManageDeviations) ? (
                         <>
-                          <button
-                            aria-label={t('assignNeedsReferenceAction')}
-                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-secondary-300 text-secondary-700 transition-colors hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                            disabled={
-                              selectionActionLimitExceeded ||
-                              bulkActionResolving ||
-                              bulkActionSaving
-                            }
-                            {...devMarker({
-                              context: 'requirements specification detail',
-                              name: 'selection action',
-                              priority: 310,
-                              value: 'assign needs reference',
-                            })}
-                            onClick={() => void openBulkNeedsReferenceModal()}
-                            title={
-                              selectionActionLimitWarning ??
-                              t('assignNeedsReferenceAction')
-                            }
-                            type="button"
-                          >
-                            <Link2 aria-hidden="true" className="h-4 w-4" />
-                          </button>
-                          <button
-                            aria-label={t('clearNeedsReferenceAction')}
-                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-secondary-300 text-secondary-700 transition-colors hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                            disabled={
-                              selectionActionLimitExceeded ||
-                              bulkActionResolving ||
-                              bulkActionSaving
-                            }
-                            {...devMarker({
-                              context: 'requirements specification detail',
-                              name: 'selection action',
-                              priority: 311,
-                              value: 'clear needs reference',
-                            })}
-                            onClick={event =>
-                              void handleClearNeedsReferences(
-                                event.currentTarget as HTMLElement,
-                              )
-                            }
-                            title={
-                              selectionActionLimitWarning ??
-                              t('clearNeedsReferenceAction')
-                            }
-                            type="button"
-                          >
-                            <Link2Off aria-hidden="true" className="h-4 w-4" />
-                          </button>
-                          <button
-                            aria-label={td('requestDeviationSelected', {
-                              count: leftSelectedItemRefs.size,
-                            })}
-                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-amber-300 text-amber-700 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-amber-700/60 dark:text-amber-400 dark:hover:bg-amber-950/20"
-                            disabled={
-                              selectionActionLimitExceeded ||
-                              bulkActionResolving ||
-                              bulkActionSaving
-                            }
-                            {...devMarker({
-                              context: 'requirements specification detail',
-                              name: 'selection action',
-                              priority: 312,
-                              value: 'request deviations',
-                            })}
-                            onClick={() => void openBulkDeviationModal()}
-                            title={
-                              selectionActionLimitWarning ??
-                              td('requestDeviationSelected', {
+                          {canFollowUp && (
+                            <>
+                              <button
+                                aria-label={t('assignNeedsReferenceAction')}
+                                className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-secondary-300 text-secondary-700 transition-colors hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                                disabled={
+                                  selectionActionLimitExceeded ||
+                                  bulkActionResolving ||
+                                  bulkActionSaving
+                                }
+                                {...devMarker({
+                                  context: 'requirements specification detail',
+                                  name: 'selection action',
+                                  priority: 310,
+                                  value: 'assign needs reference',
+                                })}
+                                onClick={() =>
+                                  void openBulkNeedsReferenceModal()
+                                }
+                                title={
+                                  selectionActionLimitWarning ??
+                                  t('assignNeedsReferenceAction')
+                                }
+                                type="button"
+                              >
+                                <Link2 aria-hidden="true" className="h-4 w-4" />
+                              </button>
+                              <button
+                                aria-label={t('clearNeedsReferenceAction')}
+                                className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-secondary-300 text-secondary-700 transition-colors hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                                disabled={
+                                  selectionActionLimitExceeded ||
+                                  bulkActionResolving ||
+                                  bulkActionSaving
+                                }
+                                {...devMarker({
+                                  context: 'requirements specification detail',
+                                  name: 'selection action',
+                                  priority: 311,
+                                  value: 'clear needs reference',
+                                })}
+                                onClick={event =>
+                                  void handleClearNeedsReferences(
+                                    event.currentTarget as HTMLElement,
+                                  )
+                                }
+                                title={
+                                  selectionActionLimitWarning ??
+                                  t('clearNeedsReferenceAction')
+                                }
+                                type="button"
+                              >
+                                <Link2Off
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
+                              </button>
+                            </>
+                          )}
+                          {canManageDeviations && (
+                            <button
+                              aria-label={td('requestDeviationSelected', {
                                 count: leftSelectedItemRefs.size,
-                              })
-                            }
-                            type="button"
-                          >
-                            <AlertTriangle
-                              aria-hidden="true"
-                              className="h-4 w-4"
-                            />
-                          </button>
-                          <button
-                            aria-label={t('removeSelected', {
-                              count: leftSelectedItemRefs.size,
-                            })}
-                            className="btn-destructive inline-flex h-11 w-11 items-center justify-center rounded-lg px-0 py-0 disabled:cursor-not-allowed disabled:opacity-40"
-                            disabled={
-                              selectionActionLimitExceeded ||
-                              bulkActionResolving ||
-                              bulkActionSaving
-                            }
-                            {...devMarker({
-                              context: 'requirements specification detail',
-                              name: 'selection action',
-                              priority: 313,
-                              value: 'remove selected items',
-                            })}
-                            onClick={event =>
-                              void handleRemoveSelected(
-                                event.currentTarget as HTMLElement,
-                              )
-                            }
-                            title={
-                              selectionActionLimitWarning ??
-                              t('removeSelected', {
+                              })}
+                              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-amber-300 text-amber-700 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-amber-700/60 dark:text-amber-400 dark:hover:bg-amber-950/20"
+                              disabled={
+                                selectionActionLimitExceeded ||
+                                bulkActionResolving ||
+                                bulkActionSaving
+                              }
+                              {...devMarker({
+                                context: 'requirements specification detail',
+                                name: 'selection action',
+                                priority: 312,
+                                value: 'request deviations',
+                              })}
+                              onClick={() => void openBulkDeviationModal()}
+                              title={
+                                selectionActionLimitWarning ??
+                                td('requestDeviationSelected', {
+                                  count: leftSelectedItemRefs.size,
+                                })
+                              }
+                              type="button"
+                            >
+                              <AlertTriangle
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                              />
+                            </button>
+                          )}
+                          {canChangeContent && (
+                            <button
+                              aria-label={t('removeSelected', {
                                 count: leftSelectedItemRefs.size,
-                              })
-                            }
-                            type="button"
-                          >
-                            <Trash2 aria-hidden="true" className="h-4 w-4" />
-                          </button>
+                              })}
+                              className="btn-destructive inline-flex h-11 w-11 items-center justify-center rounded-lg px-0 py-0 disabled:cursor-not-allowed disabled:opacity-40"
+                              disabled={
+                                selectionActionLimitExceeded ||
+                                bulkActionResolving ||
+                                bulkActionSaving
+                              }
+                              {...devMarker({
+                                context: 'requirements specification detail',
+                                name: 'selection action',
+                                priority: 313,
+                                value: 'remove selected items',
+                              })}
+                              onClick={event =>
+                                void handleRemoveSelected(
+                                  event.currentTarget as HTMLElement,
+                                )
+                              }
+                              title={
+                                selectionActionLimitWarning ??
+                                t('removeSelected', {
+                                  count: leftSelectedItemRefs.size,
+                                })
+                              }
+                              type="button"
+                            >
+                              <Trash2 aria-hidden="true" className="h-4 w-4" />
+                            </button>
+                          )}
                         </>
                       ) : null
                     }
@@ -4147,6 +4377,7 @@ export default function KravunderlagDetailClient({
         specificationId={specificationId}
       />
       <LazyRequirementsImportDialog
+        agreementId={agreementContext?.selectedAgreement?.id}
         destinationName={spec.name}
         initialImport={aiLocalRequirementsInitialImport}
         mode="specification-local"

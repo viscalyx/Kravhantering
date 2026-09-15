@@ -443,6 +443,7 @@ export function createSpecificationWorkflow({
             verifiable: input.verifiable,
           }
           const page = await querySpecificationItemPage(db, {
+            agreementId: input.agreementId,
             cursor: input.cursor,
             filters,
             limit: input.limit,
@@ -702,7 +703,9 @@ export function createSpecificationWorkflow({
                 needsReferenceDescription: input.needsReferenceDescription,
                 needsReferenceId: input.needsReferenceId,
                 needsReferenceText: input.needsReferenceText,
+                agreementId: input.agreementId,
               },
+              context.actor.hsaId,
             )
           }
           if (addedCount > 0) {

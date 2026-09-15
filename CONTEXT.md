@@ -35,9 +35,10 @@ exakt ett krav.
 _Avoid_: Historikpost, kopia.
 
 **Krav-ID**:
-Den stabila identifieraren för ett krav över alla kravversioner. Ett krav-ID får
-aldrig upprepas eller återanvändas; en specifik kravversion anges med krav-ID
-och versionsnummer.
+Den stabila identifieraren för ett krav över dess versioner, unik i
+kravbiblioteket respektive inom det kravunderlag som ett lokalt krav tillhör.
+Identifieraren återanvänds inte för ett annat krav i samma sammanhang; ett
+lokalt krav identifieras utanför underlaget tillsammans med kravunderlagskoden.
 
 - `en`: Requirement ID
 
@@ -910,11 +911,9 @@ räcker termen krav.
 _Avoid_: Alla krav i kravbiblioteket när ingen kontrast behövs.
 
 **Kravunderlagslokalt krav**:
-Ett krav som bara finns i ett visst kravunderlag. Det är unikt för det
-kravunderlaget tills det eventuellt lyfts till kravbiblioteket. Det hör inte
-till ett kravområde; ansvaret ligger i kravunderlagets sammanhang hos
-kravunderlagsansvarig. Det kopplas inte till kravpaket, eftersom kravpaket är
-en gruppering av krav i kravbiblioteket.
+Ett krav som hör till ett visst kravunderlag, med egen identitet och innehåll
+som kan skilja sig mellan dess avtal. Det hör inte till ett kravområde eller
+kravpaket; en eventuell bibliotekskälla är en ursprungsreferens.
 
 - `en`: Specification-local requirement
 
@@ -939,8 +938,10 @@ _Avoid_: Flytta till kravbiblioteket, publicera direkt till kravbiblioteket.
 
 **Kravunderlag**:
 En sammanställd och spårbar samling av bibliotekskrav och eventuella
-kravunderlagslokala krav för ett specifikt projekt, upphandling, införande,
-förvaltning eller annat användningssammanhang.
+kravunderlagslokala krav för ett projekt, en upphandling, ett införande,
+förvaltning eller ett annat användningssammanhang.
+Samma kravunderlag kan omfatta flera på varandra följande avtal med varsin
+fullständig kravuppsättning.
 
 - `en`: Requirements specification
 
@@ -1011,32 +1012,91 @@ upphandling, införande, utveckling eller förvaltning.
 
 _Avoid_: Kravversionsstatus, genomförandeform.
 
-**Fastställelsestatus**:
-Status som beskriver om ett kravunderlags innehåll är fastställt som del av
-ett avtal. Fastställelsestatus är oberoende av kravunderlagets livscykelstatus.
+**Avtal**:
+En bekräftad eller förberedd överenskommelse som omfattar en fullständig
+kravuppsättning inom ett kravunderlag. Avtalen följer på varandra inom samma
+upphandling eller leverans.
 
-- `en`: Specification establishment status
+- `en`: Agreement
+
+_Avoid_: Kravunderlag, kravversion, parallellt leverantörsavtal.
+
+**Avtalsreferens**:
+Avtalets verksamhetsnära beteckning, unik inom kravunderlaget även för
+bevarade avbrutna avtal.
+
+- `en`: Agreement reference
+
+_Avoid_: Kravunderlagskod, löpnummer.
+
+**Avtalsdatum**:
+Det datum då avtalet börjar gälla.
+
+- `en`: Agreement effective date
+
+_Avoid_: Dokumentdatum, registreringsdatum.
+
+**Avtalsstatus**:
+Avtalets läge som utkast, kommande, aktuellt, tidigare, avbrutet eller upphört
+avtal, oberoende av kravunderlagets livscykelstatus.
+
+- `en`: Agreement status
 
 _Avoid_: Kravunderlagets livscykelstatus, användningsstatus.
 
-**Avtalstillägg**:
-En avtalad ändring av ett fastställt kravunderlag som samlar en eller flera
-kravunderlagsändringar med en gemensam motivering. Avtalstillägget hör till
-ett kravunderlag och beskriver förändringen mot dess tidigare avtalade
-innehåll.
+**Avtalsutkast**:
+Ett ännu inte bekräftat efterföljande avtal med en redigerbar fullständig
+kravuppsättning.
 
-- `en`: Agreement amendment
+- `en`: Agreement draft
 
-_Avoid_: Kravunderlagsrevision, kravversion, avsteg.
+_Avoid_: Kravutkast, avstegsutkast.
 
-**Kravunderlagsändring**:
-Ett tillägg, en ändring eller ett borttagande av ett enskilt krav i ett
-fastställt kravunderlag, knutet till ett specifikt avtalstillägg.
+**Kommande avtal**:
+Ett bekräftat avtal med låst kravuppsättning som ännu inte har börjat gälla.
 
-- `en`: Specification requirement change
+- `en`: Upcoming agreement
 
-_Avoid_: Kravändring utan kravunderlagssammanhang, avsteg, kravversion,
-generell ändring i kravbiblioteket.
+_Avoid_: Avtalsutkast, aktuellt avtal.
+
+**Aktuellt avtal**:
+Det avtal som gäller för kravunderlaget vid den aktuella tidpunkten.
+
+- `en`: Current agreement
+
+_Avoid_: Senast registrerat avtal, valt avtal.
+
+**Tidigare avtal**:
+Ett avtal som har ersatts av ett efterföljande avtal.
+
+- `en`: Previous agreement
+
+_Avoid_: Senare händelse, aktuell kravuppsättning.
+
+**Avbrutet avtal**:
+Ett bekräftat kommande avtal som avbryts innan det börjar gälla och vars
+bekräftade innehåll och beslut finns kvar som historik.
+
+- `en`: Cancelled agreement
+
+_Avoid_: Borttaget avtalsutkast, upphört avtal.
+
+**Upphört avtal**:
+Ett avtal vars avslut är registrerat och vars innehåll och uppföljning utgör
+historik.
+
+- `en`: Ended agreement
+
+_Avoid_: Avbrutet avtal, avslutat kravunderlag.
+
+**Avtalsändring**:
+Ett tillägg, en ändring eller ett borttagande av ett krav genom ett
+efterföljande avtal. Markeringen avser det avtal som introducerar det
+valda kravinnehållet och dess avtalsdatum.
+
+- `en`: Agreement change
+
+_Avoid_: Ändring i kravbiblioteket, rättelse av avtalsuppgifter, avsteg.
 
 **Kravpaket**:
 En återanvändbar gruppering av krav i kravbiblioteket för ett visst
@@ -1488,8 +1548,9 @@ _Avoid_: Kravstatus, kravversionsstatus.
 
 **Avsteg**:
 Ett underlagsspecifikt undantag från att följa ett krav i underlaget fullt ut.
-Avsteget hör till exakt en kravtillämpning eller ett kravunderlagslokalt krav
-och ändrar inte ett bibliotekskrav.
+Avsteget avser ett bestämt kravinnehåll i en kravtillämpning eller ett
+kravunderlagslokalt krav och kan vara gemensamt för avtal där innehållet är
+oförändrat.
 
 - `en`: Deviation
 
@@ -1513,8 +1574,9 @@ _Avoid_: Alla obeslutade avsteg, avstegsutkast, väntande avsteg.
 
 **Aktivt avsteg**:
 Ett avsteg utan registrerat beslut som inte har avbrutits och som är ett
-avstegsutkast eller ingår i avstegsbeslutsarbetskön. Ett krav i underlaget
-får ha högst ett aktivt avsteg.
+avstegsutkast eller ingår i avstegsbeslutsarbetskön. Ett bestämt kravinnehåll
+i underlaget får ha högst ett aktivt avsteg. Olika innehåll i aktuellt avtal
+och avtalsutkast kan ha var sitt ärende.
 
 - `en`: Active deviation
 
@@ -1527,6 +1589,30 @@ avslag. Ett avbrutet avsteg ingår inte längre i avstegsbeslutsarbetskön.
 - `en`: Cancelled deviation
 
 _Avoid_: Avslaget avsteg, avstegsutkast, raderat avsteg.
+
+**Gällande godkänt avsteg**:
+Ett godkänt avsteg som fortfarande gäller för det berörda kravinnehållet i
+kravunderlaget eller det valda avtalet.
+
+- `en`: Applicable approved deviation
+
+_Avoid_: Aktivt avsteg, avslutat avsteg, historiskt godkännande.
+
+**Planerat avslut av avsteg**:
+Ett godkänt framtida avslut av ett gällande avsteg när ett efterföljande
+avtals ändrade krav börjar gälla.
+
+- `en`: Planned deviation ending
+
+_Avoid_: Avbrutet avsteg, ändrat granskningsbeslut.
+
+**Avslutat avsteg**:
+Ett tidigare godkänt avsteg vars giltighet har upphört genom ett separat
+avslut, med det ursprungliga beslutet kvar som historik.
+
+- `en`: Ended deviation
+
+_Avoid_: Avbrutet avsteg, avslaget avsteg, raderat beslut.
 
 **Förbättringsförslag**:
 Återkoppling om att ett krav i kravbiblioteket kan förbättras, förtydligas

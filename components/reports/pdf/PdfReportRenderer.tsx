@@ -404,6 +404,48 @@ function PdfSpecificationCover({
             {section.specificationCode}
           </Text>
         </View>
+        {!section.agreement && (
+          <View style={styles.metadataItem}>
+            <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
+              {getReportLabels(section.locale).columns.agreementReference}
+            </Text>
+            <Text style={styles.fieldValue}>
+              {getReportLabels(section.locale).common.noAgreement}
+            </Text>
+          </View>
+        )}
+        {section.agreement && (
+          <>
+            <View style={styles.metadataItem}>
+              <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
+                {getReportLabels(section.locale).columns.agreementReference}
+              </Text>
+              <Text style={styles.fieldValue}>
+                {section.agreement.agreementReference}
+              </Text>
+            </View>
+            <View style={styles.metadataItem}>
+              <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
+                {getReportLabels(section.locale).columns.agreementEffectiveDate}
+              </Text>
+              <Text style={styles.fieldValue}>
+                {section.agreement.effectiveDate}
+              </Text>
+            </View>
+            <View style={styles.metadataItem}>
+              <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
+                {getReportLabels(section.locale).columns.agreementState}
+              </Text>
+              <Text style={styles.fieldValue}>
+                {
+                  getReportLabels(section.locale).agreementStates[
+                    section.agreement.state
+                  ]
+                }
+              </Text>
+            </View>
+          </>
+        )}
         {section.variant !== 'minimal' && (
           <>
             <View style={styles.metadataItem}>

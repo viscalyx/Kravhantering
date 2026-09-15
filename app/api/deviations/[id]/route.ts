@@ -16,6 +16,7 @@ import {
   idParamSchema,
   optionalBusinessTextSchema,
   parseRouteParams,
+  positiveIntegerSchema,
 } from '@/lib/http/validation'
 import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
@@ -30,6 +31,7 @@ type Params = Promise<{ id: string }>
 const updateDeviationSchema = z
   .object({
     motivation: optionalBusinessTextSchema,
+    agreementId: positiveIntegerSchema.optional(),
   })
   .strict()
 
@@ -82,6 +84,7 @@ export const PUT = secureMutationRoute({
       const db = authorizedDb ?? (await getRequestSqlServerDataSource())
       await updateDeviation(db, params.id, {
         motivation: body.motivation,
+        agreementId: body.agreementId,
       })
       return NextResponse.json({ ok: true })
     } catch (error) {

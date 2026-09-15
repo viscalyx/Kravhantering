@@ -13,6 +13,13 @@ import {
   traverseCompleteSpecificationItemResult,
 } from '@/lib/requirements/specification-item-page'
 
+vi.mock('@/lib/specifications/agreement-selection', () => ({
+  resolveAgreementSelection: vi.fn(async () => undefined),
+}))
+const database = {
+  transaction: async (run: (manager: object) => Promise<unknown>) => run({}),
+} as never
+
 const candidates = [
   {
     kindRank: 0 as const,
@@ -67,7 +74,7 @@ describe('querySpecificationItemPage', () => {
   })
 
   it('selects only limit plus one candidates and enriches the page', async () => {
-    const result = await querySpecificationItemPage({} as never, {
+    const result = await querySpecificationItemPage(database, {
       limit: 1,
       specificationId: 7,
     })
@@ -80,6 +87,7 @@ describe('querySpecificationItemPage', () => {
       expect.anything(),
       7,
       [candidates[0]],
+      undefined,
     )
     expect(result).toMatchObject({
       pagination: { count: 1, hasMore: true, limit: 1 },
@@ -88,7 +96,7 @@ describe('querySpecificationItemPage', () => {
   })
 
   it('allows a smaller continuation limit because page size is not fingerprinted', async () => {
-    const first = await querySpecificationItemPage({} as never, {
+    const first = await querySpecificationItemPage(database, {
       filters: { areaIds: [2, 1] },
       limit: 2,
       specificationId: 7,
@@ -97,7 +105,7 @@ describe('querySpecificationItemPage', () => {
     mocks.enrichSpecificationItemPage.mockResolvedValueOnce([])
 
     await expect(
-      querySpecificationItemPage({} as never, {
+      querySpecificationItemPage(database, {
         cursor: first.pagination.nextCursor ?? undefined,
         filters: { areaIds: [1, 2] },
         limit: 1,
@@ -109,14 +117,14 @@ describe('querySpecificationItemPage', () => {
   })
 
   it('rejects continuation when normalized query identity changes', async () => {
-    const first = await querySpecificationItemPage({} as never, {
+    const first = await querySpecificationItemPage(database, {
       filters: { descriptionSearch: 'first query' },
       limit: 2,
       specificationId: 7,
     })
 
     await expect(
-      querySpecificationItemPage({} as never, {
+      querySpecificationItemPage(database, {
         cursor: first.pagination.nextCursor ?? undefined,
         filters: { descriptionSearch: 'different query' },
         limit: 1,
@@ -127,7 +135,7 @@ describe('querySpecificationItemPage', () => {
 
   it.each([0, 101, 1.5])('rejects an out-of-contract limit', async limit => {
     await expect(
-      querySpecificationItemPage({} as never, {
+      querySpecificationItemPage(database, {
         limit,
         specificationId: 7,
       }),
@@ -163,7 +171,7 @@ describe('traverseCompleteSpecificationItemResult', () => {
     const visited: string[][] = []
 
     const result = await traverseCompleteSpecificationItemResult(
-      {} as never,
+      database,
       { specificationId: 7 },
       items => {
         visited.push(items.map(item => item.itemRef ?? ''))
@@ -193,7 +201,7 @@ describe('traverseCompleteSpecificationItemResult', () => {
 
     await expect(
       traverseCompleteSpecificationItemResult(
-        {} as never,
+        database,
         { specificationId: 7 },
         () => undefined,
       ),
@@ -213,7 +221,7 @@ describe('traverseCompleteSpecificationItemResult', () => {
 
     await expect(
       traverseCompleteSpecificationItemResult(
-        {} as never,
+        database,
         { specificationId: 7 },
         () => undefined,
       ),
@@ -235,7 +243,7 @@ describe('traverseCompleteSpecificationItemResult', () => {
     const visitPage = vi.fn()
 
     const result = await traverseCompleteSpecificationItemResult(
-      {} as never,
+      database,
       { specificationId: 7 },
       visitPage,
       { maxItems: 2 },
@@ -267,7 +275,7 @@ describe('traverseCompleteSpecificationItemResult', () => {
 
     await expect(
       traverseCompleteSpecificationItemResult(
-        {} as never,
+        database,
         { specificationId: 7 },
         visitPage,
         { createItemLimitError, maxItems: 2 },
@@ -285,7 +293,7 @@ describe('traverseCompleteSpecificationItemResult', () => {
 
     await expect(
       traverseCompleteSpecificationItemResult(
-        {} as never,
+        database,
         { specificationId: 7 },
         () => undefined,
         { signal: controller.signal },

@@ -237,3 +237,12 @@ suggestion-history template formats the implementation text without changing
 the original feedback-version grouping; the PDF renderer only styles that text.
 Implementation status labels use the same localized unknown-status fallback as
 the version headings.
+
+## Selected specification agreement
+
+Specification output routes accept `agreementId`. Resolve the selected agreement
+and any due activation before traversing pages, and pass that fixed context to
+both membership paging and enrichment. Norms and packages come from the exact
+binding version. The report cover and CSV row fields include the agreement
+reference, effective date and state. Profile reports and CSV retain their full
+set behavior; only traceability inherits the editor filters and ordering.

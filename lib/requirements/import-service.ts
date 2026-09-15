@@ -3513,6 +3513,7 @@ export function createRequirementsImportWorkflow({
       context: RequestContext,
       input: Omit<ImportExecuteBody, 'areaId'> & {
         specificationId: number
+        agreementId?: number
       },
     ): Promise<RequirementsImportExecuteResult> {
       const specificationId = await assertSpecificationExists(
@@ -3559,6 +3560,8 @@ export function createRequirementsImportWorkflow({
           specificationId,
           rows.map(toLocalRequirementMutationInput),
           {
+            agreementId: input.agreementId,
+            actorHsaId: context.actor.hsaId,
             beforeWrite: executor =>
               assertCurrentImportBudgetForWrite(executor, budget, { rows }),
             batchAudit: async (executor, createdIds) => {

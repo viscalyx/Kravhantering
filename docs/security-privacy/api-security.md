@@ -491,13 +491,43 @@ record field names, not assessment text or document links.
 
 `GET/POST /api/requirements-specifications/{id}/agreement` use the session,
 no-store responses and the common mutation CSRF policy. Read access follows the
-specification. The responsible person alone confirms assessment, establishes,
-decides/cancels amendments and ends the agreement. Authors may prepare amendments,
-adopt in editable work, cancel active deviations and reassess current bindings.
-The workflow checks ownership under the same specification transaction lock as
-membership mutation and new deviations. Assignment permissions do not bypass
-content protection. The strict OpenAPI request union rejects unknown fields;
-general application PATCH still cannot replace versions. Historic draft DELETE
-returns a cancellation-required conflict. Actor erasure/export covers all new
-agreement roles by exact HSA-id. Allowed agreement actions use the existing action
-audit transaction; free-text reasons remain in business history.
+specification. An explicit agreement selection must belong to that
+specification and controls content, history and permitted actions. A normal read
+returns agreement metadata. `itemRefs` explicitly selects at most 200 application
+references for requirement bodies and cases, restricted to the selected context.
+The browser requests only the expanded requirement. An explicit `endPreview=true`
+with `agreementId` reads affected case identities for the end confirmation.
+`historyItemRef` requires an explicit `agreementId` and reads only that
+requirement’s ancestry, including superseded content owned by its drafts.
+It also returns cases and ending events for those historical content versions.
+History, comparison, end preview and a requirement scope are mutually exclusive.
+Expected business conflicts expose safe reason codes for localized UI messages.
+
+The assigned responsible person alone confirms, discards a draft, cancels an
+upcoming agreement, corrects agreement metadata, registers agreement end and
+authorizes approved-deviation endings. Authors may prepare and edit eligible
+drafts, adopt published versions and cancel pending deviation requests.
+Admin does not substitute for the assigned responsible person in agreement
+decisions or for Reviewer in deviation decisions.
+
+The workflow checks ownership and content eligibility under the same
+specification transaction lock as membership changes and deviation guards.
+Confirmation locks the entire requirement set immediately. Follow-up remains
+available only in the current agreement or the pre-agreement working set.
+Historical and upcoming context cannot bypass this restriction through ordinary
+or bulk mutation routes. Deviation requests and review in draft/upcoming
+contexts apply only to the exact selected content. Case edit, request-review,
+revert-to-draft and decision mutations also accept the selected agreement and
+revalidate it under the same transaction lock.
+
+Content changes and approved-deviation ending plans commit or roll back together.
+Cancellation of a plan preserves the original approval and cancellation evidence.
+Draft discard removes only draft-owned content and cases; shared current cases
+survive. A confirmed upcoming cancellation retains its frozen evidence.
+Whole-specification deletion requires no current or pending agreement and does
+not replace separate retention/privacy policies.
+
+Strict request schemas reject unknown fields. Allowed agreement actions use the
+existing transactional action log. Corrections record old/new values without a
+reason prompt. HSA-id-based privacy export and erasure include agreement and
+ending actors while preserving business decisions and timestamps.

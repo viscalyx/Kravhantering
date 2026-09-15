@@ -1,0 +1,653 @@
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { ConfirmModalProvider } from '@/components/ConfirmModal'
+import type { SpecificationAgreementView } from '@/components/SpecificationAgreementBox'
+import SpecificationAgreementRequirement from '@/components/SpecificationAgreementRequirement'
+import type { AgreementItem } from '@/lib/specifications/agreements'
+import { requireTestValue } from '@/tests/helpers/require-test-value'
+
+vi.mock('next-intl', () => ({
+  useLocale: () => 'en',
+  useTranslations: (namespace: string) => {
+    const t = (key: string) => `${namespace}.${key}`
+    t.rich = t
+    return t
+  },
+}))
+
+const item: AgreementItem = {
+  itemRef: 'lib:9',
+  uniqueId: 'LIB-0009',
+  description: 'Library original',
+  acceptanceCriteria: 'Original criteria',
+  verificationMethod: 'Original method',
+  verifiable: true,
+  requirementCategoryId: null,
+  requirementTypeId: null,
+  qualityCharacteristicId: null,
+  priorityLevelId: null,
+  needsReferenceId: 7,
+  needsReference: 'Need A',
+  normReferenceIds: [11],
+  normReferences: 'Norm A',
+  note: null,
+  specificationItemStatusId: 1,
+  requirementId: 3,
+  requirementVersionId: 5,
+  versionNumber: 1,
+  newerPublishedVersionId: null,
+  sourceRequirementVersionId: null,
+  sourceUniqueId: null,
+  sourceVersionNumber: null,
+  validFrom: new Date('2020-01-01'),
+  validUntil: null,
+  changeDate: null,
+  changeKind: null,
+}
+const agreement = {
+  id: 2,
+  agreementReference: 'B',
+  effectiveDate: '2035-01-01',
+  state: 'draft',
+  description: null,
+  createdAt: new Date('2026-01-01'),
+  createdBy: 'Author',
+  confirmedBy: null,
+  cancelledBy: null,
+  endedBy: null,
+  confirmedAt: null,
+  activatedAt: null,
+  cancelledAt: null,
+  endedAt: null,
+  replacedAt: null,
+  cancellationReason: null,
+  endReason: null,
+  endDate: null,
+}
+const view: SpecificationAgreementView = {
+  confirmationDeviations: [],
+  selectedAgreement: agreement,
+  agreements: [agreement],
+  items: [item],
+  corrections: [],
+  deviations: [],
+  deviationEndings: [],
+  canAuthor: true,
+  canReviewDeviations: false,
+  canDecide: true,
+  canEditContent: true,
+  canFollowUp: false,
+}
+
+describe('selected agreement requirement author workflow', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('opens historical content from the requirement row and compares the previous agreement', async () => {
+    const user = userEvent.setup()
+    const previous = {
+      agreementId: 1,
+      agreementReference: 'A',
+      effectiveDate: '2020-01-01',
+      item: {
+        ...item,
+        description: 'Earlier requirement content',
+        acceptanceCriteria: 'Earlier acceptance criteria',
+      },
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ entries: [previous], previous })),
+      ),
+    )
+    render(
+      <ConfirmModalProvider>
+        <SpecificationAgreementRequirement
+          item={item}
+          needsReferencesResource={{
+            data: [],
+            loading: false,
+            error: null,
+            refreshing: false,
+            refreshError: null,
+            reload: async () => [],
+          }}
+          onChange={async () => {}}
+          specificationId={1}
+          view={view}
+        />
+      </ConfirmModalProvider>,
+    )
+    await user.click(screen.getByText('agreement.requirementHistory'))
+    expect(await screen.findByText('Earlier requirement content')).toBeVisible()
+    await user.click(screen.getByText('agreement.requirementActions'))
+    await user.click(
+      screen.getByRole('button', { name: 'agreement.comparePrevious' }),
+    )
+    const dialog = screen.getByRole('dialog', {
+      name: 'agreement.comparePrevious',
+    })
+    expect(
+      within(dialog).getByText('Earlier acceptance criteria'),
+    ).toBeVisible()
+    expect(within(dialog).getByText('Library original')).toBeVisible()
+  })
+
+  it('edits a pending case in the selected agreement and shows save errors inside its dialog', async () => {
+    const user = userEvent.setup()
+    const fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            code: 'conflict',
+            error: 'The agreement is now historical',
+          }),
+          { status: 409 },
+        ),
+    )
+    vi.stubGlobal('fetch', fetch)
+    render(
+      <ConfirmModalProvider>
+        <SpecificationAgreementRequirement
+          item={item}
+          needsReferencesResource={{
+            data: [],
+            loading: false,
+            error: null,
+            refreshing: false,
+            refreshError: null,
+            reload: async () => [],
+          }}
+          onChange={async () => {}}
+          specificationId={1}
+          view={{
+            ...view,
+            deviations: [
+              {
+                id: 8,
+                itemRef: item.itemRef,
+                motivation: 'Original reason',
+                decision: null,
+                decisionMotivation: null,
+                decidedAt: null,
+                isReviewRequested: 0,
+              },
+            ],
+          }}
+        />
+      </ConfirmModalProvider>,
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'deviation.editDeviation' }),
+    )
+    const dialog = screen.getByRole('dialog', {
+      name: 'deviation.editDeviation',
+    })
+    await user.clear(within(dialog).getByRole('textbox'))
+    await user.type(within(dialog).getByRole('textbox'), 'Updated reason')
+    await user.click(
+      within(dialog).getByRole('button', { name: 'common.save' }),
+    )
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'agreement.contentChangedError',
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/deviations/8',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ motivation: 'Updated reason', agreementId: 2 }),
+      }),
+    )
+  })
+
+  it('saves a follow-up note in the selected current agreement without editing requirement content', async () => {
+    const user = userEvent.setup()
+    const fetch = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(JSON.stringify({ ok: true })),
+    )
+    vi.stubGlobal('fetch', fetch)
+    const onChange = vi.fn(async () => undefined)
+    render(
+      <ConfirmModalProvider>
+        <SpecificationAgreementRequirement
+          item={item}
+          needsReferencesResource={{
+            data: [],
+            loading: false,
+            error: null,
+            refreshing: false,
+            refreshError: null,
+            reload: async () => [],
+          }}
+          onChange={onChange}
+          specificationId={1}
+          view={{
+            ...view,
+            canEditContent: false,
+            canFollowUp: true,
+            selectedAgreement: { ...agreement, state: 'current' },
+          }}
+        />
+      </ConfirmModalProvider>,
+    )
+    await user.click(screen.getByRole('button', { name: 'agreement.editNote' }))
+    const dialog = screen.getByRole('dialog', { name: 'agreement.editNote' })
+    await user.type(
+      within(dialog).getByRole('textbox'),
+      'Verification evidence received',
+    )
+    await user.click(
+      within(dialog).getByRole('button', { name: 'common.save' }),
+    )
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/requirements-specifications/1/items/lib%3A9',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({
+          agreementId: 2,
+          note: 'Verification evidence received',
+        }),
+      }),
+    )
+  })
+
+  it('keeps later shared-case approval inside history without changing the historical pending result', async () => {
+    const user = userEvent.setup()
+    const selected = {
+      ...agreement,
+      state: 'previous',
+      replacedAt: new Date('2026-08-01'),
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              entries: [
+                {
+                  agreementId: selected.id,
+                  agreementReference: 'B',
+                  effectiveDate: selected.effectiveDate,
+                  item,
+                },
+              ],
+              previous: null,
+            }),
+          ),
+      ),
+    )
+    render(
+      <ConfirmModalProvider>
+        <SpecificationAgreementRequirement
+          item={item}
+          needsReferencesResource={{
+            data: [],
+            loading: false,
+            error: null,
+            refreshing: false,
+            refreshError: null,
+            reload: async () => [],
+          }}
+          onChange={async () => {}}
+          specificationId={1}
+          view={{
+            ...view,
+            canEditContent: false,
+            selectedAgreement: selected,
+            agreements: [selected],
+            deviations: [
+              {
+                id: 8,
+                itemRef: item.itemRef,
+                motivation: 'Shared case',
+                createdAt: new Date('2026-07-01'),
+                decision: 1,
+                decisionMotivation: 'Approved later',
+                decidedAt: new Date('2026-08-02'),
+              },
+            ],
+          }}
+        />
+      </ConfirmModalProvider>,
+    )
+    expect(screen.getByText('deviation.statusPending')).toBeVisible()
+    expect(
+      screen.queryByRole('region', { name: 'agreement.laterEvents' }),
+    ).toBeNull()
+    await user.click(
+      screen.getByText('agreement.requirementHistory', { selector: 'summary' }),
+    )
+    const later = await screen.findByRole('region', {
+      name: 'agreement.laterEvents',
+    })
+    expect(within(later).getByText('deviation.statusApproved')).toBeVisible()
+    expect(within(later).getByText('Approved later')).toBeVisible()
+  })
+
+  it('creates an avsteg against the selected upcoming agreement from the requirement list', async () => {
+    const user = userEvent.setup()
+    const fetch = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(JSON.stringify({ id: 12, ok: true })),
+    )
+    vi.stubGlobal('fetch', fetch)
+    const onChange = vi.fn(async () => undefined)
+    render(
+      <ConfirmModalProvider>
+        <SpecificationAgreementRequirement
+          item={item}
+          needsReferencesResource={{
+            data: [],
+            loading: false,
+            error: null,
+            refreshing: false,
+            refreshError: null,
+            reload: async () => [],
+          }}
+          onChange={onChange}
+          specificationId={1}
+          view={{
+            ...view,
+            canEditContent: false,
+            selectedAgreement: { ...agreement, state: 'upcoming' },
+          }}
+        />
+      </ConfirmModalProvider>,
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'deviation.requestDeviation' }),
+    )
+    const dialog = screen.getByRole('dialog', {
+      name: 'deviation.requestDeviation',
+    })
+    await user.type(
+      within(dialog).getByRole('textbox'),
+      'Exception for the upcoming agreement',
+    )
+    await user.click(
+      within(dialog).getByRole('button', { name: 'deviation.newDeviation' }),
+    )
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    const request = requireTestValue(
+      fetch.mock.calls.find(call => call[1]?.method === 'POST'),
+    )
+    expect(request[0]).toBe('/api/specification-item-deviations/lib%3A9')
+    expect(JSON.parse(String(request[1]?.body))).toEqual({
+      agreementId: 2,
+      motivation: 'Exception for the upcoming agreement',
+    })
+  })
+
+  it('requires explicit cancellation with a reason before editing content with a pending deviation', async () => {
+    const user = userEvent.setup()
+    const fetch = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(JSON.stringify({ ok: true })),
+    )
+    vi.stubGlobal('fetch', fetch)
+    const onChange = vi.fn(async () => undefined)
+    render(
+      <ConfirmModalProvider>
+        <SpecificationAgreementRequirement
+          item={item}
+          needsReferencesResource={{
+            data: [],
+            loading: false,
+            error: null,
+            refreshing: false,
+            refreshError: null,
+            reload: async () => [],
+          }}
+          onChange={onChange}
+          specificationId={1}
+          view={{
+            ...view,
+            deviations: [
+              {
+                id: 8,
+                itemRef: item.itemRef,
+                motivation: 'Review needed',
+                decision: null,
+                decisionMotivation: null,
+                decidedAt: null,
+              },
+            ],
+          }}
+        />
+      </ConfirmModalProvider>,
+    )
+    expect(
+      screen.getByRole('button', { name: 'agreement.editRequirement' }),
+    ).toBeDisabled()
+    expect(screen.getByText('agreement.pendingDeviationWarning')).toBeVisible()
+    await user.click(
+      screen.getByRole('button', { name: 'agreement.cancelDeviation' }),
+    )
+    const dialog = screen.getByRole('dialog', {
+      name: 'agreement.cancelDeviation',
+    })
+    await user.type(
+      within(dialog).getByRole('textbox', { name: /^agreement.reason/ }),
+      'Revise the reviewed content',
+    )
+    await user.click(
+      within(dialog).getByRole('button', { name: 'agreement.cancelDeviation' }),
+    )
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))).toEqual({
+      operation: 'cancel_deviation',
+      agreementId: 2,
+      itemRef: item.itemRef,
+      deviationId: 8,
+      reason: 'Revise the reviewed content',
+    })
+  })
+
+  it('keeps removed draft content visible and restores it through the row undo action', async () => {
+    const user = userEvent.setup()
+    const fetch = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(JSON.stringify({ ok: true })),
+    )
+    vi.stubGlobal('fetch', fetch)
+    const onChange = vi.fn(async () => undefined)
+    const needsReferencesResource = {
+      data: [],
+      loading: false,
+      error: null,
+      refreshing: false,
+      refreshError: null,
+      reload: async () => [],
+    }
+    const { rerender } = render(
+      <ConfirmModalProvider>
+        <SpecificationAgreementRequirement
+          item={item}
+          needsReferencesResource={needsReferencesResource}
+          onChange={onChange}
+          specificationId={1}
+          view={view}
+        />
+      </ConfirmModalProvider>,
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'agreement.removeRequirement' }),
+    )
+    const confirmation = await screen.findByRole('alertdialog')
+    await user.click(
+      within(confirmation).getByRole('button', {
+        name: 'agreement.removeRequirement',
+      }),
+    )
+    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1))
+    expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))).toEqual({
+      operation: 'remove_requirement',
+      agreementId: 2,
+      itemRef: item.itemRef,
+    })
+    rerender(
+      <ConfirmModalProvider>
+        <SpecificationAgreementRequirement
+          item={{
+            ...item,
+            isRemoved: true,
+            changeKind: 'removed',
+            changeDate: agreement.effectiveDate,
+          }}
+          needsReferencesResource={needsReferencesResource}
+          onChange={onChange}
+          specificationId={1}
+          view={view}
+        />
+      </ConfirmModalProvider>,
+    )
+    expect(screen.getByText('Library original')).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'agreement.editRequirement' }),
+    ).not.toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'agreement.undoRequirement' }),
+    )
+    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(2))
+    expect(JSON.parse(String(fetch.mock.calls[1]?.[1]?.body))).toEqual({
+      operation: 'undo_requirement',
+      agreementId: 2,
+      itemRef: item.itemRef,
+    })
+  })
+
+  it.each([false, true])(
+    'edits library content with the full form and explicit approval-ending consent when needed (%s)',
+    async approved => {
+      const user = userEvent.setup()
+      const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === 'POST')
+          return new Response(JSON.stringify({ itemRef: 'local:21' }))
+        const catalogs: Record<string, unknown> = {
+          'requirement-categories': { categories: [] },
+          'requirement-types': { types: [] },
+          'priority-levels': { priorityLevels: [] },
+          'quality-characteristics': { qualityCharacteristics: [] },
+          'norm-references': {
+            normReferences: [
+              { id: 11, name: 'Norm A', normReferenceId: 'NORM-A' },
+            ],
+          },
+        }
+        return new Response(
+          JSON.stringify(
+            Object.entries(catalogs).find(([path]) =>
+              url.includes(path),
+            )?.[1] ?? {},
+          ),
+        )
+      })
+      vi.stubGlobal('fetch', fetch)
+      const onChange = vi.fn(async () => undefined)
+      render(
+        <ConfirmModalProvider>
+          <SpecificationAgreementRequirement
+            item={{ ...item, currentAgreementReference: 'A' }}
+            needsReferencesResource={{
+              data: [{ id: 7, text: 'Need A' }],
+              loading: false,
+              error: null,
+              refreshing: false,
+              refreshError: null,
+              reload: async () => [],
+            }}
+            onChange={onChange}
+            specificationId={1}
+            view={
+              approved
+                ? {
+                    ...view,
+                    deviations: [
+                      {
+                        id: 8,
+                        itemRef: item.itemRef,
+                        motivation: 'Approved exception',
+                        decision: 1,
+                        decisionMotivation: 'Approved',
+                        decidedAt: new Date('2026-01-01'),
+                      },
+                    ],
+                  }
+                : view
+            }
+          />
+        </ConfirmModalProvider>,
+      )
+      await user.click(
+        screen.getByRole('button', { name: 'agreement.editRequirement' }),
+      )
+      const dialog = screen.getByRole('dialog', {
+        name: 'agreement.editRequirement',
+      })
+      expect(
+        within(dialog).getByText('agreement.localConversionWarning'),
+      ).toBeVisible()
+      expect(
+        within(dialog).getByRole('textbox', {
+          name: /requirement.acceptanceCriteria/,
+        }),
+      ).toHaveValue('Original criteria')
+      expect(
+        within(dialog).getByRole('textbox', {
+          name: /requirement.verificationMethod/,
+        }),
+      ).toHaveValue('Original method')
+      expect(
+        fetch.mock.calls.filter(([, init]) => init?.method === 'POST'),
+      ).toHaveLength(0)
+      fireEvent.change(
+        within(dialog).getByRole('textbox', {
+          name: /requirement.description/,
+        }),
+        { target: { value: 'Negotiated content' } },
+      )
+      if (approved)
+        expect(
+          within(dialog).getByText('agreement.plannedEndingWarning'),
+        ).toBeVisible()
+      const save = within(dialog).getByRole('button', {
+        name: approved ? 'agreement.saveAndPlanEnding' : 'common.save',
+      })
+      await waitFor(() => expect(save).toBeEnabled())
+      await user.click(save)
+      await waitFor(() => expect(onChange).toHaveBeenCalledWith('local:21'))
+      const posted = fetch.mock.calls.find(
+        ([, init]) => init?.method === 'POST',
+      )
+      expect(JSON.parse(String(posted?.[1]?.body))).toEqual({
+        operation: 'save_requirement',
+        agreementId: 2,
+        itemRef: 'lib:9',
+        ...(approved ? { authorizeDeviationEndings: true } : {}),
+        content: {
+          description: 'Negotiated content',
+          acceptanceCriteria: 'Original criteria',
+          verifiable: true,
+          verificationMethod: 'Original method',
+          needsReferenceId: 7,
+          normReferenceIds: [11],
+          requirementCategoryId: null,
+          requirementTypeId: null,
+          qualityCharacteristicId: null,
+          priorityLevelId: null,
+        },
+      })
+    },
+  )
+})

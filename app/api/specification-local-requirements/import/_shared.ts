@@ -10,6 +10,7 @@ import {
 
 const specificationIdBodyShape = {
   specificationId: positiveIntegerSchema,
+  agreementId: positiveIntegerSchema.optional(),
 }
 
 export const specificationImportPreviewBodySchema = importPreviewBodySchema

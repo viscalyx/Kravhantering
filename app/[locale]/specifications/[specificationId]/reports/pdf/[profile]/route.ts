@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server'
+import { z } from 'zod'
 import {
   authorizeSpecificationReportRead,
   createReportRuntime,
@@ -7,6 +8,10 @@ import {
   resolveReportSpecification,
 } from '@/app/[locale]/requirements/reports/pdf/route-helpers'
 import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
+import {
+  parseSearchParams,
+  positiveIntegerStringSchema,
+} from '@/lib/http/validation'
 import {
   createPdfItemLimitError,
   runSynchronousPdfGeneration,
@@ -38,6 +43,14 @@ export async function GET(
       throw new ReportDataError('Invalid report profile', 400)
     }
 
+    const queryParams = new URLSearchParams(request.nextUrl.searchParams)
+    const parsedQuery = parseSearchParams(
+      queryParams,
+      z
+        .object({ agreementId: positiveIntegerStringSchema.optional() })
+        .strict(),
+    )
+    if (!parsedQuery.ok) return parsedQuery.response
     const runtime = await createReportRuntime(request)
     const specification = await resolveReportSpecification(
       runtime.db,
@@ -71,6 +84,7 @@ export async function GET(
           specification.id,
           {
             createItemLimitError: createPdfItemLimitError,
+            agreementId: parsedQuery.data.agreementId,
             maxItems: itemLimit,
             signal,
           },

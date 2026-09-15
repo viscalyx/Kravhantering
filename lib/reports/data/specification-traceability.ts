@@ -6,6 +6,10 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { throwIfGenerationAborted } from '@/lib/generated-output/operation'
+import {
+  type ReportAgreementContext,
+  resolveReportAgreementContext,
+} from '@/lib/reports/data/agreement-context'
 import { ReportDataError } from '@/lib/reports/data/server'
 import {
   type CompleteSpecificationItemTraversalOptions,
@@ -17,6 +21,7 @@ import {
 } from '@/lib/requirements/specification-item-query'
 
 export interface SpecificationTraceabilityData {
+  agreement?: ReportAgreementContext | null
   items: TraceabilityReportItem[]
   specification: SpecificationTraceabilitySpecification
 }
@@ -55,10 +60,18 @@ export async function collectSpecificationTraceabilityData(
     typeof specificationInput === 'object'
       ? specificationInput
       : await resolveSpecification(db, specificationInput)
+  const agreement = await resolveReportAgreementContext(
+    db,
+    specification.id,
+    query.agreementId,
+  )
   const items: TraceabilityReportItem[] = []
   await traverseCompleteSpecificationItemResult(
     db,
-    toSpecificationItemPageInput(specification.id, query),
+    toSpecificationItemPageInput(specification.id, {
+      ...query,
+      agreementId: agreement?.id,
+    }),
     async pageItems => {
       if (traversalOptions.signal) {
         throwIfGenerationAborted(traversalOptions.signal)
@@ -70,6 +83,7 @@ export async function collectSpecificationTraceabilityData(
         db,
         specification.id,
         itemRefs,
+        agreement?.id,
       )
       const detailsByRef = new Map(
         pageDetails.map(item => [item.itemRef, item]),
@@ -90,5 +104,5 @@ export async function collectSpecificationTraceabilityData(
     traversalOptions,
   )
 
-  return { items, specification }
+  return { items, specification, agreement }
 }

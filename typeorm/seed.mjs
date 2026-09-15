@@ -14816,6 +14816,25 @@ async function seedDemoLifecycleRow({
   row,
   table,
 }) {
+  if (table === 'specification_agreement_items') {
+    await query(defaultSql, row)
+    const value = column => row[columns.indexOf(column)]
+    for (const [bindingTable, column] of [
+      ['requirements_specification_items', 'specification_item_id'],
+      [
+        'specification_local_requirements',
+        'specification_local_requirement_id',
+      ],
+    ]) {
+      if (value(column) == null) continue
+      await query(
+        `UPDATE [${bindingTable}] SET origin_agreement_item_id = @1
+         WHERE id = @0 AND owning_agreement_id = @2 AND origin_agreement_item_id IS NULL`,
+        [value(column), value('id'), value('specification_agreement_id')],
+      )
+    }
+    return true
+  }
   if (
     table !== 'improvement_suggestions' &&
     table !== 'rfi_question_suggestions'

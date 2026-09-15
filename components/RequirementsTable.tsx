@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Columns3,
   DiamondPlus,
+  FilePenLine,
   Filter,
   Minus,
   Search,
@@ -2447,6 +2448,23 @@ export default function RequirementsTable({
             }
           >
             {row.version?.description ?? '—'}
+            {row.changeDate && (
+              <span
+                className={`ml-2 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium ${row.isRemoved ? 'border-red-300 text-red-800 dark:border-red-700 dark:text-red-200' : 'border-primary-300 text-primary-800 dark:border-primary-700 dark:text-primary-200'}`}
+                {...devMarker({
+                  context: 'requirements specification detail',
+                  name: 'requirement badge',
+                  value: 'agreement change date',
+                  priority: 300,
+                })}
+              >
+                <FilePenLine aria-hidden="true" className="h-3 w-3" />
+                <span>
+                  {row.isRemoved ? t('agreementRemoved') : t('agreementChange')}
+                </span>
+                <time dateTime={row.changeDate}>{row.changeDate}</time>
+              </span>
+            )}
           </td>
         )
       case 'area':

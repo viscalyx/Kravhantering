@@ -35,19 +35,26 @@ export function createHttpSpecificationEditorAdapter({
   const specificationItemsPath = `/api/requirements-specifications/${specificationId}/items`
 
   return {
-    async assignNeedsReference(itemRefs, needsReferenceId) {
+    async assignNeedsReference(itemRefs, needsReferenceId, agreementId) {
       const response = await apiFetch(specificationItemsPath, {
-        body: JSON.stringify({ itemRefs, needsReferenceId }),
+        body: JSON.stringify({
+          itemRefs,
+          needsReferenceId,
+          ...(agreementId === undefined ? {} : { agreementId }),
+        }),
         headers: { 'Content-Type': 'application/json' },
         method: 'PATCH',
       })
       await assertOk(response, loadItemsFailedMessage)
     },
-    async createDeviation(itemRef, motivation) {
+    async createDeviation(itemRef, motivation, agreementId) {
       const response = await apiFetch(
         `/api/specification-item-deviations/${encodeURIComponent(itemRef)}`,
         {
-          body: JSON.stringify({ motivation }),
+          body: JSON.stringify({
+            motivation,
+            ...(agreementId === undefined ? {} : { agreementId }),
+          }),
           headers: { 'Content-Type': 'application/json' },
           method: 'POST',
         },
@@ -77,23 +84,37 @@ export function createHttpSpecificationEditorAdapter({
         throw new Error(refreshNeedsReferencesFailedMessage)
       }
     },
-    async removeItems(itemRefs) {
+    async removeItems(itemRefs, agreementId, authorizeDeviationEndings) {
       const response = await apiFetch(specificationItemsPath, {
-        body: JSON.stringify({ itemRefs }),
+        body: JSON.stringify({
+          itemRefs,
+          ...(agreementId === undefined ? {} : { agreementId }),
+          ...(authorizeDeviationEndings
+            ? { authorizeDeviationEndings: true }
+            : {}),
+        }),
         headers: { 'Content-Type': 'application/json' },
         method: 'DELETE',
       })
       await assertOk(response, loadItemsFailedMessage)
       return (await response.json()) as { removedCount: number }
     },
-    async resolveItems(itemRefs) {
-      return resolveItems(specificationId, itemRefs, loadItemsFailedMessage)
+    async resolveItems(itemRefs, agreementId) {
+      return resolveItems(
+        specificationId,
+        itemRefs,
+        loadItemsFailedMessage,
+        agreementId,
+      )
     },
-    async updateItem(itemRef, changes) {
+    async updateItem(itemRef, changes, agreementId) {
       const response = await apiFetch(
         `${specificationItemsPath}/${encodeURIComponent(itemRef)}`,
         {
-          body: JSON.stringify(changes),
+          body: JSON.stringify({
+            ...changes,
+            ...(agreementId === undefined ? {} : { agreementId }),
+          }),
           headers: { 'Content-Type': 'application/json' },
           method: 'PATCH',
         },
@@ -115,6 +136,8 @@ async function loadItemsPage(
     sort: request.query.sort,
   })
   if (request.cursor) params.set('cursor', request.cursor)
+  if (request.query.agreementId !== undefined)
+    params.set('agreementId', String(request.query.agreementId))
   const response = await apiFetch(`${path}?${params}`, {
     signal: request.signal,
   })
@@ -152,6 +175,7 @@ async function resolveItems(
   specificationId: number,
   itemRefs: string[],
   fallbackMessage: string,
+  agreementId?: number,
 ): Promise<ResolvedSpecificationEditorItem[]> {
   const resolvedItems: ResolvedSpecificationEditorItem[] = []
   for (
@@ -160,6 +184,8 @@ async function resolveItems(
     offset += SPECIFICATION_ITEM_RESOLUTION_CHUNK_SIZE
   ) {
     const params = new URLSearchParams()
+    if (agreementId !== undefined)
+      params.set('agreementId', String(agreementId))
     for (const itemRef of itemRefs.slice(
       offset,
       offset + SPECIFICATION_ITEM_RESOLUTION_CHUNK_SIZE,

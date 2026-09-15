@@ -210,7 +210,19 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
     if (entry.object === 'dbo.requirements_specifications') {
       return [
         Object.freeze({
-          object: 'dbo.specification_amendments',
+          object: 'dbo.specification_agreement_corrections',
+          permissions: CRUD,
+        }),
+        Object.freeze({
+          object: 'dbo.specification_agreements',
+          permissions: CRUD,
+        }),
+        Object.freeze({
+          object: 'dbo.specification_agreement_items',
+          permissions: CRUD,
+        }),
+        Object.freeze({
+          object: 'dbo.specification_deviation_endings',
           permissions: CRUD,
         }),
         Object.freeze({

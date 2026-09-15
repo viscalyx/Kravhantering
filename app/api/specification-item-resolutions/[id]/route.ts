@@ -9,10 +9,12 @@ import {
   idParamSchema,
   parseRouteParams,
   parseSearchParams,
+  positiveIntegerStringSchema,
 } from '@/lib/http/validation'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { authorize } from '@/lib/requirements/service-shared'
+import { resolveAgreementSelection } from '@/lib/specifications/agreement-selection'
 import { SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT } from '@/lib/specifications/selection-action-limit'
 
 export const dynamic = 'force-dynamic'
@@ -26,6 +28,7 @@ const itemRefSchema = z
 
 const querySchema = z
   .object({
+    agreementId: positiveIntegerStringSchema.optional(),
     refs: z
       .preprocess(
         value => (Array.isArray(value) ? value : value == null ? [] : [value]),
@@ -72,11 +75,19 @@ export async function GET(
       runtime.context,
     )
 
-    const items = await listSpecificationTraceabilityItems(
-      runtime.db,
-      specification.id,
-      parsedQuery.data.refs as SpecificationItemRef[],
-    )
+    const items = await runtime.db.transaction(async manager => {
+      const agreementId = await resolveAgreementSelection(
+        manager,
+        specification.id,
+        parsedQuery.data.agreementId,
+      )
+      return listSpecificationTraceabilityItems(
+        manager,
+        specification.id,
+        parsedQuery.data.refs as SpecificationItemRef[],
+        agreementId,
+      )
+    })
 
     return NextResponse.json({
       items: items.map(item => ({

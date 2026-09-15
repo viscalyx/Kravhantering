@@ -4,11 +4,15 @@ import { SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT } from '@/lib/specifications/
 
 const routeState = vi.hoisted(() => ({
   authorize: vi.fn(),
+  resolveAgreementSelection: vi.fn(),
   createRequirementsRestRuntime: vi.fn(),
   getSpecificationById: vi.fn(),
   listSpecificationTraceabilityItems: vi.fn(),
 }))
 
+vi.mock('@/lib/specifications/agreement-selection', () => ({
+  resolveAgreementSelection: routeState.resolveAgreementSelection,
+}))
 vi.mock('@/lib/requirements/server', () => ({
   createRequirementsRestRuntime: routeState.createRequirementsRestRuntime,
 }))
@@ -29,8 +33,12 @@ describe('specification item resolution route', () => {
     routeState.createRequirementsRestRuntime.mockResolvedValue({
       authorization: {},
       context: { actor: { isAuthenticated: true }, source: 'rest' },
-      db: {},
+      db: {
+        transaction: async (callback: (manager: object) => Promise<unknown>) =>
+          callback({}),
+      },
     })
+    routeState.resolveAgreementSelection.mockResolvedValue(12)
     routeState.getSpecificationById.mockResolvedValue({ id: 42 })
     routeState.authorize.mockResolvedValue(undefined)
     routeState.listSpecificationTraceabilityItems.mockResolvedValue([
@@ -76,6 +84,7 @@ describe('specification item resolution route', () => {
       {},
       42,
       ['lib:31', 'local:41'],
+      12,
     )
   })
 

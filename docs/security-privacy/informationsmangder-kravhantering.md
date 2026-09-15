@@ -305,12 +305,24 @@ uppgifter. Kravunderlagsansvarig ansvarar för innehållet och eventuell separat
 manuell bedömning. Dataskyddsanonymisering är skild från arkivering och gallring;
 arkivexport anonymiserar aktörsfält i exporten utan att ändra databasen.
 
-## Avtalstillägg och bindningshistorik
+## Avtal och kravhistorik
 
-Fastställelse, originalinnehåll, tillägg, tidigare biblioteksversioner och lokala
-kravtexter tillhör kravunderlagets befintliga informationsmängd och gallringsregel.
-Aktiva avtal och obesvarad fastställelsebedömning hindrar gallring oavsett
-inaktivitet. Avtalsavslut tar bort avtalsskyddet men bevarar innehåll och övriga
-undantag. Obligatorisk arkivexport innehåller original, alla bindningar, tillägg,
-rättelser och avbrott. Nya HSA-aktörsfält anonymiseras i arkivet och hanteras av
-befintligt dataskydd; verksamhetshistorik raderas inte genom anonymisering.
+Avtalens fullständiga kravuppsättningar, uppföljning, tidigare biblioteksversioner,
+lokala kravversioner och avsteg tillhör kravunderlagets befintliga informationsmängd
+och gallringsregel. Aktuella och väntande avtal skyddar mot gallring oavsett
+inaktivitet. Registrerat avtalsavslut bevarar innehåll och övriga undantag.
+
+Obligatorisk arkivexport innehåller avtalen, rättelsehistoriken, deras krav och
+historiska uppföljning,
+samt avstegsbeslut och separata planerade, avbrutna och genomförda avslut.
+Borttagna utkast har endast kvar sin åtgärdslogg och eventuella avbrutna planer
+som hör till bevarade aktuella avsteg. Avbrutna bekräftade kommande avtal behåller
+sitt innehåll och sina egna ärenden.
+
+HSA-id för registrering, bekräftelse, rättelser, avbrott, avtalsavslut,
+kravversioners skapande och avstegsavslut hanteras med exakt identitetsmatchning.
+Avtalens och rättelsernas sparade aktörsnamn anonymiseras tillsammans med HSA-id.
+Arkivexport anonymiserar aktörsfälten. Dataskyddsanonymisering ändrar identitet,
+inte beslut, datum eller verksamhetshistorik. Rättelsernas aktörer har en egen
+källa för registerutdrag och anonymisering, separat från åtgärdsloggen.
+Rättelsehistoriken bevaras även när aktörsnamn och HSA-id anonymiseras.

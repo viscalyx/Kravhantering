@@ -43,6 +43,7 @@ const itemRefsSchema = z
 
 const postItemsSchema = z
   .object({
+    agreementId: positiveIntegerSchema.optional(),
     needsReferenceDescription: nullableBusinessTextSchema.optional(),
     needsReferenceId: positiveIntegerSchema.nullable().optional(),
     needsReferenceText: nullableBoundedDbStringSchema.optional(),
@@ -73,6 +74,7 @@ const postItemsSchema = z
 
 const patchItemsSchema = z
   .object({
+    agreementId: positiveIntegerSchema.optional(),
     itemRefs: itemRefsSchema,
     needsReferenceId: positiveIntegerSchema.nullable(),
   })
@@ -81,11 +83,15 @@ const patchItemsSchema = z
 const deleteItemsSchema = z.union([
   z
     .object({
+      agreementId: positiveIntegerSchema.optional(),
+      authorizeDeviationEndings: z.boolean().optional(),
       itemRefs: itemRefsSchema,
     })
     .strict(),
   z
     .object({
+      agreementId: positiveIntegerSchema.optional(),
+      authorizeDeviationEndings: z.boolean().optional(),
       requirementIds: z
         .array(positiveIntegerSchema)
         .min(1)
@@ -162,6 +168,9 @@ export const POST = secureMutationRoute({
         db,
       })
       const payload = await service.addToSpecification(context, {
+        ...(body.agreementId === undefined
+          ? {}
+          : { agreementId: body.agreementId }),
         specificationId: specification.id,
         requirementIds,
         needsReferenceDescription: body.needsReferenceDescription,
@@ -210,6 +219,9 @@ export const PATCH = secureMutationRoute({
       db,
     })
     const outcome = await service.mutateRequirementApplications(context, {
+      ...(body.agreementId === undefined
+        ? {}
+        : { agreementId: body.agreementId }),
       fields: { needsReferenceId: body.needsReferenceId },
       itemRefs: body.itemRefs,
       operation: 'update',

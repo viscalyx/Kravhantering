@@ -18,6 +18,7 @@ import {
   idParamSchema,
   parseRouteParams,
   positiveIntegerStringSchema,
+  readJsonWithSchema,
 } from '@/lib/http/validation'
 import type { RequirementsAction } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
@@ -39,9 +40,13 @@ const specificationLocalRequirementParamSchema = z
 type SpecificationLocalRequirementParams = z.infer<
   typeof specificationLocalRequirementParamSchema
 >
-type SpecificationLocalRequirementBody = z.infer<
-  typeof specificationLocalRequirementSchema
->
+const localUpdateSchema = specificationLocalRequirementSchema.extend({
+  authorizeDeviationEndings: z.boolean().optional(),
+})
+const localDeleteSchema = z
+  .object({ authorizeDeviationEndings: z.boolean().optional() })
+  .strict()
+type SpecificationLocalRequirementBody = z.infer<typeof localUpdateSchema>
 
 function specificationLocalRequirementAction(
   operation: string,
@@ -103,7 +108,7 @@ export const PUT = secureMutationRoute<
   SpecificationLocalRequirementBody,
   SpecificationLocalRequirementParams
 >({
-  bodySchema: specificationLocalRequirementSchema,
+  bodySchema: localUpdateSchema,
   paramsSchema: specificationLocalRequirementParamSchema,
   policy: requirementsMutationPolicy(({ params }) =>
     specificationLocalRequirementAction('update', params),
@@ -134,6 +139,7 @@ export const PUT = secureMutationRoute<
           verificationMethod: body.verificationMethod,
         },
         context.actor.hsaId,
+        { authorizeDeviationEndings: body.authorizeDeviationEndings },
       )
 
       return NextResponse.json({ localRequirement, ok: true })
@@ -156,14 +162,18 @@ export const PUT = secureMutationRoute<
 })
 
 export const DELETE = secureMutationRoute<
-  undefined,
+  z.infer<typeof localDeleteSchema>,
   SpecificationLocalRequirementParams
 >({
+  bodyReader: ({ request }) =>
+    request.body === null
+      ? Promise.resolve({ ok: true as const, data: {} })
+      : readJsonWithSchema(request, localDeleteSchema),
   paramsSchema: specificationLocalRequirementParamSchema,
   policy: requirementsMutationPolicy(({ params }) =>
     specificationLocalRequirementAction('delete', params),
   ),
-  handler: async ({ db: authorizationDb, params }) => {
+  handler: async ({ body, context, db: authorizationDb, params }) => {
     const { id, localRequirementId: numericLocalRequirementId } = params
     const db = authorizationDb ?? (await getRequestSqlServerDataSource())
     const specification = await getSpecificationById(db, id)
@@ -176,6 +186,10 @@ export const DELETE = secureMutationRoute<
         db,
         specification.id,
         numericLocalRequirementId,
+        {
+          actorHsaId: context.actor.hsaId,
+          authorizeDeviationEndings: body.authorizeDeviationEndings,
+        },
       )
       if (!deleted) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 })

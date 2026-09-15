@@ -1066,10 +1066,12 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Error')
   })
 
-  it('saves edits, refreshes the detail, and closes the edit dialog', async () => {
+  it('saves edits, selects the returned requirement binding, and closes the edit dialog', async () => {
     const onChange = vi.fn()
     const reload = vi.fn(async () => [])
-    mockWorkflow()
+    mockWorkflow({
+      mutation: () => okJson({ ok: true, localRequirement: { id: 2 } }),
+    })
     render(
       <SpecificationLocalRequirementDetailClient
         localRequirementId={1}
@@ -1087,14 +1089,6 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'Edit' }))
     expect(reload).toHaveBeenCalledTimes(1)
-    const detailPath = '/api/requirements-specifications/1/local-requirements/1'
-    const detailGetCount = () =>
-      vi
-        .mocked(fetch)
-        .mock.calls.filter(
-          ([input, init]) => String(input) === detailPath && !init?.method,
-        ).length
-    const detailGetsBeforeSubmit = detailGetCount()
     await user.click(screen.getByRole('button', { name: 'Submit local form' }))
 
     await waitFor(() =>
@@ -1102,8 +1096,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
         screen.queryByRole('dialog', { name: 'Edit unique requirement' }),
       ).toBeNull(),
     )
-    expect(detailGetCount()).toBeGreaterThan(detailGetsBeforeSubmit)
-    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenCalledWith(2)
     const putCall = vi
       .mocked(fetch)
       .mock.calls.find(([, init]) => init?.method === 'PUT')

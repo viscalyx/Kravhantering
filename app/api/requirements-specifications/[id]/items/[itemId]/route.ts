@@ -39,6 +39,7 @@ const specificationItemRefParamSchema = z
 
 const patchSpecificationItemSchema = z
   .object({
+    agreementId: positiveIntegerSchema.optional(),
     needsReferenceId: positiveIntegerSchema.nullable().optional(),
     note: nullableBusinessTextSchema.optional(),
     specificationItemStatusId: positiveIntegerSchema.optional(),
@@ -143,8 +144,10 @@ export const PATCH = secureMutationRoute({
       context,
       db,
     })
+    const { agreementId, ...fields } = body
     await service.mutateRequirementApplications(context, {
-      fields: body,
+      ...(agreementId === undefined ? {} : { agreementId }),
+      fields,
       itemRefs: [itemRef],
       operation: 'update',
       specificationId: params.id,

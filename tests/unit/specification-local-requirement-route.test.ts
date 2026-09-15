@@ -245,6 +245,10 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
         mockDb,
         5,
         41,
+        {
+          actorHsaId: mockContext.actor.hsaId,
+          authorizeDeviationEndings: undefined,
+        },
       )
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Failed to delete specification-local requirement',
@@ -284,6 +288,10 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
         mockDb,
         5,
         41,
+        {
+          actorHsaId: mockContext.actor.hsaId,
+          authorizeDeviationEndings: undefined,
+        },
       )
       expect(consoleErrorSpy).not.toHaveBeenCalled()
     } finally {
@@ -345,6 +353,7 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
         requirementTypeId: null,
       }),
       mockContext.actor.hsaId,
+      { authorizeDeviationEndings: undefined },
     )
   })
 
@@ -578,6 +587,10 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
       mockDb,
       5,
       41,
+      {
+        actorHsaId: mockContext.actor.hsaId,
+        authorizeDeviationEndings: undefined,
+      },
     )
   })
 
@@ -644,6 +657,10 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
       mockDb,
       5,
       41,
+      {
+        actorHsaId: mockContext.actor.hsaId,
+        authorizeDeviationEndings: undefined,
+      },
     )
   })
 })

@@ -20,12 +20,14 @@ import {
   encodeSpecificationItemPageCursor,
   fingerprintSpecificationItemPageQuery,
 } from '@/lib/requirements/specification-item-page-cursor'
+import { resolveAgreementSelection } from '@/lib/specifications/agreement-selection'
 
 export const DEFAULT_SPECIFICATION_ITEM_PAGE_LIMIT = 50
 export const MAX_SPECIFICATION_ITEM_PAGE_LIMIT = 100
 export const MAX_COMPLETE_SPECIFICATION_ITEM_PAGES = 10_000
 
 export interface SpecificationItemPageInput {
+  agreementId?: number
   cursor?: string
   filters?: FilterValues
   limit?: number
@@ -135,61 +137,71 @@ export async function querySpecificationItemPage(
   input: SpecificationItemPageInput,
   options: SpecificationItemPageQueryOptions = {},
 ): Promise<SpecificationItemPageResult> {
-  const filters = normalizeSpecificationItemFilters(input.filters)
-  const limit = normalizeLimit(input.limit)
-  const locale = input.locale ?? 'en'
-  const sort = normalizeSort(input.sort)
-  const queryFingerprint = fingerprintSpecificationItemPageQuery({
-    filters,
-    locale,
-    sort,
-    specificationId: input.specificationId,
-  })
-  const cursor = input.cursor
-    ? decodeSpecificationItemPageCursor(input.cursor)
-    : undefined
-  if (cursor) {
-    assertSpecificationItemPageCursorMatches(cursor, queryFingerprint)
-  }
-
-  const candidates = await listSpecificationItemPageCandidates(db, {
-    after: cursor?.boundary,
-    filters,
-    limit: limit + 1,
-    locale,
-    sortBy: sort.by,
-    sortDirection: sort.direction,
-    specificationId: input.specificationId,
-  })
-  if (options.maxItems != null && candidates.length > options.maxItems) {
-    throw (
-      options.createItemLimitError?.(options.maxItems) ??
-      internalError('Specification item page exceeded its item bound', {
-        reason: 'specification_item_page_bound',
-      })
+  return db.transaction(async manager => {
+    const agreementId = await resolveAgreementSelection(
+      manager,
+      input.specificationId,
+      input.agreementId,
     )
-  }
-  const hasMore = candidates.length > limit
-  const selectedCandidates = hasMore ? candidates.slice(0, limit) : candidates
-  const items = await enrichSpecificationItemPage(
-    db,
-    input.specificationId,
-    selectedCandidates,
-  )
-  const boundary = selectedCandidates.at(-1)
+    const filters = normalizeSpecificationItemFilters(input.filters)
+    const limit = normalizeLimit(input.limit)
+    const locale = input.locale ?? 'en'
+    const sort = normalizeSort(input.sort)
+    const queryFingerprint = fingerprintSpecificationItemPageQuery({
+      filters,
+      locale,
+      sort,
+      agreementId,
+      specificationId: input.specificationId,
+    })
+    const cursor = input.cursor
+      ? decodeSpecificationItemPageCursor(input.cursor)
+      : undefined
+    if (cursor) {
+      assertSpecificationItemPageCursorMatches(cursor, queryFingerprint)
+    }
 
-  return {
-    items,
-    pagination: {
-      count: items.length,
-      hasMore,
-      limit,
-      nextCursor:
-        hasMore && boundary
-          ? encodeSpecificationItemPageCursor(boundary, queryFingerprint)
-          : null,
-    },
-  }
+    const candidates = await listSpecificationItemPageCandidates(manager, {
+      after: cursor?.boundary,
+      filters,
+      limit: limit + 1,
+      locale,
+      sortBy: sort.by,
+      sortDirection: sort.direction,
+      agreementId,
+      specificationId: input.specificationId,
+    })
+    if (options.maxItems != null && candidates.length > options.maxItems) {
+      throw (
+        options.createItemLimitError?.(options.maxItems) ??
+        internalError('Specification item page exceeded its item bound', {
+          reason: 'specification_item_page_bound',
+        })
+      )
+    }
+    const hasMore = candidates.length > limit
+    const selectedCandidates = hasMore ? candidates.slice(0, limit) : candidates
+    const items = await enrichSpecificationItemPage(
+      manager,
+      input.specificationId,
+      selectedCandidates,
+      agreementId,
+    )
+    const boundary = selectedCandidates.at(-1)
+
+    return {
+      items,
+      pagination: {
+        count: items.length,
+        hasMore,
+        limit,
+        nextCursor:
+          hasMore && boundary
+            ? encodeSpecificationItemPageCursor(boundary, queryFingerprint)
+            : null,
+      },
+    }
+  })
 }
 
 export async function traverseCompleteSpecificationItemResult(

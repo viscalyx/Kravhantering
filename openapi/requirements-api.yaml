@@ -537,15 +537,31 @@ paths:
       x-cache: no-store
       tags: [ requirements ]
       operationId: getSpecificationAgreement
-      summary: Read original, current and historical agreement content or compare a pinned library version.
+      summary: Read the selected whole-specification agreement or compare a newer library version.
       parameters:
-        - name: versionSearch
+        - name: agreementId
           in: query
-          description: Search the published library by requirement ID or text; at most 100 choices are returned.
-          schema: { type: string, maxLength: 250 }
+          description: Select an agreement belonging to this specification. Defaults to current, then pending, then last ended agreement.
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
+        - name: itemRefs
+          in: query
+          description: Comma-separated application references for at most 200 selected requirements. Omit for agreement metadata without requirement bodies or cases. Cannot be combined with comparison, history or end preview.
+          schema:
+            type: string
+            pattern: '^(lib|local):[1-9][0-9]*(,(lib|local):[1-9][0-9]*){0,199}$'
+        - name: endPreview
+          in: query
+          description: Read affected case identities for an explicit current-agreement end confirmation. Requires agreementId; cannot be combined with requirement scopes, comparison or history.
+          schema:
+            type: string
+            enum: ['true']
+        - name: historyItemRef
+          in: query
+          description: Read this requirement's content history and previous agreement. Requires agreementId and cannot be combined with itemRef.
+          schema: { type: string, pattern: '^(lib|local):[1-9][0-9]*$' }
         - name: itemRef
           in: query
-          description: Compare this current library application with the newer published version.
+          description: Compare this editable working or selected draft library application with the newer published version.
           schema: { type: string, pattern: '^lib:[1-9][0-9]*$' }
       responses:
         '200':
@@ -555,26 +571,33 @@ paths:
               $ref: '#/components/headers/NoStore'
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/LooseObject' }
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/LooseObject'
+                  - type: array
+                    items: { $ref: '#/components/schemas/LooseObject' }
         '400': { $ref: '#/components/responses/NoStoreBadRequest' }
         '401': { $ref: '#/components/responses/NoStoreUnauthorized' }
         '403': { $ref: '#/components/responses/NoStoreForbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/NoStoreConflict' }
     post:
       x-auth: session
       x-csrf: same-origin
       x-cache: no-store
       tags: [ requirements ]
       operationId: mutateSpecificationAgreement
-      summary: Adopt a version, assess or establish a specification, manage amendments, cancel deviations, reassess or end an agreement.
+      summary: Manage whole-specification agreements, draft requirements and deviation endings.
       description: |
-        The responsible person alone confirms establishment assessment, establishes,
-        decides or cancels amendments, and ends the agreement. Authors can adopt,
-        prepare amendments, cancel active deviations and explicitly reassess.
-        Draft amendments have no effect. Today's amendment applies atomically on
-        decision; future dates apply at midnight Europe/Stockholm. Past dates are
-        rejected. Decisions are immutable and retries do not duplicate changes.
-        Historical bindings and decisions remain attached to their original context.
+        The assigned responsible person confirms, discards, cancels, corrects and
+        ends agreements and authorizes approved-deviation endings. Authors may
+        prepare and edit drafts, adopt published versions and cancel pending cases.
+        Confirmation locks the entire requirement set immediately. Future confirmed
+        agreements take effect at midnight Europe/Stockholm; today's agreements
+        take effect on confirmation. Changed requirements start as Included.
+        Unchanged requirements inherit the latest follow-up at effect. Previous
+        results freeze. Approved-deviation ending plans and content changes are
+        atomic. Original approvals are immutable and actual endings are separate.
       parameters:
         - $ref: '#/components/parameters/Origin'
         - $ref: '#/components/parameters/XRequestedWith'
@@ -609,6 +632,10 @@ paths:
       operationId: listRequirementsSpecificationItems
       summary: List one bounded page of requirement applications.
       parameters:
+        - name: agreementId
+          in: query
+          description: Select the complete agreement context for filtering and pagination.
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
         - $ref: '#/components/parameters/Locale'
         - $ref: '#/components/parameters/SpecificationItemLimit'
         - $ref: '#/components/parameters/Cursor'
@@ -1478,7 +1505,7 @@ components:
                 type: string
 
   schemas:
-    SpecificationAgreementMutation: {"oneOf": [{"type": "object", "additionalProperties": false, "required": ["operation", "reason", "agreementReference", "effectiveDate"], "properties": {"operation": {"type": "string", "enum": ["establish"]}, "reason": {"type": "string", "minLength": 1, "maxLength": 10000}, "agreementReference": {"type": "string", "minLength": 1, "maxLength": 2000}, "effectiveDate": {"type": "string", "format": "date"}}}, {"type": "object", "additionalProperties": false, "required": ["operation", "reason"], "properties": {"operation": {"type": "string", "enum": ["confirm_editable"]}, "reason": {"type": "string", "minLength": 1, "maxLength": 10000}}}, {"type": "object", "additionalProperties": false, "required": ["operation", "reason", "itemRef", "targetVersionId"], "properties": {"operation": {"type": "string", "enum": ["adopt"]}, "reason": {"type": "string", "minLength": 1, "maxLength": 10000}, "itemRef": {"type": "string", "pattern": "^(lib|local):[1-9][0-9]*$"}, "targetVersionId": {"type": "integer", "minimum": 1}}}, {"type": "object", "additionalProperties": false, "required": ["operation", "reason", "agreementReference", "effectiveDate", "changes"], "properties": {"operation": {"type": "string", "enum": ["prepare_amendment"]}, "reason": {"type": "string", "minLength": 1, "maxLength": 10000}, "agreementReference": {"type": "string", "minLength": 1, "maxLength": 2000}, "effectiveDate": {"type": "string", "format": "date"}, "changes": {"type": "array", "minItems": 1, "maxItems": 100, "items": {"oneOf": [{"type": "object", "additionalProperties": false, "required": ["kind", "description"], "properties": {"kind": {"type": "string", "enum": ["add_local"]}, "description": {"type": "string", "minLength": 1, "maxLength": 10000}}}, {"type": "object", "additionalProperties": false, "required": ["kind", "targetVersionId"], "properties": {"kind": {"type": "string", "enum": ["add_library"]}, "targetVersionId": {"type": "integer", "minimum": 1}}}, {"type": "object", "additionalProperties": false, "required": ["kind", "itemRef", "targetVersionId"], "properties": {"kind": {"type": "string", "enum": ["replace_library"]}, "itemRef": {"type": "string", "pattern": "^(lib|local):[1-9][0-9]*$"}, "targetVersionId": {"type": "integer", "minimum": 1}}}, {"type": "object", "additionalProperties": false, "required": ["kind", "itemRef", "description"], "properties": {"kind": {"type": "string", "enum": ["change_local"]}, "itemRef": {"type": "string", "pattern": "^(lib|local):[1-9][0-9]*$"}, "description": {"type": "string", "minLength": 1, "maxLength": 10000}}}, {"type": "object", "additionalProperties": false, "required": ["kind", "itemRef"], "properties": {"kind": {"type": "string", "enum": ["remove"]}, "itemRef": {"type": "string", "pattern": "^(lib|local):[1-9][0-9]*$"}}}]}}, "replacesAmendmentId": {"type": "integer", "minimum": 1}}}, {"type": "object", "additionalProperties": false, "required": ["operation", "amendmentId"], "properties": {"operation": {"type": "string", "enum": ["decide_amendment"]}, "amendmentId": {"type": "integer", "minimum": 1}}}, {"type": "object", "additionalProperties": false, "required": ["operation", "amendmentId", "reason"], "properties": {"operation": {"type": "string", "enum": ["cancel_amendment"]}, "amendmentId": {"type": "integer", "minimum": 1}, "reason": {"type": "string", "minLength": 1, "maxLength": 10000}}}, {"type": "object", "additionalProperties": false, "required": ["operation", "itemRef", "deviationId", "reason"], "properties": {"operation": {"type": "string", "enum": ["cancel_deviation"]}, "itemRef": {"type": "string", "pattern": "^(lib|local):[1-9][0-9]*$"}, "deviationId": {"type": "integer", "minimum": 1}, "reason": {"type": "string", "minLength": 1, "maxLength": 10000}}}, {"type": "object", "additionalProperties": false, "required": ["operation", "itemRef", "reason", "specificationItemStatusId"], "properties": {"operation": {"type": "string", "enum": ["reassess"]}, "itemRef": {"type": "string", "pattern": "^(lib|local):[1-9][0-9]*$"}, "reason": {"type": "string", "minLength": 1, "maxLength": 10000}, "specificationItemStatusId": {"type": "integer", "minimum": 1, "maximum": 6}}}, {"type": "object", "additionalProperties": false, "required": ["operation", "reason", "effectiveDate"], "properties": {"operation": {"type": "string", "enum": ["end_agreement"]}, "reason": {"type": "string", "minLength": 1, "maxLength": 10000}, "effectiveDate": {"type": "string", "format": "date"}}}]}
+    SpecificationAgreementMutation: {"oneOf":[{"type":"object","properties":{"operation":{"type":"string","enum":["end"]},"agreementId":{"type":"integer","minimum":1,"maximum":2147483647},"endDate":{"type":"string","format":"date","pattern":"^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"},"reason":{"type":"string","minLength":1,"maxLength":10000}},"required":["operation","agreementId","endDate","reason"],"additionalProperties":false},{"type":"object","properties":{"operation":{"type":"string","enum":["cancel"]},"agreementId":{"type":"integer","minimum":1,"maximum":2147483647},"reason":{"type":"string","minLength":1,"maxLength":10000}},"required":["operation","agreementId","reason"],"additionalProperties":false},{"type":"object","properties":{"operation":{"type":"string","enum":["discard"]},"agreementId":{"type":"integer","minimum":1,"maximum":2147483647}},"required":["operation","agreementId"],"additionalProperties":false},{"type":"object","properties":{"operation":{"type":"string","enum":["correct"]},"agreementId":{"type":"integer","minimum":1,"maximum":2147483647},"agreementReference":{"type":"string","minLength":1,"maxLength":450},"effectiveDate":{"type":"string","format":"date","pattern":"^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"},"description":{"type":"string","maxLength":10000},"confirmImmediateActivation":{"type":"boolean"}},"required":["operation","agreementId","agreementReference","effectiveDate"],"additionalProperties":false},{"type":"object","properties":{"operation":{"type":"string","enum":["add_library"]},"agreementId":{"type":"integer","minimum":1,"maximum":2147483647},"targetVersionId":{"type":"integer","minimum":1,"maximum":2147483647}},"required":["operation","agreementId","targetVersionId"],"additionalProperties":false},{"type":"object","properties":{"operation":{"type":"string","enum":["add_local"]},"agreementId":{"type":"integer","minimum":1,"maximum":2147483647},"content":{"type":"object","properties":{"description":{"type":"string","minLength":1,"maxLength":100000},"acceptanceCriteria":{"nullable":true,"type":"string","maxLength":100000},"verificationMethod":{"nullable":true,"type":"string","maxLength":100000},"verifiable":{"type":"boolean"},"requirementCategoryId":{"nullable":true,"type":"integer","minimum":1,"maximum":2147483647},"requirementTypeId":{"nullable":true,"type":"integer","minimum":1,"maximum":2147483647},"qualityCharacteristicId":{"nullable":true,"type":"integer","minimum":1,"maximum":2147483647},"priorityLevelId":{"nullable":true,"type":"integer","minimum":1,"maximum":2147483647},"needsReferenceId":{"nullable":true,"type":"integer","minimum":1,"maximum":2147483647},"normReferenceIds":{"maxItems":100,"type":"array","items":{"type":"integer","minimum":1,"maximum":2147483647}}},"required":["description"],"additionalProperties":false}},"required":["operation","agreementId","content"],"additionalProperties":false},{"type":"object","properties":{"operation":{"type":"string","enum":["undo_requirement"]},"agreementId":{"type":"integer","minimum":1,"maximum":2147483647},"itemRef":{"type":"string","pattern":"^(lib|local):[1-9]\\d*$"},"authorizeDeviationEndings":{"type":"boolean"}},"required":["operation","agreementId","itemRef"],"additionalProperties":false},{"type":"object","properties":{"operation":{"type":"string","enum":["remove_requirement"]},"agreementId":{"type":"integer","minimum":1,"maximum":2147483647},"itemRef":{"type":"string","pattern":"^(lib|local):[1-9]\\d*$"},"authorizeDeviationEndings":{"type":"boolean"}},"required":["operation","agreementId","itemRef"],"additionalProperties":false},{"type":"object","properties":{"operation":{"type":"string","enum":["save_requirement"]},"agreementId":{"type":"integer","minimum":1,"maximum":2147483647},"itemRef":{"type":"string","pattern":"^(lib|local):[1-9]\\d*$"},"content":{"type":"object","properties":{"description":{"type":"string","minLength":1,"maxLength":100000},"acceptanceCriteria":{"nullable":true,"type":"string","maxLength":100000},"verificationMethod":{"nullable":true,"type":"string","maxLength":100000},"verifiable":{"type":"boolean"},"requirementCategoryId":{"nullable":true,"type":"integer","minimum":1,"maximum":2147483647},"requirementTypeId":{"nullable":true,"type":"integer","minimum":1,"maximum":2147483647},"qualityCharacteristicId":{"nullable":true,"type":"integer","minimum":1,"maximum":2147483647},"priorityLevelId":{"nullable":true,"type":"integer","minimum":1,"maximum":2147483647},"needsReferenceId":{"nullable":true,"type":"integer","minimum":1,"maximum":2147483647},"normReferenceIds":{"maxItems":100,"type":"array","items":{"type":"integer","minimum":1,"maximum":2147483647}}},"required":["description"],"additionalProperties":false},"authorizeDeviationEndings":{"type":"boolean"}},"required":["operation","agreementId","itemRef","content"],"additionalProperties":false},{"type":"object","properties":{"operation":{"type":"string","enum":["confirm"]},"agreementId":{"type":"integer","minimum":1,"maximum":2147483647},"authorizeDeviationEndings":{"type":"boolean"}},"required":["operation","agreementId"],"additionalProperties":false},{"type":"object","properties":{"operation":{"type":"string","enum":["create_draft"]},"agreementReference":{"type":"string","minLength":1,"maxLength":450},"effectiveDate":{"type":"string","format":"date","pattern":"^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"},"description":{"type":"string","maxLength":10000}},"required":["operation","agreementReference","effectiveDate"],"additionalProperties":false},{"type":"object","properties":{"operation":{"type":"string","enum":["establish"]},"description":{"type":"string","maxLength":10000},"agreementReference":{"type":"string","minLength":1,"maxLength":450},"effectiveDate":{"type":"string","format":"date","pattern":"^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"}},"required":["operation","agreementReference","effectiveDate"],"additionalProperties":false},{"type":"object","properties":{"operation":{"type":"string","enum":["adopt"]},"itemRef":{"type":"string","pattern":"^(lib|local):[1-9]\\d*$"},"targetVersionId":{"type":"integer","minimum":1,"maximum":2147483647},"agreementId":{"type":"integer","minimum":1,"maximum":2147483647},"authorizeDeviationEndings":{"type":"boolean"}},"required":["operation","itemRef","targetVersionId"],"additionalProperties":false},{"type":"object","properties":{"operation":{"type":"string","enum":["cancel_deviation"]},"agreementId":{"type":"integer","minimum":1,"maximum":2147483647},"itemRef":{"type":"string","pattern":"^(lib|local):[1-9]\\d*$"},"deviationId":{"type":"integer","minimum":1,"maximum":2147483647},"reason":{"type":"string","minLength":1,"maxLength":10000}},"required":["operation","itemRef","deviationId","reason"],"additionalProperties":false}]}
     LooseObject:
       type: object
       additionalProperties: true

@@ -1296,12 +1296,12 @@ describe('SqlAssignmentLookup', () => {
     ).resolves.toBe(42)
     expect(matching.query).toHaveBeenNthCalledWith(
       1,
-      expect.stringContaining('FROM current_requirement_applications'),
+      expect.stringContaining('FROM requirements_specification_items'),
       [31],
     )
     expect(matching.query).toHaveBeenNthCalledWith(
       2,
-      expect.stringContaining('FROM current_specification_local_requirements'),
+      expect.stringContaining('FROM specification_local_requirements'),
       [41],
     )
 

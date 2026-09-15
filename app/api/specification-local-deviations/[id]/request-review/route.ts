@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requestSpecificationLocalReview } from '@/lib/dal/deviations'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { readOptionalAgreementContext } from '@/lib/http/agreement-context'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
@@ -14,6 +15,7 @@ import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 export const dynamic = 'force-dynamic'
 
 export const POST = secureMutationRoute({
+  bodyReader: readOptionalAgreementContext,
   errorMessage: 'Failed to request review',
   paramsSchema: idParamSchema,
   policy: requirementsMutationPolicy<unknown, { id: number }>(({ params }) => ({
@@ -22,11 +24,13 @@ export const POST = secureMutationRoute({
     kind: 'manage_deviation',
     operation: 'request_review',
   })),
-  handler: async ({ context, db: authorizedDb, params }) => {
+  handler: async ({ body, context, db: authorizedDb, params }) => {
     try {
       requireHumanActorSnapshot(context)
       const db = authorizedDb ?? (await getRequestSqlServerDataSource())
-      await requestSpecificationLocalReview(db, params.id)
+      await requestSpecificationLocalReview(db, params.id, {
+        agreementId: body?.agreementId,
+      })
       return NextResponse.json({ ok: true })
     } catch (error) {
       if (isRequirementsServiceError(error)) {

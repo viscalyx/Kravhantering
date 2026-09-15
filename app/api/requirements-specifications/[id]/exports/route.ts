@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+
 import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import {
   createCsvItemLimitError,
@@ -12,6 +13,7 @@ import {
   localeSchema,
   parseRouteParams,
   parseSearchParams,
+  positiveIntegerStringSchema,
 } from '@/lib/http/validation'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import { ReportDataError } from '@/lib/reports/data/server'
@@ -34,6 +36,7 @@ const specificationParamSchema = idParamSchema
 
 const exportQuerySchema = z
   .object({
+    agreementId: positiveIntegerStringSchema.optional(),
     locale: localeSchema.optional().default('en'),
     profile: z.enum(['procurement', 'full']),
   })
@@ -123,6 +126,7 @@ async function getHandler(
           },
           {
             createItemLimitError: createCsvItemLimitError,
+            agreementId: parsedQuery.data.agreementId,
             maxItems,
             signal,
           },

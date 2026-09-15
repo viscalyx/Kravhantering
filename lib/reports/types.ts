@@ -1,3 +1,4 @@
+import type { ReportAgreementContext } from '@/lib/reports/data/agreement-context'
 export interface DiffSegment {
   text: string
   type: 'added' | 'removed' | 'unchanged'
@@ -101,6 +102,7 @@ export type ReportSection =
   | { type: 'page-break' }
   | {
       type: 'specification-cover'
+      agreement?: ReportAgreementContext | null
       name: string
       specificationCode: string
       governanceObjectType: string | null

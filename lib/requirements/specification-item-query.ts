@@ -9,6 +9,7 @@ import { REQUIREMENT_SORT_FIELDS } from '@/lib/requirements/list-view'
 
 export const specificationItemQueryStateSchema = z
   .object({
+    agreementId: positiveIntegerStringSchema.optional(),
     areaIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     categoryIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     descriptionSearch: optionalSearchStringSchema,
@@ -46,6 +47,7 @@ export const specificationItemPageQuerySchema =
   })
 
 export interface SpecificationItemQueryState {
+  agreementId?: number
   areaIds?: number[]
   categoryIds?: number[]
   descriptionSearch?: string
@@ -70,6 +72,7 @@ export function toSpecificationItemPageInput(
   query: SpecificationItemQueryState,
 ) {
   return {
+    agreementId: query.agreementId,
     filters: {
       areaIds: query.areaIds,
       categoryIds: query.categoryIds,

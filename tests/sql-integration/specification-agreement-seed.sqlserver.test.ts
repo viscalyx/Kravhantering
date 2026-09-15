@@ -1,50 +1,136 @@
 import { describe, expect, it } from 'vitest'
+import { createSpecificationAgreementWorkflow } from '@/lib/specifications/agreements'
+import { resetDemoSqlServerData } from '@/scripts/db-sqlserver-admin.mjs'
+import { requireTestValue } from '@/tests/helpers/require-test-value'
 import { seedDemoDatabase } from '@/typeorm/seed.mjs'
-import { useSqlIntegrationDatabase } from './helpers/sql-test-database'
+import {
+  makeRequestContext,
+  useSqlIntegrationDatabase,
+} from './helpers/sql-test-database'
 
 describe('agreement demo data', () => {
   const database = useSqlIntegrationDatabase()
-  it('seeds coherent original, current, future and correction contexts without duplicating them on repeat', async () => {
+  it('seeds complete current, draft, upcoming and cancelled agreement contexts idempotently', async () => {
     const db = database()
     await seedDemoDatabase(db)
-    const counts = () =>
-      db.query(`SELECT specification.id, COUNT(amendment.id) AS amendments
-      FROM requirements_specifications specification LEFT JOIN specification_amendments amendment ON amendment.specification_id = specification.id
-      WHERE specification.id IN (3, 4, 5) GROUP BY specification.id ORDER BY specification.id`)
-    expect(await counts()).toEqual([
-      { id: 3, amendments: 0 },
-      { id: 4, amendments: 1 },
-      { id: 5, amendments: 3 },
+    const workflow = createSpecificationAgreementWorkflow(db)
+    const context = await makeRequestContext()
+    expect(
+      (await workflow.read(context, 3)).agreements.map(
+        agreement => agreement.state,
+      ),
+    ).toEqual(['current'])
+    expect((await workflow.read(context, 3)).corrections).toEqual([
+      expect.objectContaining({
+        oldAgreementReference: 'AVTAL-3',
+        newAgreementReference: 'AVTAL-3-A',
+      }),
     ])
-    const current = await db.query(
-      'SELECT id FROM current_requirement_applications WHERE requirements_specification_id = 5 ORDER BY id',
+    const drafted = await workflow.read(context, 4)
+    expect(drafted.agreements.map(agreement => agreement.state)).toEqual([
+      'current',
+      'draft',
+    ])
+    const draftId = requireTestValue(
+      drafted.agreements.find(agreement => agreement.state === 'draft'),
+    ).id
+    expect(
+      (await workflow.read(context, 4, { agreementId: draftId })).items.some(
+        item => item.changeKind === 'added',
+      ),
+    ).toBe(true)
+    const converted = requireTestValue(
+      (await workflow.read(context, 4, { agreementId: draftId })).items.find(
+        item => item.sourceRequirementVersionId !== null,
+      ),
     )
-    expect(current).toEqual([{ id: 22 }, { id: 132301 }])
-    expect(
-      await db.query(
-        'SELECT id FROM current_specification_local_requirements WHERE specification_id = 5',
-      ),
-    ).toEqual([{ id: 132302 }])
-    expect(
-      await db.query(
-        'SELECT decision FROM deviations WHERE specification_item_id = 20 AND id = 132301',
-      ),
-    ).toEqual([{ decision: 1 }])
-    expect(
-      await db.query(
-        'SELECT replaces_amendment_id AS original FROM specification_amendments WHERE id = 132304',
-      ),
-    ).toEqual([{ original: 132303 }])
-    await seedDemoDatabase(db)
-    expect(await counts()).toEqual([
-      { id: 3, amendments: 0 },
-      { id: 4, amendments: 1 },
-      { id: 5, amendments: 3 },
+    const conversionHistory = await workflow.history(
+      context,
+      4,
+      draftId,
+      converted.itemRef,
+    )
+    expect(conversionHistory.previous?.item.requirementVersionId).toBe(
+      converted.sourceRequirementVersionId,
+    )
+    const current = await workflow.read(context, 5)
+    expect(current.agreements.map(agreement => agreement.state)).toEqual([
+      'previous',
+      'current',
+      'cancelled',
+      'upcoming',
     ])
+    const cancelledId = requireTestValue(
+      current.agreements.find(agreement => agreement.state === 'cancelled'),
+    ).id
+    const cancelled = await workflow.read(context, 5, {
+      agreementId: cancelledId,
+    })
     expect(
-      await db.query(
-        'SELECT id FROM current_requirement_applications WHERE requirements_specification_id = 5 ORDER BY id',
+      cancelled.items.every(item => item.specificationItemStatusId > 0),
+    ).toBe(true)
+    expect(
+      cancelled.items.find(item => item.itemRef === current.items[0]?.itemRef),
+    ).toMatchObject({
+      specificationItemStatusId: requireTestValue(current.items[0])
+        .specificationItemStatusId,
+      note: requireTestValue(current.items[0]).note,
+      needsReference: requireTestValue(current.items[0]).needsReference,
+    })
+    const shared = requireTestValue(
+      cancelled.items.find(item => item.itemRef.startsWith('lib:')),
+    )
+    await db.query(
+      'UPDATE requirements_specification_items SET specification_item_status_id = 3, note = @1 WHERE id = @0',
+      [
+        Number(shared.itemRef.split(':')[1]),
+        'Current follow-up after cancellation',
+      ],
+    )
+    const stillCancelled = await workflow.read(context, 5, {
+      agreementId: cancelledId,
+    })
+    expect(
+      stillCancelled.items.find(item => item.itemRef === shared.itemRef),
+    ).toMatchObject({
+      specificationItemStatusId: shared.specificationItemStatusId,
+      note: shared.note,
+    })
+    const upcomingId = requireTestValue(
+      current.agreements.find(agreement => agreement.state === 'upcoming'),
+    ).id
+    const upcoming = await workflow.read(context, 5, {
+      agreementId: upcomingId,
+    })
+    expect(
+      current.items.some(
+        item =>
+          item.description ===
+          'Leverantören ska erbjuda dokumenterad beredskap.',
       ),
-    ).toEqual(current)
+    ).toBe(true)
+    expect(
+      upcoming.items.some(
+        item =>
+          item.description === 'Beredskap ska finnas under avtalad servicetid.',
+      ),
+    ).toBe(true)
+    expect(current.deviationEndings.some(ending => ending.endedAt)).toBe(true)
+    await seedDemoDatabase(db)
+    const repeated = await workflow.read(context, 5)
+    expect(repeated.agreements.map(agreement => agreement.id)).toEqual(
+      current.agreements.map(agreement => agreement.id),
+    )
+    expect(repeated.items.map(item => item.itemRef)).toEqual(
+      current.items.map(item => item.itemRef),
+    )
+    await resetDemoSqlServerData(db)
+    await seedDemoDatabase(db)
+    expect((await workflow.read(context, 3)).corrections).toHaveLength(1)
+    expect(
+      (await workflow.read(context, 4, { agreementId: draftId })).items.find(
+        item => item.itemRef === converted.itemRef,
+      )?.sourceRequirementVersionId,
+    ).toBe(converted.sourceRequirementVersionId)
   })
 })

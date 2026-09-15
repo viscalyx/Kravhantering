@@ -91,12 +91,14 @@ interface GraduationTargetArea {
 }
 
 interface SpecificationLocalRequirementDetailClientProps {
+  approvedDeviationEndingRequired?: boolean
   detailCache?: SpecificationLocalRequirementDetailCache
   detailPrefetchContext?: RequirementDetailPrefetchContext
   localRequirementId: number
   needsReferencesResource: AsyncResourceState<{ id: number; text: string }[]>
-  onChange?: () => void | Promise<void>
+  onChange?: (localRequirementId?: number) => void | Promise<void>
   permissions?: {
+    canAuthorizeDeviationEndings?: boolean
     canEditContent: boolean
     canChangeContent?: boolean
     canReviewDecisions: boolean
@@ -421,6 +423,7 @@ function SpecificationLocalRequirementEditModal({
 }
 
 export default function SpecificationLocalRequirementDetailClient({
+  approvedDeviationEndingRequired = false,
   detailCache,
   detailPrefetchContext,
   localRequirementId,
@@ -430,6 +433,7 @@ export default function SpecificationLocalRequirementDetailClient({
   specificationId,
   usageStatus,
 }: SpecificationLocalRequirementDetailClientProps) {
+  const ta = useTranslations('agreement')
   const t = useTranslations('requirement')
   const tp = useTranslations('specification')
   const td = useTranslations('deviation')
@@ -710,10 +714,6 @@ export default function SpecificationLocalRequirementDetailClient({
     return () => controller.abort()
   }, [fetchGraduationTargetAreas])
 
-  const refreshAll = useCallback(async () => {
-    await Promise.all([fetchRequirement(true), fetchDeviations(), onChange?.()])
-  }, [fetchDeviations, fetchRequirement, onChange])
-
   const railSecondaryButtonClass =
     'btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11 disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none'
   const railPrimaryButtonClass =
@@ -725,12 +725,30 @@ export default function SpecificationLocalRequirementDetailClient({
 
   const handleEditSubmit = useCallback(
     async (payload: SpecificationLocalRequirementSubmitPayload) => {
+      if (approvedDeviationEndingRequired) {
+        if (!permissions?.canAuthorizeDeviationEndings)
+          throw new Error(ta('responsibleEndingRequired'))
+        if (
+          !(await confirm({
+            title: ta('editRequirement'),
+            message: ta('workingContentEndingWarning'),
+            confirmText: ta('saveAndEndDeviation'),
+            icon: 'warning',
+          }))
+        )
+          return
+      }
       const response = await apiFetch(
         `/api/requirements-specifications/${specificationId}/local-requirements/${localRequirementId}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            ...payload,
+            ...(approvedDeviationEndingRequired
+              ? { authorizeDeviationEndings: true }
+              : {}),
+          }),
         },
       )
 
@@ -739,21 +757,42 @@ export default function SpecificationLocalRequirementDetailClient({
         throw new Error(readResponseError(body) ?? tc('error'))
       }
 
+      const saved = (await response.json()) as {
+        localRequirement: { id: number }
+      }
       setShowEditForm(false)
-      await refreshAll()
+      await onChange?.(saved.localRequirement.id)
     },
-    [localRequirementId, specificationId, refreshAll, tc],
+    [
+      approvedDeviationEndingRequired,
+      permissions?.canAuthorizeDeviationEndings,
+      confirm,
+      localRequirementId,
+      specificationId,
+      onChange,
+      ta,
+      tc,
+    ],
   )
 
   const handleDelete = useCallback(
     async (event?: React.MouseEvent<HTMLButtonElement>) => {
       if (isDeleting) return
       const anchorEl = event?.currentTarget
+      if (
+        approvedDeviationEndingRequired &&
+        !permissions?.canAuthorizeDeviationEndings
+      ) {
+        setError(ta('responsibleEndingRequired'))
+        return
+      }
       const confirmed = await confirm({
         anchorEl,
         confirmText: tc('delete'),
         icon: 'caution',
-        message: tp('deleteLocalRequirementConfirm'),
+        message: approvedDeviationEndingRequired
+          ? `${tp('deleteLocalRequirementConfirm')}\n${ta('workingContentEndingWarning')}`
+          : tp('deleteLocalRequirementConfirm'),
         title: tp('deleteLocalRequirementConfirmTitle'),
         variant: 'danger',
       })
@@ -768,6 +807,10 @@ export default function SpecificationLocalRequirementDetailClient({
           `/api/requirements-specifications/${specificationId}/local-requirements/${localRequirementId}`,
           {
             method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              authorizeDeviationEndings: approvedDeviationEndingRequired,
+            }),
           },
         )
 
@@ -793,6 +836,9 @@ export default function SpecificationLocalRequirementDetailClient({
       }
     },
     [
+      approvedDeviationEndingRequired,
+      permissions?.canAuthorizeDeviationEndings,
+      ta,
       confirm,
       detailCache,
       detailPrefetchContext,

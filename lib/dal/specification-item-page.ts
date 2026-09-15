@@ -1,8 +1,8 @@
+import type { SqlExecutor } from '@/lib/dal/requirements-specifications'
 import {
   createLibraryItemRef,
   createSpecificationLocalItemRef,
 } from '@/lib/dal/requirements-specifications'
-import type { SqlServerDatabase } from '@/lib/db'
 import type {
   FilterValues,
   RequirementSortDirection,
@@ -14,6 +14,8 @@ import type {
   SpecificationItemPageCursorBoundary,
 } from '@/lib/requirements/specification-item-page-cursor'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
+import { agreementDeviationStateSql } from '@/lib/specifications/agreement-deviation-state'
+import { agreementItemSource } from '@/lib/specifications/agreement-item-source'
 
 interface SqlBuilder {
   parameters: unknown[]
@@ -25,6 +27,7 @@ export interface SpecificationItemPageCandidate
 
 export interface ListSpecificationItemPageCandidatesInput {
   after?: SpecificationItemPageCursorBoundary
+  agreementId?: number
   filters: FilterValues
   limit: number
   locale: 'en' | 'sv'
@@ -371,10 +374,10 @@ function candidateBranch(
       CAST(CASE WHEN ${sortExpression} IS NULL THEN 1 ELSE 0 END AS int) AS nullRank
     FROM ${
       library
-        ? `requirements_specification_items specification_item
+        ? `${agreementItemSource('library', input.agreementId === undefined ? undefined : builder.push(input.agreementId))} specification_item
     INNER JOIN requirements requirement ON requirement.id = specification_item.requirement_id
     INNER JOIN requirement_versions requirement_version ON requirement_version.id = specification_item.requirement_version_id`
-        : 'specification_local_requirements local_requirement'
+        : `${agreementItemSource('local', input.agreementId === undefined ? undefined : builder.push(input.agreementId))} local_requirement`
     }
     LEFT JOIN requirement_areas requirement_area ON ${library ? 'requirement_area.id = requirement.requirement_area_id' : '1 = 0'}
     LEFT JOIN requirement_categories requirement_category ON ${library ? 'requirement_category.id = requirement_version.requirement_category_id' : '1 = 0'}
@@ -467,7 +470,7 @@ export function buildSpecificationItemPageCandidateSql(
 }
 
 export async function listSpecificationItemPageCandidates(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   input: ListSpecificationItemPageCandidatesInput,
 ): Promise<SpecificationItemPageCandidate[]> {
   const { parameters, sqlText } = buildSpecificationItemPageCandidateSql(input)
@@ -526,6 +529,14 @@ function mapEnrichedRow(
   const deviationPending = Number(row.deviationPending) || 0
   const deviationTotal = Number(row.deviationTotal) || 0
   return {
+    changeDate: toText(row.changeDate),
+    changeKind:
+      row.changeKind === 'added' ||
+      row.changeKind === 'changed' ||
+      row.changeKind === 'removed'
+        ? row.changeKind
+        : null,
+    isRemoved: toBool(row.isRemoved),
     area: row.areaName == null ? null : { name: String(row.areaName) },
     deviationCount: deviationTotal,
     hasApprovedDeviation: deviationApproved > 0,
@@ -595,9 +606,10 @@ function selectedIdsSql(
 }
 
 async function enrichLibraryItems(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   specificationId: number,
   ids: number[],
+  agreementId?: number,
 ): Promise<SpecificationItemRequirementRow[]> {
   if (!ids.length) return []
   const builder = createSqlBuilder()
@@ -607,6 +619,7 @@ async function enrichLibraryItems(
     `
       SELECT
         specification_item.id AS sourceId,
+        specification_item.change_date AS changeDate, specification_item.change_kind AS changeKind, specification_item.is_removed AS isRemoved,
         requirement.id AS requirementId,
         requirement.unique_id AS uniqueId,
         requirement.is_archived AS isArchived,
@@ -633,7 +646,7 @@ async function enrichLibraryItems(
         requirement_status.icon_name AS statusIconName,
         requirement_version.version_number AS versionNumber,
         specification_item.needs_reference_id AS needsReferenceId,
-        needs_reference.text AS needsReferenceText,
+        specification_item.agreement_needs_reference AS needsReferenceText,
         specification_item.specification_item_status_id AS specificationItemStatusId,
         specification_item_status.name_en AS specificationItemStatusNameEn,
         specification_item_status.name_sv AS specificationItemStatusNameSv,
@@ -654,10 +667,10 @@ async function enrichLibraryItems(
            AND current_package.is_archived = 0
           WHERE current_package_version.requirement_id = requirement.id
             AND current_package_version.requirement_status_id = ${STATUS_PUBLISHED}) AS requirementPackageIds,
-        (SELECT COUNT(*) FROM deviations deviation WHERE deviation.specification_item_id = specification_item.id) AS deviationTotal,
-        (SELECT COUNT(*) FROM deviations deviation WHERE deviation.specification_item_id = specification_item.id AND deviation.decision IS NULL) AS deviationPending,
-        (SELECT COUNT(*) FROM deviations deviation WHERE deviation.specification_item_id = specification_item.id AND deviation.decision = 1) AS deviationApproved
-      FROM current_requirement_applications specification_item
+        (SELECT COUNT(*) FROM deviations deviation WHERE deviation.specification_item_id = specification_item.id AND ${agreementDeviationStateSql('library').visible}) AS deviationTotal,
+        (SELECT COUNT(*) FROM deviations deviation WHERE deviation.specification_item_id = specification_item.id AND ${agreementDeviationStateSql('library').visible} AND ${agreementDeviationStateSql('library').pending}) AS deviationPending,
+        (SELECT COUNT(*) FROM deviations deviation WHERE deviation.specification_item_id = specification_item.id AND ${agreementDeviationStateSql('library').visible} AND ${agreementDeviationStateSql('library').approved}) AS deviationApproved
+      FROM ${agreementItemSource('library', agreementId === undefined ? undefined : builder.push(agreementId))} specification_item
       INNER JOIN requirements requirement ON requirement.id = specification_item.requirement_id
       INNER JOIN requirement_versions requirement_version ON requirement_version.id = specification_item.requirement_version_id
       LEFT JOIN requirement_areas requirement_area ON requirement_area.id = requirement.requirement_area_id
@@ -677,9 +690,10 @@ async function enrichLibraryItems(
 }
 
 async function enrichLocalItems(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   specificationId: number,
   ids: number[],
+  agreementId?: number,
 ): Promise<SpecificationItemRequirementRow[]> {
   if (!ids.length) return []
   const builder = createSqlBuilder()
@@ -689,6 +703,7 @@ async function enrichLocalItems(
     `
       SELECT
         local_requirement.id AS sourceId,
+        local_requirement.change_date AS changeDate, local_requirement.change_kind AS changeKind, local_requirement.is_removed AS isRemoved,
         local_requirement.unique_id AS uniqueId,
         local_requirement.description AS description,
         requirement_category.name_en AS categoryNameEn,
@@ -706,7 +721,7 @@ async function enrichLocalItems(
         priority_level.icon_name AS priorityLevelIconName,
         priority_level.sort_order AS priorityLevelSortOrder,
         local_requirement.needs_reference_id AS needsReferenceId,
-        needs_reference.text AS needsReferenceText,
+        local_requirement.agreement_needs_reference AS needsReferenceText,
         local_requirement.specification_item_status_id AS specificationItemStatusId,
         specification_item_status.name_en AS specificationItemStatusNameEn,
         specification_item_status.name_sv AS specificationItemStatusNameSv,
@@ -719,10 +734,10 @@ async function enrichLocalItems(
           INNER JOIN norm_references norm_reference ON norm_reference.id = local_norm_reference.norm_reference_id
           WHERE local_norm_reference.specification_local_requirement_id = local_requirement.id) AS normReferenceIds,
         CAST(NULL AS varchar(1)) AS requirementPackageIds,
-        (SELECT COUNT(*) FROM specification_local_requirement_deviations deviation WHERE deviation.specification_local_requirement_id = local_requirement.id) AS deviationTotal,
-        (SELECT COUNT(*) FROM specification_local_requirement_deviations deviation WHERE deviation.specification_local_requirement_id = local_requirement.id AND deviation.decision IS NULL) AS deviationPending,
-        (SELECT COUNT(*) FROM specification_local_requirement_deviations deviation WHERE deviation.specification_local_requirement_id = local_requirement.id AND deviation.decision = 1) AS deviationApproved
-      FROM current_specification_local_requirements local_requirement
+        (SELECT COUNT(*) FROM specification_local_requirement_deviations deviation WHERE deviation.specification_local_requirement_id = local_requirement.id AND ${agreementDeviationStateSql('local').visible}) AS deviationTotal,
+        (SELECT COUNT(*) FROM specification_local_requirement_deviations deviation WHERE deviation.specification_local_requirement_id = local_requirement.id AND ${agreementDeviationStateSql('local').visible} AND ${agreementDeviationStateSql('local').pending}) AS deviationPending,
+        (SELECT COUNT(*) FROM specification_local_requirement_deviations deviation WHERE deviation.specification_local_requirement_id = local_requirement.id AND ${agreementDeviationStateSql('local').visible} AND ${agreementDeviationStateSql('local').approved}) AS deviationApproved
+      FROM ${agreementItemSource('local', agreementId === undefined ? undefined : builder.push(agreementId))} local_requirement
       LEFT JOIN requirement_categories requirement_category ON requirement_category.id = local_requirement.requirement_category_id
       LEFT JOIN requirement_types requirement_type ON requirement_type.id = local_requirement.requirement_type_id
       LEFT JOIN quality_characteristics quality_characteristic ON quality_characteristic.id = local_requirement.quality_characteristic_id
@@ -738,20 +753,23 @@ async function enrichLocalItems(
 }
 
 export async function enrichSpecificationItemPage(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   specificationId: number,
   candidates: SpecificationItemPageCandidate[],
+  agreementId?: number,
 ): Promise<SpecificationItemRequirementRow[]> {
   const [libraryItems, localItems] = await Promise.all([
     enrichLibraryItems(
       db,
       specificationId,
       candidates.filter(item => item.kindRank === 0).map(item => item.sourceId),
+      agreementId,
     ),
     enrichLocalItems(
       db,
       specificationId,
       candidates.filter(item => item.kindRank === 1).map(item => item.sourceId),
+      agreementId,
     ),
   ])
   const byReference = new Map(

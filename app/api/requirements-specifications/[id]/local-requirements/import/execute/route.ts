@@ -7,7 +7,7 @@ import {
   requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { idParamSchema } from '@/lib/http/validation'
+import { idParamSchema, positiveIntegerSchema } from '@/lib/http/validation'
 import { requirementImportBudgetFromSettings } from '@/lib/requirements/import-budget'
 import {
   readRequirementImportRequest,
@@ -20,7 +20,9 @@ import {
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 
 const paramsSchema = idParamSchema
-const bodySchema = importExecuteBodySchema.omit({ areaId: true })
+const bodySchema = importExecuteBodySchema
+  .omit({ areaId: true })
+  .extend({ agreementId: positiveIntegerSchema.optional() })
 
 type Body = z.infer<typeof bodySchema>
 type Params = z.infer<typeof paramsSchema>
@@ -34,7 +36,9 @@ export const POST = secureMutationRoute<Body, Params>({
     return readRequirementImportRequest(request, {
       budget,
       content: body => ({ rows: (body as { rows?: unknown })?.rows }),
-      schema: buildImportExecuteBodySchema(budget).omit({ areaId: true }),
+      schema: buildImportExecuteBodySchema(budget)
+        .omit({ areaId: true })
+        .extend({ agreementId: positiveIntegerSchema.optional() }),
     })
   },
   paramsSchema,

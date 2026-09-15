@@ -6,7 +6,11 @@ import {
   requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { idParamSchema, parseRouteParams } from '@/lib/http/validation'
+import {
+  idParamSchema,
+  parseRouteParams,
+  positiveIntegerStringSchema,
+} from '@/lib/http/validation'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { agreementMutationSchema } from '@/lib/specifications/agreement-contract'
@@ -30,19 +34,70 @@ export const GET = withRestResponsePolicy(
             .string()
             .regex(/^lib:[1-9]\d*$/)
             .optional(),
-          versionSearch: z.string().max(250).optional(),
+          agreementId: positiveIntegerStringSchema.optional(),
+          itemRefs: z
+            .string()
+            .transform(value => value.split(','))
+            .pipe(z.array(z.string().regex(/^(lib|local):[1-9]\d*$/)).max(200))
+            .optional(),
+          endPreview: z.literal('true').optional(),
+          historyItemRef: z
+            .string()
+            .regex(/^(lib|local):[1-9]\d*$/)
+            .optional(),
         })
         .strict()
+        .refine(
+          query =>
+            !query.historyItemRef ||
+            (query.agreementId !== undefined &&
+              !query.itemRef &&
+              !query.itemRefs &&
+              !query.endPreview),
+        )
+        .refine(
+          query =>
+            !query.endPreview ||
+            (query.agreementId !== undefined &&
+              !query.itemRefs &&
+              !query.itemRef),
+        )
+        .refine(query => !query.itemRef || !query.itemRefs)
         .safeParse(Object.fromEntries(request.nextUrl.searchParams))
       if (!query.success)
         return NextResponse.json(
           { error: 'Invalid query parameters' },
           { status: 400 },
         )
-      const { itemRef, versionSearch } = query.data
-      const result = itemRef
-        ? await workflow.compare(runtime.context, parsed.data.id, itemRef)
-        : await workflow.read(runtime.context, parsed.data.id, versionSearch)
+      const { itemRef, agreementId, historyItemRef, itemRefs, endPreview } =
+        query.data
+      const result =
+        endPreview && agreementId !== undefined
+          ? await workflow.endPreview(
+              runtime.context,
+              parsed.data.id,
+              agreementId,
+            )
+          : historyItemRef && agreementId !== undefined
+            ? await workflow.history(
+                runtime.context,
+                parsed.data.id,
+                agreementId,
+                historyItemRef,
+              )
+            : itemRef
+              ? await workflow.compare(
+                  runtime.context,
+                  parsed.data.id,
+                  itemRef,
+                  {
+                    agreementId,
+                  },
+                )
+              : await workflow.read(runtime.context, parsed.data.id, {
+                  agreementId,
+                  itemRefs: itemRefs ?? [],
+                })
       return NextResponse.json(result)
     } catch (error) {
       const { body, status } = toHttpErrorPayload(error)

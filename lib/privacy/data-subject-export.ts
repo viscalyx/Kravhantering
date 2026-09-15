@@ -1302,15 +1302,12 @@ async function collectRfiAssessmentAuthors(
 const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
   ...PRIVACY_ERASURE_GROUP_POLICIES.filter(
     policy =>
-      policy.table === 'specification_amendments' ||
+      policy.table === 'specification_agreements' ||
+      policy.table === 'specification_agreement_corrections' ||
+      policy.table === 'specification_deviation_endings' ||
       [
-        'requirements_specifications.assessed_by',
-        'requirements_specifications.established_by',
-        'requirements_specifications.ended_by',
         'requirements_specification_items.binding_created_by',
-        'requirements_specification_items.reassessed_by',
         'specification_local_requirements.binding_created_by',
-        'specification_local_requirements.reassessed_by',
       ].includes(policy.key),
   ).map(policy => ({
     policy,
@@ -1321,10 +1318,10 @@ const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
           'Agreement actor source requires a table and HSA column',
         )
       const rows = await db.query<ExportRow[]>(
-        `SELECT id, ${policy.hsaColumn} AS hsaId FROM ${policy.table} WHERE ${policy.hsaColumn} = @0`,
+        `SELECT id, ${policy.hsaColumn} AS hsaId${policy.displayColumn ? `, ${policy.displayColumn} AS displayName` : ''} FROM ${policy.table} WHERE ${policy.hsaColumn} = @0`,
         [targetHsaId],
       )
-      return rows.map(row =>
+      return rows.flatMap(row => [
         item(
           policy,
           'historical_agreement_actor',
@@ -1334,7 +1331,24 @@ const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
             relatedObject: relatedObject(row, policy.table ?? policy.key, 'id'),
           },
         ),
-      )
+        ...(policy.displayColumn
+          ? [
+              item(
+                policy,
+                'historical_agreement_actor',
+                policy.displayColumn,
+                stringValue(row.displayName),
+                {
+                  relatedObject: relatedObject(
+                    row,
+                    policy.table ?? policy.key,
+                    'id',
+                  ),
+                },
+              ),
+            ]
+          : []),
+      ])
     },
   })),
   {

@@ -128,42 +128,47 @@ function requirementResponsibilityPersonNameSql(alias: string): string {
 const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   ...(
     [
-      ['requirements_specifications', 'assessed_by_hsa_id', 'assessedBy'],
-      ['requirements_specifications', 'established_by_hsa_id', 'establishedBy'],
-      ['requirements_specifications', 'ended_by_hsa_id', 'endedBy'],
-      ['specification_amendments', 'created_by_hsa_id', 'createdBy'],
-      ['specification_amendments', 'decided_by_hsa_id', 'decidedBy'],
-      ['specification_amendments', 'cancelled_by_hsa_id', 'cancelledBy'],
+      ['specification_agreements', 'created_by_hsa_id', 'createdBy'],
+      ['specification_agreements', 'confirmed_by_hsa_id', 'confirmedBy'],
+      ['specification_agreements', 'cancelled_by_hsa_id', 'cancelledBy'],
+      ['specification_agreements', 'ended_by_hsa_id', 'endedBy'],
+      [
+        'specification_agreement_corrections',
+        'corrected_by_hsa_id',
+        'correctedBy',
+      ],
+      ['specification_deviation_endings', 'recorded_by_hsa_id', 'recordedBy'],
+      ['specification_deviation_endings', 'cancelled_by_hsa_id', 'cancelledBy'],
       [
         'requirements_specification_items',
         'binding_created_by_hsa_id',
         'bindingCreatedBy',
       ],
       [
-        'requirements_specification_items',
-        'reassessed_by_hsa_id',
-        'reassessedBy',
-      ],
-      [
         'specification_local_requirements',
         'binding_created_by_hsa_id',
         'bindingCreatedBy',
-      ],
-      [
-        'specification_local_requirements',
-        'reassessed_by_hsa_id',
-        'reassessedBy',
       ],
     ] as const
   ).map(
     ([table, hsaColumn, fieldKey]): PrivacyGroupPolicy => ({
       key: `${table}.${hsaColumn.replace('_hsa_id', '')}`,
       objectKey:
-        table === 'specification_amendments'
-          ? 'specificationAmendments'
+        table === 'specification_agreements' ||
+        table === 'specification_agreement_corrections' ||
+        table === 'specification_deviation_endings'
+          ? 'specificationAgreements'
           : 'specifications',
       fieldKey,
-      kind: 'hsaOnly',
+      kind:
+        table === 'specification_agreements' ||
+        table === 'specification_agreement_corrections'
+          ? 'simpleDisplay'
+          : 'hsaOnly',
+      ...(table === 'specification_agreements' ||
+      table === 'specification_agreement_corrections'
+        ? { displayColumn: hsaColumn.replace('_hsa_id', '_display_name') }
+        : {}),
       table,
       hsaColumn,
       allowedActions: ['anonymize', 'skip'],

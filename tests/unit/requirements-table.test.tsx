@@ -17,6 +17,7 @@ import {
   DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
   type FilterValues,
 } from '@/lib/requirements/list-view'
+import { requireTestValue } from '@/tests/helpers/require-test-value'
 
 const mockPush = vi.fn()
 const resizeObserverObserve = vi.fn()
@@ -60,6 +61,48 @@ vi.mock('@/i18n/routing', () => ({
 }))
 
 describe('RequirementsTable', () => {
+  it('shows each agreement change date beside its requirement and identifies draft removals', () => {
+    render(
+      <RequirementsTable
+        locale="sv"
+        rows={[
+          {
+            ...makeRow(),
+            id: 1,
+            uniqueId: 'KRAV0001',
+            changeDate: '2030-09-15',
+            changeKind: 'changed',
+            version: {
+              ...makeRow().version,
+              description: 'Changed requirement',
+            },
+          },
+          {
+            ...makeRow(),
+            id: 2,
+            uniqueId: 'KRAV0002',
+            changeDate: '2030-10-01',
+            changeKind: 'removed',
+            isRemoved: true,
+            version: {
+              ...makeRow().version,
+              description: 'Removed requirement',
+            },
+          },
+        ]}
+      />,
+    )
+    const changed = requireTestValue(
+      screen.getByText('Changed requirement').closest('tr'),
+    )
+    expect(within(changed).getByText('agreementChange')).toBeInTheDocument()
+    expect(within(changed).getByText('2030-09-15')).toBeInTheDocument()
+    const removed = requireTestValue(
+      screen.getByText('Removed requirement').closest('tr'),
+    )
+    expect(within(removed).getByText('agreementRemoved')).toBeInTheDocument()
+    expect(within(removed).getByText('2030-10-01')).toBeInTheDocument()
+  })
   const coreMultiValueFilterColumns = [
     'area',
     'category',

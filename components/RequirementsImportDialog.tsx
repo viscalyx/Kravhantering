@@ -226,6 +226,7 @@ export interface InitialRequirementsImport {
 }
 
 export interface RequirementsImportDialogProps {
+  agreementId?: number
   areas?: AreaOption[]
   destinationName?: string
   embedded?: boolean
@@ -734,6 +735,7 @@ function ImportOutcomeFeedback({
 }
 
 export default function RequirementsImportDialog({
+  agreementId,
   areas = EMPTY_AREA_OPTIONS,
   destinationName,
   embedded = false,
@@ -1954,7 +1956,12 @@ export default function RequirementsImportDialog({
         {
           body: JSON.stringify({
             ...(isLibrary ? { areaId: Number(selectedAreaId) } : {}),
-            ...(!isLibrary ? { specificationId } : {}),
+            ...(!isLibrary
+              ? {
+                  specificationId,
+                  ...(agreementId === undefined ? {} : { agreementId }),
+                }
+              : {}),
             locale,
             previewToken,
             rows: selectedRows.map(row => ({

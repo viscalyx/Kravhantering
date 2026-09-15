@@ -619,6 +619,7 @@ describe('deviation mutation routes', () => {
 
     const response = await PUT(
       jsonRequest('https://example.test/api/deviations/7', {
+        agreementId: 2,
         motivation: 'Updated motivation',
       }) as never,
       params({ id: '7' }),
@@ -626,6 +627,7 @@ describe('deviation mutation routes', () => {
 
     expect(response.status).toBe(200)
     expect(routeState.updateDeviation).toHaveBeenCalledWith(mockDb, 7, {
+      agreementId: 2,
       motivation: 'Updated motivation',
     })
     expect(
@@ -848,7 +850,9 @@ describe('deviation mutation routes', () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ ok: true })
     expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
-    expect(routeState.requestReview).toHaveBeenCalledWith(mockDb, 7)
+    expect(routeState.requestReview).toHaveBeenCalledWith(mockDb, 7, {
+      agreementId: undefined,
+    })
   })
 
   it('rejects deviation revert-to-draft before DAL writes when no human actor is present', async () => {
@@ -889,7 +893,9 @@ describe('deviation mutation routes', () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ ok: true })
     expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
-    expect(routeState.revertToDraft).toHaveBeenCalledWith(mockDb, 7)
+    expect(routeState.revertToDraft).toHaveBeenCalledWith(mockDb, 7, {
+      agreementId: undefined,
+    })
   })
 
   it('rejects deviation deletes before DAL writes when no human actor is present', async () => {
@@ -1027,6 +1033,7 @@ describe('deviation mutation routes', () => {
 
     const response = await PUT(
       jsonRequest('https://example.test/api/specification-local-deviations/7', {
+        agreementId: 2,
         motivation: 'Updated motivation',
       }) as never,
       params({ id: '7' }),
@@ -1036,7 +1043,7 @@ describe('deviation mutation routes', () => {
     expect(routeState.updateSpecificationLocalDeviation).toHaveBeenCalledWith(
       mockDb,
       7,
-      { motivation: 'Updated motivation' },
+      { agreementId: 2, motivation: 'Updated motivation' },
     )
     expect(
       routeState.createRequestContext.mock.invocationCallOrder[0],

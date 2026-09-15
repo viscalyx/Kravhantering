@@ -37,6 +37,7 @@ export interface DeviationPriorityLevel {
 
 interface DeviationFormModalProps {
   affectedRequirementIds?: string[]
+  error?: string | null
   initialMotivation?: string
   loading?: boolean
   onClose: () => void
@@ -44,12 +45,15 @@ interface DeviationFormModalProps {
   open: boolean
   priorityLevel?: DeviationPriorityLevel | null
   priorityLevels?: DeviationPriorityLevel[]
+  scopeNotice?: string
   title?: string
 }
 
 export default function DeviationFormModal({
   affectedRequirementIds = [],
   initialMotivation,
+  scopeNotice,
+  error,
   loading,
   onClose,
   onSubmit,
@@ -160,6 +164,11 @@ export default function DeviationFormModal({
                 {title ?? td('requestDeviation')}
               </h2>
 
+              {scopeNotice && (
+                <p className="mb-3 text-sm text-secondary-700 dark:text-secondary-300">
+                  {scopeNotice}
+                </p>
+              )}
               {affectedRequirementIds.length > 0 ? (
                 <div>
                   <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
@@ -244,6 +253,14 @@ export default function DeviationFormModal({
                 />
               </div>
 
+              {error && (
+                <p
+                  className="text-sm text-red-700 dark:text-red-300"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              )}
               <div className="flex gap-2 justify-end">
                 <button
                   className="btn-secondary text-sm px-4 py-2"

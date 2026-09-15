@@ -196,7 +196,11 @@ applies.
 
 Lifecycle-profile PDFs, procurement CSV, and full CSV do not inherit editor
 filters or loaded-page state. They always traverse the complete requirements
-specification in stable Requirement ID order using bounded server pages.
+set in the selected agreement in stable Requirement ID order using bounded
+server pages. Every specification report identifies the agreement reference,
+effective date and state. Historical reports use the preserved follow-up;
+draft, upcoming and cancelled agreements retain their explicit state. Before
+the first agreement, output identifies the working set as no agreement.
 
 ### 7. Improvement Suggestion History
 
@@ -246,6 +250,8 @@ Row-based CSV without metadata rows. Available only for `Upphandling`.
 
 Included fields:
 
+- `Avtalsreferens`, `Avtalsdatum` and `Avtalsstatus` identify the selected
+  agreement on each row.
 - `Krav-ID`, `Kravtext`, `Kvalitetsegenskap`, and `Normreferenser` match the
   procurement appendix so the CSV and PDF describe the same supplier-facing
   obligations.
@@ -348,6 +354,8 @@ analysis and traceability.
 
 Included fields:
 
+- `Avtalsreferens`, `Avtalsdatum` and `Avtalsstatus` identify the selected
+  agreement on each row.
 - `Krav-ID`, `Kravtext`, `Kravområde`, `Kategori`, `Typ`,
   `Kvalitetsegenskap`, `Prioritet`, `Kravversionsstatus`, `Verifierbar`,
   `Version`, `Behovsreferens`, `Användningsstatus`, `Normreferenser`,

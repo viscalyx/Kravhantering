@@ -26,7 +26,6 @@ export interface SpecificationTaxonomyItem {
 
 export interface SpecificationMeta {
   businessNeedsReference: string | null
-  establishmentStatus?: 'assessment' | 'editable' | 'established' | 'ended'
   governanceObjectType: SpecificationTaxonomyItem | null
   id: number
   implementationType: SpecificationTaxonomyItem | null

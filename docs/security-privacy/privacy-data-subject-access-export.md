@@ -165,8 +165,13 @@ preserving evidence and version history; retention remains a separate workflow.
 
 ## Agreement actors
 
-Register extracts also include specification assessment, establishment and end
-actors, amendment preparation/decision/cancellation actors, and binding creation
-and reassessment actors. Each source matches the exact HSA identity and references
-the stored business record. Anonymization removes the identity without altering
-the amendment, decision, effective dates or original agreed content.
+Register extracts include agreement creation, confirmation, cancellation and end
+actors, binding creation actors, and actors who authorize or cancel deviation
+ending plans. Each source matches the exact HSA identity and references the
+stored business record. Correction actors are exported from their own retained
+business history, separately from the action log. Their stored display names
+and HSA identities are anonymized together. Anonymization removes identity
+without altering agreement content,
+original deviation decisions, effective dates, planned endings or their
+cancellation and actual ending timestamps. Draft discard and privacy erasure
+remain separate operations with different evidence scopes.

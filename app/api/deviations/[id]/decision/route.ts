@@ -11,7 +11,11 @@ import {
   requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { businessTextSchema, idParamSchema } from '@/lib/http/validation'
+import {
+  businessTextSchema,
+  idParamSchema,
+  positiveIntegerSchema,
+} from '@/lib/http/validation'
 import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
@@ -20,6 +24,7 @@ export const dynamic = 'force-dynamic'
 
 const decisionBodySchema = z
   .object({
+    agreementId: positiveIntegerSchema.optional(),
     decision: z.union([
       z.literal(DEVIATION_APPROVED),
       z.literal(DEVIATION_REJECTED),
@@ -43,6 +48,7 @@ export const POST = secureMutationRoute({
       const actor = requireHumanActorSnapshot(context)
       const db = authorizedDb ?? (await getRequestSqlServerDataSource())
       await recordDecision(db, params.id, {
+        agreementId: body.agreementId,
         decision: body.decision,
         decisionMotivation: body.decisionMotivation,
         decidedBy: actor.displayName,

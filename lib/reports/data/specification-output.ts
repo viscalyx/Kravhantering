@@ -9,11 +9,22 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { throwIfGenerationAborted } from '@/lib/generated-output/operation'
+import {
+  type ReportAgreementContext,
+  resolveReportAgreementContext,
+} from '@/lib/reports/data/agreement-context'
 import { ReportDataError } from '@/lib/reports/data/server'
 import {
   type CompleteSpecificationItemTraversalOptions,
   traverseCompleteSpecificationItemResult,
 } from '@/lib/requirements/specification-item-page'
+import { toSpecificationItemPageInput } from '@/lib/requirements/specification-item-query'
+import { agreementItemSource } from '@/lib/specifications/agreement-item-source'
+
+export interface SpecificationOutputOptions
+  extends CompleteSpecificationItemTraversalOptions {
+  agreementId?: number
+}
 
 type Row = Record<string, unknown>
 
@@ -25,6 +36,7 @@ export interface SpecificationOutputNormReference {
 }
 
 export interface SpecificationOutputItem {
+  agreement?: ReportAgreementContext | null
   areaName: string | null
   categoryNameEn: string | null
   categoryNameSv: string | null
@@ -57,11 +69,13 @@ export interface SpecificationOutputItem {
 }
 
 export interface SpecificationOutputData {
+  agreement?: ReportAgreementContext | null
   items: SpecificationOutputItem[]
   specification: NonNullable<Awaited<ReturnType<typeof getSpecificationById>>>
 }
 
 export interface SpecificationOutputPageTraversal {
+  agreement?: ReportAgreementContext | null
   itemCount: number
   pageCount: number
   specification: SpecificationOutputData['specification']
@@ -130,7 +144,7 @@ async function listNormReferencesByItemRef(
           norm_reference.name AS name,
           norm_reference.norm_reference_id AS normReferenceId,
           norm_reference.uri AS uri
-        FROM current_requirement_applications specification_item
+        FROM requirements_specification_items specification_item
         INNER JOIN requirement_version_norm_references version_norm_reference
           ON version_norm_reference.requirement_version_id = specification_item.requirement_version_id
         INNER JOIN norm_references norm_reference
@@ -200,7 +214,7 @@ async function listRequirementPackagesByItemRef(
         SELECT
           specification_item.id AS itemId,
           requirement_package.name AS name
-        FROM current_requirement_applications specification_item
+        FROM requirements_specification_items specification_item
         INNER JOIN requirement_version_requirement_packages version_requirement_package
           ON version_requirement_package.requirement_version_id = specification_item.requirement_version_id
         INNER JOIN requirement_packages requirement_package
@@ -236,7 +250,7 @@ async function countSuggestionsByLibraryItemRef(
       SELECT
         specification_item.id AS itemId,
         COUNT(suggestion.id) AS count
-      FROM current_requirement_applications specification_item
+      FROM requirements_specification_items specification_item
       LEFT JOIN improvement_suggestions suggestion
         ON suggestion.requirement_id = specification_item.requirement_id
       WHERE specification_item.id IN (${buildInClause(0, libraryItemIds)})
@@ -329,6 +343,7 @@ async function collectSpecificationOutputPage(
   db: SqlServerDatabase,
   specificationId: number,
   itemRefs: SpecificationItemRef[],
+  agreement: ReportAgreementContext | null,
 ): Promise<SpecificationOutputItem[]> {
   const libraryPageItemIds: number[] = []
   const localPageRequirementIds: number[] = []
@@ -364,11 +379,11 @@ async function collectSpecificationOutputPage(
           priority_level.icon_name AS priorityLevelIconName,
           priority_level.name_en AS priorityLevelNameEn,
           priority_level.name_sv AS priorityLevelNameSv,
-          needs_reference.text AS needsReference,
+          specification_item.agreement_needs_reference AS needsReference,
           specification_item.specification_item_status_id AS specificationItemStatusId,
           specification_item_status.name_en AS specificationItemStatusNameEn,
           specification_item_status.name_sv AS specificationItemStatusNameSv
-        FROM current_requirement_applications specification_item
+        FROM ${agreementItemSource('library', agreement ? `@${1 + libraryPageItemIds.length}` : undefined)} specification_item
         INNER JOIN requirements requirement
           ON requirement.id = specification_item.requirement_id
         INNER JOIN requirement_versions requirement_version
@@ -392,7 +407,11 @@ async function collectSpecificationOutputPage(
         WHERE specification_item.requirements_specification_id = @0
           AND specification_item.id IN (${buildInClause(1, libraryPageItemIds)})
       `,
-          [specificationId, ...libraryPageItemIds],
+          [
+            specificationId,
+            ...libraryPageItemIds,
+            ...(agreement ? [agreement.id] : []),
+          ],
         ) as Promise<Row[]>)
       : Promise.resolve([] as Row[]),
     localPageRequirementIds.length > 0
@@ -415,11 +434,11 @@ async function collectSpecificationOutputPage(
           priority_level.icon_name AS priorityLevelIconName,
           priority_level.name_en AS priorityLevelNameEn,
           priority_level.name_sv AS priorityLevelNameSv,
-          needs_reference.text AS needsReference,
+          local_requirement.agreement_needs_reference AS needsReference,
           local_requirement.specification_item_status_id AS specificationItemStatusId,
           specification_item_status.name_en AS specificationItemStatusNameEn,
           specification_item_status.name_sv AS specificationItemStatusNameSv
-        FROM current_specification_local_requirements local_requirement
+        FROM ${agreementItemSource('local', agreement ? `@${1 + localPageRequirementIds.length}` : undefined)} local_requirement
         LEFT JOIN requirement_categories requirement_category
           ON requirement_category.id = local_requirement.requirement_category_id
         LEFT JOIN requirement_types requirement_type
@@ -435,7 +454,11 @@ async function collectSpecificationOutputPage(
         WHERE local_requirement.specification_id = @0
           AND local_requirement.id IN (${buildInClause(1, localPageRequirementIds)})
       `,
-          [specificationId, ...localPageRequirementIds],
+          [
+            specificationId,
+            ...localPageRequirementIds,
+            ...(agreement ? [agreement.id] : []),
+          ],
         ) as Promise<Row[]>)
       : Promise.resolve([] as Row[]),
   ])
@@ -454,7 +477,12 @@ async function collectSpecificationOutputPage(
     listNormReferencesByItemRef(db, libraryItemIds, localRequirementIds),
     listRequirementPackagesByItemRef(db, libraryItemIds),
     countSuggestionsByLibraryItemRef(db, libraryItemIds),
-    listSpecificationTraceabilityItems(db, specificationId, itemRefs),
+    listSpecificationTraceabilityItems(
+      db,
+      specificationId,
+      itemRefs,
+      agreement?.id,
+    ),
   ])
   const deviationCountsByItemRef = new Map(
     traceabilityItems.map(item => [item.itemRef, item.deviationCounts]),
@@ -465,6 +493,7 @@ async function collectSpecificationOutputPage(
       item.itemRef,
       {
         ...item,
+        agreement,
         deviationCounts:
           deviationCountsByItemRef.get(item.itemRef as SpecificationItemRef) ??
           EMPTY_DEVIATION_COUNTS,
@@ -489,18 +518,21 @@ export async function visitSpecificationOutputPages(
     items: SpecificationOutputItem[],
     pageNumber: number,
   ) => Promise<void> | void,
-  traversalOptions: CompleteSpecificationItemTraversalOptions = {},
+  traversalOptions: SpecificationOutputOptions = {},
 ): Promise<SpecificationOutputPageTraversal> {
   const specification = await resolveSpecification(db, specificationId)
+  const agreement = await resolveReportAgreementContext(
+    db,
+    specificationId,
+    traversalOptions.agreementId,
+  )
 
   const traversal = await traverseCompleteSpecificationItemResult(
     db,
-    {
-      filters: {},
+    toSpecificationItemPageInput(specification.id, {
       locale: 'en',
-      sort: { by: 'uniqueId', direction: 'asc' },
-      specificationId: specification.id,
-    },
+      agreementId: agreement?.id,
+    }),
     async (pageItems, pageNumber) => {
       if (traversalOptions.signal) {
         throwIfGenerationAborted(traversalOptions.signal)
@@ -512,6 +544,7 @@ export async function visitSpecificationOutputPages(
         db,
         specification.id,
         itemRefs,
+        agreement,
       )
       if (outputPage.length !== itemRefs.length) {
         throw new ReportDataError(
@@ -527,16 +560,16 @@ export async function visitSpecificationOutputPages(
     traversalOptions,
   )
 
-  return { ...traversal, specification }
+  return { ...traversal, specification, agreement }
 }
 
 export async function collectCompleteSpecificationOutputData(
   db: SqlServerDatabase,
   specificationId: number,
-  traversalOptions: CompleteSpecificationItemTraversalOptions = {},
+  traversalOptions: SpecificationOutputOptions = {},
 ): Promise<SpecificationOutputData> {
   const items: SpecificationOutputItem[] = []
-  const { specification } = await visitSpecificationOutputPages(
+  const { specification, agreement } = await visitSpecificationOutputPages(
     db,
     specificationId,
     pageItems => {
@@ -545,5 +578,5 @@ export async function collectCompleteSpecificationOutputData(
     traversalOptions,
   )
 
-  return { items, specification }
+  return { items, specification, agreement }
 }

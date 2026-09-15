@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+
 import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import { runBoundedStructuredOutput } from '@/lib/generated-output/structured-runner'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
@@ -8,6 +9,7 @@ import {
   localeSchema,
   parseRouteParams,
   parseSearchParams,
+  positiveIntegerStringSchema,
 } from '@/lib/http/validation'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import { synchronousGeneratedOutputErrorResponse } from '@/lib/pdf/synchronous-generation'
@@ -27,6 +29,7 @@ const specificationParamSchema = idParamSchema
 
 const reportOutputQuerySchema = z
   .object({
+    agreementId: positiveIntegerStringSchema.optional(),
     locale: localeSchema.optional().default('en'),
     profile: z.enum(['procurement', 'progress', 'management']),
   })
@@ -96,6 +99,7 @@ async function getHandler(
           runtime.db,
           specification.id,
           {
+            agreementId: parsedQuery.data.agreementId,
             maxItems,
             signal,
             createItemLimitError: itemLimitError,

@@ -79,7 +79,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       )
       expect(headerSummary).toHaveClass('xl:grid')
       expect(headerSummary).toHaveClass(
-        'xl:grid-cols-[minmax(40vw,1fr)_minmax(0,1fr)]',
+        'xl:grid-cols-[minmax(18rem,1fr)_minmax(0,2fr)]',
       )
       expect(headerMetadata).not.toHaveTextContent('Shared IAM business case')
       expect(headerMetadata).toHaveClass('grid-flow-col')

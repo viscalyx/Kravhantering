@@ -41,6 +41,7 @@ function buildCoverSection(
   const specification = data.specification
   return {
     type: 'specification-cover',
+    agreement: data.agreement,
     businessNeedsReference: specification.businessNeedsReference,
     governanceObjectType: localizeReportValue(
       locale,

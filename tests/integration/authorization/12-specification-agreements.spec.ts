@@ -1,20 +1,20 @@
 import { expect, test } from '@playwright/test'
+import { requireTestValue } from '@/tests/helpers/require-test-value'
 import {
   createAuthorizationFixture,
+  expectOk,
   newRoleContext,
   ROLE_STORAGE_STATE,
 } from './authorization-test-helpers'
 
 test.use({ storageState: ROLE_STORAGE_STATE.specificationCoauthor })
 
-test('AUTHZ-04/AUTHZ-05/SPEC-24: co-authors prepare and cancel deviations while only the responsible person decides the agreement', async ({
+test('AUTHZ-04/AUTHZ-05/SPEC-24: co-authors prepare whole agreements and cancel pending cases while the assigned responsible person confirms', async ({
   baseURL,
   browser,
   page,
 }, testInfo) => {
-  const fixture =
-    await test.step('Set up the assigned specification and active deviation', () =>
-      createAuthorizationFixture(testInfo))
+  const fixture = await createAuthorizationFixture(testInfo)
   const owner = await newRoleContext(testInfo, 'specificationResponsible')
   const ownerContext = await browser.newContext({
     baseURL,
@@ -22,18 +22,9 @@ test('AUTHZ-04/AUTHZ-05/SPEC-24: co-authors prepare and cancel deviations while 
   })
   const ownerPage = await ownerContext.newPage()
   const endpoint = `/api/requirements-specifications/${fixture.specificationId}/agreement`
-  const specificationUrl = `/en/specifications/${fixture.specificationId}`
-  const effectiveDate = new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'Europe/Stockholm',
-  }).format(new Date())
-  const panel = page.getByRole('region', {
-    name: 'Agreement and version history',
-  })
-  const ownerPanel = ownerPage.getByRole('region', {
-    name: 'Agreement and version history',
-  })
+  const url = `/en/specifications/${fixture.specificationId}`
   try {
-    await test.step('Establishment is unavailable to roles without specification responsibility', async () => {
+    await test.step('Only the assigned responsible person can register the first agreement', async () => {
       for (const role of [
         'specificationCoauthor',
         'reviewer',
@@ -46,26 +37,23 @@ test('AUTHZ-04/AUTHZ-05/SPEC-24: co-authors prepare and cancel deviations while 
         })
         try {
           const rolePage = await caller.newPage()
-          await rolePage.goto(specificationUrl)
+          await rolePage.goto(url)
           if (role === 'noRoles') {
             await expect(
               rolePage.getByRole('heading', {
                 name: 'You do not have access to this requirements specification',
               }),
-            ).toHaveCount(1)
+            ).toBeVisible()
           } else {
             await expect(
-              rolePage
-                .getByRole('region', { name: 'Agreement and version history' })
-                .getByRole('button', {
-                  name: 'Export selected view as JSON',
-                  exact: true,
-                }),
-            ).toBeEnabled()
+              rolePage.locator(
+                '[data-developer-mode-value="agreement selector"]',
+              ),
+            ).toContainText('None')
           }
           await expect(
             rolePage.getByRole('button', {
-              name: 'Establish agreement',
+              name: 'Register agreement',
               exact: true,
             }),
           ).toHaveCount(0)
@@ -73,79 +61,136 @@ test('AUTHZ-04/AUTHZ-05/SPEC-24: co-authors prepare and cancel deviations while 
           await caller.close()
         }
       }
+      const response = await owner.post(endpoint, {
+        data: {
+          operation: 'establish',
+          agreementReference: 'A',
+          effectiveDate: '2020-01-01',
+        },
+      })
+      await expectOk(response, 'register first whole agreement')
     })
-    await test.step('The responsible person establishes the agreement', async () => {
-      await ownerPage.goto(specificationUrl)
-      await ownerPanel.getByLabel(/^Reason/).fill('Agreement')
-      await ownerPanel.getByLabel(/^Agreement reference/).fill('A')
-      await ownerPanel.getByLabel(/^Effective date/).fill(effectiveDate)
-      await ownerPanel
-        .getByRole('button', { name: 'Establish agreement', exact: true })
-        .click()
-      await expect(ownerPanel).toContainText('Established supplier agreement')
-    })
-    await test.step('The co-author cancels the active deviation', async () => {
-      await page.goto(specificationUrl)
+    await test.step('The co-author explicitly cancels a pending case from the requirement row', async () => {
+      await page.goto(url)
       await expect(
-        panel.getByRole('button', { name: 'Record agreement end' }),
-      ).toHaveCount(0)
-      await panel
-        .getByLabel(/^Reason/)
-        .fill('The proposed requirement change replaces this deviation')
-      await panel
+        page.locator('[data-developer-mode-value="agreement selector"]'),
+      ).toContainText('Current')
+      const view = (await (
+        await owner.get(
+          `${endpoint}?itemRefs=local:${fixture.localRequirementId}`,
+        )
+      ).json()) as {
+        items: Array<{ itemRef: string; uniqueId: string }>
+      }
+      const local = requireTestValue(
+        view.items.find(
+          item => item.itemRef === `local:${fixture.localRequirementId}`,
+        ),
+      )
+      await page
+        .getByRole('button', { name: new RegExp(`^${local.uniqueId}\\b`) })
+        .click()
+      await page
         .getByRole('button', { name: 'Cancel deviation', exact: true })
         .click()
-      await expect(panel.getByText(/Cancelled deviation/)).toBeVisible()
-    })
-    await test.step('The co-author prepares an amendment', async () => {
-      await panel.getByLabel(/^Reason/).fill('Remove obsolete requirement')
-      await panel.getByLabel(/^Agreement reference/).fill('A / T1')
-      await panel.getByLabel(/^Effective date/).fill(effectiveDate)
-      await panel.getByLabel(/^Change type/).selectOption('remove')
-      await panel
-        .getByLabel(/^Requirement application/)
-        .selectOption(`local:${fixture.localRequirementId}`)
-      await panel
-        .getByRole('button', { name: 'Add change', exact: true })
+      const dialog = page.getByRole('dialog', {
+        name: 'Cancel deviation',
+        exact: true,
+      })
+      await dialog
+        .getByLabel(/^Reason/)
+        .fill('The proposed content replaces this pending request')
+      await dialog
+        .getByRole('button', { name: 'Cancel deviation', exact: true })
         .click()
-      await panel
-        .getByRole('button', { name: 'Prepare amendment', exact: true })
-        .click()
-      await expect(panel.getByRole('article')).toBeVisible()
+      await expect(dialog).toBeHidden()
+      await expect(page.getByText('Cancelled', { exact: true })).toBeVisible()
     })
-    await test.step('Only the responsible person can decide the proposal', async () => {
-      await expect(
-        panel.getByRole('button', { name: 'Record agreement decision' }),
-      ).toHaveCount(0)
+    await test.step('The co-author creates and edits a complete draft', async () => {
+      await page
+        .getByRole('button', { name: 'New agreement', exact: true })
+        .click()
+      const create = page.getByRole('dialog', {
+        name: 'New agreement',
+        exact: true,
+      })
+      await create.getByLabel(/^Agreement reference/).fill('B')
+      await create.getByLabel(/^Agreement effective date/).fill(
+        new Intl.DateTimeFormat('sv-SE', {
+          timeZone: 'Europe/Stockholm',
+        }).format(new Date()),
+      )
+      await create
+        .getByRole('button', { name: 'Create draft', exact: true })
+        .click()
+      await expect(create).toBeHidden()
+      const localRow = page
+        .locator('button[aria-controls]')
+        .filter({ hasText: /^KRAV/ })
+        .first()
+      if ((await localRow.getAttribute('aria-expanded')) !== 'true')
+        await localRow.click()
+      await page
+        .getByRole('button', { name: 'Edit requirement', exact: true })
+        .click()
+      const editor = page.getByRole('dialog', {
+        name: 'Edit requirement',
+        exact: true,
+      })
+      await editor
+        .getByLabel(/^Requirement text/)
+        .fill('Co-author prepared the successor content')
+      await editor.getByRole('button', { name: 'Save', exact: true }).click()
+      await expect(editor).toBeHidden()
+      await expect(localRow.locator('xpath=ancestor::tr[1]')).toContainText(
+        'Co-author prepared the successor content',
+      )
       const view = (await (await owner.get(endpoint)).json()) as {
-        amendments: Array<{ id: number }>
+        agreements: Array<{ id: number; state: string }>
       }
-      expect(view.amendments[0]?.id).toBeDefined()
-      await ownerPage.reload()
-      await ownerPanel
-        .getByRole('button', { name: 'Record agreement decision', exact: true })
+      const draftId = requireTestValue(
+        view.agreements.find(agreement => agreement.state === 'draft'),
+      ).id
+      await page
+        .getByRole('button', { name: 'Agreement details', exact: true })
+        .click()
+      const details = page.getByRole('dialog', {
+        name: 'Agreement details',
+        exact: true,
+      })
+      await expect(details).toContainText('B')
+      await expect(
+        details.getByRole('button', { name: 'Confirm agreement', exact: true }),
+      ).toHaveCount(0)
+      await expect(
+        details.getByRole('button', { name: 'Discard draft', exact: true }),
+      ).toHaveCount(0)
+      await page.keyboard.press('Escape')
+      await ownerPage.goto(url)
+      await ownerPage
+        .getByRole('button', { name: 'Select agreement', exact: true })
+        .click()
+      await ownerPage
+        .getByRole('dialog', { name: 'Select agreement', exact: true })
+        .getByRole('button', { name: /^B ·/ })
+        .click()
+      await ownerPage
+        .getByRole('button', { name: 'Agreement details', exact: true })
+        .click()
+      await ownerPage
+        .getByRole('dialog', { name: 'Agreement details', exact: true })
+        .getByRole('button', { name: 'Confirm agreement', exact: true })
         .click()
       await expect(
-        ownerPanel
-          .locator('ul')
-          .first()
-          .getByText('Scoped child authorization fixture.', { exact: true }),
-      ).toHaveCount(0)
-    })
-    await test.step('Verify the final current agreement content', async () => {
-      await page.reload()
-      await expect(
-        panel.getByRole('button', {
-          name: 'Export selected view as JSON',
-          exact: true,
-        }),
-      ).toBeEnabled()
-      await expect(
-        panel
-          .locator('ul')
-          .first()
-          .getByText('Scoped child authorization fixture.', { exact: true }),
-      ).toHaveCount(0)
+        ownerPage.locator('[data-developer-mode-value="agreement selector"]'),
+      ).toContainText('Current')
+      const final = (await (await owner.get(endpoint)).json()) as {
+        selectedAgreement: { id: number; state: string }
+      }
+      expect(final.selectedAgreement).toMatchObject({
+        id: draftId,
+        state: 'current',
+      })
     })
   } finally {
     await owner.dispose()

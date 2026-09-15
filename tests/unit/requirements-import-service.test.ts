@@ -2361,19 +2361,22 @@ describe('requirements import service', () => {
       }),
     ])
     expect(row.warnings).toEqual([])
-    const result = await workflow.executeSpecificationLocalImport({} as never, {
-      locale: 'sv',
-      previewToken: preview.previewToken,
-      rows: [
-        {
-          ...row.values,
-          requirementPackageIds: [3],
-          reviewRowId: row.reviewRowId,
-          sourceIndex: row.sourceIndex,
-        },
-      ],
-      specificationId: 7,
-    })
+    const result = await workflow.executeSpecificationLocalImport(
+      makeContext('requirements_manage_import'),
+      {
+        locale: 'sv',
+        previewToken: preview.previewToken,
+        rows: [
+          {
+            ...row.values,
+            requirementPackageIds: [3],
+            reviewRowId: row.reviewRowId,
+            sourceIndex: row.sourceIndex,
+          },
+        ],
+        specificationId: 7,
+      },
+    )
 
     const mutationRows = vi.mocked(createSpecificationLocalRequirementsBatch)
       .mock.calls[0]?.[2]

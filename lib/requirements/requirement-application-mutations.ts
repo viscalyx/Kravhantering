@@ -34,7 +34,11 @@ import {
 } from '@/lib/requirements/security-audit'
 import { authorize, withLogging } from '@/lib/requirements/service-shared'
 
+import { restoreOrRemoveAgreementRequirement } from '@/lib/specifications/agreement-content'
+import { assertSpecificationContentEditable } from '@/lib/specifications/agreement-policy'
+
 export interface UpdateRequirementApplicationsInput {
+  agreementId?: number
   fields: SpecificationItemFieldUpdate
   itemRefs: string[]
   operation: 'update'
@@ -42,12 +46,16 @@ export interface UpdateRequirementApplicationsInput {
 }
 
 export interface RemoveRequirementApplicationsByItemRefsInput {
+  agreementId?: number
+  authorizeDeviationEndings?: boolean
   itemRefs: string[]
   operation: 'remove'
   specificationId: number
 }
 
 export interface RemoveRequirementApplicationsByRequirementIdsInput {
+  agreementId?: number
+  authorizeDeviationEndings?: boolean
   operation: 'remove'
   requirementIds: number[]
   specificationId: number
@@ -242,11 +250,13 @@ export function createRequirementApplicationMutationWorkflow({
                           manager,
                           itemRef.id,
                           input.fields,
+                          { agreementId: input.agreementId },
                         )
                       : await updateSpecificationLocalRequirementFieldsWithExecutor(
                           manager,
                           itemRef.id,
                           input.fields,
+                          { agreementId: input.agreementId },
                         )
                 }
                 if (updatedCount !== input.itemRefs.length) {
@@ -271,11 +281,74 @@ export function createRequirementApplicationMutationWorkflow({
                 }
               }
 
+              if (input.agreementId !== undefined) {
+                await assertSpecificationContentEditable(
+                  manager,
+                  input.specificationId,
+                  input.agreementId,
+                )
+                const itemRefs =
+                  'itemRefs' in input
+                    ? input.itemRefs
+                    : (
+                        await manager.query<Array<{ itemRef: string }>>(
+                          `SELECT CONCAT('lib:', item.id) AS itemRef FROM specification_agreement_items membership
+                   INNER JOIN requirements_specification_items item ON item.id = membership.specification_item_id
+                   WHERE membership.specification_agreement_id = @0 AND membership.is_removed = 0
+                     AND item.requirement_id IN (SELECT value FROM OPENJSON(@1))`,
+                          [
+                            input.agreementId,
+                            JSON.stringify(input.requirementIds),
+                          ],
+                        )
+                      ).map(item => item.itemRef)
+                const now = new Date()
+                for (const itemRef of itemRefs) {
+                  await restoreOrRemoveAgreementRequirement(
+                    manager,
+                    input.specificationId,
+                    {
+                      operation: 'remove_requirement',
+                      agreementId: input.agreementId,
+                      itemRef,
+                      authorizeDeviationEndings:
+                        input.authorizeDeviationEndings,
+                    },
+                    context,
+                    now,
+                  )
+                }
+                const removedLibraryCount = itemRefs.filter(itemRef =>
+                  itemRef.startsWith('lib:'),
+                ).length
+                const removedCount = itemRefs.length
+                const auditDetail = mutationAuditDetail(input, removedCount)
+                await recordSensitiveMutationActionAuditEvent(
+                  manager,
+                  context,
+                  auditDetail,
+                )
+                return {
+                  auditDetail,
+                  output: {
+                    operation: 'remove' as const,
+                    removedCount,
+                    removedLibraryCount,
+                    removedSpecificationLocalCount:
+                      removedCount - removedLibraryCount,
+                  },
+                }
+              }
+
               if ('requirementIds' in input) {
                 const removedCount = await unlinkRequirementsFromSpecification(
                   manager,
                   input.specificationId,
                   input.requirementIds,
+                  {
+                    actorHsaId: context.actor.hsaId,
+                    authorizeDeviationEndings: input.authorizeDeviationEndings,
+                  },
                 )
                 const auditDetail = mutationAuditDetail(input, removedCount)
                 await recordSensitiveMutationActionAuditEvent(
@@ -306,12 +379,20 @@ export function createRequirementApplicationMutationWorkflow({
                   manager,
                   input.specificationId,
                   libraryIds,
+                  {
+                    actorHsaId: context.actor.hsaId,
+                    authorizeDeviationEndings: input.authorizeDeviationEndings,
+                  },
                 )
               const removedSpecificationLocalCount =
                 await deleteSpecificationLocalRequirementsByIds(
                   manager,
                   input.specificationId,
                   specificationLocalIds,
+                  {
+                    actorHsaId: context.actor.hsaId,
+                    authorizeDeviationEndings: input.authorizeDeviationEndings,
+                  },
                 )
               const removedCount =
                 removedLibraryCount + removedSpecificationLocalCount

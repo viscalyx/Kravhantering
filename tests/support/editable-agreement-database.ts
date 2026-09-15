@@ -5,9 +5,28 @@ export function withEditableAgreementState(
   return async (sql: string, parameters?: unknown[]) => {
     const statement = sql.replace(/\s+/g, ' ').trim()
     if (
-      statement.startsWith('SELECT establishment_status AS establishmentStatus')
+      statement.startsWith('SELECT DISTINCT item.id FROM') &&
+      statement.includes('specification_deviation_endings')
     )
-      return [{ establishmentStatus: 'editable' }]
+      return []
+    if (
+      statement.startsWith(
+        'SELECT upcoming.id FROM specification_agreements upcoming',
+      )
+    )
+      return []
+    if (
+      /^SELECT item\.(requirements_specification_id|specification_id) AS specificationId, item.id AS itemId FROM/.test(
+        statement,
+      )
+    )
+      return [{ specificationId: 1, itemId: 1 }]
+    if (
+      /^SELECT id(?:, effective_at AS effectiveAt)? FROM specification_agreements/.test(
+        statement,
+      )
+    )
+      return []
     if (
       /^SELECT (requirements_specification_id|specification_id) AS specificationId FROM (requirements_specification_items|specification_local_requirements) WHERE id = @0$/.test(
         statement,
@@ -20,13 +39,7 @@ export function withEditableAgreementState(
     )
       return [{ id: parameters?.[0] }]
     if (
-      statement.startsWith(
-        'SELECT is_reassessment_required AS requiresReassessment',
-      )
-    )
-      return [{ requiresReassessment: false }]
-    if (
-      /^SELECT id FROM (requirements_specification_items|specification_local_requirements) WHERE id = @0 AND valid_from/.test(
+      /^SELECT item.id FROM (requirements_specification_items|specification_local_requirements) item WHERE item.id = @0/.test(
         statement,
       )
     )

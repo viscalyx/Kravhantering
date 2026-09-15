@@ -34,6 +34,9 @@ export const POST = secureMutationRoute<Body>({
         previewToken: body.previewToken,
         rows: body.rows,
         specificationId: body.specificationId,
+        ...(body.agreementId === undefined
+          ? {}
+          : { agreementId: body.agreementId }),
       })
       return NextResponse.json(result, {
         status: 201,

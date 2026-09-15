@@ -21,6 +21,10 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
   parseSpecificationItemRef: dalState.parseSpecificationItemRef,
 }))
 
+vi.mock('@/lib/reports/data/agreement-context', () => ({
+  resolveReportAgreementContext: vi.fn(async () => null),
+}))
+
 vi.mock('@/lib/requirements/specification-item-page', () => ({
   traverseCompleteSpecificationItemResult:
     dalState.traverseCompleteSpecificationItemResult,
@@ -87,9 +91,7 @@ function createDb(
         return [{ count: 3, itemId: 31 }]
       }
 
-      if (
-        sql.includes('FROM current_requirement_applications specification_item')
-      ) {
+      if (sql.includes('requirement_version.description AS description')) {
         return [
           {
             areaName: 'Security',
@@ -119,11 +121,7 @@ function createDb(
         ]
       }
 
-      if (
-        sql.includes(
-          'FROM current_specification_local_requirements local_requirement',
-        )
-      ) {
+      if (sql.includes('local_requirement.description AS description')) {
         return [
           {
             categoryNameEn: 'IT',
@@ -358,9 +356,7 @@ describe('specification output data', () => {
       }
       if (sql.includes('requirement_version_requirement_packages')) return []
       if (sql.includes('improvement_suggestions')) return []
-      if (
-        sql.includes('FROM current_requirement_applications specification_item')
-      ) {
+      if (sql.includes('requirement_version.description AS description')) {
         return [
           {
             itemId: 31,
@@ -370,11 +366,7 @@ describe('specification output data', () => {
           },
         ]
       }
-      if (
-        sql.includes(
-          'FROM current_specification_local_requirements local_requirement',
-        )
-      ) {
+      if (sql.includes('local_requirement.description AS description')) {
         return [
           {
             itemId: 41,

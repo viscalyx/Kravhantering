@@ -20,6 +20,11 @@ kravunderlagets innehåll men inte ändra själva uppdragstilldelningen; byte av
 kravunderlagsansvarig och hantering av kravunderlagsmedförfattare hör till
 `Kravunderlagsansvarig` och `Admin`.
 
+Avtalets tillstånd begränsar vilka ändringar en författare får göra.
+[ADR 0063](0063-fullstandiga-avtal-i-kravunderlag.md) preciserar att
+avtalsbeslut och godkännande av avstegsavslut kräver tilldelad
+kravunderlagsansvarig, även när aktören är Admin.
+
 ## Övervägda alternativ
 
 - Låta kravområdesägare ändra kravunderlag när deras krav används: avvisat

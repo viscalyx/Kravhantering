@@ -14,6 +14,10 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
     dalState.listSpecificationTraceabilityItems,
 }))
 
+vi.mock('@/lib/reports/data/agreement-context', () => ({
+  resolveReportAgreementContext: vi.fn(async () => null),
+}))
+
 vi.mock('@/lib/requirements/specification-item-page', () => ({
   traverseCompleteSpecificationItemResult:
     dalState.traverseCompleteSpecificationItemResult,
@@ -91,6 +95,7 @@ describe('collectSpecificationTraceabilityData', () => {
       db,
       10,
       ['local:41', 'lib:31'],
+      undefined,
     )
     expect(result.items.map(item => item.itemRef)).toEqual([
       'local:41',
@@ -114,6 +119,7 @@ describe('collectSpecificationTraceabilityData', () => {
       db,
       10,
       ['local:41', 'lib:31'],
+      undefined,
     )
     expect(result.specification).toBe(resolvedSpecification)
   })
@@ -189,6 +195,7 @@ describe('collectSpecificationTraceabilityData', () => {
       expect.anything(),
       10,
       ['lib:31'],
+      undefined,
     )
   })
 })

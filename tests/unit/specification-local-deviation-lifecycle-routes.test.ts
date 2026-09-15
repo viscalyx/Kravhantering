@@ -138,6 +138,7 @@ describe('specification-local deviation lifecycle routes', () => {
     expect(routeState.requestSpecificationLocalReview).toHaveBeenCalledWith(
       mockDb,
       1,
+      { agreementId: undefined },
     )
   })
 
@@ -452,6 +453,7 @@ describe('specification-local deviation lifecycle routes', () => {
     expect(routeState.revertSpecificationLocalToDraft).toHaveBeenCalledWith(
       mockDb,
       1,
+      { agreementId: undefined },
     )
   })
 

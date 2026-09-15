@@ -81,12 +81,15 @@ export interface RequirementRow {
   area: {
     name: string
   } | null
+  changeDate?: string | null
+  changeKind?: 'added' | 'changed' | 'removed' | null
   deviationCount?: number
   hasApprovedDeviation?: boolean
   hasPendingDeviation?: boolean
   hasPendingVersion?: boolean
   id: number
   isArchived: boolean
+  isRemoved?: boolean
   isSpecificationLocal?: boolean
   itemRef?: string
   kind?: 'library' | 'specificationLocal'

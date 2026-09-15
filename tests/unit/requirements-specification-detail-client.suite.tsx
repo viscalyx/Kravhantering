@@ -21,6 +21,7 @@ import type {
   SpecificationListItem,
   SpecificationPreloadError,
 } from '@/lib/specifications/preload-types'
+import { requireTestValue } from '@/tests/helpers/require-test-value'
 import { registerAddingLocalTests } from './requirements-specification-detail-adding-local.suite'
 import { registerAvailabilityTests } from './requirements-specification-detail-availability.suite'
 import { registerGeneratedOutputTests } from './requirements-specification-detail-generated-output.suite'
@@ -44,9 +45,12 @@ const pdfDownloadState = vi.hoisted(() => ({
   downloading: false,
 }))
 
-vi.mock('next-intl', () => ({
-  useLocale: () => intlState.locale,
-  useTranslations: (ns?: string) => {
+vi.mock('next-intl', () => {
+  const translations = new Map<
+    string | undefined,
+    ReturnType<typeof createTranslation>
+  >()
+  const createTranslation = (ns?: string) => {
     const t = (key: string, values?: Record<string, unknown>) => {
       if (ns === 'specification' && key === 'selectionStatus') {
         intlState.selectionStatus(values)
@@ -74,7 +78,85 @@ vi.mock('next-intl', () => ({
     }
     t.rich = (key: string) => (ns ? `${ns}.${key}` : key)
     return t
-  },
+  }
+  return {
+    useLocale: () => intlState.locale,
+    useTranslations: (ns?: string) => {
+      if (!translations.has(ns)) translations.set(ns, createTranslation(ns))
+      return requireTestValue(translations.get(ns))
+    },
+  }
+})
+
+vi.mock('@/components/SpecificationAgreementBox', async () => {
+  const { useEffect, useRef } = await import('react')
+  return {
+    default: ({
+      onContextChange,
+      itemRefs = '',
+    }: {
+      onContextChange: (view: unknown) => void
+      itemRefs?: string
+    }) => {
+      const notify = useRef(onContextChange)
+      useEffect(() => {
+        notify.current = onContextChange
+      }, [onContextChange])
+      useEffect(() => {
+        notify.current({
+          selectedAgreement: null,
+          agreements: [],
+          items: itemRefs
+            ? itemRefs.split(',').map(itemRef => ({ itemRef }))
+            : [],
+          corrections: [],
+          deviations: [],
+          deviationEndings: [],
+          confirmationDeviations: [],
+          canAuthor: true,
+          canDecide: true,
+          canEditContent: true,
+          canFollowUp: true,
+          canReviewDeviations: false,
+        })
+      }, [itemRefs])
+      return (
+        <div data-developer-mode-value="agreement selector">
+          agreement.title
+        </div>
+      )
+    },
+  }
+})
+
+vi.mock('@/components/SpecificationAgreementRequirement', () => ({
+  default: ({
+    row,
+    onChange,
+    onRemoveFromSpecification,
+    removeFromSpecificationDisabled,
+  }: {
+    removeFromSpecificationDisabled?: boolean
+    row?: { id: number }
+    onChange: () => Promise<void>
+    onRemoveFromSpecification?: (anchor: HTMLElement) => Promise<void>
+  }) => (
+    <div>
+      {`Requirement detail ${row?.id}`}
+      <button onClick={() => void onChange()} type="button">
+        refresh requirement detail
+      </button>
+      {onRemoveFromSpecification && (
+        <button
+          disabled={removeFromSpecificationDisabled}
+          onClick={event => void onRemoveFromSpecification(event.currentTarget)}
+          type="button"
+        >
+          remove requirement from specification
+        </button>
+      )}
+    </div>
+  ),
 }))
 
 vi.mock('next/navigation', () => ({
@@ -1063,15 +1145,18 @@ describe('RequirementsSpecificationDetailClient', () => {
         if (/\/agreement(?:\?|$)/.test(url)) {
           return Promise.resolve(
             okJson({
-              establishmentStatus: 'editable',
+              selectedAgreement: null,
+              agreements: [],
+              items: [],
               canAuthor: false,
               canDecide: false,
-              currentItems: [],
-              originalItems: [],
-              historyItems: [],
-              amendments: [],
+              canEditContent: true,
+              canFollowUp: true,
+              canReviewDeviations: false,
+              corrections: [],
+              confirmationDeviations: [],
               deviations: [],
-              availableVersions: [],
+              deviationEndings: [],
             }),
           )
         }

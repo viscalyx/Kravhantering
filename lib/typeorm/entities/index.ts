@@ -1,9 +1,28 @@
-import { specificationAmendmentEntity } from './specification-amendment'
+import { specificationDeviationEndingEntity } from '@/lib/typeorm/entities/specification-deviation-ending'
 
 export {
-  type SpecificationAmendmentEntity,
-  specificationAmendmentEntity,
-} from './specification-amendment'
+  type SpecificationDeviationEndingEntity,
+  specificationDeviationEndingEntity,
+} from '@/lib/typeorm/entities/specification-deviation-ending'
+
+import { specificationAgreementItemEntity } from '@/lib/typeorm/entities/specification-agreement-item'
+
+export {
+  type SpecificationAgreementItemEntity,
+  specificationAgreementItemEntity,
+} from '@/lib/typeorm/entities/specification-agreement-item'
+
+import { specificationAgreementEntity } from '@/lib/typeorm/entities/specification-agreement'
+import { specificationAgreementCorrectionEntity } from '@/lib/typeorm/entities/specification-agreement-correction'
+
+export {
+  type SpecificationAgreementEntity,
+  specificationAgreementEntity,
+} from '@/lib/typeorm/entities/specification-agreement'
+export {
+  type SpecificationAgreementCorrectionEntity,
+  specificationAgreementCorrectionEntity,
+} from '@/lib/typeorm/entities/specification-agreement-correction'
 
 import { specificationRfiAssessmentEntity } from '@/lib/typeorm/entities/specification-rfi-assessment'
 
@@ -92,7 +111,10 @@ import { specificationRfiListEntity } from '@/lib/typeorm/entities/specification
 import { specificationRfiQuestionItemEntity } from '@/lib/typeorm/entities/specification-rfi-question-item'
 
 export const sqlServerEntities = [
-  specificationAmendmentEntity,
+  specificationAgreementCorrectionEntity,
+  specificationDeviationEndingEntity,
+  specificationAgreementItemEntity,
+  specificationAgreementEntity,
   exportActorQuotaEntryEntity,
   aiModelVerificationAttemptEntity,
   actionAuditEventEntity,

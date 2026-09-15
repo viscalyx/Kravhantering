@@ -31,7 +31,20 @@ export interface SpecificationCsvFormatter {
   serializeRow: (item: SpecificationOutputItem) => string
 }
 
+const AGREEMENT_COLUMNS = [
+  column(
+    'agreementReference',
+    (item, _locale, labels) =>
+      item.agreement?.agreementReference ?? labels.common.noAgreement,
+  ),
+  column('agreementEffectiveDate', item => item.agreement?.effectiveDate ?? ''),
+  column('agreementState', (item, _locale, labels) =>
+    item.agreement ? labels.agreementStates[item.agreement.state] : '',
+  ),
+]
+
 const PROCUREMENT_COLUMNS = Object.freeze([
+  ...AGREEMENT_COLUMNS,
   column('requirementId', item => item.uniqueId),
   column('requirementText', item => item.description),
   column('qualityCharacteristic', (item, locale) =>
@@ -42,6 +55,7 @@ const PROCUREMENT_COLUMNS = Object.freeze([
 ])
 
 const FULL_COLUMNS = Object.freeze([
+  ...AGREEMENT_COLUMNS,
   column('requirementId', item => item.uniqueId),
   column('requirementText', item => item.description),
   column('requirementArea', (item, _locale, labels) =>

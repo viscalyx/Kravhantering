@@ -18,6 +18,7 @@ import {
   businessTextSchema,
   invalidRequestResponse,
   parseRouteParams,
+  positiveIntegerSchema,
   routeSegmentSchema,
   SQL_SERVER_INT_MAX,
 } from '@/lib/http/validation'
@@ -51,6 +52,7 @@ const itemDeviationParamSchema = z
 
 const createDeviationSchema = z
   .object({
+    agreementId: positiveIntegerSchema.optional(),
     motivation: businessTextSchema,
   })
   .strict()
@@ -200,7 +202,7 @@ export const POST = secureMutationRoute({
       return itemIdResult.response
     }
     const { decodedItemId, parsedItemRef, numericItemId } = itemIdResult
-    const { motivation } = body
+    const { motivation, agreementId } = body
 
     try {
       const actor = requireHumanActorSnapshot(context)
@@ -210,6 +212,7 @@ export const POST = secureMutationRoute({
           ? await createDeviation(db, {
               specificationItemId: numericItemId ?? 0,
               motivation,
+              agreementId,
               createdBy: actor.displayName,
               createdByHsaId: actor.hsaId,
             })
@@ -218,6 +221,7 @@ export const POST = secureMutationRoute({
               createdByHsaId: actor.hsaId,
               itemRef: decodedItemId,
               motivation,
+              agreementId,
             })
       return NextResponse.json({ id: result.id, ok: true }, { status: 201 })
     } catch (error) {

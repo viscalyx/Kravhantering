@@ -24,6 +24,7 @@ export class InvalidSpecificationEditorCursorError extends Error {
 }
 
 export interface SpecificationEditorWorkflowQuery {
+  agreementId?: number
   filters: FilterValues
   locale: string
   sort: RequirementSortState
@@ -55,8 +56,13 @@ export interface SpecificationEditorWorkflowAdapter {
   assignNeedsReference(
     itemRefs: string[],
     needsReferenceId: number | null,
+    agreementId?: number,
   ): Promise<void>
-  createDeviation(itemRef: string, motivation: string): Promise<void>
+  createDeviation(
+    itemRef: string,
+    motivation: string,
+    agreementId?: number,
+  ): Promise<void>
   loadItems(
     request: SpecificationEditorWorkflowItemPageRequest,
   ): Promise<SpecificationItemsPageData>
@@ -65,14 +71,22 @@ export interface SpecificationEditorWorkflowAdapter {
   ): Promise<SpecificationRequirementPackageCatalogPageData>
   refreshAvailableRequirements(): Promise<void>
   refreshNeedsReferences(): Promise<void>
-  removeItems(itemRefs: string[]): Promise<{ removedCount: number }>
-  resolveItems(itemRefs: string[]): Promise<ResolvedSpecificationEditorItem[]>
+  removeItems(
+    itemRefs: string[],
+    agreementId?: number,
+    authorizeDeviationEndings?: boolean,
+  ): Promise<{ removedCount: number }>
+  resolveItems(
+    itemRefs: string[],
+    agreementId?: number,
+  ): Promise<ResolvedSpecificationEditorItem[]>
   updateItem(
     itemRef: string,
     changes: {
       needsReferenceId?: number | null
       specificationItemStatusId?: number
     },
+    agreementId?: number,
   ): Promise<void>
 }
 
@@ -172,7 +186,9 @@ export interface SpecificationEditorWorkflow {
       locale: string,
     ): Promise<SpecificationListItem[] | null>
     loadRequirementPackages(): Promise<boolean>
-    removeItems(): Promise<SpecificationEditorBulkOutcome>
+    removeItems(
+      authorizeDeviationEndings?: boolean,
+    ): Promise<SpecificationEditorBulkOutcome>
     cancelBulkAction(): void
     prepareBulkAction(
       operation: SpecificationEditorBulkOperation,
@@ -466,7 +482,10 @@ export function createSpecificationEditorWorkflow({
   const resolveItemRefs = async (
     itemRefs: ReadonlySet<string>,
   ): Promise<SpecificationListItem[]> => {
-    const resolved = await adapter.resolveItems([...itemRefs])
+    const resolved = await adapter.resolveItems(
+      [...itemRefs],
+      currentQuery.agreementId,
+    )
     const resolvedByRef = new Map(
       resolved.flatMap(item => {
         const known = knownItemsByRef.get(item.itemRef)
@@ -551,7 +570,11 @@ export function createSpecificationEditorWorkflow({
         if (!item.itemRef) {
           throw new Error(item.uniqueId)
         }
-        await adapter.createDeviation(item.itemRef, motivation)
+        await adapter.createDeviation(
+          item.itemRef,
+          motivation,
+          currentQuery.agreementId,
+        )
         return item
       },
     )
@@ -613,7 +636,11 @@ export function createSpecificationEditorWorkflow({
     publish({
       bulkAction: { operation: 'assign-needs-reference', phase: 'mutating' },
     })
-    await adapter.assignNeedsReference(changedRefs, needsReferenceId)
+    await adapter.assignNeedsReference(
+      changedRefs,
+      needsReferenceId,
+      currentQuery.agreementId,
+    )
     const nextSelected = new Set(state.selectedItemRefs)
     for (const itemRef of changedRefs) nextSelected.delete(itemRef)
     publish({ selectedItemRefs: nextSelected })
@@ -646,7 +673,11 @@ export function createSpecificationEditorWorkflow({
       needsReferenceId,
     })
     try {
-      await adapter.updateItem(itemRef, { needsReferenceId })
+      await adapter.updateItem(
+        itemRef,
+        { needsReferenceId },
+        currentQuery.agreementId,
+      )
     } catch {
       replaceItem(itemRef, originalItem)
       return false
@@ -679,9 +710,13 @@ export function createSpecificationEditorWorkflow({
       specificationItemStatusNameSv: status.nameSv,
     })
     try {
-      await adapter.updateItem(itemRef, {
-        specificationItemStatusId: status.id,
-      })
+      await adapter.updateItem(
+        itemRef,
+        {
+          specificationItemStatusId: status.id,
+        },
+        currentQuery.agreementId,
+      )
     } catch {
       replaceItem(itemRef, originalItem)
       return false
@@ -698,6 +733,7 @@ export function createSpecificationEditorWorkflow({
   const removeItems = async (
     itemRefs: ReadonlySet<string> = state.selectedItemRefs,
     resolvedItems?: SpecificationListItem[],
+    authorizeDeviationEndings?: boolean,
   ): Promise<SpecificationEditorBulkOutcome> => {
     publish({ bulkAction: { operation: 'remove-items', phase: 'resolving' } })
     const items = resolvedItems ?? (await resolveItemRefs(itemRefs))
@@ -716,10 +752,17 @@ export function createSpecificationEditorWorkflow({
       return outcome
     }
     publish({ bulkAction: { operation: 'remove-items', phase: 'mutating' } })
-    const result = await adapter.removeItems(requestedRefs)
+    const result = await adapter.removeItems(
+      requestedRefs,
+      currentQuery.agreementId,
+      authorizeDeviationEndings,
+    )
     let remainingRefs = new Set<string>()
     if (result.removedCount !== requestedRefs.length) {
-      const remaining = await adapter.resolveItems(requestedRefs)
+      const remaining = await adapter.resolveItems(
+        requestedRefs,
+        currentQuery.agreementId,
+      )
       remainingRefs = new Set(remaining.map(item => item.itemRef))
     }
     const removedRefs = requestedRefs.filter(
@@ -926,7 +969,7 @@ export function createSpecificationEditorWorkflow({
       loadMoreItems,
       loadNeedsReferenceUsage,
       loadRequirementPackages,
-      removeItems: () =>
+      removeItems: authorizeDeviationEndings =>
         runBulkAction('remove-items', () =>
           removeItems(
             preparedBulkAction?.operation === 'remove-items'
@@ -935,6 +978,7 @@ export function createSpecificationEditorWorkflow({
             preparedBulkAction?.operation === 'remove-items'
               ? preparedBulkAction.items
               : undefined,
+            authorizeDeviationEndings,
           ),
         ),
       cancelBulkAction() {

@@ -17,6 +17,7 @@ import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 const textareaClassName = `w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500 dark:border-secondary-600 dark:bg-secondary-900 ${modalResizableTextareaRows3ClassName}`
 
 interface DeviationDecisionModalProps {
+  error?: string | null
   loading?: boolean
   onClose: () => void
   onSubmit: (decision: 1 | 2, motivation: string) => void
@@ -24,6 +25,7 @@ interface DeviationDecisionModalProps {
 }
 
 export default function DeviationDecisionModal({
+  error,
   loading,
   onClose,
   onSubmit,
@@ -179,6 +181,14 @@ export default function DeviationDecisionModal({
                 />
               </div>
 
+              {error && (
+                <p
+                  className="text-sm text-red-700 dark:text-red-300"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              )}
               <div className="flex gap-2 justify-end">
                 <button
                   className="btn-secondary text-sm px-4 py-2"

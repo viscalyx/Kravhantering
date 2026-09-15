@@ -78,13 +78,7 @@ describe('REST registry and OpenAPI contract', () => {
         document.paths['/api/requirements-specifications/{id}/agreement'][
           method
         ].responses
-      const statuses = [
-        '200',
-        '400',
-        '401',
-        '403',
-        ...(method === 'post' ? ['409'] : []),
-      ]
+      const statuses = ['200', '400', '401', '403', '409']
       expect(Object.keys(responses ?? {}).sort()).toEqual(
         [...statuses, '404'].sort(),
       )

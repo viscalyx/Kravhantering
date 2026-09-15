@@ -217,6 +217,7 @@ export interface ListSpecificationsInput {
 export interface GetSpecificationItemsInput
   extends SpecificationRefInput,
     FilterValues {
+  agreementId?: number
   capacitySurface?: 'editor-preload' | 'mcp' | 'rest'
   cursor?: string
   limit?: number
@@ -228,6 +229,7 @@ export interface GetSpecificationItemsInput
 }
 
 export interface AddToSpecificationInput extends SpecificationRefInput {
+  agreementId?: number
   locale?: ResponseLocale
   needsReferenceDescription?: string | null
   needsReferenceId?: number | null
@@ -435,6 +437,7 @@ export interface RequirementsService extends RfiQuestionQueryService {
     context: RequestContext,
     input: Omit<ImportExecuteBody, 'areaId'> & {
       specificationId: number
+      agreementId?: number
     },
   ): Promise<RequirementsImportExecuteResult>
 
@@ -653,10 +656,10 @@ export function createRequirementsService(
             specificationId,
           )
 
-          const title = locale === 'sv' ? 'Avvikelser' : 'Deviations'
+          const title = locale === 'sv' ? 'Avsteg' : 'Deviations'
           const summary =
             locale === 'sv'
-              ? `${counts.total} avvikelse(r): ${counts.pending} väntande, ${counts.approved} godkända, ${counts.rejected} avvisade.`
+              ? `${counts.total} avsteg: ${counts.pending} väntande, ${counts.approved} godkända, ${counts.rejected} avslagna.`
               : `${counts.total} deviation(s): ${counts.pending} pending, ${counts.approved} approved, ${counts.rejected} rejected.`
 
           return {

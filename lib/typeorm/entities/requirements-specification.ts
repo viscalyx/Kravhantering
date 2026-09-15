@@ -5,25 +5,11 @@ import type { SpecificationImplementationTypeEntity } from '@/lib/typeorm/entiti
 import type { SpecificationLifecycleStatusEntity } from '@/lib/typeorm/entities/specification-lifecycle-status'
 
 export interface RequirementsSpecificationEntity {
-  agreementDate: Date | null
-  agreementEndDate: Date | null
-  agreementEndReason: string | null
-  agreementReason: string | null
-  agreementReference: string | null
-  assessedAt: Date | null
-  assessedByHsaId: string | null
-  assessmentReason: string | null
   businessNeedsReference: string | null
   createdAt: Date
-  endedAt: Date | null
-  endedByHsaId: string | null
-  establishedAt: Date | null
-  establishedByHsaId: string | null
-  establishmentStatus: string
   id: number
   localRequirementNextSequence: number
   name: string
-  originalContentJson: string | null
   responsibleHsaId: string
   responsiblePerson: RequirementResponsibilityPersonEntity
   specificationCode: string
@@ -38,73 +24,6 @@ export const requirementsSpecificationEntity =
     name: 'RequirementsSpecification',
     tableName: 'requirements_specifications',
     columns: {
-      assessedAt: { name: 'assessed_at', type: 'datetime2', nullable: true },
-      assessedByHsaId: {
-        name: 'assessed_by_hsa_id',
-        type: 'nvarchar',
-        length: 64,
-        nullable: true,
-      },
-      assessmentReason: {
-        name: 'assessment_reason',
-        type: 'nvarchar',
-        length: 'MAX',
-        nullable: true,
-      },
-      endedAt: { name: 'ended_at', type: 'datetime2', nullable: true },
-      endedByHsaId: {
-        name: 'ended_by_hsa_id',
-        type: 'nvarchar',
-        length: 64,
-        nullable: true,
-      },
-      agreementEndDate: {
-        name: 'agreement_end_date',
-        type: 'date',
-        nullable: true,
-      },
-      agreementEndReason: {
-        name: 'agreement_end_reason',
-        type: 'nvarchar',
-        length: 'MAX',
-        nullable: true,
-      },
-      establishmentStatus: {
-        name: 'establishment_status',
-        type: 'nvarchar',
-        length: 20,
-        default: 'editable',
-      },
-      agreementReference: {
-        name: 'agreement_reference',
-        type: 'nvarchar',
-        length: 2000,
-        nullable: true,
-      },
-      agreementReason: {
-        name: 'agreement_reason',
-        type: 'nvarchar',
-        length: 'MAX',
-        nullable: true,
-      },
-      agreementDate: { name: 'agreement_date', type: 'date', nullable: true },
-      establishedAt: {
-        name: 'established_at',
-        type: 'datetime2',
-        nullable: true,
-      },
-      establishedByHsaId: {
-        name: 'established_by_hsa_id',
-        type: 'nvarchar',
-        length: 64,
-        nullable: true,
-      },
-      originalContentJson: {
-        name: 'original_content_json',
-        type: 'nvarchar',
-        length: 'MAX',
-        nullable: true,
-      },
       id: {
         name: 'id',
         primary: true,

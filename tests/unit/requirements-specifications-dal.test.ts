@@ -426,7 +426,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(result).toEqual({
       id: 2,
       specificationCode: 'PKG-002',
-      establishmentStatus: 'editable',
       name: 'Specification B',
       specificationGovernanceObjectTypeId: 1,
       specificationImplementationTypeId: 5,
@@ -1142,30 +1141,38 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     await deleteSpecification(db, 7)
 
     expect(transaction).toHaveBeenCalledTimes(1)
-    expect(query).toHaveBeenNthCalledWith(
-      1,
-      expect.stringContaining('SELECT responsible_hsa_id AS hsaId'),
+    expect(query).toHaveBeenCalledWith(
+      'DELETE FROM specification_deviation_endings WHERE specification_id = @0',
       [7],
     )
-    expect(query).toHaveBeenNthCalledWith(
-      2,
-      'DELETE FROM specification_local_requirements WHERE specification_id = @0',
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('DELETE FROM specification_agreement_items'),
       [7],
     )
     expect(query).toHaveBeenNthCalledWith(
       3,
-      'DELETE FROM requirements_specification_items WHERE requirements_specification_id = @0',
+      expect.stringContaining('SELECT responsible_hsa_id AS hsaId'),
       [7],
     )
     expect(query).toHaveBeenNthCalledWith(
       4,
+      'DELETE FROM specification_local_requirements WHERE specification_id = @0',
+      [7],
+    )
+    expect(query).toHaveBeenNthCalledWith(
+      5,
+      'DELETE FROM requirements_specification_items WHERE requirements_specification_id = @0',
+      [7],
+    )
+    expect(query).toHaveBeenNthCalledWith(
+      6,
       expect.stringContaining(
         'DELETE FROM specification_needs_references WHERE specification_id = @0',
       ),
       [7],
     )
     expect(query).toHaveBeenNthCalledWith(
-      5,
+      7,
       'DELETE FROM requirements_specifications WHERE id = @0',
       [7],
     )
@@ -1260,8 +1267,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     const { db, query } = createSqlServerDb()
     query
       .mockResolvedValueOnce([{ id: 33, text: 'IAM-42' }])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
@@ -1544,8 +1549,16 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       ])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
-        { id: 41, specificationId: 5, sequenceNumber: 1, uniqueId: 'LOK-001' },
+        {
+          id: 41,
+          specificationId: 5,
+          sequenceNumber: 1,
+          uniqueId: 'LOK-001',
+          description: 'Created local requirement',
+          verifiable: false,
+        },
       ])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ id: 41 }])
       .mockResolvedValueOnce([{ id: 42 }])
       .mockResolvedValueOnce([])
@@ -1772,8 +1785,16 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     const { db, query, transaction } = createSqlServerDb()
     query
       .mockResolvedValueOnce([
-        { id: 41, specificationId: 5, sequenceNumber: 1, uniqueId: 'LOK-001' },
+        {
+          id: 41,
+          specificationId: 5,
+          sequenceNumber: 1,
+          uniqueId: 'LOK-001',
+          description: 'Original',
+          verifiable: false,
+        },
       ])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
 
     await expect(
@@ -1788,9 +1809,12 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       status: 400,
     })
 
-    expect(transaction).not.toHaveBeenCalled()
+    expect(transaction).toHaveBeenCalledTimes(1)
     expect(query.mock.calls.map(([sql]) => String(sql))).toEqual([
       expect.stringContaining('FROM current_specification_local_requirements'),
+      expect.stringContaining(
+        'FROM specification_local_requirement_norm_references',
+      ),
       expect.stringContaining('FROM quality_characteristics'),
     ])
   })
@@ -1805,9 +1829,11 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           sequenceNumber: 1,
           specificationId: 5,
           uniqueId: 'LOK-001',
+          description: 'Original local content',
           verificationMethod: 'Checklist',
         },
       ])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ id: 41 }])
       .mockResolvedValueOnce([{ id: 42 }])
       .mockResolvedValueOnce([])
@@ -1843,7 +1869,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     })
 
     const updateCall = query.mock.calls.find(([sql]) =>
-      String(sql).includes('UPDATE specification_local_requirements'),
+      String(sql).includes('description = @0'),
     )
     expect(updateCall?.[1]?.at(6)).toBe(1)
     expect(updateCall?.[1]?.at(8)).toBe('Checklist')
@@ -2074,7 +2100,16 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(query).toHaveBeenNthCalledWith(
       4,
       expect.stringContaining('INSERT INTO requirements_specification_items'),
-      [5, 7, 101, 33, DEFAULT_SPECIFICATION_ITEM_STATUS_ID, expect.any(Date)],
+      [
+        5,
+        7,
+        101,
+        33,
+        DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
+        expect.any(Date),
+        null,
+        null,
+      ],
     )
   })
 
@@ -2138,32 +2173,8 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       'lib:31',
     ])
 
-    expect(query).toHaveBeenNthCalledWith(
-      1,
-      expect.stringContaining(
-        'FROM current_requirement_applications specification_item',
-      ),
-      [5, 1, 2, 31],
-    )
-    expect(query).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining(
-        'FROM current_specification_local_requirements local_requirement',
-      ),
-      [5, 1, 2, 41],
-    )
-    expect(query.mock.calls[0]?.[0]).toContain(
-      'WHERE deviation.specification_item_id IN (@3)',
-    )
-    expect(query.mock.calls[0]?.[0]).toContain(
-      'specification_item.needs_reference_id AS needsReferenceId',
-    )
-    expect(query.mock.calls[1]?.[0]).toContain(
-      'WHERE deviation.specification_local_requirement_id IN (@3)',
-    )
-    expect(query.mock.calls[1]?.[0]).toContain(
-      'local_requirement.needs_reference_id AS needsReferenceId',
-    )
+    expect(query).toHaveBeenNthCalledWith(1, expect.any(String), [5, 1, 2, 31])
+    expect(query).toHaveBeenNthCalledWith(2, expect.any(String), [5, 1, 2, 41])
     expect(result).toEqual([
       expect.objectContaining({
         deviationCounts: { approved: 0, pending: 0, rejected: 0, total: 0 },

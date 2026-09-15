@@ -339,10 +339,27 @@ The version history pills show the relevant date per status:
 
 ## Specification agreement dates
 
-Agreement establishment records the supplied agreement date separately from the
-UTC registration timestamp and captures current known content. It does not infer
-historical versions. Amendment dates cannot be backdated: today's date resolves
-to decision time; future dates resolve to midnight Europe/Stockholm. Binding
-intervals use inclusive valid_from and exclusive valid_until in UTC. Changing
-process lifecycle does not unlock an established agreement. Requirement-version
-edited_at and publication dates retain their existing meanings.
+The effective date is a calendar date in Europe/Stockholm. Registration and
+confirmation record separate UTC timestamps. Only the first agreement may have
+a past effective date; it captures the known working set without inventing
+past activity. A later agreement requires today or a future date after its
+predecessor. An overdue draft retains its content and requires an explicit date
+correction before confirmation.
+
+Confirmation locks the complete content immediately. Today's agreement takes
+effect at confirmation; a future agreement takes effect at Stockholm midnight,
+including daylight-saving transitions. Before effect, a date correction also
+reschedules planned deviation endings. Moving an upcoming agreement to today
+requires explicit confirmation of immediate activation. After effect, its date
+is locked.
+
+At replacement effect, unchanged requirements inherit the latest follow-up and
+the previous agreement's results freeze. Approved deviation endings record the
+effective instant separately from their original decisions. At registered
+agreement end, follow-up freezes and deviation endings record the actual
+registration time, separately from the stated end date. Neither transition
+rewrites earlier evidence.
+
+Binding intervals use inclusive `valid_from` and exclusive `valid_until` in UTC.
+Process lifecycle changes do not unlock agreement content. Requirement-version
+`edited_at` and publication dates retain their existing meanings.
