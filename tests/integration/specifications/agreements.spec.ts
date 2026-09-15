@@ -234,6 +234,28 @@ test('SPEC-22/SPEC-23/SPEC-28: edit the complete agreement in the requirement li
       exact: true,
     })
     await expect(compare).toBeVisible()
+    for (const label of ['Edit requirement', 'Remove requirement']) {
+      const action = actions.getByRole('button', { name: label, exact: true })
+      await expect
+        .poll(() =>
+          action.evaluate(button => {
+            const icon = button.querySelector('svg')
+            const labelNode = Array.from(button.childNodes).find(
+              node =>
+                node.nodeType === Node.TEXT_NODE && node.textContent?.trim(),
+            )
+            if (!icon || !labelNode) return false
+            const range = document.createRange()
+            range.selectNodeContents(labelNode)
+            const text = range.getBoundingClientRect()
+            const bounds = button.getBoundingClientRect()
+            const groupCenter =
+              (icon.getBoundingClientRect().left + text.right) / 2
+            return Math.abs(groupCenter - (bounds.left + bounds.right) / 2) < 1
+          }),
+        )
+        .toBe(true)
+    }
     await expect
       .poll(() =>
         compare.evaluate(button => {

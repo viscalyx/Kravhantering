@@ -328,7 +328,7 @@ export default function SpecificationAgreementRequirement({
           className="flex shrink-0 flex-col gap-2 sm:w-64"
           {...devMarker({
             context: 'requirements specification detail',
-            name: 'requirement actions',
+            name: 'centered requirement actions',
             value: 'requirement action column',
             priority: 350,
           })}
@@ -336,7 +336,7 @@ export default function SpecificationAgreementRequirement({
           <div ref={setDeviationActionTarget} />
           {canEdit && (
             <button
-              className="btn-destructive inline-flex items-center gap-2"
+              className="btn-destructive inline-flex items-center justify-center gap-2 text-center"
               disabled={busy || pendingDeviations.length > 0}
               onClick={event =>
                 void changeMembership('remove_requirement', event.currentTarget)
@@ -354,7 +354,7 @@ export default function SpecificationAgreementRequirement({
           )}
           {!selected && onRemoveFromSpecification && (
             <button
-              className="btn-destructive inline-flex items-center gap-2"
+              className="btn-destructive inline-flex items-center justify-center gap-2 text-center"
               disabled={
                 busy ||
                 removeFromSpecificationDisabled ||
@@ -372,7 +372,7 @@ export default function SpecificationAgreementRequirement({
 
           {canEdit && (
             <button
-              className="btn-secondary inline-flex items-center gap-2"
+              className="btn-secondary inline-flex items-center justify-center gap-2 text-center"
               disabled={busy || pendingDeviations.length > 0}
               onClick={() => {
                 setDirty(false)
@@ -427,7 +427,7 @@ export default function SpecificationAgreementRequirement({
           )}
           {canUndo && (
             <button
-              className="btn-secondary inline-flex items-center gap-2"
+              className="btn-secondary inline-flex items-center justify-center gap-2 text-center"
               disabled={
                 busy || (!item.isRemoved && pendingDeviations.length > 0)
               }

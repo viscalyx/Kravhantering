@@ -2000,7 +2000,8 @@ den fullständiga editorn. Spara och ångra sedan ändringen. Gör en ny ändrin
 lägg till ett lokalt krav och ta bort ett annat krav. Bekräfta avtalet och välj
 sedan det tidigare avtalet. Jämför också en nyare publicerad biblioteksversion
 och använd **Uppdatera från kravbiblioteket** i åtgärdskolumnen till höger.
-Där finns även **Ångra ändring** när ändringen kan ångras. Öppna
+Där finns även **Ångra ändring** när ändringen kan ångras. Kontrollera att
+åtgärdernas fullständiga namn är läsbara även när texten radbryts. Öppna
 **Jämför med föregående avtal** och fäll ut **Historik** för tidigare
 avtalsinnehåll och sparade utkastversioner.
 

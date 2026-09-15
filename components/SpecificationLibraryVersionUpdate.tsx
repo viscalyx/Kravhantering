@@ -103,7 +103,7 @@ export default function SpecificationLibraryVersionUpdate({
   return (
     <>
       <button
-        className="btn-secondary inline-flex items-center gap-2"
+        className="btn-secondary inline-flex items-center justify-center gap-2 text-center"
         disabled={disabled || busy}
         onClick={() => void loadComparison()}
         ref={trigger}

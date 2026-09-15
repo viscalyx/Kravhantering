@@ -249,6 +249,10 @@ describe('selected agreement requirement author workflow', () => {
     const actions = screen.getByRole('group', {
       name: 'agreement.requirementActionColumn',
     })
+    expect(actions).toHaveAttribute(
+      'data-developer-mode-name',
+      'centered requirement actions',
+    )
     expect(
       within(actions).getByRole('button', {
         name: 'agreement.updateFromLibrary',

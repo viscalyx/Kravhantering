@@ -205,7 +205,7 @@ export default function SpecificationAgreementHistory({
         actionTarget &&
         createPortal(
           <button
-            className="btn-secondary inline-flex w-full items-center gap-2"
+            className="btn-secondary inline-flex w-full items-center justify-center gap-2 text-center"
             disabled={busy}
             onClick={() => {
               setComparing(true)
