@@ -10,6 +10,7 @@ import {
   test,
 } from '@playwright/test'
 import { extractText } from 'unpdf'
+import type { SpecificationAgreementView } from '@/components/SpecificationAgreementBox'
 import { requirementsImportPayloadSchema } from '@/lib/requirements/import-schema'
 import { delay } from '@/tests/helpers/common'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
@@ -762,7 +763,7 @@ for (const viewport of viewports) {
         name: 'Kravunderlagsansvarigs HSA-id',
       })
       await expect(responsibleInput).toHaveAttribute('readonly', '')
-      await expect(editForm.getByText('Emma Lindqvist')).toBeVisible()
+      await expect(editForm.getByText('Ada Admin')).toBeVisible()
 
       const currentResponsibleHsaId = await responsibleInput.inputValue()
       await editForm
@@ -895,27 +896,6 @@ for (const viewport of viewports) {
         const beforeRightScrollTop = await rightPanel.evaluate(
           node => node.scrollTop,
         )
-        const agreementPanel = page.getByRole('region', {
-          name: 'Avtal och versionshistorik',
-        })
-        await expect(agreementPanel).toHaveAttribute(
-          'data-developer-mode-value',
-          'independent desktop scroll panel',
-        )
-        await agreementPanel.evaluate(node => {
-          node.scrollTop = node.scrollHeight
-        })
-        expect(
-          await agreementPanel.evaluate(node => node.scrollTop),
-        ).toBeGreaterThan(0)
-        expect(await rightPanel.evaluate(node => node.scrollTop)).toBe(
-          beforeRightScrollTop,
-        )
-        if (hasLeftPanel) {
-          expect(await leftPanel.evaluate(node => node.scrollTop)).toBe(
-            beforeLeftScrollTop,
-          )
-        }
         const desktopNavRailBox = await page
           .locator('[data-global-navigation-rail="desktop"]')
           .boundingBox()
@@ -1036,6 +1016,9 @@ for (const viewport of viewports) {
         const statusSelect = leftPanel
           .getByRole('combobox', { name: 'Användningsstatus' })
           .first()
+        await expect(
+          statusSelect.getByRole('option', { name: 'Inkluderad', exact: true }),
+        ).toHaveCount(1)
         const optionLabels = await statusSelect
           .locator('option')
           .evaluateAll(options =>
@@ -1309,6 +1292,13 @@ test.describe('Requirements specification deterministic manual cases', () => {
         'u',
       ),
     )
+    const agreementDetailRequests = await countDetailRequests(
+      page,
+      new RegExp(
+        `/api/requirements-specifications/${specificationId}/agreement\\?itemRefs=lib(?:%3A|:)\\d+$`,
+        'u',
+      ),
+    )
     const leftPanel = page.locator(
       '[data-specification-detail-list-panel="items"]',
     )
@@ -1460,7 +1450,9 @@ test.describe('Requirements specification deterministic manual cases', () => {
       expect(libraryDetailRequests.count).toBe(2)
     })
 
-    await test.step('immediate clicks load each detail once without delayed duplicates', async () => {
+    await test.step('immediate clicks load agreement content and uncached details once', async () => {
+      await page.clock.pauseAt(Date.now() + 1_000)
+      agreementDetailRequests.reset()
       libraryDetailRequests.reset()
       localDetailRequests.reset()
       await navigateAndWaitForSpecificationItems(() => page.reload())
@@ -1475,13 +1467,15 @@ test.describe('Requirements specification deterministic manual cases', () => {
       await expect(
         leftLibraryRow.locator('xpath=following-sibling::tr[1]'),
       ).toContainText('Kravtext')
-      expect(libraryDetailRequests.count).toBe(1)
+      expect(libraryDetailRequests.count).toBe(0)
+      expect(agreementDetailRequests.count).toBe(1)
 
       await libraryButton.click()
       await expect(
         libraryRow.locator('xpath=following-sibling::tr[1]'),
       ).toContainText('Kravtext')
-      expect(libraryDetailRequests.count).toBe(2)
+      expect(libraryDetailRequests.count).toBe(1)
+      await page.clock.resume()
     })
 
     await test.step('add and remove invalidate the moved library requirement detail', async () => {
@@ -1506,7 +1500,6 @@ test.describe('Requirements specification deterministic manual cases', () => {
       }
 
       const baselineCount = await readSpecificationCount(libraryRow)
-      const requestsBeforeAdd = libraryDetailRequests.count
       await libraryRow.getByRole('checkbox').check()
       await page.getByRole('button', { name: 'Lägg till valda (1)' }).click()
       const addDialog = page.getByRole('dialog').filter({
@@ -1521,10 +1514,10 @@ test.describe('Requirements specification deterministic manual cases', () => {
       await expect(movedLeftRow).toBeVisible()
       const movedLeftButton = movedLeftRow.getByRole('button').first()
       await movedLeftButton.click()
-      await expect
-        .poll(() => libraryDetailRequests.count)
-        .toBe(requestsBeforeAdd + 1)
-      expect(await readSpecificationCount(movedLeftRow)).toBe(baselineCount + 1)
+      await expect(
+        movedLeftRow.locator('xpath=following-sibling::tr[1]'),
+      ).toContainText('Kravtext')
+      const requestsBeforeRemove = libraryDetailRequests.count
 
       await movedLeftRow.getByRole('checkbox').check()
       await page.getByRole('button', { name: 'Ta bort valda (1)' }).click()
@@ -1568,7 +1561,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
         await expect(movedRightButton).toHaveAttribute('aria-expanded', 'true')
         await expect
           .poll(() => libraryDetailRequests.count)
-          .toBe(requestsBeforeAdd + 2)
+          .toBe(requestsBeforeRemove + 1)
         expect(await readSpecificationCount(movedRightRow)).toBe(baselineCount)
       } finally {
         packageRefresh.fulfill()
@@ -1920,6 +1913,54 @@ test.describe('Requirements specification deterministic manual cases', () => {
       },
     )
 
+    await page.route(
+      `**/api/requirements-specifications/${specificationId}/agreement?*`,
+      async route => {
+        const url = new URL(route.request().url())
+        const requestedRefs = (url.searchParams.get('itemRefs') ?? '').split(
+          ',',
+        )
+        const response = await route.fetch()
+        const view = (await response.json()) as SpecificationAgreementView
+        await route.fulfill({
+          json: {
+            ...view,
+            deviations: [],
+            deviationEndings: [],
+            items: items
+              .filter(item => requestedRefs.includes(item.itemRef))
+              .map(item => ({
+                acceptanceCriteria: null,
+                description: item.version.description,
+                itemRef: item.itemRef,
+                needsReference: null,
+                needsReferenceId: null,
+                newerPublishedVersionId: null,
+                normReferenceIds: [],
+                normReferences: null,
+                note: null,
+                priorityLevelId: null,
+                qualityCharacteristicId: null,
+                requirementCategoryId: null,
+                requirementId: item.id,
+                requirementTypeId: null,
+                requirementVersionId: 1,
+                sourceRequirementVersionId: null,
+                sourceUniqueId: null,
+                sourceVersionNumber: null,
+                specificationItemStatusId: 1,
+                uniqueId: item.uniqueId,
+                validFrom: '2026-01-01T00:00:00.000Z',
+                validUntil: null,
+                verifiable: item.version.verifiable,
+                verificationMethod: null,
+                versionNumber: item.version.versionNumber,
+              })),
+          },
+        })
+      },
+    )
+
     await gotoSpecificationDetail(page)
     const specificationItemsPanel = page.locator(
       '[data-specification-detail-list-panel="items"]',
@@ -1980,7 +2021,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       .click()
     await expect(
       specificationItemsPanel.getByRole('button', {
-        name: 'Ta bort från underlaget',
+        name: 'Ta bort krav',
       }),
     ).toBeEnabled()
 
@@ -2116,6 +2157,25 @@ test.describe('Requirements specification deterministic manual cases', () => {
         versionNumber: 1,
       },
     }
+    // Keep the agreement detail consistent with the list fixture's lack of cases.
+    await page.route(
+      `**/api/requirements-specifications/${editSpecificationId}/agreement?*`,
+      async route => {
+        const response = await route.fetch()
+        const view = (await response.json()) as SpecificationAgreementView
+        await route.fulfill({
+          json: {
+            ...view,
+            deviations: view.deviations.filter(
+              deviation => deviation.itemRef !== 'lib:920001',
+            ),
+            deviationEndings: view.deviationEndings.filter(
+              ending => ending.itemRef !== 'lib:920001',
+            ),
+          },
+        })
+      },
+    )
     await page.route(
       new RegExp(
         `/api/specification-item-resolutions/${editSpecificationId}(?:\\?.*)?$`,
@@ -2660,7 +2720,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       const removeFromSpecificationAction = specificationItemsPanel.getByRole(
         'button',
         {
-          name: 'Ta bort från underlaget',
+          name: 'Ta bort krav',
         },
       )
       await expect(requestDeviationAction).toHaveCount(1)
@@ -2845,6 +2905,12 @@ test.describe('Requirements specification deterministic manual cases', () => {
         return updated.localRequirement
       })
 
+    const sourceBeforeGraduation = await request.get(
+      `/api/requirements-specifications/${editSpecificationId}/local-requirements/${editedLocalRequirement.id}`,
+    )
+    expect(sourceBeforeGraduation.ok()).toBe(true)
+    const sourceSnapshot = await sourceBeforeGraduation.json()
+
     const graduation =
       await test.step('graduate the requirement to the library', async () => {
         const localDetailRow = page
@@ -2890,22 +2956,19 @@ test.describe('Requirements specification deterministic manual cases', () => {
         `/api/requirements-specifications/${editSpecificationId}/local-requirements/${editedLocalRequirement.id}`,
       )
       expect(sourceResponse.ok()).toBe(true)
-      expect(await sourceResponse.json()).toMatchObject({
-        description: editedDescription,
-        id: editedLocalRequirement.id,
-        uniqueId: localRequirement.uniqueId,
-      })
-      const previousResponse = await request.get(
-        `/api/requirements-specifications/${editSpecificationId}/agreement`,
+      expect(await sourceResponse.json()).toEqual(sourceSnapshot)
+      const agreementResponse = await request.get(
+        `/api/requirements-specifications/${editSpecificationId}/agreement?itemRefs=local:${editedLocalRequirement.id}`,
       )
-      expect(previousResponse.ok()).toBe(true)
-      expect(await previousResponse.json()).toMatchObject({
-        historyItems: expect.arrayContaining([
+      expect(agreementResponse.ok()).toBe(true)
+      expect(await agreementResponse.json()).toMatchObject({
+        items: [
           expect.objectContaining({
-            description,
-            itemRef: `local:${localRequirement.id}`,
+            description: editedDescription,
+            itemRef: `local:${editedLocalRequirement.id}`,
+            uniqueId: localRequirement.uniqueId,
           }),
-        ]),
+        ],
       })
 
       await page.goto(
@@ -3216,10 +3279,10 @@ test.describe('Requirements specification deterministic manual cases', () => {
       .replace(/^\uFEFF/u, '')
       .split('\r\n')
     expect(procurementLines).toHaveLength(206)
-    expect(procurementLines[1]).toMatch(/^PWT-TRACE-001;/u)
-    expect(procurementLines.at(-1)).toMatch(/^PWT-TRACE-205;/u)
+    expect(procurementLines[1]).toMatch(/^Inget avtal;;;PWT-TRACE-001;/u)
+    expect(procurementLines.at(-1)).toMatch(/^Inget avtal;;;PWT-TRACE-205;/u)
     expect(procurementLines[0]).toBe(
-      'Krav-ID;Kravtext;Kvalitetsegenskap;Normreferenser;Norm-URI',
+      'Avtalsreferens;Avtalsdatum;Avtalsstatus;Krav-ID;Kravtext;Kvalitetsegenskap;Normreferenser;Norm-URI',
     )
 
     const fullCsv = await getCsvExport(
@@ -3229,8 +3292,9 @@ test.describe('Requirements specification deterministic manual cases', () => {
     )
     const fullLines = fullCsv.replace(/^\uFEFF/u, '').split('\r\n')
     expect(fullLines).toHaveLength(206)
-    expect(fullLines[1]).toMatch(/^PWT-TRACE-001;/u)
-    expect(fullLines.at(-1)).toMatch(/^PWT-TRACE-205;/u)
+    expect(fullLines[1]).toMatch(/^Inget avtal;;;PWT-TRACE-001;/u)
+    expect(fullLines.at(-1)).toMatch(/^Inget avtal;;;PWT-TRACE-205;/u)
+    expect(fullLines[0]).toMatch(/^Avtalsreferens;Avtalsdatum;Avtalsstatus;/u)
     expect(fullLines[0]).toContain(
       'Krav-ID;Kravtext;Kravområde;Kategori;Typ;Kvalitetsegenskap;Prioritet',
     )
@@ -3239,7 +3303,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await gotoSpecificationDetail(page, csvExportSpecificationId)
     const csvRoutePattern = `**/api/requirements-specifications/${csvExportSpecificationId}/exports?**`
     const csvBody =
-      '\uFEFFKrav-ID;Kravtext\r\nPWT-TRACE-001;PWT-MANUAL first\r\nPWT-TRACE-205;PWT-MANUAL last'
+      '\uFEFFAvtalsreferens;Avtalsdatum;Avtalsstatus;Krav-ID;Kravtext\r\nInget avtal;;;PWT-TRACE-001;PWT-MANUAL first\r\nInget avtal;;;PWT-TRACE-205;PWT-MANUAL last'
 
     await test.step('procurement export completion', async () => {
       const procurementRoute = await deferRoute(

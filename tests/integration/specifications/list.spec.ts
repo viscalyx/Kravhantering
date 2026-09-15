@@ -292,7 +292,7 @@ for (const viewport of viewports) {
           name: 'Kravunderlagsansvarigs HSA-id',
         })
         await expect(responsibleInput).toHaveAttribute('readonly', '')
-        await expect(editForm.getByText('Emma Lindqvist')).toBeVisible()
+        await expect(editForm.getByText('Ada Admin')).toBeVisible()
         const editLifecycleStatus = editForm.getByRole('combobox', {
           name: /Kravunderlagets livscykelstatus/,
         })
