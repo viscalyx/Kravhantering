@@ -217,7 +217,15 @@ GitHub's normal coalescing of pending full-state runs.
 The committed
 `.github/container-release-support.json` selector defines the supported
 release channels. The current policy scans the newest stable release and the
-newest preview release. Stable means supported and monitored. Preview means
+newest preview release whose version is ahead of every published stable
+release. A stable `v0.7.0` supersedes `v0.7.0-preview.80` and previews of older
+versions, while `v0.8.0-preview.1` remains eligible. Version comparison uses
+numeric major, minor, and patch components, independent of publication time.
+Superseded previews are excluded before applying the preview count; the
+preview window can be empty. Unrecognized version formats remain eligible
+because supersession cannot be established safely.
+
+Stable means supported and monitored. Preview means
 monitored, not supported. Change those bounded counts through normal review
 when the product support policy changes.
 
