@@ -75,7 +75,16 @@ const agreement = {
 const view: SpecificationAgreementView = {
   confirmationDeviations: [],
   selectedAgreement: agreement,
-  agreements: [agreement],
+  agreements: [
+    {
+      ...agreement,
+      id: 1,
+      agreementReference: 'A',
+      effectiveDate: '2020-01-01',
+      state: 'current',
+    },
+    agreement,
+  ],
   items: [item],
   corrections: [],
   deviations: [],
@@ -148,6 +157,115 @@ describe('selected agreement requirement author workflow', () => {
     },
   )
 
+  it.each([
+    {
+      name: 'only agreement',
+      agreements: [agreement],
+      selected: agreement,
+      compare: false,
+      history: false,
+    },
+    {
+      name: 'first of several',
+      agreements: [agreement, { ...agreement, id: 3 }],
+      selected: agreement,
+      compare: false,
+      history: true,
+    },
+    {
+      name: 'later agreement',
+      agreements: view.agreements,
+      selected: agreement,
+      compare: true,
+      history: true,
+    },
+    {
+      name: 'new first agreement after cancellation',
+      agreements: [{ ...agreement, id: 1, state: 'cancelled' }, agreement],
+      selected: agreement,
+      compare: false,
+      history: true,
+    },
+  ])(
+    'offers comparison and history only for relevant agreement contexts: $name',
+    ({ agreements, selected, compare, history }) => {
+      render(
+        <ConfirmModalProvider>
+          <SpecificationAgreementRequirement
+            item={item}
+            needsReferencesResource={{
+              data: [],
+              loading: false,
+              error: null,
+              refreshing: false,
+              refreshError: null,
+              reload: async () => [],
+            }}
+            onChange={async () => {}}
+            specificationId={1}
+            view={{ ...view, agreements, selectedAgreement: selected }}
+          />
+        </ConfirmModalProvider>,
+      )
+      const actions = screen.getByRole('group', {
+        name: 'agreement.requirementActionColumn',
+      })
+      expect(
+        within(actions).queryAllByRole('button', {
+          name: 'agreement.comparePrevious',
+        }),
+      ).toHaveLength(compare ? 1 : 0)
+      expect(
+        screen.queryAllByText('agreement.requirementHistory', {
+          selector: 'summary',
+        }),
+      ).toHaveLength(history ? 1 : 0)
+    },
+  )
+
+  it('places library updates and undo alongside the other requirement actions', () => {
+    render(
+      <ConfirmModalProvider>
+        <SpecificationAgreementRequirement
+          item={{
+            ...item,
+            newerPublishedVersionId: 10,
+            changeDate: agreement.effectiveDate,
+          }}
+          needsReferencesResource={{
+            data: [],
+            loading: false,
+            error: null,
+            refreshing: false,
+            refreshError: null,
+            reload: async () => [],
+          }}
+          onChange={async () => {}}
+          specificationId={1}
+          view={view}
+        />
+      </ConfirmModalProvider>,
+    )
+    const actions = screen.getByRole('group', {
+      name: 'agreement.requirementActionColumn',
+    })
+    expect(
+      within(actions).getByRole('button', {
+        name: 'agreement.updateFromLibrary',
+      }),
+    ).toBeVisible()
+    expect(
+      within(actions).getByRole('button', {
+        name: 'agreement.undoRequirement',
+      }),
+    ).toBeVisible()
+    expect(
+      within(actions).getByRole('button', {
+        name: 'agreement.comparePrevious',
+      }),
+    ).toBeVisible()
+  })
+
   it('opens historical content from the requirement row and compares the previous agreement', async () => {
     const user = userEvent.setup()
     const previous = {
@@ -187,7 +305,6 @@ describe('selected agreement requirement author workflow', () => {
     )
     await user.click(screen.getByText('agreement.requirementHistory'))
     expect(await screen.findByText('Earlier requirement content')).toBeVisible()
-    await user.click(screen.getByText('agreement.requirementActions'))
     await user.click(
       screen.getByRole('button', { name: 'agreement.comparePrevious' }),
     )
@@ -383,7 +500,7 @@ describe('selected agreement requirement author workflow', () => {
             ...view,
             canEditContent: false,
             selectedAgreement: selected,
-            agreements: [selected],
+            agreements: [selected, { ...agreement, id: 3, state: 'current' }],
             deviations: [
               {
                 id: 8,

@@ -199,9 +199,20 @@ test('SPEC-22/SPEC-23/SPEC-28: edit the complete agreement in the requirement li
   const owner = await newRoleContext(testInfo, 'specificationResponsible')
   try {
     const data = await fixture(owner)
+    await page.setViewportSize(DESKTOP_VIEWPORT)
     await page.goto(`/en/specifications/${data.id}`)
     await register(page, 'Agreement A', '2020-01-01')
     await expect(card(page)).toContainText('Current')
+    await expand(page, data.local.uniqueId)
+    await expect(
+      page.getByRole('button', {
+        name: 'Compare with previous agreement',
+        exact: true,
+      }),
+    ).toHaveCount(0)
+    await expect(
+      page.locator('summary').filter({ hasText: /^History$/ }),
+    ).toHaveCount(0)
     await page
       .getByRole('button', { name: 'Agreement details', exact: true })
       .click()
@@ -215,6 +226,40 @@ test('SPEC-22/SPEC-23/SPEC-28: edit the complete agreement in the requirement li
     await page.keyboard.press('Escape')
     await draft(page, 'Agreement B', today())
     await expand(page, data.local.uniqueId)
+    const actions = page.locator(
+      '[data-developer-mode-value="requirement action column"]',
+    )
+    const compare = actions.getByRole('button', {
+      name: 'Compare with previous agreement',
+      exact: true,
+    })
+    await expect(compare).toBeVisible()
+    await expect
+      .poll(() =>
+        compare.evaluate(button => {
+          const rail = button.closest('fieldset')
+          const content = rail?.previousElementSibling
+          if (!rail || !content) return false
+          const bounds = button.getBoundingClientRect()
+          const railBounds = rail.getBoundingClientRect()
+          return (
+            Math.abs(bounds.right - railBounds.right) < 1 &&
+            railBounds.left >= content.getBoundingClientRect().right
+          )
+        }),
+      )
+      .toBe(true)
+    await compare.click()
+    const comparison = page.getByRole('dialog', {
+      name: 'Compare with previous agreement',
+      exact: true,
+    })
+    await expect(comparison).toContainText('Original agreed service')
+    await comparison
+      .getByRole('button', { name: 'Close', exact: true })
+      .last()
+      .click()
+    await expect(comparison).toBeHidden()
     await page
       .getByRole('button', { name: 'Edit requirement', exact: true })
       .click()
@@ -246,6 +291,15 @@ test('SPEC-22/SPEC-23/SPEC-28: edit the complete agreement in the requirement li
         .locator('xpath=ancestor::tr[1]'),
     ).toContainText('Original agreed service')
     await expand(page, data.local.uniqueId)
+    await expect(
+      page.getByRole('button', {
+        name: 'Compare with previous agreement',
+        exact: true,
+      }),
+    ).toHaveCount(0)
+    await expect(
+      page.locator('summary').filter({ hasText: /^History$/ }),
+    ).toBeVisible()
     await expect(
       page.getByText('Original service criterion', { exact: true }),
     ).toBeVisible()
@@ -567,10 +621,9 @@ test('SPEC-23: compare and adopt a newer library version before the first agreem
       .click()
     await expect(cancel).toBeHidden()
     await page
-      .locator('summary')
-      .filter({ hasText: /^Actions$/ })
+      .locator('[data-developer-mode-value="requirement action column"]')
+      .getByRole('button', { name: 'Undo change', exact: true })
       .click()
-    await page.getByRole('button', { name: 'Undo change', exact: true }).click()
     await expand(page, source.uniqueId)
     await page
       .locator('summary')

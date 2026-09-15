@@ -1977,7 +1977,8 @@ registreringsuppgifter och byt mellan tillgängliga avtal. Kontrollera
 avtalsväljaren både utan historik och när tidigare avtal finns. Använd
 tangentbordet för att nå avtalsåtgärderna i **Avtalsuppgifter**, även när
 registreringsuppgifterna är utfällda. Välj **Stäng** i knappraden och öppna
-**Avtalsuppgifter** igen.
+**Avtalsuppgifter** igen. Öppna också ett kravs detaljvy, först med bara ett
+avtal och sedan med flera avtal och det första avtalet valt.
 
 **Förväntat resultat:** Hela kravuppsättningen låses direkt vid bekräftelse,
 även när avtalet är kommande. Rutan visar referens, datum och status. Valet styr
@@ -1986,7 +1987,9 @@ aktuella avtalet. Gruppen **Tidigare avtal** visas bara när det finns tidigare
 avtal att välja. Registreringsuppgifter ligger i dialogen och kan fällas ut.
 **Stäng** stänger bara dialogen och återför fokus till öppningsknappen; avtalet
 behåller sina uppgifter och sin status. Det gäller även läsare utan
-beslutsbehörighet.
+beslutsbehörighet. Avtalshistoriken i kravets detaljvy visas först när
+kravunderlaget har fler än ett avtal. **Jämför med föregående avtal** visas bara
+när det valda avtalet har ett föregående avtal, även vid visning av äldre avtal.
 
 ### SPEC-23: ändra krav i ett nytt avtalsutkast
 
@@ -1996,7 +1999,8 @@ och ändra text, acceptanskriterier, klassificering och verifieringsuppgifter i
 den fullständiga editorn. Spara och ångra sedan ändringen. Gör en ny ändring,
 lägg till ett lokalt krav och ta bort ett annat krav. Bekräfta avtalet och välj
 sedan det tidigare avtalet. Jämför också en nyare publicerad biblioteksversion
-och använd **Uppdatera från kravbiblioteket** i **Åtgärder**. Öppna
+och använd **Uppdatera från kravbiblioteket** i åtgärdskolumnen till höger.
+Där finns även **Ångra ändring** när ändringen kan ångras. Öppna
 **Jämför med föregående avtal** och fäll ut **Historik** för tidigare
 avtalsinnehåll och sparade utkastversioner.
 

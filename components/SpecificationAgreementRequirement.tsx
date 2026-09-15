@@ -64,6 +64,8 @@ export default function SpecificationAgreementRequirement({
   const [error, setError] = useState<string | null>(null)
   const [deviationActionTarget, setDeviationActionTarget] =
     useState<HTMLDivElement | null>(null)
+  const [historyActionTarget, setHistoryActionTarget] =
+    useState<HTMLDivElement | null>(null)
   const editTrigger = useRef<HTMLButtonElement>(null)
   const selected = view.selectedAgreement
   const canEdit =
@@ -388,66 +390,63 @@ export default function SpecificationAgreementRequirement({
               {t('editRequirement')}
             </button>
           )}
+
+          {selected && canCompare && (
+            <SpecificationLibraryVersionUpdate
+              agreementId={selected?.id}
+              authorizeDeviationEndings={endingRequired}
+              disabled={
+                busy ||
+                pendingDeviations.length > 0 ||
+                (endingRequired && !view.canDecide)
+              }
+              disabledReason={
+                pendingDeviations.length
+                  ? t('pendingDeviationWarning')
+                  : endingRequired && !view.canDecide
+                    ? t('responsibleEndingRequired')
+                    : undefined
+              }
+              endingWarning={
+                endingRequired ? (
+                  <div className="space-y-2 text-sm">
+                    <p>
+                      {item.currentAgreementReference ??
+                        selected?.agreementReference}{' '}
+                      · {selected?.effectiveDate}
+                    </p>
+                    <p>{endingWarning}</p>
+                  </div>
+                ) : undefined
+              }
+              itemRef={item.itemRef}
+              onChange={onChange}
+              specificationId={specificationId}
+              submitLabel={endingRequired ? endingAction : undefined}
+            />
+          )}
+          {canUndo && (
+            <button
+              className="btn-secondary inline-flex items-center gap-2"
+              disabled={
+                busy || (!item.isRemoved && pendingDeviations.length > 0)
+              }
+              onClick={event =>
+                void changeMembership('undo_requirement', event.currentTarget)
+              }
+              type="button"
+            >
+              <Undo2 aria-hidden="true" className="h-4 w-4" />
+              {t('undoRequirement')}
+            </button>
+          )}
+
+          <div className="contents" ref={setHistoryActionTarget} />
         </fieldset>
       </div>
       {selected && (
         <SpecificationAgreementHistory
-          actions={
-            <>
-              {canCompare && (
-                <SpecificationLibraryVersionUpdate
-                  agreementId={selected?.id}
-                  authorizeDeviationEndings={endingRequired}
-                  disabled={
-                    busy ||
-                    pendingDeviations.length > 0 ||
-                    (endingRequired && !view.canDecide)
-                  }
-                  disabledReason={
-                    pendingDeviations.length
-                      ? t('pendingDeviationWarning')
-                      : endingRequired && !view.canDecide
-                        ? t('responsibleEndingRequired')
-                        : undefined
-                  }
-                  endingWarning={
-                    endingRequired ? (
-                      <div className="space-y-2 text-sm">
-                        <p>
-                          {item.currentAgreementReference ??
-                            selected?.agreementReference}{' '}
-                          · {selected?.effectiveDate}
-                        </p>
-                        <p>{endingWarning}</p>
-                      </div>
-                    ) : undefined
-                  }
-                  itemRef={item.itemRef}
-                  onChange={onChange}
-                  specificationId={specificationId}
-                  submitLabel={endingRequired ? endingAction : undefined}
-                />
-              )}
-              {canUndo && (
-                <button
-                  className="btn-secondary inline-flex items-center gap-2"
-                  disabled={
-                    busy || (!item.isRemoved && pendingDeviations.length > 0)
-                  }
-                  onClick={event =>
-                    void changeMembership(
-                      'undo_requirement',
-                      event.currentTarget,
-                    )
-                  }
-                  type="button"
-                >
-                  <Undo2 aria-hidden="true" className="h-4 w-4" />
-                  {t('undoRequirement')}
-                </button>
-              )}
-            </>
-          }
+          actionTarget={historyActionTarget}
           item={item}
           key={`${selected.id}:${item.itemRef}`}
           specificationId={specificationId}
