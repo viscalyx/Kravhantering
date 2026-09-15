@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
+import type { EntityManager } from 'typeorm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildSpecificationItemPageCandidateSql } from '@/lib/dal/specification-item-page'
 import { getSqlServerDataSource, type SqlServerDatabase } from '@/lib/db'
@@ -328,17 +329,22 @@ async function traverse(
   let pageCount = 0
   let candidateQueries = 0
   const measuredDb = {
-    query: async (sql: string, parameters?: unknown[]) => {
-      if (
-        sql.includes('SELECT TOP (') &&
-        sql.includes('requirements_specification_items') &&
-        sql.includes('UNION ALL')
-      ) {
-        candidateQueries += 1
-        expect(sql).not.toMatch(/\bOFFSET\b|\bCOUNT\s*\(/iu)
-      }
-      return database.query(sql, parameters)
-    },
+    transaction: <T>(operation: (manager: EntityManager) => Promise<T>) =>
+      database.transaction(async manager => {
+        const measuredManager = Object.create(manager) as EntityManager
+        measuredManager.query = async (sql: string, parameters?: unknown[]) => {
+          if (
+            sql.includes('SELECT TOP (') &&
+            sql.includes('requirements_specification_items') &&
+            sql.includes('UNION ALL')
+          ) {
+            candidateQueries += 1
+            expect(sql).not.toMatch(/\bOFFSET\b|\bCOUNT\s*\(/iu)
+          }
+          return manager.query(sql, parameters)
+        }
+        return operation(measuredManager)
+      }),
   } as SqlServerDatabase
   const startedAt = performance.now()
 

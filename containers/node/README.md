@@ -34,11 +34,19 @@ kernels; validate the actual workload and host combination. See the
 [Red Hat container compatibility policy](https://access.redhat.com/support/policy/rhel-container-compatibility).
 
 Uncached builds need HTTPS access to the public image registry
-`registry.access.redhat.com`, the existing npm package sources, and the
-original license URL below. The provisioner additionally installs from the
-public UBI RPM repositories at `cdn-ubi.redhat.com`. These inputs need no Red
-Hat account or subscription. Disconnected deployments import completed release
-images; they do not repeat those build-time downloads.
+`registry.access.redhat.com`, the existing npm package sources, the original
+license URL below, and the public UBI RPM repositories at
+`cdn-ubi.redhat.com`. These inputs need no Red Hat account or subscription.
+Disconnected deployments import completed release images; they do not repeat
+those build-time downloads.
+
+## OpenSSL runtime package
+
+The shared helper installs `openssl-libs-3.5.8-1.el10_2` from the public UBI 10
+BaseOS repository to address `CVE-2026-14456`. The selected minimal base still
+contains `3.5.5-6.el10_2`, so updating the base reference alone does not install
+the fix. Builds fail if the fixed package cannot be installed, and the
+container vulnerability policy still evaluates the completed images.
 
 ## Licenses and image identity
 

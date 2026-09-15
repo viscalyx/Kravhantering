@@ -5,6 +5,10 @@ set -eu
 
 [ "$(id -u)" = 0 ]
 [ "$(node -p 'process.versions.node.split(".")[0]')" = 24 ]
+# Install the fixed UBI OpenSSL library until the selected base includes it.
+microdnf --disablerepo='*' --enablerepo=ubi-10-baseos-rpms install -y \
+  openssl-libs-3.5.8-1.el10_2
+microdnf clean all
 # Fail closed if a replacement base assigns the supported identity elsewhere.
 if getent passwd node >/dev/null || getent passwd 1000 >/dev/null \
   || getent group node >/dev/null || getent group 1000 >/dev/null; then
