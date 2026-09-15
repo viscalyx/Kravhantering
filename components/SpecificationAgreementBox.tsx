@@ -271,6 +271,10 @@ export default function SpecificationAgreementBox({
   const pending = view?.agreements.some(agreement =>
     ['draft', 'upcoming'].includes(agreement.state),
   )
+  const previousAgreements =
+    view?.agreements.filter(
+      agreement => !['current', 'draft', 'upcoming'].includes(agreement.state),
+    ) ?? []
   const openCreate = () => {
     setReference('')
     setDate('')
@@ -314,20 +318,14 @@ export default function SpecificationAgreementBox({
         {t('heading')}
       </dt>
       <dd className="mt-1 text-sm text-secondary-800 dark:text-secondary-100">
-        <div className="flex items-start justify-between gap-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2">
           <div className="min-w-0" role="status">
             {busy && !view ? (
               t('working')
             ) : selected ? (
-              <>
-                <span className="font-medium wrap-break-word">
-                  {selected.agreementReference}
-                </span>
-                <span className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-secondary-600 dark:text-secondary-300">
-                  <StateIcon state={selected.state} />
-                  {selected.effectiveDate} · {t(`states.${selected.state}`)}
-                </span>
-              </>
+              <span className="font-medium wrap-break-word">
+                {selected.agreementReference}
+              </span>
             ) : (
               t('none')
             )}
@@ -374,6 +372,23 @@ export default function SpecificationAgreementBox({
               </button>
             )}
           </div>
+          {selected && (
+            <div
+              className="col-span-2 mt-0.5 flex items-start gap-1 text-xs text-secondary-600 dark:text-secondary-300"
+              role="status"
+              {...devMarker({
+                context: 'requirements specification detail',
+                name: 'status',
+                value: 'agreement effective date and state',
+                priority: 350,
+              })}
+            >
+              <StateIcon state={selected.state} />
+              <span className="min-w-0 flex-1 wrap-break-word">
+                {selected.effectiveDate} · {t(`states.${selected.state}`)}
+              </span>
+            </div>
+          )}
         </div>
         {selectorOpen &&
           view &&
@@ -402,26 +417,25 @@ export default function SpecificationAgreementBox({
                   )
                   .map(entry)}
               </ul>
-              <details
-                open={
-                  !!selected &&
-                  !['draft', 'upcoming', 'current'].includes(selected.state)
-                }
-              >
-                <summary className="min-h-6 cursor-pointer px-2 py-1 text-xs">
-                  {t('previousAgreements')}
-                </summary>
-                <ul>
-                  {view.agreements
-                    .filter(
-                      agreement =>
-                        !['current', 'draft', 'upcoming'].includes(
-                          agreement.state,
-                        ),
-                    )
-                    .map(entry)}
-                </ul>
-              </details>
+              {previousAgreements.length > 0 && (
+                <details
+                  open={
+                    !!selected &&
+                    !['draft', 'upcoming', 'current'].includes(selected.state)
+                  }
+                  {...devMarker({
+                    context: 'requirements specification detail',
+                    name: 'disclosure',
+                    value: 'previous agreements',
+                    priority: 350,
+                  })}
+                >
+                  <summary className="min-h-6 cursor-pointer px-2 py-1 text-xs">
+                    {t('previousAgreements')}
+                  </summary>
+                  <ul>{previousAgreements.map(entry)}</ul>
+                </details>
+              )}
             </div>,
             document.body,
           )}

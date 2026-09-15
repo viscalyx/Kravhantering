@@ -5,6 +5,7 @@ import {
   type Page,
   test,
 } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from '@/tests/helpers/desktop-viewport'
 import { requireTestValue } from '@/tests/helpers/require-test-value'
 import {
   expectOk,
@@ -22,6 +23,30 @@ const today = () =>
 const futureDate = () => `${new Date().getUTCFullYear() + 2}-01-01`
 const card = (page: Page) =>
   page.locator('[data-developer-mode-value="agreement selector"]')
+
+async function expectFullWidthAgreementStatus(page: Page) {
+  const status = card(page).locator(
+    '[data-developer-mode-value="agreement effective date and state"]',
+  )
+  await expect(status).toBeVisible()
+  await expect
+    .poll(async () =>
+      status.evaluate(element => {
+        const content = element.closest('dd')
+        const text = element.querySelector('span')
+        if (!content || !text) return false
+        const available = content.getBoundingClientRect()
+        const row = element.getBoundingClientRect()
+        const label = text.getBoundingClientRect()
+        return (
+          Math.abs(row.width - available.width) < 1 &&
+          Math.abs(label.right - available.right) < 1 &&
+          element.scrollWidth <= element.clientWidth
+        )
+      }),
+    )
+    .toBe(true)
+}
 
 async function fixture(owner: APIRequestContext) {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
@@ -209,8 +234,10 @@ test('SPEC-22/SPEC-25/SPEC-26: correct and cancel the first upcoming agreement, 
   const owner = await newRoleContext(testInfo, 'specificationResponsible')
   try {
     const data = await fixture(owner)
+    await page.setViewportSize(DESKTOP_VIEWPORT)
     await page.goto(`/en/specifications/${data.id}`)
     await register(page, 'Future A', futureDate())
+    await expectFullWidthAgreementStatus(page)
     await expect(card(page)).toContainText('Upcoming')
     await expand(page, data.local.uniqueId)
     await expect(
@@ -520,6 +547,7 @@ for (const locale of ['sv', 'en'] as const) {
             create: 'Nytt avtal',
             save: 'Skapa utkast',
             select: 'Välj avtal',
+            previous: 'Tidigare avtal',
             duplicate: 'Avtalsreferensen eller avtalsdatumet används redan',
           }
         : {
@@ -530,6 +558,7 @@ for (const locale of ['sv', 'en'] as const) {
             create: 'New agreement',
             save: 'Create draft',
             select: 'Select agreement',
+            previous: 'Previous agreements',
             duplicate:
               'The agreement reference or effective date is already used',
           }
@@ -557,6 +586,21 @@ for (const locale of ['sv', 'en'] as const) {
         .getByRole('button', { name: labels.confirm, exact: true })
         .click()
       await expect(registration).toBeHidden()
+      await expectFullWidthAgreementStatus(page)
+      await page
+        .getByRole('button', { name: labels.select, exact: true })
+        .click()
+      const firstSelector = page.getByRole('dialog', {
+        name: labels.select,
+        exact: true,
+      })
+      await expect(
+        firstSelector.getByText(labels.previous, { exact: true }),
+      ).toHaveCount(0)
+      await expect(
+        firstSelector.getByRole('button', { name: /^Mobile A ·/ }),
+      ).toBeVisible()
+      await page.keyboard.press('Escape')
       await page
         .getByRole('button', { name: labels.create, exact: true })
         .click()
@@ -589,6 +633,9 @@ for (const locale of ['sv', 'en'] as const) {
         name: labels.select,
         exact: true,
       })
+      await expect(
+        selector.getByText(labels.previous, { exact: true }),
+      ).toHaveCount(0)
       const bounds = await selector.boundingBox()
       expect(bounds?.x).toBeGreaterThanOrEqual(0)
       expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(320)

@@ -12,44 +12,77 @@ vi.mock('next-intl', () => {
 describe('agreement header author workflow', () => {
   afterEach(() => vi.unstubAllGlobals())
 
-  it('opens the agreement selector from the header and returns keyboard focus on Escape', async () => {
-    const user = userEvent.setup()
-    const current = {
-      id: 1,
-      agreementReference: 'A',
-      effectiveDate: '2020-01-01',
-      state: 'current',
-    }
-    const fetch = vi.fn(
-      async () =>
-        new Response(
-          JSON.stringify({
-            agreements: [current],
-            selectedAgreement: current,
-            canAuthor: true,
-            canDecide: true,
-          }),
-        ),
-    )
-    vi.stubGlobal('fetch', fetch)
-    render(
-      <ConfirmModalProvider>
-        <dl>
-          <SpecificationAgreementBox
-            onContextChange={vi.fn()}
-            specificationId={1}
-          />
-        </dl>
-      </ConfirmModalProvider>,
-    )
-    const trigger = await screen.findByRole('button', { name: 'select' })
-    await user.click(trigger)
-    const selector = screen.getByRole('dialog', { name: 'select' })
-    expect(within(selector).getByRole('button', { name: /A/ })).toHaveFocus()
-    await user.keyboard('{Escape}')
-    expect(trigger).toHaveFocus()
-    expect(trigger).toHaveAttribute('aria-expanded', 'false')
-  })
+  it.each([false, true])(
+    'shows the history disclosure only when previous agreements exist (%s) and restores focus',
+    async hasHistory => {
+      const user = userEvent.setup()
+      const current = {
+        id: 1,
+        agreementReference: 'A',
+        effectiveDate: '2020-01-01',
+        state: 'current',
+      }
+      const fetch = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              agreements: hasHistory
+                ? [
+                    {
+                      ...current,
+                      id: 2,
+                      agreementReference: 'Previous A',
+                      state: 'previous',
+                    },
+                    current,
+                  ]
+                : [current],
+              selectedAgreement: current,
+              canAuthor: true,
+              canDecide: true,
+            }),
+          ),
+      )
+      vi.stubGlobal('fetch', fetch)
+      render(
+        <ConfirmModalProvider>
+          <dl>
+            <SpecificationAgreementBox
+              onContextChange={vi.fn()}
+              specificationId={1}
+            />
+          </dl>
+        </ConfirmModalProvider>,
+      )
+      const trigger = await screen.findByRole('button', { name: 'select' })
+      await user.click(trigger)
+      const selector = screen.getByRole('dialog', { name: 'select' })
+      expect(
+        within(selector).getByRole('button', { name: /^A ·/ }),
+      ).toHaveFocus()
+      const history = within(selector).queryByText('previousAgreements')
+      if (hasHistory) {
+        expect(history).toBeVisible()
+        await user.click(within(selector).getByText('previousAgreements'))
+        expect(
+          within(selector).getByRole('button', { name: /Previous A/ }),
+        ).toBeVisible()
+      } else {
+        expect(history).not.toBeInTheDocument()
+      }
+      expect(
+        screen
+          .getByText('2020-01-01 · states.current', { exact: true })
+          .closest('[role="status"]'),
+      ).toHaveAttribute(
+        'data-developer-mode-value',
+        'agreement effective date and state',
+      )
+      await user.keyboard('{Escape}')
+      expect(trigger).toHaveFocus()
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    },
+  )
 
   it('confirms an explicit plan for approvals received after draft editing', async () => {
     const user = userEvent.setup()

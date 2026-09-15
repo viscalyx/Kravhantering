@@ -1973,12 +1973,14 @@ expanderingen; ingen extra stängning och öppning ska behövas.
 kravunderlagsansvarig. Öppna pennan vid **Inget** i rutan **Avtal** till vänster
 om **Styrningsobjektstyp**. Ange avtalsreferens och avtalsdatum, lämna beskrivningen
 tom och bekräfta. Prova även ett första avtal med framtida datum. Öppna dialogens
-registreringsuppgifter och byt mellan tillgängliga avtal.
+registreringsuppgifter och byt mellan tillgängliga avtal. Kontrollera
+avtalsväljaren både utan historik och när tidigare avtal finns.
 
 **Förväntat resultat:** Hela kravuppsättningen låses direkt vid bekräftelse,
 även när avtalet är kommande. Rutan visar referens, datum och status. Valet styr
 den vanliga kravlistan och dess filtrering. Uppföljning är tillgänglig i det
-aktuella avtalet. Registreringsuppgifter ligger i dialogen och kan fällas ut.
+aktuella avtalet. Gruppen **Tidigare avtal** visas bara när det finns tidigare
+avtal att välja. Registreringsuppgifter ligger i dialogen och kan fällas ut.
 
 ### SPEC-23: ändra krav i ett nytt avtalsutkast
 
