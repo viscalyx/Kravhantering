@@ -993,6 +993,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       return
     }
 
+    page.setDefaultTimeout(15_000)
     attachGuideDiagnostics(page)
     guideLog('run:start', { url: compactUrl(page.url()) })
     let reviewerContext: BrowserContext | null = null
@@ -1213,7 +1214,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         // ends after the version pills, without the suggestions section.
         await page.evaluate(() => {
           const el = document.querySelector(
-            'section[aria-labelledby="improvementSuggestionsHeading"]',
+            'section[data-developer-mode-value="improvement-suggestions"]',
           ) as HTMLElement | null
           if (el) el.style.display = 'none'
         })
@@ -1242,7 +1243,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
         await page.evaluate(() => {
           const el = document.querySelector(
-            'section[aria-labelledby="improvementSuggestionsHeading"]',
+            'section[data-developer-mode-value="improvement-suggestions"]',
           ) as HTMLElement | null
           if (el) el.style.display = ''
         })
@@ -1261,7 +1262,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           // Hide suggestions only for the screenshots that need it (010, 011)
           await page.evaluate(() => {
             const el = document.querySelector(
-              'section[aria-labelledby="improvementSuggestionsHeading"]',
+              'section[data-developer-mode-value="improvement-suggestions"]',
             ) as HTMLElement | null
             if (el) el.style.display = 'none'
           })
@@ -1295,7 +1296,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           // in its natural state (same as when 009 was taken)
           await page.evaluate(() => {
             const el = document.querySelector(
-              'section[aria-labelledby="improvementSuggestionsHeading"]',
+              'section[data-developer-mode-value="improvement-suggestions"]',
             ) as HTMLElement | null
             if (el) el.style.display = ''
           })
@@ -1317,7 +1318,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           await page.waitForTimeout(150)
           await page.evaluate(() => {
             const el = document.querySelector(
-              'section[aria-labelledby="improvementSuggestionsHeading"]',
+              'section[data-developer-mode-value="improvement-suggestions"]',
             ) as HTMLElement | null
             if (el) el.style.display = 'none'
           })
@@ -1337,7 +1338,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         // subsequent steps start from a clean, known state.
         await page.evaluate(() => {
           const el = document.querySelector(
-            'section[aria-labelledby="improvementSuggestionsHeading"]',
+            'section[data-developer-mode-value="improvement-suggestions"]',
           ) as HTMLElement | null
           if (el) el.style.display = ''
         })
@@ -1859,7 +1860,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
           page,
           'avsteg-registrerat',
           'Avsteg registrerat — Utkast',
-          '**Steg 4 — Utkastläge.** Avsteget visas nu i detaljpanelen med sin motivering. I utkastläget kan det fortfarande redigeras eller tas bort. När det är klart, klicka **"Granskning ↗"** för att skicka det till granskning.',
+          '**Steg 4 — Utkastläge.** Avsteget visas nu i detaljpanelen med sin motivering. I utkastläget kan det fortfarande redigeras eller avslutas utan beslut. När det är klart, klicka **"Granskning ↗"** för att skicka det till granskning.\n\n' +
+            'Avsteg visas ovanför kravinnehållet för både bibliotekskrav och lokala krav. Varje avsteg har sina egna åtgärder innanför ramen. **Begär ett avsteg** och kravets borttagningsåtgärd finns i kravets åtgärdskolumn, med borttagning direkt under Begär ett avsteg. Registrerande information kan fällas ut. Aktiva ärenden och gällande godkännanden visas direkt; övriga ärenden finns under **Tidigare avsteg**. Om inga aktiva ärenden eller gällande godkännanden finns visas det senaste ärendet direkt.\n\n' +
+            '**Avsluta utan beslut** kräver en orsak och bevarar ärendet som **Avbrutet**. För delade ärenden visas berörda avtal. Historiska avtal behåller sin tidigare vy och visar senare händelser separat. Ett godkänt avsteg med planerat avslut visar datumet; efter avslutet visas **Avslutat** med datum och det ursprungliga beslutet finns kvar i detaljerna. Fel vid registrering eller ändring visas i dialogen med inmatningen kvar.',
           { fullPage: false },
         )
       })
@@ -1879,7 +1882,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           page,
           'avsteg-granskning',
           'Avsteg — granskning begärd',
-          '**Steg 5 — Granskning begärd.** Avsteget är nu låst för redigering och inväntar beslut. En behörig kravgranskare klickar **"Beslutad ↗"** för att registrera ett beslut, eller **"← Utkast"** för att återföra det om komplettering behövs.',
+          '**Steg 5 — Granskning begärd.** Avsteget är nu låst för redigering och inväntar beslut. En behörig kravgranskare klickar **"Registrera beslut"** för att registrera ett beslut. En behörig författare kan välja **"← Utkast"** om komplettering behövs.',
           { fullPage: false },
         )
       })
@@ -1906,7 +1909,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
         )
         await expect(reviewerDetail).toBeVisible({ timeout: 10_000 })
         const decidedBtn = reviewerDetail.getByRole('button', {
-          name: /Beslutad\s*↗/,
+          name: 'Registrera beslut',
+          exact: true,
         })
         await expect(
           decidedBtn,
@@ -1933,43 +1937,12 @@ test.describe('Kravhantering — Guidegenerering', () => {
         reviewerContext = null
         reviewerPage = null
       })
-
-      await guideStep(page, 'Avsteg — granskningsrapport', async () => {
-        const reportTrigger = page
-          .locator('[data-expanded-detail-cell="true"]')
-          .getByRole('button', { name: t('common.reports') })
-        await expect(
-          reportTrigger,
-          `Guide generation expects the report menu trigger to be visible for ${GUIDE_DEVIATION_REQUIREMENT_ID}.`,
-        ).toBeVisible({ timeout: 10_000 })
-        await reportTrigger.click()
-        const reportMenuItem = page.getByRole('menuitem', {
-          name: t('deviation.downloadDeviationReviewReportPdf'),
-        })
-        await expect(
-          reportMenuItem,
-          `Guide generation expects the deviation review report option to be visible for ${GUIDE_DEVIATION_REQUIREMENT_ID}.`,
-        ).toBeVisible({ timeout: 5_000 })
-        await addAnnotation(
-          page,
-          '[data-developer-mode-value="deviation review report"]',
-          { arrowSide: 'left' },
-        )
-        await snap(
-          page,
-          'avsteg-rapport-knapp',
-          'Avsteg — granskningsrapport',
-          '**Steg 7 — Granskningsrapport.** När ett avsteg har skickats till granskning kan du generera en **granskningsrapport** direkt från detaljpanelens rapportmeny. Rapporten sammanställer kravets text, avstegets motivering och beslutsunderlag som servergenererad PDF för dokumentation och revision.',
-          { fullPage: false },
-        )
-        await removeAnnotation(page)
-      })
     })
 
     // ── Sektion 7: Import av krav ─────────────────────────────────────────
     currentSection = 'Import av krav'
     setSectionIntro(
-      'Importfunktionen använder JSON enligt `requirement-import.v4`. **AI-assisterat författande** använder samma importkontrakt och samma redigerbara importgranskning som manuell JSON-import. **Kravbiblioteksimport** skapar nya utkast i kravbiblioteket, medan **kravunderlagsimport** skapar unika krav direkt i ett kravunderlag. Importen laddar först en granskning där rader, metadata, föreslagna normreferenser och föreslagna behovsreferenser kan kontrolleras innan något sparas.\n\nImportfiler får innehålla högst 8 MiB importdata. Aktuella gränser för antal krav, referensförslag, underposter och JSON-djup visas i det nedladdningsbara schemat och kan sänkas av en administratör.',
+      'Importfunktionen använder JSON enligt `requirement-import.v4`. **AI-assisterat författande** använder samma importkontrakt och samma redigerbara importgranskning som manuell JSON-import. **Kravbiblioteksimport** skapar nya utkast i kravbiblioteket, medan **kravunderlagsimport** skapar unika krav direkt i ett kravunderlag. Importen laddar först en granskning där rader, metadata, föreslagna normreferenser och föreslagna behovsreferenser kan kontrolleras innan något sparas.\n\nImportfiler får innehålla högst 8 MiB importdata. Aktuella gränser för antal krav, referensförslag, underposter och JSON-djup visas i det nedladdningsbara schemat och kan sänkas av en administratör.\n\n### Kravimport — spara kandidater för fortsatt arbete\n\nVälj kvarvarande rader och **"Ladda ner valda kandidater"** för att spara en kravimportfil med aktuella ändringar. Det fungerar både i kravbiblioteket och i ett kravunderlag. Redan importerade rader ingår inte. Använda olösta förslag på normreferenser och behovsreferenser följer med så att förberedelsen kan fortsätta senare. Nedladdningen ändrar inte granskningen.\n\nKandidater behöver inte vara färdiga för import, men måste följa filschemat och aktuell kravimportbudget. Om ett fält eller en referens inte kan sparas visas ett fel och ändringarna finns kvar. Korrigera fältet eller referensen och försök igen.\n\nÖppna filen via vanlig kravimport när arbetet ska fortsätta. Välj destination på nytt. Aktuell behörighet, referensdata och kravimportbudget kontrolleras igen; ändrade eller borttagna referenser kan därför ge nya varningar eller fel. Spara filen innan granskningen stängs eftersom osparade ändringar då försvinner.',
     )
 
     let cleanupAiMocks: (() => Promise<void>) | null = null
@@ -2306,15 +2279,24 @@ test.describe('Kravhantering — Guidegenerering', () => {
       ).toBeVisible({ timeout: 10_000 })
       const removePublishedFilter = page.getByRole('button', {
         name: 'Ta bort Publicerad',
+        exact: true,
       })
       if ((await removePublishedFilter.count()) > 0) {
-        await removePublishedFilter.click()
+        // Removing a chip moves the package chooser into its former position.
+        await removePublishedFilter.evaluate(el =>
+          (el as HTMLButtonElement).click(),
+        )
+        await expect(removePublishedFilter).toHaveCount(0)
       }
-      await page.getByLabel('Filtrera efter Krav-ID').click()
+      await page.keyboard.press('Escape')
+      await page
+        .getByLabel('Filtrera efter Krav-ID', { exact: true })
+        .click({ timeout: 5_000 })
       const uniqueIdFilterInput = page.getByRole('textbox', {
         name: 'Krav-ID',
+        exact: true,
       })
-      await uniqueIdFilterInput.fill(AI_GUIDE_AREA_PREFIX)
+      await uniqueIdFilterInput.fill(AI_GUIDE_AREA_PREFIX, { timeout: 5_000 })
       await uniqueIdFilterInput.press('Enter')
       for (const createdId of createdIds) {
         await expect(page.getByText(createdId).first()).toBeVisible({
@@ -2525,9 +2507,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
         // Scroll the improvement suggestions section into view
         const suggSection = page.locator(
-          'section[aria-labelledby="improvementSuggestionsHeading"]',
+          'section[data-developer-mode-value="improvement-suggestions"]',
         )
-        await suggSection.scrollIntoViewIfNeeded()
+        await suggSection.scrollIntoViewIfNeeded({ timeout: 10_000 })
         await page.waitForTimeout(300)
 
         await snap(
@@ -2550,14 +2532,13 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'forslagsformular-tomt',
         'Formulär för förbättringsförslag',
-        'Formuläret öppnas som en modal dialog. Ange förbättringsidén i textfältet och valfritt ditt namn i "Registrerat av". Klicka på **"Spara"** för att registrera förslaget.',
+        'Formuläret öppnas som en modal dialog. Ange förbättringsidén i textfältet. **Registrerat av** visar den inloggade användaren automatiskt. Klicka på **"Spara"** för att registrera förslaget.',
         { fullPage: false },
       )
     })
 
     await guideStep(page, 'Förbättringsförslag — formulär ifyllt', async () => {
       await setReactInputValue(page, 'suggestion-content', MOCK_SUGGESTION)
-      await setReactInputValue(page, 'suggestion-createdBy', 'Playwright Guide')
 
       await snap(
         page,
@@ -2578,9 +2559,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
         ).not.toBeVisible({ timeout: 5_000 })
 
         const suggSection = page.locator(
-          'section[aria-labelledby="improvementSuggestionsHeading"]',
+          'section[data-developer-mode-value="improvement-suggestions"]',
         )
-        await suggSection.scrollIntoViewIfNeeded()
+        await suggSection.scrollIntoViewIfNeeded({ timeout: 10_000 })
         await page.waitForTimeout(500)
 
         await snap(
@@ -2604,9 +2585,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
         ).toBeVisible({ timeout: 10_000 })
 
         const suggSection = page.locator(
-          'section[aria-labelledby="improvementSuggestionsHeading"]',
+          'section[data-developer-mode-value="improvement-suggestions"]',
         )
-        await suggSection.scrollIntoViewIfNeeded()
+        await suggSection.scrollIntoViewIfNeeded({ timeout: 10_000 })
         await page.waitForTimeout(300)
 
         await snap(
@@ -2760,13 +2741,6 @@ test.describe('Kravhantering — Guidegenerering', () => {
         'En samlad rapport för flera krav som har status *Granskning*. Rapporten genereras genom att markera flera krav i kravbiblioteket. Den innehåller en innehållsförteckning med sidnummer, grupperad efter rapporttyp (arkiveringsförfrågningar först, sedan granskningsrapporter). Varje krav börjar på en ny sida.\n\n' +
           '**Åtkomst:** Rapportmenyn i kravbiblioteket när minst ett markerat krav har status *Granskning*.\n\n' +
           '**Rutt:** `/requirements/reports/pdf/review-combined?ids=...`',
-      )
-
-      textEntry(
-        'Avstegsgranskningsrapport',
-        'Granskar ett specifikt avsteg kopplat till ett krav i ett kravunderlag. Rapporten visar den kravversion som är kopplad till underlaget, avstegets motivering och kompletterande underlagskontext.\n\n' +
-          '**Åtkomst:** Rapportmenyn i kravdetaljvyn i underlagskontexten (visas när avsteget är i status *Granskning begärd* eller *Beslutad*).\n\n' +
-          '**Rutt:** `/requirements/reports/pdf/deviation-review/[id]?item={itemId}`',
       )
 
       textEntry(
