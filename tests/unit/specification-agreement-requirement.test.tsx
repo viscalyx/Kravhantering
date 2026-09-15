@@ -6,13 +6,23 @@ import {
   within,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import type { SpecificationAgreementView } from '@/components/SpecificationAgreementBox'
 import SpecificationAgreementDeviations from '@/components/SpecificationAgreementDeviations'
+import SpecificationAgreementHistory from '@/components/SpecificationAgreementHistory'
 import SpecificationAgreementRequirement from '@/components/SpecificationAgreementRequirement'
+import { requirementContentChange } from '@/lib/specifications/agreement-history'
 import type { AgreementItem } from '@/lib/specifications/agreements'
 import { requireTestValue } from '@/tests/helpers/require-test-value'
+
+const { historyFetch } = vi.hoisted(() => ({ historyFetch: vi.fn() }))
+vi.mock('@/lib/http/api-fetch', () => ({
+  apiFetch: (...args: Parameters<typeof fetch>) =>
+    String(args[0]).includes('historyItemRef=')
+      ? historyFetch(...args)
+      : fetch(...args),
+}))
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
@@ -96,8 +106,176 @@ const view: SpecificationAgreementView = {
   canFollowUp: false,
 }
 
+describe('requirement content change summaries', () => {
+  it.each([
+    ['copied binding', { itemRef: 'lib:99' }, null],
+    [
+      'follow-up only',
+      {
+        note: 'A note',
+        needsReference: 'New need',
+        specificationItemStatusId: 4,
+      },
+      null,
+    ],
+    ['changed text', { description: 'Changed' }, 'changed'],
+    ['changed classification', { requirementTypeId: 7 }, 'changed'],
+    ['removal', { isRemoved: true }, 'removed'],
+    [
+      'library update',
+      { requirementVersionId: 7, versionNumber: 2 },
+      'libraryUpdated',
+    ],
+    [
+      'local conversion',
+      {
+        itemRef: 'local:13',
+        requirementId: null,
+        requirementVersionId: null,
+        uniqueId: 'LOCAL-0013',
+      },
+      'madeLocal',
+    ],
+  ] as const)('summarizes %s', (_name, changes, expected) => {
+    expect(requirementContentChange({ ...item, ...changes }, item)).toBe(
+      expected,
+    )
+  })
+  it('compares reference membership without depending on its order', () => {
+    expect(
+      requirementContentChange(
+        { ...item, normReferenceIds: [2, 1] },
+        { ...item, normReferenceIds: [1, 2] },
+      ),
+    ).toBeNull()
+    expect(
+      requirementContentChange(
+        { ...item, normReferenceIds: [2] },
+        { ...item, normReferenceIds: [1] },
+      ),
+    ).toBe('changed')
+  })
+  it('does not repeat an existing removal and recognizes restored membership', () => {
+    expect(
+      requirementContentChange(
+        { ...item, isRemoved: true },
+        { ...item, isRemoved: true },
+      ),
+    ).toBeNull()
+    expect(requirementContentChange(item, { ...item, isRemoved: true })).toBe(
+      'added',
+    )
+  })
+})
+
 describe('selected agreement requirement author workflow', () => {
+  beforeEach(() => {
+    historyFetch.mockImplementation(() => new Promise(() => {}))
+  })
   afterEach(() => vi.unstubAllGlobals())
+
+  it('keeps history errors distinct from an unchanged requirement and offers retry', async () => {
+    const reload = vi.fn(async () => undefined)
+    const { rerender } = render(
+      <SpecificationAgreementHistory
+        actionTarget={null}
+        item={item}
+        resource={{
+          data: undefined,
+          error: 'Cannot read history',
+          loading: false,
+          refreshing: false,
+          refreshError: null,
+          reload,
+        }}
+        view={view}
+      />,
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent('Cannot read history')
+    await userEvent.click(screen.getByRole('button', { name: 'common.retry' }))
+    expect(reload).toHaveBeenCalledOnce()
+    rerender(
+      <SpecificationAgreementHistory
+        actionTarget={null}
+        item={item}
+        resource={{
+          data: {
+            entries: [],
+            changes: [],
+            ancestorAgreementIds: [2, 1],
+            previous: null,
+          },
+          error: null,
+          loading: false,
+          refreshing: false,
+          refreshError: null,
+          reload,
+        }}
+        view={view}
+      />,
+    )
+    expect(
+      screen.queryByText('agreement.requirementHistory'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows each earlier-content deviation once even when unchanged content spans agreements', async () => {
+    const oldItem = {
+      ...item,
+      deviationStateSnapshot: [
+        { id: 8, motivation: 'Earlier-content case', isReviewRequested: 0 },
+      ],
+    }
+    const entry = {
+      agreementId: 1,
+      agreementReference: 'A',
+      effectiveDate: '2020-01-01',
+      item: oldItem,
+    }
+    render(
+      <ConfirmModalProvider>
+        <SpecificationAgreementDeviations
+          history={{
+            changes: [],
+            previous: entry,
+            entries: [entry, { ...entry, agreementId: 2 }],
+            ancestorAgreementIds: [2, 1],
+            deviations: [
+              {
+                id: 8,
+                itemRef: item.itemRef,
+                motivation: 'Earlier-content case',
+                decision: 3,
+                decisionMotivation: 'Cancelled',
+                createdAt: new Date('2026-01-01'),
+                decidedAt: new Date('2026-07-01'),
+              },
+            ],
+            deviationEndings: [],
+          }}
+          item={{ ...item, itemRef: 'local:13' }}
+          onChange={async () => {}}
+          specificationId={1}
+          view={{
+            ...view,
+            agreements: [
+              {
+                ...agreement,
+                id: 1,
+                state: 'previous',
+                replacedAt: new Date('2026-08-01'),
+              },
+              agreement,
+            ],
+          }}
+        />
+      </ConfirmModalProvider>,
+    )
+    await userEvent.click(screen.getByText('deviation.historyLabel'))
+    expect(
+      screen.getAllByRole('article', { name: 'Earlier-content case' }),
+    ).toHaveLength(1)
+  })
 
   it.each(['lib:9', 'local:9'] as const)(
     'keeps an unresolved %s case visible above collapsed newer history',
@@ -163,32 +341,28 @@ describe('selected agreement requirement author workflow', () => {
       agreements: [agreement],
       selected: agreement,
       compare: false,
-      history: false,
     },
     {
       name: 'first of several',
       agreements: [agreement, { ...agreement, id: 3 }],
       selected: agreement,
       compare: false,
-      history: true,
     },
     {
       name: 'later agreement',
       agreements: view.agreements,
       selected: agreement,
       compare: true,
-      history: true,
     },
     {
       name: 'new first agreement after cancellation',
       agreements: [{ ...agreement, id: 1, state: 'cancelled' }, agreement],
       selected: agreement,
       compare: false,
-      history: true,
     },
   ])(
-    'offers comparison and history only for relevant agreement contexts: $name',
-    ({ agreements, selected, compare, history }) => {
+    'offers comparison only for relevant agreement contexts: $name',
+    ({ agreements, selected, compare }) => {
       render(
         <ConfirmModalProvider>
           <SpecificationAgreementRequirement
@@ -215,11 +389,6 @@ describe('selected agreement requirement author workflow', () => {
           name: 'agreement.comparePrevious',
         }),
       ).toHaveLength(compare ? 1 : 0)
-      expect(
-        screen.queryAllByText('agreement.requirementHistory', {
-          selector: 'summary',
-        }),
-      ).toHaveLength(history ? 1 : 0)
     },
   )
 
@@ -270,7 +439,7 @@ describe('selected agreement requirement author workflow', () => {
     ).toBeVisible()
   })
 
-  it('opens historical content from the requirement row and compares the previous agreement', async () => {
+  it('shows compact changes and opens full content only in comparison', async () => {
     const user = userEvent.setup()
     const previous = {
       agreementId: 1,
@@ -282,12 +451,26 @@ describe('selected agreement requirement author workflow', () => {
         acceptanceCriteria: 'Earlier acceptance criteria',
       },
     }
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(
-        async () =>
-          new Response(JSON.stringify({ entries: [previous], previous })),
-      ),
+    historyFetch.mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            entries: [previous],
+            previous,
+            ancestorAgreementIds: [2, 1],
+            changes: [
+              {
+                agreementId: 2,
+                agreementReference: 'B',
+                effectiveDate: agreement.effectiveDate,
+                kind: 'changed',
+                previousAgreementReference: 'A',
+                previousVersion: null,
+                version: null,
+              },
+            ],
+          }),
+        ),
     )
     render(
       <ConfirmModalProvider>
@@ -307,8 +490,9 @@ describe('selected agreement requirement author workflow', () => {
         />
       </ConfirmModalProvider>,
     )
-    await user.click(screen.getByText('agreement.requirementHistory'))
-    expect(await screen.findByText('Earlier requirement content')).toBeVisible()
+    await user.click(await screen.findByText('agreement.requirementHistory'))
+    expect(screen.getByText(/agreement.historyChanges.changed/)).toBeVisible()
+    expect(screen.getByText('agreement.viewingAgreementBadge')).toBeVisible()
     await user.click(
       screen.getByRole('button', { name: 'agreement.comparePrevious' }),
     )
@@ -461,25 +645,6 @@ describe('selected agreement requirement author workflow', () => {
       state: 'previous',
       replacedAt: new Date('2026-08-01'),
     }
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              entries: [
-                {
-                  agreementId: selected.id,
-                  agreementReference: 'B',
-                  effectiveDate: selected.effectiveDate,
-                  item,
-                },
-              ],
-              previous: null,
-            }),
-          ),
-      ),
-    )
     const historicalItem = {
       ...item,
       deviationStateSnapshot: [
@@ -521,11 +686,9 @@ describe('selected agreement requirement author workflow', () => {
       </ConfirmModalProvider>,
     )
     expect(screen.getByText('deviation.stepReviewRequested')).toBeVisible()
-    expect(
-      screen.queryByRole('region', { name: 'agreement.laterEvents' }),
-    ).toBeNull()
+    expect(screen.getByRole('article', { name: 'Shared case' })).toBeVisible()
     await user.click(
-      screen.getByText('agreement.requirementHistory', { selector: 'summary' }),
+      screen.getByText('agreement.laterEvents', { selector: 'summary' }),
     )
     const later = await screen.findByRole('region', {
       name: 'agreement.laterEvents',
@@ -534,7 +697,7 @@ describe('selected agreement requirement author workflow', () => {
     expect(within(later).getByText('Approved later')).toBeVisible()
   })
 
-  it('keeps the frozen draft text and state while showing later edits only as later events', () => {
+  it('keeps the frozen draft text and state while showing later edits only as later events', async () => {
     render(
       <ConfirmModalProvider>
         <SpecificationAgreementDeviations
@@ -573,11 +736,14 @@ describe('selected agreement requirement author workflow', () => {
     )
     const original = screen.getByRole('article', { name: 'Original draft' })
     expect(within(original).getByText('deviation.stepDraft')).toBeVisible()
-    expect(within(original).queryByText('Edited later')).toBeNull()
+    expect(within(original).getByText('Edited later')).not.toBeVisible()
+    await userEvent.click(
+      within(original).getByText('agreement.laterEvents', {
+        selector: 'summary',
+      }),
+    )
     const later = screen.getByRole('region', { name: 'agreement.laterEvents' })
-    expect(
-      within(later).getByRole('article', { name: 'Edited later' }),
-    ).toBeVisible()
+    expect(within(later).getByText('Edited later')).toBeVisible()
     expect(
       within(later).getByText('deviation.stepReviewRequested'),
     ).toBeVisible()

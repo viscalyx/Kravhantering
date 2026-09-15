@@ -11,7 +11,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationDecisionModal from '@/components/DeviationDecisionModal'
@@ -28,6 +28,7 @@ import {
   type AgreementHttpError,
   agreementErrorMessage,
 } from '@/lib/specifications/agreement-errors'
+import type { AgreementRequirementHistory } from '@/lib/specifications/agreement-history'
 import type { AgreementItem } from '@/lib/specifications/agreements'
 
 export default function SpecificationAgreementDeviations({
@@ -38,6 +39,8 @@ export default function SpecificationAgreementDeviations({
   createActionTarget,
   priorityLevel,
   showLaterEvents = false,
+  history,
+  historyOnly = false,
 }: {
   item: AgreementItem
   view: SpecificationAgreementView
@@ -46,6 +49,8 @@ export default function SpecificationAgreementDeviations({
   createActionTarget?: HTMLElement | null
   priorityLevel?: DeviationPriorityLevel | null
   showLaterEvents?: boolean
+  history?: AgreementRequirementHistory
+  historyOnly?: boolean
 }) {
   const t = useTranslations('deviation')
   const ta = useTranslations('agreement')
@@ -193,13 +198,39 @@ export default function SpecificationAgreementDeviations({
       (deviation.decision === 1 &&
         !endingState(deviation.id, !!frozenAt).ended),
   )
-  const shownCases = importantCases.length
-    ? importantCases
-    : visibleCases.slice(0, 1)
+  const shownCases = historyOnly
+    ? visibleCases
+    : importantCases.length
+      ? importantCases
+      : visibleCases.slice(0, 1)
   const previousCases = visibleCases.filter(
     deviation => !shownCases.includes(deviation),
   )
-  const renderCase = (current: (typeof cases)[number], historical: boolean) => {
+  const historicalEntries = new Map<
+    string,
+    NonNullable<typeof history>['entries'][number]
+  >()
+  for (const agreementId of history?.ancestorAgreementIds ?? []) {
+    for (const entry of history?.entries ?? []) {
+      if (
+        entry.agreementId !== agreementId ||
+        entry.item.itemRef === item.itemRef ||
+        historicalEntries.has(entry.item.itemRef)
+      )
+        continue
+      if (
+        history?.deviations?.some(
+          deviation => deviation.itemRef === entry.item.itemRef,
+        )
+      )
+        historicalEntries.set(entry.item.itemRef, entry)
+    }
+  }
+  const renderCase = (
+    current: (typeof cases)[number],
+    historical: boolean,
+    laterEvent = false,
+  ): ReactNode => {
     const snapshot = historical ? frozenCase(current.id) : undefined
     const deviation = snapshot ? { ...current, ...snapshot } : current
     const motivation =
@@ -229,9 +260,10 @@ export default function SpecificationAgreementDeviations({
             : deviation.isReviewRequested
               ? 'stepReviewRequested'
               : 'stepDraft'
+    const Container = laterEvent ? 'div' : 'article'
     return (
-      <article
-        aria-label={motivation}
+      <Container
+        aria-label={laterEvent ? undefined : motivation}
         className={`space-y-2 rounded-xl border px-4 py-3 text-sm ${muted ? 'border-secondary-200 bg-secondary-50 text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-300' : decision === 1 ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300' : decision === 2 ? 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300' : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200'}`}
         key={deviation.id}
         {...devMarker({
@@ -388,7 +420,26 @@ export default function SpecificationAgreementDeviations({
             )}
           </div>
         )}
-      </article>
+        {historical && showLaterEvents && laterCases.includes(current) && (
+          <details className="space-y-2 border-t border-secondary-200 pt-2 dark:border-secondary-700">
+            <summary className="min-h-6 cursor-pointer rounded py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+              {ta('laterEvents')}
+            </summary>
+            <section
+              aria-label={ta('laterEvents')}
+              {...devMarker({
+                context: 'requirements specification detail',
+                name: 'history section',
+                value: 'later shared deviation events',
+                priority: 350,
+              })}
+            >
+              <p>{ta('laterEventsHelp')}</p>
+              {renderCase(current, false, true)}
+            </section>
+          </details>
+        )}
+      </Container>
     )
   }
 
@@ -435,30 +486,70 @@ export default function SpecificationAgreementDeviations({
         <h3 className="text-sm font-semibold">{t('title')}</h3>
       )}
       {shownCases.map(deviation => renderCase(deviation, !!frozenAt))}
-      {previousCases.length > 0 && (
-        <details className="space-y-3">
-          <summary className="min-h-6 cursor-pointer rounded py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
-            {t('historyLabel', { count: previousCases.length })}
-          </summary>
-          {previousCases.map(deviation => renderCase(deviation, !!frozenAt))}
-        </details>
-      )}
-      {showLaterEvents && laterCases.length > 0 && (
-        <section
-          aria-label={ta('laterEvents')}
-          className="space-y-3 border-t border-secondary-200 pt-3 dark:border-secondary-700"
+      {(previousCases.length > 0 || historicalEntries.size > 0) && (
+        <details
+          className="space-y-3"
           {...devMarker({
             context: 'requirements specification detail',
-            name: 'history section',
-            value: 'later shared deviation events',
+            name: 'deviation history',
+            value: 'requirement deviation history',
             priority: 350,
           })}
         >
-          <h4 className="text-sm font-semibold">{ta('laterEvents')}</h4>
-          <p className="text-sm">{ta('laterEventsHelp')}</p>
-          {laterCases.map(deviation => renderCase(deviation, false))}
-        </section>
+          <summary className="min-h-6 cursor-pointer rounded py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+            {t('historyLabel')}
+          </summary>
+          {previousCases.map(deviation => renderCase(deviation, !!frozenAt))}
+          {[...historicalEntries.values()].map(entry => (
+            <div className="space-y-2" key={entry.item.itemRef}>
+              <p className="text-sm font-medium">
+                {entry.agreementReference} · {entry.item.uniqueId}
+              </p>
+              <SpecificationAgreementDeviations
+                historyOnly
+                item={entry.item}
+                onChange={async () => {}}
+                showLaterEvents
+                specificationId={specificationId}
+                view={{
+                  ...view,
+                  selectedAgreement:
+                    view.agreements.find(
+                      agreement => agreement.id === entry.agreementId,
+                    ) ?? null,
+                  deviations: history?.deviations ?? [],
+                  deviationEndings: history?.deviationEndings ?? [],
+                  canAuthor: false,
+                  canReviewDeviations: false,
+                }}
+              />
+            </div>
+          ))}
+        </details>
       )}
+      {showLaterEvents &&
+        laterCases.some(deviation => !visibleCases.includes(deviation)) && (
+          <details className="space-y-3">
+            <summary className="min-h-6 cursor-pointer rounded py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+              {ta('laterEvents')}
+            </summary>
+            <section
+              aria-label={ta('laterEvents')}
+              className="space-y-3"
+              {...devMarker({
+                context: 'requirements specification detail',
+                name: 'history section',
+                value: 'later shared deviation events',
+                priority: 350,
+              })}
+            >
+              <p className="text-sm">{ta('laterEventsHelp')}</p>
+              {laterCases
+                .filter(deviation => !visibleCases.includes(deviation))
+                .map(deviation => renderCase(deviation, false))}
+            </section>
+          </details>
+        )}
       {createActionTarget
         ? createPortal(createAction, createActionTarget)
         : createAction}

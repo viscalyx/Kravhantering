@@ -1,6 +1,6 @@
 'use client'
 
-import { FilePenLine, GitCompareArrows, History } from 'lucide-react'
+import { Eye, FilePenLine, GitCompareArrows, History } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { type ReactNode, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -8,23 +8,22 @@ import FormModal from '@/components/FormModal'
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
 import type { SpecificationAgreementView } from '@/components/SpecificationAgreementBox'
-import SpecificationAgreementDeviations from '@/components/SpecificationAgreementDeviations'
+import type { AsyncResourceState } from '@/hooks/useAsyncResource'
 import { devMarker } from '@/lib/developer-mode-markers'
-import { apiFetch } from '@/lib/http/api-fetch'
 import type { AgreementRequirementHistory } from '@/lib/specifications/agreement-history'
 import type { AgreementItem } from '@/lib/specifications/agreements'
 
 interface ComponentProps {
   actionTarget: HTMLElement | null
   item: AgreementItem
-  specificationId: number
+  resource: AsyncResourceState<AgreementRequirementHistory>
   view: SpecificationAgreementView
 }
 
 export default function SpecificationAgreementHistory({
   actionTarget,
   item,
-  specificationId,
+  resource,
   view,
 }: ComponentProps) {
   const t = useTranslations('agreement')
@@ -32,15 +31,13 @@ export default function SpecificationAgreementHistory({
   const tc = useTranslations('common')
   const ts = useTranslations('specification')
   const locale = useLocale()
-  const [history, setHistory] = useState<AgreementRequirementHistory | null>(
-    null,
-  )
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const history = resource.data
+  const busy = resource.loading || resource.refreshing
+  const error = resource.error || resource.refreshError
   const [comparing, setComparing] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
   const selected = view.selectedAgreement
-  const hasHistory = view.agreements.length > 1
+  const hasHistory = (history?.changes.length ?? 0) > 0
   const hasPreviousAgreement =
     !!selected &&
     view.agreements.some(
@@ -48,28 +45,6 @@ export default function SpecificationAgreementHistory({
         agreement.id < selected.id &&
         ['current', 'previous', 'ended'].includes(agreement.state),
     )
-  const load = async () => {
-    if (!selected || busy) return
-    setBusy(true)
-    setError(null)
-    try {
-      const query = new URLSearchParams({
-        agreementId: String(selected.id),
-        historyItemRef: item.itemRef,
-      })
-      const response = await apiFetch(
-        `/api/requirements-specifications/${specificationId}/agreement?${query}`,
-      )
-      if (!response.ok) throw new Error(t('historyFailed'))
-      setHistory((await response.json()) as AgreementRequirementHistory)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t('historyFailed'))
-    } finally {
-      setBusy(false)
-    }
-  }
-  if (!hasHistory && !hasPreviousAgreement) return null
-
   const content = (value: AgreementItem, comparison?: AgreementItem) => {
     const changed = (key: keyof AgreementItem) =>
       !!comparison &&
@@ -209,7 +184,7 @@ export default function SpecificationAgreementHistory({
             disabled={busy}
             onClick={() => {
               setComparing(true)
-              void load()
+              void resource.reload()
             }}
             {...devMarker({
               context: 'requirements specification detail',
@@ -228,66 +203,99 @@ export default function SpecificationAgreementHistory({
           </button>,
           actionTarget,
         )}
+      {busy && !history && <p role="status">{t('working')}</p>}
+      {error && !comparing && (
+        <div className="space-y-2 text-sm" role="alert">
+          <p>{error}</p>
+          <button
+            className="btn-secondary"
+            onClick={() => void resource.reload()}
+            type="button"
+          >
+            {tc('retry')}
+          </button>
+        </div>
+      )}
       {hasHistory && (
-        <details
-          onToggle={event => {
-            if (event.currentTarget.open) void load()
-          }}
-        >
+        <details>
           <summary className="flex min-h-6 cursor-pointer items-center gap-2 rounded py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
             <History aria-hidden="true" className="h-4 w-4" />
             {t('requirementHistory')}
           </summary>
-          {busy && <p role="status">{t('working')}</p>}
-          {error && !comparing && <p role="alert">{error}</p>}
-          <div className="space-y-3 pt-3">
-            {history?.entries.map(entry => (
-              <section
-                className="space-y-2"
-                key={`${entry.agreementId}:${entry.item.itemRef}`}
-              >
-                <h4 className="text-sm font-semibold">
-                  {entry.agreementReference} · {entry.effectiveDate}
-                </h4>
-                {entry.item.changeDate && (
-                  <p
-                    className="flex items-center gap-1.5 text-xs text-primary-800 dark:text-primary-200"
-                    role="status"
-                  >
-                    <FilePenLine aria-hidden="true" className="h-4 w-4" />
-                    {tr(
-                      entry.item.isRemoved
-                        ? 'agreementRemoved'
-                        : 'agreementChange',
-                    )}{' '}
-                    ·{' '}
-                    <time dateTime={entry.item.changeDate}>
-                      {entry.item.changeDate}
-                    </time>
+          <p className="mt-2 text-sm">
+            <Eye
+              aria-hidden="true"
+              className="mr-1.5 inline-block h-4 w-4 align-middle"
+            />
+            {t('viewingAgreement', {
+              reference: selected?.agreementReference ?? '',
+            })}
+          </p>
+          <ol className="space-y-3 pt-3">
+            {history?.changes.map(change => {
+              const agreement = view.agreements.find(
+                value => value.id === change.agreementId,
+              )
+              return (
+                <li
+                  className="space-y-1 rounded-lg border border-secondary-200 p-3 text-sm dark:border-secondary-700"
+                  key={change.agreementId}
+                  {...devMarker({
+                    context: 'requirements specification detail',
+                    name: 'requirement change',
+                    value: change.kind,
+                    priority: 350,
+                  })}
+                >
+                  <p className="font-medium">
+                    <FilePenLine
+                      aria-hidden="true"
+                      className="mr-1.5 inline-block h-4 w-4 align-middle"
+                    />
+                    {t(`historyChanges.${change.kind}`)} ·{' '}
+                    {change.agreementReference}
+                    {change.agreementId === selected?.id && (
+                      <span className="ml-2 inline-block rounded border border-primary-300 px-2 py-0.5 text-xs text-primary-800 dark:border-primary-700 dark:text-primary-200">
+                        <Eye
+                          aria-hidden="true"
+                          className="mr-1 inline-block h-3 w-3 align-middle"
+                        />
+                        {t('viewingAgreementBadge')}
+                      </span>
+                    )}
                   </p>
-                )}
-                {content(entry.item)}
-                <SpecificationAgreementDeviations
-                  item={entry.item}
-                  onChange={async () => {}}
-                  showLaterEvents
-                  specificationId={specificationId}
-                  view={{
-                    ...view,
-                    deviations: history.deviations ?? view.deviations,
-                    deviationEndings:
-                      history.deviationEndings ?? view.deviationEndings,
-                    selectedAgreement:
-                      view.agreements.find(
-                        agreement => agreement.id === entry.agreementId,
-                      ) ?? null,
-                    canAuthor: false,
-                    canReviewDeviations: false,
-                  }}
-                />
-              </section>
-            ))}
-          </div>
+                  <p>
+                    {t('effectiveDate')}:{' '}
+                    <time dateTime={change.effectiveDate}>
+                      {change.effectiveDate}
+                    </time>
+                    {agreement && (
+                      <>
+                        {' '}
+                        · {t(`states.${agreement.state}`)}
+                        {agreement.state === 'cancelled' && (
+                          <> — {t('neverEffective')}</>
+                        )}
+                      </>
+                    )}
+                  </p>
+                  {change.previousAgreementReference && (
+                    <p>
+                      {t('historyComparedWith', {
+                        reference: change.previousAgreementReference,
+                      })}
+                    </p>
+                  )}
+                  {change.kind === 'libraryUpdated' && (
+                    <p>
+                      {tr('version')} {change.previousVersion} →{' '}
+                      {change.version}
+                    </p>
+                  )}
+                </li>
+              )
+            })}
+          </ol>
         </details>
       )}
       <FormModal

@@ -48,6 +48,175 @@ import {
 describe('whole-specification agreement contexts', () => {
   const database = useSqlIntegrationDatabase()
 
+  it('reads net changes across successors and cancelled branches without joining separate inclusions', async () => {
+    const db = database()
+    const specification = await createSpecificationFixture(db, 'NET-HISTORY')
+    await createSpecificationLocalRequirement(db, specification.id, {
+      description: 'Original content',
+    })
+    const context = await makeRequestContext()
+    let now = new Date('2030-01-01T12:00:00Z')
+    const workflow = createSpecificationAgreementWorkflow(db, {
+      now: () => now,
+    })
+    await workflow.mutate(context, specification.id, {
+      operation: 'establish',
+      agreementReference: 'A',
+      effectiveDate: '2020-01-01',
+    })
+    const firstView = await workflow.read(context, specification.id)
+    const first = requireTestValue(firstView.selectedAgreement)
+    const original = requireTestValue(firstView.items[0])
+    await workflow.mutate(context, specification.id, {
+      operation: 'create_draft',
+      agreementReference: 'B',
+      effectiveDate: '2030-01-01',
+    })
+    const b = requireTestValue(
+      (await workflow.read(context, specification.id)).agreements.find(
+        value => value.state === 'draft',
+      ),
+    )
+    const historyFromA = () =>
+      workflow.history(context, specification.id, first.id, original.itemRef)
+    expect((await historyFromA()).changes).toEqual([])
+    await workflow.mutate(context, specification.id, {
+      operation: 'save_requirement',
+      agreementId: b.id,
+      itemRef: original.itemRef,
+      content: { description: 'Undone draft text' },
+    })
+    const draftItem = requireTestValue(
+      (await workflow.read(context, specification.id, { agreementId: b.id }))
+        .items[0],
+    )
+    await workflow.mutate(context, specification.id, {
+      operation: 'undo_requirement',
+      agreementId: b.id,
+      itemRef: draftItem.itemRef,
+    })
+    expect((await historyFromA()).changes).toEqual([])
+    await workflow.mutate(context, specification.id, {
+      operation: 'save_requirement',
+      agreementId: b.id,
+      itemRef: original.itemRef,
+      content: { description: 'Changed in B' },
+    })
+    await workflow.mutate(context, specification.id, {
+      operation: 'confirm',
+      agreementId: b.id,
+    })
+    const bItem = requireTestValue(
+      (await workflow.read(context, specification.id)).items[0],
+    )
+    await workflow.mutate(context, specification.id, {
+      operation: 'create_draft',
+      agreementReference: 'C',
+      effectiveDate: '2031-01-01',
+    })
+    const c = requireTestValue(
+      (await workflow.read(context, specification.id)).agreements.find(
+        value => value.state === 'draft',
+      ),
+    )
+    await workflow.mutate(context, specification.id, {
+      operation: 'save_requirement',
+      agreementId: c.id,
+      itemRef: bItem.itemRef,
+      content: { description: 'Cancelled change in C' },
+    })
+    await workflow.mutate(context, specification.id, {
+      operation: 'confirm',
+      agreementId: c.id,
+    })
+    await workflow.mutate(context, specification.id, {
+      operation: 'cancel',
+      agreementId: c.id,
+      reason: 'Use a different agreement',
+    })
+    await workflow.mutate(context, specification.id, {
+      operation: 'create_draft',
+      agreementReference: 'D',
+      effectiveDate: '2032-01-01',
+    })
+    const d = requireTestValue(
+      (await workflow.read(context, specification.id)).agreements.find(
+        value => value.state === 'draft',
+      ),
+    )
+    await workflow.mutate(context, specification.id, {
+      operation: 'remove_requirement',
+      agreementId: d.id,
+      itemRef: bItem.itemRef,
+    })
+    const history = await historyFromA()
+    expect(
+      history.changes.map(change => [
+        change.agreementReference,
+        change.kind,
+        change.previousAgreementReference,
+      ]),
+    ).toEqual([
+      ['D', 'removed', 'B'],
+      ['C', 'changed', 'B'],
+      ['B', 'changed', 'A'],
+    ])
+    expect(history.previous).toBeNull()
+    expect(history.ancestorAgreementIds).toEqual([first.id])
+    const dHistory = await workflow.history(
+      context,
+      specification.id,
+      d.id,
+      bItem.itemRef,
+    )
+    expect(dHistory.changes).toEqual(history.changes)
+    expect(dHistory.previous?.agreementId).toBe(b.id)
+    expect(dHistory.ancestorAgreementIds).toEqual([d.id, b.id, first.id])
+    await workflow.mutate(context, specification.id, {
+      operation: 'confirm',
+      agreementId: d.id,
+    })
+    now = new Date('2033-01-01T12:00:00Z')
+    await workflow.read(context, specification.id)
+    await workflow.mutate(context, specification.id, {
+      operation: 'create_draft',
+      agreementReference: 'E',
+      effectiveDate: '2034-01-01',
+    })
+    const e = requireTestValue(
+      (await workflow.read(context, specification.id)).agreements.find(
+        value => value.state === 'draft',
+      ),
+    )
+    await workflow.mutate(context, specification.id, {
+      operation: 'add_local',
+      agreementId: e.id,
+      content: { description: 'New inclusion' },
+    })
+    const newItem = requireTestValue(
+      (await workflow.read(context, specification.id, { agreementId: e.id }))
+        .items[0],
+    )
+    const newHistory = await workflow.history(
+      context,
+      specification.id,
+      e.id,
+      newItem.itemRef,
+    )
+    expect(
+      newHistory.changes.map(change => [
+        change.agreementReference,
+        change.kind,
+      ]),
+    ).toEqual([['E', 'added']])
+    expect(newHistory.previous).toBeNull()
+    expect((await historyFromA()).changes).toEqual(history.changes)
+    const other = await createSpecificationFixture(db, 'OTHER-HISTORY')
+    await expect(
+      workflow.history(context, other.id, first.id, original.itemRef),
+    ).rejects.toThrow('Requirement not found')
+  })
+
   it.each(['library', 'local'])(
     'serializes competing %s requests, blocks every unresolved case, and frees cancelled content',
     async kind => {

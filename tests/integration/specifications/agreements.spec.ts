@@ -193,6 +193,171 @@ async function confirmDraft(page: Page) {
   await expect(dialog).toBeHidden()
 }
 
+test('SPEC-23/SPEC-26: show compact future and cancelled changes while viewing an earlier agreement', async ({
+  page,
+}, testInfo) => {
+  const owner = await newRoleContext(testInfo, 'specificationResponsible')
+  try {
+    const data = await fixture(owner)
+    const mutate = async (input: Record<string, unknown>) =>
+      expectOk(
+        await owner.post(data.endpoint, { data: input }),
+        'prepare agreement history',
+      )
+    const read = async (id?: number) => {
+      const response = await owner.get(
+        `${data.endpoint}${id ? `?agreementId=${id}` : ''}`,
+      )
+      await expectOk(response, 'read agreement fixture')
+      return response.json() as Promise<{
+        agreements: Array<{
+          id: number
+          state: string
+          agreementReference: string
+        }>
+        items: Array<{ itemRef: string }>
+      }>
+    }
+    const draftId = async () =>
+      requireTestValue(
+        (await read()).agreements.find(value => value.state === 'draft'),
+      ).id
+    await mutate({
+      operation: 'establish',
+      agreementReference: 'Avtal A',
+      effectiveDate: '2020-01-01',
+    })
+    await mutate({
+      operation: 'create_draft',
+      agreementReference: 'Avtal B',
+      effectiveDate: today(),
+    })
+    const b = await draftId()
+    await mutate({
+      operation: 'save_requirement',
+      agreementId: b,
+      itemRef: `local:${data.local.id}`,
+      content: { description: 'Changed for agreement B' },
+    })
+    await mutate({ operation: 'confirm', agreementId: b })
+    const itemsResponse = await owner.get(
+      `/api/requirements-specifications/${data.id}/items?agreementId=${b}`,
+    )
+    await expectOk(itemsResponse, 'read B requirement')
+    const bItem = requireTestValue(
+      ((await itemsResponse.json()) as { items: Array<{ itemRef: string }> })
+        .items[0],
+    )
+    await mutate({
+      operation: 'create_draft',
+      agreementReference: 'Avtal C',
+      effectiveDate: futureDate(),
+    })
+    const c = await draftId()
+    await mutate({
+      operation: 'save_requirement',
+      agreementId: c,
+      itemRef: bItem.itemRef,
+      content: { description: 'Cancelled content C' },
+    })
+    await mutate({ operation: 'confirm', agreementId: c })
+    await mutate({
+      operation: 'cancel',
+      agreementId: c,
+      reason: 'Use another agreement',
+    })
+    await mutate({
+      operation: 'create_draft',
+      agreementReference: 'Avtal D',
+      effectiveDate: `${new Date().getUTCFullYear() + 3}-01-01`,
+    })
+    const d = await draftId()
+    await mutate({
+      operation: 'save_requirement',
+      agreementId: d,
+      itemRef: bItem.itemRef,
+      content: { description: 'Draft content D' },
+    })
+    await page.setViewportSize(DESKTOP_VIEWPORT)
+    await page.goto(`/sv/specifications/${data.id}`)
+    await expect(card(page)).toContainText('Avtal B')
+    await expand(page, data.local.uniqueId)
+    const disclosure = page.locator('details').filter({
+      has: page.locator('summary').filter({ hasText: /^Historik$/ }),
+    })
+    await disclosure
+      .locator('summary')
+      .filter({ hasText: /^Historik$/ })
+      .click()
+    await expect(
+      disclosure.getByText('Visar avtal: Avtal B', { exact: true }),
+    ).toBeVisible()
+    const entries = disclosure.getByRole('listitem')
+    await expect(entries).toHaveCount(3)
+    await expect(entries.nth(0)).toContainText('Avtal D')
+    await expect(entries.nth(0)).toContainText('Jämfört med Avtal B')
+    await expect(entries.nth(1)).toContainText(
+      'Avbrutet — trädde aldrig i kraft',
+    )
+    await expect(entries.nth(2)).toContainText('Visar avtal')
+    await expect(disclosure.getByRole('button')).toHaveCount(0)
+    await expect(
+      disclosure.getByText('Changed for agreement B', { exact: true }),
+    ).toHaveCount(0)
+    await page
+      .getByRole('button', { name: 'Jämför med föregående avtal', exact: true })
+      .click()
+    const comparison = page.getByRole('dialog', {
+      name: 'Jämför med föregående avtal',
+      exact: true,
+    })
+    await expect(comparison).toContainText('Original agreed service')
+    await expect(comparison).toContainText('Changed for agreement B')
+    await comparison
+      .getByRole('button', { name: 'Stäng', exact: true })
+      .last()
+      .click()
+    await expect(comparison).toBeHidden()
+    await page.getByRole('button', { name: 'Välj avtal', exact: true }).click()
+    const selector = page.getByRole('dialog', {
+      name: 'Välj avtal',
+      exact: true,
+    })
+    await selector.getByText('Tidigare avtal', { exact: true }).click()
+    await selector.getByRole('button', { name: /^Avtal A ·/ }).click()
+    await expect(card(page)).toContainText('Avtal A')
+    await expect(
+      page
+        .getByRole('button', { name: new RegExp(`^${data.local.uniqueId}\\b`) })
+        .locator('xpath=ancestor::tr[1]'),
+    ).toContainText('Original agreed service')
+    await expand(page, data.local.uniqueId)
+    await disclosure
+      .locator('summary')
+      .filter({ hasText: /^Historik$/ })
+      .click()
+    await expect(
+      disclosure.getByText('Visar avtal: Avtal A', { exact: true }),
+    ).toBeVisible()
+    await expect(entries).toHaveCount(3)
+    for (const width of [1440, 375]) {
+      await page.setViewportSize({ width, height: 1200 })
+      await expect
+        .poll(() =>
+          disclosure.evaluate(
+            element => element.scrollWidth <= element.clientWidth,
+          ),
+        )
+        .toBe(true)
+      await disclosure.screenshot({
+        path: testInfo.outputPath(`history-${width}.png`),
+      })
+    }
+  } finally {
+    await owner.dispose()
+  }
+})
+
 test('SPEC-23: center wrapped Swedish action labels and keep room for requirement content', async ({
   page,
 }, testInfo) => {
@@ -774,11 +939,11 @@ test('SPEC-23: compare and adopt a newer library version before the first agreem
     await expand(page, source.uniqueId)
     await page
       .locator('summary')
-      .filter({ hasText: /^History$/ })
+      .filter({ hasText: /^Deviation history$/ })
       .click()
     await expect(
-      page.getByText('Locally negotiated library content', { exact: true }),
-    ).toBeVisible()
+      page.locator('summary').filter({ hasText: /^History$/ }),
+    ).toHaveCount(0)
     await expect(
       page.getByText('Draft content requires an exception', { exact: true }),
     ).toBeVisible()

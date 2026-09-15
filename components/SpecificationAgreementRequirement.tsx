@@ -2,7 +2,7 @@
 
 import { Pencil, Trash2, Undo2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FormModal from '@/components/FormModal'
@@ -15,6 +15,7 @@ import SpecificationLibraryVersionUpdate from '@/components/SpecificationLibrary
 import SpecificationLocalRequirementForm from '@/components/SpecificationLocalRequirementForm'
 import StatusBadge from '@/components/StatusBadge'
 import type { AsyncResourceState } from '@/hooks/useAsyncResource'
+import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -23,6 +24,7 @@ import {
   type AgreementHttpError,
   agreementErrorMessage,
 } from '@/lib/specifications/agreement-errors'
+import type { AgreementRequirementHistory } from '@/lib/specifications/agreement-history'
 import type {
   AgreementItem,
   AgreementMutationInput,
@@ -68,6 +70,28 @@ export default function SpecificationAgreementRequirement({
     useState<HTMLDivElement | null>(null)
   const editTrigger = useRef<HTMLButtonElement>(null)
   const selected = view.selectedAgreement
+  const historyResource = useAsyncResource<AgreementRequirementHistory>({
+    key: `agreement-history:${specificationId}:${selected?.id}:${item.itemRef}`,
+    enabled: !!selected,
+    loadOnMount: false,
+    fetcher: async signal => {
+      const query = new URLSearchParams({
+        agreementId: String(selected?.id),
+        historyItemRef: item.itemRef,
+      })
+      const response = await apiFetch(
+        `/api/requirements-specifications/${specificationId}/agreement?${query}`,
+        { signal },
+      )
+      if (!response.ok) throw new Error(t('historyFailed'))
+      return response.json() as Promise<AgreementRequirementHistory>
+    },
+    getErrorMessage: () => t('historyFailed'),
+  })
+  const reloadHistory = historyResource.reload
+  useEffect(() => {
+    if (view.selectedAgreement) void reloadHistory()
+  }, [reloadHistory, view])
   const canEdit =
     view.canEditContent && selected?.state === 'draft' && !item.isRemoved
   const canUndo =
@@ -186,6 +210,7 @@ export default function SpecificationAgreementRequirement({
     >
       <SpecificationAgreementDeviations
         createActionTarget={deviationActionTarget}
+        history={historyResource.data}
         item={item}
         onChange={onChange}
         priorityLevel={
@@ -203,6 +228,7 @@ export default function SpecificationAgreementRequirement({
               }
             : null
         }
+        showLaterEvents
         specificationId={specificationId}
         view={view}
       />
@@ -461,7 +487,7 @@ export default function SpecificationAgreementRequirement({
           actionTarget={historyActionTarget}
           item={item}
           key={`${selected.id}:${item.itemRef}`}
-          specificationId={specificationId}
+          resource={historyResource}
           view={view}
         />
       )}

@@ -1007,7 +1007,7 @@
     "decisionHeading": "Decision:",
     "revertToDraftConfirm": "Are you sure you want to revert this deviation to draft?",
     "revertToDraftConfirmTitle": "Revert to draft",
-    "historyLabel": "{count, plural, one {Previous deviation (#)} other {Previous deviations (#)}}",
+    "historyLabel": "Deviation history",
     "decisionMotivationPlaceholder": "Enter the reasoning for the decision",
     "decidedByPlaceholder": "Enter the name of the decision maker",
     "createdByLabel": "Requested by",
@@ -3954,6 +3954,17 @@
     "activeDeviationError": "An active deviation already exists for this requirement content. Handle the existing deviation before requesting another.",
     "missingHistoricalValue": "Missing",
     "missingHistoricalHelp": "Some historical follow-up information is missing for this agreement.",
-    "deviationChangedOn": "Latest change after this agreement became historical: {date}"
+    "deviationChangedOn": "Latest change after this agreement became historical: {date}",
+    "historyChanges": {
+      "added": "Requirement added",
+      "changed": "Requirement changed",
+      "removed": "Requirement removed",
+      "libraryUpdated": "Updated from requirement library",
+      "madeLocal": "Requirement made local"
+    },
+    "viewingAgreement": "Viewing agreement: {reference}",
+    "viewingAgreementBadge": "Viewing agreement",
+    "neverEffective": "never took effect",
+    "historyComparedWith": "Compared with {reference}"
   }
 }

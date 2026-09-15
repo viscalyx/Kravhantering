@@ -1007,7 +1007,7 @@
     "decisionHeading": "Beslut:",
     "revertToDraftConfirm": "Är du säker på att du vill återställa detta avsteg till utkast?",
     "revertToDraftConfirmTitle": "Återställ till utkast",
-    "historyLabel": "{count, plural, one {Tidigare avsteg (#)} other {Tidigare avsteg (#)}}",
+    "historyLabel": "Avstegshistorik",
     "decisionMotivationPlaceholder": "Ange resonemanget för beslutet",
     "decidedByPlaceholder": "Ange namnet på beslutsfattaren",
     "createdByLabel": "Begärt av",
@@ -3954,6 +3954,17 @@
     "activeDeviationError": "Det finns redan ett aktivt avsteg för detta kravinnehåll. Hantera det befintliga avsteget innan du begär ett nytt.",
     "missingHistoricalValue": "Saknas",
     "missingHistoricalHelp": "Vissa historiska uppföljningsuppgifter saknas för detta avtal.",
-    "deviationChangedOn": "Senaste ändring efter avtalets historiska brytpunkt: {date}"
+    "deviationChangedOn": "Senaste ändring efter avtalets historiska brytpunkt: {date}",
+    "historyChanges": {
+      "added": "Krav tillagt",
+      "changed": "Krav ändrat",
+      "removed": "Krav borttaget",
+      "libraryUpdated": "Uppdaterat från kravbiblioteket",
+      "madeLocal": "Krav gjort lokalt"
+    },
+    "viewingAgreement": "Visar avtal: {reference}",
+    "viewingAgreementBadge": "Visar avtal",
+    "neverEffective": "trädde aldrig i kraft",
+    "historyComparedWith": "Jämfört med {reference}"
   }
 }

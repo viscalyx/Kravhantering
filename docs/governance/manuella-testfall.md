@@ -1987,8 +1987,9 @@ aktuella avtalet. Gruppen **Tidigare avtal** visas bara när det finns tidigare
 avtal att välja. Registreringsuppgifter ligger i dialogen och kan fällas ut.
 **Stäng** stänger bara dialogen och återför fokus till öppningsknappen; avtalet
 behåller sina uppgifter och sin status. Det gäller även läsare utan
-beslutsbehörighet. Avtalshistoriken i kravets detaljvy visas först när
-kravunderlaget har fler än ett avtal. **Jämför med föregående avtal** visas bara
+beslutsbehörighet. Kravets **Historik** visas när det finns en faktisk ändring i
+kravets avtalsserie, även om ändringen hör till ett senare avtal än det visade.
+**Jämför med föregående avtal** visas bara
 när det valda avtalet har ett föregående avtal, även vid visning av äldre avtal.
 
 ### SPEC-23: ändra krav i ett nytt avtalsutkast
@@ -2002,9 +2003,13 @@ sedan det tidigare avtalet. Jämför också en nyare publicerad biblioteksversio
 och använd **Uppdatera från kravbiblioteket** i åtgärdskolumnen till höger.
 Där finns även **Ångra ändring** när ändringen kan ångras. Kontrollera att
 åtgärdernas fullständiga namn är läsbara även när texten radbryts, på både
-svenska och engelska samt i mobilvy. Öppna
-**Jämför med föregående avtal** och fäll ut **Historik** för tidigare
-avtalsinnehåll och sparade utkastversioner.
+svenska och engelska samt i mobilvy. Öppna **Jämför med föregående avtal** för
+detaljerade skillnader. Fäll ut **Historik** och kontrollera korta ändringsposter,
+avtalsreferens, avtalsdatum, status och vilket avtal ändringen jämförs med.
+Välj ett äldre avtal och kontrollera att även senare ändringar visas, med
+**Visar avtal** som markering för det visade avtalet. Prova ett oförändrat krav
+och ett krav där hela utkaständringen ångras. Kontrollera **Avstegshistorik**
+för ett avsteg som hör till en tidigare, ångrad version av kravet.
 
 **Förväntat resultat:** Biblioteksredigering skapar ett nytt lokalt Krav-ID med
 ursprungligt Krav-ID och version som referens. Ångring återställer den tidigare
@@ -2015,6 +2020,12 @@ sin uppföljning. Biblioteksuppdatering behåller bibliotekets Krav-ID och spara
 exakt den jämförda publicerade versionen. Utan en nyare publicerad version visas
 inte uppdateringsknappen. Före första avtalet är biblioteksuppdatering tillåten,
 medan manuell biblioteksredigering förutsätter ett senare avtalsutkast.
+**Historik** visar en sammanfattning per ändrat avtal, med senaste avtalsdatum
+först. Oförändrade krav och helt ångrade utkaständringar ger inga poster.
+Historiken är dold om hela serien är oförändrad; första avtalets ursprungliga
+krav utgör utgångspunkten. En separat tilläggning efter en borttagning som trätt
+i kraft börjar en ny historik. Avstegshistoriken visar varje äldre ärende en
+gång och bevarar **Senare händelser**, även när kravets ändringshistorik är dold.
 
 ### SPEC-24: ansvarig beslutar och avsteg följer exakt innehåll
 
@@ -2059,9 +2070,14 @@ utkastdatum måste rättas; det ändras inte automatiskt. Datum efter ikraftträ
 **Steg:** Ta bort ett utkast som har egna avsteg och delar ett aktuellt ärende.
 Avbryt därefter ett bekräftat kommande avtal med skäl. Skapa en ersättning.
 Upprepa avbrottet för det första framtida avtalet utan aktuellt avtal.
+Kontrollera kravets **Historik** från ett äldre avtal efter att en ersättning
+har skapats för ett avbrutet kommande avtal.
 
 **Förväntat resultat:** Utkastet och dess egna ändringar och avsteg försvinner;
-delade aktuella ärenden bevaras. Kommande avtal bevaras som **Avbrutet** med
+delade aktuella ärenden bevaras. Kravändringar i ett avbrutet avtal markeras
+**Avbrutet — trädde aldrig i kraft**. Ersättningens ändring jämförs med dess
+verkliga föregående avtal, inte med det avbrutna avtalet.
+Kommande avtal bevaras som **Avbrutet** med
 fryst innehåll och egen historik. Dess egna obeslutade avsteg avbryts och planer
 för aktuella avsteg upphävs. Ersättningen utgår från aktuellt avtal. Efter
 avbrott av första framtida avtalet visas **Inget** med självständigt redigerbara
