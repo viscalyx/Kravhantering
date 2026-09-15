@@ -654,11 +654,14 @@ export default function SpecificationRfiListPanel({
               {tc('cancel')}
             </button>
             <button
-              className="btn-primary inline-flex min-h-11 items-center gap-2"
+              className="btn-primary min-h-11 text-center"
               disabled={saving || !suggestionContent.trim()}
               type="submit"
             >
-              <Send aria-hidden="true" className="h-4 w-4" />
+              <Send
+                aria-hidden="true"
+                className="mr-2 inline-block h-4 w-4 align-middle"
+              />
               {saving ? tc('saving') : t('createSuggestion')}
             </button>
           </div>
@@ -695,14 +698,17 @@ export default function SpecificationRfiListPanel({
                     <div className="mt-3 flex justify-end">
                       <button
                         aria-label={t('deleteSuggestionAriaLabel')}
-                        className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/50 dark:border-red-900/70 dark:text-red-300 dark:hover:bg-red-950/30"
+                        className="min-h-11 text-center rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/50 dark:border-red-900/70 dark:text-red-300 dark:hover:bg-red-950/30"
                         disabled={saving}
                         onClick={event =>
                           void deleteSuggestion(suggestion, event)
                         }
                         type="button"
                       >
-                        <Trash2 aria-hidden="true" className="h-4 w-4" />
+                        <Trash2
+                          aria-hidden="true"
+                          className="mr-2 inline-block h-4 w-4 align-middle"
+                        />
                         {tc('delete')}
                       </button>
                     </div>

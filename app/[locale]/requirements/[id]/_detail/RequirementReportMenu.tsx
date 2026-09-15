@@ -73,7 +73,11 @@ export default function RequirementReportMenu(
         aria-controls={reportMenu.menuId}
         aria-expanded={showReportMenu}
         aria-haspopup="menu"
-        className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11"
+        className={
+          variant === 'specification'
+            ? 'btn-secondary w-full px-3 text-center min-h-11 min-w-11'
+            : 'btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11'
+        }
         {...buttonMarker}
         id={reportMenu.triggerId}
         onClick={() => setShowReportMenu(prev => !prev)}
@@ -81,7 +85,14 @@ export default function RequirementReportMenu(
         title={tc('reports')}
         type="button"
       >
-        <Printer aria-hidden="true" className="h-4 w-4" />
+        <Printer
+          aria-hidden="true"
+          className={
+            variant === 'specification'
+              ? 'mr-1.5 inline-block h-4 w-4 align-middle'
+              : 'h-4 w-4'
+          }
+        />
         {tc('reports')}
       </button>
       {showReportMenu && (

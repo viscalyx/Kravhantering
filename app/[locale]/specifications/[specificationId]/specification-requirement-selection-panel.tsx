@@ -625,12 +625,15 @@ export default function SpecificationRequirementSelectionPanel({
                     )}
                     {question.selectedAnswerIds.length > 0 && (
                       <button
-                        className="mt-3 inline-flex min-h-9 items-center gap-1 rounded-lg border px-3 text-xs disabled:opacity-50"
+                        className="mt-3 min-h-9 text-center rounded-lg border px-3 text-xs disabled:opacity-50"
                         disabled={savingQuestionId === question.id}
                         onClick={() => save(question, [])}
                         type="button"
                       >
-                        <RotateCcw aria-hidden="true" className="h-3 w-3" />
+                        <RotateCcw
+                          aria-hidden="true"
+                          className="mr-1 inline-block h-3 w-3 align-middle"
+                        />
                         {copy.clear}
                       </button>
                     )}
@@ -638,12 +641,15 @@ export default function SpecificationRequirementSelectionPanel({
                       <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
                         <span>{copy.historical}</span>
                         <button
-                          className="ml-3 inline-flex items-center gap-1 underline"
+                          className="ml-3 text-center underline"
                           disabled={savingQuestionId === question.id}
                           onClick={() => save(question, [])}
                           type="button"
                         >
-                          <RotateCcw aria-hidden="true" className="h-3 w-3" />
+                          <RotateCcw
+                            aria-hidden="true"
+                            className="mr-1 inline-block h-3 w-3 align-middle"
+                          />
                           {copy.clear}
                         </button>
                       </div>

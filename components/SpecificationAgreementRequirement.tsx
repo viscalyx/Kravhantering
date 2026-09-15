@@ -325,10 +325,10 @@ export default function SpecificationAgreementRequirement({
         </RequirementDetailCard>
         <fieldset
           aria-label={t('requirementActionColumn')}
-          className="flex shrink-0 flex-col gap-2 sm:w-64"
+          className="flex shrink-0 flex-col gap-2 sm:w-56"
           {...devMarker({
             context: 'requirements specification detail',
-            name: 'centered requirement actions',
+            name: 'compact centered requirement actions',
             value: 'requirement action column',
             priority: 350,
           })}
@@ -336,7 +336,7 @@ export default function SpecificationAgreementRequirement({
           <div ref={setDeviationActionTarget} />
           {canEdit && (
             <button
-              className="btn-destructive inline-flex items-center justify-center gap-2 text-center"
+              className="btn-destructive px-3 text-center"
               disabled={busy || pendingDeviations.length > 0}
               onClick={event =>
                 void changeMembership('remove_requirement', event.currentTarget)
@@ -348,13 +348,16 @@ export default function SpecificationAgreementRequirement({
               }
               type="button"
             >
-              <Trash2 aria-hidden="true" className="h-4 w-4" />
+              <Trash2
+                aria-hidden="true"
+                className="mr-2 inline-block h-4 w-4 align-middle"
+              />
               {t('removeRequirement')}
             </button>
           )}
           {!selected && onRemoveFromSpecification && (
             <button
-              className="btn-destructive inline-flex items-center justify-center gap-2 text-center"
+              className="btn-destructive px-3 text-center"
               disabled={
                 busy ||
                 removeFromSpecificationDisabled ||
@@ -365,14 +368,17 @@ export default function SpecificationAgreementRequirement({
               }
               type="button"
             >
-              <Trash2 aria-hidden="true" className="h-4 w-4" />
+              <Trash2
+                aria-hidden="true"
+                className="mr-2 inline-block h-4 w-4 align-middle"
+              />
               {t('removeRequirement')}
             </button>
           )}
 
           {canEdit && (
             <button
-              className="btn-secondary inline-flex items-center justify-center gap-2 text-center"
+              className="btn-secondary px-3 text-center"
               disabled={busy || pendingDeviations.length > 0}
               onClick={() => {
                 setDirty(false)
@@ -386,7 +392,10 @@ export default function SpecificationAgreementRequirement({
               }
               type="button"
             >
-              <Pencil aria-hidden="true" className="h-4 w-4" />
+              <Pencil
+                aria-hidden="true"
+                className="mr-2 inline-block h-4 w-4 align-middle"
+              />
               {t('editRequirement')}
             </button>
           )}
@@ -427,7 +436,7 @@ export default function SpecificationAgreementRequirement({
           )}
           {canUndo && (
             <button
-              className="btn-secondary inline-flex items-center justify-center gap-2 text-center"
+              className="btn-secondary px-3 text-center"
               disabled={
                 busy || (!item.isRemoved && pendingDeviations.length > 0)
               }
@@ -436,7 +445,10 @@ export default function SpecificationAgreementRequirement({
               }
               type="button"
             >
-              <Undo2 aria-hidden="true" className="h-4 w-4" />
+              <Undo2
+                aria-hidden="true"
+                className="mr-2 inline-block h-4 w-4 align-middle"
+              />
               {t('undoRequirement')}
             </button>
           )}

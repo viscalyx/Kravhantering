@@ -688,11 +688,14 @@ export default function RequirementsSpecificationsClient({
                 </div>
                 {hasActiveNameFilter && (
                   <button
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-secondary-200 px-4 py-2.5 text-sm text-secondary-700 transition-all duration-200 hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800/60"
+                    className="min-h-11 min-w-11 text-center rounded-xl border border-secondary-200 px-4 py-2.5 text-sm text-secondary-700 transition-all duration-200 hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800/60"
                     onClick={() => setNameFilter('')}
                     type="button"
                   >
-                    <X aria-hidden="true" className="h-4 w-4" />
+                    <X
+                      aria-hidden="true"
+                      className="mr-1.5 inline-block h-4 w-4 align-middle"
+                    />
                     {tc('clearSearch')}
                   </button>
                 )}

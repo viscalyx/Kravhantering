@@ -103,7 +103,7 @@ export default function SpecificationLibraryVersionUpdate({
   return (
     <>
       <button
-        className="btn-secondary inline-flex items-center justify-center gap-2 text-center"
+        className="btn-secondary px-3 text-center"
         disabled={disabled || busy}
         onClick={() => void loadComparison()}
         ref={trigger}
@@ -116,7 +116,10 @@ export default function SpecificationLibraryVersionUpdate({
           priority: 350,
         })}
       >
-        <RefreshCw aria-hidden="true" className="h-4 w-4" />
+        <RefreshCw
+          aria-hidden="true"
+          className="mr-2 inline-block h-4 w-4 align-middle"
+        />
         {t('updateFromLibrary')}
       </button>
       <FormModal

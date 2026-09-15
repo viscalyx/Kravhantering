@@ -630,9 +630,9 @@ export default function SpecificationLocalRequirementDetailClient({
   }, [fetchGraduationTargetAreas])
 
   const railSecondaryButtonClass =
-    'btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11 disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none'
+    'btn-secondary w-full px-3 text-center min-h-11 min-w-11 disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none'
   const railDangerButtonClass =
-    'btn-destructive inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11'
+    'btn-destructive w-full px-3 text-center min-h-11 min-w-11'
   const handleEditSubmit = useCallback(
     async (payload: SpecificationLocalRequirementSubmitPayload) => {
       if (approvedDeviationEndingRequired) {
@@ -1086,10 +1086,10 @@ export default function SpecificationLocalRequirementDetailClient({
 
                 <fieldset
                   aria-label={ta('requirementActionColumn')}
-                  className="shrink-0 space-y-2 sm:w-64"
+                  className="shrink-0 space-y-2 sm:w-56"
                   {...devMarker({
                     context: detailContext,
-                    name: 'requirement actions',
+                    name: 'compact centered requirement actions',
                     value: 'requirement action column',
                     priority: 350,
                   })}
@@ -1113,7 +1113,10 @@ export default function SpecificationLocalRequirementDetailClient({
                           onClick={event => void handleDelete(event)}
                           type="button"
                         >
-                          <Trash2 aria-hidden="true" className="h-4 w-4" />
+                          <Trash2
+                            aria-hidden="true"
+                            className="mr-1.5 inline-block h-4 w-4 align-middle"
+                          />
                           {tc('delete')}
                         </button>
                       </span>
@@ -1136,7 +1139,10 @@ export default function SpecificationLocalRequirementDetailClient({
                         onClick={handleOpenEditForm}
                         type="button"
                       >
-                        <Pencil aria-hidden="true" className="h-4 w-4" />
+                        <Pencil
+                          aria-hidden="true"
+                          className="mr-1.5 inline-block h-4 w-4 align-middle"
+                        />
                         {tc('edit')}
                       </button>
                     </span>
@@ -1163,7 +1169,7 @@ export default function SpecificationLocalRequirementDetailClient({
                             >
                               <LibraryBig
                                 aria-hidden="true"
-                                className="h-4 w-4"
+                                className="mr-1.5 inline-block h-4 w-4 align-middle"
                               />
                               {tp('graduateLocalRequirement')}
                             </button>

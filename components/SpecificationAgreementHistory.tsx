@@ -205,7 +205,7 @@ export default function SpecificationAgreementHistory({
         actionTarget &&
         createPortal(
           <button
-            className="btn-secondary inline-flex w-full items-center justify-center gap-2 text-center"
+            className="btn-secondary w-full px-3 text-center"
             disabled={busy}
             onClick={() => {
               setComparing(true)
@@ -220,7 +220,10 @@ export default function SpecificationAgreementHistory({
             ref={trigger}
             type="button"
           >
-            <GitCompareArrows aria-hidden="true" className="h-4 w-4" />
+            <GitCompareArrows
+              aria-hidden="true"
+              className="mr-2 inline-block h-4 w-4 align-middle"
+            />
             {t('comparePrevious')}
           </button>,
           actionTarget,

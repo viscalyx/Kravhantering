@@ -251,7 +251,7 @@ describe('selected agreement requirement author workflow', () => {
     })
     expect(actions).toHaveAttribute(
       'data-developer-mode-name',
-      'centered requirement actions',
+      'compact centered requirement actions',
     )
     expect(
       within(actions).getByRole('button', {

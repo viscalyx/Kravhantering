@@ -1122,10 +1122,9 @@ describe('RequirementDetailClient', () => {
     })
 
     expect(requestDeviation.nextElementSibling).toBe(removeFromSpecification)
-    expect(removeFromSpecification).toHaveClass(
-      'btn-destructive',
-      'w-full',
-      'justify-center',
+    expect(removeFromSpecification).toHaveAttribute(
+      'data-developer-mode-value',
+      'unlink library requirement',
     )
 
     fireEvent.click(removeFromSpecification)

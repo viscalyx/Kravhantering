@@ -41,7 +41,7 @@ export default function SpecificationDeviationRail({
   const ts = useTranslations('specification')
 
   return (
-    <div className="flex flex-col gap-2 shrink-0">
+    <div className="flex flex-col gap-2 shrink-0 sm:w-56">
       <RequirementReportMenu
         currentStatusId={0}
         detailContext={detailContext}
@@ -61,28 +61,34 @@ export default function SpecificationDeviationRail({
         workflow.deviationStep === 'decided') &&
       canManageDeviationDrafts ? (
         <button
-          className="inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-11 min-w-11"
+          className="w-full text-center rounded-xl border border-amber-500 bg-amber-500 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-11 min-w-11"
           disabled={workflow.deviationSaving}
           onClick={workflow.openCreateDialog}
           type="button"
         >
-          <AlertTriangle aria-hidden="true" className="h-4 w-4" />
+          <AlertTriangle
+            aria-hidden="true"
+            className="mr-1.5 inline-block h-4 w-4 align-middle"
+          />
           {td('requestDeviation')}
         </button>
       ) : workflow.deviationStep === 'draft' && canManageDeviationDrafts ? (
         <>
           <button
-            className="inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-11 min-w-11"
+            className="w-full text-center rounded-xl border border-amber-500 bg-amber-500 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-11 min-w-11"
             disabled={workflow.deviationSaving}
             onClick={workflow.openEditDialog}
             type="button"
           >
-            <Edit aria-hidden="true" className="h-4 w-4" />
+            <Edit
+              aria-hidden="true"
+              className="mr-1.5 inline-block h-4 w-4 align-middle"
+            />
             {td('editDeviation')}
           </button>
 
           <button
-            className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
+            className="btn-primary px-3 w-full text-center"
             disabled={workflow.deviationSaving}
             onClick={() => void workflow.handleRequestReview()}
             type="button"
@@ -94,7 +100,7 @@ export default function SpecificationDeviationRail({
         <>
           {canManageDeviationDrafts ? (
             <button
-              className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
+              className="btn-secondary px-3 w-full text-center"
               disabled={workflow.deviationSaving}
               onClick={event => void workflow.handleRevertToDraft(event)}
               type="button"
@@ -104,7 +110,7 @@ export default function SpecificationDeviationRail({
           ) : null}
           {canReviewDeviationDecisions ? (
             <button
-              className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
+              className="btn-primary px-3 w-full text-center"
               disabled={workflow.deviationSaving}
               onClick={workflow.openDecisionDialog}
               type="button"
@@ -127,7 +133,7 @@ export default function SpecificationDeviationRail({
         )}
       {onRemoveFromSpecification ? (
         <button
-          className="btn-destructive inline-flex items-center gap-1.5 w-full justify-center"
+          className="btn-destructive px-3 w-full text-center"
           disabled={removeFromSpecificationDisabled || workflow.deviationSaving}
           {...devMarker({
             context: `${detailContext ?? 'requirement detail'} > specification actions`,
@@ -138,7 +144,10 @@ export default function SpecificationDeviationRail({
           onClick={event => void onRemoveFromSpecification(event.currentTarget)}
           type="button"
         >
-          <Trash2 aria-hidden="true" className="h-4 w-4" />
+          <Trash2
+            aria-hidden="true"
+            className="mr-1.5 inline-block h-4 w-4 align-middle"
+          />
           {ts('unlinkLibraryRequirementAction')}
         </button>
       ) : null}

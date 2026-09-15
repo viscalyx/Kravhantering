@@ -314,7 +314,7 @@ export default function SpecificationAgreementDeviations({
           <div className="flex flex-wrap justify-end gap-2">
             {view.canAuthor && !deviation.isReviewRequested && (
               <button
-                className="btn-secondary inline-flex items-center gap-1.5"
+                className="btn-secondary text-center"
                 disabled={busy}
                 onClick={() => {
                   setError(null)
@@ -322,7 +322,10 @@ export default function SpecificationAgreementDeviations({
                 }}
                 type="button"
               >
-                <Pencil aria-hidden="true" className="h-4 w-4" />
+                <Pencil
+                  aria-hidden="true"
+                  className="mr-1.5 inline-block h-4 w-4 align-middle"
+                />
                 {t('editDeviation')}
               </button>
             )}
@@ -398,7 +401,7 @@ export default function SpecificationAgreementDeviations({
           !endingsFor(deviation.id).some(ending => ending.endedAt)),
     ) && (
       <button
-        className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-secondary-950 shadow-sm hover:border-amber-600 hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 dark:border-amber-500 dark:bg-amber-500 dark:text-secondary-950 dark:hover:bg-amber-400"
+        className="min-h-11 w-full text-center rounded-xl border border-amber-500 bg-amber-500 px-3 py-2 text-sm font-semibold text-secondary-950 shadow-sm hover:border-amber-600 hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 dark:border-amber-500 dark:bg-amber-500 dark:text-secondary-950 dark:hover:bg-amber-400"
         disabled={busy}
         onClick={() => {
           setError(null)
@@ -406,7 +409,10 @@ export default function SpecificationAgreementDeviations({
         }}
         type="button"
       >
-        <AlertTriangle aria-hidden="true" className="h-4 w-4" />
+        <AlertTriangle
+          aria-hidden="true"
+          className="mr-1.5 inline-block h-4 w-4 align-middle"
+        />
         {t('requestDeviation')}
       </button>
     )

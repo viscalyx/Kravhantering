@@ -4299,11 +4299,14 @@ export default function KravunderlagDetailClient({
                           )}
                           {rightSelectedIds.size > 0 && canChangeContent ? (
                             <button
-                              className="btn-primary inline-flex items-center gap-1.5"
+                              className="btn-primary text-center"
                               onClick={handleOpenAddModal}
                               type="button"
                             >
-                              <Plus aria-hidden="true" className="h-4 w-4" />
+                              <Plus
+                                aria-hidden="true"
+                                className="mr-1.5 inline-block h-4 w-4 align-middle"
+                              />
                               {t('addSelectedToSpecification', {
                                 count: rightSelectedIds.size,
                               })}

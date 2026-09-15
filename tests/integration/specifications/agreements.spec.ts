@@ -193,6 +193,131 @@ async function confirmDraft(page: Page) {
   await expect(dialog).toBeHidden()
 }
 
+test('SPEC-23: center wrapped Swedish action labels and keep room for requirement content', async ({
+  page,
+}, testInfo) => {
+  const owner = await newRoleContext(testInfo, 'specificationResponsible')
+  try {
+    const data = await fixture(owner)
+    for (const [operation, agreementReference, effectiveDate] of [
+      ['establish', 'Avtal A', '2020-01-01'],
+      ['create_draft', 'Avtal B', today()],
+    ]) {
+      await expectOk(
+        await owner.post(data.endpoint, {
+          data: { operation, agreementReference, effectiveDate },
+        }),
+        `prepare ${agreementReference}`,
+      )
+    }
+    await page.setViewportSize(DESKTOP_VIEWPORT)
+    await page.goto(`/sv/specifications/${data.id}`)
+    await page.getByRole('button', { name: 'Välj avtal', exact: true }).click()
+    const selector = page.getByRole('dialog', {
+      name: 'Välj avtal',
+      exact: true,
+    })
+    await Promise.all([
+      page.waitForResponse(
+        response =>
+          response
+            .url()
+            .includes(`/api/requirements-specifications/${data.id}/items?`) &&
+          response.url().includes('agreementId=') &&
+          response.ok(),
+      ),
+      selector.getByRole('button', { name: /^Avtal B ·/ }).click(),
+    ])
+    await expect(selector).toBeHidden()
+    await expect(card(page)).toContainText('Avtal B')
+    await expand(page, data.local.uniqueId)
+    const actions = page.getByRole('group', {
+      name: 'Åtgärder för kravet',
+      exact: true,
+    })
+    const compare = actions.getByRole('button', {
+      name: 'Jämför med föregående avtal',
+      exact: true,
+    })
+    await expect(compare).toBeVisible()
+    for (const viewport of [DESKTOP_VIEWPORT, { width: 375, height: 900 }]) {
+      await page.setViewportSize(viewport)
+      for (const button of await actions.getByRole('button').all()) {
+        await expect
+          .poll(() =>
+            button.evaluate(element => {
+              const icon = element.querySelector('svg')
+              const label = Array.from(element.childNodes).find(
+                node =>
+                  node.nodeType === Node.TEXT_NODE && node.textContent?.trim(),
+              )
+              if (!icon || !label) return false
+              const range = document.createRange()
+              range.selectNodeContents(label)
+              const lines = Array.from(range.getClientRects())
+              const first = lines[0]
+              if (!first) return false
+              const glyph = icon.getBoundingClientRect()
+              const bounds = element.getBoundingClientRect()
+              const center = (bounds.left + bounds.right) / 2
+              return (
+                Math.abs((glyph.left + first.right) / 2 - center) < 1 &&
+                glyph.top < first.bottom &&
+                glyph.bottom > first.top &&
+                lines
+                  .slice(1)
+                  .every(
+                    line => Math.abs((line.left + line.right) / 2 - center) < 1,
+                  ) &&
+                lines.every(
+                  line =>
+                    line.left >= bounds.left && line.right <= bounds.right,
+                ) &&
+                element.scrollWidth <= element.clientWidth &&
+                bounds.height >= 24
+              )
+            }),
+          )
+          .toBe(true)
+      }
+      if (viewport.width === DESKTOP_VIEWPORT.width) {
+        const layout = await compare.evaluate(element => {
+          const range = document.createRange()
+          range.selectNodeContents(element.lastChild as Node)
+          const rail = element.closest('fieldset')
+          return {
+            lines: range.getClientRects().length,
+            railWidth: rail?.getBoundingClientRect().width,
+            contentWidth:
+              rail?.previousElementSibling?.getBoundingClientRect().width,
+          }
+        })
+        expect(layout.lines).toBeGreaterThan(1)
+        expect(layout.railWidth).toBeLessThanOrEqual(224)
+        expect(layout.contentWidth).toBeGreaterThan(
+          requireTestValue(layout.railWidth),
+        )
+      }
+      await actions.screenshot({
+        path: testInfo.outputPath(`actions-${viewport.width}.png`),
+      })
+    }
+    await compare.click()
+    const comparison = page.getByRole('dialog', {
+      name: 'Jämför med föregående avtal',
+      exact: true,
+    })
+    await expect(comparison).toContainText('Original agreed service')
+    await comparison
+      .getByRole('button', { name: 'Stäng', exact: true })
+      .last()
+      .click()
+    await expect(comparison).toBeHidden()
+  } finally {
+    await owner.dispose()
+  }
+})
+
 test('SPEC-22/SPEC-23/SPEC-28: edit the complete agreement in the requirement list and retain historical content and output', async ({
   page,
 }, testInfo) => {
