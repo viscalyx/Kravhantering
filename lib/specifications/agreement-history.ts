@@ -1,6 +1,9 @@
 import type { SqlExecutor } from '@/lib/dal/requirements-specifications'
 import { notFoundError } from '@/lib/requirements/errors'
-import type { readAgreementCases } from '@/lib/specifications/agreement-case-read'
+import {
+  parseDeviationStateSnapshot,
+  type readAgreementCases,
+} from '@/lib/specifications/agreement-case-read'
 import type { AgreementItem } from '@/lib/specifications/agreements'
 
 interface HistoryBinding {
@@ -9,6 +12,7 @@ interface HistoryBinding {
   changeDate: string | null
   changeKind: AgreementItem['changeKind']
   depth: number
+  deviationStateJson: string | null
   effectiveDate: string
   hasFollowupSnapshot: boolean
   isRemoved: boolean
@@ -58,7 +62,7 @@ export async function readAgreementRequirementHistory(
       CONVERT(varchar(10), agreement.effective_date, 23) AS effectiveDate,
       CASE WHEN lineage.specification_item_id IS NOT NULL THEN CONCAT('lib:', lineage.specification_item_id)
         ELSE CONCAT('local:', lineage.specification_local_requirement_id) END AS itemRef,
-      lineage.depth, lineage.has_followup_snapshot AS hasFollowupSnapshot,
+      lineage.depth, lineage.has_followup_snapshot AS hasFollowupSnapshot, lineage.deviation_state_json AS deviationStateJson,
       lineage.specification_item_status_id AS specificationItemStatusId,
       lineage.needs_reference AS needsReference, lineage.note,
       lineage.change_kind AS changeKind, lineage.is_removed AS isRemoved,
@@ -83,6 +87,9 @@ export async function readAgreementRequirementHistory(
       effectiveDate: binding.effectiveDate,
       item: {
         ...item,
+        deviationStateSnapshot: parseDeviationStateSnapshot(
+          binding.deviationStateJson,
+        ),
         changeKind: binding.changeKind,
         changeDate: binding.changeDate,
         isRemoved: Boolean(binding.isRemoved),

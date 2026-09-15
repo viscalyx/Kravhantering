@@ -473,15 +473,15 @@ test('SPEC-23: compare and adopt a newer library version before the first agreem
       page.getByRole('button', { name: 'Edit requirement', exact: true }),
     ).toBeDisabled()
     await page
-      .getByRole('button', { name: 'Cancel deviation', exact: true })
+      .getByRole('button', { name: 'End without a decision', exact: true })
       .click()
     const cancel = page.getByRole('dialog', {
-      name: 'Cancel deviation',
+      name: 'End without a decision',
       exact: true,
     })
     await cancel.getByLabel(/^Reason/).fill('Restore the library requirement')
     await cancel
-      .getByRole('button', { name: 'Cancel deviation', exact: true })
+      .getByRole('button', { name: 'End without a decision', exact: true })
       .click()
     await expect(cancel).toBeHidden()
     await page
@@ -600,6 +600,293 @@ for (const locale of ['sv', 'en'] as const) {
       expect(target?.height).toBeGreaterThanOrEqual(24)
     } finally {
       await owner.dispose()
+    }
+  })
+}
+
+for (const kind of ['library', 'local'] as const) {
+  test(`DEV-08 DEV-09 DEV-10: ${kind} deviation errors, review and end without a decision`, async ({
+    page,
+    browser,
+  }, testInfo) => {
+    const owner = await newRoleContext(testInfo, 'specificationResponsible')
+    const reviewer = await newRoleContext(testInfo, 'reviewer')
+    try {
+      const data = await fixture(owner)
+      let uniqueId = data.local.uniqueId
+      if (kind === 'library') {
+        const source = await withPlaywrightSqlServerDataSource(async db => {
+          const rows = (await db.query(
+            `SELECT TOP (1) requirement.id, requirement.unique_id AS uniqueId FROM requirements requirement INNER JOIN requirement_versions version ON version.requirement_id = requirement.id WHERE version.requirement_status_id = 3 ORDER BY requirement.id`,
+          )) as Array<{ id: number; uniqueId: string }>
+          return requireTestValue(rows[0])
+        })
+        await expectOk(
+          await owner.post(
+            `/api/requirements-specifications/${data.id}/items`,
+            { data: { requirementIds: [source.id] } },
+          ),
+          'link library requirement',
+        )
+        uniqueId = source.uniqueId
+      }
+      const itemPage = (await (
+        await owner.get(`/api/requirements-specifications/${data.id}/items`)
+      ).json()) as { items: Array<{ itemRef: string; uniqueId: string }> }
+      const item = requireTestValue(
+        itemPage.items.find(item => item.uniqueId === uniqueId),
+      )
+      const read = async () =>
+        (await (
+          await owner.get(
+            `${data.endpoint}?itemRefs=${encodeURIComponent(item.itemRef)}`,
+          )
+        ).json()) as {
+          deviations: Array<{
+            id: number
+            itemRef: string
+            decision: number | null
+            isReviewRequested: number
+          }>
+        }
+      const createEndpoint = `/api/specification-item-deviations/${encodeURIComponent(item.itemRef)}`
+      await page.goto(`/en/specifications/${data.id}`)
+      await expect(
+        page.getByRole('button', { name: 'Register agreement', exact: true }),
+      ).toBeEnabled()
+      await expand(page, uniqueId)
+      const actions = page.getByRole('group', {
+        name: 'Requirement actions',
+        exact: true,
+      })
+      const create = actions.getByRole('button', {
+        name: 'Request a deviation',
+        exact: true,
+      })
+      const remove = actions.getByRole('button', {
+        name: kind === 'local' ? 'Delete' : 'Remove requirement',
+        exact: true,
+      })
+      await expect(create).toBeVisible()
+      await expect(remove).toBeVisible()
+      const createBox = requireTestValue(await create.boundingBox())
+      const removeBox = requireTestValue(await remove.boundingBox())
+      expect(removeBox.y).toBeGreaterThanOrEqual(createBox.y + createBox.height)
+      await actions.screenshot({
+        path: testInfo.outputPath('requirement-actions.png'),
+      })
+      await create.click()
+      const form = page.getByRole('dialog', {
+        name: 'Request a deviation',
+        exact: true,
+      })
+      await form
+        .getByLabel(/^Motivation/)
+        .fill('Keep this input after a conflict')
+      const competing = await owner.post(createEndpoint, {
+        data: { motivation: 'Saved by a concurrent author' },
+      })
+      await expectOk(competing, 'create competing case')
+      const { id: competingId } = (await competing.json()) as { id: number }
+      await form
+        .getByRole('button', { name: 'Register deviation', exact: true })
+        .click()
+      await expect(form.getByRole('alert')).toContainText(
+        'An active deviation already exists',
+      )
+      await expect(form.getByLabel(/^Motivation/)).toHaveValue(
+        'Keep this input after a conflict',
+      )
+      await expectOk(
+        await owner.post(data.endpoint, {
+          data: {
+            operation: 'cancel_deviation',
+            itemRef: item.itemRef,
+            deviationId: competingId,
+            reason: 'Concurrent request withdrawn',
+          },
+        }),
+        'cancel competing case',
+      )
+      await form
+        .getByRole('button', { name: 'Register deviation', exact: true })
+        .click()
+      await expect(form).toBeHidden()
+      let box = page.getByRole('article', {
+        name: 'Keep this input after a conflict',
+        exact: true,
+      })
+      await expect(box.getByRole('status')).toContainText('Draft')
+      await box
+        .getByRole('button', { name: 'Edit deviation', exact: true })
+        .click()
+      const edit = page.getByRole('dialog', {
+        name: 'Edit deviation',
+        exact: true,
+      })
+      await edit.getByLabel(/^Motivation/).fill('Edited request motivation')
+      await edit.getByRole('button', { name: 'Save', exact: true }).click()
+      await expect(edit).toBeHidden()
+      box = page.getByRole('article', {
+        name: 'Edited request motivation',
+        exact: true,
+      })
+      await expect(
+        box.getByRole('button', { name: 'Edit deviation', exact: true }),
+      ).toBeVisible()
+      const reviewAction = box.getByRole('button', {
+        name: 'Review ↗',
+        exact: true,
+      })
+      await reviewAction.focus()
+      await reviewAction.press('Enter')
+      await expect(box.getByRole('status')).toContainText('Review requested')
+      const pending = requireTestValue(
+        (await read()).deviations.find(
+          deviation =>
+            deviation.itemRef === item.itemRef && deviation.decision === null,
+        ),
+      )
+      expect(pending.isReviewRequested).toBe(1)
+      const reviewerView = await reviewer.get(data.endpoint)
+      await expectOk(reviewerView, 'reviewer reads requested deviation')
+      expect((await reviewerView.json()).canReviewDeviations).toBe(true)
+      const reviewerContext = await browser.newContext({
+        storageState: ROLE_STORAGE_STATE.reviewer,
+      })
+      try {
+        const reviewPage = await reviewerContext.newPage()
+        const ready = reviewPage.waitForResponse(
+          response =>
+            response.url().includes(data.endpoint) &&
+            response.request().method() === 'GET',
+        )
+        await reviewPage.goto(
+          new URL(`/en/specifications/${data.id}`, page.url()).toString(),
+        )
+        await ready
+        await expand(reviewPage, uniqueId)
+        await expect(
+          reviewPage
+            .getByRole('article', {
+              name: 'Edited request motivation',
+              exact: true,
+            })
+            .getByRole('button', { name: 'Record decision', exact: true }),
+        ).toBeVisible()
+      } finally {
+        await reviewerContext.close()
+      }
+
+      await page.reload()
+      await expect(
+        page.getByRole('button', { name: 'Register agreement', exact: true }),
+      ).toBeEnabled()
+      await expand(page, uniqueId)
+      await expect(box.getByRole('status')).toContainText('Review requested')
+      await box.getByRole('button', { name: '← Draft', exact: true }).click()
+      await page
+        .getByRole('alertdialog')
+        .getByRole('button', { name: 'Confirm', exact: true })
+        .click()
+      await expect(box.getByRole('status')).toContainText('Draft')
+      await box
+        .getByRole('button', { name: 'End without a decision', exact: true })
+        .click()
+      const cancel = page.getByRole('dialog', {
+        name: 'End without a decision',
+        exact: true,
+      })
+      await expect(cancel).toContainText('retained in history as cancelled')
+      await expect(
+        cancel.getByRole('button', {
+          name: 'End without a decision',
+          exact: true,
+        }),
+      ).toBeDisabled()
+      await cancel.getByLabel(/^Reason/).fill('The request is no longer needed')
+      await cancel
+        .getByRole('button', { name: 'End without a decision', exact: true })
+        .click()
+      await expect(cancel).toBeHidden()
+      await expect(box.getByRole('status')).toContainText('Cancelled')
+      await expect(create).toBeVisible()
+      expect(
+        (await read()).deviations.find(
+          deviation => deviation.id === pending.id,
+        ),
+      ).toMatchObject({ decision: 3, isReviewRequested: 0 })
+      await page.reload()
+      await expect(
+        page.getByRole('button', { name: 'Register agreement', exact: true }),
+      ).toBeEnabled()
+      await expand(page, uniqueId)
+      await expect(box.getByRole('status')).toContainText('Cancelled')
+      // Exercise the same creation/cancellation controls in a confirmed future agreement.
+      await register(page, 'Future agreement', futureDate())
+      await expand(page, uniqueId)
+      await create.click()
+      await form.getByLabel(/^Motivation/).fill('Upcoming content exception')
+      await form
+        .getByRole('button', { name: 'Register deviation', exact: true })
+        .click()
+      await expect(form).toBeHidden()
+      const upcoming = page.getByRole('article', {
+        name: 'Upcoming content exception',
+        exact: true,
+      })
+      await page.setViewportSize({ width: 375, height: 812 })
+      await expect(
+        upcoming.getByRole('button', {
+          name: 'End without a decision',
+          exact: true,
+        }),
+      ).toBeVisible()
+      await upcoming.screenshot({
+        path: testInfo.outputPath('deviation-mobile.png'),
+      })
+      await upcoming
+        .getByRole('button', { name: 'End without a decision', exact: true })
+        .click()
+      await cancel.getByLabel(/^Reason/).fill('Upcoming request withdrawn')
+      const cancellationActions = cancel.locator(
+        '[data-developer-mode-value="end deviation without a decision"]',
+      )
+      for (const width of [1440, 375]) {
+        await page.setViewportSize({ width, height: 812 })
+        const closeButton = cancellationActions.getByRole('button', {
+          name: 'Close',
+          exact: true,
+        })
+        const endButton = cancellationActions.getByRole('button', {
+          name: 'End without a decision',
+          exact: true,
+        })
+        await expect(closeButton).toBeVisible()
+        await expect(endButton).toBeVisible()
+        const closeBounds = requireTestValue(await closeButton.boundingBox())
+        const endBounds = requireTestValue(await endButton.boundingBox())
+        // Dialog transforms can produce fractional CSS pixels.
+        expect(
+          Math.round(
+            Math.max(
+              endBounds.x - closeBounds.x - closeBounds.width,
+              endBounds.y - closeBounds.y - closeBounds.height,
+            ),
+          ),
+        ).toBeGreaterThanOrEqual(12)
+      }
+      await cancel.screenshot({
+        path: testInfo.outputPath('cancellation-dialog-mobile.png'),
+      })
+      await cancel
+        .getByRole('button', { name: 'End without a decision', exact: true })
+        .click()
+      await expect(cancel).toBeHidden()
+      await expect(upcoming.getByRole('status')).toContainText('Cancelled')
+    } finally {
+      await owner.dispose()
+      await reviewer.dispose()
     }
   })
 }

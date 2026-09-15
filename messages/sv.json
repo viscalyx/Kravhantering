@@ -974,7 +974,7 @@
     "createdAt": "Registrerad den",
     "statusPending": "Väntande",
     "statusApproved": "Godkänd",
-    "statusRejected": "Avslagen",
+    "statusRejected": "Avslaget",
     "newDeviation": "Registrera avsteg",
     "editDeviation": "Redigera avsteg",
     "deleteDeviation": "Ta bort avsteg",
@@ -3196,6 +3196,10 @@
       "agreements": {
         "heading": "Avtal och versionshistorik",
         "body": "Varje avtal omfattar hela kravunderlaget. Bekräftelsen låser alla krav direkt, även för ett framtida avtalsdatum. Förbered ändringar i ett nytt avtalsutkast. Manuell redigering av ett bibliotekskrav ger ett lokalt krav med nytt Krav-ID och sparad ursprungsreferens. Nyare publicerade versioner kan jämföras och väljas före första avtalet eller i ett avtalsutkast. Ändrade krav börjar som Inkluderad. Avbryt obeslutade avsteg före en innehållsändring. Kravunderlagsansvarig godkänner planerade avslut av gällande avsteg; ursprungliga beslut bevaras. Välj avtal i rutan Avtal för att se dess krav och historik."
+      },
+      "deviations": {
+        "heading": "Avsteg",
+        "body": "Avsteg visas ovanför kravet med egna åtgärder innanför ramen. Begär ett avsteg och Ta bort krav finns i kravets åtgärdskolumn. Utkast och Granskning begärd är olika tillstånd. Avsluta utan beslut kräver en orsak och bevarar ärendet som Avbrutet. Registrerande information och Tidigare avsteg kan fällas ut. Fel visas i dialogen med inmatningen kvar. Avtalslåsning och behörighet styr vilka åtgärder som är tillgängliga."
       }
     },
     "specificationRequirementSelection": {
@@ -3896,8 +3900,8 @@
     "removeRequirementWarning": "Krav {id} markeras som Borttaget i utkastet. Du kan ångra borttagningen innan avtalet bekräftas.",
     "undoRequirement": "Ångra ändring",
     "pendingDeviationWarning": "Avbryt obeslutade avsteg innan du ändrar eller tar bort kravet. Avbrottet och orsaken sparas i historiken.",
-    "cancelDeviation": "Avbryt avsteg",
-    "cancelDeviationReasonHelp": "Beskriv varför avsteget avbryts. Orsaken sparas tillsammans med avbrottet.",
+    "cancelDeviation": "Avsluta utan beslut",
+    "cancelDeviationReasonHelp": "Ange varför avstegets hantering ska avslutas utan beslut.",
     "plannedEndingWarning": "Avvikelsen fortsätter att gälla i nuvarande avtal. När det nya avtalet börjar gälla avslutas avvikelsen. Det ursprungliga beslutet och avslutet finns kvar i historiken för berörda avtal.",
     "draftEndingWarning": "Avsteget gäller endast detta utkast. När du sparar ändringen avslutas avsteget direkt. Det ursprungliga kravinnehållet, beslutet och avslutet sparas i utkastets historik.",
     "saveAndPlanEnding": "Spara och planera avslut",
@@ -3937,11 +3941,20 @@
     "editNote": "Redigera anteckning",
     "noteHelp": "Beskriv uppföljningen av kravet i aktuellt avtal.",
     "requirementActions": "Åtgärder",
+    "requirementActionColumn": "Åtgärder för kravet",
     "requirementHistory": "Historik",
     "comparePrevious": "Jämför med föregående avtal",
     "noPreviousRequirement": "Kravet lades till i det valda avtalet. Det finns inget föregående krav att jämföra med.",
     "historyFailed": "Kunde inte läsa kravets historik.",
     "changedField": "Ändrat fält",
-    "affectedDeviations": "Berörda avsteg"
+    "affectedDeviations": "Berörda avsteg",
+    "cancelDeviationExplanation": "Avstegets hantering avslutas utan beslut om godkännande eller avslag. Avsteget sparas i historiken som avbrutet.",
+    "cancelDeviationSuccess": "Avsteget har avslutats utan beslut och visas som avbrutet.",
+    "cancelDeviationSharedScope": "Avsteget delas av följande avtal: {references}. Åtgärden avslutar det gemensamma ärendet. Tidigare avtal behåller sin historiska vy; avslutet visas under Senare händelser.",
+    "deviationEndedOn": "Avslutat {date}",
+    "activeDeviationError": "Det finns redan ett aktivt avsteg för detta kravinnehåll. Hantera det befintliga avsteget innan du begär ett nytt.",
+    "missingHistoricalValue": "Saknas",
+    "missingHistoricalHelp": "Vissa historiska uppföljningsuppgifter saknas för detta avtal.",
+    "deviationChangedOn": "Senaste ändring efter avtalets historiska brytpunkt: {date}"
   }
 }

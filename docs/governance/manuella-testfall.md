@@ -2136,6 +2136,44 @@ beslutsåtgärd och får 403 vid besluts-API. `noah.noroles` får också 403.
 `rita.reviewer` kan läsa kravunderlaget, ser beslutsåtgärden och kan godkänna
 eller avslå avsteget med beslutsmotivering.
 
+### DEV-08: enhetlig avstegshantering och tydliga statusar
+
+**Steg:** Öppna ett bibliotekskrav och ett lokalt krav i ett kravunderlag utan
+avtal. Skapa ett avsteg för respektive krav. Redigera motiveringen, begär
+granskning och ladda om. Kontrollera ärendet som behörig kravgranskare.
+Återför till utkast med bekräftelse. Skapa och avsluta även ett avstegsutkast
+på ett kommande avtal. Använd tangentbord för granskning och en smal vy för
+avslut.
+
+**Förväntat resultat:** Båda kravtyperna har samma avstegsflöde. Utkast och
+Granskning begärd skiljs åt och sparas efter omladdning. Åtgärderna påverkar
+rätt avsteg. Historiska ärenden kan öppnas via Tidigare avsteg. Kravets
+borttagningsåtgärd ligger direkt under Begär ett avsteg i åtgärdskolumnen och
+följer gällande behörighet och avtalslåsning.
+
+### DEV-09: konflikt visas i registreringsdialogen
+
+**Steg:** Öppna avstegsformuläret och fyll i en motivering. Låt en annan
+författare spara ett avsteg för samma kravinnehåll före din registrering.
+Försök spara. Avsluta därefter det konkurrerande ärendet utan beslut och
+försök igen. Upprepa för båda kravtyperna.
+
+**Förväntat resultat:** Konflikten visas i den öppna dialogen. Motiveringen
+bevaras och kan sparas när konflikten är löst. Högst ett aktivt avsteg finns
+för samma kravinnehåll, även vid samtidiga anrop.
+
+### DEV-10: avsluta avsteg utan beslut
+
+**Steg:** Skapa ett avstegsutkast. Välj Avsluta utan beslut i ärendet. Läs
+förklaringen och ange orsak. Bekräfta och ladda om. Kontrollera att ett nytt
+avsteg får begäras. Upprepa för båda kravtyperna och i ett kommande avtal.
+
+**Förväntat resultat:** Ärendet visas som Avbrutet och finns kvar med orsak,
+aktör och tidpunkt. Det kan inte längre skickas till granskning och blockerar
+inte ett nytt avsteg. Ett delat ärende visar berörda avtalsreferenser före
+bekräftelsen. Fel visas vid åtgärden och dialogen behåller inmatningen.
+Knapparna Stäng och Avsluta utan beslut har mellanrum även i smal vy.
+
 ## Admincenter
 
 ### ADMIN-01: kolumnstandarder påverkar nya kravbiblioteksvyer

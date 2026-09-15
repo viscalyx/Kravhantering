@@ -118,6 +118,11 @@ const REQUIREMENT_SPECIFICATION_DETAIL_HELP: HelpContent = {
   sections: [
     {
       kind: 'text',
+      headingKey: 'requirementsSpecificationDetail.deviations.heading',
+      bodyKey: 'requirementsSpecificationDetail.deviations.body',
+    },
+    {
+      kind: 'text',
       headingKey: 'requirementsSpecificationDetail.agreements.heading',
       bodyKey: 'requirementsSpecificationDetail.agreements.body',
     },
@@ -3756,9 +3761,13 @@ export default function KravunderlagDetailClient({
                               specificationId={specificationId}
                               view={agreementContext}
                             />
-                          ) : item?.isSpecificationLocal &&
+                          ) : agreementContext &&
+                            agreementItem &&
+                            item?.isSpecificationLocal &&
                             item.specificationLocalRequirementId != null ? (
                             <SpecificationLocalRequirementDetailClient
+                              agreementItem={agreementItem}
+                              agreementView={agreementContext}
                               approvedDeviationEndingRequired={agreementContext?.deviations.some(
                                 deviation =>
                                   deviation.itemRef === item.itemRef &&

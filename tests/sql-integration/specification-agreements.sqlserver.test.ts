@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  exportArchivingRetentionArchive,
+  previewArchivingRetention,
+} from '@/lib/archiving/retention'
+import {
   createDeviation,
+  createDeviationForItemRef,
   createSpecificationLocalDeviation,
   getDeviation,
   getSpecificationLocalDeviation,
@@ -8,6 +13,7 @@ import {
   recordSpecificationLocalDecision,
   requestReview,
   requestSpecificationLocalReview,
+  updateSpecificationLocalDeviation,
 } from '@/lib/dal/deviations'
 import { editRequirement, transitionStatus } from '@/lib/dal/requirements'
 import {
@@ -41,6 +47,213 @@ import {
 
 describe('whole-specification agreement contexts', () => {
   const database = useSqlIntegrationDatabase()
+
+  it.each(['library', 'local'])(
+    'serializes competing %s requests, blocks every unresolved case, and frees cancelled content',
+    async kind => {
+      const db = database()
+      const specification = await createSpecificationFixture(db, 'CASE-GUARD')
+      if (kind === 'local') {
+        await createSpecificationLocalRequirement(db, specification.id, {
+          description: 'Content under review',
+        })
+      } else {
+        const library = await createPublishedRequirement(
+          db,
+          (await createArea(db)).id,
+          'Content under review',
+        )
+        await linkRequirementsToSpecificationAtomically(db, specification.id, {
+          requirementIds: [library.requirementId],
+        })
+      }
+      const context = await makeRequestContext()
+      const workflow = createSpecificationAgreementWorkflow(db)
+      const item = requireTestValue(
+        (await workflow.read(context, specification.id)).items[0],
+      )
+      const create = () =>
+        createDeviationForItemRef(db, {
+          itemRef: item.itemRef,
+          motivation: 'Concurrent request',
+        })
+      const outcomes = await Promise.allSettled([create(), create()])
+      expect(
+        outcomes.filter(outcome => outcome.status === 'fulfilled'),
+      ).toHaveLength(1)
+      expect(outcomes.filter(outcome => outcome.status === 'rejected')).toEqual(
+        [
+          expect.objectContaining({
+            reason: expect.objectContaining({
+              code: 'conflict',
+              details: { reason: 'active_deviation_exists' },
+            }),
+          }),
+        ],
+      )
+      const pending = requireTestValue(
+        (await workflow.read(context, specification.id)).deviations[0],
+      )
+      expect(
+        (await workflow.read(context, specification.id)).deviations,
+      ).toHaveLength(1)
+      const request =
+        kind === 'local' ? requestSpecificationLocalReview : requestReview
+      await request(db, pending.id)
+      await expect(create()).rejects.toMatchObject({
+        code: 'conflict',
+        details: { reason: 'active_deviation_exists' },
+      })
+      expect(
+        (await workflow.read(context, specification.id)).deviations[0],
+      ).toMatchObject({ decision: null, isReviewRequested: 1 })
+      await workflow.mutate(context, specification.id, {
+        operation: 'cancel_deviation',
+        itemRef: item.itemRef,
+        deviationId: pending.id,
+        reason: 'Request withdrawn',
+      })
+      await create()
+      const after = await workflow.read(context, specification.id)
+      expect(
+        after.deviations.find(deviation => deviation.id === pending.id),
+      ).toMatchObject({
+        decision: 3,
+        isReviewRequested: 0,
+        decisionMotivation: 'Request withdrawn',
+      })
+      expect(
+        after.deviations.filter(deviation => deviation.decision === null),
+      ).toHaveLength(1)
+      // Simulate an imported inconsistent timeline: a later rejected case must not hide the active one.
+      const table =
+        kind === 'local'
+          ? 'specification_local_requirement_deviations'
+          : 'deviations'
+      const binding =
+        kind === 'local'
+          ? 'specification_local_requirement_id'
+          : 'specification_item_id'
+      await db.query(
+        `INSERT INTO ${table} (${binding}, motivation, decision, decision_motivation, created_at, decided_at) VALUES (@0, 'Imported later rejection', 2, 'Rejected', DATEADD(second, 1, SYSUTCDATETIME()), DATEADD(second, 2, SYSUTCDATETIME()))`,
+        [Number(item.itemRef.split(':')[1])],
+      )
+      await expect(create()).rejects.toMatchObject({
+        code: 'conflict',
+        details: { reason: 'active_deviation_exists' },
+      })
+    },
+  )
+
+  it('freezes deviation motivation and review state separately for each historical agreement', async () => {
+    const db = database()
+    const specification = await createSpecificationFixture(db, 'CASE-HISTORY')
+    const local = await createSpecificationLocalRequirement(
+      db,
+      specification.id,
+      { description: 'Shared content' },
+    )
+    const context = await makeRequestContext()
+    const workflow = createSpecificationAgreementWorkflow(db)
+    const created = await createSpecificationLocalDeviation(db, {
+      specificationLocalRequirementId: local.id,
+      motivation: 'Original draft motivation',
+    })
+    await workflow.mutate(context, specification.id, {
+      operation: 'establish',
+      agreementReference: 'A',
+      effectiveDate: '2020-01-01',
+    })
+    const originalId = requireTestValue(
+      (await workflow.read(context, specification.id)).selectedAgreement,
+    ).id
+    const today = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Europe/Stockholm',
+    }).format(new Date())
+    await workflow.mutate(context, specification.id, {
+      operation: 'create_draft',
+      agreementReference: 'B',
+      effectiveDate: today,
+    })
+    const nextId = requireTestValue(
+      (await workflow.read(context, specification.id)).agreements.find(
+        agreement => agreement.state === 'draft',
+      ),
+    ).id
+    await workflow.mutate(context, specification.id, {
+      operation: 'confirm',
+      agreementId: nextId,
+    })
+    await updateSpecificationLocalDeviation(db, created.id, {
+      motivation: 'Later motivation',
+    })
+    await requestSpecificationLocalReview(db, created.id)
+    const historical = await workflow.read(context, specification.id, {
+      agreementId: originalId,
+    })
+    expect(historical.items[0]?.deviationStateSnapshot).toEqual([
+      {
+        id: created.id,
+        motivation: 'Original draft motivation',
+        isReviewRequested: 0,
+      },
+    ])
+    expect(
+      (await workflow.read(context, specification.id)).deviations[0],
+    ).toMatchObject({ motivation: 'Later motivation', isReviewRequested: 1 })
+    const history = await workflow.history(
+      context,
+      specification.id,
+      nextId,
+      `local:${local.id}`,
+    )
+    expect(history.previous?.item.deviationStateSnapshot).toEqual([
+      {
+        id: created.id,
+        motivation: 'Original draft motivation',
+        isReviewRequested: 0,
+      },
+    ])
+    await workflow.mutate(context, specification.id, {
+      operation: 'end',
+      agreementId: nextId,
+      endDate: today,
+      reason: 'Term complete',
+    })
+    await db.query(
+      "UPDATE requirements_specifications SET updated_at = '2020-01-01', specification_lifecycle_status_id = 1 WHERE id = @0",
+      [specification.id],
+    )
+    const policies = await db.query<
+      Array<{ id: number }>
+    >(`INSERT INTO archiving_retention_policies
+      (policy_key, information_set, action, age_days, status_condition, is_enabled, decision_reference, created_at, updated_at)
+      OUTPUT INSERTED.id VALUES (N'obsolete_specifications_delete', N'Specifications', N'delete', 730, N'Obsolete', 1, N'Issue 1461', SYSUTCDATETIME(), SYSUTCDATETIME())`)
+    const policyId = requireTestValue(policies[0]).id
+    const preview = await previewArchivingRetention(db, { policyId })
+    const archive = await exportArchivingRetentionArchive(db, {
+      policyId,
+      previewToken: preview.previewToken,
+    })
+    expect(archive.archive).toMatchObject({
+      specifications: [
+        expect.objectContaining({
+          agreementItems: expect.arrayContaining([
+            expect.objectContaining({
+              specification_agreement_id: originalId,
+              deviation_state_json: JSON.stringify([
+                {
+                  id: created.id,
+                  motivation: 'Original draft motivation',
+                  isReviewRequested: 0,
+                },
+              ]),
+            }),
+          ]),
+        }),
+      ],
+    })
+  })
 
   it('freezes needs-reference evidence before a follow-up edit activates a due successor', async () => {
     const db = database()

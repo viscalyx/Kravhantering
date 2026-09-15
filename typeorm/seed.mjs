@@ -12653,13 +12653,13 @@ const SEED_DATA = {
         5,
         20,
         'Accessibility requirement WCAG 2.1 AA cannot be fully met for legacy PDF export. Remediation requires vendor update expected in next release.',
-        null,
-        null,
-        null,
-        null,
+        3,
+        'Utkastet avslutades utan beslut innan ett nytt avsteg begärdes.',
+        'Erik Svensson',
+        '2026-05-14 20:07:00',
         'Erik Svensson',
         '2026-04-15 20:07:00',
-        null,
+        '2026-05-14 20:07:00',
         0,
       ],
     ],
@@ -14405,10 +14405,10 @@ function addLinneaPrivacyExerciseSeed() {
   ensureSeedRow(
     localDeviations,
     seedRowFromColumns(localDeviations, {
-      created_at: PRIVACY_SEED_TS,
+      created_at: '2026-04-17 09:00:00',
       created_by: 'Linnéa Bergström',
       created_by_hsa_id: 'SE5560000001-linneab',
-      decided_at: PRIVACY_SEED_TS,
+      decided_at: '2026-04-17 09:00:00',
       decided_by: 'Linnéa Bergström',
       decided_by_hsa_id: 'SE5560000001-linneab',
       decision: 2,
@@ -14419,7 +14419,7 @@ function addLinneaPrivacyExerciseSeed() {
       motivation:
         'Privacy seed local deviation used to verify HSA-id based decision erasure.',
       specification_local_requirement_id: 2,
-      updated_at: PRIVACY_SEED_TS,
+      updated_at: '2026-04-17 09:00:00',
     }),
   )
 }

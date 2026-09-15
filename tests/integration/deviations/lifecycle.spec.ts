@@ -49,7 +49,7 @@ const deviationCases = [
   {
     action: 'reject',
     decision: 2 as const,
-    expectedStatus: 'Avslagen',
+    expectedStatus: 'Avslaget',
     fixtures: {
       desktop: { itemRef: 'lib:41', uniqueId: 'PWT0003' },
       mobile: { itemRef: 'lib:42', uniqueId: 'PWT0004' },
@@ -258,15 +258,14 @@ async function newRolePage(
   return { context, page }
 }
 
-async function assertActiveStepperStep(
-  container: Locator,
-  expectedText: string,
-) {
-  const activeStep = container
-    .getByRole('group', { name: 'Steg i avstegsarbetsflödet' })
-    .locator('[aria-current="step"]')
-
-  await expect(activeStep).toContainText(expectedText)
+async function assertDeviationStatus(container: Locator, expectedText: string) {
+  await expect(
+    container
+      .getByRole('article')
+      .getByRole('status')
+      .filter({ hasText: expectedText })
+      .first(),
+  ).toBeVisible()
 }
 
 for (const viewport of viewports) {
@@ -293,7 +292,7 @@ for (const viewport of viewports) {
           page,
           fixture.uniqueId,
         )
-        await assertActiveStepperStep(detailPane, 'Granskning begärd')
+        await assertDeviationStatus(detailPane, 'Granskning begärd')
 
         await detailPane.getByRole('button', { name: '← Utkast' }).click()
         const confirmDialog = page.getByRole('alertdialog').filter({
@@ -305,7 +304,7 @@ for (const viewport of viewports) {
         )
         await confirmDialog.getByRole('button', { name: 'Avbryt' }).click()
 
-        await assertActiveStepperStep(detailPane, 'Granskning begärd')
+        await assertDeviationStatus(detailPane, 'Granskning begärd')
       } finally {
         await closeLatestPendingDeviation(
           request,
@@ -334,10 +333,7 @@ for (const viewport of viewports) {
         const fixture = deviationCase.fixtures[viewport.name]
         const motivation = `${fixture.uniqueId} ${viewport.name} ${deviationCase.action} deviation`
         const decisionMotivation = `${fixture.uniqueId} ${viewport.name} ${deviationCase.action} decision`
-        const recordDecisionActionName =
-          deviationCase.itemKind === 'specification-local'
-            ? 'Registrera beslut'
-            : 'Beslutad ↗'
+        const recordDecisionActionName = 'Registrera beslut'
         let detailPane = page.locator('body')
         const reviewerRequest = await newRoleContext(testInfo, 'reviewer')
         const reviewer = await newRolePage(
@@ -382,7 +378,7 @@ for (const viewport of viewports) {
                 detailPane.getByRole('button', { name: 'Granskning ↗' }),
               ).toBeVisible()
             } else {
-              await assertActiveStepperStep(detailPane, 'Utkast')
+              await assertDeviationStatus(detailPane, 'Utkast')
             }
             await expect(detailPane).toContainText(motivation)
           })
@@ -400,7 +396,7 @@ for (const viewport of viewports) {
                 detailPane.getByRole('button', { name: '← Utkast' }),
               ).toBeVisible()
             } else {
-              await assertActiveStepperStep(detailPane, 'Granskning begärd')
+              await assertDeviationStatus(detailPane, 'Granskning begärd')
             }
             await expect(
               detailPane.getByRole('button', {
@@ -421,7 +417,7 @@ for (const viewport of viewports) {
                 }),
               ).toBeVisible()
             } else {
-              await assertActiveStepperStep(
+              await assertDeviationStatus(
                 reviewerDetailPane,
                 'Granskning begärd',
               )
@@ -445,15 +441,10 @@ for (const viewport of viewports) {
               .click()
             await expect(decisionDialog).toBeHidden()
 
-            if (deviationCase.itemKind === 'specification-local') {
-              await expect(
-                reviewerDetailPane.getByRole('status', {
-                  name: 'Avsteg begärt med motivering:',
-                }),
-              ).toContainText(deviationCase.expectedStatus)
-            } else {
-              await assertActiveStepperStep(reviewerDetailPane, 'Beslutad')
-            }
+            await assertDeviationStatus(
+              reviewerDetailPane,
+              deviationCase.expectedStatus,
+            )
             await expect(reviewerDetailPane).toContainText(
               deviationCase.expectedStatus,
             )
@@ -592,12 +583,12 @@ for (const viewport of viewports) {
             isReviewRequested: 1,
             motivation,
           })
-          await assertActiveStepperStep(detailPane, 'Granskning begärd')
+          await assertDeviationStatus(detailPane, 'Granskning begärd')
           await expect(
             detailPane.getByRole('button', { name: '← Utkast' }),
           ).toHaveCount(1)
           await expect(
-            detailPane.getByRole('button', { name: 'Beslutad ↗' }),
+            detailPane.getByRole('button', { name: 'Registrera beslut' }),
           ).toHaveCount(0)
 
           const latest = (

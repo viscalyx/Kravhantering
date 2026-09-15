@@ -1,5 +1,18 @@
 import type { SqlExecutor } from '@/lib/dal/requirements-specifications'
 
+export interface DeviationStateSnapshot {
+  id: number
+  isReviewRequested: number
+  motivation: string
+}
+
+/** NULL means historical evidence is unavailable; [] means no cases existed. */
+export function parseDeviationStateSnapshot(
+  value: string | null | undefined,
+): DeviationStateSnapshot[] | null {
+  return value == null ? null : (JSON.parse(value) as DeviationStateSnapshot[])
+}
+
 export async function readAgreementCases(
   db: SqlExecutor,
   specificationId: number,
@@ -39,18 +52,26 @@ export async function readAgreementCases(
         itemRef: string
         motivation: string
         createdAt?: Date
+        updatedAt?: Date | null
         createdBy?: string | null
         decidedBy?: string | null
         isReviewRequested?: number
+        agreementReferences?: string | null
         decision: number | null
         decisionMotivation: string | null
         decidedAt: Date | null
       }>
     >(
-      `SELECT d.id, CONCAT('lib:', i.id) AS itemRef, d.motivation, d.decision, d.decision_motivation AS decisionMotivation, d.decided_at AS decidedAt, d.created_at AS createdAt, d.created_by AS createdBy, d.decided_by AS decidedBy, CAST(d.is_review_requested AS int) AS isReviewRequested
+      `SELECT d.id, CONCAT('lib:', i.id) AS itemRef, d.motivation, d.decision, d.decision_motivation AS decisionMotivation, d.decided_at AS decidedAt, d.created_at AS createdAt, d.created_by AS createdBy, d.decided_by AS decidedBy, d.updated_at AS updatedAt, CAST(d.is_review_requested AS int) AS isReviewRequested,
+               (SELECT STRING_AGG(CAST(agreement.agreement_reference AS nvarchar(max)), N', ') WITHIN GROUP (ORDER BY agreement.effective_date, agreement.id)
+                FROM specification_agreement_items membership INNER JOIN specification_agreements agreement ON agreement.id = membership.specification_agreement_id
+                WHERE membership.specification_item_id = i.id AND membership.is_removed = 0 HAVING COUNT(*) > 1) AS agreementReferences
              FROM deviations d INNER JOIN requirements_specification_items i ON i.id = d.specification_item_id WHERE i.requirements_specification_id = @0 AND (@1 IS NULL OR CONCAT('lib:', i.id) IN (SELECT value FROM OPENJSON(@1)))
              UNION ALL
-             SELECT d.id, CONCAT('local:', i.id), d.motivation, d.decision, d.decision_motivation, d.decided_at, d.created_at, d.created_by, d.decided_by, CAST(d.is_review_requested AS int)
+             SELECT d.id, CONCAT('local:', i.id), d.motivation, d.decision, d.decision_motivation, d.decided_at, d.created_at, d.created_by, d.decided_by, d.updated_at, CAST(d.is_review_requested AS int),
+               (SELECT STRING_AGG(CAST(agreement.agreement_reference AS nvarchar(max)), N', ') WITHIN GROUP (ORDER BY agreement.effective_date, agreement.id)
+                FROM specification_agreement_items membership INNER JOIN specification_agreements agreement ON agreement.id = membership.specification_agreement_id
+                WHERE membership.specification_local_requirement_id = i.id AND membership.is_removed = 0 HAVING COUNT(*) > 1)
              FROM specification_local_requirement_deviations d INNER JOIN specification_local_requirements i ON i.id = d.specification_local_requirement_id WHERE i.specification_id = @0 AND (@1 IS NULL OR CONCAT('local:', i.id) IN (SELECT value FROM OPENJSON(@1)))`,
       [
         specificationId,

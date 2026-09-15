@@ -9,6 +9,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import type { SpecificationAgreementView } from '@/components/SpecificationAgreementBox'
+import SpecificationAgreementDeviations from '@/components/SpecificationAgreementDeviations'
 import SpecificationAgreementRequirement from '@/components/SpecificationAgreementRequirement'
 import type { AgreementItem } from '@/lib/specifications/agreements'
 import { requireTestValue } from '@/tests/helpers/require-test-value'
@@ -88,6 +89,64 @@ const view: SpecificationAgreementView = {
 
 describe('selected agreement requirement author workflow', () => {
   afterEach(() => vi.unstubAllGlobals())
+
+  it.each(['lib:9', 'local:9'] as const)(
+    'keeps an unresolved %s case visible above collapsed newer history',
+    async itemRef => {
+      render(
+        <ConfirmModalProvider>
+          <SpecificationAgreementRequirement
+            item={{ ...item, itemRef }}
+            needsReferencesResource={{
+              data: [],
+              loading: false,
+              error: null,
+              refreshing: false,
+              refreshError: null,
+              reload: async () => [],
+            }}
+            onChange={async () => {}}
+            specificationId={1}
+            view={{
+              ...view,
+              deviations: [
+                {
+                  id: 8,
+                  itemRef,
+                  motivation: 'Unresolved older request',
+                  decision: null,
+                  decisionMotivation: null,
+                  decidedAt: null,
+                  createdAt: new Date('2026-01-01'),
+                  isReviewRequested: 1,
+                },
+                {
+                  id: 9,
+                  itemRef,
+                  motivation: 'Newer rejected request',
+                  decision: 2,
+                  decisionMotivation: 'Rejected',
+                  decidedAt: new Date('2026-01-03'),
+                  createdAt: new Date('2026-01-02'),
+                },
+              ],
+            }}
+          />
+        </ConfirmModalProvider>,
+      )
+      expect(
+        screen.getByRole('article', { name: 'Unresolved older request' }),
+      ).toBeVisible()
+      expect(screen.getByText('Newer rejected request')).not.toBeVisible()
+      expect(
+        screen.queryByRole('button', { name: 'deviation.requestDeviation' }),
+      ).not.toBeInTheDocument()
+      await userEvent.click(screen.getByText('deviation.historyLabel'))
+      expect(
+        screen.getByRole('article', { name: 'Newer rejected request' }),
+      ).toBeVisible()
+    },
+  )
 
   it('opens historical content from the requirement row and compares the previous agreement', async () => {
     const user = userEvent.setup()
@@ -185,6 +244,19 @@ describe('selected agreement requirement author workflow', () => {
         />
       </ConfirmModalProvider>,
     )
+    const deviationBox = screen.getByRole('article', {
+      name: 'Original reason',
+    })
+    expect(
+      within(deviationBox).getByRole('button', {
+        name: 'deviation.editDeviation',
+      }),
+    ).toBeVisible()
+    expect(
+      deviationBox.compareDocumentPosition(
+        screen.getByText('Library original'),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
     await user.click(
       screen.getByRole('button', { name: 'deviation.editDeviation' }),
     )
@@ -287,10 +359,16 @@ describe('selected agreement requirement author workflow', () => {
           ),
       ),
     )
+    const historicalItem = {
+      ...item,
+      deviationStateSnapshot: [
+        { id: 8, motivation: 'Shared case', isReviewRequested: 1 },
+      ],
+    }
     render(
       <ConfirmModalProvider>
         <SpecificationAgreementRequirement
-          item={item}
+          item={historicalItem}
           needsReferencesResource={{
             data: [],
             loading: false,
@@ -321,7 +399,7 @@ describe('selected agreement requirement author workflow', () => {
         />
       </ConfirmModalProvider>,
     )
-    expect(screen.getByText('deviation.statusPending')).toBeVisible()
+    expect(screen.getByText('deviation.stepReviewRequested')).toBeVisible()
     expect(
       screen.queryByRole('region', { name: 'agreement.laterEvents' }),
     ).toBeNull()
@@ -334,6 +412,100 @@ describe('selected agreement requirement author workflow', () => {
     expect(within(later).getByText('deviation.statusApproved')).toBeVisible()
     expect(within(later).getByText('Approved later')).toBeVisible()
   })
+
+  it('keeps the frozen draft text and state while showing later edits only as later events', () => {
+    render(
+      <ConfirmModalProvider>
+        <SpecificationAgreementDeviations
+          item={{
+            ...item,
+            deviationStateSnapshot: [
+              { id: 8, motivation: 'Original draft', isReviewRequested: 0 },
+            ],
+          }}
+          onChange={async () => {}}
+          showLaterEvents
+          specificationId={1}
+          view={{
+            ...view,
+            selectedAgreement: {
+              ...agreement,
+              state: 'previous',
+              replacedAt: new Date('2026-08-01'),
+            },
+            deviations: [
+              {
+                id: 8,
+                itemRef: item.itemRef,
+                motivation: 'Edited later',
+                isReviewRequested: 1,
+                createdAt: new Date('2026-07-01'),
+                updatedAt: new Date('2026-08-02'),
+                decision: null,
+                decisionMotivation: null,
+                decidedAt: null,
+              },
+            ],
+          }}
+        />
+      </ConfirmModalProvider>,
+    )
+    const original = screen.getByRole('article', { name: 'Original draft' })
+    expect(within(original).getByText('deviation.stepDraft')).toBeVisible()
+    expect(within(original).queryByText('Edited later')).toBeNull()
+    const later = screen.getByRole('region', { name: 'agreement.laterEvents' })
+    expect(
+      within(later).getByRole('article', { name: 'Edited later' }),
+    ).toBeVisible()
+    expect(
+      within(later).getByText('deviation.stepReviewRequested'),
+    ).toBeVisible()
+  })
+
+  it.each([null, []])(
+    'does not substitute live case text for unavailable or empty historical evidence (%j)',
+    snapshot => {
+      render(
+        <ConfirmModalProvider>
+          <SpecificationAgreementDeviations
+            item={{ ...item, deviationStateSnapshot: snapshot }}
+            onChange={async () => {}}
+            specificationId={1}
+            view={{
+              ...view,
+              selectedAgreement: {
+                ...agreement,
+                state: 'previous',
+                replacedAt: new Date('2026-08-01'),
+              },
+              deviations: [
+                {
+                  id: 8,
+                  itemRef: item.itemRef,
+                  motivation: 'Edited later',
+                  isReviewRequested: 1,
+                  createdAt: new Date('2026-07-01'),
+                  updatedAt: new Date('2026-08-02'),
+                  decision: null,
+                  decisionMotivation: null,
+                  decidedAt: null,
+                },
+              ],
+            }}
+          />
+        </ConfirmModalProvider>,
+      )
+      expect(screen.queryByText('Edited later')).toBeNull()
+      expect(screen.queryByRole('article', { name: 'Edited later' })).toBeNull()
+      expect(screen.queryByText('deviation.stepReviewRequested')).toBeNull()
+      expect(screen.queryByText('deviation.stepDraft')).toBeNull()
+      expect(screen.queryAllByRole('article')).toHaveLength(snapshot ? 0 : 1)
+      if (snapshot === null)
+        expect(
+          screen.getByText('agreement.missingHistoricalHelp'),
+        ).toBeVisible()
+    },
+  )
 
   it('creates an avsteg against the selected upcoming agreement from the requirement list', async () => {
     const user = userEvent.setup()
@@ -437,6 +609,9 @@ describe('selected agreement requirement author workflow', () => {
     const dialog = screen.getByRole('dialog', {
       name: 'agreement.cancelDeviation',
     })
+    expect(
+      within(dialog).getByText('agreement.cancelDeviationExplanation'),
+    ).toBeVisible()
     await user.type(
       within(dialog).getByRole('textbox', { name: /^agreement.reason/ }),
       'Revise the reviewed content',
@@ -481,6 +656,18 @@ describe('selected agreement requirement author workflow', () => {
         />
       </ConfirmModalProvider>,
     )
+    const actions = screen.getByRole('group', {
+      name: 'agreement.requirementActionColumn',
+    })
+    const create = within(actions).getByRole('button', {
+      name: 'deviation.requestDeviation',
+    })
+    const remove = within(actions).getByRole('button', {
+      name: 'agreement.removeRequirement',
+    })
+    expect(
+      create.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
     await user.click(
       screen.getByRole('button', { name: 'agreement.removeRequirement' }),
     )

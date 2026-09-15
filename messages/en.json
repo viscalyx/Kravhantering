@@ -3196,6 +3196,10 @@
       "agreements": {
         "heading": "Agreement and version history",
         "body": "Each agreement covers the entire specification. Confirmation immediately locks all requirements, including when the effective date is in the future. Prepare changes in a new agreement draft. Manually editing a library requirement creates a local requirement with a new Requirement ID and a retained source reference. Newer published versions can be compared and adopted before the first agreement or in an agreement draft. Changed requirements start as Included. Cancel undecided deviations before changing content. The specification lead authorizes planned endings of applicable deviations; original decisions are retained. Select an agreement in the Agreement card to view its requirements and history."
+      },
+      "deviations": {
+        "heading": "Deviations",
+        "body": "Deviations appear above the requirement, with their own actions inside each case. Request a deviation and Remove requirement are in the requirement action column. Draft and Review requested are distinct states. End without a decision requires a reason and retains the case as Cancelled. Expand Registration information and Previous deviations for details. Dialog errors preserve your input. Agreement locks and permissions determine available actions."
       }
     },
     "specificationRequirementSelection": {
@@ -3896,8 +3900,8 @@
     "removeRequirementWarning": "Requirement {id} will be marked Removed in this draft. You can undo the removal before confirming the agreement.",
     "undoRequirement": "Undo change",
     "pendingDeviationWarning": "Cancel pending deviations before changing or removing the requirement. The cancellation and reason are retained in history.",
-    "cancelDeviation": "Cancel deviation",
-    "cancelDeviationReasonHelp": "Explain why the deviation is being cancelled. The reason is retained with the cancellation.",
+    "cancelDeviation": "End without a decision",
+    "cancelDeviationReasonHelp": "Explain why handling of the deviation must end without a decision.",
     "plannedEndingWarning": "The deviation continues to apply to the current agreement. It ends when the new agreement takes effect. The original decision and the ending remain in the affected agreements’ history.",
     "draftEndingWarning": "The deviation applies only to this draft. Saving the change ends it immediately. The original requirement content, decision and ending remain in the draft history.",
     "saveAndPlanEnding": "Save and plan ending",
@@ -3937,11 +3941,20 @@
     "editNote": "Edit note",
     "noteHelp": "Describe follow-up of this requirement in the current agreement.",
     "requirementActions": "Actions",
+    "requirementActionColumn": "Requirement actions",
     "requirementHistory": "History",
     "comparePrevious": "Compare with previous agreement",
     "noPreviousRequirement": "This requirement was added in the selected agreement. There is no previous requirement to compare.",
     "historyFailed": "Could not load requirement history.",
     "changedField": "Changed field",
-    "affectedDeviations": "Affected deviations"
+    "affectedDeviations": "Affected deviations",
+    "cancelDeviationExplanation": "Handling of the deviation ends without approval or rejection. The deviation is retained in history as cancelled.",
+    "cancelDeviationSuccess": "The deviation has ended without a decision and is shown as cancelled.",
+    "cancelDeviationSharedScope": "The deviation is shared by these agreements: {references}. This action ends the shared case. Earlier agreements retain their historical view; the cancellation appears under Later events.",
+    "deviationEndedOn": "Ended {date}",
+    "activeDeviationError": "An active deviation already exists for this requirement content. Handle the existing deviation before requesting another.",
+    "missingHistoricalValue": "Missing",
+    "missingHistoricalHelp": "Some historical follow-up information is missing for this agreement.",
+    "deviationChangedOn": "Latest change after this agreement became historical: {date}"
   }
 }

@@ -1,4 +1,5 @@
 const reasonKeys = {
+  active_deviation_exists: 'activeDeviationError',
   specification_content_locked: 'contentLockedError',
   active_deviations: 'pendingDeviationWarning',
   deviation_cancellation_required: 'pendingDeviationWarning',

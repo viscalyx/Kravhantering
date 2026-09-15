@@ -396,4 +396,36 @@ export function applySpecificationAgreementSeed(data, order, now = new Date()) {
     recorded_by_hsa_id: owner(5),
     ended_at: changed,
   })
+  for (const member of records('specification_agreement_items')) {
+    const local = member.specification_local_requirement_id != null
+    const binding = local
+      ? 'specification_local_requirement_id'
+      : 'specification_item_id'
+    const cases = records(
+      local ? 'specification_local_requirement_deviations' : 'deviations',
+    )
+    const agreement = records('specification_agreements').find(
+      value => value.id === member.specification_agreement_id,
+    )
+    const cutoff =
+      agreement.cancelled_at ?? agreement.ended_at ?? agreement.replaced_at
+    put('specification_agreement_items', {
+      ...member,
+      deviation_state_json: member.has_followup_snapshot
+        ? JSON.stringify(
+            cases
+              .filter(
+                value =>
+                  value[binding] === member[binding] &&
+                  (!cutoff || new Date(value.created_at) <= new Date(cutoff)),
+              )
+              .map(value => ({
+                id: value.id,
+                motivation: value.motivation,
+                isReviewRequested: value.is_review_requested ?? 0,
+              })),
+          )
+        : null,
+    })
+  }
 }

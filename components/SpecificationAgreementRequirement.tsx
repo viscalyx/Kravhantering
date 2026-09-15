@@ -62,10 +62,8 @@ export default function SpecificationAgreementRequirement({
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [cancellingDeviationId, setCancellingDeviationId] = useState<
-    number | null
-  >(null)
-  const [cancellationReason, setCancellationReason] = useState('')
+  const [deviationActionTarget, setDeviationActionTarget] =
+    useState<HTMLDivElement | null>(null)
   const editTrigger = useRef<HTMLButtonElement>(null)
   const selected = view.selectedAgreement
   const canEdit =
@@ -128,7 +126,6 @@ export default function SpecificationAgreementRequirement({
       await onChange(result.itemRef)
       setEditing(false)
       setDirty(false)
-      setCancellingDeviationId(null)
     } finally {
       setBusy(false)
     }
@@ -185,6 +182,28 @@ export default function SpecificationAgreementRequirement({
         priority: 350,
       })}
     >
+      <SpecificationAgreementDeviations
+        createActionTarget={deviationActionTarget}
+        item={item}
+        onChange={onChange}
+        priorityLevel={
+          row?.version?.priorityLevelId
+            ? {
+                id: row.version.priorityLevelId,
+                code: row.version.priorityLevelCode ?? '',
+                name: name(
+                  row.version.priorityLevelNameSv,
+                  row.version.priorityLevelNameEn,
+                ),
+                color: row.version.priorityLevelColor,
+                iconName: row.version.priorityLevelIconName ?? null,
+                sortOrder: row.version.priorityLevelSortOrder ?? 0,
+              }
+            : null
+        }
+        specificationId={specificationId}
+        view={view}
+      />
       <div className="flex flex-col gap-3 sm:flex-row">
         <RequirementDetailCard>
           <RequirementDetailSections
@@ -302,9 +321,54 @@ export default function SpecificationAgreementRequirement({
             verificationMethodLabel={tr('verificationMethod')}
           />
         </RequirementDetailCard>
-        {canEdit && (
-          <div className="flex shrink-0 flex-col gap-2 sm:w-56">
-            {' '}
+        <fieldset
+          aria-label={t('requirementActionColumn')}
+          className="flex shrink-0 flex-col gap-2 sm:w-64"
+          {...devMarker({
+            context: 'requirements specification detail',
+            name: 'requirement actions',
+            value: 'requirement action column',
+            priority: 350,
+          })}
+        >
+          <div ref={setDeviationActionTarget} />
+          {canEdit && (
+            <button
+              className="btn-destructive inline-flex items-center gap-2"
+              disabled={busy || pendingDeviations.length > 0}
+              onClick={event =>
+                void changeMembership('remove_requirement', event.currentTarget)
+              }
+              title={
+                pendingDeviations.length
+                  ? t('pendingDeviationWarning')
+                  : undefined
+              }
+              type="button"
+            >
+              <Trash2 aria-hidden="true" className="h-4 w-4" />
+              {t('removeRequirement')}
+            </button>
+          )}
+          {!selected && onRemoveFromSpecification && (
+            <button
+              className="btn-destructive inline-flex items-center gap-2"
+              disabled={
+                busy ||
+                removeFromSpecificationDisabled ||
+                pendingDeviations.length > 0
+              }
+              onClick={event =>
+                void onRemoveFromSpecification(event.currentTarget)
+              }
+              type="button"
+            >
+              <Trash2 aria-hidden="true" className="h-4 w-4" />
+              {t('removeRequirement')}
+            </button>
+          )}
+
+          {canEdit && (
             <button
               className="btn-secondary inline-flex items-center gap-2"
               disabled={busy || pendingDeviations.length > 0}
@@ -323,8 +387,8 @@ export default function SpecificationAgreementRequirement({
               <Pencil aria-hidden="true" className="h-4 w-4" />
               {t('editRequirement')}
             </button>
-          </div>
-        )}
+          )}
+        </fieldset>
       </div>
       {selected && (
         <SpecificationAgreementHistory
@@ -364,27 +428,6 @@ export default function SpecificationAgreementRequirement({
                   submitLabel={endingRequired ? endingAction : undefined}
                 />
               )}
-              {canEdit && (
-                <button
-                  className="btn-destructive inline-flex items-center gap-2"
-                  disabled={busy || pendingDeviations.length > 0}
-                  onClick={event =>
-                    void changeMembership(
-                      'remove_requirement',
-                      event.currentTarget,
-                    )
-                  }
-                  title={
-                    pendingDeviations.length
-                      ? t('pendingDeviationWarning')
-                      : undefined
-                  }
-                  type="button"
-                >
-                  <Trash2 aria-hidden="true" className="h-4 w-4" />
-                  {t('removeRequirement')}
-                </button>
-              )}
               {canUndo && (
                 <button
                   className="btn-secondary inline-flex items-center gap-2"
@@ -414,30 +457,6 @@ export default function SpecificationAgreementRequirement({
       {canEdit && pendingDeviations.length > 0 && (
         <p className="text-sm">{t('pendingDeviationWarning')}</p>
       )}
-      {!selected && onRemoveFromSpecification && (
-        <button
-          className="btn-destructive inline-flex items-center gap-2"
-          disabled={
-            busy ||
-            removeFromSpecificationDisabled ||
-            pendingDeviations.length > 0
-          }
-          onClick={event => void onRemoveFromSpecification(event.currentTarget)}
-          type="button"
-        >
-          <Trash2 aria-hidden="true" className="h-4 w-4" />
-          {t('removeRequirement')}
-        </button>
-      )}
-      <SpecificationAgreementDeviations
-        item={item}
-        onCancel={id => {
-          setCancellationReason('')
-          setCancellingDeviationId(id)
-        }}
-        onChange={onChange}
-        view={view}
-      />
       {error && (
         <p className="text-sm text-red-700 dark:text-red-300" role="alert">
           {error}
@@ -503,60 +522,6 @@ export default function SpecificationAgreementRequirement({
             type="submit"
           >
             {busy ? t('working') : tc('save')}
-          </button>
-        </form>
-      </FormModal>
-      <FormModal
-        closeDisabled={busy}
-        developerModeValue="agreement deviation cancellation"
-        onClose={() => setCancellingDeviationId(null)}
-        open={cancellingDeviationId !== null}
-        title={t('cancelDeviation')}
-        titleId={`cancel-deviation-${item.itemRef}`}
-      >
-        <form
-          className="space-y-4 p-5"
-          onSubmit={async event => {
-            event.preventDefault()
-            if (cancellingDeviationId === null) return
-            try {
-              await mutate({
-                operation: 'cancel_deviation',
-                agreementId: selected?.id,
-                itemRef: item.itemRef,
-                deviationId: cancellingDeviationId,
-                reason: cancellationReason.trim(),
-              })
-            } catch (cause) {
-              setError(cause instanceof Error ? cause.message : t('saveFailed'))
-            }
-          }}
-        >
-          <FieldLabelWithHelp
-            help={t('cancelDeviationReasonHelp')}
-            htmlFor={`deviation-cancellation-${item.itemRef}`}
-            label={t('reason')}
-            required
-          />
-          <textarea
-            className="w-full rounded-lg border border-secondary-300 bg-white p-3 text-secondary-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:border-secondary-600 dark:bg-secondary-900 dark:text-secondary-100"
-            id={`deviation-cancellation-${item.itemRef}`}
-            maxLength={10000}
-            onChange={event => setCancellationReason(event.target.value)}
-            required
-            value={cancellationReason}
-          />
-          {error && (
-            <p className="text-sm text-red-700 dark:text-red-300" role="alert">
-              {error}
-            </p>
-          )}
-          <button
-            className="btn-destructive"
-            disabled={busy || !cancellationReason.trim()}
-            type="submit"
-          >
-            {busy ? t('working') : t('cancelDeviation')}
           </button>
         </form>
       </FormModal>

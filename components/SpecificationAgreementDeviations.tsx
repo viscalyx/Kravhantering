@@ -1,11 +1,25 @@
 'use client'
 
-import { CheckCircle2, Clock3, FilePenLine, Send, XCircle } from 'lucide-react'
+import {
+  AlertTriangle,
+  Ban,
+  CheckCircle2,
+  Clock3,
+  FilePenLine,
+  Pencil,
+  Send,
+  XCircle,
+} from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationDecisionModal from '@/components/DeviationDecisionModal'
-import DeviationFormModal from '@/components/DeviationFormModal'
+import DeviationFormModal, {
+  type DeviationPriorityLevel,
+} from '@/components/DeviationFormModal'
+import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
+import FormModal from '@/components/FormModal'
 import type { SpecificationAgreementView } from '@/components/SpecificationAgreementBox'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -20,17 +34,22 @@ export default function SpecificationAgreementDeviations({
   item,
   view,
   onChange,
-  onCancel,
+  specificationId,
+  createActionTarget,
+  priorityLevel,
   showLaterEvents = false,
 }: {
   item: AgreementItem
   view: SpecificationAgreementView
   onChange: () => Promise<void>
-  onCancel: (id: number) => void
+  specificationId: number
+  createActionTarget?: HTMLElement | null
+  priorityLevel?: DeviationPriorityLevel | null
   showLaterEvents?: boolean
 }) {
   const t = useTranslations('deviation')
   const ta = useTranslations('agreement')
+  const tc = useTranslations('common')
   const locale = useLocale()
   const { confirm } = useConfirmModal()
   const [editing, setEditing] = useState<number | null>(null)
@@ -38,6 +57,16 @@ export default function SpecificationAgreementDeviations({
   const [deciding, setDeciding] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [cancellingDeviationId, setCancellingDeviationId] = useState<
+    number | null
+  >(null)
+  const [cancellationReason, setCancellationReason] = useState('')
+  const [success, setSuccess] = useState<string | null>(null)
+  const cancellingCase = view.deviations.find(
+    deviation =>
+      deviation.itemRef === item.itemRef &&
+      deviation.id === cancellingDeviationId,
+  )
   const selected = view.selectedAgreement
   const active =
     (!selected || ['draft', 'upcoming', 'current'].includes(selected.state)) &&
@@ -58,10 +87,22 @@ export default function SpecificationAgreementDeviations({
       ending =>
         ending.itemRef === item.itemRef && ending.deviationId === deviationId,
     )
+  const frozenCase = (id: number) =>
+    item.deviationStateSnapshot?.find(deviation => deviation.id === id)
+  const changedAfterFreeze = (deviation: (typeof cases)[number]) => {
+    const snapshot = frozenCase(deviation.id)
+    return (
+      !!snapshot &&
+      (snapshot.motivation !== deviation.motivation ||
+        snapshot.isReviewRequested !== deviation.isReviewRequested) &&
+      isLater(deviation.updatedAt)
+    )
+  }
   const laterCases = frozenAt
     ? cases.filter(
         deviation =>
           isLater(deviation.createdAt) ||
+          changedAfterFreeze(deviation) ||
           isLater(deviation.decidedAt) ||
           endingsFor(deviation.id).some(
             ending =>
@@ -91,175 +132,284 @@ export default function SpecificationAgreementDeviations({
   ) => {
     setBusy(true)
     setError(null)
+    setSuccess(null)
     try {
       const response = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...body, agreementId: selected?.id }),
       })
-      const result = (await response.json()) as AgreementHttpError
-      if (!response.ok) throw new Error(agreementErrorMessage(result, ta))
+      const result = (await response.json()) as AgreementHttpError | null
+      if (!response.ok) {
+        setError(agreementErrorMessage(result ?? {}, ta))
+        return
+      }
       await onChange()
       setCreating(false)
       setEditing(null)
       setDeciding(null)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t('saveFailed'))
+      setCancellingDeviationId(null)
+      if (body.operation === 'cancel_deviation')
+        setSuccess(ta('cancelDeviationSuccess'))
+    } catch {
+      setError(t('saveFailed'))
     } finally {
       setBusy(false)
     }
   }
-  const renderCase = (
-    deviation: (typeof cases)[number],
-    historical: boolean,
-  ) => (
-    <div
-      className="space-y-2 rounded-lg border border-secondary-200 p-3 text-sm dark:border-secondary-700"
-      key={deviation.id}
-    >
-      <p className="flex items-center gap-1.5 font-medium" role="status">
-        {historical && isLater(deviation.decidedAt) ? (
-          <Clock3 aria-hidden="true" className="h-4 w-4" />
-        ) : deviation.decision === 1 ? (
-          <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
-        ) : deviation.decision === 2 || deviation.decision === 3 ? (
-          <XCircle aria-hidden="true" className="h-4 w-4" />
-        ) : deviation.isReviewRequested ? (
-          <Send aria-hidden="true" className="h-4 w-4" />
-        ) : (
-          <FilePenLine aria-hidden="true" className="h-4 w-4" />
-        )}
-        {t(
-          historical && isLater(deviation.decidedAt)
-            ? 'statusPending'
-            : deviation.decision === 1
-              ? 'statusApproved'
-              : deviation.decision === 2
-                ? 'statusRejected'
-                : deviation.decision === 3
-                  ? 'statusCancelled'
-                  : deviation.isReviewRequested
-                    ? 'stepReviewRequested'
-                    : 'stepDraft',
-        )}
-      </p>
-      <p className="whitespace-pre-wrap wrap-break-word">
-        {deviation.motivation}
-      </p>
-      {deviation.decision !== null &&
-        !(historical && isLater(deviation.decidedAt)) && (
-          <>
-            <p className="whitespace-pre-wrap wrap-break-word">
-              {deviation.decisionMotivation}
-            </p>
-            <p>
-              {formatDate(deviation.decidedAt)} · {actor(deviation.decidedBy)}
-            </p>
-          </>
-        )}
-      {endingsFor(deviation.id).map(ending => {
-        const events = [
-          {
-            key: 'endingPlanned',
-            at: ending.recordedAt,
-            detail: ending.plannedEffectiveDate,
-          },
-          { key: 'deviationEnded', at: ending.endedAt, detail: null },
-          { key: 'endingCancelled', at: ending.cancelledAt, detail: null },
-        ].filter(
-          event =>
-            event.at &&
-            (!frozenAt ||
-              (historical ? !isLater(event.at) : isLater(event.at))),
-        )
-        return events.map(event => (
-          <p key={`${ending.id}:${event.key}`}>
-            {ta(event.key)} · {ending.agreementReference} ·{' '}
-            {formatDate(event.at)}
-            {event.detail ? ` · ${event.detail}` : ''}
-          </p>
-        ))
-      })}
-      <details>
-        <summary className="min-h-6 cursor-pointer rounded py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
-          {ta('registrationInformation')}
-        </summary>
-        <p>
-          {formatDate(deviation.createdAt)} · {actor(deviation.createdBy)}
-        </p>
-      </details>
-      {active && deviation.decision === null && (
-        <div className="flex flex-wrap gap-2">
-          {view.canAuthor && !deviation.isReviewRequested && (
-            <button
-              className="btn-secondary"
-              disabled={busy}
-              onClick={() => {
-                setError(null)
-                setEditing(deviation.id)
-              }}
-              type="button"
-            >
-              {t('editDeviation')}
-            </button>
-          )}
-          {view.canAuthor && !!deviation.isReviewRequested && (
-            <button
-              className="btn-secondary"
-              disabled={busy}
-              onClick={async event => {
-                const accepted = await confirm({
-                  message: t('revertToDraftConfirm'),
-                  title: t('revertToDraftConfirmTitle'),
-                  anchorEl: event.currentTarget,
-                })
-                if (accepted)
-                  await mutate(`${path}/${deviation.id}/revert-to-draft`, {})
-              }}
-              type="button"
-            >
-              {t('revertToDraft')}
-            </button>
-          )}
-          {view.canAuthor && !deviation.isReviewRequested && (
-            <button
-              className="btn-secondary"
-              disabled={busy}
-              onClick={() =>
-                void mutate(`${path}/${deviation.id}/request-review`, {})
-              }
-              type="button"
-            >
-              {t('requestReview')}
-            </button>
-          )}
-          {view.canReviewDeviations && !!deviation.isReviewRequested && (
-            <button
-              className="btn-primary"
-              disabled={busy}
-              onClick={() => {
-                setError(null)
-                setDeciding(deviation.id)
-              }}
-              type="button"
-            >
-              {t('recordDecision')}
-            </button>
-          )}
-          {view.canAuthor && (
-            <button
-              className="btn-secondary"
-              disabled={busy}
-              onClick={() => onCancel(deviation.id)}
-              type="button"
-            >
-              {ta('cancelDeviation')}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
+  const endingState = (deviationId: number, historical: boolean) => {
+    const visible = endingsFor(deviationId).filter(
+      ending => !historical || !isLater(ending.recordedAt),
+    )
+    return {
+      ended: visible.find(
+        ending => ending.endedAt && (!historical || !isLater(ending.endedAt)),
+      ),
+      planned: visible.find(
+        ending =>
+          (!ending.cancelledAt ||
+            (historical && isLater(ending.cancelledAt))) &&
+          (!ending.endedAt || (historical && isLater(ending.endedAt))),
+      ),
+    }
+  }
+  const visibleCases = cases
+    .filter(
+      deviation =>
+        !isLater(deviation.createdAt) &&
+        (!frozenAt ||
+          item.deviationStateSnapshot == null ||
+          !!frozenCase(deviation.id)),
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt ?? 0).getTime() -
+          new Date(a.createdAt ?? 0).getTime() || b.id - a.id,
+    )
+  const importantCases = visibleCases.filter(
+    deviation =>
+      deviation.decision === null ||
+      isLater(deviation.decidedAt) ||
+      (deviation.decision === 1 &&
+        !endingState(deviation.id, !!frozenAt).ended),
   )
+  const shownCases = importantCases.length
+    ? importantCases
+    : visibleCases.slice(0, 1)
+  const previousCases = visibleCases.filter(
+    deviation => !shownCases.includes(deviation),
+  )
+  const renderCase = (current: (typeof cases)[number], historical: boolean) => {
+    const snapshot = historical ? frozenCase(current.id) : undefined
+    const deviation = snapshot ? { ...current, ...snapshot } : current
+    const motivation =
+      historical && !snapshot
+        ? ta('missingHistoricalValue')
+        : deviation.motivation
+    const decision =
+      historical && isLater(deviation.decidedAt) ? null : deviation.decision
+    const { ended, planned } = endingState(deviation.id, historical)
+    const muted = decision === 3 || !!ended
+    const Icon = muted
+      ? Ban
+      : decision === 1
+        ? CheckCircle2
+        : decision === 2
+          ? XCircle
+          : deviation.isReviewRequested
+            ? Send
+            : FilePenLine
+    const statusKey =
+      decision === 1
+        ? 'statusApproved'
+        : decision === 2
+          ? 'statusRejected'
+          : decision === 3
+            ? 'statusCancelled'
+            : deviation.isReviewRequested
+              ? 'stepReviewRequested'
+              : 'stepDraft'
+    return (
+      <article
+        aria-label={motivation}
+        className={`space-y-2 rounded-xl border px-4 py-3 text-sm ${muted ? 'border-secondary-200 bg-secondary-50 text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-300' : decision === 1 ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300' : decision === 2 ? 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300' : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200'}`}
+        key={deviation.id}
+        {...devMarker({
+          context: 'requirements specification detail',
+          name: 'deviation case',
+          value: ended ? 'ended' : statusKey,
+          priority: 350,
+        })}
+      >
+        <p
+          className="flex flex-wrap items-center gap-1.5 font-medium"
+          role="status"
+        >
+          <Icon aria-hidden="true" className="h-4 w-4" />
+          {ended
+            ? ta('deviationEndedOn', { date: formatDate(ended.endedAt) })
+            : historical && decision === null && !snapshot
+              ? ta('missingHistoricalValue')
+              : t(statusKey)}
+          {decision === 1 && planned && !ended && (
+            <span className="inline-flex items-center gap-1.5">
+              <Clock3 aria-hidden="true" className="h-4 w-4" />
+              {ta('endingPlanned')} · {planned.plannedEffectiveDate}
+            </span>
+          )}
+        </p>
+        <p className="whitespace-pre-wrap wrap-break-word">{motivation}</p>
+        {!historical && frozenAt && changedAfterFreeze(current) && (
+          <p>
+            {ta('deviationChangedOn', { date: formatDate(current.updatedAt) })}
+          </p>
+        )}
+        {deviation.decision !== null &&
+          !(historical && isLater(deviation.decidedAt)) && (
+            <>
+              <p className="whitespace-pre-wrap wrap-break-word">
+                {deviation.decisionMotivation}
+              </p>
+            </>
+          )}
+        {endingsFor(deviation.id).map(ending => {
+          const events = [
+            {
+              key: 'endingPlanned',
+              at: ending.recordedAt,
+              detail: ending.plannedEffectiveDate,
+            },
+            { key: 'deviationEnded', at: ending.endedAt, detail: null },
+            { key: 'endingCancelled', at: ending.cancelledAt, detail: null },
+          ].filter(
+            event =>
+              event.at &&
+              (!frozenAt ||
+                (historical ? !isLater(event.at) : isLater(event.at))),
+          )
+          return events.map(event => (
+            <p key={`${ending.id}:${event.key}`}>
+              {ta(event.key)} · {ending.agreementReference} ·{' '}
+              {formatDate(event.at)}
+              {event.detail ? ` · ${event.detail}` : ''}
+            </p>
+          ))
+        })}
+        <details>
+          <summary className="min-h-6 cursor-pointer rounded py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+            {ta('registrationInformation')}
+          </summary>
+          <p>
+            {tc('createdAt')}: {formatDate(deviation.createdAt)} ·{' '}
+            {actor(deviation.createdBy)}
+          </p>
+          {decision !== null && (
+            <p>
+              {t(statusKey)} · {formatDate(deviation.decidedAt)} ·{' '}
+              {actor(deviation.decidedBy)}
+            </p>
+          )}
+        </details>
+        {active && deviation.decision === null && (
+          <div className="flex flex-wrap justify-end gap-2">
+            {view.canAuthor && !deviation.isReviewRequested && (
+              <button
+                className="btn-secondary inline-flex items-center gap-1.5"
+                disabled={busy}
+                onClick={() => {
+                  setError(null)
+                  setEditing(deviation.id)
+                }}
+                type="button"
+              >
+                <Pencil aria-hidden="true" className="h-4 w-4" />
+                {t('editDeviation')}
+              </button>
+            )}
+            {view.canAuthor && !!deviation.isReviewRequested && (
+              <button
+                className="btn-secondary"
+                disabled={busy}
+                onClick={async event => {
+                  const accepted = await confirm({
+                    message: t('revertToDraftConfirm'),
+                    title: t('revertToDraftConfirmTitle'),
+                    anchorEl: event.currentTarget,
+                  })
+                  if (accepted)
+                    await mutate(`${path}/${deviation.id}/revert-to-draft`, {})
+                }}
+                type="button"
+              >
+                {t('revertToDraft')}
+              </button>
+            )}
+            {view.canAuthor && !deviation.isReviewRequested && (
+              <button
+                className="btn-primary"
+                disabled={busy}
+                onClick={() =>
+                  void mutate(`${path}/${deviation.id}/request-review`, {})
+                }
+                type="button"
+              >
+                {t('requestReview')}
+              </button>
+            )}
+            {view.canReviewDeviations && !!deviation.isReviewRequested && (
+              <button
+                className="btn-primary"
+                disabled={busy}
+                onClick={() => {
+                  setError(null)
+                  setDeciding(deviation.id)
+                }}
+                type="button"
+              >
+                {t('recordDecision')}
+              </button>
+            )}
+            {view.canAuthor && (
+              <button
+                className="btn-secondary"
+                disabled={busy}
+                onClick={() => {
+                  setError(null)
+                  setCancellationReason('')
+                  setCancellingDeviationId(deviation.id)
+                }}
+                type="button"
+              >
+                {ta('cancelDeviation')}
+              </button>
+            )}
+          </div>
+        )}
+      </article>
+    )
+  }
+
+  const createAction = active &&
+    view.canAuthor &&
+    !cases.some(
+      deviation =>
+        deviation.decision === null ||
+        (deviation.decision === 1 &&
+          !endingsFor(deviation.id).some(ending => ending.endedAt)),
+    ) && (
+      <button
+        className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-secondary-950 shadow-sm hover:border-amber-600 hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 dark:border-amber-500 dark:bg-amber-500 dark:text-secondary-950 dark:hover:bg-amber-400"
+        disabled={busy}
+        onClick={() => {
+          setError(null)
+          setCreating(true)
+        }}
+        type="button"
+      >
+        <AlertTriangle aria-hidden="true" className="h-4 w-4" />
+        {t('requestDeviation')}
+      </button>
+    )
 
   return (
     <section
@@ -272,10 +422,21 @@ export default function SpecificationAgreementDeviations({
         priority: 350,
       })}
     >
-      <h3 className="text-sm font-semibold">{t('title')}</h3>
-      {cases
-        .filter(deviation => !isLater(deviation.createdAt))
-        .map(deviation => renderCase(deviation, !!frozenAt))}
+      {frozenAt && item.deviationStateSnapshot == null && (
+        <p className="text-sm">{ta('missingHistoricalHelp')}</p>
+      )}
+      {visibleCases.length > 0 && (
+        <h3 className="text-sm font-semibold">{t('title')}</h3>
+      )}
+      {shownCases.map(deviation => renderCase(deviation, !!frozenAt))}
+      {previousCases.length > 0 && (
+        <details className="space-y-3">
+          <summary className="min-h-6 cursor-pointer rounded py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+            {t('historyLabel', { count: previousCases.length })}
+          </summary>
+          {previousCases.map(deviation => renderCase(deviation, !!frozenAt))}
+        </details>
+      )}
       {showLaterEvents && laterCases.length > 0 && (
         <section
           aria-label={ta('laterEvents')}
@@ -292,29 +453,24 @@ export default function SpecificationAgreementDeviations({
           {laterCases.map(deviation => renderCase(deviation, false))}
         </section>
       )}
-      {active &&
-        view.canAuthor &&
-        !cases.some(
-          deviation =>
-            deviation.decision === null ||
-            (deviation.decision === 1 &&
-              !endingsFor(deviation.id).some(ending => ending.endedAt)),
-        ) && (
-          <button
-            className="btn-secondary"
-            disabled={busy}
-            onClick={() => {
-              setError(null)
-              setCreating(true)
-            }}
-            type="button"
-          >
-            {t('requestDeviation')}
-          </button>
+      {createActionTarget
+        ? createPortal(createAction, createActionTarget)
+        : createAction}
+      {error &&
+        !creating &&
+        editing === null &&
+        deciding === null &&
+        cancellingDeviationId === null && (
+          <p className="text-sm text-red-700 dark:text-red-300" role="alert">
+            {error}
+          </p>
         )}
-      {error && !creating && editing === null && deciding === null && (
-        <p className="text-sm text-red-700 dark:text-red-300" role="alert">
-          {error}
+      {success && (
+        <p
+          className="text-sm text-secondary-700 dark:text-secondary-300"
+          role="status"
+        >
+          {success}
         </p>
       )}
       <DeviationFormModal
@@ -339,6 +495,7 @@ export default function SpecificationAgreementDeviations({
           )
         }
         open={creating || editing !== null}
+        priorityLevel={priorityLevel}
         scopeNotice={
           creating &&
           item.currentAgreementReference &&
@@ -350,6 +507,87 @@ export default function SpecificationAgreementDeviations({
         }
         title={editing !== null ? t('editDeviation') : undefined}
       />
+      <FormModal
+        closeDisabled={busy}
+        developerModeValue="agreement deviation cancellation"
+        onClose={() => setCancellingDeviationId(null)}
+        open={cancellingDeviationId !== null}
+        title={ta('cancelDeviation')}
+        titleId={`cancel-deviation-${item.itemRef}`}
+      >
+        <form
+          className="space-y-4 p-5"
+          onSubmit={async event => {
+            event.preventDefault()
+            if (cancellingDeviationId === null) return
+            await mutate(
+              `/api/requirements-specifications/${specificationId}/agreement`,
+              {
+                operation: 'cancel_deviation',
+                itemRef: item.itemRef,
+                deviationId: cancellingDeviationId,
+                reason: cancellationReason.trim(),
+              },
+            )
+          }}
+        >
+          <p>{ta('cancelDeviationExplanation')}</p>
+          {cancellingCase?.agreementReferences && (
+            <p>
+              {ta('cancelDeviationSharedScope', {
+                references: cancellingCase.agreementReferences,
+              })}
+            </p>
+          )}
+          <p className="whitespace-pre-wrap wrap-break-word">
+            {cancellingCase?.motivation}
+          </p>
+          <FieldLabelWithHelp
+            help={ta('cancelDeviationReasonHelp')}
+            htmlFor={`deviation-cancellation-${item.itemRef}`}
+            label={ta('reason')}
+            required
+          />
+          <textarea
+            className="w-full rounded-lg border border-secondary-300 bg-white p-3 text-secondary-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:border-secondary-600 dark:bg-secondary-900 dark:text-secondary-100"
+            id={`deviation-cancellation-${item.itemRef}`}
+            maxLength={10000}
+            onChange={event => setCancellationReason(event.target.value)}
+            required
+            value={cancellationReason}
+          />
+          {error && (
+            <p className="text-sm text-red-700 dark:text-red-300" role="alert">
+              {error}
+            </p>
+          )}
+          <div
+            className="flex flex-wrap justify-end gap-3"
+            {...devMarker({
+              context: 'requirements specification detail',
+              name: 'form actions',
+              value: 'end deviation without a decision',
+              priority: 350,
+            })}
+          >
+            <button
+              className="btn-secondary"
+              disabled={busy}
+              onClick={() => setCancellingDeviationId(null)}
+              type="button"
+            >
+              {tc('close')}
+            </button>
+            <button
+              className="btn-destructive"
+              disabled={busy || !cancellationReason.trim()}
+              type="submit"
+            >
+              {busy ? ta('working') : ta('cancelDeviation')}
+            </button>
+          </div>
+        </form>
+      </FormModal>
       <DeviationDecisionModal
         error={error}
         loading={busy}

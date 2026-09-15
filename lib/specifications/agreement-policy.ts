@@ -147,7 +147,9 @@ export async function assertNewDeviationAllowed(
     [itemId],
   )
   if (active.length)
-    throw conflictError('The application already has an active deviation')
+    throw conflictError('The application already has an active deviation', {
+      reason: 'active_deviation_exists',
+    })
 }
 
 export async function assertApplicationFollowupAllowed(

@@ -7,6 +7,7 @@ import type { SpecificationLocalRequirementEntity } from '@/lib/typeorm/entities
 export interface SpecificationAgreementItemEntity {
   changedInAgreement: SpecificationAgreementEntity | null
   changeKind: string | null
+  deviationStateJson: string | null
   hasFollowupSnapshot: boolean
   id: number
   isRemoved: boolean
@@ -25,6 +26,12 @@ export const specificationAgreementItemEntity =
     name: 'SpecificationAgreementItem',
     tableName: 'specification_agreement_items',
     columns: {
+      deviationStateJson: {
+        name: 'deviation_state_json',
+        type: 'nvarchar',
+        length: 'MAX',
+        nullable: true,
+      },
       changeKind: {
         name: 'change_kind',
         type: 'varchar',

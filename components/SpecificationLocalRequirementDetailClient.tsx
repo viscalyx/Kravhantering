@@ -1,17 +1,15 @@
 'use client'
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { AlertTriangle, LibraryBig, Pencil, Trash2, X } from 'lucide-react'
+import { LibraryBig, Pencil, Trash2, X } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useConfirmModal } from '@/components/ConfirmModal'
-import DeviationDecisionModal from '@/components/DeviationDecisionModal'
-import DeviationFormModal from '@/components/DeviationFormModal'
-import DeviationPill from '@/components/DeviationPill'
-import type { DeviationStep } from '@/components/DeviationStepper'
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
+import type { SpecificationAgreementView } from '@/components/SpecificationAgreementBox'
+import SpecificationAgreementDeviations from '@/components/SpecificationAgreementDeviations'
 import SpecificationLocalRequirementForm, {
   type SpecificationLocalRequirementSubmitPayload,
 } from '@/components/SpecificationLocalRequirementForm'
@@ -28,6 +26,7 @@ import type {
   SpecificationLocalRequirementDetailCache,
 } from '@/lib/requirements/detail-prefetch'
 import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
+import type { AgreementItem } from '@/lib/specifications/agreements'
 import type { SpecificationLocalRequirementDetail } from '@/lib/specifications/local-requirement-detail'
 
 interface SpecificationLocalRequirementUsageStatusSnapshot {
@@ -72,18 +71,6 @@ function applyUsageStatusSnapshot(
   }
 }
 
-interface DeviationData {
-  createdAt: string
-  createdBy: string | null
-  decidedAt: string | null
-  decidedBy: string | null
-  decision: number | null
-  decisionMotivation: string | null
-  id: number
-  isReviewRequested: number
-  motivation: string
-}
-
 interface GraduationTargetArea {
   id: number
   name: string
@@ -91,6 +78,8 @@ interface GraduationTargetArea {
 }
 
 interface SpecificationLocalRequirementDetailClientProps {
+  agreementItem: AgreementItem
+  agreementView: SpecificationAgreementView
   approvedDeviationEndingRequired?: boolean
   detailCache?: SpecificationLocalRequirementDetailCache
   detailPrefetchContext?: RequirementDetailPrefetchContext
@@ -423,6 +412,8 @@ function SpecificationLocalRequirementEditModal({
 }
 
 export default function SpecificationLocalRequirementDetailClient({
+  agreementView,
+  agreementItem,
   approvedDeviationEndingRequired = false,
   detailCache,
   detailPrefetchContext,
@@ -436,7 +427,6 @@ export default function SpecificationLocalRequirementDetailClient({
   const ta = useTranslations('agreement')
   const t = useTranslations('requirement')
   const tp = useTranslations('specification')
-  const td = useTranslations('deviation')
   const tc = useTranslations('common')
   const locale = useLocale()
   const router = useRouter()
@@ -463,12 +453,8 @@ export default function SpecificationLocalRequirementDetailClient({
   const [error, setError] = useState<string | null>(null)
   const [showEditForm, setShowEditForm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [deviations, setDeviations] = useState<DeviationData[]>([])
-  const [deviationError, setDeviationError] = useState<string | null>(null)
-  const [deviationSaving, setDeviationSaving] = useState(false)
-  const [showDeviationForm, setShowDeviationForm] = useState(false)
-  const [showEditDeviationForm, setShowEditDeviationForm] = useState(false)
-  const [showDecisionForm, setShowDecisionForm] = useState(false)
+  const [deviationActionTarget, setDeviationActionTarget] =
+    useState<HTMLDivElement | null>(null)
   const [graduationTargetAreas, setGraduationTargetAreas] = useState<
     GraduationTargetArea[]
   >([])
@@ -502,31 +488,6 @@ export default function SpecificationLocalRequirementDetailClient({
     }
   }, [needsReferencesResource])
   const usageStatusRef = useRef(usageStatus)
-
-  const latestDeviation = useMemo(() => {
-    if (deviations.length === 0) {
-      return null
-    }
-    return deviations[deviations.length - 1]
-  }, [deviations])
-
-  const deviationHistory = useMemo(
-    () => (deviations.length > 1 ? deviations.slice(0, -1) : []),
-    [deviations],
-  )
-
-  const deviationStep = useMemo((): DeviationStep | null => {
-    if (!latestDeviation) {
-      return null
-    }
-    if (latestDeviation.decision !== null) {
-      return 'decided'
-    }
-    if (latestDeviation.isReviewRequested === 1) {
-      return 'review_requested'
-    }
-    return 'draft'
-  }, [latestDeviation])
 
   const fetchRequirement = useCallback(
     async (authoritative = false) => {
@@ -584,44 +545,6 @@ export default function SpecificationLocalRequirementDetailClient({
       tc,
       tp,
     ],
-  )
-
-  const fetchDeviations = useCallback(
-    async (signal?: AbortSignal) => {
-      if (!requirement?.itemRef) {
-        setDeviations([])
-        return
-      }
-
-      try {
-        const response = await apiFetch(
-          `/api/specification-item-deviations/${encodeURIComponent(requirement.itemRef)}`,
-          signal ? { signal } : undefined,
-        )
-
-        if (signal?.aborted) return
-
-        if (!response.ok) {
-          setDeviationError(td('fetchFailed'))
-          return
-        }
-
-        const data = (await response.json()) as {
-          deviations: DeviationData[]
-        }
-        if (signal?.aborted) return
-        setDeviationError(null)
-        setDeviations(data.deviations)
-      } catch (fetchError) {
-        if (
-          fetchError instanceof DOMException &&
-          fetchError.name === 'AbortError'
-        )
-          return
-        setDeviationError(td('fetchFailed'))
-      }
-    },
-    [requirement?.itemRef, td],
   )
 
   const fetchGraduationTargetAreas = useCallback(
@@ -700,14 +623,6 @@ export default function SpecificationLocalRequirementDetailClient({
   }, [usageStatus])
 
   useEffect(() => {
-    setDeviations([])
-    setDeviationError(null)
-    const controller = new AbortController()
-    void fetchDeviations(controller.signal)
-    return () => controller.abort()
-  }, [fetchDeviations])
-
-  useEffect(() => {
     setGraduationError(null)
     const controller = new AbortController()
     void fetchGraduationTargetAreas(controller.signal)
@@ -716,13 +631,8 @@ export default function SpecificationLocalRequirementDetailClient({
 
   const railSecondaryButtonClass =
     'btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11 disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none'
-  const railPrimaryButtonClass =
-    'btn-primary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11 disabled:cursor-not-allowed disabled:pointer-events-none'
   const railDangerButtonClass =
     'btn-destructive inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11'
-  const railAmberButtonClass =
-    'inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-11 min-w-11'
-
   const handleEditSubmit = useCallback(
     async (payload: SpecificationLocalRequirementSubmitPayload) => {
       if (approvedDeviationEndingRequired) {
@@ -934,148 +844,6 @@ export default function SpecificationLocalRequirementDetailClient({
     tp,
   ])
 
-  const performDeviationMutation = useCallback(
-    async (
-      input: RequestInfo,
-      init?: RequestInit,
-      fallbackError?: string,
-      afterSuccess?: () => void,
-    ) => {
-      setDeviationSaving(true)
-
-      try {
-        const response = await apiFetch(input, init)
-        if (!response.ok) {
-          const body = (await response.json().catch(() => null)) as unknown
-          setDeviationError(
-            readResponseError(body) ?? fallbackError ?? tc('error'),
-          )
-          return false
-        }
-
-        setDeviationError(null)
-        afterSuccess?.()
-        await Promise.all([fetchDeviations(), onChange?.()])
-        return true
-      } catch (mutationError) {
-        setDeviationError(
-          mutationError instanceof Error
-            ? mutationError.message
-            : (fallbackError ?? tc('error')),
-        )
-        return false
-      } finally {
-        setDeviationSaving(false)
-      }
-    },
-    [fetchDeviations, onChange, tc],
-  )
-
-  const handleCreateDeviation = useCallback(
-    async (motivation: string) => {
-      if (!requirement?.itemRef || !motivation) {
-        return
-      }
-
-      await performDeviationMutation(
-        `/api/specification-item-deviations/${encodeURIComponent(requirement.itemRef)}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            motivation,
-          }),
-        },
-        td('saveFailed'),
-        () => setShowDeviationForm(false),
-      )
-    },
-    [performDeviationMutation, requirement?.itemRef, td],
-  )
-
-  const handleEditDeviation = useCallback(
-    async (motivation: string) => {
-      if (!latestDeviation || !motivation) {
-        return
-      }
-
-      await performDeviationMutation(
-        `/api/specification-local-deviations/${latestDeviation.id}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ motivation }),
-        },
-        td('saveFailed'),
-        () => setShowEditDeviationForm(false),
-      )
-    },
-    [latestDeviation, performDeviationMutation, td],
-  )
-
-  const handleRequestReview = useCallback(async () => {
-    if (!latestDeviation) {
-      return
-    }
-
-    await performDeviationMutation(
-      `/api/specification-local-deviations/${latestDeviation.id}/request-review`,
-      { method: 'POST' },
-      td('reviewFailed'),
-    )
-  }, [latestDeviation, performDeviationMutation, td])
-
-  const handleRevertToDraft = useCallback(
-    async (event?: React.MouseEvent<HTMLButtonElement>) => {
-      if (!latestDeviation) {
-        return
-      }
-
-      const anchorEl = event?.currentTarget
-      const confirmed = await confirm({
-        anchorEl,
-        icon: 'warning',
-        message: td('revertToDraftConfirm'),
-        title: td('revertToDraftConfirmTitle'),
-        variant: 'default',
-      })
-
-      if (!confirmed) {
-        return
-      }
-
-      await performDeviationMutation(
-        `/api/specification-local-deviations/${latestDeviation.id}/revert-to-draft`,
-        { method: 'POST' },
-        td('revertFailed'),
-      )
-    },
-    [confirm, latestDeviation, performDeviationMutation, td],
-  )
-
-  const handleRecordDecision = useCallback(
-    async (decision: 1 | 2, motivation: string) => {
-      if (!latestDeviation) {
-        return
-      }
-
-      await performDeviationMutation(
-        `/api/specification-local-deviations/${latestDeviation.id}/decision`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            decision,
-            decisionMotivation: motivation,
-          }),
-        },
-        td('decisionFailed'),
-        () => setShowDecisionForm(false),
-      )
-    },
-    [latestDeviation, performDeviationMutation, td],
-  )
-
   if (loading) {
     return (
       <div className="flex min-h-40 items-center justify-center">
@@ -1218,12 +986,14 @@ export default function SpecificationLocalRequirementDetailClient({
     title: reference.name,
   }))
 
-  const hasPendingDeviation =
-    deviationStep === 'draft' || deviationStep === 'review_requested'
+  const hasPendingDeviation = agreementView.deviations.some(
+    deviation =>
+      deviation.itemRef === agreementItem.itemRef &&
+      deviation.decision === null,
+  )
   const canEditContent = permissions?.canEditContent === true
   const canChangeContent =
     canEditContent && permissions?.canChangeContent !== false
-  const canReviewDecisions = permissions?.canReviewDecisions === true
   const canMutateLocalRequirement =
     canChangeContent &&
     requirement.specificationItemStatusId ===
@@ -1277,15 +1047,16 @@ export default function SpecificationLocalRequirementDetailClient({
             </p>
           ) : null}
 
-          {latestDeviation ? (
-            <div className="mb-4">
-              <DeviationPill
-                developerModeContext={detailContext}
-                history={deviationHistory}
-                latest={latestDeviation}
-              />
-            </div>
-          ) : null}
+          <SpecificationAgreementDeviations
+            createActionTarget={deviationActionTarget}
+            item={agreementItem}
+            onChange={async () => {
+              await onChange?.()
+            }}
+            priorityLevel={priorityLevelForDeviation}
+            specificationId={specificationId}
+            view={agreementView}
+          />
 
           <div className="grid grid-cols-1 gap-6">
             <div className="space-y-6">
@@ -1313,89 +1084,65 @@ export default function SpecificationLocalRequirementDetailClient({
                   />
                 </RequirementDetailCard>
 
-                <div className="shrink-0 sm:w-64">
-                  {graduationTargetAreasLoaded ? (
-                    <div className="flex flex-col gap-2">
-                      {deviationError ? (
-                        <p
-                          className="text-sm text-red-600 dark:text-red-400"
-                          role="alert"
-                        >
-                          {deviationError}
-                        </p>
-                      ) : null}
-
-                      {(deviationStep === null ||
-                        deviationStep === 'decided') &&
-                      canEditContent ? (
+                <fieldset
+                  aria-label={ta('requirementActionColumn')}
+                  className="shrink-0 space-y-2 sm:w-64"
+                  {...devMarker({
+                    context: detailContext,
+                    name: 'requirement actions',
+                    value: 'requirement action column',
+                    priority: 350,
+                  })}
+                >
+                  <div ref={setDeviationActionTarget} />
+                  {canChangeContent && graduationTargetAreasLoaded ? (
+                    <>
+                      <span
+                        className="inline-flex w-full"
+                        title={localRequirementMutationTooltip}
+                      >
                         <button
-                          className={railAmberButtonClass}
-                          disabled={deviationSaving}
-                          onClick={() => setShowDeviationForm(true)}
+                          className={railDangerButtonClass}
+                          disabled={!canMutateLocalRequirement || isDeleting}
+                          {...devMarker({
+                            context: detailContext,
+                            name: 'detail action',
+                            priority: 291,
+                            value: 'delete local requirement',
+                          })}
+                          onClick={event => void handleDelete(event)}
                           type="button"
                         >
-                          <AlertTriangle
-                            aria-hidden="true"
-                            className="h-4 w-4"
-                          />
-                          {td('requestDeviation')}
+                          <Trash2 aria-hidden="true" className="h-4 w-4" />
+                          {tc('delete')}
                         </button>
-                      ) : deviationStep === 'draft' && canEditContent ? (
-                        <>
-                          <button
-                            className={railAmberButtonClass}
-                            disabled={deviationSaving}
-                            onClick={() => setShowEditDeviationForm(true)}
-                            type="button"
-                          >
-                            <Pencil aria-hidden="true" className="h-4 w-4" />
-                            {td('editDeviation')}
-                          </button>
-
-                          <button
-                            className={railPrimaryButtonClass}
-                            disabled={deviationSaving}
-                            onClick={() => void handleRequestReview()}
-                            type="button"
-                          >
-                            {td('requestReview')}
-                          </button>
-                        </>
-                      ) : deviationStep === 'review_requested' ? (
-                        <>
-                          {canEditContent ? (
-                            <button
-                              className={railSecondaryButtonClass}
-                              disabled={deviationSaving}
-                              onClick={event => void handleRevertToDraft(event)}
-                              type="button"
-                            >
-                              {td('revertToDraft')}
-                            </button>
-                          ) : null}
-                          {canReviewDecisions ? (
-                            <button
-                              className={railPrimaryButtonClass}
-                              disabled={deviationSaving}
-                              onClick={() => setShowDecisionForm(true)}
-                              type="button"
-                            >
-                              {td('recordDecision')}
-                            </button>
-                          ) : null}
-                        </>
-                      ) : null}
-
-                      {canEditContent &&
-                        (deviationStep === 'draft' ||
-                          deviationStep === 'review_requested') && (
-                          <a
-                            className={railSecondaryButtonClass}
-                            href={`/${locale}/specifications/${specificationId}#agreement-history`}
-                          >
-                            {td('manageCancellation')}
-                          </a>
-                        )}
+                      </span>
+                    </>
+                  ) : null}
+                  {canChangeContent && graduationTargetAreasLoaded && (
+                    <span
+                      className="inline-flex w-full"
+                      title={localRequirementMutationTooltip}
+                    >
+                      <button
+                        className={railSecondaryButtonClass}
+                        disabled={!canMutateLocalRequirement || isDeleting}
+                        {...devMarker({
+                          context: detailContext,
+                          name: 'detail action',
+                          priority: 290,
+                          value: 'edit local requirement',
+                        })}
+                        onClick={handleOpenEditForm}
+                        type="button"
+                      >
+                        <Pencil aria-hidden="true" className="h-4 w-4" />
+                        {tc('edit')}
+                      </button>
+                    </span>
+                  )}
+                  {graduationTargetAreasLoaded ? (
+                    <div className="flex flex-col gap-2">
                       {canChangeContent && graduationTargetAreas.length > 0 ? (
                         <>
                           <span className="inline-flex w-full">
@@ -1432,86 +1179,14 @@ export default function SpecificationLocalRequirementDetailClient({
                           ) : null}
                         </>
                       ) : null}
-
-                      {canChangeContent ? (
-                        <>
-                          <span
-                            className="inline-flex w-full"
-                            title={localRequirementMutationTooltip}
-                          >
-                            <button
-                              className={railSecondaryButtonClass}
-                              disabled={
-                                !canMutateLocalRequirement || isDeleting
-                              }
-                              {...devMarker({
-                                context: detailContext,
-                                name: 'detail action',
-                                priority: 290,
-                                value: 'edit local requirement',
-                              })}
-                              onClick={handleOpenEditForm}
-                              type="button"
-                            >
-                              <Pencil aria-hidden="true" className="h-4 w-4" />
-                              {tc('edit')}
-                            </button>
-                          </span>
-                          <span
-                            className="inline-flex w-full"
-                            title={localRequirementMutationTooltip}
-                          >
-                            <button
-                              className={railDangerButtonClass}
-                              disabled={
-                                !canMutateLocalRequirement || isDeleting
-                              }
-                              {...devMarker({
-                                context: detailContext,
-                                name: 'detail action',
-                                priority: 291,
-                                value: 'delete local requirement',
-                              })}
-                              onClick={event => void handleDelete(event)}
-                              type="button"
-                            >
-                              <Trash2 aria-hidden="true" className="h-4 w-4" />
-                              {tc('delete')}
-                            </button>
-                          </span>
-                        </>
-                      ) : null}
                     </div>
                   ) : null}
-                </div>
+                </fieldset>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <DeviationFormModal
-        loading={deviationSaving}
-        onClose={() => setShowDeviationForm(false)}
-        onSubmit={handleCreateDeviation}
-        open={showDeviationForm}
-        priorityLevel={priorityLevelForDeviation}
-      />
-      <DeviationFormModal
-        initialMotivation={latestDeviation?.motivation ?? ''}
-        loading={deviationSaving}
-        onClose={() => setShowEditDeviationForm(false)}
-        onSubmit={handleEditDeviation}
-        open={showEditDeviationForm}
-        priorityLevel={priorityLevelForDeviation}
-        title={td('editDeviation')}
-      />
-      <DeviationDecisionModal
-        loading={deviationSaving}
-        onClose={() => setShowDecisionForm(false)}
-        onSubmit={handleRecordDecision}
-        open={showDecisionForm}
-      />
     </div>
   )
 }

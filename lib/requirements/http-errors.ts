@@ -102,6 +102,7 @@ interface SafePrivacyErasureHttpDetails {
 }
 
 const SAFE_AGREEMENT_REASONS = [
+  'active_deviation_exists',
   'specification_content_locked',
   'active_deviations',
   'deviation_cancellation_required',

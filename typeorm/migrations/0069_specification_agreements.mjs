@@ -78,6 +78,7 @@ const UP_STATEMENTS = [
     [changed_in_agreement_id] int NULL,
     [change_kind] varchar(10) NULL CONSTRAINT [chk_specification_agreement_items_change_kind] CHECK ([change_kind] IN ('added', 'changed', 'removed')),
     [is_removed] bit NOT NULL CONSTRAINT [df_specification_agreement_items_is_removed] DEFAULT 0,
+    [deviation_state_json] nvarchar(MAX) NULL,
     [has_followup_snapshot] bit NOT NULL CONSTRAINT [df_specification_agreement_items_has_followup_snapshot] DEFAULT 0,
     [specification_item_status_id] int NULL,
     [note] nvarchar(MAX) NULL,

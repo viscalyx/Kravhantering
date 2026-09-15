@@ -257,9 +257,9 @@ export default function SpecificationAgreementHistory({
               {content(entry.item)}
               <SpecificationAgreementDeviations
                 item={entry.item}
-                onCancel={() => {}}
                 onChange={async () => {}}
                 showLaterEvents
+                specificationId={specificationId}
                 view={{
                   ...view,
                   deviations: history.deviations ?? view.deviations,

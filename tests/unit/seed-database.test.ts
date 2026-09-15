@@ -124,6 +124,45 @@ function rowById(rows: Record<string, unknown>[]) {
 }
 
 describe('seed profiles', () => {
+  it('seeds non-overlapping active deviation timelines for every exact requirement content', async () => {
+    const { executor, rows } = collectSeedInsertRows()
+    await seedDemoDatabase(executor)
+    for (const [table, binding] of [
+      ['deviations', 'specification_item_id'],
+      [
+        'specification_local_requirement_deviations',
+        'specification_local_requirement_id',
+      ],
+    ]) {
+      const cases = seedRowsFor(rows, table)
+      for (const itemId of new Set(cases.map(row => row[binding]))) {
+        const timeline = cases
+          .filter(row => row[binding] === itemId)
+          .sort(
+            (a, b) =>
+              new Date(String(a.created_at)).getTime() -
+                new Date(String(b.created_at)).getTime() ||
+              Number(a.id) - Number(b.id),
+          )
+        for (const [index, row] of timeline.entries()) {
+          const context = `${table} content ${itemId} case ${row.id}`
+          if (row.decision != null)
+            expect(
+              new Date(String(row.decided_at)).getTime(),
+              context,
+            ).toBeGreaterThanOrEqual(new Date(String(row.created_at)).getTime())
+          const next = timeline[index + 1]
+          if (!next) continue
+          expect(row.decision, context).not.toBeNull()
+          expect(
+            new Date(String(row.decided_at)).getTime(),
+            context,
+          ).toBeLessThanOrEqual(new Date(String(next.created_at)).getTime())
+        }
+      }
+    }
+  })
+
   it('keeps the required seed module free of demo-only builders', () => {
     const requiredSeedSource = readFileSync(
       path.join(process.cwd(), 'typeorm/seed-required.mjs'),

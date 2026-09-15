@@ -91,17 +91,17 @@ test('AUTHZ-04/AUTHZ-05/SPEC-24: co-authors prepare whole agreements and cancel 
         .getByRole('button', { name: new RegExp(`^${local.uniqueId}\\b`) })
         .click()
       await page
-        .getByRole('button', { name: 'Cancel deviation', exact: true })
+        .getByRole('button', { name: 'End without a decision', exact: true })
         .click()
       const dialog = page.getByRole('dialog', {
-        name: 'Cancel deviation',
+        name: 'End without a decision',
         exact: true,
       })
       await dialog
         .getByLabel(/^Reason/)
         .fill('The proposed content replaces this pending request')
       await dialog
-        .getByRole('button', { name: 'Cancel deviation', exact: true })
+        .getByRole('button', { name: 'End without a decision', exact: true })
         .click()
       await expect(dialog).toBeHidden()
       await expect(page.getByText('Cancelled', { exact: true })).toBeVisible()

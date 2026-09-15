@@ -20,6 +20,8 @@ import {
   copyAgreementRequirements,
 } from '@/lib/specifications/agreement-cancellation'
 import {
+  type DeviationStateSnapshot,
+  parseDeviationStateSnapshot,
   readAgreementCases,
   readAgreementEndPreview,
 } from '@/lib/specifications/agreement-case-read'
@@ -63,6 +65,7 @@ export interface AgreementItem {
   changeKind?: 'added' | 'changed' | 'removed' | null
   currentAgreementReference?: string | null
   description: string
+  deviationStateSnapshot?: DeviationStateSnapshot[] | null
   isRemoved?: boolean
   itemRef: SpecificationItemRef
   needsReference: string | null
@@ -451,13 +454,14 @@ export function createSpecificationAgreementWorkflow(
                 isRemoved: boolean
                 changeDate: string | null
                 hasFollowupSnapshot: boolean
+                deviationStateJson: string | null
                 specificationItemStatusId: number
                 note: string | null
                 needsReference: string | null
               }>
             >(
               `SELECT CASE WHEN specification_item_id IS NOT NULL THEN CONCAT('lib:', specification_item_id)
-            ELSE CONCAT('local:', specification_local_requirement_id) END AS itemRef, previous_item_id AS previousItemId, change_kind AS changeKind, is_removed AS isRemoved, (SELECT CONVERT(varchar(10), effective_date, 23) FROM specification_agreements WHERE id = changed_in_agreement_id) AS changeDate, has_followup_snapshot AS hasFollowupSnapshot, specification_item_status_id AS specificationItemStatusId, note, needs_reference AS needsReference
+            ELSE CONCAT('local:', specification_local_requirement_id) END AS itemRef, previous_item_id AS previousItemId, change_kind AS changeKind, is_removed AS isRemoved, (SELECT CONVERT(varchar(10), effective_date, 23) FROM specification_agreements WHERE id = changed_in_agreement_id) AS changeDate, has_followup_snapshot AS hasFollowupSnapshot, deviation_state_json AS deviationStateJson, specification_item_status_id AS specificationItemStatusId, note, needs_reference AS needsReference
            FROM specification_agreement_items WHERE specification_agreement_id = @0 AND (is_removed = 0 OR @1 = 1)
              AND (@2 IS NULL OR CASE WHEN specification_item_id IS NOT NULL THEN CONCAT('lib:', specification_item_id) ELSE CONCAT('local:', specification_local_requirement_id) END IN (SELECT value FROM OPENJSON(@2)))`,
               [
@@ -532,6 +536,9 @@ export function createSpecificationAgreementWorkflow(
                         changeDate: snapshot.changeDate,
                         specificationItemStatusId:
                           snapshot.specificationItemStatusId,
+                        deviationStateSnapshot: parseDeviationStateSnapshot(
+                          snapshot.deviationStateJson,
+                        ),
                         note: snapshot.note,
                         needsReference: snapshot.needsReference,
                       }

@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import {
+  invalidJsonResponse,
+  parseWithSchema,
   positiveIntegerSchema,
-  readJsonWithSchema,
 } from '@/lib/http/validation'
 
 const agreementContextSchema = z
@@ -9,15 +10,19 @@ const agreementContextSchema = z
   .strict()
 
 /** Case actions outside a specification view have no selected agreement. */
-export function readOptionalAgreementContext({
+export async function readOptionalAgreementContext({
   request,
 }: {
   request: Request
 }) {
-  return request.body === null
-    ? Promise.resolve({
-        ok: true as const,
-        data: {} as z.infer<typeof agreementContextSchema>,
-      })
-    : readJsonWithSchema(request, agreementContextSchema)
+  try {
+    // Node's HTTP adapter can supply an empty stream for a POST without a body.
+    const text = await request.text()
+    return parseWithSchema(
+      agreementContextSchema,
+      text === '' ? {} : JSON.parse(text),
+    )
+  } catch {
+    return { ok: false as const, response: invalidJsonResponse() }
+  }
 }

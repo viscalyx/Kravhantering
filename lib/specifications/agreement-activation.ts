@@ -5,12 +5,19 @@ export async function snapshotAgreementFollowup(
   db: SqlExecutor,
   agreementId: number,
 ): Promise<void> {
-  for (const [table, column] of [
-    ['requirements_specification_items', 'specification_item_id'],
-    ['specification_local_requirements', 'specification_local_requirement_id'],
+  for (const [table, column, cases] of [
+    ['requirements_specification_items', 'specification_item_id', 'deviations'],
+    [
+      'specification_local_requirements',
+      'specification_local_requirement_id',
+      'specification_local_requirement_deviations',
+    ],
   ]) {
     await db.query(
       `UPDATE membership SET has_followup_snapshot = 1,
+        deviation_state_json = (SELECT deviation.id, deviation.motivation,
+          CAST(deviation.is_review_requested AS int) AS isReviewRequested
+          FROM ${cases} deviation WHERE deviation.${column} = item.id ORDER BY deviation.id FOR JSON PATH),
         specification_item_status_id = item.specification_item_status_id,
         note = item.note, needs_reference = needs.text, status_updated_at = item.status_updated_at
        FROM specification_agreement_items membership

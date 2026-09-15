@@ -345,16 +345,31 @@ avstegsgranskningsrapporten.
 ### Avsteg registrerat — Utkast
 
 **Steg 4 — Utkastläge.** Avsteget visas nu i detaljpanelen med sin motivering. I
-utkastläget kan det fortfarande redigeras eller tas bort. När det är klart,
-klicka **"Granskning ↗"** för att skicka det till granskning.
+utkastläget kan det fortfarande redigeras eller avslutas utan beslut. När det är
+klart, klicka **"Granskning ↗"** för att skicka det till granskning.
 
 ![Avsteg registrerat — Utkast](images/032-avsteg-registrerat.png)
+
+Avsteg visas ovanför kravinnehållet för både bibliotekskrav och lokala krav.
+Varje avsteg har sina egna åtgärder innanför ramen. **Begär ett avsteg** och
+kravets borttagningsåtgärd finns i kravets åtgärdskolumn, med borttagning
+direkt under Begär ett avsteg. Registrerande information kan fällas ut. Aktiva
+ärenden och gällande godkännanden visas direkt; övriga ärenden finns under
+**Tidigare avsteg**. Om inga aktiva ärenden eller gällande godkännanden finns
+visas det senaste ärendet direkt.
+
+**Avsluta utan beslut** kräver en orsak och bevarar ärendet som **Avbrutet**.
+För delade ärenden visas berörda avtal. Historiska avtal behåller sin tidigare
+vy och visar senare händelser separat. Ett godkänt avsteg med planerat avslut
+visar datumet; efter avslutet visas **Avslutat** med datum och det ursprungliga
+beslutet finns kvar i detaljerna. Fel vid registrering eller ändring visas i
+dialogen med inmatningen kvar.
 
 ### Avsteg — granskning begärd
 
 **Steg 5 — Granskning begärd.** Avsteget är nu låst för redigering och inväntar
-beslut. En behörig kravgranskare klickar **"Beslutad ↗"** för att registrera ett
-beslut, eller **"← Utkast"** för att återföra det om komplettering behövs.
+beslut. En behörig kravgranskare klickar **"Registrera beslut"** för att registrera
+ett beslut. En behörig författare kan välja **"← Utkast"** om komplettering behövs.
 
 ![Avsteg — granskning begärd](images/033-avsteg-granskning.png)
 

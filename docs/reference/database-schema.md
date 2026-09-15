@@ -777,6 +777,7 @@ erDiagram
         integer changed_in_agreement_id FK
         text change_kind
         boolean is_removed
+        string deviation_state_json
         boolean has_followup_snapshot
         integer specification_item_status_id FK
         text note
@@ -3074,12 +3075,21 @@ Draft removals remain reversible; confirmed sets exclude removed rows.
 | `changed_in_agreement_id` | int, nullable | Agreement that introduced the latest applicable change badge. |
 | `change_kind` | varchar(10), nullable | Added, changed or removed; carried forward with unchanged content. |
 | `is_removed` | bit, required | Reversible draft removal; excluded from confirmed agreement content. |
+| `deviation_state_json` | nvarchar(MAX), nullable | Per-case ID, motivation and review-request flag frozen at this membership's historical cutoff. Empty array means no cases; NULL means unavailable evidence. |
 | `has_followup_snapshot` | bit, required | Whether this agreement has frozen follow-up evidence. |
 | `specification_item_status_id` | int, nullable | Frozen usage status, populated when follow-up is captured. |
 | `note` | nvarchar(MAX), nullable | Frozen follow-up note. |
 | `needs_reference` | nvarchar(MAX), nullable | Frozen needs-reference text. |
 | `status_updated_at` | datetime2, nullable | Time of the captured usage-status change. |
 <!-- markdownlint-enable MD013 -->
+
+The deviation snapshot is captured in the same transaction as replacement,
+ending or cancellation, together with follow-up. It retains business motivation
+text; actor names and HSA IDs remain solely in the original case records and
+continue through the existing privacy erasure rules. New drafts use live case
+state and do not inherit the previous membership's snapshot. Later shared
+changes can be shown separately without rewriting the frozen motivation or
+review-request state. This snapshot is not a complete edit-event log.
 
 ### `specification_deviation_endings`
 
@@ -3206,6 +3216,13 @@ workflows reject clearing an assigned usage status to null.
 specification-local requirements and therefore demonstrates the
 ID format, join tables, and delete semantics for this
 feature.
+
+The local privacy rejection for content `local:2` is dated 17 April 2026,
+before the draft created on 18 April. Library content `lib:20` has its first
+draft cancelled on 14 May before the later request on 15 May. The seed test
+checks all library and local case timelines: a previous case must have a
+recorded outcome before the next case is created. This preserves distinct
+content histories and prevents multiple simultaneous active seed cases.
 
 ---
 
