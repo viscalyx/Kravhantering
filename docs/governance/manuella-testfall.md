@@ -1974,7 +1974,9 @@ kravunderlagsansvarig. Öppna pennan vid **Inget** i rutan **Avtal** till vänst
 om **Styrningsobjektstyp**. Ange avtalsreferens och avtalsdatum, lämna beskrivningen
 tom och bekräfta. Prova även ett första avtal med framtida datum. Öppna dialogens
 registreringsuppgifter och byt mellan tillgängliga avtal. Kontrollera
-avtalsväljaren både utan historik och när tidigare avtal finns.
+avtalsväljaren både utan historik och när tidigare avtal finns. Använd
+tangentbordet för att nå avtalsåtgärderna i **Avtalsuppgifter**, även när
+registreringsuppgifterna är utfällda.
 
 **Förväntat resultat:** Hela kravuppsättningen låses direkt vid bekräftelse,
 även när avtalet är kommande. Rutan visar referens, datum och status. Valet styr

@@ -472,7 +472,13 @@ export default function SpecificationAgreementBox({
         }
         titleId={`agreement-dialog-${specificationId}`}
       >
-        <div className="space-y-4 p-6">
+        <div className="space-y-4">
+          {error && (
+            <p className="text-sm text-red-700 dark:text-red-300" role="alert">
+              {error}
+            </p>
+          )}
+
           {(dialog === 'cancel' || dialog === 'end') && selected ? (
             <form
               className="space-y-4"
@@ -699,21 +705,6 @@ export default function SpecificationAgreementBox({
                     {selected.description}
                   </p>
                 )}
-                {view?.canDecide && (
-                  <button
-                    className="btn-secondary"
-                    disabled={busy}
-                    onClick={() => {
-                      setReference(selected.agreementReference)
-                      setDate(selected.effectiveDate)
-                      setDescription(selected.description ?? '')
-                      setDialog('correct')
-                    }}
-                    type="button"
-                  >
-                    {t('correct')}
-                  </button>
-                )}
                 <details
                   {...devMarker({
                     context: 'requirements specification detail',
@@ -860,7 +851,124 @@ export default function SpecificationAgreementBox({
                         )}
                       </>
                     )}
-                    {view?.canDecide && (
+                  </section>
+                )}
+                {selected.state === 'current' && view?.canDecide && pending && (
+                  <p className="text-sm">
+                    {t('pendingBlocker')}{' '}
+                    <button
+                      className="min-h-6 min-w-6 rounded text-primary-700 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-primary-300"
+                      onClick={async () => {
+                        const pendingAgreement = view.agreements.find(
+                          agreement =>
+                            ['draft', 'upcoming'].includes(agreement.state),
+                        )
+                        if (pendingAgreement) await load(pendingAgreement.id)
+                      }}
+                      type="button"
+                    >
+                      {t('openPending')}
+                    </button>
+                  </p>
+                )}
+                {view?.canDecide && (
+                  <div
+                    className="flex flex-wrap justify-end gap-3 border-t border-secondary-200 pt-4 dark:border-secondary-700"
+                    {...devMarker({
+                      context: 'requirements specification detail',
+                      name: 'dialog actions',
+                      value: 'agreement details actions',
+                      priority: 350,
+                    })}
+                  >
+                    <button
+                      className="btn-secondary"
+                      disabled={busy}
+                      onClick={() => {
+                        setReference(selected.agreementReference)
+                        setDate(selected.effectiveDate)
+                        setDescription(selected.description ?? '')
+                        setDialog('correct')
+                      }}
+                      type="button"
+                    >
+                      {t('correct')}
+                    </button>
+                    {selected.state === 'upcoming' && (
+                      <button
+                        className="btn-destructive"
+                        disabled={busy}
+                        onClick={() => {
+                          setReason('')
+                          setDialog('cancel')
+                        }}
+                        type="button"
+                      >
+                        {t('cancelAgreement')}
+                      </button>
+                    )}
+                    {selected.state === 'current' && (
+                      <button
+                        className="btn-destructive"
+                        disabled={busy || pending}
+                        onClick={async () => {
+                          setReason('')
+                          setDate('')
+                          setEndPreview(null)
+                          setBusy(true)
+                          setError(null)
+                          try {
+                            const response = await apiFetch(
+                              `/api/requirements-specifications/${specificationId}/agreement?agreementId=${selected.id}&endPreview=true`,
+                            )
+                            const result = await response.json()
+                            if (!response.ok)
+                              throw new Error(agreementErrorMessage(result, t))
+                            setEndPreview(result)
+                            setDialog('end')
+                          } catch (cause) {
+                            setError(
+                              cause instanceof Error
+                                ? cause.message
+                                : t('loadFailed'),
+                            )
+                          } finally {
+                            setBusy(false)
+                          }
+                        }}
+                        title={pending ? t('pendingBlocker') : undefined}
+                        type="button"
+                      >
+                        {t('endAgreement')}
+                      </button>
+                    )}
+                    {selected.state === 'draft' && (
+                      <button
+                        className="min-h-9 rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-40 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950"
+                        disabled={busy}
+                        onClick={async event => {
+                          if (
+                            await confirm({
+                              title: t('discardTitle'),
+                              message: t('discardWarning'),
+                              confirmText: t('discard'),
+                              variant: 'danger',
+                              icon: 'caution',
+                              anchorEl: event.currentTarget,
+                            })
+                          ) {
+                            await mutate({
+                              operation: 'discard',
+                              agreementId: selected.id,
+                            })
+                          }
+                        }}
+                        type="button"
+                      >
+                        {t('discard')}
+                      </button>
+                    )}
+                    {selected.state === 'draft' && (
                       <button
                         className="btn-primary"
                         disabled={
@@ -895,110 +1003,10 @@ export default function SpecificationAgreementBox({
                         {busy ? t('working') : t('confirm')}
                       </button>
                     )}
-                  </section>
-                )}
-                {selected.state === 'upcoming' && view?.canDecide && (
-                  <button
-                    className="btn-destructive"
-                    disabled={busy}
-                    onClick={() => {
-                      setReason('')
-                      setDialog('cancel')
-                    }}
-                    type="button"
-                  >
-                    {t('cancelAgreement')}
-                  </button>
-                )}
-                {selected.state === 'current' && view?.canDecide && (
-                  <div className="space-y-2">
-                    <button
-                      className="btn-destructive"
-                      disabled={busy || pending}
-                      onClick={async () => {
-                        setReason('')
-                        setDate('')
-                        setEndPreview(null)
-                        setBusy(true)
-                        setError(null)
-                        try {
-                          const response = await apiFetch(
-                            `/api/requirements-specifications/${specificationId}/agreement?agreementId=${selected.id}&endPreview=true`,
-                          )
-                          const result = await response.json()
-                          if (!response.ok)
-                            throw new Error(agreementErrorMessage(result, t))
-                          setEndPreview(result)
-                          setDialog('end')
-                        } catch (cause) {
-                          setError(
-                            cause instanceof Error
-                              ? cause.message
-                              : t('loadFailed'),
-                          )
-                        } finally {
-                          setBusy(false)
-                        }
-                      }}
-                      title={pending ? t('pendingBlocker') : undefined}
-                      type="button"
-                    >
-                      {t('endAgreement')}
-                    </button>
-                    {pending && (
-                      <p className="text-sm">
-                        {t('pendingBlocker')}{' '}
-                        <button
-                          className="min-h-6 min-w-6 rounded text-primary-700 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-primary-300"
-                          onClick={async () => {
-                            const pendingAgreement = view.agreements.find(
-                              agreement =>
-                                ['draft', 'upcoming'].includes(agreement.state),
-                            )
-                            if (pendingAgreement)
-                              await load(pendingAgreement.id)
-                          }}
-                          type="button"
-                        >
-                          {t('openPending')}
-                        </button>
-                      </p>
-                    )}
                   </div>
-                )}
-                {selected.state === 'draft' && view?.canDecide && (
-                  <button
-                    className="min-h-9 rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-40 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950"
-                    disabled={busy}
-                    onClick={async event => {
-                      if (
-                        await confirm({
-                          title: t('discardTitle'),
-                          message: t('discardWarning'),
-                          confirmText: t('discard'),
-                          variant: 'danger',
-                          icon: 'caution',
-                          anchorEl: event.currentTarget,
-                        })
-                      ) {
-                        await mutate({
-                          operation: 'discard',
-                          agreementId: selected.id,
-                        })
-                      }
-                    }}
-                    type="button"
-                  >
-                    {t('discard')}
-                  </button>
                 )}
               </>
             )
-          )}
-          {error && (
-            <p className="text-sm text-red-700 dark:text-red-300" role="alert">
-              {error}
-            </p>
           )}
         </div>
       </FormModal>

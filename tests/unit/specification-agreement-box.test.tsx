@@ -141,6 +141,12 @@ describe('agreement header author workflow', () => {
     )
     await user.click(await screen.findByRole('button', { name: 'details' }))
     expect(screen.getByText('Newly approved exception')).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'confirm' }).parentElement,
+    ).toHaveAttribute('data-developer-mode-value', 'agreement details actions')
+    expect(screen.getByRole('button', { name: 'correct' }).parentElement).toBe(
+      screen.getByRole('button', { name: 'discard' }).parentElement,
+    )
     await user.click(screen.getByRole('button', { name: 'confirm' }))
     const confirmation = await screen.findByRole('alertdialog')
     expect(within(confirmation).getByText(/plannedEndingWarning/)).toBeVisible()

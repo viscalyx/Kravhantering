@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import {
   type APIRequestContext,
   expect,
+  type Locator,
   type Page,
   test,
 } from '@playwright/test'
@@ -42,6 +43,40 @@ async function expectFullWidthAgreementStatus(page: Page) {
           Math.abs(row.width - available.width) < 1 &&
           Math.abs(label.right - available.right) < 1 &&
           element.scrollWidth <= element.clientWidth
+        )
+      }),
+    )
+    .toBe(true)
+}
+
+async function expectAgreementDetailsFooter(dialog: Locator) {
+  const footer = dialog.locator(
+    '[data-developer-mode-value="agreement details actions"]',
+  )
+  await expect(footer).toBeVisible()
+  await expect
+    .poll(() =>
+      footer.evaluate(element => {
+        const buttons = Array.from(element.querySelectorAll('button'))
+        const last = buttons.at(-1)
+        const details = element.parentElement?.querySelector('details')
+        if (!last || !details) return false
+        const bounds = element.getBoundingClientRect()
+        const lastBounds = last.getBoundingClientRect()
+        const spaced = buttons.every((button, index) => {
+          if (!index) return true
+          const previous = buttons[index - 1].getBoundingClientRect()
+          const current = button.getBoundingClientRect()
+          return (
+            Math.round(current.left - previous.right) >= 12 ||
+            Math.round(current.top - previous.bottom) >= 12
+          )
+        })
+        return (
+          Math.abs(lastBounds.right - bounds.right) < 1 &&
+          details.getBoundingClientRect().bottom <= bounds.top &&
+          element.scrollWidth <= element.clientWidth &&
+          spaced
         )
       }),
     )
@@ -150,6 +185,7 @@ async function confirmDraft(page: Page) {
     name: 'Agreement details',
     exact: true,
   })
+  await expectAgreementDetailsFooter(dialog)
   await dialog
     .getByRole('button', { name: 'Confirm agreement', exact: true })
     .click()
@@ -173,6 +209,7 @@ test('SPEC-22/SPEC-23/SPEC-28: edit the complete agreement in the requirement li
       exact: true,
     })
     await details.getByText('Registration information', { exact: true }).click()
+    await expectAgreementDetailsFooter(details)
     await expect(details).toContainText('Registered')
     await page.keyboard.press('Escape')
     await draft(page, 'Agreement B', today())
@@ -250,6 +287,10 @@ test('SPEC-22/SPEC-25/SPEC-26: correct and cancel the first upcoming agreement, 
       name: 'Agreement details',
       exact: true,
     })
+    await expectAgreementDetailsFooter(dialog)
+    await page.setViewportSize({ width: 375, height: 812 })
+    await expectAgreementDetailsFooter(dialog)
+    await page.setViewportSize(DESKTOP_VIEWPORT)
     await dialog
       .getByRole('button', { name: 'Correct agreement details', exact: true })
       .click()
