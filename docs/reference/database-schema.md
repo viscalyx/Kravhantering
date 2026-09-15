@@ -2990,7 +2990,9 @@ ASCII letters, digits, and single hyphens between segments, for example
 and numeric-only values are rejected because browser URLs and REST APIs
 use numeric database IDs as their canonical specification identifiers.
 
-**Seed note:** Specification `ETJANST-UPP-2026` has
+**Seed note:** Specification `ETJANST-UPP-2026` (ID `8`) assigns Ada Admin
+(`ada.admin`, HSA ID `SE5560000001-admin1`) as specification responsible so
+this demo user can register its first agreement. It has
 `local_requirement_next_sequence = 3` because the seed
 includes `KRAV0001` and `KRAV0002`.
 

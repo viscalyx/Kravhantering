@@ -15,6 +15,20 @@ describe('agreement demo data', () => {
     await seedDemoDatabase(db)
     const workflow = createSpecificationAgreementWorkflow(db)
     const context = await makeRequestContext()
+    const adaContext = {
+      ...context,
+      actor: {
+        ...context.actor,
+        hsaId: 'SE5560000001-admin1',
+        displayName: 'Ada Admin',
+      },
+    }
+    expect(await workflow.read(adaContext, 8)).toMatchObject({
+      canDecide: true,
+      canAuthor: true,
+      agreements: [],
+      selectedAgreement: null,
+    })
     expect(
       (await workflow.read(context, 3)).agreements.map(
         agreement => agreement.state,

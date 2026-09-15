@@ -13679,6 +13679,15 @@ const REQUIREMENT_RESPONSIBILITY_PERSON_TIMESTAMPS = new Map([
 
 const REQUIREMENT_RESPONSIBILITY_PERSON_BY_HSA_ID = new Map([
   [
+    'SE5560000001-admin1',
+    {
+      email: 'ada.admin@example.test',
+      givenName: 'Ada',
+      middleName: null,
+      surname: 'Admin',
+    },
+  ],
+  [
     'SE5560000001-2002',
     {
       email: 'pontus.paket@example.test',
@@ -13935,7 +13944,7 @@ const SPEC_RESPONSIBLE_BY_ID = new Map([
   [5, { displayName: 'Karl Persson', hsaId: 'SE5560000001-karlpersson' }],
   [6, { displayName: 'Linnéa Bergström', hsaId: 'SE5560000001-linneab' }],
   [7, { displayName: 'Oscar Nilsson', hsaId: 'SE5560000001-oscarn' }],
-  [8, { displayName: 'Emma Lindqvist', hsaId: 'SE5560000001-emmal' }],
+  [8, { displayName: 'Ada Admin', hsaId: 'SE5560000001-admin1' }],
   [9, { displayName: 'Anna Johansson', hsaId: 'SE5560000001-annaj' }],
   [10, { displayName: 'Erik Lindberg', hsaId: 'SE5560000001-erikl' }],
   [11, { displayName: 'Maria Johansson', hsaId: 'SE5560000001-mariaj' }],
