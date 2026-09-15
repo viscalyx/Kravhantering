@@ -54,6 +54,7 @@ async function expectAgreementDetailsFooter(dialog: Locator) {
     '[data-developer-mode-value="agreement details actions"]',
   )
   await expect(footer).toBeVisible()
+  await expect(footer.getByRole('button').last()).toHaveText('Close')
   await expect
     .poll(() =>
       footer.evaluate(element => {
@@ -290,6 +291,19 @@ test('SPEC-22/SPEC-25/SPEC-26: correct and cancel the first upcoming agreement, 
     await expectAgreementDetailsFooter(dialog)
     await page.setViewportSize({ width: 375, height: 812 })
     await expectAgreementDetailsFooter(dialog)
+    await dialog
+      .locator('[data-developer-mode-value="agreement details actions"]')
+      .getByRole('button', { name: 'Close', exact: true })
+      .click()
+    await expect(dialog).toBeHidden()
+    await expect(card(page)).toContainText('Upcoming')
+    await expect(
+      page.getByRole('button', { name: 'Agreement details', exact: true }),
+    ).toBeFocused()
+    await page
+      .getByRole('button', { name: 'Agreement details', exact: true })
+      .click()
+    await expect(dialog.getByRole('status')).toHaveText('Upcoming')
     await page.setViewportSize(DESKTOP_VIEWPORT)
     await dialog
       .getByRole('button', { name: 'Correct agreement details', exact: true })

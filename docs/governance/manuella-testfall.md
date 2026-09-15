@@ -1976,13 +1976,17 @@ tom och bekräfta. Prova även ett första avtal med framtida datum. Öppna dial
 registreringsuppgifter och byt mellan tillgängliga avtal. Kontrollera
 avtalsväljaren både utan historik och när tidigare avtal finns. Använd
 tangentbordet för att nå avtalsåtgärderna i **Avtalsuppgifter**, även när
-registreringsuppgifterna är utfällda.
+registreringsuppgifterna är utfällda. Välj **Stäng** i knappraden och öppna
+**Avtalsuppgifter** igen.
 
 **Förväntat resultat:** Hela kravuppsättningen låses direkt vid bekräftelse,
 även när avtalet är kommande. Rutan visar referens, datum och status. Valet styr
 den vanliga kravlistan och dess filtrering. Uppföljning är tillgänglig i det
 aktuella avtalet. Gruppen **Tidigare avtal** visas bara när det finns tidigare
 avtal att välja. Registreringsuppgifter ligger i dialogen och kan fällas ut.
+**Stäng** stänger bara dialogen och återför fokus till öppningsknappen; avtalet
+behåller sina uppgifter och sin status. Det gäller även läsare utan
+beslutsbehörighet.
 
 ### SPEC-23: ändra krav i ett nytt avtalsutkast
 

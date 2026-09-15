@@ -65,6 +65,7 @@ export default function SpecificationAgreementBox({
   itemRefs = '',
 }: ComponentProps) {
   const t = useTranslations('agreement')
+  const tc = useTranslations('common')
   const locale = useLocale()
   const { confirm } = useConfirmModal()
   const [view, setView] = useState<SpecificationAgreementView | null>(null)
@@ -871,140 +872,152 @@ export default function SpecificationAgreementBox({
                     </button>
                   </p>
                 )}
-                {view?.canDecide && (
-                  <div
-                    className="flex flex-wrap justify-end gap-3 border-t border-secondary-200 pt-4 dark:border-secondary-700"
-                    {...devMarker({
-                      context: 'requirements specification detail',
-                      name: 'dialog actions',
-                      value: 'agreement details actions',
-                      priority: 350,
-                    })}
-                  >
-                    <button
-                      className="btn-secondary"
-                      disabled={busy}
-                      onClick={() => {
-                        setReference(selected.agreementReference)
-                        setDate(selected.effectiveDate)
-                        setDescription(selected.description ?? '')
-                        setDialog('correct')
-                      }}
-                      type="button"
-                    >
-                      {t('correct')}
-                    </button>
-                    {selected.state === 'upcoming' && (
+                <div
+                  className="flex flex-wrap justify-end gap-3 border-t border-secondary-200 pt-4 dark:border-secondary-700"
+                  {...devMarker({
+                    context: 'requirements specification detail',
+                    name: 'dialog actions',
+                    value: 'agreement details actions',
+                    priority: 350,
+                  })}
+                >
+                  {view?.canDecide && (
+                    <>
                       <button
-                        className="btn-destructive"
+                        className="btn-secondary"
                         disabled={busy}
                         onClick={() => {
-                          setReason('')
-                          setDialog('cancel')
+                          setReference(selected.agreementReference)
+                          setDate(selected.effectiveDate)
+                          setDescription(selected.description ?? '')
+                          setDialog('correct')
                         }}
                         type="button"
                       >
-                        {t('cancelAgreement')}
+                        {t('correct')}
                       </button>
-                    )}
-                    {selected.state === 'current' && (
-                      <button
-                        className="btn-destructive"
-                        disabled={busy || pending}
-                        onClick={async () => {
-                          setReason('')
-                          setDate('')
-                          setEndPreview(null)
-                          setBusy(true)
-                          setError(null)
-                          try {
-                            const response = await apiFetch(
-                              `/api/requirements-specifications/${specificationId}/agreement?agreementId=${selected.id}&endPreview=true`,
-                            )
-                            const result = await response.json()
-                            if (!response.ok)
-                              throw new Error(agreementErrorMessage(result, t))
-                            setEndPreview(result)
-                            setDialog('end')
-                          } catch (cause) {
-                            setError(
-                              cause instanceof Error
-                                ? cause.message
-                                : t('loadFailed'),
-                            )
-                          } finally {
-                            setBusy(false)
+                      {selected.state === 'upcoming' && (
+                        <button
+                          className="btn-destructive"
+                          disabled={busy}
+                          onClick={() => {
+                            setReason('')
+                            setDialog('cancel')
+                          }}
+                          type="button"
+                        >
+                          {t('cancelAgreement')}
+                        </button>
+                      )}
+                      {selected.state === 'current' && (
+                        <button
+                          className="btn-destructive"
+                          disabled={busy || pending}
+                          onClick={async () => {
+                            setReason('')
+                            setDate('')
+                            setEndPreview(null)
+                            setBusy(true)
+                            setError(null)
+                            try {
+                              const response = await apiFetch(
+                                `/api/requirements-specifications/${specificationId}/agreement?agreementId=${selected.id}&endPreview=true`,
+                              )
+                              const result = await response.json()
+                              if (!response.ok)
+                                throw new Error(
+                                  agreementErrorMessage(result, t),
+                                )
+                              setEndPreview(result)
+                              setDialog('end')
+                            } catch (cause) {
+                              setError(
+                                cause instanceof Error
+                                  ? cause.message
+                                  : t('loadFailed'),
+                              )
+                            } finally {
+                              setBusy(false)
+                            }
+                          }}
+                          title={pending ? t('pendingBlocker') : undefined}
+                          type="button"
+                        >
+                          {t('endAgreement')}
+                        </button>
+                      )}
+                      {selected.state === 'draft' && (
+                        <button
+                          className="min-h-9 rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-40 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950"
+                          disabled={busy}
+                          onClick={async event => {
+                            if (
+                              await confirm({
+                                title: t('discardTitle'),
+                                message: t('discardWarning'),
+                                confirmText: t('discard'),
+                                variant: 'danger',
+                                icon: 'caution',
+                                anchorEl: event.currentTarget,
+                              })
+                            ) {
+                              await mutate({
+                                operation: 'discard',
+                                agreementId: selected.id,
+                              })
+                            }
+                          }}
+                          type="button"
+                        >
+                          {t('discard')}
+                        </button>
+                      )}
+                      {selected.state === 'draft' && (
+                        <button
+                          className="btn-primary"
+                          disabled={
+                            busy ||
+                            pendingConfirmationDeviation ||
+                            selected.effectiveDate < today
                           }
-                        }}
-                        title={pending ? t('pendingBlocker') : undefined}
-                        type="button"
-                      >
-                        {t('endAgreement')}
-                      </button>
-                    )}
-                    {selected.state === 'draft' && (
-                      <button
-                        className="min-h-9 rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-40 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950"
-                        disabled={busy}
-                        onClick={async event => {
-                          if (
-                            await confirm({
-                              title: t('discardTitle'),
-                              message: t('discardWarning'),
-                              confirmText: t('discard'),
-                              variant: 'danger',
-                              icon: 'caution',
-                              anchorEl: event.currentTarget,
-                            })
-                          ) {
+                          onClick={async event => {
+                            const authorizeDeviationEndings =
+                              confirmationDeviations.length > 0
+                            if (
+                              authorizeDeviationEndings &&
+                              !(await confirm({
+                                title: t('confirm'),
+                                message: t('plannedEndingWarning'),
+                                confirmText: t('confirmAndPlanEndings'),
+                                icon: 'warning',
+                                anchorEl: event.currentTarget,
+                              }))
+                            )
+                              return
                             await mutate({
-                              operation: 'discard',
+                              operation: 'confirm',
                               agreementId: selected.id,
+                              ...(authorizeDeviationEndings
+                                ? { authorizeDeviationEndings: true }
+                                : {}),
                             })
-                          }
-                        }}
-                        type="button"
-                      >
-                        {t('discard')}
-                      </button>
-                    )}
-                    {selected.state === 'draft' && (
-                      <button
-                        className="btn-primary"
-                        disabled={
-                          busy ||
-                          pendingConfirmationDeviation ||
-                          selected.effectiveDate < today
-                        }
-                        onClick={async event => {
-                          const authorizeDeviationEndings =
-                            confirmationDeviations.length > 0
-                          if (
-                            authorizeDeviationEndings &&
-                            !(await confirm({
-                              title: t('confirm'),
-                              message: t('plannedEndingWarning'),
-                              confirmText: t('confirmAndPlanEndings'),
-                              icon: 'warning',
-                              anchorEl: event.currentTarget,
-                            }))
-                          )
-                            return
-                          await mutate({
-                            operation: 'confirm',
-                            agreementId: selected.id,
-                            ...(authorizeDeviationEndings
-                              ? { authorizeDeviationEndings: true }
-                              : {}),
-                          })
-                        }}
-                        type="button"
-                      >
-                        {busy ? t('working') : t('confirm')}
-                      </button>
-                    )}
-                  </div>
-                )}
+                          }}
+                          type="button"
+                        >
+                          {busy ? t('working') : t('confirm')}
+                        </button>
+                      )}
+                    </>
+                  )}
+                  <button
+                    className="btn-secondary"
+                    disabled={busy}
+                    onClick={() => setDialog(null)}
+                    type="button"
+                  >
+                    {tc('close')}
+                  </button>
+                </div>
               </>
             )
           )}

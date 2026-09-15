@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import SpecificationAgreementBox from '@/components/SpecificationAgreementBox'
+import { requireTestValue } from '@/tests/helpers/require-test-value'
 
 vi.mock('next-intl', () => {
   const translate = (key: string) => key
@@ -81,6 +82,63 @@ describe('agreement header author workflow', () => {
       await user.keyboard('{Escape}')
       expect(trigger).toHaveFocus()
       expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    },
+  )
+
+  it.each([false, true])(
+    'closes details without changing an upcoming agreement with decision permission %s',
+    async canDecide => {
+      const user = userEvent.setup()
+      const upcoming = {
+        id: 1,
+        agreementReference: 'Future A',
+        effectiveDate: '2035-01-01',
+        state: 'upcoming',
+      }
+      const fetch = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              agreements: [upcoming],
+              selectedAgreement: upcoming,
+              canAuthor: canDecide,
+              canDecide,
+            }),
+          ),
+      )
+      vi.stubGlobal('fetch', fetch)
+      render(
+        <ConfirmModalProvider>
+          <dl>
+            <SpecificationAgreementBox
+              onContextChange={vi.fn()}
+              specificationId={1}
+            />
+          </dl>
+        </ConfirmModalProvider>,
+      )
+      const trigger = await screen.findByRole('button', { name: 'details' })
+      await user.click(trigger)
+      const dialog = screen.getByRole('dialog', { name: 'details' })
+      const buttons = within(dialog).getAllByRole('button')
+      const close = requireTestValue(buttons.at(-1))
+      expect(close).toHaveTextContent('close')
+      expect(close.parentElement).toHaveAttribute(
+        'data-developer-mode-value',
+        'agreement details actions',
+      )
+      await user.click(close)
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+      )
+      expect(trigger).toHaveFocus()
+      expect(fetch).toHaveBeenCalledTimes(1)
+      await user.click(trigger)
+      expect(
+        within(screen.getByRole('dialog', { name: 'details' })).getByRole(
+          'status',
+        ),
+      ).toHaveTextContent('states.upcoming')
     },
   )
 
