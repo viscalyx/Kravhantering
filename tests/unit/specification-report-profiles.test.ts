@@ -628,24 +628,26 @@ describe('deviation signals in report output', () => {
     ).toBe(labels.deviations.applicable)
   })
 
-  it('does not request follow-up for Verified usage, ended agreements, or missing item context', () => {
+  it('does not request follow-up for Verified usage, historical agreements, or missing item context', () => {
     const ended = { ...counts, pending: 0, rejected: 0 }
     expect(
       formatDeviationSignal(ended, labels, {
         specificationItemStatusId: VERIFIED_SPECIFICATION_ITEM_STATUS_ID,
       }),
     ).toBe(labels.deviations.ended)
-    expect(
-      formatDeviationSignal(ended, labels, {
-        specificationItemStatusId: null,
-        agreement: {
-          agreementReference: 'A',
-          id: 1,
-          state: 'ended',
-          effectiveDate: '2026-01-01',
-        },
-      }),
-    ).toBe(labels.deviations.ended)
+    for (const state of ['previous', 'ended', 'cancelled'] as const) {
+      expect(
+        formatDeviationSignal(ended, labels, {
+          specificationItemStatusId: null,
+          agreement: {
+            agreementReference: 'A',
+            id: 1,
+            state,
+            effectiveDate: '2026-01-01',
+          },
+        }),
+      ).toBe(labels.deviations.ended)
+    }
     expect(formatDeviationSignal(ended, labels)).toBe(labels.deviations.ended)
   })
 

@@ -546,7 +546,8 @@ each outcome label and count once, followed by applicability and follow-up
 state. Dated permission is
 inclusive in Europe/Stockholm. Pending renewal grants no extension. An ended
 approval without replacement shows action required until the current usage
-status is Verified. An ended agreement retains history without current work.
+status is Verified. Previous, ended, and cancelled agreements retain history
+without current follow-up work.
 Selected historical agreements use their preserved cutoff. Compact outputs
 exclude full conditions and closure reasons; mandatory archive JSON preserves
 these terms. The deviation review report used before a decision keeps its

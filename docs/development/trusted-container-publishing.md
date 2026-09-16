@@ -221,6 +221,8 @@ newest preview release whose version is ahead of every published stable
 release. A stable `v0.7.0` supersedes `v0.7.0-preview.80` and previews of older
 versions, while `v0.8.0-preview.1` remains eligible. Version comparison uses
 numeric major, minor, and patch components, independent of publication time.
+Preview identifiers allow hyphens, including repeated or trailing hyphens;
+dot-separated identifiers must remain non-empty.
 Superseded previews are excluded before applying the preview count; the
 preview window can be empty. Unrecognized version formats remain eligible
 because supersession cannot be established safely.

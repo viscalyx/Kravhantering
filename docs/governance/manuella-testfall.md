@@ -2106,12 +2106,15 @@ avsteg. Tidigare avtal och eventuellt mellanrum bevaras.
 **Steg:** Exportera och skapa rapport för aktuellt avtal, utkast, kommande,
 tidigare och avbrutet avtal med samma listfilter. Ändra aktuell uppföljning och
 öppna en tidigare rapport igen. Granska aktuella och senare avstegshändelser.
+Kontrollera ett avslutat godkännande på ett krav som inte är Verifierat.
 
 **Förväntat resultat:** Varje utdata anger valt avtals referens, avtalsdatum och
 status samt använder dess krav och uppföljning. Utkast, kommande och avbrutet
 identifieras tydligt. Tidigare resultat påverkas inte av senare uppföljning;
 senare avstegshändelser visas separat. Behörighet och befintliga exportformat
 gäller även för historiska sammanhang.
+Tidigare, avslutade och avbrutna avtal visar upphörd tillåtelse utan att ange
+aktuellt behov av uppföljning.
 
 ## Avsteg
 
@@ -2220,6 +2223,8 @@ Knapparna Stäng och Avsluta utan beslut har mellanrum även i smal vy.
 1. Skapa och godkänn ett första avsteg. Registrera aktuellt avtal och ett
    oförändrat avtalsutkast.
 2. Begär förnyelse och kontrollera berörda avtal. Begär granskning.
+   Kontrollera att **Avsluta godkännande** och **Begär förnyelse** inte visas
+   medan förnyelsen väntar på beslut, även innan granskning begärs.
    Kontrollera även ett utgånget godkännande: **Begär förnyelse** visas,
    men **Avsluta godkännande** visas inte.
 3. Som granskare, ange nya villkor och giltighet samt godkänn.

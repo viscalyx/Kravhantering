@@ -1267,7 +1267,7 @@ describe('approval validity and follow-up in the selected agreement', () => {
       if (canClose) {
         expect(close).toHaveAttribute(
           'data-developer-mode-value',
-          'end applicable shared permission',
+          'end applicable shared permission without pending renewal',
         )
       } else {
         expect(close).toBeNull()
@@ -1275,6 +1275,45 @@ describe('approval validity and follow-up in the selected agreement', () => {
       expect(
         screen.getByRole('button', { name: 'deviation.renewDeviation' }),
       ).toBeEnabled()
+    },
+  )
+
+  it.each([0, 1])(
+    'withholds closure and renewal while a renewal is pending with review requested %s',
+    isReviewRequested => {
+      render(
+        <ConfirmModalProvider>
+          <SpecificationAgreementDeviations
+            item={item}
+            onChange={vi.fn()}
+            specificationId={5}
+            view={{
+              ...approvalView,
+              deviations: [
+                { ...approval, validThrough: null },
+                {
+                  ...approval,
+                  id: 18,
+                  decision: null,
+                  decidedAt: null,
+                  isReviewRequested,
+                  renewsDeviationId: approval.id,
+                  motivation: 'Continued permission',
+                },
+              ],
+            }}
+          />
+        </ConfirmModalProvider>,
+      )
+      expect(
+        screen.getByRole('article', { name: 'Continued permission' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'deviation.closeApproval' }),
+      ).toBeNull()
+      expect(
+        screen.queryByRole('button', { name: 'deviation.renewDeviation' }),
+      ).toBeNull()
     },
   )
 

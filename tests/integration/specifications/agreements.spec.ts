@@ -487,8 +487,37 @@ test('SPEC-22/SPEC-23/SPEC-28: edit the complete agreement in the requirement li
   page,
 }, testInfo) => {
   const owner = await newRoleContext(testInfo, 'specificationResponsible')
+  const reviewer = await newRoleContext(testInfo, 'reviewer')
   try {
     const data = await fixture(owner)
+    const requested = await owner.post(
+      `/api/specification-item-deviations/${encodeURIComponent(`local:${data.local.id}`)}`,
+      { data: { motivation: 'Historical permission' } },
+    )
+    await expectOk(requested, 'create historical permission')
+    const deviation = (await requested.json()) as { id: number }
+    const deviationPath = `/api/specification-local-deviations/${deviation.id}`
+    await expectOk(
+      await owner.post(`${deviationPath}/request-review`),
+      'request historical permission review',
+    )
+    await expectOk(
+      await reviewer.post(`${deviationPath}/decision`, {
+        data: { decision: 1, decisionMotivation: 'Historical approval' },
+      }),
+      'approve historical permission',
+    )
+    await expectOk(
+      await owner.post(data.endpoint, {
+        data: {
+          operation: 'close_deviation',
+          itemRef: `local:${data.local.id}`,
+          deviationId: deviation.id,
+          reason: 'Historical permission no longer needed',
+        },
+      }),
+      'close historical permission',
+    )
     await page.setViewportSize(DESKTOP_VIEWPORT)
     await page.goto(`/en/specifications/${data.id}`)
     await register(page, 'Agreement A', '2020-01-01')
@@ -627,8 +656,11 @@ test('SPEC-22/SPEC-23/SPEC-28: edit the complete agreement in the requirement li
     expect(csv).toContain('Agreement A')
     expect(csv).toContain('Original agreed service')
     expect(csv).toContain('Previous')
+    expect(csv).toContain('Permission ended')
+    expect(csv).not.toContain('Action required')
   } finally {
     await owner.dispose()
+    await reviewer.dispose()
   }
 })
 
@@ -1655,6 +1687,12 @@ test('DEV-11/DEV-12: shared renewal and responsible closure survive draft discar
         .getByRole('button', { name: 'Register deviation', exact: true })
         .click()
       await expect(renewal).toBeHidden()
+      await expect(
+        page.getByRole('button', { name: 'Close approval', exact: true }),
+      ).toHaveCount(0)
+      await expect(
+        page.getByRole('button', { name: 'Request renewal', exact: true }),
+      ).toHaveCount(0)
       await page
         .getByRole('article', {
           name: 'Continued permission with new controls',
@@ -1662,6 +1700,9 @@ test('DEV-11/DEV-12: shared renewal and responsible closure survive draft discar
         })
         .getByRole('button', { name: 'Review ↗', exact: true })
         .click()
+      await expect(
+        page.getByRole('button', { name: 'Close approval', exact: true }),
+      ).toHaveCount(0)
     })
     await test.step('Reviewer decision', async () => {
       const reviewPage = await reviewContext.newPage()

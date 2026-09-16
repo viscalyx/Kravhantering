@@ -442,13 +442,15 @@ export default function SpecificationAgreementDeviations({
                   </button>
                 )}
               {view.canDecide &&
+                !cases.some(value => value.decision === null) &&
                 applicability(deviation) === 'applicable' &&
                 !endingsFor(deviation.id).some(ending => ending.endedAt) && (
                   <button
                     className="btn-secondary"
                     {...devMarker({
                       name: 'close approval',
-                      value: 'end applicable shared permission',
+                      value:
+                        'end applicable shared permission without pending renewal',
                     })}
                     disabled={busy}
                     onClick={() => {

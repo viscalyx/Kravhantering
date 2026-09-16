@@ -75,7 +75,9 @@ export function formatDeviationSignal(
         item &&
         item.specificationItemStatusId !==
           VERIFIED_SPECIFICATION_ITEM_STATUS_ID &&
-        item.agreement?.state !== 'ended'
+        !['previous', 'ended', 'cancelled'].includes(
+          item.agreement?.state ?? '',
+        )
       )
         parts.push(labels.deviations.followup)
     }
