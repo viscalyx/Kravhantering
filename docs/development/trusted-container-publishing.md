@@ -471,11 +471,13 @@ section. If GitHub-generated notes are unavailable, the release still publishes
 with the runtime evidence below.
 
 Contributors commit operator upgrade guidance under `## Unreleased` in
-`docs/operations/operator-upgrade-notes.md` with the source changes. Every PR,
-including automated PRs, selects exactly one declaration: **Operator notes
-updated** or **No operator notes needed**. Updated notes require a meaningful
-addition or correction; formatting alone is insufficient. No-notes requires no
-justification. Reviewers assess semantic adequacy.
+`docs/operations/operator-upgrade-notes.md` with the source changes. Every PR
+except Dependabot PRs selects exactly one declaration: **Operator notes updated**
+or **No operator notes needed**. The Operator Upgrade Gate skips PRs authored by
+`dependabot[bot]`, regardless of their title. Other automated PRs still require
+a declaration. Updated notes require a meaningful addition or correction;
+formatting alone is insufficient. No-notes requires no justification. Reviewers
+assess semantic adequacy.
 
 Both publishers validate notes from the exact release source before writes.
 The GitHub Release page contains the complete applicable Unreleased guidance,
