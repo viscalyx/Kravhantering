@@ -32,7 +32,9 @@ for (const role of [
           rolePage.getByRole('heading', {
             name: 'You do not have access to this requirements specification',
           }),
-        ).toBeVisible()
+        ).toHaveText(
+          'You do not have access to this requirements specification',
+        )
       } else {
         await expect(
           rolePage.locator('[data-developer-mode-value="agreement selector"]'),
