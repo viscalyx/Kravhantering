@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import {
+  createDeviation,
+  recordDecision,
+  requestReview,
+} from '@/lib/dal/deviations'
+import {
   createSpecificationLocalRequirement,
+  deleteSpecificationLocalRequirement,
   linkRequirementsToSpecificationAtomically,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { createRequirementsService } from '@/lib/requirements/service'
+import { createSpecificationAgreementWorkflow } from '@/lib/specifications/agreements'
 import {
   createArea,
   createPublishedRequirement,
@@ -77,6 +84,199 @@ async function removalAuditRows(
 
 describe('requirement application mutation workflow', () => {
   const appDb = useSqlIntegrationDatabase()
+
+  it.each(
+    [2, 3, 4, 5, 6].flatMap(statusId =>
+      ['library', 'local'].flatMap(kind =>
+        [false, true].map(draft => ({ statusId, kind, draft })),
+      ),
+    ),
+  )(
+    'rejects $kind status $statusId removal (draft: $draft) without changing content or history',
+    async ({ statusId, kind, draft }) => {
+      const db = appDb()
+      const { libraryItemId, specification } = await seedLinkedLibraryItem(
+        db,
+        'SQL-REMOVAL-STATUS',
+        'Included library requirement',
+      )
+      const local = await createSpecificationLocalRequirement(
+        db,
+        specification.id,
+        {
+          description: 'Local requirement with follow-up',
+        },
+      )
+      await db.query(
+        `IF NOT EXISTS (SELECT 1 FROM specification_item_statuses WHERE id = @0)
+        BEGIN
+          SET IDENTITY_INSERT specification_item_statuses ON;
+          INSERT INTO specification_item_statuses (id, name_sv, name_en, color, sort_order)
+          VALUES (@0, CONCAT('Teststatus ', @0), CONCAT('Test status ', @0), '#64748b', @0);
+          SET IDENTITY_INSERT specification_item_statuses OFF;
+        END`,
+        [statusId],
+      )
+      const context = await makeRequestContext()
+      const agreements = createSpecificationAgreementWorkflow(db)
+      let agreementId: number | undefined
+      if (draft) {
+        await agreements.mutate(context, specification.id, {
+          operation: 'establish',
+          agreementReference: 'A',
+          effectiveDate: '2020-01-01',
+        })
+        await agreements.mutate(context, specification.id, {
+          operation: 'create_draft',
+          agreementReference: 'B',
+          effectiveDate: '2099-01-01',
+        })
+        agreementId = (
+          await agreements.read(context, specification.id)
+        ).agreements.find(value => value.state === 'draft')?.id
+        expect(agreementId).toBeDefined()
+      }
+      const targetId = kind === 'library' ? libraryItemId : local.id
+      const targetRef = `${kind === 'library' ? 'lib' : 'local'}:${targetId}`
+      await db.query(
+        `UPDATE ${kind === 'library' ? 'requirements_specification_items' : 'specification_local_requirements'} SET specification_item_status_id = @0 WHERE id = @1`,
+        [statusId, targetId],
+      )
+      const before = await agreements.read(context, specification.id, {
+        agreementId,
+      })
+      await expect(
+        createRequirementsService(db).mutateRequirementApplications(
+          await makeRequestContext(),
+          {
+            operation: 'remove',
+            specificationId: specification.id,
+            agreementId,
+            itemRefs: [`lib:${libraryItemId}`, `local:${local.id}`],
+          },
+        ),
+      ).rejects.toMatchObject({
+        code: 'conflict',
+        details: { reason: 'removal_requires_included' },
+      })
+      if (agreementId) {
+        await expect(
+          agreements.mutate(context, specification.id, {
+            operation: 'remove_requirement',
+            agreementId,
+            itemRef: targetRef,
+          }),
+        ).rejects.toMatchObject({
+          code: 'conflict',
+          details: { reason: 'removal_requires_included' },
+        })
+      } else if (kind === 'local') {
+        await expect(
+          deleteSpecificationLocalRequirement(db, specification.id, local.id),
+        ).rejects.toMatchObject({
+          code: 'conflict',
+          details: { reason: 'removal_requires_included' },
+        })
+      } else {
+        await expect(
+          createRequirementsService(db).mutateRequirementApplications(context, {
+            operation: 'remove',
+            specificationId: specification.id,
+            requirementIds: [
+              before.items.find(item => item.itemRef === targetRef)
+                ?.requirementId as number,
+            ],
+          }),
+        ).rejects.toMatchObject({
+          code: 'conflict',
+          details: { reason: 'removal_requires_included' },
+        })
+      }
+      expect(
+        await agreements.read(context, specification.id, { agreementId }),
+      ).toEqual(before)
+      await expect(
+        db.query(
+          `SELECT valid_until AS validUntil FROM requirements_specification_items WHERE id = @0
+        UNION ALL SELECT valid_until FROM specification_local_requirements WHERE id = @1`,
+          [libraryItemId, local.id],
+        ),
+      ).resolves.toEqual([{ validUntil: null }, { validUntil: null }])
+    },
+  )
+
+  it.each([false, true])(
+    'rolls back authorized deviation endings when another selected status blocks removal (draft: %s)',
+    async draft => {
+      const db = appDb()
+      const { libraryItemId, specification } = await seedLinkedLibraryItem(
+        db,
+        'REMOVAL-ENDING-ROLLBACK',
+        'Approved included library application',
+      )
+      const local = await createSpecificationLocalRequirement(
+        db,
+        specification.id,
+        { description: 'Verified local application' },
+      )
+      const context = await makeRequestContext()
+      const agreements = createSpecificationAgreementWorkflow(db)
+      const deviation = await createDeviation(db, {
+        specificationItemId: libraryItemId,
+        motivation: 'Approved exception',
+      })
+      await requestReview(db, deviation.id)
+      await recordDecision(db, deviation.id, {
+        decision: 1,
+        decisionMotivation: 'Approved',
+        decidedBy: 'Reviewer',
+        decidedByHsaId: 'SE5560000001-reviewer',
+      })
+      let agreementId: number | undefined
+      if (draft) {
+        await agreements.mutate(context, specification.id, {
+          operation: 'establish',
+          agreementReference: 'A',
+          effectiveDate: '2020-01-01',
+        })
+        await agreements.mutate(context, specification.id, {
+          operation: 'create_draft',
+          agreementReference: 'B',
+          effectiveDate: '2099-01-01',
+        })
+        agreementId = (
+          await agreements.read(context, specification.id)
+        ).agreements.find(value => value.state === 'draft')?.id
+        expect(agreementId).toBeDefined()
+      }
+      await db.query(
+        'UPDATE specification_local_requirements SET specification_item_status_id = 4 WHERE id = @0',
+        [local.id],
+      )
+      const before = await agreements.read(context, specification.id, {
+        agreementId,
+      })
+      await expect(
+        createRequirementsService(db).mutateRequirementApplications(context, {
+          operation: 'remove',
+          specificationId: specification.id,
+          agreementId,
+          authorizeDeviationEndings: true,
+          itemRefs: [`lib:${libraryItemId}`, local.itemRef],
+        }),
+      ).rejects.toMatchObject({
+        code: 'conflict',
+        details: { reason: 'removal_requires_included' },
+      })
+      expect(
+        await agreements.read(context, specification.id, { agreementId }),
+      ).toEqual(before)
+      expect(
+        (await agreements.read(context, specification.id, { agreementId }))
+          .deviationEndings,
+      ).toEqual([])
+    },
+  )
 
   it('updates library and specification-local fields through one workflow', async () => {
     const { libraryItemId, specification } = await seedLinkedLibraryItem(

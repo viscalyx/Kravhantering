@@ -7,6 +7,35 @@ import type { SpecDetailWorkflowContext } from './requirements-specification-det
 
 export function registerSelectionTests(context: SpecDetailWorkflowContext) {
   describe('selection, removal, deviations, and bulk actions', () => {
+    it('explains and blocks removal of a mixed Included and In Progress selection', async () => {
+      const local = {
+        ...context.initialSpecificationItem,
+        id: -41,
+        itemRef: 'local:41',
+        kind: 'specificationLocal' as const,
+        uniqueId: 'LOCAL',
+        specificationItemStatusId: 2,
+      }
+      const items = [context.initialSpecificationItem, local]
+      context.specificationItemsGetItems = items
+      context.renderRequirementsSpecificationDetailClient({
+        ...context.createInitialData(),
+        specificationItems: context.createSpecificationItemsPage(items),
+      })
+      await context.settleInitialEditorEffects()
+      context.selectRequirementRows(items.map(item => item.id))
+      const remove = screen.getByRole('button', {
+        name: 'specification.removeSelected',
+      })
+      expect(remove).toHaveAttribute('aria-disabled', 'true')
+      expect(remove).toHaveAccessibleDescription(
+        'agreement.removalSelectionRequiresIncluded',
+      )
+      fireEvent.click(remove)
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      expect(context.requirementRowCheckbox('items', 'LOCAL')).toBeChecked()
+    })
+
     it('keeps stable item-ref selection through filtering and deselects exactly the hidden set', async () => {
       const hiddenItem = {
         ...context.initialSpecificationItem,
@@ -183,7 +212,9 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       })
       for (const name of sharedActionNames) {
         const button = screen.getByRole('button', { name })
-        expect(button).toBeDisabled()
+        if (name === 'specification.removeSelected')
+          expect(button).toHaveAttribute('aria-disabled', 'true')
+        else expect(button).toBeDisabled()
         expect(button).toHaveClass('disabled:opacity-40')
         expect(button).toHaveAttribute(
           'title',
@@ -564,28 +595,43 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       })
     })
 
-    it('reports a server rejection while keeping a library application selected', async () => {
-      context.deleteItemsHandler = async () => ({
-        json: async () => ({ error: 'Application cannot be removed' }),
-        ok: false,
-      })
-      context.renderRequirementsSpecificationDetailClient()
-      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
-      fireEvent.click(
-        screen.getByRole('button', { name: 'specification.removeSelected' }),
-      )
-      const confirmation = await screen.findByRole('alertdialog')
-      fireEvent.click(
-        within(confirmation).getByRole('button', { name: 'common.delete' }),
-      )
+    it.each([
+      {
+        body: { error: 'Application cannot be removed' },
+        expected: 'Application cannot be removed',
+      },
+      {
+        body: {
+          code: 'conflict',
+          error: 'Included required',
+          details: { reason: 'removal_requires_included' },
+        },
+        expected: 'agreement.removalSelectionRequiresIncluded',
+      },
+    ])(
+      'reports a server rejection ($expected) while keeping a library application selected',
+      async ({ body, expected }) => {
+        context.deleteItemsHandler = async () =>
+          new Response(JSON.stringify(body), {
+            status: 409,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        context.renderRequirementsSpecificationDetailClient()
+        fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
+        fireEvent.click(
+          screen.getByRole('button', { name: 'specification.removeSelected' }),
+        )
+        const confirmation = await screen.findByRole('alertdialog')
+        fireEvent.click(
+          within(confirmation).getByRole('button', { name: 'common.delete' }),
+        )
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        'Application cannot be removed',
-      )
-      expect(
-        screen.getByRole('button', { name: 'specification.removeSelected' }),
-      ).toBeInTheDocument()
-    })
+        expect(await screen.findByRole('alert')).toHaveTextContent(expected)
+        expect(
+          screen.getByRole('button', { name: 'specification.removeSelected' }),
+        ).toBeInTheDocument()
+      },
+    )
 
     it('reports a removal network failure without dropping the selection', async () => {
       context.deleteItemsHandler = async () => {

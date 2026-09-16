@@ -809,7 +809,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     })
 
     expect(editButton).toBeDisabled()
-    expect(deleteButton).toBeDisabled()
+    expect(deleteButton).toHaveAttribute('aria-disabled', 'true')
     expect(graduateButton).toBeEnabled()
     expect(editButton.className).toContain('disabled:cursor-not-allowed')
     expect(deleteButton.className).toContain('btn-destructive')
@@ -818,9 +818,8 @@ describe('SpecificationLocalRequirementDetailClient', () => {
       'title',
       'This unique requirement can only be edited or removed when Usage status is Included and no deviation is pending.',
     )
-    expect(deleteButton.parentElement).toHaveAttribute(
-      'title',
-      'This unique requirement can only be edited or removed when Usage status is Included and no deviation is pending.',
+    expect(deleteButton).toHaveAccessibleDescription(
+      'agreement.removalRequiresIncluded',
     )
     expect(graduateButton.parentElement).not.toHaveAttribute('title')
   })
@@ -906,7 +905,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(await screen.findByText('Pågående')).toBeInTheDocument()
     await waitFor(() => {
       expect(editButton).toBeDisabled()
-      expect(deleteButton).toBeDisabled()
+      expect(deleteButton).toHaveAttribute('aria-disabled', 'true')
     })
     expect(graduateButton).toBeEnabled()
     expect(editButton.parentElement).toHaveAttribute(
@@ -992,7 +991,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     const deleteButton = screen.getByRole('button', { name: 'Delete' })
 
     expect(editButton).toBeDisabled()
-    expect(deleteButton).toBeDisabled()
+    expect(deleteButton).toHaveAttribute('aria-disabled', 'true')
     expect(editButton.className).toContain('disabled:cursor-not-allowed')
     expect(deleteButton.className).toContain('btn-destructive')
     expect(deleteButton.className).not.toContain('disabled:text-secondary-400')

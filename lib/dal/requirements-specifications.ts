@@ -2688,6 +2688,7 @@ export async function updateSpecificationLocalRequirement(
       [specificationLocalRequirementId],
       false,
       {
+        operation: 'replace',
         actorHsaId,
         authorizeDeviationEndings: options.authorizeDeviationEndings,
       },

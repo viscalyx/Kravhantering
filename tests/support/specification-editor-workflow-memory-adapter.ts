@@ -118,6 +118,7 @@ export class InMemorySpecificationEditorAdapter
       item.itemRef && requested.has(item.itemRef)
         ? [
             {
+              specificationItemStatusId: item.specificationItemStatusId ?? null,
               itemRef: item.itemRef,
               kind: item.kind ?? 'library',
               needsReference: item.needsReference ?? null,

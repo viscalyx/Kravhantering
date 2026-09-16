@@ -409,6 +409,7 @@ const initialSpec = {
 }
 
 const initialSpecificationItem = {
+  specificationItemStatusId: 1,
   area: { name: 'Security' },
   id: 101,
   isArchived: false,
@@ -1317,6 +1318,8 @@ describe('RequirementsSpecificationDetailClient', () => {
               items: specificationItemsGetItems
                 .filter(item => item.itemRef && requestedRefs.has(item.itemRef))
                 .map(item => ({
+                  specificationItemStatusId:
+                    item.specificationItemStatusId ?? 1,
                   itemRef: item.itemRef,
                   kind: item.kind,
                   needsReference: item.needsReference ?? null,

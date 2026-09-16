@@ -8,6 +8,7 @@ import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FormModal from '@/components/FormModal'
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
+import RequirementRemovalButton from '@/components/RequirementRemovalButton'
 import type { SpecificationAgreementView } from '@/components/SpecificationAgreementBox'
 import SpecificationAgreementDeviations from '@/components/SpecificationAgreementDeviations'
 import SpecificationAgreementHistory from '@/components/SpecificationAgreementHistory'
@@ -20,6 +21,7 @@ import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirma
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import type { RequirementRow } from '@/lib/requirements/list-view'
+import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 import {
   type AgreementHttpError,
   agreementErrorMessage,
@@ -124,6 +126,19 @@ export default function SpecificationAgreementRequirement({
       ? 'saveAndPlanEnding'
       : 'saveAndEndDeviation',
   )
+  const removalReason =
+    busy || removeFromSpecificationDisabled
+      ? tc('saving')
+      : !view.canEditContent
+        ? t('contentLockedError')
+        : pendingDeviations.length > 0
+          ? t('pendingDeviationWarning')
+          : endingRequired && !view.canDecide
+            ? t('responsibleEndingRequired')
+            : item.specificationItemStatusId !==
+                DEFAULT_SPECIFICATION_ITEM_STATUS_ID
+              ? t('removalRequiresIncluded')
+              : undefined
   const local = item.itemRef.startsWith('local:')
   const canCompare =
     view.canEditContent &&
@@ -360,46 +375,31 @@ export default function SpecificationAgreementRequirement({
           })}
         >
           <div ref={setDeviationActionTarget} />
-          {canEdit && (
-            <button
+          {(canEdit || (!selected && onRemoveFromSpecification)) && (
+            <RequirementRemovalButton
               className="btn-destructive px-3 text-center"
-              disabled={busy || pendingDeviations.length > 0}
+              reason={removalReason}
+              {...devMarker({
+                context: 'requirements specification detail',
+                name: 'detail action',
+                value: 'remove requirement',
+                priority: 350,
+              })}
               onClick={event =>
-                void changeMembership('remove_requirement', event.currentTarget)
+                selected
+                  ? void changeMembership(
+                      'remove_requirement',
+                      event.currentTarget,
+                    )
+                  : void onRemoveFromSpecification?.(event.currentTarget)
               }
-              title={
-                pendingDeviations.length
-                  ? t('pendingDeviationWarning')
-                  : undefined
-              }
-              type="button"
             >
               <Trash2
                 aria-hidden="true"
                 className="mr-2 inline-block h-4 w-4 align-middle"
               />
               {t('removeRequirement')}
-            </button>
-          )}
-          {!selected && onRemoveFromSpecification && (
-            <button
-              className="btn-destructive px-3 text-center"
-              disabled={
-                busy ||
-                removeFromSpecificationDisabled ||
-                pendingDeviations.length > 0
-              }
-              onClick={event =>
-                void onRemoveFromSpecification(event.currentTarget)
-              }
-              type="button"
-            >
-              <Trash2
-                aria-hidden="true"
-                className="mr-2 inline-block h-4 w-4 align-middle"
-              />
-              {t('removeRequirement')}
-            </button>
+            </RequirementRemovalButton>
           )}
 
           {canEdit && (

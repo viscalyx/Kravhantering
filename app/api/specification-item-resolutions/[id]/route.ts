@@ -91,6 +91,9 @@ export async function GET(
 
     return NextResponse.json({
       items: items.map(item => ({
+        specificationItemStatusId: item.specificationItemStatusId,
+        hasPendingDeviation: item.deviationCounts.pending > 0,
+        hasApprovedDeviation: (item.deviationCounts.applicable ?? 0) > 0,
         itemRef: item.itemRef,
         kind: item.kind,
         needsReference: item.needsReference,

@@ -832,6 +832,13 @@ unchanged status fields.
 > graduating so the target `requirementAreaId` comes from the actor's allowed
 > target requirement areas.
 
+Removal requires usage status **Included** (`specificationItemStatusId: 1`)
+for every targeted application. Permission, agreement and deviation checks
+still apply. A status conflict explains that Included is required and rolls
+back the entire removal request. REST responses also include the reason
+`removal_requires_included`. Refresh specification items before retrying;
+library requirements themselves remain in the library.
+
 ## Limitations
 
 ### Persisted import validation sessions

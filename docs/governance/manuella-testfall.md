@@ -2118,6 +2118,28 @@ aktuellt behov av uppföljning.
 
 ## Avsteg
 
+### SPEC-29: ta bara bort krav med användningsstatus Inkluderad
+
+**Steg:** Lägg till ett bibliotekskrav och ett lokalt krav i samma kravunderlag.
+Prova enskild borttagning och markerade krav med **Inkluderad**. Upprepa med
+**Pågående**, **Implementerad**, **Verifierad**, **Avviken** med godkänt avsteg
+samt **Ej tillämpbar**. Markera också ett blandat urval med olika statusar.
+Prova utan avtal och i ett redigerbart avtalsutkast. Växla mellan svenska och
+engelska och nå den inaktiverade åtgärden med Tab. Läs förklaringen med
+hjälpmedel och prova Enter. Ändra status i en annan session före borttagning.
+Återställ till Inkluderad, ta bort kraven och ladda om sidan. Prova även
+väntande avsteg, godkänt avsteg utan rätt att godkänna avslut, läsbehörighet
+utan skrivbehörighet samt ett bekräftat avtal.
+
+**Förväntat resultat:** Endast Inkluderad tillåter borttagning för båda typerna.
+Ett blandat urval spärrar hela åtgärden; inget krav hoppas tyst över.
+Förklaringen anger det faktiska hindret, visas vid fokus och hovring och kan
+läsas utan klick. Enter på spärrad åtgärd gör ingen ändring. Servern kontrollerar
+aktuellt tillstånd; ett avvisat anrop ändrar varken innehåll, medlemskap eller
+avstegshistorik. Behörighet, avtalslåsning och avstegsbeslut gäller även med
+Inkluderad. Borttagningen kvarstår efter omladdning; bibliotekskravet finns
+kvar i kravbiblioteket. Ett borttaget utkastkrav markeras som Borttaget.
+
 ### DEV-01: skapa avstegsutkast
 
 **Steg:** Öppna avstegsyta, skapa utkast med motivering och spara.

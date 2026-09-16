@@ -7,6 +7,7 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import type { RequestContext } from '@/lib/requirements/auth'
 import { conflictError, notFoundError } from '@/lib/requirements/errors'
+import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 import { copyAgreementRequirements } from '@/lib/specifications/agreement-cancellation'
 import { recordAgreementContentOrigin } from '@/lib/specifications/agreement-content-origin'
 import {
@@ -55,13 +56,18 @@ export async function restoreOrRemoveAgreementRequirement(
       previousAgreementId: number | null
       previousEndedAt: Date | null
       isRemoved: boolean
+      specificationItemStatusId: number
     }>
   >(
-    `SELECT membership.id, membership.previous_item_id AS previousItemId, membership.is_removed AS isRemoved,
+    `SELECT CASE WHEN membership.has_followup_snapshot = 1 THEN membership.specification_item_status_id
+        ELSE application.specification_item_status_id END AS specificationItemStatusId,
+      membership.id, membership.previous_item_id AS previousItemId, membership.is_removed AS isRemoved,
       previous.specification_agreement_id AS previousAgreementId, previous_agreement.ended_at AS previousEndedAt,
       CASE WHEN previous.specification_item_id IS NOT NULL THEN CONCAT('lib:', previous.specification_item_id)
         WHEN previous.specification_local_requirement_id IS NOT NULL THEN CONCAT('local:', previous.specification_local_requirement_id) END AS previousItemRef
-     FROM specification_agreement_items membership
+     FROM specification_agreement_items membership WITH (UPDLOCK, HOLDLOCK)
+     INNER JOIN ${ref.kind === 'library' ? 'requirements_specification_items' : 'specification_local_requirements'} application WITH (UPDLOCK, HOLDLOCK)
+       ON application.id = membership.${ref.kind === 'library' ? 'specification_item_id' : 'specification_local_requirement_id'}
      INNER JOIN specification_agreements agreement ON agreement.id = membership.specification_agreement_id
      LEFT JOIN specification_agreement_items previous ON previous.id = membership.previous_item_id
      LEFT JOIN specification_agreements previous_agreement ON previous_agreement.id = previous.specification_agreement_id
@@ -87,6 +93,13 @@ export async function restoreOrRemoveAgreementRequirement(
     )
   }
   if (input.operation === 'remove_requirement') {
+    if (item.specificationItemStatusId !== DEFAULT_SPECIFICATION_ITEM_STATUS_ID)
+      throw conflictError(
+        'Requirements can only be removed when usage status is Included',
+        {
+          reason: 'removal_requires_included',
+        },
+      )
     if (item.isRemoved)
       throw conflictError('The selected requirement has already been removed')
     await guardAgreementRequirementChange(

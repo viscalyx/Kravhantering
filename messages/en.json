@@ -3199,6 +3199,10 @@
       }
     },
     "requirementsSpecificationDetail": {
+      "removal": {
+        "heading": "Remove requirements",
+        "body": "Library and local requirements can only be removed when their usage status is Included. Every selected requirement must be Included. Permissions, agreement locks and deviation decisions still apply, including in editable drafts. Focus an unavailable removal action with the keyboard or hover over it to read the reason."
+      },
       "title": "Specification Detail",
       "requirements": {
         "heading": "Managing requirements",
@@ -3870,6 +3874,8 @@
     "imageOmitted": "Image omitted"
   },
   "agreement": {
+    "removalRequiresIncluded": "The requirement can only be removed when its usage status is Included.",
+    "removalSelectionRequiresIncluded": "All selected requirements must have usage status Included to be removed.",
     "heading": "Agreement",
     "none": "None",
     "register": "Register agreement",

@@ -6,6 +6,7 @@ import {
   type Page,
   test,
 } from '@playwright/test'
+import type { SpecificationAgreementView } from '@/components/SpecificationAgreementBox'
 import { DESKTOP_VIEWPORT } from '@/tests/helpers/desktop-viewport'
 import { requireTestValue } from '@/tests/helpers/require-test-value'
 import {
@@ -1880,3 +1881,244 @@ test('DEV-11/DEV-12: shared renewal and responsible closure survive draft discar
     await reviewer.dispose()
   }
 })
+
+for (const locale of ['en', 'sv'] as const) {
+  for (const inDraft of [false, true]) {
+    test(`SPEC-29: Included-only removal, mixed selection and accessible explanations (${locale}, draft: ${inDraft})`, async ({
+      page,
+    }, testInfo) => {
+      const owner = await newRoleContext(testInfo, 'specificationResponsible')
+      try {
+        const {
+          data,
+          item: library,
+          uniqueId,
+        } = await deviationFixture(owner, 'library')
+        const itemsPath = `/api/requirements-specifications/${data.id}/items`
+        let agreementId: number | undefined
+        if (inDraft) {
+          await expectOk(
+            await owner.post(data.endpoint, {
+              data: {
+                operation: 'establish',
+                agreementReference: 'Removal A',
+                effectiveDate: '2020-01-01',
+              },
+            }),
+            'establish removal fixture agreement',
+          )
+          await expectOk(
+            await owner.post(data.endpoint, {
+              data: {
+                operation: 'create_draft',
+                agreementReference: 'Removal B',
+                effectiveDate: futureDate(),
+              },
+            }),
+            'create removal fixture draft',
+          )
+          const view = (await (
+            await owner.get(data.endpoint)
+          ).json()) as SpecificationAgreementView
+          agreementId = requireTestValue(
+            view.agreements.find(value => value.state === 'draft'),
+          ).id
+        }
+        const localRef = `local:${data.local.id}`
+        const setStatus = async (itemRef: string, status: number) => {
+          await expectOk(
+            await owner.patch(`${itemsPath}/${encodeURIComponent(itemRef)}`, {
+              data: { specificationItemStatusId: status },
+            }),
+            'set usage status in current context',
+          )
+        }
+        const url = `/${locale}/specifications/${data.id}`
+        const panel = page.locator(
+          '[data-specification-detail-list-panel="items"]',
+        )
+        const showContext = async () => {
+          if (inDraft) {
+            const label = locale === 'sv' ? 'Välj avtal' : 'Select agreement'
+            await page.getByRole('button', { name: label, exact: true }).click()
+            const selector = page.getByRole('dialog', {
+              name: label,
+              exact: true,
+            })
+            await selector.getByRole('button', { name: /^Removal B ·/ }).click()
+            await expect(selector).toBeHidden()
+            await expect(card(page)).toContainText('Removal B')
+          } else {
+            await expect(
+              page.getByRole('button', {
+                name:
+                  locale === 'sv' ? 'Registrera avtal' : 'Register agreement',
+                exact: true,
+              }),
+            ).toBeEnabled()
+          }
+          await expect(panel.locator('tbody')).not.toHaveClass(
+            /pointer-events-none/,
+          )
+        }
+        await page.goto(url)
+        await showContext()
+        const statusReason =
+          locale === 'sv'
+            ? 'Kravet kan bara tas bort när användningsstatus är Inkluderad.'
+            : 'The requirement can only be removed when its usage status is Included.'
+        for (const [ref, id] of [
+          [library.itemRef, uniqueId],
+          [localRef, data.local.uniqueId],
+        ]) {
+          await setStatus(ref, 2)
+          const rejected = await owner.delete(itemsPath, {
+            data: { itemRefs: [library.itemRef, localRef], agreementId },
+          })
+          expect(rejected.status()).toBe(409)
+          expect(await rejected.json()).toMatchObject({
+            details: { reason: 'removal_requires_included' },
+          })
+          await page.reload()
+          await showContext()
+          await expand(page, id)
+          const action = page
+            .locator('[data-developer-mode-value="requirement action column"]')
+            .getByRole('button', {
+              name:
+                locale === 'sv'
+                  ? ref === localRef && !inDraft
+                    ? 'Ta bort'
+                    : 'Ta bort krav'
+                  : ref === localRef && !inDraft
+                    ? 'Delete'
+                    : 'Remove requirement',
+              exact: true,
+            })
+          await expect(action).toBeDisabled()
+          await action.focus()
+          await expect(action).toBeFocused()
+          await expect(action).toHaveAccessibleDescription(statusReason)
+          const descriptionId = await action.getAttribute('aria-describedby')
+          const explanation = page.locator(`[id="${descriptionId}"]`)
+          await expect(explanation).toBeVisible()
+          await expect(explanation).toHaveAttribute(
+            'data-developer-mode-value',
+            'requirement removal unavailable',
+          )
+          await action.press('Escape')
+          await expect(explanation).toBeHidden()
+          await action.press('Tab')
+          await action.hover()
+          await explanation.hover()
+          await expect(explanation).toBeVisible()
+          await action.focus()
+          await action.press('Enter')
+          await expect(page.getByRole('alertdialog')).toHaveCount(0)
+          await panel
+            .getByRole('checkbox', {
+              name: `${locale === 'sv' ? 'Markera' : 'Select'} ${uniqueId}`,
+              exact: true,
+            })
+            .check()
+          await panel
+            .getByRole('checkbox', {
+              name: `${locale === 'sv' ? 'Markera' : 'Select'} ${data.local.uniqueId}`,
+              exact: true,
+            })
+            .check()
+          const bulk = page.locator(
+            '[data-developer-mode-value="remove selected items"]',
+          )
+          await expect(bulk).toBeDisabled()
+          await bulk.focus()
+          await expect(bulk).toHaveAccessibleDescription(
+            locale === 'sv'
+              ? 'Alla markerade krav måste ha användningsstatus Inkluderad för att kunna tas bort.'
+              : 'All selected requirements must have usage status Included to be removed.',
+          )
+          await setStatus(ref, 1)
+        }
+        await page.reload()
+        await showContext()
+        await expand(page, data.local.uniqueId)
+        const localRemove = page
+          .locator('[data-developer-mode-value="requirement action column"]')
+          .getByRole('button', {
+            name:
+              locale === 'sv'
+                ? inDraft
+                  ? 'Ta bort krav'
+                  : 'Ta bort'
+                : inDraft
+                  ? 'Remove requirement'
+                  : 'Delete',
+            exact: true,
+          })
+        await expect(localRemove).toBeEnabled()
+        await localRemove.click()
+        await page
+          .getByRole('alertdialog')
+          .getByRole('button', {
+            name:
+              locale === 'sv'
+                ? inDraft
+                  ? 'Ta bort krav'
+                  : 'Ta bort'
+                : inDraft
+                  ? 'Remove requirement'
+                  : 'Delete',
+            exact: true,
+          })
+          .click()
+        await expect(page.getByRole('alertdialog')).toHaveCount(0)
+        await page.reload()
+        await showContext()
+        const viewAfterLocal = (await (
+          await owner.get(
+            `${data.endpoint}${agreementId ? `?agreementId=${agreementId}` : ''}`,
+          )
+        ).json()) as SpecificationAgreementView
+        expect(
+          viewAfterLocal.items.some(
+            item => item.itemRef === localRef && !item.isRemoved,
+          ),
+        ).toBe(false)
+        await panel
+          .getByRole('checkbox', {
+            name: `${locale === 'sv' ? 'Markera' : 'Select'} ${uniqueId}`,
+            exact: true,
+          })
+          .check()
+        await page
+          .locator('[data-developer-mode-value="remove selected items"]')
+          .click()
+        await page
+          .getByRole('alertdialog')
+          .getByRole('button', {
+            name: locale === 'sv' ? 'Ta bort' : 'Delete',
+            exact: true,
+          })
+          .click()
+        await expect(page.getByRole('alertdialog')).toHaveCount(0)
+        await page.reload()
+        const finalView = (await (
+          await owner.get(
+            `${data.endpoint}${agreementId ? `?agreementId=${agreementId}` : ''}`,
+          )
+        ).json()) as SpecificationAgreementView
+        expect(finalView.items.filter(item => !item.isRemoved)).toHaveLength(0)
+        await withPlaywrightSqlServerDataSource(async db => {
+          expect(
+            await db.query(
+              'SELECT unique_id AS uniqueId FROM requirements WHERE unique_id = @0',
+              [uniqueId],
+            ),
+          ).toEqual([{ uniqueId }])
+        })
+      } finally {
+        await owner.dispose()
+      }
+    })
+  }
+}

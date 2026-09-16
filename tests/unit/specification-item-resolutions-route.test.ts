@@ -43,6 +43,8 @@ describe('specification item resolution route', () => {
     routeState.authorize.mockResolvedValue(undefined)
     routeState.listSpecificationTraceabilityItems.mockResolvedValue([
       {
+        specificationItemStatusId: 2,
+        deviationCounts: { pending: 0, applicable: 0 },
         itemRef: 'lib:31',
         kind: 'library',
         needsReference: 'IAM-42',
@@ -67,6 +69,9 @@ describe('specification item resolution route', () => {
     expect(await response.json()).toEqual({
       items: [
         {
+          specificationItemStatusId: 2,
+          hasPendingDeviation: false,
+          hasApprovedDeviation: false,
           itemRef: 'lib:31',
           kind: 'library',
           needsReference: 'IAM-42',

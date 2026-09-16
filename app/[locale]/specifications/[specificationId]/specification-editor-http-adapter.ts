@@ -21,10 +21,12 @@ interface HttpSpecificationEditorAdapterOptions {
   refreshAvailableRequirements: () => Promise<unknown>
   refreshNeedsReferences: () => Promise<unknown>
   refreshNeedsReferencesFailedMessage: string
+  removalRequiresIncludedMessage?: string
   specificationId: number
 }
 
 export function createHttpSpecificationEditorAdapter({
+  removalRequiresIncludedMessage,
   loadItemsFailedMessage,
   loadRequirementPackagesFailedMessage,
   refreshAvailableRequirements,
@@ -96,6 +98,14 @@ export function createHttpSpecificationEditorAdapter({
         headers: { 'Content-Type': 'application/json' },
         method: 'DELETE',
       })
+      if (!response.ok && removalRequiresIncludedMessage) {
+        const body = (await response
+          .clone()
+          .json()
+          .catch(() => null)) as { details?: { reason?: string } } | null
+        if (body?.details?.reason === 'removal_requires_included')
+          throw new Error(removalRequiresIncludedMessage)
+      }
       await assertOk(response, loadItemsFailedMessage)
       return (await response.json()) as { removedCount: number }
     },

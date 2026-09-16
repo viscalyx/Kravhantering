@@ -52,6 +52,7 @@ import LazyAiRequirementGenerator from '@/components/LazyAiRequirementGenerator'
 import LazyRequirementsImportDialog, {
   type InitialRequirementsImport,
 } from '@/components/LazyRequirementsImportDialog'
+import RequirementRemovalButton from '@/components/RequirementRemovalButton'
 import RequirementsTable, {
   type FloatingActionItem,
   type FloatingActionMenuItem,
@@ -101,6 +102,7 @@ import {
   type RequirementRow,
   type RequirementSortState,
 } from '@/lib/requirements/list-view'
+import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 import { deviationApplicability } from '@/lib/specifications/deviation-applicability'
 import {
   type AvailableRequirementsData,
@@ -136,6 +138,11 @@ const REQUIREMENT_SPECIFICATION_DETAIL_HELP: HelpContent = {
       kind: 'text',
       bodyKey: 'requirementsSpecificationDetail.requirements.body',
       headingKey: 'requirementsSpecificationDetail.requirements.heading',
+    },
+    {
+      kind: 'text',
+      headingKey: 'requirementsSpecificationDetail.removal.heading',
+      bodyKey: 'requirementsSpecificationDetail.removal.body',
     },
     {
       kind: 'text',
@@ -866,6 +873,7 @@ export default function KravunderlagDetailClient({
   }, [agreementContext?.selectedAgreement, leftFilters, leftSort, locale])
   const [editorWorkflow] = useState(() => {
     const editorAdapter = createHttpSpecificationEditorAdapter({
+      removalRequiresIncludedMessage: ta('removalSelectionRequiresIncluded'),
       loadItemsFailedMessage: t('loadSpecificationItemsFailed'),
       loadRequirementPackagesFailedMessage: t('loadRequirementPackagesFailed'),
       refreshAvailableRequirements: () =>
@@ -884,6 +892,7 @@ export default function KravunderlagDetailClient({
           error.key ===
           SPECIFICATION_PRELOAD_ERROR_KEYS.specificationRequirementPackages,
       ),
+      removalRequiresIncludedMessage: ta('removalSelectionRequiresIncluded'),
       onItemsRemoved: items => {
         for (const item of items) invalidateItemDetail(item)
       },
@@ -2256,6 +2265,22 @@ export default function KravunderlagDetailClient({
         total: leftSelectedItemRefs.size,
       })
     : null
+  const selectedRemovalReason =
+    selectionActionLimitWarning ??
+    (bulkActionResolving || bulkActionSaving ? tc('loading') : null) ??
+    (selectedSpecificationItems.some(item => item.hasPendingDeviation)
+      ? ta('pendingDeviationWarning')
+      : null) ??
+    (selectedSpecificationItems.some(item => item.hasApprovedDeviation) &&
+    !agreementContext?.canDecide
+      ? ta('responsibleEndingRequired')
+      : null) ??
+    (selectedSpecificationItems.some(
+      item =>
+        item.specificationItemStatusId !== DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
+    )
+      ? ta('removalSelectionRequiresIncluded')
+      : null)
   const deselectHiddenSpecificationItems = useCallback(() => {
     const hiddenRefs = new Set(
       hiddenSelectedSpecificationItems
@@ -4057,16 +4082,12 @@ export default function KravunderlagDetailClient({
                             </button>
                           )}
                           {canChangeContent && (
-                            <button
+                            <RequirementRemovalButton
                               aria-label={t('removeSelected', {
                                 count: leftSelectedItemRefs.size,
                               })}
                               className="btn-destructive inline-flex h-11 w-11 items-center justify-center rounded-lg px-0 py-0 disabled:cursor-not-allowed disabled:opacity-40"
-                              disabled={
-                                selectionActionLimitExceeded ||
-                                bulkActionResolving ||
-                                bulkActionSaving
-                              }
+                              reason={selectedRemovalReason}
                               {...devMarker({
                                 context: 'requirements specification detail',
                                 name: 'selection action',
@@ -4087,7 +4108,7 @@ export default function KravunderlagDetailClient({
                               type="button"
                             >
                               <Trash2 aria-hidden="true" className="h-4 w-4" />
-                            </button>
+                            </RequirementRemovalButton>
                           )}
                         </>
                       ) : null

@@ -1,5 +1,6 @@
 import type { SqlExecutor } from '@/lib/dal/requirements-specifications'
 import { conflictError, notFoundError } from '@/lib/requirements/errors'
+import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 import { activateDueAgreements } from '@/lib/specifications/agreement-activation'
 import { guardAgreementRequirementChange } from '@/lib/specifications/agreement-deviation-endings'
 import { applicableDeviationSql } from '@/lib/specifications/agreement-deviation-state'
@@ -205,7 +206,9 @@ export async function retireSpecificationApplications(
   kind: 'library' | 'specificationLocal',
   ids: number[],
   byRequirement = false,
-  options: WorkingRequirementChangeOptions = {},
+  options: WorkingRequirementChangeOptions & {
+    operation?: 'remove' | 'replace'
+  } = {},
 ): Promise<number> {
   if (!ids.length) return 0
   const table =
@@ -224,6 +227,28 @@ export async function retireSpecificationApplications(
       : 'specification_local_requirement_id'
   const placeholders = ids.map((_, index) => `@${index + 1}`).join(', ')
   const condition = `item.${parent} = @0 AND item.${byRequirement ? 'requirement_id' : 'id'} IN (${placeholders}) AND item.valid_until IS NULL AND item.valid_from <= SYSUTCDATETIME()`
+  if (options.operation !== 'replace') {
+    const statuses = await db.query<
+      Array<{ specificationItemStatusId: number }>
+    >(
+      `SELECT item.specification_item_status_id AS specificationItemStatusId
+       FROM ${table} item WITH (UPDLOCK, HOLDLOCK) WHERE ${condition}`,
+      [specificationId, ...ids],
+    )
+    if (
+      statuses.some(
+        item =>
+          item.specificationItemStatusId !==
+          DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
+      )
+    )
+      throw conflictError(
+        'Requirements can only be removed when usage status is Included',
+        {
+          reason: 'removal_requires_included',
+        },
+      )
+  }
   const active = await db.query<Array<{ id: number }>>(
     `SELECT d.id FROM ${deviations} d INNER JOIN ${table} item ON item.id = d.${child}
      WHERE ${condition} AND d.decision IS NULL`,

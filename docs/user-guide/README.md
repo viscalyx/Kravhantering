@@ -327,6 +327,18 @@ klicka på den för att starta avstegsprocessen.
 
 ![Krav expanderat i underlagskontext](images/029-krav-i-kravunderlag-expanderat.png)
 
+### Ta bort krav ur kravunderlaget
+
+Bibliotekskrav och lokala krav kan bara tas bort med användningsstatus
+**Inkluderad**. Regeln gäller enskilda krav och markerade krav, både utan avtal
+och i redigerbara avtalsutkast. Alla markerade krav måste vara Inkluderad.
+Skrivbehörighet, avtalslåsning och avstegsregler gäller samtidigt. Ett väntande
+avsteg måste avslutas först; ett gällande godkännande kräver ansvarigs beslut
+om avstegsavslut. Den inaktiverade åtgärden förklarar hindret vid hovring eller
+tangentbordsfokus. Borttagningen sparas, men själva bibliotekskravet finns kvar
+i kravbiblioteket. Om status ändras i en annan session kan servern avvisa
+borttagningen; ladda då om och kontrollera statusen.
+
 ### Formulär för avstegsansökan
 
 **Steg 3 — Fyll i avstegsformuläret.** Ange en motivering som förklarar varför

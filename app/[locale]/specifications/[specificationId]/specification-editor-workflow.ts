@@ -5,6 +5,7 @@ import {
   type RequirementSortState,
   type SpecificationItemStatusOption,
 } from '@/lib/requirements/list-view'
+import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 import type {
   SpecificationItemsPageData,
   SpecificationListItem,
@@ -45,10 +46,13 @@ export interface SpecificationEditorWorkflowPackagePageRequest {
 }
 
 export interface ResolvedSpecificationEditorItem {
+  hasApprovedDeviation?: boolean
+  hasPendingDeviation?: boolean
   itemRef: string
   kind: 'library' | 'specificationLocal'
   needsReference: string | null
   needsReferenceId: number | null
+  specificationItemStatusId: number | null
   uniqueId: string
 }
 
@@ -159,6 +163,7 @@ interface SpecificationEditorWorkflowOptions {
   initialPackageCatalogFailed?: boolean
   onItemsRemoved?: (items: SpecificationListItem[]) => void
   query: SpecificationEditorWorkflowQuery
+  removalRequiresIncludedMessage?: string
 }
 
 export interface SpecificationEditorWorkflow {
@@ -212,6 +217,7 @@ export function createSpecificationEditorWorkflow({
   initialItems,
   initialPackageCatalog,
   initialPackageCatalogFailed = false,
+  removalRequiresIncludedMessage = 'All selected requirements must have usage status Included to be removed.',
   onItemsRemoved,
   query,
 }: SpecificationEditorWorkflowOptions): SpecificationEditorWorkflow {
@@ -265,10 +271,10 @@ export function createSpecificationEditorWorkflow({
     updates: Partial<SpecificationEditorWorkflowInternalState>,
   ) => {
     state = { ...state, ...updates }
-    if (updates.selectedItemRefs) {
+    if (updates.selectedItemRefs || updates.items) {
       state = {
         ...state,
-        selectedItems: [...updates.selectedItemRefs].flatMap(itemRef => {
+        selectedItems: [...state.selectedItemRefs].flatMap(itemRef => {
           const item = knownItemsByRef.get(itemRef)
           return item ? [item] : []
         }),
@@ -495,6 +501,9 @@ export function createSpecificationEditorWorkflow({
           isSpecificationLocal: item.kind === 'specificationLocal',
           itemRef: item.itemRef,
           kind: item.kind,
+          specificationItemStatusId: item.specificationItemStatusId,
+          hasPendingDeviation: item.hasPendingDeviation,
+          hasApprovedDeviation: item.hasApprovedDeviation,
           needsReference: item.needsReference,
           needsReferenceId: item.needsReferenceId,
           uniqueId: item.uniqueId,
@@ -537,6 +546,7 @@ export function createSpecificationEditorWorkflow({
     publish({ bulkAction: { operation, phase: 'resolving' } })
     try {
       const items = await resolveItemRefs(itemRefs)
+      if (operation === 'remove-items') assertRemovalStatuses(items)
       preparedBulkAction = { itemRefs, items, operation }
       publish({ bulkAction: { phase: 'idle' } })
       return items
@@ -730,6 +740,17 @@ export function createSpecificationEditorWorkflow({
     return true
   }
 
+  const assertRemovalStatuses = (items: SpecificationListItem[]): void => {
+    if (
+      items.some(
+        item =>
+          item.specificationItemStatusId !==
+          DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
+      )
+    )
+      throw new Error(removalRequiresIncludedMessage)
+  }
+
   const removeItems = async (
     itemRefs: ReadonlySet<string> = state.selectedItemRefs,
     resolvedItems?: SpecificationListItem[],
@@ -737,6 +758,7 @@ export function createSpecificationEditorWorkflow({
   ): Promise<SpecificationEditorBulkOutcome> => {
     publish({ bulkAction: { operation: 'remove-items', phase: 'resolving' } })
     const items = resolvedItems ?? (await resolveItemRefs(itemRefs))
+    assertRemovalStatuses(items)
     const requestedRefs = items.flatMap(item =>
       item.itemRef ? [item.itemRef] : [],
     )

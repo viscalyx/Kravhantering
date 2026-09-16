@@ -3199,6 +3199,10 @@
       }
     },
     "requirementsSpecificationDetail": {
+      "removal": {
+        "heading": "Ta bort krav",
+        "body": "Bibliotekskrav och lokala krav kan bara tas bort när användningsstatus är Inkluderad. Alla markerade krav måste vara Inkluderad. Behörighet, avtalslåsning och avstegsbeslut gäller även i redigerbara utkast. Nå en inaktiverad borttagningsåtgärd med tangentbordet eller hovra över den för att läsa orsaken."
+      },
       "title": "Kravunderlagsdetalj",
       "requirements": {
         "heading": "Hantera krav",
@@ -3870,6 +3874,8 @@
     "imageOmitted": "Bild utelämnad"
   },
   "agreement": {
+    "removalRequiresIncluded": "Kravet kan bara tas bort när användningsstatus är Inkluderad.",
+    "removalSelectionRequiresIncluded": "Alla markerade krav måste ha användningsstatus Inkluderad för att kunna tas bort.",
     "heading": "Avtal",
     "none": "Inget",
     "register": "Registrera avtal",

@@ -5,6 +5,12 @@ export function withEditableAgreementState(
   return async (sql: string, parameters?: unknown[]) => {
     const statement = sql.replace(/\s+/g, ' ').trim()
     if (
+      statement.startsWith(
+        'SELECT item.specification_item_status_id AS specificationItemStatusId',
+      )
+    )
+      return [{ specificationItemStatusId: 1 }]
+    if (
       statement.startsWith('SELECT DISTINCT item.id FROM') &&
       statement.includes('specification_deviation_endings')
     )

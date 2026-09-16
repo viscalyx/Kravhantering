@@ -181,6 +181,46 @@ describe('selected agreement requirement author workflow', () => {
   })
   afterEach(() => vi.unstubAllGlobals())
 
+  it.each(
+    [2, 3, 4, 5, 6].flatMap(statusId =>
+      (['lib:9', 'local:9'] as const).flatMap(itemRef =>
+        [true, false].map(draft => ({ statusId, itemRef, draft })),
+      ),
+    ),
+  )(
+    'explains why $itemRef usage status $statusId prevents removal (draft: $draft)',
+    async ({ statusId, itemRef, draft }) => {
+      render(
+        <ConfirmModalProvider>
+          <SpecificationAgreementRequirement
+            item={{ ...item, itemRef, specificationItemStatusId: statusId }}
+            needsReferencesResource={{
+              data: [],
+              loading: false,
+              error: null,
+              refreshing: false,
+              refreshError: null,
+              reload: async () => [],
+            }}
+            onChange={async () => {}}
+            onRemoveFromSpecification={() => {}}
+            specificationId={1}
+            view={{ ...view, selectedAgreement: draft ? agreement : null }}
+          />
+        </ConfirmModalProvider>,
+      )
+      const remove = screen.getByRole('button', {
+        name: 'agreement.removeRequirement',
+      })
+      expect(remove).toHaveAttribute('aria-disabled', 'true')
+      expect(remove).toHaveAccessibleDescription(
+        'agreement.removalRequiresIncluded',
+      )
+      await userEvent.click(remove)
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    },
+  )
+
   it.each([true, false])(
     'keeps future-ending approval consent and authorization safeguards (responsible: %s)',
     async canDecide => {
@@ -972,7 +1012,9 @@ describe('selected agreement requirement author workflow', () => {
     expect(
       screen.getByRole('button', { name: 'agreement.editRequirement' }),
     ).toBeDisabled()
-    expect(screen.getByText('agreement.pendingDeviationWarning')).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'agreement.removeRequirement' }),
+    ).toHaveAccessibleDescription('agreement.pendingDeviationWarning')
     await user.click(
       screen.getByRole('button', { name: 'agreement.cancelDeviation' }),
     )

@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
+import RequirementRemovalButton from '@/components/RequirementRemovalButton'
 import type { SpecificationAgreementView } from '@/components/SpecificationAgreementBox'
 import SpecificationAgreementDeviations from '@/components/SpecificationAgreementDeviations'
 import SpecificationLocalRequirementForm, {
@@ -26,6 +27,10 @@ import type {
   SpecificationLocalRequirementDetailCache,
 } from '@/lib/requirements/detail-prefetch'
 import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
+import {
+  type AgreementHttpError,
+  agreementErrorMessage,
+} from '@/lib/specifications/agreement-errors'
 import type { AgreementItem } from '@/lib/specifications/agreements'
 import type { SpecificationLocalRequirementDetail } from '@/lib/specifications/local-requirement-detail'
 
@@ -725,8 +730,14 @@ export default function SpecificationLocalRequirementDetailClient({
         )
 
         if (!response.ok) {
-          const body = (await response.json().catch(() => null)) as unknown
-          setError(readResponseError(body) ?? tc('error'))
+          const body = (await response
+            .json()
+            .catch(() => null)) as AgreementHttpError | null
+          setError(
+            body?.details?.reason === 'removal_requires_included'
+              ? agreementErrorMessage(body, ta)
+              : (readResponseError(body) ?? tc('error')),
+          )
           return
         }
 
@@ -1096,31 +1107,35 @@ export default function SpecificationLocalRequirementDetailClient({
                 >
                   <div ref={setDeviationActionTarget} />
                   {canChangeContent && graduationTargetAreasLoaded ? (
-                    <>
-                      <span
-                        className="inline-flex w-full"
-                        title={localRequirementMutationTooltip}
-                      >
-                        <button
-                          className={railDangerButtonClass}
-                          disabled={!canMutateLocalRequirement || isDeleting}
-                          {...devMarker({
-                            context: detailContext,
-                            name: 'detail action',
-                            priority: 291,
-                            value: 'delete local requirement',
-                          })}
-                          onClick={event => void handleDelete(event)}
-                          type="button"
-                        >
-                          <Trash2
-                            aria-hidden="true"
-                            className="mr-1.5 inline-block h-4 w-4 align-middle"
-                          />
-                          {tc('delete')}
-                        </button>
-                      </span>
-                    </>
+                    <RequirementRemovalButton
+                      className={railDangerButtonClass}
+                      reason={
+                        isDeleting
+                          ? tc('deleting')
+                          : hasPendingDeviation
+                            ? ta('pendingDeviationWarning')
+                            : approvedDeviationEndingRequired &&
+                                !permissions?.canAuthorizeDeviationEndings
+                              ? ta('responsibleEndingRequired')
+                              : !canMutateLocalRequirement
+                                ? ta('removalRequiresIncluded')
+                                : undefined
+                      }
+                      {...devMarker({
+                        context: detailContext,
+                        name: 'detail action',
+                        priority: 291,
+                        value: 'delete local requirement',
+                      })}
+                      onClick={event => void handleDelete(event)}
+                      type="button"
+                    >
+                      <Trash2
+                        aria-hidden="true"
+                        className="mr-1.5 inline-block h-4 w-4 align-middle"
+                      />
+                      {tc('delete')}
+                    </RequirementRemovalButton>
                   ) : null}
                   {canChangeContent && graduationTargetAreasLoaded && (
                     <span

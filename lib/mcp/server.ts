@@ -2734,7 +2734,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: false,
       },
-      description: `Unlink up to ${ARRAY_INPUT_MAX_ITEMS} unique requirements from a requirements specification. The requirements themselves are not deleted. Identify the specification with specificationId. ${specificationIdCopyPath} ${removeRequirementIdsCopyPath}`,
+      description: `Unlink up to ${ARRAY_INPUT_MAX_ITEMS} unique requirements from a requirements specification. The requirements themselves are not deleted. Removal requires usage status Included (specificationItemStatusId 1) for every targeted application and remains subject to permissions, agreement locks, and deviation rules. Refresh requirements_get_specification_items after a conflict; no partial removal is committed. Identify the specification with specificationId. ${specificationIdCopyPath} ${removeRequirementIdsCopyPath}`,
       inputSchema: z
         .object({
           locale: ResponseLocaleSchema,

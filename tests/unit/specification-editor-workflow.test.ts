@@ -23,6 +23,7 @@ function item(
   uniqueId: string,
 ): SpecificationListItem {
   return {
+    specificationItemStatusId: 1,
     area: null,
     id,
     isArchived: false,
@@ -34,6 +35,38 @@ function item(
 }
 
 describe('specification editor workflow', () => {
+  it('rejects a mixed removal when authoritative resolution finds a changed usage status', async () => {
+    const library = {
+      ...item(1, 'lib:1', 'LIBRARY'),
+      specificationItemStatusId: 1,
+    }
+    const local = {
+      ...item(-2, 'local:2', 'LOCAL'),
+      kind: 'specificationLocal' as const,
+      specificationItemStatusId: 1,
+    }
+    const adapter = new InMemorySpecificationEditorAdapter({
+      items: [library, { ...local, specificationItemStatusId: 2 }],
+    })
+    const workflow = createSpecificationEditorWorkflow({
+      adapter,
+      initialItems: page([library, local]),
+      initialPackageCatalog: emptyPackageCatalog(),
+      query: defaultQuery,
+    })
+    workflow.actions.selectLoadedItems(new Set([1, -2]))
+    await expect(
+      workflow.actions.prepareBulkAction('remove-items'),
+    ).rejects.toThrow()
+    expect(
+      workflow
+        .getState()
+        .selectedItems.map(row => row.specificationItemStatusId),
+    ).toEqual([1, 2])
+    await expect(workflow.actions.removeItems()).rejects.toThrow()
+    expect(await adapter.resolveItems(['lib:1', 'local:2'])).toHaveLength(2)
+  })
+
   it('ignores a stale item-page response after the query changes', async () => {
     let releaseStalePage: ((value: ReturnType<typeof page>) => void) | undefined
     const stalePage = new Promise<ReturnType<typeof page>>(resolve => {
@@ -248,6 +281,7 @@ describe('specification editor workflow', () => {
       {
         itemRef: 'lib:1',
         kind: 'library',
+        specificationItemStatusId: 1,
         needsReference: null,
         needsReferenceId: null,
         uniqueId: 'FIRST',
@@ -407,6 +441,7 @@ describe('specification editor workflow', () => {
           {
             itemRef: 'lib:1',
             kind: 'library',
+            specificationItemStatusId: 1,
             needsReference: 'Shared text',
             needsReferenceId: 82,
             uniqueId: 'FIRST',
@@ -448,6 +483,7 @@ describe('specification editor workflow', () => {
           {
             itemRef: 'lib:1',
             kind: 'library',
+            specificationItemStatusId: 1,
             needsReference: 'Authoritative text',
             needsReferenceId: 82,
             uniqueId: 'FIRST',

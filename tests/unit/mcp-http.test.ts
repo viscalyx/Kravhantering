@@ -73,6 +73,7 @@ import {
 } from '@/lib/mcp/http'
 import { createKravhanteringMcpServer } from '@/lib/mcp/server'
 import {
+  conflictError,
   importCapacityBusyError,
   RequirementsServiceError,
 } from '@/lib/requirements/errors'
@@ -1475,6 +1476,31 @@ describe('handleRequirementsMcpRequest', () => {
       }),
     )
 
+    await client.close()
+    await transport.close()
+  })
+
+  it('documents Included-only removal and reports a service status conflict as a failed tool call', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+    fakeService.removeFromSpecification.mockRejectedValueOnce(
+      conflictError(
+        'Requirements can only be removed when usage status is Included',
+        { reason: 'removal_requires_included' },
+      ),
+    )
+    const inventory = await client.listTools()
+    expect(
+      inventory.tools.find(
+        tool => tool.name === 'requirements_remove_from_specification',
+      )?.description,
+    ).toContain('usage status Included (specificationItemStatusId 1)')
+    const result = await client.callTool({
+      name: 'requirements_remove_from_specification',
+      arguments: { specificationId: 7, requirementIds: [1] },
+    })
+    expect(result.isError).toBe(true)
+    expect(JSON.stringify(result)).toContain('Included')
     await client.close()
     await transport.close()
   })

@@ -412,6 +412,13 @@ specification copy path above, and copy only library requirement IDs from:
 requirements_get_specification_items.items[kind == "library"].id -> requirementIds
 ```
 
+Removal requires usage status **Included** (`specificationItemStatusId: 1`)
+for every targeted application. Permission, agreement and deviation checks
+still apply. A status conflict explains that Included is required and rolls
+back the entire removal request. REST responses also include the reason
+`removal_requires_included`. Refresh specification items before retrying;
+library requirements themselves remain in the library.
+
 ### `requirements_list_improvement_suggestions`
 
 Lists improvement suggestions for a specific requirement. Identify the
