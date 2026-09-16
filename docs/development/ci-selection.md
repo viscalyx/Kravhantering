@@ -17,6 +17,13 @@ inputs select applicable validation and release work. Mixed inputs take the
 union. Unknown paths select all applicable owners. Renames use their destination;
 deletions use the deleted path. Failed or incomplete collection blocks checks.
 
+Push selection compares the event's exact previous and new commits. If the
+previous commit is missing locally after a force-push, the collector fetches
+that SHA from `origin` before comparing. This also covers Dependabot updates:
+full-history checkout alone may omit the replaced branch tip. A failed fetch
+still blocks selection; the collector does not substitute another base or
+silently omit deleted paths.
+
 Whole suites use native job skips and partial quality selections use native
 step skips. Required reporting retains existing context names, describes policy
 exclusions, and fails selected failed, cancelled, missing or unexpectedly

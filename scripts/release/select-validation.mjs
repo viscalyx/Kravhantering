@@ -70,6 +70,12 @@ export function collectSelectionInput({
         throw new Error('Truncated tree enumeration.')
       files = output ? output.slice(0, -1).split('\0') : []
     } else {
+      try {
+        git(['cat-file', '-e', `${before}^{commit}`])
+      } catch {
+        // Full-history checkout can omit the old tip after a force-push.
+        git(['fetch', '--no-tags', '--no-write-fetch-head', 'origin', before])
+      }
       files = changedPathFacts(
         git([
           'diff',

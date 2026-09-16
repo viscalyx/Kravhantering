@@ -1,3 +1,7 @@
+import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
   changedPathFacts,
@@ -5,6 +9,7 @@ import {
   evaluateSelectedResults,
   selectionSummary,
 } from '../select-validation.mjs'
+import { selectValidation } from '../selection.mjs'
 
 const env = {
   GITHUB_EVENT_NAME: 'push',
@@ -32,6 +37,95 @@ describe('selection script input and reporting', () => {
     'rejects incomplete Git output %j',
     value => expect(() => changedPathFacts(value)).toThrow(),
   )
+  it('uses the local push endpoints without fetching when both are available', () => {
+    const runGit = vi.fn(() => 'M\0package-lock.json\0')
+    const result = collectSelectionInput({ env, execFileSync: runGit })
+    expect(result.collection.files).toEqual([
+      { filename: 'package-lock.json', status: 'modified' },
+    ])
+    expect(runGit.mock.calls.map(([, args]) => args[0])).toEqual([
+      'cat-file',
+      'diff',
+    ])
+  })
+  it('recovers a replaced branch tip and includes dependency changes and deleted paths', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'selection-force-push-'))
+    const upstream = path.join(root, 'upstream')
+    const checkout = path.join(root, 'checkout')
+    const git = (cwd, args) =>
+      execFileSync('git', args, {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }).trim()
+    try {
+      fs.mkdirSync(upstream)
+      git(upstream, ['init', '--initial-branch=main'])
+      git(upstream, ['config', 'user.name', 'Selection Test'])
+      git(upstream, ['config', 'user.email', 'selection@example.com'])
+      fs.writeFileSync(path.join(upstream, 'package.json'), '{"version":"1"}')
+      fs.writeFileSync(path.join(upstream, 'removed.txt'), 'old file')
+      git(upstream, ['add', '.'])
+      git(upstream, ['-c', 'commit.gpgsign=false', 'commit', '-m', 'before'])
+      const before = git(upstream, ['rev-parse', 'HEAD'])
+      fs.writeFileSync(path.join(upstream, 'package.json'), '{"version":"2"}')
+      fs.unlinkSync(path.join(upstream, 'removed.txt'))
+      git(upstream, ['add', '-A'])
+      git(upstream, [
+        '-c',
+        'commit.gpgsign=false',
+        'commit',
+        '--amend',
+        '-m',
+        'after',
+      ])
+      const after = git(upstream, ['rev-parse', 'HEAD'])
+      git(root, ['clone', '--no-local', upstream, checkout])
+      expect(() => git(checkout, ['cat-file', '-e', before])).toThrow()
+
+      const input = collectSelectionInput({
+        cwd: checkout,
+        env: {
+          ...env,
+          GITHUB_REF: 'refs/heads/dependabot/npm_and_yarn/example',
+          GITHUB_SHA: after,
+          GITHUB_EVENT_PATH: 'event.json',
+        },
+        fsImpl: {
+          readFileSync: () => JSON.stringify({ before, forced: true }),
+        },
+      })
+
+      expect(input.collection).toEqual({
+        complete: true,
+        files: [
+          { filename: 'package.json', status: 'modified' },
+          { filename: 'removed.txt', status: 'removed' },
+        ],
+      })
+      const selection = selectValidation({
+        ...input,
+        workflow: 'copilot-setup-steps',
+      })
+      expect(selection.owners).toEqual(['setup'])
+      expect(selection.releaseEligible).toBe(false)
+      expect(git(checkout, ['rev-parse', 'HEAD'])).toBe(after)
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  })
+  it('blocks selection when the missing previous commit cannot be fetched', () => {
+    const runGit = vi.fn((_command, args) => {
+      throw new Error(args[0] === 'fetch' ? 'Fetch denied' : 'Missing commit')
+    })
+    expect(() => collectSelectionInput({ env, execFileSync: runGit })).toThrow(
+      'Fetch denied',
+    )
+    expect(runGit.mock.calls.map(([, args]) => args[0])).toEqual([
+      'cat-file',
+      'fetch',
+    ])
+  })
   it('collects the PR merge-base range and keeps the caller source SHA', () => {
     const execFileSync = vi.fn(() => 'M\0app/route.ts\0')
     const result = collectSelectionInput({
