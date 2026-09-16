@@ -9,6 +9,47 @@ import {
 
 test.use({ storageState: ROLE_STORAGE_STATE.specificationCoauthor })
 
+for (const role of [
+  'specificationCoauthor',
+  'reviewer',
+  'adminOnly',
+  'noRoles',
+] as const) {
+  test(`AUTHZ-04/AUTHZ-05/SPEC-24: ${role} cannot register the first agreement`, async ({
+    baseURL,
+    browser,
+  }, testInfo) => {
+    const fixture = await createAuthorizationFixture(testInfo)
+    const caller = await browser.newContext({
+      baseURL,
+      storageState: ROLE_STORAGE_STATE[role],
+    })
+    try {
+      const rolePage = await caller.newPage()
+      await rolePage.goto(`/en/specifications/${fixture.specificationId}`)
+      if (role === 'noRoles') {
+        await expect(
+          rolePage.getByRole('heading', {
+            name: 'You do not have access to this requirements specification',
+          }),
+        ).toBeVisible()
+      } else {
+        await expect(
+          rolePage.locator('[data-developer-mode-value="agreement selector"]'),
+        ).toContainText('None')
+      }
+      await expect(
+        rolePage.getByRole('button', {
+          name: 'Register agreement',
+          exact: true,
+        }),
+      ).toHaveCount(0)
+    } finally {
+      await caller.close()
+    }
+  })
+}
+
 test('AUTHZ-04/AUTHZ-05/SPEC-24: co-authors prepare whole agreements and cancel pending cases while the assigned responsible person confirms', async ({
   baseURL,
   browser,
@@ -24,43 +65,7 @@ test('AUTHZ-04/AUTHZ-05/SPEC-24: co-authors prepare whole agreements and cancel 
   const endpoint = `/api/requirements-specifications/${fixture.specificationId}/agreement`
   const url = `/en/specifications/${fixture.specificationId}`
   try {
-    await test.step('Only the assigned responsible person can register the first agreement', async () => {
-      for (const role of [
-        'specificationCoauthor',
-        'reviewer',
-        'adminOnly',
-        'noRoles',
-      ] as const) {
-        const caller = await browser.newContext({
-          baseURL,
-          storageState: ROLE_STORAGE_STATE[role],
-        })
-        try {
-          const rolePage = await caller.newPage()
-          await rolePage.goto(url)
-          if (role === 'noRoles') {
-            await expect(
-              rolePage.getByRole('heading', {
-                name: 'You do not have access to this requirements specification',
-              }),
-            ).toBeVisible()
-          } else {
-            await expect(
-              rolePage.locator(
-                '[data-developer-mode-value="agreement selector"]',
-              ),
-            ).toContainText('None')
-          }
-          await expect(
-            rolePage.getByRole('button', {
-              name: 'Register agreement',
-              exact: true,
-            }),
-          ).toHaveCount(0)
-        } finally {
-          await caller.close()
-        }
-      }
+    await test.step('The assigned responsible person registers the first agreement', async () => {
       const response = await owner.post(endpoint, {
         data: {
           operation: 'establish',
