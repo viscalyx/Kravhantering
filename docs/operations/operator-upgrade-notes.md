@@ -7,6 +7,16 @@ target version.
 
 ## Unreleased
 
+### Requirement removal through REST and MCP
+
+Before rollout, coordinate REST and MCP clients that remove requirements from
+specifications. Removal now requires usage status Included for every selected
+requirement application, including local requirements and editable agreement
+drafts. If any selected application has another status, the entire request is
+rejected without partial removal. Clients must refresh the selected applications
+and review their status before retrying. Existing permission, agreement lock and
+deviation rules still apply.
+
 ### Deviation approval validity
 
 Stop write traffic and drain application nodes before the database upgrade. Keep
