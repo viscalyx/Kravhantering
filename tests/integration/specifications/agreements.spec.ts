@@ -1071,52 +1071,62 @@ for (const locale of ['sv', 'en'] as const) {
   })
 }
 
+async function deviationFixture(
+  owner: APIRequestContext,
+  kind: 'library' | 'local',
+) {
+  const data = await fixture(owner)
+  let uniqueId = data.local.uniqueId
+  if (kind === 'library') {
+    const source = await withPlaywrightSqlServerDataSource(async db => {
+      const rows = (await db.query(
+        `SELECT TOP (1) requirement.id, requirement.unique_id AS uniqueId FROM requirements requirement INNER JOIN requirement_versions version ON version.requirement_id = requirement.id WHERE version.requirement_status_id = 3 ORDER BY requirement.id`,
+      )) as Array<{ id: number; uniqueId: string }>
+      return requireTestValue(rows[0])
+    })
+    await expectOk(
+      await owner.post(`/api/requirements-specifications/${data.id}/items`, {
+        data: { requirementIds: [source.id] },
+      }),
+      'link library requirement',
+    )
+    uniqueId = source.uniqueId
+  }
+  const itemPage = (await (
+    await owner.get(`/api/requirements-specifications/${data.id}/items`)
+  ).json()) as { items: Array<{ itemRef: string; uniqueId: string }> }
+  const item = requireTestValue(
+    itemPage.items.find(item => item.uniqueId === uniqueId),
+  )
+  const read = async () =>
+    (await (
+      await owner.get(
+        `${data.endpoint}?itemRefs=${encodeURIComponent(item.itemRef)}`,
+      )
+    ).json()) as {
+      deviations: Array<{
+        id: number
+        itemRef: string
+        decision: number | null
+        isReviewRequested: number
+      }>
+    }
+  const createEndpoint = `/api/specification-item-deviations/${encodeURIComponent(item.itemRef)}`
+  return { data, uniqueId, item, read, createEndpoint }
+}
+
+// Keep each workflow independent so their combined navigation and mutation
+// time does not exhaust a single test's timeout on CI.
 for (const kind of ['library', 'local'] as const) {
-  test(`DEV-08 DEV-09 DEV-10: ${kind} deviation errors, review and end without a decision`, async ({
+  test(`DEV-08 DEV-09: ${kind} deviation conflict recovery, editing and review`, async ({
     page,
     browser,
   }, testInfo) => {
     const owner = await newRoleContext(testInfo, 'specificationResponsible')
     const reviewer = await newRoleContext(testInfo, 'reviewer')
     try {
-      const data = await fixture(owner)
-      let uniqueId = data.local.uniqueId
-      if (kind === 'library') {
-        const source = await withPlaywrightSqlServerDataSource(async db => {
-          const rows = (await db.query(
-            `SELECT TOP (1) requirement.id, requirement.unique_id AS uniqueId FROM requirements requirement INNER JOIN requirement_versions version ON version.requirement_id = requirement.id WHERE version.requirement_status_id = 3 ORDER BY requirement.id`,
-          )) as Array<{ id: number; uniqueId: string }>
-          return requireTestValue(rows[0])
-        })
-        await expectOk(
-          await owner.post(
-            `/api/requirements-specifications/${data.id}/items`,
-            { data: { requirementIds: [source.id] } },
-          ),
-          'link library requirement',
-        )
-        uniqueId = source.uniqueId
-      }
-      const itemPage = (await (
-        await owner.get(`/api/requirements-specifications/${data.id}/items`)
-      ).json()) as { items: Array<{ itemRef: string; uniqueId: string }> }
-      const item = requireTestValue(
-        itemPage.items.find(item => item.uniqueId === uniqueId),
-      )
-      const read = async () =>
-        (await (
-          await owner.get(
-            `${data.endpoint}?itemRefs=${encodeURIComponent(item.itemRef)}`,
-          )
-        ).json()) as {
-          deviations: Array<{
-            id: number
-            itemRef: string
-            decision: number | null
-            isReviewRequested: number
-          }>
-        }
-      const createEndpoint = `/api/specification-item-deviations/${encodeURIComponent(item.itemRef)}`
+      const { data, uniqueId, item, read, createEndpoint } =
+        await deviationFixture(owner, kind)
       await page.goto(`/en/specifications/${data.id}`)
       await expect(
         page.getByRole('button', { name: 'Register agreement', exact: true }),
@@ -1251,6 +1261,50 @@ for (const kind of ['library', 'local'] as const) {
       ).toBeEnabled()
       await expand(page, uniqueId)
       await expect(box.getByRole('status')).toContainText('Review requested')
+    } finally {
+      await owner.dispose()
+      await reviewer.dispose()
+    }
+  })
+
+  test(`DEV-08 DEV-10: ${kind} deviation returns to draft and ends without a decision`, async ({
+    page,
+  }, testInfo) => {
+    const owner = await newRoleContext(testInfo, 'specificationResponsible')
+    try {
+      const { data, uniqueId, read, createEndpoint } = await deviationFixture(
+        owner,
+        kind,
+      )
+      const response = await owner.post(createEndpoint, {
+        data: { motivation: 'Edited request motivation' },
+      })
+      await expectOk(response, 'create deviation for cancellation')
+      const pending = (await response.json()) as { id: number }
+      const reviewEndpoint =
+        kind === 'local'
+          ? `/api/specification-local-deviations/${pending.id}/request-review`
+          : `/api/deviations/${pending.id}/request-review`
+      await expectOk(
+        await owner.post(reviewEndpoint),
+        'request deviation review',
+      )
+      await page.goto(`/en/specifications/${data.id}`)
+      await expect(
+        page.getByRole('button', { name: 'Register agreement', exact: true }),
+      ).toBeEnabled()
+      await expand(page, uniqueId)
+      const box = page.getByRole('article', {
+        name: 'Edited request motivation',
+        exact: true,
+      })
+      const create = page
+        .getByRole('group', {
+          name: 'Requirement actions',
+          exact: true,
+        })
+        .getByRole('button', { name: 'Request a deviation', exact: true })
+      await expect(box.getByRole('status')).toContainText('Review requested')
       await box.getByRole('button', { name: '← Draft', exact: true }).click()
       await page
         .getByRole('alertdialog')
@@ -1289,7 +1343,31 @@ for (const kind of ['library', 'local'] as const) {
       ).toBeEnabled()
       await expand(page, uniqueId)
       await expect(box.getByRole('status')).toContainText('Cancelled')
-      // Exercise the same creation/cancellation controls in a confirmed future agreement.
+    } finally {
+      await owner.dispose()
+    }
+  })
+
+  test(`DEV-08 DEV-10: ${kind} future-agreement deviation ends in a narrow viewport`, async ({
+    page,
+  }, testInfo) => {
+    const owner = await newRoleContext(testInfo, 'specificationResponsible')
+    try {
+      const { data, uniqueId } = await deviationFixture(owner, kind)
+      await page.goto(`/en/specifications/${data.id}`)
+      await expect(
+        page.getByRole('button', { name: 'Register agreement', exact: true }),
+      ).toBeEnabled()
+      const create = page
+        .getByRole('group', {
+          name: 'Requirement actions',
+          exact: true,
+        })
+        .getByRole('button', { name: 'Request a deviation', exact: true })
+      const form = page.getByRole('dialog', {
+        name: 'Request a deviation',
+        exact: true,
+      })
       await register(page, 'Future agreement', futureDate())
       await expand(page, uniqueId)
       await create.click()
@@ -1315,6 +1393,10 @@ for (const kind of ['library', 'local'] as const) {
       await upcoming
         .getByRole('button', { name: 'End without a decision', exact: true })
         .click()
+      const cancel = page.getByRole('dialog', {
+        name: 'End without a decision',
+        exact: true,
+      })
       await cancel.getByLabel(/^Reason/).fill('Upcoming request withdrawn')
       const cancellationActions = cancel.locator(
         '[data-developer-mode-value="end deviation without a decision"]',
@@ -1353,7 +1435,6 @@ for (const kind of ['library', 'local'] as const) {
       await expect(upcoming.getByRole('status')).toContainText('Cancelled')
     } finally {
       await owner.dispose()
-      await reviewer.dispose()
     }
   })
 }
