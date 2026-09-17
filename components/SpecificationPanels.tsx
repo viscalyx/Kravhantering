@@ -130,7 +130,7 @@ export default function SpecificationPanels({
 
   return (
     <div
-      className={`relative grid min-w-0 grid-cols-1 items-start gap-6 xl:-mx-8 xl:min-h-0 xl:flex-1 xl:grid-rows-[minmax(0,1fr)] xl:items-stretch xl:gap-4 xl:overflow-hidden ${columns}`}
+      className={`relative grid min-w-0 grid-cols-1 items-start gap-6 xl:-mx-6 xl:min-h-0 xl:flex-1 xl:grid-rows-[minmax(0,1fr)] xl:items-stretch xl:gap-4 xl:overflow-hidden ${columns}`}
       data-specification-detail-split-panel="true"
       ref={workspaceRef}
       {...devMarker({

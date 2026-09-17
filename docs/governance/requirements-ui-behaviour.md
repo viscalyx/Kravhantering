@@ -554,7 +554,9 @@ state across reloads.
 ### Resizing Specification Panels
 
 When both panels are open side by side at the `xl` breakpoint, a thin
-vertical divider fills their existing 16px gap. Hover, focus and dragging
+vertical divider fills their existing 16px gap. The workspace keeps an 8px
+outer gutter beside the global navigation and the right viewport edge.
+Hover, focus and dragging
 highlight the line; the pointer uses `ew-resize`. The full gap accepts
 mouse, pen and touch dragging. Resizing updates both panel widths live,
 without changing their combined width, table-column widths or mounted
