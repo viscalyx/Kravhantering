@@ -7,11 +7,11 @@ berör och läs båda när arbetet korsar gränsen.
 
 - [Kravhantering](./CONTEXT.md) — äger applikationens verksamhetsbegrepp,
   användarflöden och applikationsstyrda tillstånd.
-- [Verksamhetsstatistik](./docs/statistics/CONTEXT.md) — äger begrepp för
-  mätningar, tidsbetydelser, behörighetsskyddade aggregat och statistisk
-  historik.
-- [Driftsättning och leverans](./docs/operations/CONTEXT.md) — äger begrepp för
-  releasepaketering, driftsättning, uppgradering, verifiering och
+- [Verksamhetsstatistik](./domain-language-glossary/statistics.md) — äger
+  begrepp för mätningar, tidsbetydelser, behörighetsskyddade aggregat och
+  statistisk historik.
+- [Driftsättning och leverans](./domain-language-glossary/operations.md) — äger
+  begrepp för releasepaketering, driftsättning, uppgradering, verifiering och
   driftöverlämning.
 
 ## Ägarskapsregel
