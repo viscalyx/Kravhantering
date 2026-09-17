@@ -1317,6 +1317,14 @@ test.describe('Requirements specification deterministic manual cases', () => {
   test('SPEC-21: intent prefetch reuses one main request in both requirement lists', async ({
     page,
   }) => {
+    // Start with both lists open: clicking the collapsed rail can leave the
+    // pointer over a newly revealed row and prefetch it during setup.
+    await page.addInitScript(id => {
+      localStorage.setItem(
+        'specification-panel-layout-v1',
+        JSON.stringify({ specificationId: id, layout: 'both' }),
+      )
+    }, specificationId)
     await page.clock.install()
     const libraryDetailRequests = await countDetailRequests(
       page,
@@ -1392,6 +1400,8 @@ test.describe('Requirements specification deterministic manual cases', () => {
 
     await test.step('pointer hover cancels short intent and reuses held prefetches', async () => {
       await expect(localMarker).toBeVisible()
+      expect(libraryDetailRequests.count).toBe(0)
+      expect(localDetailRequests.count).toBe(0)
       // Control the intent timer so runner latency cannot turn a short hover
       // into a held hover while Playwright completes its mouse actions.
       await page.clock.pauseAt(Date.now() + 1_000)
@@ -2857,6 +2867,9 @@ test.describe('Requirements specification deterministic manual cases', () => {
           name: 'Filter requirements packages',
         }),
       ).toBeVisible()
+      // Hydration can still be refreshing items after the package controls
+      // appear. Finish those route handlers before Playwright closes the page.
+      await page.unrouteAll({ behavior: 'wait' })
     })
   })
 

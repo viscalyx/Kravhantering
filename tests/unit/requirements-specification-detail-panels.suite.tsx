@@ -1,8 +1,10 @@
 import { fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SpecDetailWorkflowContext } from './requirements-specification-detail-client.suite'
+import { registerPanelResizeTests } from './requirements-specification-detail-resize.suite'
 
 export function registerPanelLayoutTests(context: SpecDetailWorkflowContext) {
+  registerPanelResizeTests(context)
   describe('panel layouts', () => {
     beforeEach(() => window.localStorage.clear())
     afterEach(() => vi.restoreAllMocks())
