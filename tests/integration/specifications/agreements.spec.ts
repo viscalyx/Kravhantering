@@ -1887,6 +1887,8 @@ for (const locale of ['en', 'sv'] as const) {
     test(`SPEC-29: Included-only removal, mixed selection and accessible explanations (${locale}, draft: ${inDraft})`, async ({
       page,
     }, testInfo) => {
+      // Real setup, two status checks, removals, and reloads exceed one minute in CI.
+      test.setTimeout(120_000)
       const owner = await newRoleContext(testInfo, 'specificationResponsible')
       try {
         const {
