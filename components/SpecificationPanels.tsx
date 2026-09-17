@@ -1,8 +1,21 @@
 'use client'
 
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+} from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { type ReactNode, useEffect, useState } from 'react'
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 type PanelLayout = 'both' | 'left' | 'right'
@@ -59,7 +72,6 @@ export default function SpecificationPanels({
   rightLabel,
   children,
 }: SpecificationPanelsProps) {
-  const t = useTranslations('specification')
   // Capture the opening snapshot: filtering, refreshes and edits cannot choose
   // a new default during this visit. The caller keys this component by identity.
   const [opening] = useState({ specificationId, initialHasItems })
@@ -102,64 +114,118 @@ export default function SpecificationPanels({
         value: 'collapsible panels',
       })}
     >
-      {(['left', 'right'] as const).map((side, index) => {
-        const expanded = layout === 'both' || layout === side
-        const label = side === 'left' ? leftLabel : rightLabel
-        const controlLabel = t(expanded ? 'collapsePanel' : 'expandPanel', {
-          panel: label,
-        })
-        const Icon = (side === 'left') === expanded ? ChevronLeft : ChevronRight
-        return (
-          <section
-            aria-label={label}
-            className="flex min-w-0 flex-col gap-2 xl:h-full xl:min-h-0"
-            key={side}
-          >
-            <button
-              aria-controls={`specification-${side}-panel`}
-              aria-expanded={expanded}
-              aria-label={controlLabel}
-              className={`flex min-h-8 min-w-8 items-center justify-center gap-2 rounded-lg border border-secondary-300 bg-white px-2 py-1 text-sm text-secondary-800 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100 dark:hover:bg-secondary-800 ${expanded ? (side === 'left' ? 'self-start' : 'self-end') : 'w-full xl:h-full xl:w-10 xl:flex-col'}`}
-              onClick={event => {
-                const next = expanded
-                  ? side === 'left'
-                    ? 'right'
-                    : 'left'
-                  : 'both'
-                // Keep focus on this stable control as its presentation changes.
-                event.currentTarget.focus()
-                setLayout(next)
-                saveLayout(opening.specificationId, next)
-              }}
-              title={controlLabel}
-              type="button"
-              {...devMarker({
-                name: 'panel toggle',
-                context: 'requirements specification detail',
-                value: `${side} panel`,
-              })}
-            >
-              <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
-              {!expanded && (
-                <span className="min-w-0 wrap-break-word xl:[writing-mode:vertical-rl]">
-                  {label}
-                </span>
-              )}
-            </button>
-            <div
-              className={
-                expanded
-                  ? 'flex min-w-0 flex-col gap-3 motion-safe:animate-[fade-in_0.15s_ease-out] xl:min-h-0 xl:flex-1 xl:overflow-hidden'
-                  : 'hidden'
-              }
-              hidden={!expanded}
-              id={`specification-${side}-panel`}
-            >
-              {children[index]}
-            </div>
-          </section>
-        )
-      })}
+      {(['left', 'right'] as const).map((side, index) => (
+        <SpecificationPanel
+          expanded={layout === 'both' || layout === side}
+          key={side}
+          label={side === 'left' ? leftLabel : rightLabel}
+          onToggle={() => {
+            const expanded = layout === 'both' || layout === side
+            const next = expanded
+              ? side === 'left'
+                ? 'right'
+                : 'left'
+              : 'both'
+            setLayout(next)
+            saveLayout(opening.specificationId, next)
+          }}
+          side={side}
+        >
+          {children[index]}
+        </SpecificationPanel>
+      ))}
     </div>
+  )
+}
+
+const PanelToggleContext = createContext<ReactNode>(null)
+
+/** Places the current panel's collapse control in its active tab header. */
+export function SpecificationPanelToggle() {
+  return useContext(PanelToggleContext)
+}
+
+interface SpecificationPanelProps {
+  children: ReactNode
+  expanded: boolean
+  label: string
+  onToggle: () => void
+  side: 'left' | 'right'
+}
+
+function SpecificationPanel({
+  children,
+  expanded,
+  label,
+  onToggle,
+  side,
+}: SpecificationPanelProps) {
+  const t = useTranslations('specification')
+  const toggleRef = useRef<HTMLButtonElement>(null)
+  const restoreFocus = useRef(false)
+  useLayoutEffect(() => {
+    if (restoreFocus.current) {
+      toggleRef.current?.focus({ preventScroll: true })
+      restoreFocus.current = false
+    }
+  })
+  const controlLabel = t(expanded ? 'collapsePanel' : 'expandPanel', {
+    panel: label,
+  })
+  const Icon =
+    side === 'left'
+      ? expanded
+        ? PanelLeftClose
+        : PanelLeftOpen
+      : expanded
+        ? PanelRightClose
+        : PanelRightOpen
+  const toggle = (
+    <button
+      aria-controls={`specification-${side}-panel`}
+      aria-expanded={expanded}
+      aria-label={controlLabel}
+      className={`flex min-h-8 min-w-8 shrink-0 items-center justify-center gap-2 rounded-lg border border-secondary-300 bg-white px-2 py-1 text-sm text-secondary-800 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100 dark:hover:bg-secondary-800 ${expanded ? '' : 'w-full xl:h-full xl:w-10 xl:flex-col'}`}
+      onClick={() => {
+        restoreFocus.current = true
+        onToggle()
+      }}
+      ref={toggleRef}
+      title={controlLabel}
+      type="button"
+      {...devMarker({
+        name: 'panel toggle',
+        context: 'requirements specification detail',
+        value: `${side} panel`,
+      })}
+    >
+      <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
+      {!expanded && (
+        <span className="min-w-0 wrap-break-word xl:[writing-mode:vertical-rl]">
+          {label}
+        </span>
+      )}
+    </button>
+  )
+  return (
+    <PanelToggleContext value={expanded ? toggle : null}>
+      <section
+        aria-label={label}
+        className="flex min-w-0 flex-col xl:h-full xl:min-h-0"
+      >
+        {!expanded && toggle}
+        <div
+          className={
+            expanded
+              ? 'flex min-w-0 flex-col gap-3 motion-safe:animate-[fade-in_0.15s_ease-out] xl:min-h-0 xl:flex-1 xl:overflow-hidden'
+              : 'hidden'
+          }
+          hidden={!expanded}
+          id={`specification-${side}-panel`}
+        >
+          {children}
+        </div>
+      </section>
+    </PanelToggleContext>
   )
 }

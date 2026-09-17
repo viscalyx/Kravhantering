@@ -509,6 +509,9 @@ retain their existing semantics.
 
 ## Specification Panel Layout
 
+The specification name above the panels uses 20px bold text at every
+viewport width.
+
 Both specification panels can be collapsed from any active tab. Hiding a
 panel keeps its subtree mounted: active tab, search, filters, sorting,
 selection, expanded rows, unsaved input and scroll position survive within
@@ -516,8 +519,10 @@ the visit. Collapsing never saves edits or changes included requirements.
 
 Exactly three layouts are available: both open, left only, and right only.
 Collapsing the sole open panel opens the other. Expanding a collapsed panel
-opens both. The same keyboard-focusable button remains focused through each
-transition and exposes its state with `aria-expanded` and `aria-controls`.
+opens both. Collapse controls sit before the tabs in each panel’s sticky
+header and use the navigation rail’s panel icons, mirrored for the right
+panel. Focus moves between the header control and the collapsed opening
+control. Both expose state with `aria-expanded` and `aria-controls`.
 
 At the existing `xl` breakpoint, a collapsed panel occupies a narrow vertical
 control at its outer workspace edge; the other panel takes the remaining

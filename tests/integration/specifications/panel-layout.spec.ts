@@ -51,6 +51,19 @@ for (const locale of ['sv', 'en'] as const) {
     })
     await test.step('Open specification and settle its initial layout', () =>
       openSpecification(page, 8, locale))
+    await test.step('Keep the specification name at 20px bold on wide and narrow screens', async () => {
+      const title = page.getByRole('heading', { level: 1 })
+      await expect(title).toHaveAttribute(
+        'data-developer-mode-value',
+        'specification name',
+      )
+      await expect(title).toHaveCSS('font-size', '20px')
+      await expect(title).toHaveCSS('font-weight', '700')
+      await page.setViewportSize({ width: 375, height: 812 })
+      await expect(title).toHaveCSS('font-size', '20px')
+      await expect(title).toHaveCSS('font-weight', '700')
+      await page.setViewportSize(DESKTOP_VIEWPORT)
+    })
     const control = (action: 'expand' | 'collapse', label: string) =>
       page.getByRole('button', {
         name: `${labels[action]} ${label}`,
@@ -65,6 +78,35 @@ for (const locale of ['sv', 'en'] as const) {
       const rightPanel = page.locator('#specification-right-panel')
       if (locale === 'en') {
         await expect(rightPanel).toHaveCSS('animation-name', 'none')
+      }
+      for (const [side, label] of [
+        ['left', labels.left],
+        ['right', labels.right],
+      ]) {
+        const header = page.locator(
+          `[data-developer-mode-name="panel header"][data-developer-mode-value="${side} panel"]`,
+        )
+        const button = header.getByRole('button', {
+          name: `${labels.collapse} ${label}`,
+          exact: true,
+        })
+        const tabs = header.getByRole('tablist')
+        const buttonBounds = requireTestValue(await button.boundingBox())
+        const tabBounds = requireTestValue(await tabs.boundingBox())
+        expect(buttonBounds.x + buttonBounds.width).toBeLessThanOrEqual(
+          tabBounds.x,
+        )
+        expect(
+          Math.abs(
+            buttonBounds.y +
+              buttonBounds.height / 2 -
+              tabBounds.y -
+              tabBounds.height / 2,
+          ),
+        ).toBeLessThan(2)
+        await expect(button.locator(`.lucide-panel-${side}-close`)).toHaveCount(
+          1,
+        )
       }
       const originalWidth = requireTestValue(
         await leftPanel.boundingBox(),

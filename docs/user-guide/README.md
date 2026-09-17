@@ -262,11 +262,12 @@ Knappen **"Fler åtgärder"** innehåller AI-assisterat författande, import,
 rapporter och exporter när de är tillgängliga. Klicka på en rad för att se
 kravets fullständiga detaljer.
 
-Använd pilknappen ovanför en panel för att fälla ihop hela panelen. Den andra
-panelen får mer utrymme. Öppna panelen igen med fliken vid kanten, eller med
-rubrikknappen på en smal skärm. Om du fäller ihop den enda öppna panelen öppnas
-den andra automatiskt. Sökning, filter, markeringar, aktiv tabb och osparad
-inmatning finns kvar under sidbesöket. Hopfällning sparar inga redigeringar.
+Använd panelknappen till vänster om tabbarna för att fälla ihop hela panelen.
+Den andra panelen får mer utrymme. Öppna panelen igen med fliken vid kanten,
+eller med rubrikknappen på en smal skärm. Om du fäller ihop den enda öppna
+panelen öppnas den andra automatiskt. Sökning, filter, markeringar, aktiv tabb
+och osparad inmatning finns kvar under sidbesöket. Hopfällning sparar inga
+redigeringar.
 
 Ett tomt kravunderlag öppnar båda panelerna. Ett underlag med krav öppnar bara
 vänster panel. Din senaste layout för det senast besökta underlaget sparas i

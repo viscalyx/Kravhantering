@@ -16,6 +16,31 @@ export function registerPanelLayoutTests(context: SpecDetailWorkflowContext) {
     const save = (layout: string, specificationId = 8) =>
       localStorage.setItem(key, JSON.stringify({ specificationId, layout }))
 
+    it('places the collapse control beside the tabs using navigation panel icons', async () => {
+      save('both')
+      const { container } =
+        context.renderRequirementsSpecificationDetailClient()
+      await context.settleInitialEditorEffects()
+      for (const side of ['left', 'right']) {
+        const header = container.querySelector(
+          `[data-developer-mode-name="panel header"][data-developer-mode-value="${side} panel"]`,
+        )
+        expect(header).not.toBeNull()
+        const controls = within(header as HTMLElement)
+        expect(
+          controls.getByRole('button', { name: /specification.collapsePanel/ }),
+        ).toBeVisible()
+        expect(controls.getByRole('tablist')).toBeVisible()
+      }
+      expect(
+        toggle('collapse', left).querySelector('.lucide-panel-left-close'),
+      ).not.toBeNull()
+      fireEvent.click(toggle('collapse', left))
+      expect(
+        toggle('expand', left).querySelector('.lucide-panel-left-open'),
+      ).not.toBeNull()
+    })
+
     it('keeps focus visible through all transitions without closing both panels', async () => {
       context.renderRequirementsSpecificationDetailClient()
       await context.settleInitialEditorEffects()
@@ -25,7 +50,7 @@ export function registerPanelLayoutTests(context: SpecDetailWorkflowContext) {
         'right panel',
       )
       fireEvent.click(rightToggle)
-      expect(rightToggle).toHaveFocus()
+      expect(toggle('collapse', right)).toHaveFocus()
       expect(toggle('collapse', right)).toHaveAttribute('aria-expanded', 'true')
       fireEvent.click(toggle('collapse', left))
       expect(toggle('expand', left)).toHaveFocus()

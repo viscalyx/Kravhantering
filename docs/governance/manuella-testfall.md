@@ -2148,8 +2148,10 @@ kvar i kravbiblioteket. Ett borttaget utkastkrav markeras som Borttaget.
 
 ### SPEC-30: fäll ihop paneler med tangentbord
 
-**Steg:** Öppna ett kravunderlag med krav. Öppna Kravbibliotek med tangentbord.
-Fäll ihop höger panel och därefter den enda öppna vänsterpanelen. Upprepa åt
+**Steg:** Öppna ett kravunderlag med krav och kontrollera att dess namn går
+att läsa ovanför panelerna. Öppna Kravbibliotek med tangentbord.
+Använd panelknappen före tabbarna för att fälla ihop höger panel och sedan
+den enda öppna vänsterpanelen. Upprepa åt
 andra hållet och öppna sedan båda. Prova Behovsreferenser, RFI-frågelista och
 Kravurvalsfrågor som aktiva tabbar. Fäll ihop och öppna varje panel. Ändra
 fönsterbredd medan en panel är hopfälld. Upprepa på engelska.

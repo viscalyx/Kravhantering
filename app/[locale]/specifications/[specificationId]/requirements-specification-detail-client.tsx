@@ -67,7 +67,9 @@ import SpecificationLocalRequirementDetailClient from '@/components/Specificatio
 import SpecificationLocalRequirementForm, {
   type SpecificationLocalRequirementSubmitPayload,
 } from '@/components/SpecificationLocalRequirementForm'
-import SpecificationPanels from '@/components/SpecificationPanels'
+import SpecificationPanels, {
+  SpecificationPanelToggle,
+} from '@/components/SpecificationPanels'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useModalFocus } from '@/hooks/useModalFocus'
@@ -3057,68 +3059,90 @@ export default function KravunderlagDetailClient({
   }
   const renderLeftPanelTabs = () => (
     <div
-      aria-label={t('leftPanelTabs')}
-      className={splitPanelTabsClassName}
-      role="tablist"
+      className="flex min-w-0 max-w-full flex-1 items-center gap-2"
+      {...devMarker({
+        name: 'panel header',
+        context: 'requirements specification detail',
+        value: 'left panel',
+      })}
     >
-      <button
-        aria-selected={leftTab === 'items'}
-        className={splitPanelTabClassName(leftTab === 'items')}
-        onClick={() => handleLeftTabChange('items')}
-        role="tab"
-        type="button"
+      <SpecificationPanelToggle />
+      <div
+        aria-label={t('leftPanelTabs')}
+        className={splitPanelTabsClassName}
+        role="tablist"
       >
-        <span className="truncate">{t('itemsInSpecification')}</span>
-      </button>
-      <button
-        aria-selected={leftTab === 'needs-references'}
-        className={splitPanelTabClassName(leftTab === 'needs-references')}
-        onClick={() => handleLeftTabChange('needs-references')}
-        role="tab"
-        type="button"
-      >
-        <span className="truncate">{t('needsReferences')}</span>
-        <span className="text-xs opacity-80">{availableNeedsRefs.length}</span>
-      </button>
-      <button
-        aria-selected={leftTab === 'rfi'}
-        className={splitPanelTabClassName(leftTab === 'rfi')}
-        onClick={() => handleLeftTabChange('rfi')}
-        role="tab"
-        type="button"
-      >
-        <span className="truncate">{t('rfiList')}</span>
-      </button>
+        <button
+          aria-selected={leftTab === 'items'}
+          className={splitPanelTabClassName(leftTab === 'items')}
+          onClick={() => handleLeftTabChange('items')}
+          role="tab"
+          type="button"
+        >
+          <span className="truncate">{t('itemsInSpecification')}</span>
+        </button>
+        <button
+          aria-selected={leftTab === 'needs-references'}
+          className={splitPanelTabClassName(leftTab === 'needs-references')}
+          onClick={() => handleLeftTabChange('needs-references')}
+          role="tab"
+          type="button"
+        >
+          <span className="truncate">{t('needsReferences')}</span>
+          <span className="text-xs opacity-80">
+            {availableNeedsRefs.length}
+          </span>
+        </button>
+        <button
+          aria-selected={leftTab === 'rfi'}
+          className={splitPanelTabClassName(leftTab === 'rfi')}
+          onClick={() => handleLeftTabChange('rfi')}
+          role="tab"
+          type="button"
+        >
+          <span className="truncate">{t('rfiList')}</span>
+        </button>
+      </div>
     </div>
   )
   const renderRightPanelTabs = () => (
     <div
-      aria-label={t('rightPanelTabs')}
-      className={splitPanelTabsClassName}
-      role="tablist"
+      className="flex min-w-0 max-w-full flex-1 items-center gap-2"
+      {...devMarker({
+        name: 'panel header',
+        context: 'requirements specification detail',
+        value: 'right panel',
+      })}
     >
-      <button
-        aria-controls="right-panel-available"
-        aria-selected={rightPanelTab === 'available'}
-        className={splitPanelTabClassName(rightPanelTab === 'available')}
-        id="right-panel-tab-available"
-        onClick={() => setRightPanelTab('available')}
-        role="tab"
-        type="button"
+      <SpecificationPanelToggle />
+      <div
+        aria-label={t('rightPanelTabs')}
+        className={splitPanelTabsClassName}
+        role="tablist"
       >
-        <span className="truncate">{t('availableRequirements')}</span>
-      </button>
-      <button
-        aria-controls="right-panel-questions"
-        aria-selected={rightPanelTab === 'questions'}
-        className={splitPanelTabClassName(rightPanelTab === 'questions')}
-        id="right-panel-tab-questions"
-        onClick={() => setRightPanelTab('questions')}
-        role="tab"
-        type="button"
-      >
-        <span className="truncate">{t('requirementSelectionQuestions')}</span>
-      </button>
+        <button
+          aria-controls="right-panel-available"
+          aria-selected={rightPanelTab === 'available'}
+          className={splitPanelTabClassName(rightPanelTab === 'available')}
+          id="right-panel-tab-available"
+          onClick={() => setRightPanelTab('available')}
+          role="tab"
+          type="button"
+        >
+          <span className="truncate">{t('availableRequirements')}</span>
+        </button>
+        <button
+          aria-controls="right-panel-questions"
+          aria-selected={rightPanelTab === 'questions'}
+          className={splitPanelTabClassName(rightPanelTab === 'questions')}
+          id="right-panel-tab-questions"
+          onClick={() => setRightPanelTab('questions')}
+          role="tab"
+          type="button"
+        >
+          <span className="truncate">{t('requirementSelectionQuestions')}</span>
+        </button>
+      </div>
     </div>
   )
   const leftPanelMoreActionMenuItems = buildMoreActionMenuItems({
@@ -3160,7 +3184,14 @@ export default function KravunderlagDetailClient({
                   className="flex items-start gap-3"
                   data-specification-detail-title-row="true"
                 >
-                  <h1 className="min-w-0 text-2xl font-bold text-secondary-900 dark:text-secondary-100 xl:text-[2rem] xl:leading-tight">
+                  <h1
+                    className="min-w-0 text-xl font-bold text-secondary-900 dark:text-secondary-100"
+                    {...devMarker({
+                      context: 'requirements specification detail',
+                      name: 'heading',
+                      value: 'specification name',
+                    })}
+                  >
                     {specName}
                   </h1>
                   {canMutateSpecification ? (
