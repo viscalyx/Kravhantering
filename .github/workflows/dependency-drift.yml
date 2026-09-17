@@ -13,7 +13,6 @@ on:
           - npm
           - lychee
           - devcontainer-base
-          - node
           - ubi-node-builder
           - ubi-node-runtime
           - nginx

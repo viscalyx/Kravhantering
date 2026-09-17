@@ -15,7 +15,7 @@ COPY containers/hsa-person-lookup-adapter/package.json containers/hsa-person-loo
 RUN npm install --global "npm@$(node -p 'require("./package.json").packageManager.slice(4)')"
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 
-FROM registry.access.redhat.com/ubi10/nodejs-24-minimal:latest@sha256:f0e6f6fa5bd82741bdf9b304341c94bbac4268a7f94d710c26eac01f20528c2b
+FROM registry.access.redhat.com/ubi10/nodejs-24-minimal:latest@sha256:c2e4d56d102ebb99edaaeee9d4a17d4ebda67ecc192af57f12752b265e7a67a6
 
 # Final-image identity; base component provenance and notices remain inherited.
 LABEL name="kravhantering/hsa-person-lookup-adapter" \

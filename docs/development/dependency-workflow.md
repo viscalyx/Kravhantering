@@ -172,10 +172,9 @@ new digest under the current tag creates a coordinated drift issue.
 The HSA support Dockerfiles are shared by development and release builds. Their
 Node base references retain the production tag-and-digest identity in both
 contexts so local HSA support uses the same build inputs as release artifacts.
-The Node drift detector discovers direct references and ARG defaults and
-requires every remaining Docker Official Node input, including the HSA topology
-helper, to use one coordinated immutable identity. New image inputs must be
-registered under exactly one maintenance role.
+The HSA topology helper uses the same UBI builder and minimal-runtime roles.
+The drift detectors discover direct references and ARG defaults; each input
+must have exactly one maintenance owner and match its role's selected identity.
 
 ## UBI Node Builder and Runtime Maintenance
 
@@ -185,10 +184,14 @@ UBI 10 Node.js 24 inputs. Each unit's `selectedReference` in
 
 Update only the role named by the drift issue. Update its `selectedReference`
 and every discovered direct `FROM` reference and image ARG default together.
+For the runtime role, also synchronize the provisioner's
+`containers/hsa-mtls-provisioner/toolchain.lock.json`. Inspect the selected
+image's exact Node version and RPM headers before changing locked values.
+The provisioner tests verify that its base identity matches the runtime lane.
 The coverage check rejects ambiguous ownership, unresolved ARG references,
-and a role reference that differs from its selected digest. Keep remaining
-Docker Official Node and vendor image lanes registered, including the HSA
-topology helper. UBI inputs do not use the vendor `image.lock.json` format.
+and a role reference that differs from its selected digest. Vendor images keep
+their independent maintenance lanes. UBI inputs do not use the vendor
+`image.lock.json` format.
 
 The weekly Dependency Drift workflow and its manual unit choices query
 `registry.access.redhat.com` anonymously. Numeric UBI 10 version/revision tags

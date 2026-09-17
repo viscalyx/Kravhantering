@@ -1,8 +1,9 @@
 # Shared UBI runtime packaging
 
 `ubi-compat.sh` adapts the selected UBI Node.js minimal base for all six
-published runtime images. Each Dockerfile invokes it during the existing image
-build and declares its own workload packages, commands and final user.
+published runtime images and the local HSA topology helper. Each Dockerfile
+invokes it during the existing image build and declares its own workload
+packages, commands and final user.
 
 ## Image scope
 
@@ -13,12 +14,12 @@ The UBI 10 Node.js 24 minimal runtime is used by:
 - [`hsa-directory-mock`](../hsa-directory-mock/README.md).
 - [`hsa-person-lookup-adapter`](../hsa-person-lookup-adapter/README.md).
 - [`hsa-mtls-provisioner`](../hsa-mtls-provisioner/README.md).
+- The local [`hsa-mtls-topology`](../hsa-mtls-topology/Dockerfile) test helper.
 
-The app, database, demo, mock, and adapter dependency stages use the separate
-UBI Node.js builder role. The provisioner installs its locked RPM toolchain
-directly into the minimal runtime. The local `hsa-mtls-topology` helper keeps
-its Docker Official Node base. The devcontainer and vendor nginx, SQL Server,
-Keycloak, and Kong images retain their independently maintained bases.
+The app, database, demo, mock, adapter, and topology helper build stages use
+the separate UBI Node.js builder role. The provisioner installs its locked RPM
+toolchain directly into the minimal runtime. The devcontainer and vendor nginx,
+SQL Server, Keycloak, and Kong images retain their independently maintained bases.
 
 Maintain the two UBI roles through the
 [dependency workflow](../../docs/development/dependency-workflow.md#ubi-node-builder-and-runtime-maintenance).
@@ -42,11 +43,15 @@ those build-time downloads.
 
 ## OpenSSL runtime package
 
-The shared helper installs `openssl-libs-3.5.8-1.el10_2` from the public UBI 10
-BaseOS repository to address `CVE-2026-14456`. The selected minimal base still
-contains `3.5.5-6.el10_2`, so updating the base reference alone does not install
-the fix. Builds fail if the fixed package cannot be installed, and the
-container vulnerability policy still evaluates the completed images.
+The selected minimal base includes `openssl-libs-3.5.8-1.el10_2`, which fixes
+`CVE-2026-14456` according to
+[Red Hat advisory RHSA-2026:67154](https://access.redhat.com/errata/RHSA-2026:67154).
+The shared helper uses that inherited library. The provisioner additionally
+installs its locked OpenSSL CLI package from the public UBI 10 BaseOS
+repository. The container vulnerability policy evaluates the completed images.
+
+Deploy a new immutable project release to receive the updated base. Existing
+release images and installed containers do not change when a base pin changes.
 
 ## Licenses and image identity
 

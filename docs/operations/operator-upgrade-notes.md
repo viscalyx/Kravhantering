@@ -13,6 +13,13 @@ changes.
 
 ## Unreleased
 
+### OpenSSL security update
+
+Deploy the complete new release images to receive the OpenSSL security fix for
+CVE-2026-14456. A restart of an existing container does not apply the fix. For
+disconnected sites, transfer and verify the new images and matching release
+locks before rollout. Check the release vulnerability evidence before deployment.
+
 ### Requirement removal through REST and MCP
 
 Before rollout, coordinate REST and MCP clients that remove requirements from

@@ -81,21 +81,6 @@
       "paths": [".devcontainer/Dockerfile"]
     },
     {
-      "id": "production-node",
-      "kind": "dockerfile-image",
-      "lane": "issue",
-      "detector": "node",
-      "skill": "resolve-dependency-drift",
-      "image": "docker.io/library/node",
-      "paths": [
-        "containers/app/Dockerfile",
-        "containers/hsa-directory-mock/Dockerfile",
-        "containers/hsa-person-lookup-adapter/Dockerfile",
-        "containers/hsa-mtls-provisioner/Dockerfile",
-        "containers/hsa-mtls-topology/Dockerfile"
-      ]
-    },
-    {
       "id": "ubi-node-builder",
       "kind": "dockerfile-image",
       "lane": "issue",
@@ -106,7 +91,8 @@
       "paths": [
         "containers/app/Dockerfile",
         "containers/hsa-directory-mock/Dockerfile",
-        "containers/hsa-person-lookup-adapter/Dockerfile"
+        "containers/hsa-person-lookup-adapter/Dockerfile",
+        "containers/hsa-mtls-topology/Dockerfile"
       ]
     },
     {
@@ -116,12 +102,13 @@
       "detector": "ubi-node-runtime",
       "skill": "resolve-dependency-drift",
       "image": "registry.access.redhat.com/ubi10/nodejs-24-minimal",
-      "selectedReference": "registry.access.redhat.com/ubi10/nodejs-24-minimal:latest@sha256:f0e6f6fa5bd82741bdf9b304341c94bbac4268a7f94d710c26eac01f20528c2b",
+      "selectedReference": "registry.access.redhat.com/ubi10/nodejs-24-minimal:latest@sha256:c2e4d56d102ebb99edaaeee9d4a17d4ebda67ecc192af57f12752b265e7a67a6",
       "paths": [
         "containers/app/Dockerfile",
         "containers/hsa-directory-mock/Dockerfile",
         "containers/hsa-person-lookup-adapter/Dockerfile",
-        "containers/hsa-mtls-provisioner/Dockerfile"
+        "containers/hsa-mtls-provisioner/Dockerfile",
+        "containers/hsa-mtls-topology/Dockerfile"
       ]
     },
     {

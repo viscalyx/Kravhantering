@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
 
 import { verifyToolchainLock } from '../toolchain/toolchain-lock.mjs'
 
 const lock = Object.freeze({
-  baseDigest:
-    'sha256:f0e6f6fa5bd82741bdf9b304341c94bbac4268a7f94d710c26eac01f20528c2b',
+  baseDigest: `sha256:${'a'.repeat(64)}`,
   baseImage: 'registry.access.redhat.com/ubi10/nodejs-24-minimal',
   baseTag: 'latest',
   caCertificatesPackageVersion: '2025.2.80_v9.0.305-102.el10_1',
@@ -64,6 +64,26 @@ function validInput() {
 }
 
 describe('HSA provisioner toolchain lock', () => {
+  it('keeps the committed base identity aligned with the runtime maintenance lane', () => {
+    const committedLock = JSON.parse(
+      readFileSync(new URL('../toolchain.lock.json', import.meta.url), 'utf8'),
+    )
+    const registry = JSON.parse(
+      readFileSync(
+        new URL(
+          '../../../.github/dependency-maintenance.json',
+          import.meta.url,
+        ),
+        'utf8',
+      ),
+    )
+    const runtime = registry.units.find(unit => unit.id === 'ubi-node-runtime')
+    assert.equal(
+      `${committedLock.baseImage}:${committedLock.baseTag}@${committedLock.baseDigest}`,
+      runtime.selectedReference,
+    )
+  })
+
   it('accepts selected inputs and installed versions matching the lock', () => {
     assert.doesNotThrow(() => verifyToolchainLock(validInput()))
   })
