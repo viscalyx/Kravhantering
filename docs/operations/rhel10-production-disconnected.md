@@ -88,8 +88,13 @@ sha256sum -c "${RELEASE_ARCHIVE}.sha256"
 Verify provenance now, before extracting the release archive, by following
 [Verify The Deployment Archive](./release-artifact-and-image-verification.md#verify-the-deployment-archive).
 Use `SOURCE_COMMIT`, `SOURCE_REF`, and `RELEASE_TAG` above. Do not continue when
-verification fails. Retain the attestation bundle and trusted roots for the
-disconnected handoff.
+verification fails on this connected export host. The approved disconnected
+exception in the verification guide applies only to verification on the
+disconnected target; it does not bypass this connected-host check. If that
+exception is needed, obtain explicit site approval before import and record
+the approval in the release handoff. Retain the attestation bundle and trusted
+roots in the handoff even when the exception applies. SHA-256 verification
+remains mandatory.
 
 ```bash
 tar -xzf "$RELEASE_ARCHIVE" -C "$OFFLINE_WORK" --strip-components=1

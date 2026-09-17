@@ -36,13 +36,28 @@ npm run db:down
 ```
 
 The default Compose file is [docker-compose.sqlserver.yml](../../docker-compose.sqlserver.yml).
-It publishes SQL Server on host port `1433` and persists data in a named
-Docker volume. The port mapping does not restrict the bind address to loopback.
+For host-side development, it publishes SQL Server on `127.0.0.1:1433`
+(loopback only) and persists data in a named Docker volume. The separate
+devcontainer Compose profiles publish their SQL Server port on all host
+interfaces; restrict access through the host's network controls when using
+those profiles.
 
 If your machine already has a local SQL Server using `1433`, override
 `SQLSERVER_HOST_PORT` in `.env.sqlserver` or `.devcontainer/.env`. Match
 `DB_PORT` to that published port for host-side clients; clients inside the
 devcontainer still connect to `db:1433`.
+
+For explicit remote access to the host-side database, use an SSH tunnel from
+the client workstation to a trusted development host:
+
+```bash
+ssh -N -L 127.0.0.1:11433:127.0.0.1:1433 user@development-host
+```
+
+Connect the client to `127.0.0.1:11433` while the tunnel is open. Replace the
+remote `1433` with the published `SQLSERVER_HOST_PORT` when it differs. Use an
+authorized SSH account, verify the host key, and restrict SSH access to
+trusted networks or a VPN. Keep the SQL Server port closed to public ingress.
 
 The local SQL Server workflow uses `encrypt=true` together with
 `trustServerCertificate=true` by default. That is intentional for local

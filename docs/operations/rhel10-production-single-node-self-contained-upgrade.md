@@ -105,6 +105,29 @@ both application releases. Pause its manager after traffic is drained and
 before any persistent-state change; resume it successfully before reopening
 traffic.
 
+### Identity Resolver Prerequisite
+
+After configuring the explicit identity profile choices above, add a temporary
+resolver value if a bundled profile lacks `NGINX_IDENTITY_RESOLVER`. The target
+helper requires this setting for the preflight in step 3:
+
+```bash
+if ! sudo grep -q '^IDENTITY_PROVIDER_MODE=external$' \
+  /etc/kravhantering/release.env && \
+  ! sudo grep -q '^NGINX_IDENTITY_RESOLVER=' \
+    /etc/kravhantering/release.env; then
+  printf '%s\n' 'NGINX_IDENTITY_RESOLVER=10.89.1.1' |
+    sudo tee -a /etc/kravhantering/release.env >/dev/null
+fi
+```
+
+Only this resolver setup moves ahead of preflight. Do not run step 8's
+installation, database-job, or migration commands until that step. Do not
+restart nginx with the temporary value: resolver discovery in step 8 replaces
+it before the new stack starts.
+
+### Upgrade Steps
+
 1. Confirm the target release bundle, checksum and locked image identities.
    Download the target bundle and checksum from the approved release source:
 
@@ -155,9 +178,8 @@ traffic.
 
 3. Before draining traffic, complete the extraction and review in step 5
    without changing `current`. Configure the explicit identity choices above.
-   For a bundled profile missing `NGINX_IDENTITY_RESOLVER`, first perform the
-   temporary resolver configuration in step 8; the helper requires this value
-   during preflight. Then validate with the target release helper as the
+   Complete the [identity resolver prerequisite](#identity-resolver-prerequisite)
+   before preflight. Then validate with the target release helper as the
    service user:
 
    ```bash
@@ -421,21 +443,6 @@ traffic.
 
    >[!IMPORTANT]
    >Do not run `seed:demo` or the optional demo seed image in production.
-
-   Releases that predate the identity resolver setting need a temporary value
-   so the helper can render the network units. nginx is not started with this
-   value; the resolver discovery below replaces it before the full target
-   starts:
-
-   ```bash
-   if ! sudo grep -q '^IDENTITY_PROVIDER_MODE=external$' \
-     /etc/kravhantering/release.env && \
-     ! sudo grep -q '^NGINX_IDENTITY_RESOLVER=' \
-       /etc/kravhantering/release.env; then
-     printf '%s\n' 'NGINX_IDENTITY_RESOLVER=10.89.1.1' |
-       sudo tee -a /etc/kravhantering/release.env >/dev/null
-   fi
-   ```
 
    ```bash
    sudo -iu kravhantering

@@ -18,7 +18,7 @@ services:
       start_period: 10s
       timeout: 5s
     ports:
-      - "${SQLSERVER_HOST_PORT:-1433}:1433"
+      - "127.0.0.1:${SQLSERVER_HOST_PORT:-1433}:1433"
     volumes:
       - sqlserver-db-data:/var/opt/mssql
 

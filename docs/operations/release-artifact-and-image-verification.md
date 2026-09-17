@@ -199,8 +199,8 @@ GitHub or GHCR.
 Published release assets include the complete per-image Grype JSON reports,
 `grype-db-status.json` and `vulnerability-policy-decision.json`. The decision
 binds each report and SBOM hash to the published candidate manifest digest.
-A successful release has no unexcepted fixable
-High or Critical finding and no invalid, expired or stale committed exception.
+A successful release has no fixable High or Critical findings outside an
+accepted exception, and no invalid, expired or stale committed exceptions.
 
 Verify the published app image with the manifest digest reference from the
 release notes:

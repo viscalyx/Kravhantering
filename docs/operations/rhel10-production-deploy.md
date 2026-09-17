@@ -803,6 +803,7 @@ before proceeding to the next command or starting application services:
 
 ```bash
 sudo -iu kravhantering
+set -euo pipefail
 cd /opt/kravhantering/current
 set -a
 . /etc/kravhantering/release.env
@@ -1174,6 +1175,7 @@ continuing:
 
 ```bash
 sudo -iu kravhantering
+set -euo pipefail
 cd /opt/kravhantering/current
 set -a
 . /etc/kravhantering/release.env

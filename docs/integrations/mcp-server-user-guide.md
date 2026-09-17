@@ -13,8 +13,8 @@ it to read, manage, or import requirements. The server is named
 - Read formats: `markdown` or `json`
 - Locales: `en` or `sv`
 
-The server is designed for MCP-capable clients such as Visual Studio Code and
-GitHub Copilot cloud agent (formerly coding agent).
+Use an MCP-capable client that can supply the required Bearer token, such as
+Visual Studio Code.
 
 ## What The Server Exposes
 
@@ -463,63 +463,16 @@ If the app is not rendering:
   Those messages refer to the optional async notification channel rather than
   normal MCP request/response handling.
 
-## Configure GitHub Copilot Coding Agent
+## GitHub Copilot Cloud Agent And Code Review
 
-GitHub Copilot cloud agent supports MCP tools; use VS Code for resources and
-MCP Apps. Repository MCP settings also apply to Copilot code review. See the
-[GitHub MCP setup guide](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/configure-mcp-servers).
+GitHub Copilot cloud agent and Copilot code review are unsupported clients for
+this server. It requires an OAuth-issued Bearer token, and GitHub currently
+lists OAuth-authenticated remote MCP servers as unsupported in these
+clients. See the
+[GitHub MCP setup limitations](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/configure-mcp-servers).
 
-Because coding agent runs remotely, do not point it at
-`http://localhost:3000/api/mcp`. Use a reachable HTTPS deployment instead.
-
-Open your repository settings on GitHub:
-
-1. `Settings`
-2. `Copilot`
-3. `MCP servers`
-4. `MCP configuration`
-
-Use a configuration like this:
-
-```json
-{
-  "mcpServers": {
-    "requirement-management": {
-      "type": "http",
-      "url": "https://your-domain.example/api/mcp",
-      "tools": [
-        "requirements_query_catalog",
-        "requirements_get_requirement",
-        "requirements_manage_requirement",
-        "requirements_transition_requirement",
-        "requirements_list_specifications",
-        "requirements_get_specification_items",
-        "requirements_list_graduation_target_areas",
-        "requirements_add_to_specification",
-        "requirements_graduate_local_requirement",
-        "requirements_remove_from_specification",
-        "requirements_list_improvement_suggestions",
-        "requirements_manage_improvement_suggestion"
-      ],
-      "headers": {
-        "Authorization": "$COPILOT_MCP_REQUIREMENT_MANAGEMENT_AUTHORIZATION"
-      }
-    }
-  }
-}
-```
-
-Limit the allowlist to the tasks you want the agent to perform: it can call
-these tools autonomously. The example includes mutations but excludes imports;
-add the import and reference tools from the inventory only when needed.
-
-### Auth Header Example For Coding Agent
-
-Create an Agents secret named
-`COPILOT_MCP_REQUIREMENT_MANAGEMENT_AUTHORIZATION` with the full header value
-`Bearer <token>`. The JSON above references this secret. Supply a fresh token
-before a task and replace it when it expires; a static secret does not refresh
-an access token automatically.
+Use the Visual Studio Code configuration above with a valid token. A static
+repository secret cannot acquire or refresh the short-lived access token.
 
 ## How To Work With The Tools Effectively
 
@@ -755,8 +708,6 @@ payload, or ask an administrator to review the limits. If the administrator
 invalidates existing sessions, run `validate` again.
 
 - The server supports HTTP transport only.
-- GitHub Copilot coding agent only uses tools from this server. It does not use
-  the requirement resource or the requirement app view.
 - Status transitions require numeric status IDs. Use the transitions or statuses
   catalogs instead of guessing them.
 
@@ -768,7 +719,3 @@ invalidates existing sessions, run `validate` again.
   <https://code.visualstudio.com/docs/copilot/reference/mcp-configuration>
 - Visual Studio Code tool usage:
   <https://code.visualstudio.com/docs/copilot/agents/agent-tools>
-- GitHub Copilot coding agent MCP integration:
-  <https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/extend-coding-agent-with-mcp>
-- GitHub Copilot coding agent MCP capabilities:
-  <https://docs.github.com/en/copilot/concepts/agents/coding-agent/mcp-and-coding-agent>

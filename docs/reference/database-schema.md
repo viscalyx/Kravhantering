@@ -110,6 +110,12 @@ Apply these rules to all schema objects.
 
 ## Entity-Relationship Diagram
 
+Diagram field types are conceptual labels, not exact SQL Server types.
+Boolean flags shown as `boolean` or `integer` are stored as `bit`; timestamps
+may appear as `text` or `datetime` here but use `datetime2` in the SQL schema.
+Use the table definitions below and the migrations for physical types and
+precision.
+
 <!-- markdownlint-disable MD013 -->
 ```mermaid
 erDiagram
@@ -182,7 +188,7 @@ erDiagram
         nvarchar changed_by_hsa_id
         nvarchar changed_by_display_name
     }
-    requirement_areas ||--o{ rfi_question_sequences : "area_id"
+    requirement_areas ||--o| rfi_question_sequences : "area_id"
     requirement_areas ||--o{ rfi_question_suggestions : "area_id"
     rfi_questions |o--o{ rfi_question_suggestions : "rfi_question_id"
     requirements_specifications |o--o{ rfi_question_suggestions : "specification_id"
@@ -3792,6 +3798,7 @@ its purpose and the table/column(s) it covers.
 | `uq_specification_agreement_items_library` | `specification_agreement_items` | `specification_agreement_id, specification_item_id WHERE specification_item_id IS NOT NULL` | Agreement-context integrity. |
 | `uq_specification_agreement_items_local` | `specification_agreement_items` | `specification_agreement_id, specification_local_requirement_id WHERE specification_local_requirement_id IS NOT NULL` | Agreement-context integrity. |
 | `uq_rfi_question_versions_question_version` | `rfi_question_versions` | `rfi_question_id, version_number` | Enforces unique rfi_question_id, version_number |
+| `uq_rfi_question_versions_active` | `rfi_question_versions` | `rfi_question_id WHERE is_active = 1` | Allows at most one active version per RFI question |
 | `uq_rfi_questions_question_code` | `rfi_questions` | `question_code` | Enforces unique question_code |
 <!-- markdownlint-enable MD013 -->
 

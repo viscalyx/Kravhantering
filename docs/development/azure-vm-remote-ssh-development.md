@@ -1539,11 +1539,14 @@ refresh reports missing, malformed, or unavailable Azure host-key evidence,
 restore Azure VM Agent and Run Command access first. Setup remains stopped
 before bootstrap credential generation or upload.
 
-If setup reports that the existing VM was created with a different SSH public
-key, the VM must be recreated. Azure does not allow changing
-`osProfile.linuxConfiguration.ssh.publicKeys` on an existing VM.
+Setup reruns preserve the live infrastructure SSH public key. Additional
+workstation keys are managed in the guest's `authorized_keys` without
+recreating the VM.
 
-Preview and then remove the managed environment:
+Only recreate the VM when intentionally replacing its infrastructure SSH key:
+Azure does not allow changing `osProfile.linuxConfiguration.ssh.publicKeys` on
+an existing VM. Removal deletes the VM and managed disks, so back up any data
+you need to retain. Preview and then remove the managed environment:
 
 ```powershell
 ./scripts/azure-dev.ps1 remove -WhatIf

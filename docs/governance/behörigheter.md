@@ -306,7 +306,7 @@ första behöriga fliken i navigationsordningen är användarens startflik.
 | --- | --- |
 | Kolumner | Användare med `Admin`. |
 | Identitet | Användare med `Admin`. |
-| Inställningar (AI, Exporter och Rapporter) | Användare med `Admin`. |
+| Inställningar (AI, Säkerhet, Importer, Exporter och Rapporter) | Användare med `Admin`. |
 | Taxonomi | Användare med `Admin`. |
 | Statusar och arbetsflöden | Användare med `Admin`. |
 | Behörighetsöversyn | Användare med `Admin` eller `PrivacyOfficer`. |

@@ -532,8 +532,9 @@ section:
   lock.
 - For an internal registry mirror that preserves repository paths, rewrite only
   the registry host while keeping the locked tags.
-- For an internal mirror with a custom repository layout, set the five
-  `*_IMAGE_REF` values manually to site-approved tag refs.
+- For an internal mirror with a custom repository layout, set four
+  `*_IMAGE_REF` values for `external`, or all five for `bundled` and
+  `hardened-bundled`, manually to site-approved tag refs.
 
 The helper also accepts `image:tag@sha256:digest` refs when a site explicitly
 requires pull-time digest pinning.
@@ -655,9 +656,12 @@ update_ref KEYCLOAK_IMAGE_REF \
 
 ### Internal Mirror With Custom Repository Layout
 
-If the internal mirror uses a custom repository layout, set the five
-`*_IMAGE_REF` values manually to site-approved tag refs, then run the
-verification below. Each ref must resolve to the locked `imageId`.
+If the internal mirror uses a custom repository layout, set
+`APP_RUNTIME_IMAGE_REF`, `DB_JOB_IMAGE_REF`, `NGINX_IMAGE_REF`, and
+`SQLSERVER_IMAGE_REF` manually to site-approved tag refs. For `bundled` and
+`hardened-bundled`, also set `KEYCLOAK_IMAGE_REF`; `external` requires only
+the first four. Then run the profile-specific verification below. Each
+required ref must resolve to the locked `imageId`.
 
 ### Verify Selected Refs
 
