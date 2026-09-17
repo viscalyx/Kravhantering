@@ -9,6 +9,7 @@ import type { SpecificationPermissions } from '@/lib/specifications/permissions'
 
 export const SPECIFICATION_PRELOAD_ERROR_KEYS = {
   needsReferences: 'specification needs references',
+  specificationItems: 'requirement applications',
   requirementPackages: 'requirement packages',
   specificationRequirementPackages: 'specification requirement packages',
 } as const

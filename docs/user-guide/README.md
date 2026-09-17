@@ -250,7 +250,8 @@ leverans.
 ### Kravunderlagsdetalj — delad vy
 
 Kravunderlagsdetaljsidan har en delad layout: **vänster panel** har tabbarna
-**Krav i underlaget** och **Behovsreferenser** i listans rubrik, och **höger
+**Krav i underlaget**, **Behovsreferenser** och **RFI-frågelista** i listans
+rubrik, och **höger
 panel** har tabbarna **Tillgängliga krav** och **Kravurvalsfrågor** i samma typ
 av sticky rubrik. I tabben för krav visas både bibliotekskrav och eventuella
 kravunderlagets unika krav med deras användningsstatus. Knapparna till höger i
@@ -260,6 +261,18 @@ Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag.
 Knappen **"Fler åtgärder"** innehåller AI-assisterat författande, import,
 rapporter och exporter när de är tillgängliga. Klicka på en rad för att se
 kravets fullständiga detaljer.
+
+Använd pilknappen ovanför en panel för att fälla ihop hela panelen. Den andra
+panelen får mer utrymme. Öppna panelen igen med fliken vid kanten, eller med
+rubrikknappen på en smal skärm. Om du fäller ihop den enda öppna panelen öppnas
+den andra automatiskt. Sökning, filter, markeringar, aktiv tabb och osparad
+inmatning finns kvar under sidbesöket. Hopfällning sparar inga redigeringar.
+
+Ett tomt kravunderlag öppnar båda panelerna. Ett underlag med krav öppnar bara
+vänster panel. Din senaste layout för det senast besökta underlaget sparas i
+webbläsaren och används vid omladdning. Besöker du ett annat underlag ersätts
+minnet; när du återvänder används grundlayouten igen. Andra slags sidor raderar
+inte minnet. Layouten följer inte ditt konto till andra webbläsare eller enheter.
 
 Ovanför båda kravlistorna finns samma kompakta kravpaketsfilter som i
 kravbiblioteket. I **Tillgängliga krav** kan du välja bland alla aktiva

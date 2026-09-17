@@ -18,13 +18,17 @@ export function isAppLocale(
 }
 
 export function readStoredLocale(
-  storage: Pick<Storage, 'getItem'> | null = typeof window === 'undefined'
-    ? null
-    : window.localStorage,
+  storage?: Pick<Storage, 'getItem'> | null,
 ): AppLocale | null {
-  if (!storage) return null
   try {
-    const value = storage.getItem(LOCALE_STORAGE_KEY)
+    const target =
+      storage === undefined
+        ? typeof window === 'undefined'
+          ? null
+          : window.localStorage
+        : storage
+    if (!target) return null
+    const value = target.getItem(LOCALE_STORAGE_KEY)
     return isAppLocale(value) ? value : null
   } catch {
     // localStorage can throw (private mode, disabled storage, SecurityError).
@@ -34,13 +38,17 @@ export function readStoredLocale(
 
 export function writeStoredLocale(
   locale: AppLocale,
-  storage: Pick<Storage, 'setItem'> | null = typeof window === 'undefined'
-    ? null
-    : window.localStorage,
+  storage?: Pick<Storage, 'setItem'> | null,
 ): void {
-  if (!storage) return
   try {
-    storage.setItem(LOCALE_STORAGE_KEY, locale)
+    const target =
+      storage === undefined
+        ? typeof window === 'undefined'
+          ? null
+          : window.localStorage
+        : storage
+    if (!target) return
+    target.setItem(LOCALE_STORAGE_KEY, locale)
   } catch {
     // Ignore storage failures; locale persistence is a best-effort UX feature.
   }

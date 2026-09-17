@@ -311,7 +311,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
       listSpecificationItemStatusOptions(db),
     ),
     capture<RequirementsSpecificationDetailInitialData['specificationItems']>(
-      'requirement applications',
+      SPECIFICATION_PRELOAD_ERROR_KEYS.specificationItems,
       {
         items: [],
         pagination: {

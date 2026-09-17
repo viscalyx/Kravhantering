@@ -7,7 +7,7 @@
     "areasPerChunk": 1,
     "targetSpecs": 10
   },
-  "discoveredSpecCount": 52,
+  "discoveredSpecCount": 53,
   "suites": {
     "dev": {
       "chunks": [
@@ -64,7 +64,7 @@
         {
           "id": "dev-specifications",
           "paths": ["tests/integration/specifications"],
-          "specCount": 3
+          "specCount": 4
         },
         {
           "id": "dev-stewardship",
@@ -82,7 +82,7 @@
         "tests/integration/platform/error-boundary-smoke.spec.ts",
         "tests/integration/platform/smoke.spec.ts"
       ],
-      "includedSpecCount": 44
+      "includedSpecCount": 45
     },
     "prodlike": {
       "chunks": [
@@ -144,6 +144,7 @@
         "tests/integration/requirements/table-resize.spec.ts",
         "tests/integration/specifications/agreements.spec.ts",
         "tests/integration/specifications/list.spec.ts",
+        "tests/integration/specifications/panel-layout.spec.ts",
         "tests/integration/specifications/requirement-detail.spec.ts",
         "tests/integration/stewardship/navigation.spec.ts"
       ],

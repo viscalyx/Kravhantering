@@ -507,6 +507,45 @@ retain their existing semantics.
   pill appears as its own final action group once the table top has moved above
   the sticky offset. Selecting it scrolls the page back to the table top.
 
+## Specification Panel Layout
+
+Both specification panels can be collapsed from any active tab. Hiding a
+panel keeps its subtree mounted: active tab, search, filters, sorting,
+selection, expanded rows, unsaved input and scroll position survive within
+the visit. Collapsing never saves edits or changes included requirements.
+
+Exactly three layouts are available: both open, left only, and right only.
+Collapsing the sole open panel opens the other. Expanding a collapsed panel
+opens both. The same keyboard-focusable button remains focused through each
+transition and exposes its state with `aria-expanded` and `aria-controls`.
+
+At the existing `xl` breakpoint, a collapsed panel occupies a narrow vertical
+control at its outer workspace edge; the other panel takes the remaining
+width. Below that breakpoint the panels stack and the collapsed control is a
+compact horizontal button in its panel's position. Resizing preserves state.
+
+Collapsed labels retain the base name `Krav i underlaget` or `Kravbibliotek`.
+An active secondary tab adds `– Behovsreferenser`, `– RFI`, or
+`– Kravurvalsfrågor`, respectively. English controls use the corresponding
+English names.
+
+Without a matching saved layout, the opening, unfiltered preload chooses
+left only if it contains a library or specification-local requirement, and
+both if it is empty. Later data changes never choose another layout. Failed
+item loading is unknown: both panels remain available provisionally, without
+persisting an empty-content default. Any previous specification’s saved
+layout is cleared. A manual choice can still be saved.
+
+The single `localStorage` entry `specification-panel-layout-v1` contains the
+stable numeric `specificationId` and `layout` (`both`, `left`, or `right`).
+A valid matching entry takes precedence over content. Opening another
+specification replaces the entry with its default; A → B → A therefore uses
+A's default on return. Other pages do not clear the entry. Invalid JSON,
+invalid identity or layout, and denied storage access fall back gracefully.
+Every manual transition stores the resulting layout. Storage is local to the
+browser, independent of accounts; this adds no persistence for other work
+state across reloads.
+
 ## Admin Defaults vs Personal Overrides
 
 - Admin settings define the organization-wide baseline for:

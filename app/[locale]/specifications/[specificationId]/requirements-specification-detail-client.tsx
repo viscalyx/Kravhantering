@@ -67,6 +67,7 @@ import SpecificationLocalRequirementDetailClient from '@/components/Specificatio
 import SpecificationLocalRequirementForm, {
   type SpecificationLocalRequirementSubmitPayload,
 } from '@/components/SpecificationLocalRequirementForm'
+import SpecificationPanels from '@/components/SpecificationPanels'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useModalFocus } from '@/hooks/useModalFocus'
@@ -1611,15 +1612,26 @@ export default function KravunderlagDetailClient({
   // Persist visible columns to localStorage after hydration has read them.
   useEffect(() => {
     if (!columnPreferencesLoaded) return
-    localStorage.setItem(LEFT_VISIBLE_COLS_KEY, JSON.stringify(leftVisibleCols))
+    try {
+      localStorage.setItem(
+        LEFT_VISIBLE_COLS_KEY,
+        JSON.stringify(leftVisibleCols),
+      )
+    } catch {
+      // Column choices remain usable when browser storage is unavailable.
+    }
   }, [columnPreferencesLoaded, leftVisibleCols])
 
   useEffect(() => {
     if (!columnPreferencesLoaded) return
-    localStorage.setItem(
-      RIGHT_VISIBLE_COLS_KEY,
-      JSON.stringify(rightVisibleCols),
-    )
+    try {
+      localStorage.setItem(
+        RIGHT_VISIBLE_COLS_KEY,
+        JSON.stringify(rightVisibleCols),
+      )
+    } catch {
+      // Column choices remain usable when browser storage is unavailable.
+    }
   }, [columnPreferencesLoaded, rightVisibleCols])
 
   // Open add modal
@@ -2973,8 +2985,6 @@ export default function KravunderlagDetailClient({
   const specificationDetailPageShellClassName = `${specificationDetailPagePaddingClassName} xl:flex xl:h-[calc(100dvh-4rem)] xl:flex-col xl:overflow-hidden`
   const specificationDetailContainerClassName =
     'container-custom max-w-none xl:flex xl:min-h-0 xl:flex-1 xl:flex-col'
-  const specificationDetailSplitPanelClassName =
-    'grid grid-cols-1 gap-6 items-start xl:-mx-8 xl:min-h-0 xl:flex-1 xl:grid-cols-2 xl:grid-rows-[minmax(0,1fr)] xl:items-stretch xl:gap-4 xl:overflow-hidden'
   const responsibleDisplayName = formatActorDisplayNameForLocale(
     spec.responsibleDisplayName,
     locale,
@@ -3249,12 +3259,39 @@ export default function KravunderlagDetailClient({
           </div>
 
           {/* Split panel */}
-          <div
-            className={specificationDetailSplitPanelClassName}
-            data-specification-detail-split-panel="true"
+          <SpecificationPanels
+            initialHasItems={
+              initialData.errors.some(
+                error =>
+                  error.key ===
+                  SPECIFICATION_PRELOAD_ERROR_KEYS.specificationItems,
+              )
+                ? null
+                : initialData.specificationItems.items.length > 0
+            }
+            key={specificationId}
+            leftLabel={
+              leftTab === 'items'
+                ? t('itemsInSpecification')
+                : t('panelWithTab', {
+                    panel: t('itemsInSpecification'),
+                    tab: t(
+                      leftTab === 'rfi' ? 'rfiPanelTab' : 'needsReferences',
+                    ),
+                  })
+            }
+            rightLabel={
+              rightPanelTab === 'available'
+                ? t('libraryPanel')
+                : t('panelWithTab', {
+                    panel: t('libraryPanel'),
+                    tab: t('requirementSelectionQuestions'),
+                  })
+            }
+            specificationId={specificationId}
           >
             {/* Left panel: Krav i underlaget / Behovsreferenser */}
-            <div className="flex flex-col gap-3 xl:h-full xl:min-h-0 xl:overflow-hidden">
+            <div className="flex min-w-0 flex-col gap-3 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
               {leftTab === 'needs-references' ? (
                 <div
                   className={desktopSplitPanelCardClassName}
@@ -4185,7 +4222,7 @@ export default function KravunderlagDetailClient({
             </div>
 
             {/* Right panel: Tillgängliga krav / Kravurvalsfrågor */}
-            <div className="flex flex-col gap-3 xl:h-full xl:min-h-0 xl:overflow-hidden">
+            <div className="flex min-w-0 flex-col gap-3 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
               <div
                 aria-labelledby={
                   rightPanelTab === 'available'
@@ -4366,7 +4403,7 @@ export default function KravunderlagDetailClient({
                 )}
               </div>
             </div>
-          </div>
+          </SpecificationPanels>
         </div>
       </div>
       <SpecificationFormModal

@@ -28,6 +28,7 @@ import { registerGeneratedOutputTests } from './requirements-specification-detai
 import { registerMetadataTableTests } from './requirements-specification-detail-metadata-table.suite'
 import { registerNeedsReferenceTests } from './requirements-specification-detail-needs-references.suite'
 import { registerPaginationTests } from './requirements-specification-detail-pagination.suite'
+import { registerPanelLayoutTests } from './requirements-specification-detail-panels.suite'
 import { registerResilienceTests } from './requirements-specification-detail-resilience.suite'
 import { registerSelectionTests } from './requirements-specification-detail-selection.suite'
 
@@ -61,6 +62,13 @@ vi.mock('next-intl', () => {
       if (ns === 'specification' && key === 'downloadProfileReportPdf') {
         return `${ns}.${key}.${String(values?.report)}`
       }
+      if (ns === 'specification' && key === 'panelWithTab')
+        return `${values?.panel} – ${values?.tab}`
+      if (
+        ns === 'specification' &&
+        (key === 'collapsePanel' || key === 'expandPanel')
+      )
+        return `${ns}.${key} ${values?.panel}`
       const translatedKey = ns ? `${ns}.${key}` : key
       if (
         (ns === 'common' &&
@@ -1613,6 +1621,13 @@ describe('RequirementsSpecificationDetailClient', () => {
       },
     )
     window.localStorage.clear()
+    window.localStorage.setItem(
+      'specification-panel-layout-v1',
+      JSON.stringify({
+        specificationId: defaultSpecificationId,
+        layout: 'both',
+      }),
+    )
     navigationState.searchParams = new URLSearchParams()
   })
 
@@ -1627,6 +1642,8 @@ describe('RequirementsSpecificationDetailClient', () => {
     ).toHaveAttribute('role', 'status')
     await settleInitialEditorEffects()
   })
+
+  registerPanelLayoutTests(workflowContext)
 
   registerGeneratedOutputTests(workflowContext)
 

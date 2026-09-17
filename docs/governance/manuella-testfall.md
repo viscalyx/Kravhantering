@@ -1500,6 +1500,9 @@ historikposter.
 
 ## Kravunderlag
 
+Öppna den hopfällda panelen **Kravbibliotek** när ett testfall använder båda
+panelerna i kravunderlagets detaljvy.
+
 ### SPEC-01: lista, filtrera och rensa kravunderlag
 
 **Steg:** Öppna `/sv/specifications`, filtrera på `AUTHZ`, rensa filtret.
@@ -1809,8 +1812,9 @@ tydligt behov av ny bekräftelse. Kontrollera att dokumentlänken kan öppnas
 även i väntande bedömning och bedömningshistorik. Bekräfta utan omskrivning
 och kontrollera att den nya versionen får en egen bedömning medan originalet
 finns kvar i historiken. Spara därefter Relevant med tomma frivilliga fält,
-ladda om och kontrollera både aktuell bedömning och bevarad historik. CSV/PDF
-ska skilja väntande bekräftelse och historik från aktuella utfall.
+ladda om och kontrollera både aktuell bedömning och bevarad historik för
+just den ändrade frågan. Andra frågors historik ska finnas kvar. CSV/PDF ska
+skilja väntande bekräftelse och historik från aktuella utfall.
 
 ### SPEC-16: skapa och hantera RFI-frågeförslag
 
@@ -2141,6 +2145,44 @@ aktuellt tillstånd; ett avvisat anrop ändrar varken innehåll, medlemskap elle
 avstegshistorik. Behörighet, avtalslåsning och avstegsbeslut gäller även med
 Inkluderad. Borttagningen kvarstår efter omladdning; bibliotekskravet finns
 kvar i kravbiblioteket. Ett borttaget utkastkrav markeras som Borttaget.
+
+### SPEC-30: fäll ihop paneler med tangentbord
+
+**Steg:** Öppna ett kravunderlag med krav. Öppna Kravbibliotek med tangentbord.
+Fäll ihop höger panel och därefter den enda öppna vänsterpanelen. Upprepa åt
+andra hållet och öppna sedan båda. Prova Behovsreferenser, RFI-frågelista och
+Kravurvalsfrågor som aktiva tabbar. Fäll ihop och öppna varje panel. Ändra
+fönsterbredd medan en panel är hopfälld. Upprepa på engelska.
+
+**Förväntat resultat:** Minst en panel är alltid öppen. Öppningsknappen visar
+panelens grundnamn och eventuell aktiv sekundär tabb. RFI använder tillägget
+`RFI`. Rätt tabb återkommer vid öppning. Knapparna fungerar med Enter och
+blanksteg, fokus förblir synligt och hjälpmedel får öppet eller hopfällt
+tillstånd. Fönsterändring bevarar vald layout och aktiv tabb.
+
+### SPEC-31: kom ihåg senaste kravunderlagets layout
+
+**Steg:** Öppna underlag A med krav utan sparad layout. Välj endast höger
+panel och ladda om. Besök kravunderlagslistan och återvänd till A. Öppna ett
+tomt underlag B och återvänd därefter till A. Prova även med blockerad
+webbläsarlagring och med en ogiltig sparad layout.
+
+**Förväntat resultat:** A börjar med endast vänster panel. Omladdning och
+återbesök via listan återställer det manuella valet. B börjar med båda
+panelerna. Återkomsten från B använder A:s grundlayout. Otillgänglig eller
+ogiltig lagring hindrar inte hopfällning och öppning. Bibliotekskrav och
+kravunderlagslokala krav räknas båda som innehåll.
+
+### SPEC-32: bevara panelens arbete under sidbesöket
+
+**Steg:** Öppna Kravbibliotek, markera ett krav och ange ett krav-ID-filter.
+Scrolla i listan. Fäll ihop panelen, ändra fönsterbredd åt båda hållen och
+öppna panelen igen. Prova också sortering, expanderade rader och pågående
+inmatning på en sekundär tabb. Sök efter något som inte ger träffar.
+
+**Förväntat resultat:** Markeringar, filter, sortering, expanderade rader,
+inmatning och scrollposition finns kvar. Inga krav läggs till eller tas bort
+och ingen redigering sparas av hopfällningen. Nollträffar ändrar inte layout.
 
 ## Avsteg
 

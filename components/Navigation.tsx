@@ -149,18 +149,30 @@ function getStewardshipHref(tab: StewardshipTab) {
 
 function readStoredRailExpanded() {
   if (typeof window === 'undefined') return false
-  return localStorage.getItem(NAV_RAIL_STORAGE_KEY) === 'expanded'
+  try {
+    return localStorage.getItem(NAV_RAIL_STORAGE_KEY) === 'expanded'
+  } catch {
+    return false
+  }
 }
 
 function writeStoredRailExpanded(expanded: boolean) {
-  localStorage.setItem(
-    NAV_RAIL_STORAGE_KEY,
-    expanded ? 'expanded' : 'collapsed',
-  )
+  try {
+    localStorage.setItem(
+      NAV_RAIL_STORAGE_KEY,
+      expanded ? 'expanded' : 'collapsed',
+    )
+  } catch {
+    // Navigation remains usable without browser storage.
+  }
 }
 
 function rememberStewardshipTab(tab: StewardshipTab) {
-  localStorage.setItem(STEWARDSHIP_STORAGE_KEY, tab)
+  try {
+    localStorage.setItem(STEWARDSHIP_STORAGE_KEY, tab)
+  } catch {
+    // The active URL still identifies the selected tab.
+  }
 }
 
 function getActiveStewardshipTab(

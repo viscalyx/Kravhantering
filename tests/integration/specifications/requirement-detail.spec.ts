@@ -241,6 +241,12 @@ async function gotoSpecificationDetail(
       await expect(
         page.getByText(/^Det gick inte att läsa in tillgängliga krav:/),
       ).toBeHidden({ timeout: 10_000 })
+      const expandLibrary = page.getByRole('button', {
+        name: 'Öppna Kravbibliotek',
+        exact: true,
+      })
+      if (await expandLibrary.count()) await expandLibrary.click()
+      await page.mouse.move(0, 0)
       return
     } catch (error) {
       if (attempt === 2) throw error
@@ -1163,9 +1169,10 @@ for (const viewport of viewports) {
               name: 'Visa endast de som ingår i RFI',
             }),
           ).toHaveAttribute('aria-pressed', 'false', { timeout: 30_000 })
-          const areaSection = page
-            .locator('section')
-            .filter({ hasText: 'PWT-MANUAL Playwright manual cases' })
+          const areaSection = page.getByRole('region', {
+            name: 'PWT-MANUAL Playwright manual cases',
+            exact: true,
+          })
           await expect(areaSection).toContainText('PWM-RFI001')
           await expect(areaSection).toContainText('PWM-RFI002')
           await expect(areaSection).toContainText(
@@ -1177,9 +1184,10 @@ for (const viewport of viewports) {
         })
 
         await test.step('toggle question scope and included-only filter', async () => {
-          const areaSection = page
-            .locator('section')
-            .filter({ hasText: 'PWT-MANUAL Playwright manual cases' })
+          const areaSection = page.getByRole('region', {
+            name: 'PWT-MANUAL Playwright manual cases',
+            exact: true,
+          })
           const primaryQuestion = areaSection
             .locator('article')
             .filter({ hasText: 'PWM-RFI001' })
@@ -1247,9 +1255,10 @@ for (const viewport of viewports) {
         })
 
         await test.step('toggle area scope and verify export actions', async () => {
-          const areaSection = page
-            .locator('section')
-            .filter({ hasText: 'PWT-MANUAL Playwright manual cases' })
+          const areaSection = page.getByRole('region', {
+            name: 'PWT-MANUAL Playwright manual cases',
+            exact: true,
+          })
           const areaScopeSwitch = areaSection.getByRole('switch', {
             name: /Ändra om kravområdet .+ ingår i RFI/u,
           })
@@ -4025,10 +4034,13 @@ test.describe('Requirements specification deterministic manual cases', () => {
           'Driften omfattas av befintligt avtal',
         )
         await expect(history).toContainText(questionCode)
-        const documentLinks = history.getByRole('link', {
-          name: 'https://example.org/agreement',
-          exact: true,
-        })
+        const documentLinks = history
+          .getByRole('listitem')
+          .filter({ hasText: questionCode })
+          .getByRole('link', {
+            name: 'https://example.org/agreement',
+            exact: true,
+          })
         await expect(documentLinks).toHaveCount(2)
         for (const link of await documentLinks.all()) {
           await expect(link).toHaveAttribute(
