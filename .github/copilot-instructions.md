@@ -48,6 +48,8 @@
 - Match content and technical detail to the audience: developers,
   application users, operators, or other readers. Include information only
   when it helps them complete tasks, make decisions, or avoid mistakes.
+- Remove obsolete or audience-irrelevant content. Delete a document when
+  none of its content remains useful; update or remove links to it.
 
 ## Database Schema Changes
 
