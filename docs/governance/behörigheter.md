@@ -1,7 +1,8 @@
 # Behörigheter
 
 Den här sidan förklarar vilka roller som ger åtkomst till känsliga delar av
-Kravhantering. Den är skriven för personer som använder eller stödjer tjänsten.
+Kravhantering. Den hjälper användare och support att avgöra vilken roll eller
+vilket uppdrag som behövs för en åtgärd.
 
 För en mer detaljerad katalog över roller och uppdrag, se
 [roller-inom-kravhantering.md](../reference/roller-inom-kravhantering.md).
@@ -54,13 +55,10 @@ kravpaketsmedförfattare, kravunderlagsansvariga och
 kravunderlagsmedförfattare.
 
 Innan ett nytt HSA-id kan sparas i ett sådant uppdrag måste användaren hämta
-eller återanvända en lokal kravansvarsperson. HSA-personuppslaget är
+eller återanvända en lokal kravansvarsperson. Om direktuppslaget inte är
+tillgängligt visar gränssnittet vägledning. Redan sparade kravansvarspersoner
+kan fortfarande återanvändas i tillåtna uppdrag. HSA-personuppslaget är
 behörighetsstyrt per syfte:
-
-Den autentiserade kapacitetskontrollen avgör om gränssnittet erbjuder ett nytt
-direktuppslag. När den strikta lokala transportkonfigurationen saknas eller är
-ogiltig inaktiveras direktuppslaget med lokaliserad vägledning, men redan
-sparade kravansvarspersoner kan fortfarande återanvändas i tillåtna uppdrag.
 
 - kravområdesägare får verifieras av `Admin` vid skapande av kravområde, eller
   av aktuell kravområdesägare eller `Admin` vid överlämning av ett befintligt
@@ -69,20 +67,12 @@ sparade kravansvarspersoner kan fortfarande återanvändas i tillåtna uppdrag.
   `Admin` för kravområdet
 - kravpaketsansvarig och kravpaketsmedförfattare får verifieras av
   kravpaketsansvarig eller `Admin` för ett befintligt kravpaket
-- vid skapande av kravpaket får HSA-id verifieras av en användare som får
-  skapa kravpaket
+- vid skapande av kravpaket får en användare som får skapa kravpaket
+  verifiera sitt eget HSA-id som kravpaketsansvarig
 - kravunderlagsansvarig och kravunderlagsmedförfattare får verifieras av
   kravunderlagsansvarig eller `Admin` för kravunderlaget
 - vid skapande av kravunderlag får den inloggade användaren verifiera sitt
   eget HSA-id som kravunderlagsansvarig
-
-När en inloggad användare senare genomför en godkänd ändring kan
-Kravhantering uppdatera användarens egen levande personrad för kravansvar i
-bakgrunden från verifierade sessionsfält. Det sker bara om användarens HSA-id
-fortfarande är tilldelat någon levande ansvarsyta. Uppdateringen gör inget
-nytt HSA-uppslag, påverkar inte inloggningen, stoppar inte den utförda
-ändringen om den misslyckas och ändrar inte historiska audit-, beslut- eller
-åtgärdssnapshots.
 
 ## Kravområden
 
@@ -107,7 +97,7 @@ Kravområdesmedförfattare kan författa innehåll, inklusive RFI-frågor, men k
 inte ändra kravområdets metadata, byta ägare eller hantera
 kravområdesmedförfattare. Kravområdets prefix kan bara ändras av `Admin` eller
 aktuell kravområdesägare så länge kravområdet saknar kravrader. När ett krav
-finns i området returnerar prefixändring `409 conflict`.
+finns i området går prefixet inte längre att ändra.
 
 ## Kravpaket
 
@@ -135,9 +125,8 @@ Ett kravunderlag styrs av sina egna uppdrag, inte av de kravområden vars krav
 används i kravunderlaget.
 
 När ett nytt kravunderlag skapas måste användaren vara inloggad med verifierat
-HSA-id. Den inloggade användaren blir kravunderlagsansvarig. Om anropet anger
-en annan kravunderlagsansvarig än den inloggade användaren stoppar tjänsten
-skapandet.
+HSA-id. Den inloggade användaren blir kravunderlagsansvarig. Det går inte att
+ange en annan kravunderlagsansvarig vid skapandet.
 
 Kravunderlagsansvarig, kravunderlagsmedförfattare och `Admin` kan ändra
 kravunderlagets innehåll. Det omfattar metadata, behovsreferenser,
@@ -159,21 +148,26 @@ Samma HSA-id får inte samtidigt vara kravunderlagsansvarig och
 kravunderlagsmedförfattare för samma kravunderlag. Om bytet av ansvarig skulle ge
 en sådan dubbel roll stoppar tjänsten ändringen.
 
+Överenskommelser har en snävare beslutsgräns. Kravunderlagsansvarig,
+kravunderlagsmedförfattare och `Admin` får förbereda utkast och ändra deras
+innehåll. Bara den tilldelade kravunderlagsansvariga får fastställa, bekräfta,
+rätta, förkasta, avbryta eller avsluta en överenskommelse. `Admin` eller
+`Reviewer` räcker inte ensamt för dessa beslut. När en överenskommelse har
+bekräftats kan innehållet inte längre redigeras som ett utkast.
+
+Beslut att godkänna eller avslå avsteg kräver `Reviewer`. Att avbryta ett
+pågående avstegsärende med motivering kräver skrivbehörighet i kravunderlaget.
+Att avsluta ett tillämpligt godkänt avsteg kräver däremot att användaren är
+kravunderlagsansvarig; det ursprungliga granskningsbeslutet bevaras.
+
 `Admin` och `Reviewer` kan lista och läsa alla kravunderlag. Andra inloggade
 användare ser bara sina tilldelade kravunderlag, där tilldelningen kommer från
 att vara kravunderlagsansvarig eller kravunderlagsmedförfattare. Om användaren
-saknar tilldelade kravunderlag visas en tom lista. En direktlänk till ett
-befintligt men otillåtet kravunderlag stoppas med 403, medan ett saknat
-kravunderlag stoppas med 404.
+saknar tilldelade kravunderlag visas en tom lista. En direktlänk ger inte
+åtkomst till ett kravunderlag som användaren saknar behörighet till.
 
-Samma läsregel gäller kravunderlagets underresurser: kravtillämpningar,
-kravunderlagslokala krav, avstegslistor och enskilda avsteg. Vid direktanrop
-slår tjänsten först upp underresursens kravunderlag med endast dess tekniska
-identifierare. Därefter kontrolleras läsbehörigheten innan kravtext,
-motiveringar, beslut eller personuppgifter hämtas. Ett befintligt men
-otillåtet objekt ger 403, ett saknat objekt ger 404 och en underresurs som
-anges tillsammans med fel kravunderlag ger 403. Svaren lagras inte av
-webbläsare eller mellanliggande cache.
+Samma läsregel gäller kravunderlagets kravtillämpningar,
+kravunderlagslokala krav, avstegslistor och enskilda avsteg.
 
 ## Bibliotekskrav i kravunderlag
 
@@ -203,8 +197,8 @@ förvaltningsdetaljer kräver författarbehörighet i frågans kravområde, som
 kravområdesägare, kravområdesmedförfattare eller `Admin`.
 Den ofiltrerade förvaltningslistan visar bara RFI-frågor från kravområden där
 användaren har författarbehörighet; `Admin` kan läsa listan över alla
-kravområden. En inloggad användare som inte är `Admin` och anger `areaId` för
-ett kravområde där användaren saknar författarbehörighet får 403.
+kravområden. Att filtrera på ett kravområde ger inte tillgång till dess
+förvaltningslista om användaren saknar författarbehörighet där.
 
 Ett kravunderlags RFI-frågelista hör däremot till kravunderlaget.
 Kravunderlagsansvarig, kravunderlagsmedförfattare och `Admin` kan ändra
@@ -227,95 +221,82 @@ Utkast, granskning, historik och arkiveringsarbete kräver
 kravområdesägare, kravområdesmedförfattare, `Reviewer` eller `Admin` beroende
 på åtgärd och kravområde.
 
-Vid läsning av en bestämd kravversion via REST eller MCP kontrolleras den
-begärda versionens aktuella status. En publicerad version kan läsas utan
-ansvarstilldelning även när kravet har ett nyare utkast. Utkast, granskning
+Läsbehörigheten för en bestämd kravversion beror på versionens aktuella
+status. En publicerad version kan läsas utan ansvarstilldelning även när
+kravet har ett nyare utkast. Utkast, granskning
 och arkiverade versioner kräver kravområdesägare, kravområdesmedförfattare,
 `Reviewer` eller `Admin`. Detta gäller även tidigare publicerade versioner
 som nu är arkiverade efter att en ny version publicerats; ett datum för
-tidigare publicering ger inte läsbehörighet. Om kravet får läsas men den
-begärda versionen saknas blir svaret `404`. En befintlig version som
-användaren saknar behörighet till ger `403`.
+tidigare publicering ger inte läsbehörighet.
 
 Kravområdesägare, kravområdesmedförfattare och `Admin` kan författa
 kravområdets krav, kravurvalsfrågor och RFI-frågor. Beslut i gransknings- och
 arkiveringsflöden kräver däremot `Reviewer`; `Admin` räcker inte ensamt för
-sådana beslut. En `Reviewer` får besluta om sitt eget förslag eller avsteg,
-men tjänsten loggar detta som en högriskhändelse.
+sådana beslut. En `Reviewer` får besluta om sitt eget avsteg.
 
 För kravurvalsfrågor omfattar författarbehörigheten skapande, redigering,
-duplicering, ordning, synlighetsvillkor, svar och livscykel. Vid skapande
-kontrolleras det begärda kravområdet. Övriga åtgärder slår upp frågans lagrade
-kravområde, och svar måste tillhöra den angivna frågan. Ett nekat anrop ger
-`403` före domänskrivning och tillåten åtgärdsloggning. Nekandet lämnar
-auktoriseringsevidens utan fråga-, svars- eller annan känslig fritext. Den som
-får läsa men inte författa ser en skrivskyddad förvaltningsyta utan
-mutationskontroller.
+duplicering, ordning, synlighetsvillkor, svar och livscykel. Den som får läsa
+men inte författa ser en skrivskyddad förvaltningsyta.
 
-Förbättringsförslag kan skapas och ändras av inloggade användare. Att lösa ett
-förslag eller besluta att avvisa det kräver författarbehörighet i kravområdet
-eller `Admin`. Egen lösning loggas som högriskhändelse.
+Förbättringsförslag kräver författarbehörighet i kravområdet eller `Admin`
+för att skapas, ändras, tas bort, skickas till granskning eller återföras till
+utkast. Samma behörighet krävs för att lösa eller avvisa ett förslag och koppla
+det till en genomförandeversion. `Reviewer` ger inte i sig dessa behörigheter.
 
 Direkt läsning av ett förbättringsförslag följer läsregeln för det tillhörande
 kravet. Förslag till publicerade krav kan därför läsas där publicerad
 kravinformation är tillåten. Förslag till opublicerade krav kräver
-författarbehörighet i kravområdet, `Reviewer` eller `Admin`. Tjänsten avgör
-kravet och behörigheten innan förslagets innehåll eller personuppgifter hämtas.
+författarbehörighet i kravområdet, `Reviewer` eller `Admin`.
 
-API-svaret för kravdetalj innehåller serverberäknade behörigheter för den
-aktuella användaren och det aktuella kravet. UI:t använder de besluten för
-att visa eller dölja livscykel- och mutationskontroller. Om användaren får
-läsa kravet men inte ändra det visas sidan som skrivskyddad med ett kort
-meddelande. Det finns ingen separat generell `/api/auth/permissions`-yta för
-detta i nuvarande modell.
+Om användaren får läsa kravet men inte ändra det visas sidan som
+skrivskyddad med ett kort meddelande.
 
 ## Rapporter
 
-Servergenererade PDF-rapporter kontrollerar behörighet innan rapportdata
-hämtas. Rapporter från kravlistan i kravbiblioteket är tillgängliga för
-vanliga inloggade användare, men PDF-versionen bygger bara på publicerade
-kravversioner. Utkast, granskningsversioner och historik exponeras inte genom
-list-PDF:en för användare som saknar starkare åtkomst.
+PDF-rapporter från kravlistan i kravbiblioteket är tillgängliga för
+vanliga inloggade användare och följer kravens läsbehörighet. Användare utan
+författaruppdrag eller rollen `Reviewer` eller `Admin` får bara läsa
+publicerade krav genom list-PDF:en.
 
 Rapporter för historik, granskning, kombinerad granskning och förslagshistorik
 kräver åtkomst till kravets historik. Kravunderlagsrapporter kontrollerar
 läsåtkomst till kravunderlaget innan kravunderlagets poster hämtas.
-Rapportmallarna fattar inga egna behörighetsbeslut; de renderar bara redan
-auktoriserad rapportdata.
 
 ## AI-assisterat författande
 
-AI-assisterat författande styrs av den generella autentiserings- och
-auktoriseringsgränsen och använder samma uppdragsbaserade gräns som
-författande i Kravhantering. En användare utan `Admin` måste välja exakt ett
-auktoriserat behörighetssammanhang innan tjänsten hämtar modeller, hämtar
-kreditinformation eller skickar en prompt till OpenRouter:
+AI-assisterat författande använder samma uppdragsbaserade behörighet som
+författande i Kravhantering. Vid generering och AI-reparation av en kravimport
+måste användaren välja exakt ett kravområde eller kravunderlag som destination.
+En användare utan `Admin` behöver motsvarande uppdrag:
 
-- `requirement_area` med ett kravområde där användaren är kravområdesägare
-  eller kravområdesmedförfattare
-- `specification` med ett kravunderlag där användaren är
-  kravunderlagsansvarig eller kravunderlagsmedförfattare
+- kravområdesägare eller kravområdesmedförfattare i det valda kravområdet
+- kravunderlagsansvarig eller kravunderlagsmedförfattare i det valda
+  kravunderlaget
 
-`Admin` får använda AI-assisterat författande utan att ange
-behörighetssammanhang. Det finns ingen separat AI-behörighet i nuvarande
-modell. Om AI-assisterat författande senare behöver en separat
-behörighetsmodell ska den beslutas som en egen policy med egna skäl.
-En användare med `Admin` kan också stänga av AI-kravgenerering globalt i
-Admin Center. Driftspärren `AI_REQUIREMENT_GENERATION_DISABLED` har högre
-prioritet än den sparade Admin Center-inställningen.
+`Admin` behöver inget tilldelat författaruppdrag, men måste fortfarande välja
+destination. Det finns ingen separat AI-behörighet i nuvarande modell.
+AI-anrop använder administratörsförvaltade AI-anslutningar och körprofiler.
+Behörighet att författa ger inte rätt att administrera anslutningar, modeller
+eller kreditinformation.
+
+En användare med `Admin` kan stänga av AI-kravgenerering globalt i Admin Center.
+AI-stödet kan också vara spärrat av driftorganisationen, oavsett
+Admin Center-inställningen. En författarbehörighet garanterar därför
+inte att AI-stödet är tillgängligt.
 
 ## Normbibliotek
 
-Normreferenser har en enklare behörighetsgräns än kravområden, kravpaket och
-kravunderlag. En inloggad användare kan skapa en normreferens. Att ändra,
-arkivera, återaktivera eller ta bort en normreferens kräver `Admin`.
+För närvarande kan en inloggad användare skapa en normreferens via
+webbgränssnittet, medan skapande via MCP kräver `Admin`. Behörighetskontrollen
+skiljer sig alltså mellan dessa vägar. Att ändra, arkivera, återaktivera eller
+ta bort en normreferens kräver `Admin`.
 
 ## Admin Center
 
 Admin Center är tillgängligt för användare med `Admin` eller
 `PrivacyOfficer`. Användare utan någon av rollerna ser inte länken i den
 globala navigationen. En direktlänk visar en sida som förklarar att behörighet
-saknas utan att läsa in Admin Center-data eller klientimplementation.
+saknas.
 
 Admin Center visar endast flikar som den aktuella rollen får använda. Den
 första behöriga fliken i navigationsordningen är användarens startflik.
@@ -340,8 +321,7 @@ både `Admin` och `PrivacyOfficer`.
 
 Om en direktlänk anger en befintlig flik som användaren saknar behörighet till
 ersätter Kravhantering URL:en med den första behöriga fliken och visar ett kort
-statusmeddelande. Panelkod och paneldata laddas först när en behörig flik är
-aktiv.
+statusmeddelande.
 
 ## Behörighetsöversyn
 

@@ -1,23 +1,47 @@
 # Running Kravhantering in GitHub Codespaces
 
-<!-- markdownlint-disable MD013 -->
 <!-- cSpell:ignore codespace,codespaces,seccomp,sandboxing,bwrap -->
 
-This guide walks through launching the **main** branch of [viscalyx/Kravhantering](https://github.com/viscalyx/Kravhantering) in a GitHub Codespace, running the dev server, making the forwarded port public, and cleaning up afterwards.
+This guide covers running the **main** branch of
+[viscalyx/Kravhantering](https://github.com/viscalyx/Kravhantering)
+in a GitHub Codespace, accessing the application, sharing an MCP endpoint,
+and cleaning up afterwards.
 
-<!-- markdownlint-enable MD013 -->
+The committed devcontainer configuration assumes a prepared Docker host.
+A fresh Codespace needs the configuration below before the application can
+start; creating a Codespace alone does not complete setup.
 
 ## Prerequisites
 
-- A GitHub account (free tier is fine — you get 120 core-hours
-  per month of Codespaces usage).
+- A GitHub account with Codespaces access and available usage quota.
 - A modern web browser (Chrome, Edge, Firefox, or Safari).
 
-No local installs are required — everything runs in the cloud.
+The browser editor needs no local development runtime. To use the committed
+localhost login configuration, use VS Code desktop with Codespaces support
+and local port forwarding as described in step 4.
+
+### Repository configuration required before startup
+
+- Provide `.devcontainer/.env` from `.devcontainer/.env.example` and configure
+  the database credentials. Compose requires `MSSQL_SA_PASSWORD` before it
+  can create services; the app also needs the matching `DB_*` settings.
+  The elevated profile additionally needs `.devcontainer/elevated/.env`
+  for Compose variable substitution. Follow the
+  [devcontainer configuration instructions](./devcontainer-developer-workflow.md#configurations).
+- Both Compose profiles bind-mount `${HOME}/.codex/auth.json` and several
+  host directories. These paths refer to the Docker host, not your local
+  computer. A fresh Codespace does not inherit your workstation files;
+  review these mounts for the cloud host before building. Do not commit
+  credentials to make a mount available.
+
+If creation fails, inspect the build log for missing environment variables
+or mount sources. GitHub's
+[creation troubleshooting guide](https://docs.github.com/en/codespaces/troubleshooting/troubleshooting-creation-and-deletion-of-codespaces)
+explains how to open recovery mode, fix configuration, and rebuild. The
+repository does not provide a separate Codespaces bootstrap that prepares
+these host dependencies.
 
 ## 1 — Create a Codespace
-
-<!-- markdownlint-disable MD013 -->
 
 1. Open <https://github.com/viscalyx/Kravhantering> in your
    browser.
@@ -36,11 +60,9 @@ configuration uses the standard Docker security profile.
 > screenshots of this flow — see
 > [Creating a codespace for a repository](https://docs.github.com/en/codespaces/developing-in-a-codespace/creating-a-codespace-for-a-repository#creating-a-codespace-for-a-repository).
 
-GitHub will provision a cloud VM, build the dev container, and
-open a VS Code editor in your browser. This typically takes
-1–3 minutes for the first launch.
-
-<!-- markdownlint-enable MD013 -->
+GitHub provisions a cloud VM, builds the dev container, and opens a VS Code
+editor. Continue once the required configuration above is in place and the
+build succeeds.
 
 ## 2 — Wait for automatic setup
 
@@ -51,31 +73,29 @@ for setup, migrations, and the read-only browse workflow.
 The dev container runs two lifecycle scripts automatically.
 You can follow their progress in the integrated terminal.
 
-### Post-create (runs once when the container is first built)
+### Post-create (runs when the container is created or rebuilt)
 
-```text
-npm install && npx playwright install --with-deps
-```
-
-The devcontainer feature installs the exact npm version declared by the
-repository before this command installs Node.js dependencies and Playwright
-browser binaries. It can take a few minutes on first creation.
+The hook installs dependencies and development tools and prepares the
+container configuration. Wait for it to finish before using the workspace.
 
 ### Post-start (runs on every container start/restart)
 
-```text
-git config --global --unset gpg.ssh.program || true && npm run db:setup
-```
+The hook starts supporting services and runs `npm run db:setup`. Database
+setup retries once on failure.
 
-This configures Git for agent forwarding and prepares the local
-SQL Server database — wait, reset, migrate, and seed.
+**Every start resets the development database.** `db:setup` recreates and
+seeds it with development data. Save any application data you need before
+stopping or restarting the Codespace.
 
-> **Tip:** Wait until both scripts finish before running any
-> commands. The terminal prompt reappears when they are done.
+Check the lifecycle output for `SQL Server setup completed`. A terminal
+prompt alone does not prove success: the hook can finish after printing that
+both database setup attempts failed. Diagnose that failure before starting
+the app.
 
-The dev container already starts a sibling SQL Server `db` service. The app
-uses the connection string defined by `DATABASE_URL` inside the container, so
-you do not need to start the database manually in Codespaces.
+The devcontainer starts SQL Server (`db`), Keycloak (`idp`), and the HSA
+support services automatically. Database connections come from the configured
+`DB_*` values or explicit connection-string overrides; there is no need to
+start a second database service.
 
 To inspect table data, run `npm run db:browse` and follow the SQLTools +
 MSSQL workflow described in
@@ -98,56 +118,43 @@ to:
 - Local:   http://localhost:3000
 ```
 
-## 4 — Make the forwarded port public
+## 4 — Forward ports for sign-in
 
-By default, forwarded ports in Codespaces are **private**
-(only accessible to you while signed in). To share the URL
-with others — or to avoid authentication redirects — make the
-port public:
+The committed authentication settings use `http://localhost:3000` for the
+application and `http://localhost:8080` for Keycloak. The Keycloak client
+registers the callback at `http://localhost:3000/api/auth/callback`.
 
-<!-- markdownlint-disable MD013 -->
+Open the Codespace in VS Code desktop and use its **Ports** panel to forward
+both **3000** and **8080** to the same ports on your computer. Keep them
+private, and ensure neither local port is already occupied. The browser and
+the app must reach the same issuer URL. See
+[GitHub's port-forwarding guide](https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace)
+for desktop forwarding controls.
 
-1. Click the **Ports** tab at the bottom of the VS Code editor
-   (next to the Terminal tab). If you do not see it, open it
-   via the Command Palette:
-   `Ctrl`+`Shift`+`P` →
-   **Ports: Focus on Ports View**.
-2. Find port **3000** in the list (labeled *Next.js Dev
-   Server 1* if the devcontainer label is present).
-3. **Right-click** the row for port 3000.
-4. Hover over **Port Visibility** in the context menu.
-5. Select **Public**.
-
-The Visibility column now shows *Public* and the forwarded URL
-is accessible to anyone with the link.
-
-> **Visual reference:** GitHub's documentation has screenshots
-> of the Ports panel and visibility menu — see
-> [Forwarding ports in your codespace](https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace#sharing-a-port).
-
-<!-- markdownlint-enable MD013 -->
+Opening only `https://<codespace-name>-3000.app.github.dev` does not adapt
+these settings. Making that port public removes GitHub's access gate, but
+application sign-in still requires a valid OIDC configuration. Browser-only
+access through that hostname requires a browser- and server-reachable issuer,
+matching application callback/logout settings, and matching client
+registrations. That configuration is not supplied by the committed realm;
+see the [auth developer workflow](./auth-developer-workflow.md).
 
 ## 5 — Access the application
 
-With the dev server running and the port forwarded:
-
-- **Click the globe icon** (🌐) next to port 3000 in the
-  Ports tab, or
-- **Copy the forwarded URL** from the Ports tab and paste it
-  into any browser.
-
-The URL looks like
-`https://<codespace-name>-3000.app.github.dev`.
+With both local forwards active and the dev server running, open
+`http://localhost:3000` directly in your browser. Sign in with a seeded
+development account, for example `ada.admin` with password `devpass`.
+See the [auth developer workflow](./auth-developer-workflow.md) for the other
+roles and sign-in troubleshooting.
 
 ## 6 — Stop the Codespace
 
 When you are done working, stop the Codespace to conserve
 your monthly quota. A stopped Codespace keeps its files and
-state but does not consume compute hours.
+state but does not consume compute hours. The repository startup hook still
+resets the application database the next time the container starts.
 
 ### From the browser
-
-<!-- markdownlint-disable MD013 -->
 
 1. Go to <https://github.com/codespaces>.
 2. Find your Codespace in the list.
@@ -156,8 +163,6 @@ state but does not consume compute hours.
 
 > **Visual reference:** see
 > [Stopping and starting a codespace](https://docs.github.com/en/codespaces/developing-in-a-codespace/stopping-and-starting-a-codespace#stopping-a-codespace).
-
-<!-- markdownlint-enable MD013 -->
 
 ### From the terminal (inside the Codespace)
 
@@ -169,16 +174,14 @@ gh codespace stop
 
 Open the Command Palette
 (`Ctrl`+`Shift`+`P`) and run
-**Codespaces: Stop Current Codespace**.
+**Codespaces: Stop Codespace**, then select the Codespace to stop.
 
 ## 7 — Delete the Codespace
 
-Stopped Codespaces still consume storage. Delete them when
-you no longer need them.
+Stopped Codespaces still consume storage. Push any commits and copy out any
+uncommitted files you need before deleting a Codespace.
 
 ### From the Codespaces dashboard
-
-<!-- markdownlint-disable MD013 -->
 
 1. Go to <https://github.com/codespaces>.
 2. Click the **⋯** menu next to the Codespace.
@@ -186,8 +189,6 @@ you no longer need them.
 
 > **Visual reference:** see
 > [Deleting a codespace](https://docs.github.com/en/codespaces/developing-in-a-codespace/deleting-a-codespace#deleting-a-codespace).
-
-<!-- markdownlint-enable MD013 -->
 
 ### From the terminal (on your local machine)
 
@@ -201,11 +202,16 @@ gh codespace delete --codespace <name>
 
 ## 8 — Expose the MCP endpoint for remote clients (optional)
 
-<!-- markdownlint-disable MD013 -->
+The dev server exposes an MCP endpoint at `/api/mcp`. External clients that
+cannot authenticate to the GitHub forwarding layer need a public forwarded
+port. In the **Ports** panel, right-click **3000**, choose **Port Visibility**,
+and select **Public**, if organization policy allows it. Keep database and
+Keycloak ports private.
 
-The dev server exposes an MCP endpoint at `/api/mcp`. Once the
-Codespace is running with a **public** forwarded port (see
-step 4), external MCP clients can reach that endpoint.
+Public visibility exposes the development server to anyone who knows the URL.
+Use only disposable demo data; the committed development accounts and
+passwords are public. Application authentication still applies. See
+[GitHub's sharing controls](https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace#sharing-a-port).
 
 ### Build the remote endpoint URL
 
@@ -219,8 +225,9 @@ step 4), external MCP clients can reach that endpoint.
 
 - The Codespace must be **running** and the dev server started
   (`npm run dev`) for remote MCP clients to reach the endpoint.
-- The port must be set to **Public** (step 4). A private port
-  returns authentication errors for external clients.
+- A private remote port requires separate GitHub forwarding authentication
+  in addition to the application Bearer token. Public visibility avoids that
+  extra gate for clients that cannot supply it.
 - When you **stop** the Codespace, the MCP endpoint becomes
   unreachable. Restart it and verify the forwarded URL has not
   changed before using remote MCP clients again.
@@ -228,65 +235,35 @@ step 4), external MCP clients can reach that endpoint.
   configuration, token setup, available tools, and usage examples, see
   [MCP Server User Guide](../integrations/mcp-server-user-guide.md).
 
-<!-- markdownlint-enable MD013 -->
-
 ## Troubleshooting
+
+<!-- markdownlint-disable MD013 -->
 
 | Problem | Solution |
 | ------- | -------- |
-| Dependencies failed to install | Run `npm run purge:install` |
-| Database errors | Run `npm run db:setup` |
+| Dependencies failed to install | Inspect the installation error; `npm run purge:install` reinstalls dependencies and regenerates `package-lock.json`, so review its diff. |
+| Database errors | Check lifecycle output and run `npm run db:health`; use `npm run db:setup` only when discarding local database data is intended. |
 | Port 3000 already in use | Run `npm run kill:port` |
-| Slow first build | Normal — the container image is ~1 GB |
-| Need to re-run all checks | Run `npm run check` |
+| Login redirects to localhost or fails | Forward both 3000 and 8080 locally; see steps 4–5. |
+
+<!-- markdownlint-enable MD013 -->
 
 ### Codex namespace errors
 
-If Codex agent tools fail with `bwrap` or `unshare` namespace errors
-after you pull the latest repo changes, rebuild the
-Codespace/devcontainer so the updated `.devcontainer/docker-compose.yml`
-security setting takes effect.
-
-If your devcontainer bind-mounts `${HOME}/.codex`, keep
-`/home/vscode/.codex/tmp` container-local instead of reusing the
-host temp directory. Host-generated Codex arg0 wrappers can point at
-host-only paths such as `/Applications/Codex.app/...`, which breaks
-sandboxed exec/edit startup inside the Linux container.
-
-If you intentionally selected the default
-**Kravhantering Development** configuration, those
-errors can be expected because that configuration does
-not include `seccomp=unconfined`.
-
-<!-- markdownlint-disable MD013 -->
+If Codex agent tools fail with `bwrap` or `unshare` namespace errors,
+check which devcontainer profile is selected. The default profile uses the
+standard Docker security settings; rebuilding that profile does not grant
+elevated permissions. The elevated profile defines its permissions in
+`.devcontainer/elevated/docker-compose.yml`. Rebuild after changing profiles.
 
 For more on Codespaces billing, quotas, and machine types see
 [About billing for GitHub Codespaces](https://docs.github.com/en/billing/managing-billing-for-your-products/managing-billing-for-github-codespaces/about-billing-for-github-codespaces).
 
-<!-- markdownlint-enable MD013 -->
-
-## Behavioral Contracts
-
-These contracts are testable invariants for Codespace-based
-workflows:
-
-- **`npm run db:setup` is idempotent** — safe to re-run at any
-  time. It waits for, resets, migrates, and seeds the local SQL Server database.
-- **Port 3000 must be public** for remote MCP clients to reach the endpoint.
-  Private ports return authentication errors.
-- **MCP endpoint at `/api/mcp`** — available after the dev
-  server starts (`npm run dev`).
-- **`npm run purge:install`** resets `node_modules` for a
-  clean dependency state.
-
 ## Further reading
-
-<!-- markdownlint-disable MD013 -->
 
 - [GitHub Codespaces overview](https://docs.github.com/en/codespaces/overview)
 - [Dev Containers specification](https://containers.dev/)
-- [MCP Server User Guide](../integrations/mcp-server-user-guide.md) — MCP tools and client setup
+- [MCP Server User Guide](../integrations/mcp-server-user-guide.md)
+  — MCP tools and client setup
 - [CONTRIBUTING.md](../../CONTRIBUTING.md) — project contribution guidelines
 - [README.md](../../README.md) — project overview and local quick-start
-
-<!-- markdownlint-enable MD013 -->

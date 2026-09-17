@@ -1,11 +1,8 @@
 # Admin Center
 
-This document describes the contributor-facing admin center for default
-requirement-list columns, HSA-id prefix guidance, recurring access review,
-AI generation availability, personal data erasure and data subject access
-export, archiving retention, and taxonomy/status entrypoints. The page also
-includes an action-log entrypoint for database-backed mutation and
-authorization-denial review.
+This document is for contributors maintaining Admin Center behavior and its
+authorization, privacy, retention, and configuration contracts. Use it to
+understand the safeguards that changes to admin workflows must preserve.
 
 For requirement-list interaction details such as resizing, sorting, and
 filtering, see [requirements-ui-behaviour.md](./requirements-ui-behaviour.md).
@@ -16,13 +13,10 @@ For the cross-application role matrix, see
 
 The admin center lets maintainers change organization-wide list defaults,
 reach app-owned taxonomy and status administration, and run privileged admin
-workflows without changing route slugs, API field names, or MCP tool
-identifiers.
+workflows.
 
 The global side navigation contains the settings item that links to
 `/{locale}/admin` after an `Admin` or `PrivacyOfficer` role is confirmed.
-
-Taxonomy and status links are grouped in the Admin Center.
 
 ## Tabs
 
@@ -40,7 +34,17 @@ The admin center currently has nine tabs for core administration:
 
 The `Action log` tab renders the action-log filters, table, pagination, and
 CSV export directly in the Admin Center. The navigation only renders tabs that
-the current roles may use.
+the current roles may use:
+
+- `Access review` accepts either `Admin` or `PrivacyOfficer`.
+- `Archiving` and `Privacy` require `PrivacyOfficer`; `Admin` alone does not
+  grant access.
+- All other tabs require `Admin`.
+
+The default is the first authorized tab: `Columns` for administrators and
+`Access review` for users with only `PrivacyOfficer`. Unauthorized tab requests
+return to an authorized tab. Server-side checks enforce the same boundaries
+before reading panel data.
 
 ## On-demand tab panels
 
@@ -55,8 +59,10 @@ JavaScript budget. Raising a budget requires a current size report and an
 intentional implementation-value justification.
 
 Static client modules contain UI logic and public contracts, not database rows
-or secrets. Panel data is loaded after activation from APIs that verify the
-panel role on the server.
+or secrets. The public tab URLs route to separate workspace pages through
+`next.config.ts` rewrites. Workspace pages authorize the selected tab before
+rendering it. Most panels then fetch data through authorized APIs; the action
+log receives its initial filtered result from the authorized server page.
 
 ## Action Log
 
@@ -89,12 +95,6 @@ not create another action-log row.
 The `Columns` tab controls organization-wide default behavior for the
 requirements list.
 
-The source of truth is:
-
-- table: `requirement_list_column_defaults`
-- DAL: `lib/dal/ui-settings.ts`
-- list helpers: `lib/requirements/list-view.ts`
-
 Admin-managed column settings include:
 
 - default order
@@ -109,13 +109,6 @@ Admin-managed column settings include:
 
 The `Identity` tab manages HSA-id-prefix rows that are offered as UI guidance
 when users edit HSA-id assignments.
-
-The source of truth is:
-
-- table: `hsa_id_prefixes`
-- DAL: `lib/dal/ui-settings.ts`
-- admin API: `GET/PUT /api/admin/hsa-id-prefixes`
-- form API: `GET /api/hsa-id-prefixes`
 
 Admin-managed prefix settings include:
 
@@ -142,18 +135,15 @@ HSA-id fields. They can be hidden from user-facing lists. Unused prefixes can be
 removed. A non-empty prefix list must have at least one visible prefix and
 exactly one visible prefix must be default. An empty prefix list has no default.
 
-Demo seed data contains `SE5560000001` as the visible default prefix. Required
-seed data intentionally does not create any HSA-id-prefix rows, so a clean
-installation starts without organization-specific prefix policy.
+Required seed data does not create HSA-id-prefix rows. Configure a prefix
+before using editable HSA-id fields in a clean installation.
 
 ## Settings
 
 The `Settings` tab is addressed by `?tab=settings` and contains fixed `AI`,
-`Exports`, and `Reports` sections. It loads AI and application settings in
-parallel, reserves the complete panel layout while loading, and reveals the
-sections together after both settings reads settle. The former `?tab=ai`
-address is intentionally unavailable rather than retained as a compatibility
-alias.
+`Security`, `Imports`, `Exports`, and `Reports` sections. It loads AI and
+application settings in parallel, reserves the complete panel layout while
+loading, and reveals the sections together after both settings reads settle.
 
 The `AI` section manages AI-assisted requirement generation. Its
 `AI assistance` subsection contains the requirement-generation toggle,
@@ -169,9 +159,7 @@ validation-session storage. The section has no shared Save button; controls save
 directly when changed, with per-control or per-row status. Numeric controls
 show their allowed range and step directly under the control.
 
-Demo seed provisions ordinary administrator-managed draft connections and does
-not add runtime provenance or special connection behavior. Model catalog
-results are optional hints belonging to the connection that produced them;
+Model catalog results are optional hints belonging to their connection;
 they are never verification evidence. The application owns fixed capability
 minimums for exactly three stable profiles. Administrators select a compatible
 verified model revision directly and may adjust only bounded runtime budgets.
@@ -224,9 +212,23 @@ save can consume it. If a response is lost or retry finds the attempt
 unavailable, reload the model list and check whether the revision exists before
 trying again. The form gives this guidance without claiming success.
 
- Saved revisions are immediately
-`verified`. Connection changes or concrete contradictions mark them
-`new_revision_required`; replacement requires a newly verified revision.
+Saved revisions are immediately `verified`. Connection changes or concrete
+contradictions mark them `new_revision_required`; replacement requires a newly
+verified revision.
+
+The model revision form separates mandatory reasoning activity, explicit
+effort control, and optional visible AI analysis. Explicit control offers Low,
+Medium and High (default). Model default has no effort selector and sends no
+control parameter. The adapter resolves the path for the exact connection and
+model, then must verify activity for that configuration before saving. The
+form adopts the resolved path and does not let the administrator assert model-
+default activity. Changing path or effort cancels pending verification and
+invalidates its attempt. Both verification and runtime use the immutable saved
+configuration. Profiles select revisions and budgets without overriding
+reasoning. Missing activity or technical failure is inconclusive; explicit
+rejection is not verified. Either blocks saving a usable revision even when
+ordinary JSON generation succeeds. Encrypted or redacted metadata can prove
+activity, but never visible analysis.
 
 The stable-profile form lists all model revisions but disables ended,
 replacement-required, inactive-connection, or incompatible choices with the
@@ -245,28 +247,6 @@ content-free diagnostics: its safe failure category, failed declared
 capabilities, and failed fixed checks. The Admin UI keeps this warning open
 until the administrator dismisses it; success and ordinary informational
 feedback still close automatically.
-
-The source of truth is:
-
-- table: `ai_settings`
-- tables: `ai_safety_rules`, `ai_safety_rule_terms`
-- DAL: `lib/dal/ai-settings.ts`
-- DAL: `lib/dal/ai-safety-rules.ts`
-- admin API: `GET/PUT/PATCH /api/admin/ai-settings`
-- admin API: `GET/POST /api/admin/ai-safety-rules`
-- admin API: `PATCH/DELETE /api/admin/ai-safety-rules/terms/{id}`
-- admin API: `POST /api/admin/ai-safety-rules/terms/remove`
-- admin API: `POST /api/admin/ai-safety-rules/{ruleId}/restore-defaults`
-- connection registry API: `GET/POST /api/admin/ai-connections`
-- connection detail API: `GET/PATCH /api/admin/ai-connections/{connectionId}`
-- connection workflow API:
-  `POST /api/admin/ai-connections/{connectionId}/actions`
-- run-profile API: `GET /api/admin/ai-run-profiles`
-- stable run-profile API: `PATCH /api/admin/ai-run-profiles/{profileKey}`
-- run-profile operational workflow API:
-  `POST /api/admin/ai-run-profiles/{profileKey}/actions`
-- forensic control API: `GET/POST/PATCH /api/admin/ai-forensic-captures`
-- hard override: `AI_REQUIREMENT_GENERATION_DISABLED`
 
 Admin-managed AI settings include:
 
@@ -346,16 +326,22 @@ direction differs from the seeded standard. The safety filter reads active
 terms from the database only; if the rule set cannot be loaded, AI-assisted
 authoring fails closed before provider work.
 
-The `Exports` and `Reports` sections use the singleton
+The `Security`, `Imports`, `Exports`, and `Reports` sections use the singleton
 `application_settings` table through
-`GET/PATCH /api/admin/application-settings`. The nine numeric fields control
-the per-operation item cap, completed-file byte cap, per-node process-local
-concurrency, and generation timeout for CSV and PDF; PDF also has an isolated
-worker JavaScript-memory limit. File sizes are shown and edited in MiB but sent
-to the API as integer bytes. A field saves on blur or Enter. Each field has its
-own saving state and request token, so an older response cannot overwrite a
-newer edit. Every successful change is written to the privileged action log
-with the field and old/new values.
+`GET/PATCH /api/admin/application-settings`. Imports can limit requirement
+rows, proposed norm and needs references, nested items, and JSON depth. The
+global import row limit also caps the MCP import row setting: lowering it
+reduces a higher saved MCP limit in the same transaction. Raising the global
+limit does not automatically raise the MCP setting.
+
+Exports controls shared starts per rolling minute and active work per person,
+as well as CSV item, file-size, per-node concurrency, and timeout limits.
+Reports controls PDF item, file-size, per-node concurrency, timeout, and
+isolated worker JavaScript-memory limits. File sizes are shown and edited in
+MiB but sent to the API as integer bytes. A field saves on blur or Enter. Each
+field has its own saving state and request token, so an older response cannot
+overwrite a newer edit. Every successful change is written to the privileged
+action log with the field and old/new values.
 
 When an AI safety block happens, metadata is always written to
 `security-audit`. During an approved matching window, redacted and strictly
@@ -397,12 +383,12 @@ order.
 
 There are two different reset concepts in this feature area.
 
-Admin center reset:
+Columns tab reset:
 
-- reverts the unsaved admin form state to the last successfully saved server
-  state
-- keeps the primary save button disabled until the normalized admin form payload
-  differs from that saved state
+- replaces the unsaved column settings with the application's shipped defaults
+- requires Save to persist those defaults organization-wide
+- keeps Save disabled when the normalized form already matches the last
+  successfully saved server state
 
 Requirements list reset:
 
@@ -432,24 +418,6 @@ when a replacement person is supplied, but target matching never uses names or
 email addresses and name-only erasure requests are rejected. Requirement-area
 owner switches update `requirement_areas.owner_hsa_id` directly. Requirement
 package lead switches update the package lead HSA-id and display-name snapshot.
-
-Local seed data includes two users named `Kalle Svensson` with different
-HSA-id values. The second identity resolves an improvement suggestion so UI
-tests can verify that erasing one HSA-id does not match the other person by
-name.
-
-<!-- cspell:ignore linneab -->
-
-Seed data also gives `SE5560000001-linneab` coverage across every privacy
-preview group: requirement-area `owner_hsa_id` assignments, requirement package
-lead assignments, requirement versions, deviation creator and decision fields,
-improvement-suggestion creator and resolver fields, specification lead, and
-requirement-area/specification co-author assignment rows, plus access-review
-creator, reviewer, completer, reviewed-principal, decision snapshots, and
-action-audit actor snapshots. The access-review fixture includes two completed
-reviews: one created by the Linnéa HSA identity and one created by another user
-where the Linnéa HSA identity is
-the reviewer. This lets the privacy UI be tested end-to-end with one HSA-id.
 
 The preview groups HSA-id occurrences by object and field, shows the affected
 objects by name or stable identifier, shows the current actor display snapshot,
@@ -525,7 +493,7 @@ the row and may anonymize or switch only the actor HSA-id/display-name
 snapshot. Those events include request id, action counts, and a non-reversible
 target fingerprint; they do not log the raw target HSA-id in details. Client IP
 values in `action_audit_events.client_ip` are not handled by the Privacy
-workflow in this slice.
+workflow.
 Retention or redaction of handler identity in external security logs is handled
 by the platform logging policy, because removing it can reduce traceability.
 
@@ -534,8 +502,7 @@ stopper, and purger snapshots plus capture-specific actor fingerprints.
 Execution stops and purges matching capture windows, anonymizes their actor
 snapshots, and deletes exact fingerprint matches. Person-data export includes
 only safe matching capture and evidence metadata, never evidence excerpts.
-Display names are never used as the match key, including the duplicate-name
-demo fixture.
+Display names are never used as the match key.
 
 The preview also covers short-lived HSA verification quota rows through the
 same purpose-separated target fingerprint used by verification. It can match a
@@ -562,7 +529,7 @@ and status criteria have passed, creates row-level exceptions for legal hold or
 documented operational need, exports archive evidence, and executes the accepted
 preview through `/api/admin/archiving/*`.
 
-V1 supports direct deletion after preview and confirmation for:
+The workflow supports direct deletion after preview and confirmation for:
 
 - unused requirement areas with no current library requirements, and unused
   requirement packages or norm references with no current library or unique
@@ -578,15 +545,9 @@ V1 supports direct deletion after preview and confirmation for:
   no live requirement area, specification or package assignment references
   their HSA-id
 
-Local seed data includes deterministic `RETENTION-SEED` fixtures for every
-active policy source and the main exclusion cases, so a freshly seeded
-development database can be used to verify previews, export confirmation and
-deletion behavior from this tab.
-
-Requirement-version deletion removes package and norm-reference join rows first,
-then the version row. If no versions remain, the requirement row is deleted as
-well. Versions that have ever been linked to a requirements specification are
-excluded by `has_specification_item_history`.
+Deleting the last eligible version also deletes its parent requirement.
+Versions that have ever been linked to a requirements specification remain
+excluded even when the current link has been removed.
 
 Archived requirement-selection deletion uses the `archived_at` timestamp on the
 question or answer as its age basis. Saved answers in
@@ -718,9 +679,8 @@ existing stable routes for:
 - specification lifecycle statuses
 - usage statuses
 
-The admin center does not rename or move those child routes. It only changes
-how users reach them from `/admin`: `?tab=taxonomy` and
-`?tab=statusesAndWorkflows` are the supported tab query values.
+`?tab=taxonomy` and `?tab=statusesAndWorkflows` are the supported tab query
+values for reaching these administration pages.
 Requirement packages and the norm library are managed from
 `/requirements/stewardship` together with requirement-selection questions,
 since package leads and requirement-area stewards can work there without
@@ -775,6 +735,8 @@ Requirement area co-authors are managed separately from the list row with
 `Hantera medförfattare`, which opens a dedicated co-author dialog with the add
 field above the saved co-author table.
 
+The owner is displayed:
+
 - as HSA-id in the requirement area taxonomy table
 - as HSA-id under the requirement area dropdown in the requirement
   create/edit form
@@ -796,20 +758,6 @@ If you change any of the following, update this document:
 
 If you add a new requirement column or property, also update
 [.github/instructions/add-requirement-column.instructions.md](../../.github/instructions/add-requirement-column.instructions.md).
-
-The model revision form separates mandatory reasoning activity, explicit
-effort control, and optional visible AI analysis. Explicit control offers Low,
-Medium and High (default). Model default has no effort selector and sends no
-control parameter. The adapter resolves the path for the exact connection and
-model, then must verify activity for that configuration before saving. The
-form adopts the resolved path and does not let the administrator assert model-
-default activity. Changing path or effort cancels pending verification and
-invalidates its attempt. Both verification and runtime use the immutable saved
-configuration. Profiles select revisions and budgets without overriding
-reasoning. Missing activity or technical failure is inconclusive; explicit
-rejection is not verified. Either blocks saving a usable revision even when
-ordinary JSON generation succeeds. Encrypted or redacted metadata can prove
-activity, but never visible analysis.
 
 ## Leverantörens ekonomiska AI-status
 
@@ -853,7 +801,7 @@ covered routes, shared actor limits, distinct 429/503 reasons, English and
 Swedish messages, privacy handling and coordinated operational tuning.
 
 Admin application settings expose starts per rolling minute and active work
-per person. Each field has localized help and a Developer Mode marker.
+per person. Each field has localized help.
 Updates audit old and new values without resetting usage. Privacy erasure
 requires the target person’s active output to finish before quota deletion.
 
@@ -867,7 +815,7 @@ remains enforced. Changes apply without restart. Security-log access and
 retention belong to the existing operations/security process. See
 [CSP reporting](../operations/csp-reporting.md).
 
-### Suggestion implementation evidence during retention
+## Suggestion implementation evidence during retention
 
 Old requirement-version retention clears improvement suggestions' implementing
 version links in the same transaction as deletion. The evidence timestamp stays
@@ -876,7 +824,7 @@ legal-hold rules for the version still apply. Removing the parent requirement
 removes its suggestions and evidence. No separate actor snapshot is introduced;
 attachment uses the existing Action log and its privacy/retention rules.
 
-### RFI assessment history in Privacy and Archiving
+## RFI assessment history in Privacy and Archiving
 
 Privacy includes an RFI assessments author group. Exact HSA-id matching permits
 anonymization or skipping; historical authors cannot be reassigned. Evidence
@@ -889,11 +837,10 @@ specification deletion cascades to all assessments. Policy-based deletion
 requires archive JSON containing the RFI header, current item snapshots and
 assessment history, with actor fields anonymized in the export. Historical
 assessment references block deletion of referenced question versions and their
-archived questions in both preview and execution. Existing retention periods
-remain unchanged. `RETENTION-SEED` question `RSK-RFI915` demonstrates protection
-without a current list item.
+archived questions in both preview and execution. Protection also applies when
+no current RFI-list item remains.
 
-### Dataskydd och avtalshistorik
+## Dataskydd och avtalshistorik
 
 Dataskyddets förhandsvisning och anonymisering omfattar aktörer som registrerat,
 bekräftat, avbrutit eller avslutat avtal, skapat kravversioner eller godkänt och
@@ -908,7 +855,7 @@ Aktuella avtal och väntande utkast eller kommande avtal skyddas från gallring.
 Efter avslut gäller ordinarie regler och undantag, med obligatorisk JSON-export
 inklusive bevarade avtal, kravuppsättningar, uppföljning och avstegshistorik.
 
-### Dataskydd för avstegsavslut
+## Dataskydd för avstegsavslut
 
 Dataskyddets grupp för registrerade avstegsavslut omfattar både HSA-id och
 namnögonblicksbild för den ansvariga aktören. Exakt HSA-id styr förhandsvisning,

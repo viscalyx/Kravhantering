@@ -1,9 +1,15 @@
 # Operator Upgrade Notes
 
 This file records release-specific actions that production operators must know
-before upgrading Kravhantering. Use it together with the RHEL production
-upgrade guide for the deployed topology and the GitHub Release notes for the
-target version.
+before upgrading Kravhantering. Use it together with the RHEL production upgrade
+guide for the deployed topology and the GitHub Release notes for the target
+version.
+
+Read the entries between the installed and target releases. Each dated section
+describes that release boundary; later entries can replace earlier requirements.
+Use the target release's upgrade guide for the supported upgrade path and
+current procedure. Unreleased notes apply only when deploying the unreleased
+changes.
 
 ## Unreleased
 
@@ -11,11 +17,11 @@ target version.
 
 Before rollout, coordinate REST and MCP clients that remove requirements from
 specifications. Removal now requires usage status Included for every selected
-requirement application, including local requirements and editable agreement
-drafts. If any selected application has another status, the entire request is
-rejected without partial removal. Clients must refresh the selected applications
-and review their status before retrying. Existing permission, agreement lock and
-deviation rules still apply.
+requirement, whether a requirement application or a local requirement. This also
+applies to editable agreement drafts. If any selected requirement has another
+status, the entire request is rejected without partial removal. Clients must
+refresh the selected requirements and review their status before retrying.
+Existing permission, agreement lock and deviation rules still apply.
 
 ### Deviation approval validity
 
@@ -26,10 +32,10 @@ Recovery must restore both; removing the new decision terms loses evidence.
 
 Existing approvals keep their recorded decisions and have no calendar end date.
 Only the most recent approval for the same reviewed content can give permission.
-No scheduled job is required. Verify approval expiry, responsible-person closure,
-archive export and actor anonymization with the runtime database role after
-upgrade. Coordinate consumers of Full CSV and specification reports: approval
-outcomes and current permission are now reported separately.
+No scheduled job is required. Verify approval expiry, responsible-person
+closure, archive export and actor anonymization with the runtime database role
+after upgrade. Coordinate consumers of Full CSV and specification reports:
+approval outcomes and current permission are now reported separately.
 
 <!-- operator-upgrade:source issue-1323 start -->
 
@@ -45,8 +51,8 @@ requires both; a schema rollback cannot preserve the new history.
 Existing specifications remain editable working sets until their first agreement
 is confirmed. After upgrade, verify agreement access with the runtime database
 role. Verify that current and pending agreements are protected from retention,
-that archives contain the full retained agreement and deviation history, and that
-privacy export and anonymization include the new agreement actors.
+that archives contain the full retained agreement and deviation history, and
+that privacy export and anonymization include the new agreement actors.
 
 Coordinate external clients that edit requirement applications or handle
 deviations. They must use the selected agreement context, handle locked content
@@ -68,21 +74,25 @@ page publication and asset delivery separately. Publication does not confirm
 environment deployment.
 
 For failed delivery, inspect remote content and rerun failed jobs for the
-original source. Preserve matching published content. Resolve conflicts
-manually before retrying. Keep the operator-note credential for stable archival.
+original source. Preserve matching published content. Resolve conflicts manually
+before retrying. Keep the operator-note credential for stable archival.
 
 <!-- operator-upgrade:source pr-1240 start -->
 Before the upgrade, back up the Keycloak database. If a custom realm uses the
-deprecated client-initiated account-linking endpoint, migrate the integration
-to Application Initiated Actions. Keycloak 26.7.2 disables the legacy endpoint
-by default.
-If rollback is required after Keycloak updates its database, restore the prior
-database backup. Do not expect Keycloak database changes to roll back in place.
+deprecated client-initiated account-linking endpoint, migrate the integration to
+Application Initiated Actions. Keycloak 26.7.2 disables the legacy endpoint by
+default. If rollback is required after Keycloak updates its database, restore
+the prior database backup. Do not expect Keycloak database changes to roll back
+in place.
 <!-- operator-upgrade:source pr-1240 end -->
 
 <!-- operator-upgrade:source pr-1242 start -->
-- Before rollout, make the SQL Server 2025 CU8 image available in the deployment registry or disconnected bundle. Preserve the existing database volume when the container is replaced.
-- After rollout, verify that SQL Server reports build 17.0.4075.5. Complete the database health, backup, and recovery checks, and review the CU8 known issues before production rollout.
+- Before rollout, make the SQL Server 2025 CU8 image available in the deployment
+  registry or disconnected bundle. Preserve the existing database volume when
+  the container is replaced.
+- After rollout, verify that SQL Server reports build 17.0.4075.5. Complete the
+  database health, backup, and recovery checks, and review the CU8 known issues
+  before production rollout.
 <!-- operator-upgrade:source pr-1242 end -->
 
 <!-- operator-upgrade:source pr-1266 start -->
@@ -90,135 +100,246 @@ Before the upgrade, back up the Keycloak configuration and database. Review
 custom realms and integrations that use reserved Keycloak claim prefixes,
 overlapping authorization and permission-ticket claims, OIDC redirect or
 post-logout URIs that contain response parameters, or organization invitation
-links. Update affected configurations and integrations before rollout.
-If rollback is required after Keycloak updates its database, restore both the
+links. Update affected configurations and integrations before rollout. If
+rollback is required after Keycloak updates its database, restore both the
 previous Keycloak installation and its matching database backup. Do not attempt
 to roll back database changes in place.
 <!-- operator-upgrade:source pr-1266 end -->
 
 <!-- operator-upgrade:source pr-1307 start -->
 Before upgrade, stop or drain all application nodes. Apply the database
-migration and reconcile runtime permissions before starting the new release.
-Do not mix this release with versions that use per-node HSA verification
-counters. Only roll back to a release that already supports the global quota;
-otherwise, keep traffic drained and forward-fix.
-After rollout, verify SQL and migration readiness and transient-state cleanup.
-Monitor HSA verification throttling, coordination failures, and cleanup
-backlog. No new service, secret, or operator setting is required.
+migration and reconcile runtime permissions before starting the new release. Do
+not mix this release with versions that use per-node HSA verification counters.
+Only roll back to a release that already supports the global quota; otherwise,
+keep traffic drained and forward-fix. After rollout, verify SQL and migration
+readiness and transient-state cleanup. Monitor HSA verification throttling,
+coordination failures, and cleanup backlog. No new service, secret, or operator
+setting is required.
 <!-- operator-upgrade:source pr-1307 end -->
 
 <!-- operator-upgrade:source pr-1328 start -->
-After rollout, tell MCP consumers to treat advertised row limits as guidance. If an import reports a changed budget, validate it again before execution. Imports stop when settings cannot be read; restore settings availability before retrying.
-Monitor import delays and settings-save delays after rollout. Import validation, execution, and administrator budget changes can wait for each other across application nodes.
+After rollout, tell MCP consumers to treat advertised row limits as guidance. If
+an import reports a changed budget, validate it again before execution. Imports
+stop when settings cannot be read; restore settings availability before
+retrying. Monitor import delays and settings-save delays after rollout. Import
+validation, execution, and administrator budget changes can wait for each other
+across application nodes.
 <!-- operator-upgrade:source pr-1328 end -->
 
 <!-- operator-upgrade:source pr-1341 start -->
-- Plan for AI-assisted authoring to be unavailable after upgrade until an administrator verifies new AI connection model revisions and selects them in the run profiles. Existing verified revisions require replacement. Reasoning is mandatory for all run profiles. Where explicit control is available, the initial reasoning effort is High; otherwise the model default applies.
-- Create fresh AI deployment evidence with the upgraded release tools before you release the global AI guard. Earlier verification evidence is no longer accepted. Reversing the database schema change does not restore the previous model verification status.
-- Release maintainers must enable repository auto-merge for generated operator upgrade notes to merge automatically. Keep required checks and branch protections enabled. If the workflow cannot request auto-merge, review its warning and retry or merge the generated notes after the required checks pass.
+- Plan for AI-assisted authoring to be unavailable after upgrade until an
+  administrator verifies new AI connection model revisions and selects them in
+  the run profiles. Existing verified revisions require replacement. Reasoning
+  is mandatory for all run profiles. Where explicit control is available, the
+  initial reasoning effort is High; otherwise the model default applies.
+- Create fresh AI deployment evidence with the upgraded release tools before you
+  release the global AI guard. Earlier verification evidence is no longer
+  accepted. Reversing the database schema change does not restore the previous
+  model verification status.
+- Release maintainers must enable repository auto-merge for generated operator
+  upgrade notes to merge automatically. Keep required checks and branch
+  protections enabled. If the workflow cannot request auto-merge, review its
+  warning and retry or merge the generated notes after the required checks pass.
 <!-- operator-upgrade:source pr-1341 end -->
 
 <!-- operator-upgrade:source pr-1343 start -->
-Install the independent cleanup service before operational handoff. Prepare its runtime database connection and metadata permissions. Retain its verified image and recovery assets when changing the application release.
-The preceding published release is the default rollback source. No routine source-list maintenance is required. To select another published release, request an explicit source during release preparation and use the resulting authenticated release only after compatibility verification succeeds.
-Pause cleanup before migration or restore. Reapply metadata permissions and complete a successful cleanup run before restoring traffic. Confirm that the next scheduled run is active. Remove the independent service explicitly during full host removal.
+Install the independent cleanup service before operational handoff. Prepare its
+runtime database connection and metadata permissions. Retain its verified image
+and recovery assets when changing the application release. The preceding
+published release is the default rollback source. No routine source-list
+maintenance is required. To select another published release, request an
+explicit source during release preparation and use the resulting authenticated
+release only after compatibility verification succeeds. Pause cleanup before
+migration or restore. Reapply metadata permissions and complete a successful
+cleanup run before restoring traffic. Confirm that the next scheduled run is
+active. Remove the independent service explicitly during full host removal.
 <!-- operator-upgrade:source pr-1343 end -->
 
 <!-- operator-upgrade:source pr-1368 start -->
-Apply the database upgrade and reconcile runtime and cleanup permissions before starting the new application. Verify scheduled cleanup after rollout. Retain the independent cleanup deployment and its compatibility evidence during application rollback.
-Completed verifications are shared with all authorized administrators for 15 minutes. Closing a form preserves this work; explicit discard removes it for everyone. Candidates held only in an older application process must be verified again after rollout.
-If a save response is lost, reload the model list and check whether the revision exists before trying again. Candidate snapshots and their save transactions are excluded from SQL query and error-text logging; safe application outcomes and aggregate cleanup telemetry remain available.
+Apply the database upgrade and reconcile runtime and cleanup permissions before
+starting the new application. Verify scheduled cleanup after rollout. Retain the
+independent cleanup deployment and its compatibility evidence during application
+rollback. Completed verifications are shared with all authorized administrators
+for 15 minutes. Closing a form preserves this work; explicit discard removes it
+for everyone. Candidates held only in an older application process must be
+verified again after rollout. If a save response is lost, reload the model list
+and check whether the revision exists before trying again. Candidate snapshots
+and their save transactions are excluded from SQL query and error-text logging;
+safe application outcomes and aggregate cleanup telemetry remain available.
 <!-- operator-upgrade:source pr-1368 end -->
 
 <!-- operator-upgrade:source pr-1380 start -->
-Deploy the application, database migration and secret-maintenance tools as one compatible release. Stop older application nodes before administrators add management credentials. Keep a compatible database backup and external keyring for downgrade, and verify restoration with tools from the same release.
-Management credentials are optional and use the existing external keyring. Administrators add them in the connection financial-status panel. Local rotation and removal erase stored management secret material but do not revoke the provider key; administrators must revoke keys at the provider when required. Missing financial data does not affect model availability or execution.
+Deploy the application, database migration and secret-maintenance tools as one
+compatible release. Stop older application nodes before administrators add
+management credentials. Keep a compatible database backup and external keyring
+for downgrade, and verify restoration with tools from the same release.
+Management credentials are optional and use the existing external keyring.
+Administrators add them in the connection financial-status panel. Local rotation
+and removal erase stored management secret material but do not revoke the
+provider key; administrators must revoke keys at the provider when required.
+Missing financial data does not affect model availability or execution.
 <!-- operator-upgrade:source pr-1380 end -->
 
 <!-- operator-upgrade:source pr-1384 start -->
 Before rollout, notify REST and MCP consumers that reads of draft, review, and
-archived requirement versions require assignment as a requirement area owner
-or co-author, or the Reviewer or Admin role. This includes previously published
-versions that are now archived. A published version of the same requirement
-does not grant access to these versions.
-After rollout, confirm that readers without these permissions can read
-published versions and receive access-denied responses for restricted versions.
-Confirm that authorized authors and reviewers retain access.
+archived requirement versions require assignment as a requirement area owner or
+co-author, or the Reviewer or Admin role. This includes previously published
+versions that are now archived. A published version of the same requirement does
+not grant access to these versions. After rollout, confirm that readers without
+these permissions can read published versions and receive access-denied
+responses for restricted versions. Confirm that authorized authors and reviewers
+retain access.
 <!-- operator-upgrade:source pr-1384 end -->
 
 <!-- operator-upgrade:source pr-1385 start -->
-After upgrade, if real credentials may have entered an approved AI forensic capture, arrange an authorized incident review with the original capture parties. Review evidence only after capture stops or expires and through the protected interface. Revoke or rotate suspected exposed credentials through the incident process. Keep excerpts out of tickets and logs.
-The fix protects future evidence writes. It does not sanitize existing evidence or backup copies. Keep the existing live-evidence and backup retention rules, and run cleanup after a restore before allowing application traffic. Excerpts remain sensitive after masking.
+After upgrade, if real credentials may have entered an approved AI forensic
+capture, arrange an authorized incident review with the original capture
+parties. Review evidence only after capture stops or expires and through the
+protected interface. Revoke or rotate suspected exposed credentials through the
+incident process. Keep excerpts out of tickets and logs. The fix protects future
+evidence writes. It does not sanitize existing evidence or backup copies. Keep
+the existing live-evidence and backup retention rules, and run cleanup after a
+restore before allowing application traffic. Excerpts remain sensitive after
+masking.
 <!-- operator-upgrade:source pr-1385 end -->
 
 <!-- operator-upgrade:source pr-1386 start -->
-Drain old app nodes before upgrade and start the new nodes together. Apply the database update and deploy the matching ingress and cleanup components. Keep the identity fingerprint secret the same on all app nodes.
-Validate the new export and report limits with users who share a corporate proxy. Monitor rejected requests and tune actor and network limits separately. A stuck export can cause an app process restart after 14 minutes. Confirm that the service manager restarts failed processes.
-Rollback requires a coordinated drain. Keep the added database structures; old app versions do not enforce the shared quota.
+Drain old app nodes before upgrade and start the new nodes together. Apply the
+database update and deploy the matching ingress and cleanup components. Keep the
+identity fingerprint secret the same on all app nodes. Validate the new export
+and report limits with users who share a corporate proxy. Monitor rejected
+requests and tune actor and network limits separately. A stuck export can cause
+an app process restart after 14 minutes. Confirm that the service manager
+restarts failed processes. Rollback requires a coordinated drain. Keep the added
+database structures; old app versions do not enforce the shared quota.
 <!-- operator-upgrade:source pr-1386 end -->
 
 <!-- operator-upgrade:source pr-1392 start -->
-Before a single-node installation or upgrade, select an identity-provider profile
-and declare the deployment environment. Production requires an external provider
-or hardened bundled Keycloak. The convenience bundled provider is permitted only
-for explicitly declared non-production use. Older test installations must supply
-both choices. No current production installations require migration.
-Run the target release preflight before stopping services, including for
-disconnected upgrades. Invalid choices stop deployment before installed units
-change. For hardened bundled Keycloak, preserve the management network and mutual
-TLS configuration. Verify that ordinary users can sign in but cannot reach
-identity administration, and that management access requires an approved client
-certificate and administrator authentication.
+Before a single-node installation or upgrade, select an identity-provider
+profile and declare the deployment environment. Production requires an external
+provider or hardened bundled Keycloak. The convenience bundled provider is
+permitted only for explicitly declared non-production use. Older test
+installations must supply both choices. No current production installations
+require migration. Run the target release preflight before stopping services,
+including for disconnected upgrades. Invalid choices stop deployment before
+installed units change. For hardened bundled Keycloak, preserve the management
+network and mutual TLS configuration. Verify that ordinary users can sign in but
+cannot reach identity administration, and that management access requires an
+approved client certificate and administrator authentication.
 <!-- operator-upgrade:source pr-1392 end -->
 
 <!-- operator-upgrade:source pr-1394 start -->
-Coordinate the upgrade across all instances that serve the application host. Secure deployments use host-bound session and login-state cookie names. Tell affected users to sign in again and restart any login that was in progress. Deployments that already use the same valid host-bound names do not need an additional sign-in because of this change.
-Allow legacy cookies to expire under their existing lifetimes. The new application does not accept or refresh them. Renaming does not revoke them: older instances can still accept unexpired legacy cookies during a mixed-version rollout or rollback. Drain older instances together and account for this limit in the rollback plan.
-Update external tools that send session cookies to use the effective host-bound name. After rollout, confirm that login, authenticated access, and logout work through the public application address.
+Coordinate the upgrade across all instances that serve the application host.
+Secure deployments use host-bound session and login-state cookie names. Tell
+affected users to sign in again and restart any login that was in progress.
+Deployments that already use the same valid host-bound names do not need an
+additional sign-in because of this change. Allow legacy cookies to expire under
+their existing lifetimes. The new application does not accept or refresh them.
+Renaming does not revoke them: older instances can still accept unexpired legacy
+cookies during a mixed-version rollout or rollback. Drain older instances
+together and account for this limit in the rollback plan. Update external tools
+that send session cookies to use the effective host-bound name. After rollout,
+confirm that login, authenticated access, and logout work through the public
+application address.
 <!-- operator-upgrade:source pr-1394 end -->
 
 <!-- operator-upgrade:source pr-1399 start -->
-- Complete the normal database upgrade and required seed step before you start the updated application. Deploy the matching reverse-proxy configuration with the application.
-- CSP violation logging is enabled by default, including for existing installations. An Admin can disable it in Settings  Security. The change takes effect without a restart. Disabling logging does not disable CSP protection, and browsers can continue to send reports.
-- After rollout, verify report delivery from application pages and API documentation to the security audit log. Treat these anonymous events as diagnostic reports, not proof of a successful attack. Apply the existing log access and retention rules, and monitor log volume. Collection limits apply separately to each application process.
+- Complete the normal database upgrade and required seed step before you start
+  the updated application. Deploy the matching reverse-proxy configuration with
+  the application.
+- CSP violation logging is enabled by default, including for existing
+  installations. An Admin can disable it in Settings Security. The change takes
+  effect without a restart. Disabling logging does not disable CSP protection,
+  and browsers can continue to send reports.
+- After rollout, verify report delivery from application pages and API
+  documentation to the security audit log. Treat these anonymous events as
+  diagnostic reports, not proof of a successful attack. Apply the existing log
+  access and retention rules, and monitor log volume. Collection limits apply
+  separately to each application process.
 <!-- operator-upgrade:source pr-1399 end -->
 
 <!-- operator-upgrade:source pr-1404 start -->
-After rollout, inform authors that they can save selected, unimported
-candidates as a local requirement import file before closing review. The file
-contains edited candidate content and required proposed references. When the
-file is opened again, current permissions, destination, reference data, and
-import budget apply. Changed or removed references can require further review.
+After rollout, inform authors that they can save selected, unimported candidates
+as a local requirement import file before closing review. The file contains
+edited candidate content and required proposed references. When the file is
+opened again, current permissions, destination, reference data, and import
+budget apply. Changed or removed references can require further review.
 <!-- operator-upgrade:source pr-1404 end -->
 
 <!-- operator-upgrade:source pr-1407 start -->
-Apply the database upgrade before starting the updated application. Complete the application rollout before users record implementation links. Older application instances cannot clear these links when they delete requirement versions. Reversing the database upgrade removes recorded implementation links and attachment times; preserve them before a database rollback.
-After rollout, check that authorized users can attach an implementing requirement version and read it in suggestion history. Inform integration owners that REST and MCP suggestion responses include optional implementation evidence and its current publication state. Consumers must handle unavailable versions and must not select a replacement by version number.
-Inform administrators that version deletion and Admin Archiving remove the implementation link but retain its attachment time with the suggestion. This evidence has no separate timed deletion policy and is deleted with the requirement. Attachment actors follow the existing Action log retention rules. Exported copies and backups remain the responsibility of the operations team.
+Apply the database upgrade before starting the updated application. Complete the
+application rollout before users record implementation links. Older application
+instances cannot clear these links when they delete requirement versions.
+Reversing the database upgrade removes recorded implementation links and
+attachment times; preserve them before a database rollback. After rollout, check
+that authorized users can attach an implementing requirement version and read it
+in suggestion history. Inform integration owners that REST and MCP suggestion
+responses include optional implementation evidence and its current publication
+state. Consumers must handle unavailable versions and must not select a
+replacement by version number. Inform administrators that version deletion and
+Admin Archiving remove the implementation link but retain its attachment time
+with the suggestion. This evidence has no separate timed deletion policy and is
+deleted with the requirement. Attachment actors follow the existing Action log
+retention rules. Exported copies and backups remain the responsibility of the
+operations team.
 <!-- operator-upgrade:source pr-1407 end -->
 
 <!-- operator-upgrade:source pr-1410 start -->
-Back up the database before upgrade. Apply database migrations and reconcile runtime permissions before starting the updated application. Database rollback requires backup restoration.
-Update assessment API clients to send the displayed question version and list lock revision. Update CSV consumers to distinguish current-question rows from assessment-history rows. Tell users that adopting a changed question requires explicit confirmation of the previous assessment.
-After rollout, verify that privacy export and anonymization include assessment authors. Verify that archived specification exports include assessment history and that retained history protects referenced questions and versions from deletion.
+Back up the database before upgrade. Apply database migrations and reconcile
+runtime permissions before starting the updated application. Database rollback
+requires backup restoration. Update assessment API clients to send the displayed
+question version and list lock revision. Update CSV consumers to distinguish
+current-question rows from assessment-history rows. Tell users that adopting a
+changed question requires explicit confirmation of the previous assessment.
+After rollout, verify that privacy export and anonymization include assessment
+authors. Verify that archived specification exports include assessment history
+and that retained history protects referenced questions and versions from
+deletion.
 <!-- operator-upgrade:source pr-1410 end -->
 
 <!-- operator-upgrade:source pr-1413 start -->
-The six project images now use Red Hat UBI 10 with Node.js 24. Package inventories and vulnerability evidence now include RPM packages. Review the release's exact image sizes, SBOMs and verification evidence before rollout.
-Prepare and verify the complete published images, deployment archive and release locks on a connected host before transfer to a disconnected site. Follow the existing installation, upgrade and recovery procedures. Installation needs no upstream UBI or RPM downloads. The destructive demo seed image remains a separate opt-in for disposable environments.
+The six project images now use Red Hat UBI 10 with Node.js 24. Package
+inventories and vulnerability evidence now include RPM packages. Review the
+release's exact image sizes, SBOMs and verification evidence before rollout.
+Prepare and verify the complete published images, deployment archive and release
+locks on a connected host before transfer to a disconnected site. Follow the
+existing installation, upgrade and recovery procedures. Installation needs no
+upstream UBI or RPM downloads. The destructive demo seed image remains a
+separate opt-in for disposable environments.
 <!-- operator-upgrade:source pr-1413 end -->
 
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
-- Before upgrade, keep AI-assisted authoring blocked and verify that every application host uses the required container runtime. Provision the versioned provider-secret root keyring on every application node. Configure approved egress, TLS, and data policies. The previous direct OpenRouter configuration does not migrate.
-- Apply the database migration and required seed. An Administrator must then register AI connections, enter provider secrets, record attestations, verify models, and configure each intended run profile. Configure the new AI alerts and complete the AI deployment evidence gate before you enable AI-assisted authoring. Update clients and support procedures because users no longer select models, and the model-catalog and credit endpoints are removed.
-- Treat each database backup and its required root-key versions as one recovery set. Test their combined restore and retain old root-key versions while any database row or retained backup needs them. During rollback or restore, block AI-assisted authoring, restore the matching keyring, run transient-state cleanup, and repeat the deployment evidence gate. There is no legacy OpenRouter fallback.
+- Before upgrade, keep AI-assisted authoring blocked and verify that every
+  application host uses the required container runtime. Provision the versioned
+  provider-secret root keyring on every application node. Configure approved
+  egress, TLS, and data policies. The previous direct OpenRouter configuration
+  does not migrate.
+- Apply the database migration and required seed. An Administrator must then
+  register AI connections, enter provider secrets, record attestations, verify
+  models, and configure each intended run profile. Configure the new AI alerts
+  and complete the AI deployment evidence gate before you enable AI-assisted
+  authoring. Update clients and support procedures because users no longer
+  select models, and the model-catalog and credit endpoints are removed.
+- Treat each database backup and its required root-key versions as one recovery
+  set. Test their combined restore and retain old root-key versions while any
+  database row or retained backup needs them. During rollback or restore, block
+  AI-assisted authoring, restore the matching keyring, run transient-state
+  cleanup, and repeat the deployment evidence gate. There is no legacy
+  OpenRouter fallback.
 <!-- operator-upgrade:source pr-1094 end -->
 
 <!-- operator-upgrade:source pr-1109 start -->
-For deployments that enable HSA person lookup, provide the complete read-only CA, client certificate, and client key mounts and configure the exact TLS server identity before upgrade. Leave HSA person lookup unset when live lookup is not configured; the application remains ready and reports lookup as unavailable.
-During certificate rotation, stop clients before servers, restart servers before clients, and authenticate the promoted generation before finalization. If verification fails, restore and authenticate the prior generation. The production topology does not add Kong, the Adapter, the HSA directory mock, or test PKI services; external integration owners continue to supply them.
+For deployments that enable HSA person lookup, provide the complete read-only
+CA, client certificate, and client key mounts and configure the exact TLS server
+identity before upgrade. Leave HSA person lookup unset when live lookup is not
+configured; the application remains ready and reports lookup as unavailable.
+During certificate rotation, stop clients before servers, restart servers before
+clients, and authenticate the promoted generation before finalization. If
+verification fails, restore and authenticate the prior generation. The
+production topology does not add Kong, the Adapter, the HSA directory mock, or
+test PKI services; external integration owners continue to supply them.
 <!-- operator-upgrade:source pr-1109 end -->
 
 ## v0.5.0 - 2026-08-23
@@ -240,13 +361,18 @@ privacy, and retention process, and rotate any credential that remains usable.
 <!-- operator-upgrade:source issue-477 end -->
 
 <!-- operator-upgrade:source pr-870 start -->
-Provision AZURE_DEV_WORKSTATION_APPROVER_PUBLIC_KEY_PATH on destination workstations through a trusted channel before generating requests. Request and package schema 3 intentionally has no compatibility path with schema 2; regenerate pending requests and responses after upgrade. Existing approval key rotation requires provisioning the replacement public key before creating a new request.
+Provision AZURE_DEV_WORKSTATION_APPROVER_PUBLIC_KEY_PATH on destination
+workstations through a trusted channel before generating requests. Request and
+package schema 3 intentionally has no compatibility path with schema 2;
+regenerate pending requests and responses after upgrade. Existing approval key
+rotation requires provisioning the replacement public key before creating a new
+request.
 <!-- operator-upgrade:source pr-870 end -->
 
 <!-- operator-upgrade:source pr-880 start -->
 ### Invalid requirement and specification-item status colors are reset during upgrade
 
-Before running `db-job migrate`, identify seeded requirement statuses and
+Before running `db-job migrate` , identify seeded requirement statuses and
 specification-item statuses whose color is not an exact case-insensitive
 `#RRGGBB` value. Migration 0053 resets only these invalid rows to their
 canonical colors; valid custom colors, including their letter case, remain
@@ -273,50 +399,85 @@ OR color COLLATE Latin1_General_100_BIN2 NOT LIKE
 N'#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]'
 );
 ```
-After upgrade, review `/sv/requirement-statuses` and `/sv/specification-item-statuses`. Open every row and confirm the labeled light- and dark-theme previews report `Uppfyller AA` before accepting the upgraded configuration.
+After upgrade, review `/sv/requirement-statuses` and
+`/sv/specification-item-statuses` . Open every row and confirm the labeled
+light- and dark-theme previews report `Uppfyller AA` before accepting the
+upgraded configuration.
 <!-- operator-upgrade:source pr-880 end -->
 
 <!-- operator-upgrade:source pr-924 start -->
 Before the first production rollout, configure a privileged database-job
-identity separately from the application runtime identity. Set
-`DB_RUNTIME_USER` to the application runtime database user, and provision that
-user with only the release-managed `kravhantering_runtime` role. Ensure all
-required application settings exist; privileged database maintenance owns any
-repair because the runtime identity cannot create missing settings.
-Permission reconciliation fails closed when the user is missing, managed
-grants drift, unexpected role nesting exists, or the user has effective
-schema-migration, protected-audit mutation, or database-user impersonation
-capabilities. If a development, test, or rollout database gives the runtime
-user broad read/write memberships, reconciliation removes those memberships
-only after the custom role contract verifies. Other site-managed roles and
-direct grants remain in place, but operators must remove or narrow any that
-cause verification to fail rather than broadening runtime access.
-Retain the permission verification output as deployment evidence and validate
-representative application read/write workflows. For rollback, use a complete
-database restore point so schema, data, permissions, and role memberships
-return as one database state; do not reverse only the role change against the
-restricted runtime identity.
+identity separately from the application runtime identity. Set `DB_RUNTIME_USER`
+to the application runtime database user, and provision that user with only the
+release-managed `kravhantering_runtime` role. Ensure all required application
+settings exist; privileged database maintenance owns any repair because the
+runtime identity cannot create missing settings. Permission reconciliation fails
+closed when the user is missing, managed grants drift, unexpected role nesting
+exists, or the user has effective schema-migration, protected-audit mutation, or
+database-user impersonation capabilities. If a development, test, or rollout
+database gives the runtime user broad read/write memberships, reconciliation
+removes those memberships only after the custom role contract verifies. Other
+site-managed roles and direct grants remain in place, but operators must remove
+or narrow any that cause verification to fail rather than broadening runtime
+access. Retain the permission verification output as deployment evidence and
+validate representative application read/write workflows. For rollback, use a
+complete database restore point so schema, data, permissions, and role
+memberships return as one database state; do not reverse only the role change
+against the restricted runtime identity.
 <!-- operator-upgrade:source pr-924 end -->
 
 <!-- operator-upgrade:source pr-927 start -->
-Production rollout now uses rootless Podman Quadlet and user-level systemd targets. Production hosts no longer require Podman Compose. Before the first rollout, verify the service account’s Quadlet environment, production configuration, image references, selected topology, and container-network resolver.
-Quadlet manages long-running services only. Database bootstrap, migrations, and required seeding remain explicit release operations. Existing single-node volume and network names are preserved, and removing managed units does not delete named volumes.
-New installations run bin/kravhantering-quadlet.sh for the
-selected topology and manage the resulting target with systemctl --user.
+Production rollout now uses rootless Podman Quadlet and user-level systemd
+targets. Production hosts no longer require Podman Compose. Before the first
+rollout, verify the service account’s Quadlet environment, production
+configuration, image references, selected topology, and container-network
+resolver. Quadlet manages long-running services only. Database bootstrap,
+migrations, and required seeding remain explicit release operations. Existing
+single-node volume and network names are preserved, and removing managed units
+does not delete named volumes. New installations run
+bin/kravhantering-quadlet.sh for the selected topology and manage the resulting
+target with systemctl --user.
 <!-- operator-upgrade:source pr-927 end -->
 
 <!-- operator-upgrade:source pr-940 start -->
-Before upgrading, verify that each production host supports rootless container resource controls, has finite journal retention configured, and has sufficient CPU, memory, and temporary export capacity. Installation now fails closed when these prerequisites are not met. If disk-backed export storage is required, prepare its ownership, permissions, capacity, and security labels before rollout.
-Single-node deployments must set both `NGINX_RESOLVER` for the edge network and `NGINX_IDENTITY_RESOLVER` for the identity network before starting nginx. Existing installations that lack the identity setting must first add the temporary value documented in the single-node upgrade guide so the helper can render the network units. After the edge and identity networks exist, discover each resolver with `kravhantering-quadlet.sh print-resolver`, replace both settings with the discovered values, reinstall the units, and only then start the full target. nginx uses the edge resolver only for `app-runtime` and the identity resolver only for Keycloak.
+Before upgrading, verify that each production host supports rootless container
+resource controls, has finite journal retention configured, and has sufficient
+CPU, memory, and temporary export capacity. Installation now fails closed when
+these prerequisites are not met. If disk-backed export storage is required,
+prepare its ownership, permissions, capacity, and security labels before
+rollout. Single-node deployments must set both `NGINX_RESOLVER` for the edge
+network and `NGINX_IDENTITY_RESOLVER` for the identity network before starting
+nginx. Existing installations that lack the identity setting must first add the
+temporary value documented in the single-node upgrade guide so the helper can
+render the network units. After the edge and identity networks exist, discover
+each resolver with `kravhantering-quadlet.sh print-resolver` , replace both
+settings with the discovered values, reinstall the units, and only then start
+the full target. nginx uses the edge resolver only for `app-runtime` and the
+identity resolver only for Keycloak.
 <!-- operator-upgrade:source pr-940 end -->
 
 <!-- operator-upgrade:source pr-962 start -->
-Single-node installations now validate and apply explicit SQL Server and Keycloak CPU, memory, PID, and temporary-storage limits. Review the new `SQLSERVER_*` and `KEYCLOAK_*` values in `containers/production/env/release.env.template` before deployment; the documented defaults require at least 16 GiB host memory. Reinstall the rendered Quadlets and run the production smoke after upgrading so containment, persistence, recovery, and application readiness are verified against the existing volumes. See `docs/operations/production-quadlet-containment.md` for supported ranges, capacity rules, image qualifications, and rollback guidance.
+Single-node installations now validate and apply explicit SQL Server and
+Keycloak CPU, memory, PID, and temporary-storage limits. Review the new
+`SQLSERVER_*` and `KEYCLOAK_*` values in
+`containers/production/env/release.env.template` before deployment; the
+documented defaults require at least 16 GiB host memory. Reinstall the rendered
+Quadlets and run the production smoke after upgrading so containment,
+persistence, recovery, and application readiness are verified against the
+existing volumes. See `docs/operations/production-quadlet-containment.md` for
+supported ranges, capacity rules, image qualifications, and rollback guidance.
 <!-- operator-upgrade:source pr-962 end -->
 
 <!-- operator-upgrade:source pr-965 start -->
-Before upgrading a single-node production deployment, provision a SQL Server certificate and private key for the fixed `DNS:sqlserver` service identity. The certificate must chain to the CA trusted by the application and database jobs. The upgraded SQL Server service requires readable certificate material before it can start.
-During rollout, remove any insecure server-certificate trust override, make the issuing CA available to every one-shot database container, and verify database-job and application readiness before returning the service to users. Retain the previous certificate and key as a short-lived rollback pair until the verified connection checks pass.
+Before upgrading a single-node production deployment, provision a SQL Server
+certificate and private key for the fixed `DNS:sqlserver` service identity. The
+certificate must chain to the CA trusted by the application and database jobs.
+The upgraded SQL Server service requires readable certificate material before it
+can start. During rollout, remove any insecure server-certificate trust
+override, make the issuing CA available to every one-shot database container,
+and verify database-job and application readiness before returning the service
+to users. Retain the previous certificate and key as a short-lived rollback pair
+until the verified connection checks pass.
 <!-- operator-upgrade:source pr-965 end -->
 
 <!-- operator-upgrade:source pr-967 start -->
@@ -324,29 +485,33 @@ Existing self-contained single-node deployments retain the bundled identity
 provider as their default and require no action unless changing identity
 profiles. Operators moving to an external provider must complete the provider
 registration, trust, redirect, logout, claim, and connectivity preparation
-before rollout.
-Before choosing bundled Keycloak for production, provision a separately
-controlled management route with server and client certificate trust, restrict
-its network reachability, establish named administrators with MFA and tested
-recovery, and retire reusable bootstrap access. Validate both the user-facing
-denials and authorized management access, and use the profile-specific backup,
-rollback, recovery, uninstall, and incident procedures during its lifecycle.
+before rollout. Before choosing bundled Keycloak for production, provision a
+separately controlled management route with server and client certificate trust,
+restrict its network reachability, establish named administrators with MFA and
+tested recovery, and retire reusable bootstrap access. Validate both the
+user-facing denials and authorized management access, and use the
+profile-specific backup, rollback, recovery, uninstall, and incident procedures
+during its lifecycle.
 <!-- operator-upgrade:source pr-967 end -->
 
 <!-- operator-upgrade:source pr-978 start -->
 MCP authentication failures now use stable generic responses. Invalid
-credentials remain `401`; local authentication configuration failures return
-`500`, and identity-provider discovery or signing-key availability failures
-return `503`. All retain the Bearer challenge.
-Ensure MCP clients and monitoring classify failures by HTTP status rather than
-provider-specific error text. During rollout, validate identity-provider
-discovery and signing-key reachability and monitor the new `500` and `503`
-outcomes.
+credentials remain `401` ; local authentication configuration failures return
+`500` , and identity-provider discovery or signing-key availability failures
+return `503` . All retain the Bearer challenge. Ensure MCP clients and
+monitoring classify failures by HTTP status rather than provider-specific error
+text. During rollout, validate identity-provider discovery and signing-key
+reachability and monitor the new `500` and `503` outcomes.
 <!-- operator-upgrade:source pr-978 end -->
 
 <!-- operator-upgrade:source pr-981 start -->
-AI provider failures now use stable error codes and sanitized response shapes. During rollout, verify any clients, alerts, or support runbooks that rely on the previous error payloads or treated malformed model output as a validation response.
-Provider failure diagnostics now use a structured observability channel containing only bounded operational metadata. Confirm that production log routing and dashboards capture this channel without expecting raw provider error text.
+AI provider failures now use stable error codes and sanitized response shapes.
+During rollout, verify any clients, alerts, or support runbooks that rely on the
+previous error payloads or treated malformed model output as a validation
+response. Provider failure diagnostics now use a structured observability
+channel containing only bounded operational metadata. Confirm that production
+log routing and dashboards capture this channel without expecting raw provider
+error text.
 <!-- operator-upgrade:source pr-981 end -->
 
 <!-- operator-upgrade:source pr-984 start -->
@@ -354,34 +519,50 @@ Before upgrading, classify each deployment as direct ingress or load-balanced
 ingress. Load-balanced sites must provision a root-controlled list containing
 only the exact proxy network CIDRs and verify the longest approved proxy chain;
 the upgraded ingress fails closed without that trust configuration. Direct
-ingress instead overwrites forwarding evidence with the connection peer.
-New access logs omit query strings, referrer data, and raw forwarding values.
-Treat older access-log copies as potentially sensitive because they may contain
+ingress instead overwrites forwarding evidence with the connection peer. New
+access logs omit query strings, referrer data, and raw forwarding values. Treat
+older access-log copies as potentially sensitive because they may contain
 authorization callback parameters, referrer queries, or attacker-controlled
 forwarding values. Inventory and restrict those copies, apply the approved
-incident, privacy, and retention process, and rotate any credential that
-remains usable.
+incident, privacy, and retention process, and rotate any credential that remains
+usable.
 <!-- operator-upgrade:source pr-984 end -->
 
 <!-- operator-upgrade:source pr-987 start -->
-Before upgrading, create a site-specific readiness probe boundary containing the approved IPv4 and IPv6 monitoring source networks and configure the deployment to use it. The upgrade will refuse to render or install if the boundary is absent or invalid.
-After rollout, verify readiness from an allowed monitoring source, confirm other sources receive an empty denial, and confirm liveness and normal application traffic remain available. Update monitoring expectations for one request per second with a burst of five and generic rate-limit/not-ready responses.
+Before upgrading, create a site-specific readiness probe boundary containing the
+approved IPv4 and IPv6 monitoring source networks and configure the deployment
+to use it. The upgrade will refuse to render or install if the boundary is
+absent or invalid. After rollout, verify readiness from an allowed monitoring
+source, confirm other sources receive an empty denial, and confirm liveness and
+normal application traffic remain available. Update monitoring expectations for
+one request per second with a burst of five and generic rate-limit/not-ready
+responses.
 <!-- operator-upgrade:source pr-987 end -->
 
 <!-- operator-upgrade:source pr-989 start -->
-Before rollout, verify every production HSA lookup, OAuth, and SOAP endpoint uses HTTPS and that discovery returns a token endpoint on the configured issuer's origin. Confirm host firewall, approved egress proxy, DNS, routing, and upstream ACL rules allow only approved HSA destinations.
+Before rollout, verify every production HSA lookup, OAuth, and SOAP endpoint
+uses HTTPS and that discovery returns a token endpoint on the configured
+issuer's origin. Confirm host firewall, approved egress proxy, DNS, routing, and
+upstream ACL rules allow only approved HSA destinations.
 <!-- operator-upgrade:source pr-989 end -->
 
 <!-- operator-upgrade:source pr-990 start -->
-After deployment, verify responsibility assignment workflows for areas, packages, and specifications. HSA lookup no longer persists a person immediately; the final assignment must present the short-lived evidence returned by verification, after which person creation and assignment are committed atomically.
-Update any automation that calls these internal verification and assignment endpoints to forward the returned evidence. Verification is now rate limited, and audit records use target fingerprints and outcomes instead of raw target HSA IDs or personal data. Brief support and privacy teams on the protected-person handling guidance shown in the assignment workflow.
+After deployment, verify responsibility assignment workflows for areas,
+packages, and specifications. HSA lookup no longer persists a person
+immediately; the final assignment must present the short-lived evidence returned
+by verification, after which person creation and assignment are committed
+atomically. Update any automation that calls these internal verification and
+assignment endpoints to forward the returned evidence. Verification is now rate
+limited, and audit records use target fingerprints and outcomes instead of raw
+target HSA IDs or personal data. Brief support and privacy teams on the
+protected-person handling guidance shown in the assignment workflow.
 <!-- operator-upgrade:source pr-990 end -->
 
 <!-- operator-upgrade:source pr-993 start -->
 After upgrade, every synchronous PDF report and export shares the configured
 per-node PDF concurrency, timeout, and item limits. Requests above the item
-limit return `422`; saturated capacity returns `429` with retry guidance; and
-generation timeouts return `503`.
+limit return `422` ; saturated capacity returns `429` with retry guidance; and
+generation timeouts return `503` .
 
 Before rollout, confirm the existing PDF limits are appropriate for combined,
 history, specification, RFI, access-review, and privacy exports. No schema,
@@ -390,12 +571,12 @@ secret, or configuration migration is required.
 
 <!-- operator-upgrade:source pr-994 start -->
 Before rollout, update browser, API, MCP, and AI producers to emit
-`requirement-import.v4`; v3 is no longer accepted. Apply database migrations
+`requirement-import.v4` ; v3 is no longer accepted. Apply database migrations
 before starting the new application version. The migration adds global import
 budgets and clamps existing MCP row limits above 500.
 
-After deployment, verify the Admin Center Imports settings and any
-site-specific MCP limit.
+After deployment, verify the Admin Center Imports settings and any site-specific
+MCP limit.
 <!-- operator-upgrade:source pr-994 end -->
 
 <!-- operator-upgrade:source pr-998 start -->
@@ -421,10 +602,10 @@ nodes. Upgrade the database and all nodes as one coordinated rollout; mixed
 versions are unsupported. Upgrade and rollback invalidate every outstanding
 validation token, so tell MCP clients to validate imports again.
 
-After upgrade, review the four new validation-session quotas in Admin Center
-and verify principal isolation and transient cleanup before restoring traffic.
-Keep the authentication session secret unchanged during routine rollout.
-Rotating it intentionally invalidates all outstanding validation tokens.
+After upgrade, review the four new validation-session quotas in Admin Center and
+verify principal isolation and transient cleanup before restoring traffic. Keep
+the authentication session secret unchanged during routine rollout. Rotating it
+intentionally invalidates all outstanding validation tokens.
 <!-- operator-upgrade:source pr-1001 end -->
 
 <!-- operator-upgrade:source pr-1002 start -->
@@ -437,24 +618,24 @@ application not ready, and old token shapes are rejected.
 
 If MCP is not used, leave the MCP service client unconfigured. The MCP endpoint
 then returns `404` while the rest of the application remains available. During
-rollout, verify readiness and obtain one valid service token before enabling
-MCP clients.
+rollout, verify readiness and obtain one valid service token before enabling MCP
+clients.
 <!-- operator-upgrade:source pr-1002 end -->
 
 <!-- operator-upgrade:source pr-1003 start -->
 Before upgrade, review every MCP integration. The MCP endpoint is disabled
-unless an approved service client is configured. For enabled deployments,
-update the identity provider and MCP clients so that service tokens use the
-approved service client and access-token class, contain every required scope and
-the configured role claim, and have an approved short lifetime. Existing tokens
-that do not meet this contract will be rejected. After rollout, confirm
-readiness and request a new service token before running MCP work.
+unless an approved service client is configured. For enabled deployments, update
+the identity provider and MCP clients so that service tokens use the approved
+service client and access-token class, contain every required scope and the
+configured role claim, and have an approved short lifetime. Existing tokens that
+do not meet this contract will be rejected. After rollout, confirm readiness and
+request a new service token before running MCP work.
 
 Raw AI safety forensic capture is disabled by default for fresh installations.
 Upgrades preserve the stored setting. Review the AI setting in Admin Center and
-disable raw forensic capture if the installation must use metadata-only
-logging. No action is required when capture is already disabled or when
-continued raw capture is approved with suitable access and retention controls.
+disable raw forensic capture if the installation must use metadata-only logging.
+No action is required when capture is already disabled or when continued raw
+capture is approved with suitable access and retention controls.
 <!-- operator-upgrade:source pr-1003 end -->
 
 <!-- operator-upgrade:source pr-1024 start -->
@@ -473,35 +654,42 @@ expired evidence does not become operationally available.
 <!-- operator-upgrade:source pr-1035 start -->
 Before the upgrade, inject unique authentication secrets into the production
 application configuration. For bundled Keycloak, also set temporary bootstrap
-administrator credentials and separate application and MCP realm client
-secrets. Make sure that the application client secret matches the application
-configuration.
-During rollout, the deployment preflight rejects blank or shipped placeholder
-credentials before services start. The application image also stops if these
-placeholders remain. If you rotate the session secret, all active browser
-sessions become invalid. Plan this action for a low-traffic period and verify
-sign-in after deployment.
+administrator credentials and separate application and MCP realm client secrets.
+Make sure that the application client secret matches the application
+configuration. During rollout, the deployment preflight rejects blank or shipped
+placeholder credentials before services start. The application image also stops
+if these placeholders remain. If you rotate the session secret, all active
+browser sessions become invalid. Plan this action for a low-traffic period and
+verify sign-in after deployment.
 <!-- operator-upgrade:source pr-1035 end -->
 
 <!-- operator-upgrade:source pr-1037 start -->
-Before rollout, validate the responsibility assignments for requirements specifications and requirement areas. Direct reads of child resources now use the access rules of their parent resource.
-Tell API consumers and support staff that an existing child resource can now return `403` when the user cannot read its parent. A missing resource still returns `404`. Published requirement information remains readable according to the existing policy. Sensitive child responses are not cached. No configuration or data migration is required.
+Before rollout, validate the responsibility assignments for requirements
+specifications and requirement areas. Direct reads of child resources now use
+the access rules of their parent resource. Tell API consumers and support staff
+that an existing child resource can now return `403` when the user cannot read
+its parent. A missing resource still returns `404` . Published requirement
+information remains readable according to the existing policy. Sensitive child
+responses are not cached. No configuration or data migration is required.
 <!-- operator-upgrade:source pr-1037 end -->
 
 <!-- operator-upgrade:source pr-1042 start -->
-Before rollout, inform requirement-area authors and Reviewers that they can no longer change requirement applications or saved requirement-selection answers unless they are also the responsible author or a co-author of the requirements specification. Administrators remain allowed.
-After rollout, verify that denied attempts return `403` and that the action log and security audit log receive denial evidence.
+Before rollout, inform requirement-area authors and Reviewers that they can no
+longer change requirement applications or saved requirement-selection answers
+unless they are also the responsible author or a co-author of the requirements
+specification. Administrators remain allowed. After rollout, verify that denied
+attempts return `403` and that the action log and security audit log receive
+denial evidence.
 <!-- operator-upgrade:source pr-1042 end -->
 
 <!-- operator-upgrade:source pr-1056 start -->
 Before the upgrade, verify that requirement-area owner and co-author assignments
 are current. After the upgrade, only these assigned authors and Administrators
 can create or change requirement-selection questions and answers. Other
-authenticated users have read-only access.
-Communicate this permission change to requirement-library maintainers. During
-rollout validation, confirm assigned-author access, the Administrator bypass,
-and authorization-denial audit evidence. No data migration or configuration
-change is required.
+authenticated users have read-only access. Communicate this permission change to
+requirement-library maintainers. During rollout validation, confirm
+assigned-author access, the Administrator bypass, and authorization-denial audit
+evidence. No data migration or configuration change is required.
 <!-- operator-upgrade:source pr-1056 end -->
 
 <!-- operator-upgrade:source pr-1059 start -->
@@ -512,17 +700,30 @@ requests are rejected before database work starts.
 <!-- operator-upgrade:source pr-1059 end -->
 
 <!-- operator-upgrade:source pr-1062 start -->
-Standard Kravhantering Keycloak provisioning and demo-user setup are not affected. This change affects only deployments that use custom delegated Keycloak administrators: make sure these administrators can manage client scopes, and assign Admin API roles directly or through groups instead of through protocol mappers.
+Standard Kravhantering Keycloak provisioning and demo-user setup are not
+affected. This change affects only deployments that use custom delegated
+Keycloak administrators: make sure these administrators can manage client
+scopes, and assign Admin API roles directly or through groups instead of through
+protocol mappers.
 <!-- operator-upgrade:source pr-1062 end -->
 
 <!-- operator-upgrade:source pr-1066 start -->
-After the upgrade, RFI question management lists show only questions from requirement areas where the signed-in user is an owner or co-author. Direct collection reads for an unassigned requirement area now return 403. `Admin` users retain access to all requirement areas.
-Before rollout, confirm that users who manage RFI questions have the required requirement area assignments. Validate this access boundary during rollout.
+After the upgrade, RFI question management lists show only questions from
+requirement areas where the signed-in user is an owner or co-author. Direct
+collection reads for an unassigned requirement area now return 403. `Admin`
+users retain access to all requirement areas. Before rollout, confirm that users
+who manage RFI questions have the required requirement area assignments.
+Validate this access boundary during rollout.
 <!-- operator-upgrade:source pr-1066 end -->
 
 <!-- operator-upgrade:source pr-1068 start -->
-Before upgrade, review generated-output limits and temporary-storage capacity. JSON person data exports now use the existing CSV item, file-size, timeout, and shared per-node concurrency limits. PDF person data exports use the PDF item, file-size, timeout, per-node concurrency, and worker-memory limits.
-Exports that exceed these limits are rejected without a partial file. Validate the limits against retained subject histories and monitor privacy export capacity events after rollout.
+Before upgrade, review generated-output limits and temporary-storage capacity.
+JSON person data exports now use the existing CSV item, file-size, timeout, and
+shared per-node concurrency limits. PDF person data exports use the PDF item,
+file-size, timeout, per-node concurrency, and worker-memory limits. Exports that
+exceed these limits are rejected without a partial file. Validate the limits
+against retained subject histories and monitor privacy export capacity events
+after rollout.
 <!-- operator-upgrade:source pr-1068 end -->
 
 <!-- operator-upgrade:source pr-1072 start -->
@@ -533,25 +734,34 @@ Calls that do not meet this contract are rejected before database work.
 <!-- operator-upgrade:source pr-1072 end -->
 
 <!-- operator-upgrade:source pr-1074 start -->
-Before upgrade, tell MCP integration owners that requirement create and edit requests accept at most 200 unique norm reference IDs and 200 unique requirement package IDs. Requests that exceed a limit or contain duplicate IDs are rejected. Update affected clients to deduplicate these collections and keep them within the limits before rollout.
+Before upgrade, tell MCP integration owners that requirement create and edit
+requests accept at most 200 unique norm reference IDs and 200 unique requirement
+package IDs. Requests that exceed a limit or contain duplicate IDs are rejected.
+Update affected clients to deduplicate these collections and keep them within
+the limits before rollout.
 <!-- operator-upgrade:source pr-1074 end -->
 
 <!-- operator-upgrade:source pr-1077 start -->
-After upgrade, only users with the Admin role can inspect which specification items are linked to a usage status through the direct API. Verify that affected integrations use an Admin identity. Non-Admin users now receive a 403 response.
+After upgrade, only users with the Admin role can inspect which specification
+items are linked to a usage status through the direct API. Verify that affected
+integrations use an Admin identity. Non-Admin users now receive a 403 response.
 <!-- operator-upgrade:source pr-1077 end -->
 
 <!-- operator-upgrade:source pr-1089 start -->
-Before upgrade, verify that MCP clients remove no more than 200 unique requirements in one request. Requests with duplicate requirement IDs or more than 200 IDs now fail validation. Split larger removals into batches of 200 or fewer.
+Before upgrade, verify that MCP clients remove no more than 200 unique
+requirements in one request. Requests with duplicate requirement IDs or more
+than 200 IDs now fail validation. Split larger removals into batches of 200 or
+fewer.
 <!-- operator-upgrade:source pr-1089 end -->
 
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
 
-Before running `db-job migrate`, identify P1-P5 priority rows whose color is
+Before running `db-job migrate` , identify P1-P5 priority rows whose color is
 not an exact case-insensitive `#RRGGBB` value. Migration 0050 replaces only
-those invalid values with the corresponding canonical P1-P5 color; valid
-custom colors remain unchanged.
+those invalid values with the corresponding canonical P1-P5 color; valid custom
+colors remain unchanged.
 
 ```sql
 SELECT id, code, color
@@ -565,14 +775,14 @@ WHERE code IN (N'P1', N'P2', N'P3', N'P4', N'P5')
   );
 ```
 
-After upgrade, open `/sv/priority-levels` and review every priority in both
-the labeled light and dark previews. Confirm that each priority remains
-readable and visually distinct before accepting the upgraded configuration.
+After upgrade, open `/sv/priority-levels` and review every priority in both the
+labeled light and dark previews. Confirm that each priority remains readable and
+visually distinct before accepting the upgraded configuration.
 
 ### Access-review periods must be ordered before upgrade
 
-Before running `db-job migrate`, confirm no access-review run has a
-`period_start` later than its `period_end`. The migration adds a checked
+Before running `db-job migrate` , confirm no access-review run has a
+`period_start` later than its `period_end` . The migration adds a checked
 constraint and stops rather than modifying historical review evidence when it
 finds an invalid row.
 
@@ -583,17 +793,24 @@ WHERE period_start > period_end;
 ```
 
 <!-- operator-upgrade:source pr-572 start -->
-Before rollout, review identity-provider role assignments for Admin Center users. Access is now limited to users with the Admin or PrivacyOfficer role, and users who need both general administration and privacy or archiving work must have both roles. Users without either role will no longer see the Admin Center entry point, and direct links will show an access-denied page.
+Before rollout, review identity-provider role assignments for Admin Center
+users. Access is now limited to users with the Admin or PrivacyOfficer role, and
+users who need both general administration and privacy or archiving work must
+have both roles. Users without either role will no longer see the Admin Center
+entry point, and direct links will show an access-denied page.
 <!-- operator-upgrade:source pr-572 end -->
 
 ### Export CSV and PDF generation
 
-Provision sufficient private temporary storage on every application node. If KRAVHANTERING_EXPORT_TEMP_DIR is configured, it must reference an existing absolute directory accessible only to the non-root application account. Size storage for configured concurrency and maximum file sizes.
+Provision sufficient private temporary storage on every application node. If
+KRAVHANTERING_EXPORT_TEMP_DIR is configured, it must reference an existing
+absolute directory accessible only to the non-root application account. Size
+storage for configured concurrency and maximum file sizes.
 
 Deploy the updated reverse-proxy configuration with an extended timeout for
-generated-output routes, including numeric requirements-specification CSV
-paths. Procurement and full specification CSV reuse the existing
-`KRAVHANTERING_EXPORT_TEMP_DIR`, storage-sizing formula, CSV settings, and
+generated-output routes, including numeric requirements-specification CSV paths.
+Procurement and full specification CSV reuse the existing
+`KRAVHANTERING_EXPORT_TEMP_DIR` , storage-sizing formula, CSV settings, and
 process-local pool; no new environment variable or setting is required.
 
 #### After Upgrade
@@ -603,8 +820,13 @@ apply to Requirements Library, procurement, and full specification CSV.
 
 <!-- operator-upgrade:source pr-625 start -->
 ### RFI question suggestions require consistent lifecycle history
-Before upgrade, verify that existing RFI question suggestions have consistent lifecycle history. In particular, handled or dismissed suggestions must have a recorded review request, motivation, and chronologically valid lifecycle timestamps. The database migration stops and identifies affected records rather than altering historical evidence; correct them before retrying.
-Update integrations and support runbooks to follow the forward-only lifecycle: draft → review requested → handled or dismissed.
+Before upgrade, verify that existing RFI question suggestions have consistent
+lifecycle history. In particular, handled or dismissed suggestions must have a
+recorded review request, motivation, and chronologically valid lifecycle
+timestamps. The database migration stops and identifies affected records rather
+than altering historical evidence; correct them before retrying. Update
+integrations and support runbooks to follow the forward-only lifecycle: draft →
+review requested → handled or dismissed.
 <!-- operator-upgrade:source pr-625 end -->
 
 ## v0.3.0 - 2026-07-09
@@ -612,37 +834,36 @@ Update integrations and support runbooks to follow the forward-only lifecycle: d
 ### Requirements specifications need lifecycle status before upgrade
 
 The migration backfills requirements specifications without lifecycle status to
-`Förvaltning` (`Management`, ID `4`) before making the column mandatory.
+`Förvaltning` (`Management`, ID `4` ) before making the column mandatory.
 
 ### Requirement packages need purpose and scope before upgrade
 
-The migration renames `requirement_packages.description` to
-`purpose_and_scope` and makes the field mandatory. Confirm that every
-requirement package has meaningful non-blank text before running
-`db-job migrate`; the migration fails instead of generating placeholder text
-for missing package purpose and scope.
+The migration renames `requirement_packages.description` to `purpose_and_scope`
+and makes the field mandatory. Confirm that every requirement package has
+meaningful non-blank text before running `db-job migrate` ; the migration fails
+instead of generating placeholder text for missing package purpose and scope.
 
 ### Specification-local requirement package links are removed
 
-The migration drops `specification_local_requirement_requirement_packages`.
+The migration drops `specification_local_requirement_requirement_packages` .
 Requirement packages now apply only to requirements-library requirements.
 Existing package links on specification-local requirements are deleted during
 upgrade; review downstream reports or integrations that read that table before
-running `db-job migrate`.
+running `db-job migrate` .
 
 ### Responsibility assignments must have valid HSA-id values before upgrade
 
 Confirm that every live requirement-area owner, requirement-area co-author,
 specification lead, specification co-author, and requirement-package lead has a
-valid HSA-id before running `db-job migrate`. The migration creates
-`requirement_responsibility_people`, removes duplicated live display-name
+valid HSA-id before running `db-job migrate` . The migration creates
+`requirement_responsibility_people` , removes duplicated live display-name
 columns, and cannot reconstruct removed name snapshots on rollback without data
 loss.
 
 ### Custom UI terminology values must be exported before upgrade if retained
 
 The upgrade removes the retired UI terminology table. Export any historical
-custom UI terminology values you need to keep before running `db-job migrate`;
+custom UI terminology values you need to keep before running `db-job migrate` ;
 migration rollback will not restore them.
 
 ### Topology changes
@@ -651,24 +872,17 @@ Production deployments must provide an approved HSA person lookup REST facade
 outside `app-runtime` and the standard production Quadlet topology. That facade
 must integrate with an approved person catalog, and can be an existing
 integration platform or a production-approved Kong route backed by
-`hsa-person-lookup-adapter`.
-
-Release smoke now installs the production archive's supported `single-node`
-Quadlet topology on Ubuntu 24.04. Kong, `hsa-person-lookup-adapter`, the HSA
-directory mock, and the demo certificate generator run in a CI-only Quadlet
-overlay. That overlay is not included in the production archive and is not a
-supported RHEL production topology. Local development and integration Compose
-flows remain separate developer tooling.
+`hsa-person-lookup-adapter` .
 
 ### Before upgrading
 
 Correct legacy requirements specifications that lack lifecycle status before
 running `db-job migrate` if `Förvaltning` is not the intended value.
 
-Review requirement packages and complete the current description field for
-every package where it is missing or blank. The target version treats that text
-as the package purpose and scope, and uses it to guide which requirements
-belong in the package.
+Review requirement packages and complete the current description field for every
+package where it is missing or blank. The target version treats that text as the
+package purpose and scope, and uses it to guide which requirements belong in the
+package.
 
 ```sql
 SELECT id, name
@@ -677,56 +891,54 @@ WHERE description IS NULL OR LTRIM(RTRIM(description)) = '';
 ```
 
 Confirm that every live responsibility assignment has a valid HSA-id before
-running `db-job migrate`: requirement-area owners, requirement-area
-co-authors, requirements-specification leads, specification co-authors and
+running `db-job migrate` : requirement-area owners, requirement-area co-authors,
+requirements-specification leads, specification co-authors and
 requirement-package leads. `responsible_hsa_id` must be present on every
-requirements specification, and all live HSA-id values must match
-the format: two uppercase letters, ten digits, `-`, and an alphanumeric suffix,
-for example `SE5560000001-admin1`. The full HSA-id may be at most 31
-characters.
+requirements specification, and all live HSA-id values must match the format:
+two uppercase letters, ten digits, `-` , and an alphanumeric suffix, for example
+`SE5560000001-admin1` . The full HSA-id may be at most 31 characters.
 
 Review broad-reader and authoring expectations before the new version is
-enabled. `Admin` and `Reviewer` can still read every requirements
-specification, but other users only see requirements specifications where they
-are assigned as requirements-specification lead or specification co-author. Add
-missing specification co-authors before the rollout if ordinary users must keep
-access to specific requirements specifications.
+enabled. `Admin` and `Reviewer` can still read every requirements specification,
+but other users only see requirements specifications where they are assigned as
+requirements-specification lead or specification co-author. Add missing
+specification co-authors before the rollout if ordinary users must keep access
+to specific requirements specifications.
 
 Review requirement-area owners, co-authors and prefixes before the rollout.
 Current requirement-area owners can manage metadata, co-authors and owner
 handover for their own areas after the upgrade. Prefix corrections for
 requirement areas that already contain requirement rows should be completed
 before the rollout; once the new version is live, those prefix changes return
-`409 conflict`.
+`409 conflict` .
 
 Export any historical custom UI terminology values and any assignment-level AI
-permission evidence that must be retained before `db-job migrate`. This branch
+permission evidence that must be retained before `db-job migrate` . This branch
 removes duplicated live display-name columns and unused AI permission flag
 columns, and the destructive migrations cannot reconstruct those values on
 rollback.
 
 Add `HSA_PERSON_LOOKUP_URL` to the app runtime environment before users edit
-responsibility assignments after the upgrade. The URL must be a server-side
-REST facade reachable from `app-runtime` that accepts `POST { "hsaId": "..." }`
-and returns normalized person data; keep `HSA_PERSON_LOOKUP_TIMEOUT_MS=5000`
-unless the approved integration path needs another timeout. If the approved
-facade requires app-to-platform authentication, also set the relevant optional
-mTLS or OAuth2 client credentials variables:
-`HSA_PERSON_LOOKUP_CLIENT_CERT_PATH`, `HSA_PERSON_LOOKUP_CLIENT_KEY_PATH`,
-`HSA_PERSON_LOOKUP_CA_PATH`, `HSA_PERSON_LOOKUP_TLS_SERVER_NAME`,
-`HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`,
-`HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`, and either
-`HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL` or
-`HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL`. Add
-`HSA_PERSON_LOOKUP_OAUTH_SCOPE` or `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` only
+responsibility assignments after the upgrade. The URL must be a server-side REST
+facade reachable from `app-runtime` that accepts `POST { "hsaId": "..." }` and
+returns normalized person data; keep `HSA_PERSON_LOOKUP_TIMEOUT_MS=5000` unless
+the approved integration path needs another timeout. If the approved facade
+requires app-to-platform authentication, also set the relevant optional mTLS or
+OAuth2 client credentials variables: `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH` ,
+`HSA_PERSON_LOOKUP_CLIENT_KEY_PATH` , `HSA_PERSON_LOOKUP_CA_PATH` ,
+`HSA_PERSON_LOOKUP_TLS_SERVER_NAME` , `HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID` ,
+`HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET` , and either
+`HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL` or `HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL` .
+Add `HSA_PERSON_LOOKUP_OAUTH_SCOPE` or `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` only
 when the token endpoint requires them. The canonical flow is described in
-[HSA person lookup integration](../integrations/hsa-person-lookup-integration.md).
+[HSA person lookup integration](../integrations/hsa-person-lookup-integration.md)
+.
 
 Disconnected first installs and planned upgrades now split import from
 activation. For disconnected environments, use the disconnected guide to verify
 the transferred bundle, prepare the target release, and load or verify images
-only. Do not activate the new release or copy first-install configuration
-during the disconnected import step.
+only. Do not activate the new release or copy first-install configuration during
+the disconnected import step.
 
 After import completes, resume the regular deployment or upgrade guide at the
 activation step. Apply the image references recorded in the transferred offline
@@ -751,27 +963,26 @@ so expired evidence does not become operationally available.
 Review Admin Center > Identity and confirm the visible/default HSA-id-prefix
 values are correct for the organization. The migration seeds prefixes from
 existing assignment data where possible, but clean or sparse environments may
-need an administrator to add the first visible default prefix before new
-HSA-id fields are usable.
+need an administrator to add the first visible default prefix before new HSA-id
+fields are usable.
 
 Plan a refresh pass for migrated `Kravansvarsperson` rows that show
-`(saknar namn, kräver nytt uppslag)` or have no `last_fetched_at`. Users can
+`(saknar namn, kräver nytt uppslag)` or have no `last_fetched_at` . Users can
 refresh those people through the HSA lookup icon in the relevant assignment
 editing flows after the lookup endpoint is configured.
 
-Communicate the updated assignment rules to administrators and stewards:
-new requirements specifications get the signed-in user as lead, package
-creation requires a verified human HSA-id plus requirement-area author access
-or `Admin`, and requirement-package changes require the package lead or
-`Admin`.
+Communicate the updated assignment rules to administrators and stewards: new
+requirements specifications get the signed-in user as lead, package creation
+requires a verified human HSA-id plus requirement-area author access or `Admin`
+, and requirement-package changes require the package lead or `Admin` .
 
 Communicate the updated requirements-specification read boundary to support
 staff and affected users. Users without `Admin` or `Reviewer` see an empty
-requirements-specification list when no specifications are assigned to them.
-A direct link to an existing but unauthorized requirements specification shows
-a forbidden page with the specification ID, name and lead contact, while REST
-and MCP clients still receive a generic `403`. A missing requirements
-specification still returns `404`.
+requirements-specification list when no specifications are assigned to them. A
+direct link to an existing but unauthorized requirements specification shows a
+forbidden page with the specification ID, name and lead contact, while REST and
+MCP clients still receive a generic `403` . A missing requirements specification
+still returns `404` .
 
 Review action-log monitoring and support runbooks for authorization denials.
 Denied assignment-RBAC checks are recorded in the action log, so a short-lived
@@ -785,15 +996,26 @@ assignment-level AI flags no longer appear. Review local evidence templates or
 operator runbooks that expect those older fields.
 
 <!-- operator-upgrade:source pr-394 start -->
-Update automated requirement-import producers and API/MCP integrations before rollout to use the version 2 requirement import schema and the renamed verifiability attribute. Payloads built for the previous import schema, including the old testing-required flag, will not be accepted by this release.
+Update automated requirement-import producers and API/MCP integrations before
+rollout to use the version 2 requirement import schema and the renamed
+verifiability attribute. Payloads built for the previous import schema,
+including the old testing-required flag, will not be accepted by this release.
 <!-- operator-upgrade:source pr-394 end -->
 
 <!-- operator-upgrade:source pr-399 start -->
-After rollout, MCP clients can discover two additional requirements-import tools for retrieving the canonical import schema and import instruction. Existing MCP clients should continue to work, but operators or support staff should notify teams that maintain strict MCP tool inventories, allowlists, or client-side assertions so they can refresh their expected tool count after upgrade.
+After rollout, MCP clients can discover two additional requirements-import tools
+for retrieving the canonical import schema and import instruction. Existing MCP
+clients should continue to work, but operators or support staff should notify
+teams that maintain strict MCP tool inventories, allowlists, or client-side
+assertions so they can refresh their expected tool count after upgrade.
 <!-- operator-upgrade:source pr-399 end -->
 
 <!-- operator-upgrade:source pr-406 start -->
-After upgrade, review the Admin Center MCP limits before enabling high-volume imports. The release adds database-backed, short-lived MCP import validation sessions and new operator-tunable limits for request/session size, import row count, and validation-token lifetime. The defaults are 10 MiB, 500 rows, and 60 minutes; adjust them to match production capacity and client retry behavior.
+After upgrade, review the Admin Center MCP limits before enabling high-volume
+imports. The release adds database-backed, short-lived MCP import validation
+sessions and new operator-tunable limits for request/session size, import row
+count, and validation-token lifetime. The defaults are 10 MiB, 500 rows, and 60
+minutes; adjust them to match production capacity and client retry behavior.
 <!-- operator-upgrade:source pr-406 end -->
 
 <!-- operator-upgrade:source pr-409 start -->
@@ -804,5 +1026,10 @@ transient cleanup after a database restore before allowing evidence reads.
 <!-- operator-upgrade:source pr-409 end -->
 
 <!-- operator-upgrade:source pr-430 start -->
-Notify teams that maintain MCP clients, strict tool allowlists, or import automation. The MCP requirements import surface now includes needs-reference management, and import-instruction retrieval is destination-aware instead of locale-only. Clients that prepare requirements-specification imports must resolve the target specification and any required needs-reference links before executing the import.
+Notify teams that maintain MCP clients, strict tool allowlists, or import
+automation. The MCP requirements import surface now includes needs-reference
+management, and import-instruction retrieval is destination-aware instead of
+locale-only. Clients that prepare requirements-specification imports must
+resolve the target specification and any required needs-reference links before
+executing the import.
 <!-- operator-upgrade:source pr-430 end -->

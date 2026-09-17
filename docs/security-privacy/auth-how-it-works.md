@@ -1,9 +1,10 @@
 # How Auth Works
 
-This document explains the authentication and security-audit behavior verified
-in the current codebase.
+This guide is for developers and security reviewers tracing browser sessions,
+MCP authentication, request protection, and security-audit evidence. Use it to
+understand the trust boundaries and diagnose authentication failures.
 
-It is intentionally not a replacement for the more detailed workflow docs:
+For setup and related contracts:
 
 - For local Keycloak, integration-test CI dependency, test setup, and
   env-var reference, see
@@ -14,12 +15,6 @@ It is intentionally not a replacement for the more detailed workflow docs:
   [oidc-identity-provider-integration.md](../integrations/oidc-identity-provider-integration.md).
 - For HSA-id syntax, see [hsa-id.md](../reference/hsa-id.md).
 
-## Reading guide
-
-- **Implemented now** means the behavior is backed by the current code in
-  `proxy.ts`, `app/api/auth/*`, `lib/auth/*`, `lib/mcp/http.ts`, and the
-  auth-focused tests.
-
 ## Current auth architecture in the app
 
 - [`proxy.ts`](../../proxy.ts) is the front door. Auth is always on, so it:
@@ -28,8 +23,9 @@ It is intentionally not a replacement for the more detailed workflow docs:
   passes `/api/mcp` to the route-owned enablement and Bearer boundary.
 - Public REST operations are declared individually in
   `lib/http/route-security-policy.ts` and are limited to the implemented
-  authentication operations plus health and readiness probes. Production and
-  prodlike Nginx edges additionally restrict readiness to configured probe
+  authentication operations, health and readiness probes, and anonymous CSP
+  reporting. Production and prodlike Nginx edges additionally restrict
+  readiness to configured probe
   networks; its application-level public classification supports direct local
   development and unauthenticated monitoring after that edge decision. An
   unknown URL under `/api/auth` is not implicitly public. The authentication
@@ -52,12 +48,12 @@ It is intentionally not a replacement for the more detailed workflow docs:
   validation.
 - `/api/auth/me` exposes only safe session fields to the UI. It never returns
   raw tokens, and expired browser sessions are reported as unauthenticated.
-- `/api/auth/logout` destroys the local session and, when the discovered IdP
+- `POST /api/auth/logout` destroys the local session and, when the discovered IdP
   advertises it, redirects through the IdP `end_session_endpoint`.
 - `/api/mcp` uses Bearer JWTs instead of the browser session cookie. Token
   validation happens in [`lib/auth/mcp-token.ts`](../../lib/auth/mcp-token.ts).
-- [`lib/auth/audit.ts`](../../lib/auth/audit.ts) emits one JSON security event
-  per auth-relevant action.
+- [`lib/auth/audit.ts`](../../lib/auth/audit.ts) writes structured security events
+  to the process log stream.
 
 ### Browser login flow
 
@@ -94,7 +90,7 @@ sequenceDiagram
     Callback->>Callback: App validates sub, given_name,<br/>family_name, employeeHsaId,<br/>and parses roles
     Callback->>Session: Save encrypted session cookie<br/>(idToken only if it fits)
     Callback->>Audit: auth.login.succeeded
-    opt Roles changed since prior session
+    opt Same subject with changed roles since prior session
         Callback->>Audit: auth.roles.changed
     end
     Callback->>LoginState: Destroy login-state cookie
@@ -124,8 +120,11 @@ sequenceDiagram
 - After `openid-client` validates the OIDC response, app code still requires
   `sub`, `given_name`, `family_name`, and `employeeHsaId`. Missing or invalid
   claims fail the login.
-- Browser-role parsing uses `AUTH_OIDC_ROLES_CLAIM` from
-  [`lib/auth/config.ts`](../../lib/auth/config.ts), defaulting to `roles`.
+- Browser-role parsing uses `AUTH_OIDC_ROLES_CLAIM`, defaulting to `roles`.
+  It retains and deduplicates exact `Reviewer`, `Admin`, and `PrivacyOfficer`
+  entries in an array, ignoring unknown or malformed entries. A non-array
+  grants no roles. For assignment-based authoring rights, see the
+  [permission model](../governance/behörigheter.md).
 - The stored session is intentionally small: `sub`, `hsaId`, name fields,
   verified email when available, roles, and `accessTokenExpiresAt`.
   The raw access token is not stored. The raw ID token is stored only when it
@@ -141,6 +140,13 @@ sequenceDiagram
   An already-prefixed name is preserved. HTTP `dev` keeps the unprefixed
   default or a valid custom name that does not require Secure.
 
+The browser session is stateless. There is no refresh-token flow, token
+introspection, or front-channel or back-channel logout receiver. IdP account
+or role changes therefore do not immediately invalidate the encrypted session.
+A fresh login updates its claims. The callback derives `accessTokenExpiresAt`
+from the token response's positive `expires_in`, falling back to five minutes
+when unavailable; the cookie TTL can end the session earlier.
+
 ### Cookie-name migration
 
 Only the effective cookie names are accepted for authentication and login
@@ -152,9 +158,9 @@ restart using the error page's retry link. An unchanged valid prefixed name
 requires no additional name-based reset.
 
 Legacy cookies expire naturally; the application does not refresh or delete
-them. Session TTL remains `AUTH_SESSION_TTL_SECONDS` (default eight hours),
-and login-state TTL remains five minutes. Browser Max-Age retains the
-existing 60-second subtraction. Access-token expiry can end a session sooner.
+them. Session TTL is `AUTH_SESSION_TTL_SECONDS` (default eight hours),
+and login-state TTL is five minutes. Browser Max-Age subtracts 60 seconds
+from each TTL. Access-token expiry can end a session sooner.
 
 Renaming does not revoke legacy cookies. An older instance may still accept
 them during a mixed-version rollout or rollback. Coordinate the cutover
@@ -164,34 +170,29 @@ acceptance of unexpired legacy sessions; do not treat renaming as revocation.
 
 ### Session and logout flow
 
-- [`components/AuthMenu.tsx`](../../components/AuthMenu.tsx) calls `/api/auth/me`
-  once on mount to render the signed-in user and aborts that request if the
-  menu unmounts before the response settles.
-- [`components/AuthExpiryGuard.tsx`](../../components/AuthExpiryGuard.tsx) also
+- [`components/AuthExpiryGuard.tsx`](../../components/AuthExpiryGuard.tsx)
   calls `/api/auth/me` on mount. It warns signed-in users two minutes before
   `expiresAt`, lets them authenticate again immediately, and redirects through
   `/api/auth/login?returnTo=<current-path>` when the session expires.
-- `/api/auth/me` returns:
+- `/api/auth/me` returns HTTP `200` with `authenticated: false` for a missing
+  or expired session. For a valid session it returns `authenticated: true`,
   `sub`, `hsaId`, `givenName`, `familyName`, `name`, `email?`, `roles`, and
   `expiresAt`. It never returns the raw ID token or raw access token.
 - `lib/http/api-fetch.ts` emits a browser auth-required event when same-origin
   API calls return `401`, so unexpected invalid-session responses use the same
   sign-in flow instead of leaving the user on a stale page.
-- The sign-in link in `AuthMenu` points to
-  `/api/auth/login?returnTo=<locale-prefixed-path>`.
-- On desktop, the signed-in user popup opens on hover, focus, or click. A short
-  pointer-leave grace period keeps the rail popup mounted while the pointer
-  crosses its visual gap; blur, outside pointer presses, and Escape still close
-  it.
 - `POST /api/auth/logout` is the real logout operation. It:
   checks same-origin and `X-Requested-With`, records `auth.logout`,
   destroys the session cookie, discovers the IdP end-session URL when
-  possible, and returns a redirect target for the caller.
+  possible, and returns `{ redirectTo }` for clients requesting
+  `application/json`, or a `302` redirect otherwise. If discovery or building
+  the end-session URL fails, logout falls back to the configured post-logout
+  URI; the local session is still destroyed.
 - `AuthMenu` follows the redirect target only for successful logout responses.
   Failed logout attempts keep the user on the current page and show an inline
   alert.
 - `GET /api/auth/logout` is intentionally non-destructive. It only redirects
-  locally and does not clear the session.
+  to the configured post-logout URI and does not clear the session.
 - If a session cookie is present but past `accessTokenExpiresAt`,
   `proxy.ts` records `auth.session.expired` and treats the request as
   signed out. Invalid or unreadable cookies still record
@@ -218,13 +219,17 @@ sequenceDiagram
     alt MCP is disabled
         Route-->>Client: Empty 404 without auth, audit, discovery, or database work
     else Invalid enabled MCP configuration
+        Route->>Audit: auth.token.rejected
         Route-->>Client: Generic JSON-RPC 500 + WWW-Authenticate: Bearer
     else MCP is enabled and configured
         Route->>Verify: verifyMcpBearerToken(request)
-        Verify->>JWKS: Fetch/cache signing keys via createRemoteJWKSet(...)
-        JWKS-->>Verify: JWK set
-        Verify->>Verify: jwtVerify(...): issuer + audience + clockTolerance
-        Verify->>Verify: Validate at+jwt, exp, sub, iat,<br/>age, client_id, scope, HSA-id, roles
+        Verify->>Verify: Require Bearer header and valid auth configuration
+        opt Header and configuration accepted
+            Verify->>JWKS: Discover JWKS URI and fetch/cache signing keys
+            JWKS-->>Verify: JWK set or dependency failure
+            Verify->>Verify: Verify signature, issuer, audience and time bounds
+            Verify->>Verify: Validate at+jwt, exp, sub, iat,<br/>client_id, optional azp, scope, HSA-id; parse roles
+        end
         alt Missing or invalid token
             Verify->>Audit: auth.token.rejected
             Route-->>Client: JSON-RPC 401 + WWW-Authenticate: Bearer
@@ -253,8 +258,9 @@ sequenceDiagram
 - Enabled MCP configuration is validated before database acquisition. Invalid
   configuration also fails readiness and uses the stable, redacted JSON-RPC
   authentication-configuration response.
-- Missing-header and invalid-token failures use the same JSON-RPC `401` error
-  body and `WWW-Authenticate: Bearer` challenge.
+- Missing or malformed Bearer headers return JSON-RPC `401` with
+  `Missing Bearer token.`; rejected tokens return `Invalid Bearer token.`.
+  Both use `WWW-Authenticate: Bearer`.
 - The MCP authentication boundary maps invalid credentials to `401`, local
   authentication configuration failures to `500`, and unavailable discovery
   or remote JWKS dependencies to `503`. Every response uses a stable generic
@@ -262,39 +268,32 @@ sequenceDiagram
   network, JWKS, and configuration messages remain server-side.
 - `verifyMcpBearerToken()` uses OIDC discovery metadata to read the issuer's
   `jwks_uri` and caches the resulting `RemoteJWKSet`.
-- JWT verification preserves signature, issuer, audience, HTTPS JWKS, and a
-  30-second clock tolerance. It also requires protected-header `typ: at+jwt`,
-  numeric `exp` and `iat`, non-blank `sub`, exact top-level `client_id`, and
-  every scope in `AUTH_MCP_REQUIRED_SCOPES` in the top-level space-separated
-  `scope` claim. Current age and declared `exp - iat` lifetime are bounded by
+- JWT verification checks signature, issuer and audience with a 30-second
+  clock tolerance. Production requires HTTPS JWKS; local build targets allow
+  HTTP for the development provider. It also requires protected-header
+  `typ: at+jwt`,
+  numeric `exp` and `iat`, non-blank `sub`, and top-level `client_id` equal
+  to `MCP_CLIENT_ID`. Optional `azp` must match too; it cannot substitute for
+  `client_id`. The token must contain every scope in
+  `AUTH_MCP_REQUIRED_SCOPES` in the top-level space-separated `scope` claim.
+  Current age and declared `exp - iat` lifetime are bounded by
   `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` (default `300`, allowed `60`–`900`).
 - The required MCP identity is `employeeHsaId`. Values must match the HSA-id
-  syntax documented in [hsa-id.md](../reference/hsa-id.md). The configured local
-  MCP service client emits `SE5560000001-mcp1`; a missing claim means the IdP
-  realm must be reset or re-imported from the current realm JSON.
+  syntax documented in [hsa-id.md](../reference/hsa-id.md).
 - The verifier reads MCP roles only from `AUTH_MCP_ROLES_CLAIM` (default
   `roles`). A missing or empty array grants no roles; any non-array, non-string,
   duplicate, or unknown entry makes the entire claim grant no roles. Browser
-  role parsing remains separate and unchanged. On success the verifier records
+  role parsing is more permissive, as described above. On success the verifier records
   `auth.mcp.token.accepted`, attaches the verified actor, and only then permits
   database acquisition and requirements-service construction.
-- Persisted MCP import validation sessions normalize that verified HSA-id and
-  bind ownership with a purpose-separated keyed HMAC derived from
-  `AUTH_SESSION_COOKIE_PASSWORD`. Only the fingerprint is stored. Inspect and
-  execute require both token and the same fingerprint; a different principal
-  gets the same not-found response as an unknown or expired token. Destination
-  authorization is checked again on inspect and inside execute's serializable
-  transaction. Secret rotation intentionally invalidates existing ownership
-  matches.
 
 ### Security controls and audit events
 
 - Identity is derived only from the verified iron-session cookie (browser
   flow) or a verified `Authorization: Bearer` JWT (MCP flow). The app does
   not accept `x-user-id` or `x-user-roles` request headers as a stand-in
-  for a logged-in user, and `proxy.ts` strips both headers from every
-  inbound request before any handler runs so a caller cannot use them to
-  impersonate a user.
+  for a logged-in user. `proxy.ts` strips both headers from requests it
+  forwards to page and API handlers.
 - Cookie-authenticated mutating requests go through the same-origin check in
   [`lib/auth/csrf.ts`](../../lib/auth/csrf.ts). They must present a same-origin
   `Origin` or `Referer` and `X-Requested-With: XMLHttpRequest`.
@@ -304,7 +303,8 @@ sequenceDiagram
   check.
   `proxy.ts` enforces this centrally for mutating REST API requests after
   authentication has succeeded, excluding `/api/mcp`, which uses Bearer-token
-  auth. For a mutating REST URL with a trailing slash, authentication runs
+  auth, and the dedicated anonymous CSP-report operation. For a mutating
+  REST URL with a trailing slash, authentication runs
   first and returns `401` when required, then CSRF validation returns `403`
   when required, and only a request that passes both checks receives the
   canonical `308` redirect. The shared REST operation registry applies each
@@ -320,55 +320,20 @@ sequenceDiagram
   work. `/api/auth/logout` uses
   `secureLogoutMutationRoute` because logout is an auth endpoint with CSRF and
   audit but no business authorization policy.
-  `/api/mcp` remains the documented exception because it is guarded by Bearer
-  JWT verification and MCP tool schemas instead of the REST mutation wrapper.
+  `/api/mcp` uses Bearer JWT verification and MCP tool schemas instead of
+  the REST mutation wrapper; anonymous CSP telemetry has its own wrapper.
 - Authenticated page responses, including dynamic paths containing dots, get a
   per-request CSP nonce from `proxy.ts`.
-- Security audit events are emitted through
-  [`lib/auth/audit.ts`](../../lib/auth/audit.ts). The current event set is:
-  `access_review.cancelled`, `access_review.completed`,
-  `access_review.created`, `access_review.exported`,
-  `access_review.item_decided`, `ai.forensic_capture.disabled`,
-  `ai.forensic_capture.enabled`, `ai.forensic_capture.expired`,
-  `ai.forensic_capture.requested`, `ai.forensic_evidence.accessed`,
-  `ai.forensic_evidence.purged`, `ai.input_safety.blocked`,
-  `ai.output_safety.blocked`, `ai.safety_filter.failed`,
-  `admin.archiving.exception.created`,
-  `admin.archiving.exception.deleted`, `admin.archiving.executed`,
-  `admin.archiving.exported`, `admin.archiving.previewed`,
-  `admin.privileged_action.succeeded`,
-  `delegated.privileged_action.succeeded`, `auth.login.succeeded`,
-  `auth.login.failed`, `auth.logout`, `auth.session.expired`,
-  `auth.session.rejected`, `auth.token.rejected`,
-  `auth.mcp.token.accepted`, `auth.roles.changed`,
-  `auth.csrf.rejected`, `auth.authorization.denied`,
-  `auth.authorization.denied.audit_failed`,
-  `privacy.data_subject_export.generated`, `privacy.erasure.executed`,
-  `privacy.erasure.previewed`,
-  `requirements.sensitive_mutation.succeeded`, and
-  `security.csp.violation_reported`.
-- Audit events intentionally redact sensitive fields such as tokens, secrets,
-  authorization codes, PKCE verifiers, `state`, and `nonce`. When a top-level
-  detail key is redacted, the audit writer also emits a structured
-  `detail-key-redacted` breadcrumb with the source event, actor source, and
-  redacted key name.
+- Authentication events include `auth.login.succeeded`, `auth.login.failed`,
+  `auth.logout`, `auth.roles.changed`, `auth.session.expired`,
+  `auth.session.rejected`, `auth.token.rejected`, and
+  `auth.mcp.token.accepted`. CSRF and authorization failures use
+  `auth.csrf.rejected` and `auth.authorization.denied`. The complete event
+  vocabulary is defined by `SecurityEventName` in
+  [`lib/auth/audit.ts`](../../lib/auth/audit.ts).
 - Rejected MCP authentication events contain an allowlisted reason code only.
   They exclude token and claim values, issuer details, dependency text, and
   runtime error names.
-- Privacy erasure and data subject access export security events are emitted to
-  the platform security-log stream. Privacy erasure execution also writes a
-  database action-log row for Admin review. Both include the handler
-  identity, request id, grouped counts or delivery metadata, and a
-  non-reversible target fingerprint. They must not include the raw target
-  HSA-id in event detail. Retention or redaction of handler identity in
-  external security logs is handled by the platform logging policy because
-  removing it can reduce traceability.
-- Privileged Admin Center taxonomy and status-catalog mutations emit
-  `admin.privileged_action.succeeded` only after the mutation succeeds. The
-  detail contains operation, resource type, optional resource id, item counts,
-  edited field names, request source, session roles and privileged IdP roles;
-  it does not log raw target names, e-mail addresses, HSA-id values, secrets or
-  submitted values.
 
 ### Audit event stream
 
@@ -388,26 +353,19 @@ sequenceDiagram
   [Access Logging and Client IP Trust](../operations/access-log-and-client-ip-trust.md).
 - `detail` is optional and is redacted defensively so top-level fields such as
   tokens, secrets, authorization codes, PKCE verifiers, `state`, and `nonce`
-  are not emitted. Redaction breadcrumbs use the same `security-audit` channel
+  are not emitted. Callers must still exclude sensitive values themselves:
+  the redactor checks top-level key names, not arbitrary text contents.
+  Redaction breadcrumbs use the same `security-audit` channel
   and carry `breadcrumb: "detail-key-redacted"` instead of an audit `event`.
 - Requirements authorization denials and sensitive business mutations use the
   same stream. Their `detail` payloads carry stable identifiers, counts, and
   action names only; free-text requirement content, motivations, and suggestion
   text are not emitted.
-- AI safety events use the same stream. Their `detail` payloads carry
-  operation, decision, blocked step, direction, reason, primary rule id/type,
-  all rule IDs/types, categories, source, request/correlation IDs, and
-  model/provider when available. Prompts, model output, repair JSON, image
-  data, matched terms, and actor HSA-id values are not emitted in AI safety
-  details.
-- AI safety evidence capture is a separate, time-limited SQL workflow rather
-  than a log channel. An Admin requester and a different Privacy Officer
-  approver authorize one operation/direction window. Stored evidence is
-  redacted and bounded, while the security stream contains metadata only.
 - Application action-log rows in `action_audit_events` are separate from
   this stream. They are database records for successful app-owned mutations and
   authorization denials, include request/correlation IDs and optional validated
-  client IP, and can be viewed by Admins at `/{locale}/admin/audit-log`.
+  client IP, and can be viewed by Admins at `/{locale}/admin/audit-log`. See
+  [Application Action Log](./audit-log.md) for scope and privacy handling.
 - Authorization-denial rows are required evidence. When such a row cannot be
   persisted, protected work remains denied and REST or MCP returns only a
   generic internal error. The security stream also receives
@@ -420,8 +378,6 @@ sequenceDiagram
   log pipeline to select records where `channel == "security-audit"` and
   forward them to the desired sink, for example a centralized log store, a
   SIEM, a message queue, or a dedicated audit pipeline.
-- Because the audit records are separate JSON lines with a stable channel tag,
-  they can be split and forwarded independently from normal application logs.
 
 ## Network request limits
 

@@ -1,28 +1,29 @@
 # Version Lifecycle Dates
 
-Each `requirement_version` row carries six timestamp columns that track its
-lifecycle, plus one retention marker for requirements-specification history.
-The values depend on the version's **status** and the operations performed on
-it.
+This reference is for developers implementing or interpreting requirement
+version dates, retention rules, and status filters. Each
+`requirement_versions` row carries six lifecycle timestamps and one retention
+marker for requirements-specification history. For user workflows, see
+[Lifecycle Workflow](../governance/lifecycle-workflow.md).
 
 ## Columns
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | --- | --- | --- |
-| `created_at` | TEXT NOT NULL | When the version row was first created |
-| `edited_at` | TEXT NULL | When the version content was last edited |
-| `published_at` | TEXT NULL | When the version was published (status → 3) |
-| `archive_initiated_at` | TEXT NULL | When archiving review was initiated (status → 2 with flag) |
-| `archived_at` | TEXT NULL | When the version was archived (status → 4) |
-| `status_updated_at` | TEXT NULL | When `requirement_status_id` last changed; set at creation and on every status transition |
+| `created_at` | DATETIME2 NOT NULL | When the version row was first created |
+| `edited_at` | DATETIME2 NULL | When the version was created or last saved through content editing |
+| `published_at` | DATETIME2 NULL | When the version was published (status → 3) |
+| `archive_initiated_at` | DATETIME2 NULL | When archiving review was initiated (status → 2 with flag) |
+| `archived_at` | DATETIME2 NULL | When the version was archived (status → 4) |
+| `status_updated_at` | DATETIME2 NULL | When `requirement_status_id` last changed; set at creation and on every status transition |
 | `has_specification_item_history` | BIT NOT NULL | Retention marker set to true when the version has ever been linked to a requirements specification |
 <!-- markdownlint-enable MD013 -->
 
 ## Statuses
 
 | ID | Swedish    | English   |
-|----|------------|-----------|
+| -- | ---------- | --------- |
 | 1  | Utkast     | Draft     |
 | 2  | Granskning | Review    |
 | 3  | Publicerad | Published |
@@ -30,10 +31,11 @@ it.
 
 ## When New Versions Are Created
 
-New version rows are created **only** by these operations:
+New version rows are created by these operations:
 
 - **Creating a requirement** (`createRequirement`) — inserts v1
-  as Draft.
+  as Draft. Batch creation and graduation of a specification-local requirement
+  into the library also create a new requirement with a Draft v1.
 - **Editing content while Published** (`editRequirement`) —
   inserts a new Draft version with incremented version number.
   When the current version is Draft, the existing row is updated
@@ -58,8 +60,9 @@ when the version is linked into a requirements specification and remains true
 even if that specification link is later deleted.
 
 Editing is **not allowed** when the current version is in Review
-or Archived status. Review must first be moved back to Draft;
-Archived must be restored (which creates a new Draft version).
+or Archived status. Publication review must first be moved back to Draft;
+archiving review must be cancelled before editing the Published version.
+Archived versions must be restored, which creates a new Draft version.
 
 Edit requests must include the `baseVersionId` and
 `baseRevisionToken` values that were current when editing started.
@@ -69,26 +72,33 @@ has changed the latest version row before the request arrives.
 
 ## When `edited_at` Is Updated
 
-`edited_at` is set **only** when user-initiated content fields
-change:
+`edited_at` starts at creation time and is updated by content saves.
+Editable content includes:
 
 - description
 - acceptance criteria
-- category, type, type category
+- category, type, quality characteristic
 - priority
-- requirement packages
-- verifiable
+- requirement packages and norm references
+- verifiable and verification method
+
+The DAL updates `edited_at` on each accepted edit request; it does not compare
+old and new content to detect a no-op save. Do not interpret this field as proof
+that a particular value changed.
 
 `edited_at` is **never** updated by:
 
 - Status transitions (`transitionStatus`)
 - Archiving functions (`initiateArchiving`, `approveArchiving`, `cancelArchiving`)
-- System-controlled date changes (`published_at`, `archived_at`, `archive_initiated_at`)
+- System-controlled date changes (`published_at`, `archived_at`,
+  `archive_initiated_at`)
 
 `status_updated_at` is the complementary lifecycle field: it changes on status
 transitions but not on content-only edits. Admin Archiving uses it to identify
 Draft and Review versions that have stayed in that status longer than the
-approved retention policy.
+approved retention policy. Draft retention also checks `edited_at`, so a
+recent content save prevents a draft from qualifying solely because its status
+is old. Archiving review is excluded from stale publication-review retention.
 
 ## Rules by Status
 
@@ -96,7 +106,7 @@ approved retention policy.
 
 - `created_at` — set at creation time.
 - `edited_at` — set at creation time. Updated when content fields
-  change. Must be **≥** `created_at`.
+  are saved.
 - `status_updated_at` — set when the row enters Draft. It is unchanged by
   content edits.
 - `published_at` — always `NULL`.
@@ -123,7 +133,7 @@ Reached via in-place transition from Review. No new version row.
 - `edited_at` — unchanged. **Not** updated by the status
   transition.
 - `published_at` — set when the version transitions to Published.
-  Must be **after** `edited_at`.
+  Cancelling archiving preserves the original publication timestamp.
 - `status_updated_at` — set when the version transitions to Published.
 - `archive_initiated_at` — always `NULL`.
 - `archived_at` — always `NULL`.
@@ -170,25 +180,28 @@ auto-archive when a newer version is published.
 - `archive_initiated_at` — `NULL`. Cleared by `approveArchiving`;
   never set by auto-archive.
 - `archived_at` — set when the version transitions to Archived.
-  Must be **after** `published_at`.
 - `status_updated_at` — set when the version transitions to Archived, including
   auto-archive during publication of a newer version.
 
 ## Chronological Order
 
-When all main lifecycle timestamps are present, they follow this order:
+The operations occur in lifecycle order: creation, content editing,
+publication, then optional archiving review and archiving. Their timestamps
+come from the application clock; the write paths do not enforce strict
+inequalities. Separate operations can receive the same timestamp, so do not
+use strict date comparisons to determine status or version order.
 
-```text
-created_at  ≤  edited_at  <  published_at  <  archive_initiated_at  <  archived_at
-```
+`created_at` and `edited_at` start equal. When a replacement is published,
+its `published_at` equals the predecessor's `archived_at` and
+`status_updated_at` because the same timestamp is used for both writes.
 
-`created_at` and `edited_at` may be equal (both set at creation
-time before any user edits).
+`archive_initiated_at` is a pending-review marker, not permanent history. It is
+cleared on approval or cancellation, so a completed row does not retain all
+six dates together.
 
-`status_updated_at` is not part of that strict sequence. It reflects the latest
-status transition for the current row and can therefore equal `created_at`,
-`published_at`, `archive_initiated_at`, `archived_at`, or the time a Review
-version returned to Draft.
+`status_updated_at` reflects the latest status transition for the current row.
+It can equal `created_at`, `published_at`, `archive_initiated_at`,
+`archived_at`, or the time a Review version returned to Draft.
 
 ## Specification History Marker
 
@@ -197,45 +210,6 @@ set when a version is linked into `requirements_specification_items` and is not
 cleared when the link is removed. This makes it possible to distinguish
 "never used in a requirements specification" from "used historically but no
 longer linked" before Admin Archiving deletes old versions.
-
-## Rules Relative to Version Numbering
-
-### Older version (previously published, now archived)
-
-When a newer version is published, the older published version
-is archived at the same time. The life cycles overlap:
-
-```text
-v(n):   created ── edited ── published ─ ─ ─ ─ ─ archived
-                                   │                  ║
-v(n+1):                      created ── edited ── published
-```
-
-- `v(n).archived_at` = `v(n+1).published_at`
-  (same timestamp)
-
-### Current published version
-
-```text
-created_at  ≤  edited_at  <  published_at
-```
-
-`archived_at` is `NULL`.
-
-### Newer draft version
-
-A draft being worked on after a version was published:
-
-```text
-v(n):   created ── edited ── published
-                                   │
-v(n+1):                      created ── edited
-```
-
-- `v(n+1).created_at` > `v(n).published_at`
-- `v(n+1).created_at` ≤ `v(n+1).edited_at`
-- `v(n+1).published_at` and `v(n+1).archived_at` are both
-  `NULL`.
 
 ## Effective Requirement Status (Filtering)
 
@@ -255,8 +229,8 @@ following priority order (highest priority first):
 Each filter option shows only requirements whose effective
 requirement status matches. This means:
 
-- **Draft** — requirements that have **only** Draft
-  versions and are not archived (`is_archived = false`).
+- **Draft** — requirements with no Published or Review version and
+  `is_archived = false`; older Archived versions do not prevent this result.
 - **Review** — requirements whose highest-priority status
   is Review, with `is_archived = false`.
 - **Published** — requirements that have at least one
@@ -266,15 +240,15 @@ requirement status matches. This means:
   even while a newer Draft or Review replacement version
   exists.
 
-The effective requirement status is a **query-time computation** (a SQL
-`CASE` expression in `buildRequirementListConditions`). It
-is not stored as a column.
+The effective requirement status is computed at query time; it is not stored
+as a column. It may differ from the newest version's status.
 
 ## Deleting Draft Versions
 
-A Draft version can **always** be deleted, regardless of whether
-earlier versions exist. Deletion removes only that version row
-(and its references/requirement packages). Other versions are never changed.
+The delete-draft operation targets the latest version and requires it to be
+Draft, regardless of whether earlier versions exist. Deletion removes that
+version and its package/reference links, and clears the implementing-version
+link on improvement suggestions that refer to it. Other versions are unchanged.
 
 If no versions remain after deletion, the requirement itself is
 also deleted.
@@ -283,92 +257,12 @@ also deleted.
 
 The version history pills show the relevant date per status:
 
-| Status     | Date shown in pill |
-|------------|--------------------|
-| Utkast     | `edited_at`        |
-| Granskning | —                  |
-| Publicerad | `published_at`     |
-| Arkiverad  | `archived_at`      |
-
-## DAL Behavior
-
-- **Creating a requirement** (`createRequirement`): Sets
-  `created_at`, `edited_at` and `status_updated_at` to the current time.
-  `published_at` and `archived_at` are `NULL`.
-- **Editing a requirement** (`editRequirement`): When the current
-  version is Draft, updates the existing row in place with
-  `edited_at` set to the current time and rotates `revision_token`,
-  but only when the caller's `baseVersionId` and
-  `baseRevisionToken` still match the latest version row. When the
-  current version is Published, creates a new Draft version with
-  `edited_at` set to the current time after the same precondition
-  check. **Not allowed** when the current version is in Review or
-  Archived status. Content-only edits do not update `status_updated_at`.
-- **Transitioning status** (`transitionStatus`): In-place
-  `UPDATE` on the existing version row. Sets `statusId` to the
-  target status and `status_updated_at` to the current time. Sets
-  `published_at` or `archived_at` when
-  transitioning to Published or Archived respectively.
-  Rotates `revision_token` because the row changed, but **never**
-  touches `edited_at`. **Never** creates a new version row. When
-  publishing, auto-archives any previously published version of the
-  same requirement. For archived requirements with a pending Draft or
-  Review replacement, `is_archived` stays `true` until that
-  replacement version is published.
-- **Initiating archiving** (`initiateArchiving`): In-place
-  `UPDATE` on the existing version row. Sets `statusId` to
-  Review, `archive_initiated_at` and `status_updated_at` to the current time.
-  **Never** touches `edited_at`. **Never** creates a new
-  version row. Does **not** set `is_archived`.
-- **Approving archiving** (`approveArchiving`): In-place
-  `UPDATE` on the existing version row. Sets `statusId` to
-  Archived, sets `archived_at` and `status_updated_at` to the current time,
-  clears `archive_initiated_at` to `NULL`, and sets
-  `is_archived = true`. **Never** touches `edited_at`.
-  **Never** creates a new version row.
-- **Cancelling archiving** (`cancelArchiving`): In-place
-  `UPDATE` on the existing version row. Sets `statusId`
-  back to Published, clears `archive_initiated_at`, and sets
-  `status_updated_at` to the current time.
-  **Never** touches `edited_at`. **Never** creates a new
-  version row.
-- **Restoring a version** (`restoreVersion`): Creates a new
-  Draft copy of the selected historical version. If the
-  requirement was archived, `is_archived` remains `true`
-  until the restored replacement version is published.
-
-## Specification agreement dates
-
-The effective date is a calendar date in Europe/Stockholm. Registration and
-confirmation record separate UTC timestamps. Only the first agreement may have
-a past effective date; it captures the known working set without inventing
-past activity. A later agreement requires today or a future date after its
-predecessor. An overdue draft retains its content and requires an explicit date
-correction before confirmation.
-
-Confirmation locks the complete content immediately. Today's agreement takes
-effect at confirmation; a future agreement takes effect at Stockholm midnight,
-including daylight-saving transitions. Before effect, a date correction also
-reschedules planned deviation endings. Moving an upcoming agreement to today
-requires explicit confirmation of immediate activation. After effect, its date
-is locked.
-
-At replacement effect, unchanged requirements inherit the latest follow-up and
-the previous agreement's results freeze. Approved deviation endings record the
-effective instant separately from their original decisions. At registered
-agreement end, follow-up freezes and deviation endings record the actual
-registration time, separately from the stated end date. Neither transition
-rewrites earlier evidence.
-
-Binding intervals use inclusive `valid_from` and exclusive `valid_until` in UTC.
-Process lifecycle changes do not unlock agreement content. Requirement-version
-`edited_at` and publication dates retain their existing meanings.
-
-## Deviation approval dates
-
-An approval's `decided_at`, conditions and inclusive `valid_through` remain
-immutable. Expiry uses Europe/Stockholm and begins at midnight after the stated
-date, including daylight-saving changes. Renewal creates a new linked decision.
-Manual closure and replacement have separate ending events and do not rewrite
-requirement version dates or recorded usage status. Agreement date corrections
-do not shift the approval's own validity period.
+<!-- markdownlint-disable MD013 -->
+| Status | Date shown in pill |
+| --- | --- |
+| Draft | `edited_at` |
+| Publication review | None |
+| Archiving review | Original `published_at` |
+| Published | `published_at` |
+| Archived | `archived_at` |
+<!-- markdownlint-enable MD013 -->

@@ -1,18 +1,19 @@
 # Database Schema Documentation
 
-This document describes the complete database schema for
-**Kravbibliotek** — a requirements management system built
-on Microsoft SQL Server using TypeORM.
+This reference is for developers changing or querying the Kravhantering
+database. It describes table relationships, stored fields, constraints, naming
+rules, and the lifecycle and privacy contracts needed to interpret data safely.
+The database uses Microsoft SQL Server and TypeORM.
 
-The schema is defined by TypeORM entities under
-[`lib/typeorm/entities/`](../../lib/typeorm/entities). Migrations live in
-[`typeorm/migrations/`](../../typeorm/migrations) and seed profiles in
-[`typeorm/seed.mjs`](../../typeorm/seed.mjs). Required seed data contains system
-and lookup rows; demo seed data contains optional examples and test fixtures.
+Hand-authored [migrations](../../typeorm/migrations) define the SQL schema;
+[TypeORM entities](../../lib/typeorm/entities) map it into the application.
+Required [seed data](../../typeorm/seed-required.mjs) contains system and lookup
+rows; [demo seed data](../../typeorm/seed.mjs) contains optional examples and
+test fixtures. Generic `text` and `integer` labels below denote Unicode text
+and integer values; consult the entity and migration for exact lengths,
+nullability, defaults, and SQL precision.
 The developer setup, browse workflow, and CLI reference live in
 [sql-server-developer-workflow.md](../development/sql-server-developer-workflow.md).
-
----
 
 ## Table of Contents
 
@@ -26,9 +27,8 @@ The developer setup, browse workflow, and CLI reference live in
 8. [Application Action Log Tables](#application-action-log-tables)
 9. [Join / Bridge Tables](#join--bridge-tables)
 10. [Requirement Version Status Workflow](#requirement-version-status-workflow)
-11. [Database Roles](#database-roles)
-
----
+11. [Indexes & Constraints Reference](#indexes--constraints-reference)
+12. [Database Roles](#database-roles)
 
 ## Database Naming Standard
 
@@ -41,7 +41,8 @@ Apply these rules to all schema objects.
   `behavior`, not `behaviour`
 - Use lowercase `snake_case`
 - Use ASCII only for identifiers (`a-z`, `0-9`, `_`)
-- Do not quote identifiers
+- Use SQL Server brackets in SQL, for example `[requirement_versions]`.
+  Brackets delimit the identifier; they are not part of its stored name.
 - Avoid reserved keywords
 - Do not mix naming styles
 
@@ -107,13 +108,95 @@ Apply these rules to all schema objects.
 | Boolean columns | `ai_settings.requirement_generation_enabled` omits the `is_` prefix | The column names a positive feature preference exposed by Admin Center and REST response fields; an `is_*` name would read as observed state rather than administrator preference. |
 <!-- markdownlint-enable MD013 -->
 
----
-
 ## Entity-Relationship Diagram
 
 <!-- markdownlint-disable MD013 -->
 ```mermaid
 erDiagram
+    rfi_question_sequences {
+        int area_id PK,FK
+        int next_sequence
+    }
+    rfi_question_suggestions {
+        int id PK
+        int area_id FK
+        int rfi_question_id FK
+        int specification_id FK
+        nvarchar source_specification_code
+        nvarchar source_specification_name
+        nvarchar content
+        bit is_review_requested
+        datetime2 review_requested_at
+        int resolution
+        nvarchar resolution_motivation
+        nvarchar created_by_hsa_id
+        nvarchar created_by_display_name
+        datetime2 created_at
+        datetime2 updated_at
+        nvarchar resolved_by_hsa_id
+        nvarchar resolved_by_display_name
+        datetime2 resolved_at
+    }
+    rfi_question_version_requirement_packages {
+        int rfi_question_version_id PK,FK
+        int requirement_package_id PK,FK
+    }
+    rfi_question_version_requirement_selection_questions {
+        int rfi_question_version_id PK,FK
+        int requirement_selection_question_id PK,FK
+    }
+    rfi_question_version_requirements {
+        int rfi_question_version_id PK,FK
+        int requirement_id PK,FK
+    }
+    rfi_question_versions {
+        int id PK
+        int rfi_question_id FK
+        int version_number
+        nvarchar question_text
+        nvarchar help_text
+        nvarchar expected_answer_format
+        bit is_active
+        nvarchar created_by_hsa_id
+        nvarchar created_by_display_name
+        datetime2 created_at
+        datetime2 updated_at
+    }
+    rfi_questions {
+        int id PK
+        int area_id FK
+        nvarchar question_code
+        int sort_order
+        bit is_archived
+        datetime2 archived_at
+        datetime2 created_at
+        datetime2 updated_at
+    }
+    specification_rfi_question_items {
+        int specification_id PK,FK
+        int rfi_question_id PK,FK
+        int rfi_question_version_id FK
+        bit is_included
+        nvarchar relevance
+        datetime2 changed_at
+        nvarchar changed_by_hsa_id
+        nvarchar changed_by_display_name
+    }
+    requirement_areas ||--o{ rfi_question_sequences : "area_id"
+    requirement_areas ||--o{ rfi_question_suggestions : "area_id"
+    rfi_questions |o--o{ rfi_question_suggestions : "rfi_question_id"
+    requirements_specifications |o--o{ rfi_question_suggestions : "specification_id"
+    rfi_question_versions ||--o{ rfi_question_version_requirement_packages : "rfi_question_version_id"
+    requirement_packages ||--o{ rfi_question_version_requirement_packages : "requirement_package_id"
+    rfi_question_versions ||--o{ rfi_question_version_requirement_selection_questions : "rfi_question_version_id"
+    requirement_selection_questions ||--o{ rfi_question_version_requirement_selection_questions : "requirement_selection_question_id"
+    rfi_question_versions ||--o{ rfi_question_version_requirements : "rfi_question_version_id"
+    requirements ||--o{ rfi_question_version_requirements : "requirement_id"
+    rfi_questions ||--o{ rfi_question_versions : "rfi_question_id"
+    requirement_areas ||--o{ rfi_questions : "area_id"
+    requirements_specifications ||--o{ specification_rfi_question_items : "specification_id"
+    rfi_questions ||--o{ specification_rfi_question_items : "rfi_question_id"
+    rfi_question_versions |o--o{ specification_rfi_question_items : "rfi_question_version_id"
     specification_rfi_lists {
         integer specification_id PK,FK
         boolean is_locked
@@ -1162,15 +1245,14 @@ erDiagram
 ```
 <!-- markdownlint-enable MD013 -->
 
----
-
 ## Lookup / Taxonomy Tables
 
 These tables store app-owned reference data. Taxonomy tables cover
 classifications such as categories, types and priority levels, while status tables
-cover requirement version statuses, usage statuses and lifecycle statuses. All
-user-facing text columns are localized with `_sv` (Swedish) and `_en`
-suffixes.
+cover requirement version statuses, usage statuses and lifecycle statuses.
+Localized lookup labels use `_sv` (Swedish) and `_en` suffixes.
+Authored content, person snapshots and external norm metadata retain their
+original language; see [Accepted Exceptions](#accepted-exceptions).
 
 These are business-domain reference-data tables. UI configuration is documented
 separately under [UI Settings Tables](#ui-settings-tables).
@@ -1189,8 +1271,6 @@ High-level classification of a requirement's origin.
 IT-krav (IT requirement),
 Leverantörskrav (Supplier requirement).
 
----
-
 ### `requirement_types`
 
 Whether a requirement is functional or non-functional.
@@ -1202,8 +1282,6 @@ Whether a requirement is functional or non-functional.
 | `name_en` | text, unique | English display name |
 
 **Seed values:** Funktionellt (Functional), Icke-funktionellt (Non-functional).
-
----
 
 ### `quality_characteristics`
 
@@ -1229,8 +1307,6 @@ The seed catalog contains 49 ISO/IEC 25010:2023 quality-characteristic rows.
 `idx_quality_characteristics_requirement_type_id`,
 `idx_quality_characteristics_parent_id`.
 
----
-
 ### `requirement_statuses`
 
 Requirement version statuses governing the lifecycle of a requirement version.
@@ -1244,7 +1320,7 @@ Requirement version statuses governing the lifecycle of a requirement version.
 | `sort_order` | integer | Display ordering |
 | `color` | text | Admin-selected `#RRGGBB` accent; valid values stay exact |
 | `icon_name` | text | Allowed lucide icon name (nullable) |
-| `is_system` | boolean (integer) | `true` for built-in requirement version statuses that cannot be deleted |
+| `is_system` | bit | `true` for built-in requirement version statuses that cannot be deleted |
 <!-- markdownlint-enable MD013 -->
 
 **Seed values:**
@@ -1255,13 +1331,6 @@ Requirement version statuses governing the lifecycle of a requirement version.
 | 2 | Granskning | Review | `#eab308` (yellow) | `Eye` |
 | 3 | Publicerad | Published | `#22c55e` (green) | `CheckCircle2` |
 | 4 | Arkiverad | Archived | `#6b7280` (gray) | `Archive` |
-
-Migration 0053 repairs an invalid color only for seeded IDs 1-4 by restoring
-the canonical value above. It preserves every valid customized value exactly
-and intentionally rejects rollback because replaced invalid values cannot be
-recovered.
-
----
 
 ### `requirement_status_transitions`
 
@@ -1289,8 +1358,6 @@ Defines the allowed state-machine transitions between requirement version status
 | Publicerad (3) | Granskning (2) |
 | Granskning (2) | Arkiverad (4) |
 
----
-
 ### Requirement Version Status Workflow
 
 The seeded requirement workflow is:
@@ -1303,9 +1370,10 @@ Archiving uses a two-step review process:
 → `Arkiverad`
 
 The schema also allows `Granskning` → `Utkast`
-(reject back to draft).
-
----
+(reject back to draft). Cancelling archiving restores `Publicerad` and clears
+`archive_initiated_at` on the version under archiving review. Transitions update
+the existing version; they do not create a new version. See
+[Version Lifecycle Dates](version-lifecycle-dates.md) for timestamp semantics.
 
 ### `priority_levels`
 
@@ -1337,8 +1405,6 @@ stakeholder needs.
 | 4 | P4 | Hög | High | 2 | `#f97316` (orange) | `AlertCircle` |
 | 5 | P5 | Mycket hög | Very high | 1 | `#ef4444` (red) | `AlertTriangle` |
 
----
-
 ### `requirement_responsibility_people`
 
 Stores HSA-id-keyed person information used by live requirement responsibility
@@ -1355,21 +1421,13 @@ assignments.
 | `surname` | text | Surname from the HSA lookup (nullable) |
 | `email` | text | E-mail address from the HSA lookup (nullable) |
 | `has_protected_personal_data` | bit | Whether HSA marked the person post with protected personal data |
-| `last_fetched_at` | text (ISO 8601) | Last successful HSA lookup timestamp, null for migration placeholders |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last refresh timestamp |
+| `last_fetched_at` | datetime2 | Last successful HSA lookup timestamp, null for migration placeholders |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last refresh timestamp |
 <!-- markdownlint-enable MD013 -->
 
 Rows are created or refreshed only in authorized edit/save flows. Read-only
 views join to this table and do not perform HSA lookups.
-
-**Seed note:** Demo seed data stores resolved HSA person details for every live
-responsibility assignment. The unassigned
-`SE5560000001-resprefresh1` fixture alone starts with the migration placeholder
-and a null `last_fetched_at`; the matching HSA mock record supports explicit
-refresh coverage without making another seeded workflow depend on that refresh.
-
----
 
 ### `requirement_packages`
 
@@ -1395,30 +1453,14 @@ be linked to.
 | `name` | text | Authored package name |
 | `purpose_and_scope` | text | Mandatory purpose and scope that guides which requirements belong in the package |
 | `lead_hsa_id` | text FK → `requirement_responsibility_people.hsa_id` | Requirement-package lead HSA-id |
-| `is_archived` | integer | Soft archive flag |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `is_archived` | bit | Soft archive flag |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Indexes:**
 `idx_requirement_packages_lead_hsa_id`,
 `idx_requirement_packages_is_archived`.
-
-**Seed values:**
-
-| id | Name | Lead |
-| ---- | ------- | ---- |
-| 1 | Mobil användning | Anna Johansson |
-| 2 | Datamigrering | Anna Johansson |
-| 3 | Integration med andra system | Erik Lindberg |
-| 4 | Ärendehantering | Erik Lindberg |
-| 5 | Användarvänlighet | Fatima Hassan |
-| 6 | Molndrift | Fatima Hassan |
-| 7 | Normal drift | Anna Johansson |
-| 8 | Hög belastning | Erik Lindberg |
-| 9 | Katastrofåterställning | Fatima Hassan |
-
----
 
 ### `requirement_selection_question_sequences`
 
@@ -1430,11 +1472,6 @@ Tracks the next `{AREA}-KUF###` sequence per requirement area.
 | `area_id` | integer FK → `requirement_areas.id` (CASCADE DELETE), PK | Requirement area |
 | `next_sequence` | integer | Next sequence number to assign |
 <!-- markdownlint-enable MD013 -->
-
-**Demo seed:** `npm run db:seed:demo` adds sequence rows with
-`next_sequence = 2` for `SÄK`, `INT`, `ANV`, `RAP`, and `KVA`, and
-`next_sequence = 5` for `DRF`, matching the seeded `DRF-KUF001` through
-`DRF-KUF004` questions.
 
 ### `requirement_selection_questions`
 
@@ -1452,11 +1489,11 @@ validation.
 | `help_text` | text | Optional guidance |
 | `selection_type` | text | `single` or `multiple` |
 | `sort_order` | integer | Display ordering within the area |
-| `is_active` | integer | Active flag |
-| `is_archived` | integer | Soft archive flag |
-| `archived_at` | text (ISO 8601) | When the question was archived for retention aging |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `is_active` | bit | Active flag |
+| `is_archived` | bit | Soft archive flag |
+| `archived_at` | datetime2 | When the question was archived for retention aging |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Indexes and constraints:** `uq_requirement_selection_questions_question_code`,
@@ -1465,10 +1502,6 @@ validation.
 `idx_requirement_selection_questions_archived_at`,
 `chk_requirement_selection_questions_selection_type`,
 `chk_requirement_selection_questions_state`.
-
-**Demo seed:** the demo profile contains nine active stewardship questions:
-`SÄK-KUF001`, `INT-KUF001`, `DRF-KUF001`, `DRF-KUF002`, `DRF-KUF003`,
-`DRF-KUF004`, `ANV-KUF001`, `RAP-KUF001`, and `KVA-KUF001`.
 
 ### `requirement_selection_answers`
 
@@ -1486,12 +1519,12 @@ that derived health state as `Saknar kravurval`.
 | `answer_text` | text | User-facing answer text |
 | `description` | text | Optional explanation |
 | `sort_order` | integer | Display ordering within the question |
-| `is_no_requirement_selection` | integer | Marks the answer as selecting no requirements |
-| `is_active` | integer | Active flag |
-| `is_archived` | integer | Soft archive flag |
-| `archived_at` | text (ISO 8601) | When the answer was archived for retention aging |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `is_no_requirement_selection` | bit | Marks the answer as selecting no requirements |
+| `is_active` | bit | Active flag |
+| `is_archived` | bit | Soft archive flag |
+| `archived_at` | datetime2 | When the answer was archived for retention aging |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Indexes and constraints:**
@@ -1499,11 +1532,6 @@ that derived health state as `Saknar kravurval`.
 `idx_requirement_selection_answers_state`,
 `idx_requirement_selection_answers_archived_at`,
 `chk_requirement_selection_answers_state`.
-
-**Demo seed:** the demo profile contains 31 active answer options. They cover
-package-only selections, explicit published-requirement selections, mixed
-package and requirement selections, and four `Utan kravurval` answers without
-links.
 
 ### `requirement_selection_question_visibility_groups`
 
@@ -1517,8 +1545,8 @@ requirement selection question.
 | `id` | integer PK | Auto-increment primary key |
 | `question_id` | integer FK → `requirement_selection_questions.id` (CASCADE DELETE) | Child question controlled by the group |
 | `sort_order` | integer | Display and evaluation ordering for stewardship |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Index:** `idx_requirement_selection_question_visibility_groups_question_id`.
@@ -1537,8 +1565,8 @@ selected. Different groups are alternatives.
 | `parent_question_id` | integer FK → `requirement_selection_questions.id` | Parent question whose answer controls visibility |
 | `answer_id` | integer FK → `requirement_selection_answers.id` | Trigger answer on the parent question |
 | `sort_order` | integer | Ordering inside the group |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Indexes and constraints:**
@@ -1546,14 +1574,6 @@ selected. Different groups are alternatives.
 `idx_requirement_selection_question_visibility_conditions_group_id`,
 `idx_requirement_selection_question_visibility_conditions_parent_question_id`,
 `idx_requirement_selection_question_visibility_conditions_answer_id`.
-
-**Demo seed:** `KVA-KUF001` is visible when `INT-KUF001` has one of
-`REST-API eller API Gateway`, `Asynkrona meddelanden eller webhooks`, or
-`Filimport eller datamigrering` selected. The `DRF` demo hierarchy starts with
-`DRF-KUF001` for deployment model: `DRF-KUF002` is shown for
-`Egen drift/on-premises` or `Hybrid drift`, `DRF-KUF003` is shown for
-`Molndrift` or `Hybrid drift`, and `DRF-KUF004` is shown when a high-availability
-answer is selected in either availability follow-up question.
 
 ### `requirement_selection_answer_packages`
 
@@ -1602,8 +1622,8 @@ answers count as answered but do not contribute requirement filters.
 | `specification_id` | integer FK → `requirements_specifications.id` (CASCADE DELETE), PK part 1 | Requirements specification |
 | `question_id` | integer FK → `requirement_selection_questions.id`, PK part 2 | Historical question reference |
 | `answer_id` | integer FK → `requirement_selection_answers.id`, PK part 3 | Historical answer reference |
-| `is_historical` | integer | Whether the saved answer is preserved as historical context instead of current selection context |
-| `changed_at` | text (ISO 8601) | Last change timestamp |
+| `is_historical` | bit | Whether the saved answer is preserved as historical context instead of current selection context |
+| `changed_at` | datetime2 | Last change timestamp |
 | `changed_by_hsa_id` | text | Actor HSA-id snapshot |
 | `changed_by_display_name` | text | Actor display-name snapshot |
 <!-- markdownlint-enable MD013 -->
@@ -1611,12 +1631,6 @@ answers count as answered but do not contribute requirement filters.
 **Indexes:** `idx_specification_requirement_selection_answers_historical`,
 `idx_specification_requirement_selection_answers_changed_by_hsa_id`,
 `idx_specification_requirement_selection_answers_answer_id`.
-
-**Demo seed:** `ETJANST-UPP-2026`, `KH-INFOR`, `INTPLATT-UPP-2026`, and
-`GDPR-FORV-2026` have saved requirement-selection answers. `GDPR-FORV-2026`
-also includes one historical saved answer with `is_historical = 1`.
-
----
 
 ### `rfi_question_sequences`
 
@@ -1642,10 +1656,10 @@ area, code, ordering and archive state; question content is versioned in
 | `question_code` | text, unique | Stable `{AREA}-RFI###` code |
 | `area_id` | integer FK → `requirement_areas.id` | Owning requirement area |
 | `sort_order` | integer | Display order inside the area |
-| `is_archived` | integer | Soft archive flag |
-| `archived_at` | text (ISO 8601) | Archive timestamp |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `is_archived` | bit | Soft archive flag |
+| `archived_at` | datetime2 | Archive timestamp |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
 ### `rfi_question_versions`
@@ -1664,11 +1678,11 @@ point to exact version ids.
 | `question_text` | text | User-facing RFI question |
 | `help_text` | text | Optional purpose/help text |
 | `expected_answer_format` | text | Optional expected answer format |
-| `is_active` | integer | Active-version flag |
+| `is_active` | bit | Active-version flag |
 | `created_by_hsa_id` | text | Creator HSA-id snapshot |
 | `created_by_display_name` | text | Creator display-name snapshot |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
 Advisory links from an RFI question version to existing selection questions,
@@ -1689,13 +1703,13 @@ or relevance-assessed.
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `specification_id` | integer FK → `requirements_specifications.id` (CASCADE DELETE), PK | Owning specification |
-| `is_locked` | integer | `0` prepare mode, `1` locked mode |
+| `is_locked` | bit | `0` prepare mode, `1` locked mode |
 | `lock_revision` | integer, default `0` | Monotonically increases on lock/unlock; guards assessment confirmation |
-| `locked_at` | text (ISO 8601) | Lock timestamp |
+| `locked_at` | datetime2 | Lock timestamp |
 | `locked_by_hsa_id` | text | Actor HSA-id snapshot |
 | `locked_by_display_name` | text | Actor display-name snapshot |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
 ### `specification_rfi_question_items`
@@ -1711,9 +1725,9 @@ version and included scope are unchanged.
 | `specification_id` | integer FK → `requirements_specifications.id` (CASCADE DELETE), PK part 1 | Owning specification |
 | `rfi_question_id` | integer FK → `rfi_questions.id`, PK part 2 | RFI question |
 | `rfi_question_version_id` | integer FK → `rfi_question_versions.id` | Version used by the list item |
-| `is_included` | integer | Scope flag |
+| `is_included` | bit | Scope flag |
 | `relevance` | text | `relevant`, `not_relevant`, or `NULL` |
-| `changed_at` | text (ISO 8601) | Last change timestamp |
+| `changed_at` | datetime2 | Last change timestamp |
 | `changed_by_hsa_id` | text | Actor HSA-id snapshot |
 | `changed_by_display_name` | text | Actor display-name snapshot |
 <!-- markdownlint-enable MD013 -->
@@ -1744,16 +1758,11 @@ references in preview and execution.
 | `created_by_display_name` | nvarchar(MAX), nullable | Author snapshot; localized anonymous display after erasure |
 <!-- markdownlint-enable MD013 -->
 
-Migration `0068` copies existing non-null item relevance with its stored version,
-last-changing actor and timestamp into history. Earlier edits cannot be
-reconstructed from these snapshots. The runtime can insert, read and delete
-records, and update only the two author columns for privacy anonymization.
+The runtime can insert, read and delete records, and update only the two
+author columns for privacy anonymization. Assessment history can include an
+initial snapshot imported from the item; edits before that snapshot cannot be
+reconstructed.
 No unique index suppresses repeated confirmations; each save is independent.
-
-Demo seeds include both outcomes, empty optional fields, document support and
-duplicate author names with different HSA-ids. `RETENTION-SEED` question
-`RSK-RFI915` has no current list item and is protected by a historical assessment;
-`RSK-RFI911` remains an unreferenced positive retention candidate.
 
 ### `rfi_question_suggestions`
 
@@ -1778,17 +1787,17 @@ remain allowed.
 | `source_specification_code` | text | Minimal source snapshot |
 | `source_specification_name` | text | Minimal source snapshot |
 | `content` | text | Suggestion content |
-| `is_review_requested` | integer | Whether review has been requested |
-| `review_requested_at` | text (ISO 8601) | First review-request timestamp |
+| `is_review_requested` | bit | Whether review has been requested |
+| `review_requested_at` | datetime2 | First review-request timestamp |
 | `resolution` | integer | `1` resolved, `2` dismissed, or `NULL` |
 | `resolution_motivation` | text | Resolution reason |
 | `created_by_hsa_id` | text | Creator HSA-id snapshot |
 | `created_by_display_name` | text | Creator display-name snapshot |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last lifecycle-change timestamp |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last lifecycle-change timestamp |
 | `resolved_by_hsa_id` | text | Resolver HSA-id snapshot |
 | `resolved_by_display_name` | text | Resolver display-name snapshot |
-| `resolved_at` | text (ISO 8601) | Write-once resolution timestamp |
+| `resolved_at` | datetime2 | Write-once resolution timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Check constraint:**
@@ -1804,8 +1813,6 @@ rejecting evidence changes and non-draft deletion.
 **Page indexes:** `idx_rfi_question_suggestions_created_at_id` supports the
 stable collection order. The area and specification variants prefix that order
 with `area_id` or `specification_id` for filtered pages.
-
----
 
 ### `norm_references`
 
@@ -1828,29 +1835,13 @@ Column names are **not** localized — see
 | `version` | text | Edition or version year (nullable) |
 | `issuer` | text | Issuing organization |
 | `uri` | text | URL to the official document (nullable) |
-| `is_archived` | integer boolean | Whether the norm reference is hidden from new requirement links |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `is_archived` | bit | Whether the norm reference is hidden from new requirement links |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Unique index:**
 `uq_norm_references_norm_reference_id`.
-
-<!-- cSpell:disable-next-line -->
-**Seed values:**
-
-<!-- markdownlint-disable MD013 -->
-| id | norm\_reference\_id | name | type | issuer |
-| --- | --- | --- | --- | --- |
-| 1 | SFS 2018:218 | Lag (2018:218) med kompletterande bestämmelser till EU:s dataskyddsförordning | Lag | Riksdagen |
-| 2 | ISO/IEC 27001:2022 | Ledningssystem för informationssäkerhet | Standard | ISO/IEC |
-| 3 | MSBFS 2020:6 | Föreskrifter om informationssäkerhet för statliga myndigheter | Föreskrift | MSB |
-| 4 | RFC 6749 | The OAuth 2.0 Authorization Framework | Standard | IETF |
-| 5 | ISO/IEC 25010:2023 | Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE) | Standard | ISO/IEC |
-| 6 | EU 2022/2555 | NIS2-direktivet | Direktiv | Europeiska unionens råd och Europaparlamentet |
-<!-- markdownlint-enable MD013 -->
-
----
 
 ### `specification_governance_object_types`
 
@@ -1867,8 +1858,6 @@ Classifies the governance object type for a requirements specification
 Projekt (Project), Uppdrag (Assignment),
 Leveransområde (Delivery area),
 Tjänsteområde (Service area).
-
----
 
 ### `specification_implementation_types`
 
@@ -1898,8 +1887,6 @@ Describes the lifecycle phase of a requirements specification
 **Seed values:** Upphandling (Procurement),
 Införande (Implementation), Utveckling (Development),
 Förvaltning (Management).
-
----
 
 ### `specification_item_statuses`
 
@@ -1934,13 +1921,6 @@ sort order, but usage statuses are not created or deleted.
 | 6 | Ej tillämpbar | Not Applicable | `#6b7280` | `XCircle` |
 
 <!-- markdownlint-enable MD013 -->
-
-Migration 0053 applies the same invalid-color repair to seeded IDs 1-6. It
-uses the canonical values above, preserves every valid customized value
-exactly, and intentionally rejects rollback because replaced invalid values
-cannot be recovered.
-
----
 
 ## AI Connection Tables
 
@@ -2115,8 +2095,8 @@ invalidating row together with connection/model lifecycle state.
 
 ### `ai_model_verification_attempts`
 
-Shared completed verification candidates. Migration 0063 adds this transient
-information asset; it has no creator identity or independently committed lease.
+Transient completed verification candidates shared across application
+instances. Rows have no creator identity or independently committed lease.
 
 | Column | Type | Meaning |
 | :--- | :--- | :--- |
@@ -2149,7 +2129,6 @@ removes expired attempts in batches of at most 500. Missing tables in supported
 older schemas are reported as `not_applicable` by the cleanup registry.
 
 **Seed policy:** no rows. Seed must not manufacture successful verification.
-SQL integration fixtures cover valid, expired, consumed, and rolled-back work.
 **Permissions:** runtime SELECT, INSERT, DELETE; no UPDATE. Cleanup uses SELECT
 and DELETE plus the existing metadata inspection permission.
 **Constraints:** `chk_ai_model_verification_attempts_payload` and
@@ -2188,9 +2167,8 @@ immutable. Changing the external model identity or connection configuration
 requires a newly verified row. The trigger
 `trg_ai_connection_model_revisions_immutable` enforces the technical boundary
 while allowing those evidence-fenced lifecycle transitions. `reasoning_json`
-is protected by the same trigger and a JSON check constraint. Migration 0062
-invalidates verified revisions lacking mandatory reasoning evidence; it does not
-backfill capability claims. Version 2 evidence includes content-free capability
+is protected by the same trigger and a JSON check constraint. Verified revisions
+require reasoning evidence. Version 2 evidence includes content-free capability
 assessments and the exact reasoning configuration in `details_json`.
 
 <!-- markdownlint-disable MD013 -->
@@ -2315,14 +2293,9 @@ independent. Authentication opens the breaker immediately for manual recovery.
 Five consecutive connection, deadline, or retryable adapter failures open it
 for an hourly automatic probe. One SQL lease owns each probe, expired
 half-open leases are reclaimable, and five failed probes require manual
-recovery. The lease fields are either all null or all populated. Demo seed
-creates ordinary OpenRouter and self-hosted vLLM connection drafts, a
-realistically populated but unapproved OpenRouter attestation draft, an
-explicit absence of any vLLM attestation, and three disconnected stable
-profiles.
-It never creates provider secrets, external model IDs, verification evidence,
-operational state, or activation. Seeded connections have no special runtime
-provenance or behavior.
+recovery. The lease fields are either all null or all populated. Seed data
+creates no provider secrets, verification evidence, operational state, or
+activation.
 
 **Indexes:** `uq_ai_connection_model_operational_states_revision`,
 `idx_ai_connection_model_operational_states_recovery`,
@@ -2340,9 +2313,8 @@ Connection retirement/suspension and profile suspension atomically add a
 content-free cancellation request to every matching queued, retrying, or
 running row. The first administrative reason is retained so a later broader
 suspension cannot rewrite the cause observed by the fenced worker.
-The consolidated AI data-model migration creates both cancellation fields as
-nullable. Required and demo seed never insert coordination rows, so a newly
-seeded database leaves this table empty until runtime admission.
+Both cancellation fields are nullable. Required and demo seed leave this table
+empty until runtime admission.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -2383,11 +2355,9 @@ defaults used by the app.
 
 ### `application_settings`
 
-The singleton also owns the browser CSP logging switch. Migration `0066` adds
-`is_csp_violation_logging_enabled` as SQL `bit NOT NULL DEFAULT 1`; existing and
-fresh installations start enabled. Both seeds use a Boolean. The API accepts
-only JSON Booleans, and the DAL preserves the SQL driver's Boolean without
-numeric/string coercion. No report payload is persisted here. See
+The singleton also owns the browser CSP logging switch,
+`is_csp_violation_logging_enabled` (`bit NOT NULL DEFAULT 1`). No report payload
+is persisted here. See
 [CSP reporting operations](../operations/csp-reporting.md).
 
 Singleton Admin Center resource limits for requirement imports, generated CSV
@@ -2532,8 +2502,6 @@ The Admin requester cannot approve their own request. Admin or Privacy Officer
 may stop an active window; Privacy Officer approves and purges. After stop or
 expiry, only the original requester or approver who currently has the `Admin`
 or `PrivacyOfficer` role can read evidence through the sensitive, no-store API.
-Demo seed data includes one stopped synthetic window with duplicate display
-names and distinct HSA-ids to exercise exact identity matching.
 
 ### `ai_forensic_evidence_events`
 
@@ -2564,8 +2532,7 @@ window ID.
 The scheduled transient cleanup target independently marks expiry and purges
 evidence 72 hours after stop or expiry. Privacy erasure stops and purges windows
 where the target is a lifecycle actor and deletes evidence matching the exact
-capture-specific actor fingerprint. Demo seed data uses only synthetic,
-pre-redacted evidence. This asset is intentionally outside Admin Archiving:
+capture-specific actor fingerprint. This asset is outside Admin Archiving:
 its fixed 72-hour security retention cannot be extended by a legal-hold or
 backup workflow in the application.
 
@@ -2610,10 +2577,6 @@ unknown or expired token. Execute locks the owned session and re-authorizes the
 stored destination inside the same serializable transaction as requirement
 mutation and receipt persistence.
 
-**Demo seed:** one expired synthetic session exercises the persisted ownership
-and reservation fields without creating active quota usage or storing a real
-person identity.
-
 ### `requirement_import_validation_rate_buckets`
 
 Transient, aggregate counters for successful MCP validation-session creation.
@@ -2623,9 +2586,6 @@ audit timestamps; it never stores raw HSA-id, token, payload, destination or
 validation content. A unique index on `(principal_fingerprint,
 window_started_at)` prevents duplicate counters, and an expiry index supports
 bounded cleanup.
-
-**Demo seed:** one expired synthetic counter corresponds to the synthetic
-validation session and does not consume the current creation window.
 
 Session admission is one serializable, application-locked operation. It checks
 and rejects in principal, creation-rate, destination, then storage order; exact
@@ -2661,8 +2621,7 @@ serialize on the same actor application lock; the database supplies time.
 
 Checks require a fingerprint with the `hfp_` prefix, recovery after admission,
 and release at or after admission. Indexes support actor-window admission and
-bounded expiry cleanup. The demo seed has a released expired row belonging to
-the existing HSA quota demo person. Required seed creates no usage.
+bounded expiry cleanup. Required seed creates no usage.
 
 The `application_settings` singleton also contains
 `export_actor_starts_per_minute` (integer 1–100, default 10) and
@@ -2713,9 +2672,6 @@ transaction back. SQL Server supplies window and retry time. The row set has no
 hard global cap: an authenticated actor can create at most 101 rows per minute
 under the fixed limits, and scheduled cleanup removes expired rows in bounded,
 overlap-safe batches.
-
-**Demo seed:** one synthetic actor bucket exercises the pseudonymous shape and
-current-window cleanup boundary without storing a real identity.
 
 See [Scheduled Transient-State Cleanup](../operations/transient-state-cleanup.md)
 and [HSA Verification Quota](../adr/0057-sql-server-samordnad-hsa-verifieringskvot.md).
@@ -2794,8 +2750,8 @@ Organization-wide default layout for the requirements list.
 | `id` | integer PK | Auto-increment primary key |
 | `column_id` | text, unique | Stable requirement-list column identifier |
 | `sort_order` | integer, unique | Organization-wide default position in the list |
-| `is_default_visible` | boolean (integer) | Whether the column is visible by default |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `is_default_visible` | bit | Whether the column is visible by default |
+| `updated_at` | datetime2 | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Purpose:**
@@ -2820,10 +2776,10 @@ one HSA-id-prefix, which is the part before the hyphen in a full HSA-id.
 | `id` | integer PK | Auto-increment primary key |
 | `prefix` | text, unique | HSA-id-prefix: two uppercase letters followed by ten digits, without hyphen |
 | `label` | text, nullable | Optional display label shown together with the prefix in user-facing prefix lists |
-| `is_visible` | boolean (integer) | Whether the prefix is offered in editable HSA-id fields |
-| `is_default` | boolean (integer), filtered unique | Whether the prefix is the default visible prefix for new empty fields |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `is_visible` | bit | Whether the prefix is offered in editable HSA-id fields |
+| `is_default` | bit, filtered unique | Whether the prefix is the default visible prefix for new empty fields |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Purpose:**
@@ -2843,8 +2799,6 @@ without extra setup.
 `chk_hsa_id_prefixes_default_visible`.
 
 **Indexes:** `idx_hsa_id_prefixes_is_visible`.
-
----
 
 ## Core Domain Tables
 
@@ -2876,8 +2830,8 @@ requirement IDs.
 | `description` | text | Purpose of the requirement area |
 | `owner_hsa_id` | text FK → `requirement_responsibility_people.hsa_id` | Responsible owner's HSA-id |
 | `next_sequence` | integer (default 1) | Next sequence number to assign within this requirement area |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Owner:** `owner_hsa_id` is required and stores the responsible person's
@@ -2885,8 +2839,6 @@ HSA-id. The current name and e-mail presentation comes from
 `requirement_responsibility_people`. New requirement areas are created with an
 editable HSA-id field. Existing requirement areas show the current HSA-id as
 read-only and use a dedicated owner-change dialog to replace it.
-
----
 
 ### `requirements`
 
@@ -2902,14 +2854,12 @@ the immutable properties; all mutable content lives in
 | `requirement_area_id` | integer FK → `requirement_areas.id` | The area this requirement belongs to |
 | `sequence_number` | integer | Monotonically increasing number within the area |
 | `is_archived` | boolean (integer, default false) | Soft-delete flag |
-| `created_at` | text (ISO 8601) | Creation timestamp |
+| `created_at` | datetime2 | Creation timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Indexes:**
 `idx_requirements_requirement_area_id`,
 `idx_requirements_is_archived`.
-
----
 
 ### `requirement_versions`
 
@@ -2934,12 +2884,12 @@ precondition.
 | `requirement_status_id` | integer FK → `requirement_statuses.id` | Current requirement version status (1=Draft, 2=Review, 3=Published, 4=Archived). The UI may render a derived label — see [UI status labels](../governance/lifecycle-workflow.md#ui-status-labels). |
 | `is_verifiable` | boolean (integer, default false) | Whether the requirement version has objective conditions that can be checked |
 | `verification_method` | text | Verification method used when `is_verifiable` is true |
-| `created_at` | text (ISO 8601) | When this version was created |
-| `edited_at` | text (ISO 8601) | Last content edit timestamp (nullable) |
-| `published_at` | text (ISO 8601) | When status changed to Published (nullable) |
-| `archive_initiated_at` | text (ISO 8601) | When archiving was initiated — set when status moves from Published to Review for archiving (nullable). When set, the UI swaps the status badge label to "Arkiveringsgranskning" / "Archiving Review" — see [UI status labels](../governance/lifecycle-workflow.md#ui-status-labels). |
-| `archived_at` | text (ISO 8601) | When status changed to Archived (nullable) |
-| `status_updated_at` | text (ISO 8601) | When `requirement_status_id` last changed; used by Admin Archiving to identify stale Draft/Review/Archived versions without touching `edited_at` |
+| `created_at` | datetime2 | When this version was created |
+| `edited_at` | datetime2 | Last content edit timestamp (nullable) |
+| `published_at` | datetime2 | When status changed to Published (nullable) |
+| `archive_initiated_at` | datetime2 | When archiving was initiated — set when status moves from Published to Review for archiving (nullable). When set, the UI swaps the status badge label to "Arkiveringsgranskning" / "Archiving Review" — see [UI status labels](../governance/lifecycle-workflow.md#ui-status-labels). |
+| `archived_at` | datetime2 | When status changed to Archived (nullable) |
+| `status_updated_at` | datetime2 | When `requirement_status_id` last changed; used by Admin Archiving to identify stale Draft/Review/Archived versions without touching `edited_at` |
 | `has_specification_item_history` | boolean (integer, default false) | Durable marker set when the version has ever been linked to a requirement application |
 | `created_by` | text | Display-name snapshot for the actor that created this version (nullable) |
 | `created_by_hsa_id` | text | HSA-id for the actor that created this version (nullable after privacy erasure) |
@@ -2971,8 +2921,6 @@ for details. When an archived requirement gets a replacement
 Draft or Review version, `requirements.is_archived` stays
 `true` until that newer version is published.
 
----
-
 ### `requirements_specifications`
 
 A named collection of requirements assembled for a
@@ -2990,8 +2938,8 @@ specific procurement or project.
 | `specification_lifecycle_status_id` | integer FK → `specification_lifecycle_statuses.id` | Specification lifecycle status classification |
 | `business_needs_reference` | text | Optional free-text reference to the underlying business need |
 | `responsible_hsa_id` | text FK → `requirement_responsibility_people.hsa_id` | HSA-id for the live specification lead |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
 `specification_code` is the stable human-readable code for a
@@ -3001,15 +2949,7 @@ ASCII letters, digits, and single hyphens between segments, for example
 and numeric-only values are rejected because browser URLs and REST APIs
 use numeric database IDs as their canonical specification identifiers.
 
-**Seed note:** Specification `ETJANST-UPP-2026` (ID `8`) assigns Ada Admin
-(`ada.admin`, HSA ID `SE5560000001-admin1`) as specification responsible so
-this demo user can register its first agreement. It has
-`local_requirement_next_sequence = 3` because the seed
-includes `KRAV0001` and `KRAV0002`.
-
 **Index:** `idx_requirements_specifications_responsible_hsa_id`.
-
----
 
 ### `specification_agreements`
 
@@ -3143,19 +3083,7 @@ The current-application views select inclusive `valid_from` and exclusive
 snapshot fields. Runtime permissions include these views and CRUD on agreement,
 membership and ending tables. No background service is required for activation.
 
-The unreleased migration starts from the released pre-agreement schema. It
-preserves existing working requirements and does not infer agreements. Restore a
-matching database backup and application release to roll back recorded history.
-
-Demo specification `PRESTANDA-UTV` (id 3) has one current agreement and a
-recorded reference correction; `TILLGANG-FORV-Q3` (id 4) has a current
-agreement and a complete draft with a local addition and a converted library
-requirement with exact provenance; `LAGRING-UPP-2026` (id 5) has previous,
-current, cancelled and upcoming agreements. It demonstrates a pinned library
-update, removal, local content versions and a separately ended approval.
-Future dates use December of the year after initial seed construction.
-Repeated seeding preserves stored identities. Required production seeding
-creates no agreement decisions.
+Required production seeding creates no agreement decisions.
 
 ### `specification_needs_references`
 
@@ -3168,15 +3096,13 @@ Reusable needs-reference labels and descriptions stored per specification.
 | `specification_id` | integer FK → `requirements_specifications.id` | Owning specification |
 | `text` | text | Stored needs-reference label |
 | `description` | text nullable | Optional context for the need, decision, case, or source behind the label |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last label or description update timestamp |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last label or description update timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Unique indexes:**
 `uq_specification_needs_references_specification_text`,
 `uq_specification_needs_references_specification_id_id`.
-
----
 
 ### `specification_local_requirements`
 
@@ -3205,9 +3131,9 @@ version/review/publication lifecycle.
 | `needs_reference_id` | integer FK → `specification_needs_references.(specification_id, id)` | Optional specification-scoped needs reference |
 | `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Required usage status, defaults to Included (ID 1) |
 | `note` | text | Optional specification-scoped note |
-| `status_updated_at` | text (ISO 8601) | When the usage status last changed |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `status_updated_at` | datetime2 | When the usage status last changed |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
 | `valid_from` | datetime2, required | Inclusive UTC start of binding applicability; existing rows start at their recorded creation time. |
 | `valid_until` | datetime2, nullable | Exclusive UTC end; null denotes the continuing binding. Draft-only content has an empty interval until activation. |
 | `binding_created_by_hsa_id` | nvarchar(64), nullable | Actor who created this binding; exact HSA-id privacy matching. |
@@ -3228,20 +3154,6 @@ workflows reject clearing an assigned usage status to null.
 `idx_specification_local_requirements_specification_id`,
 `idx_specification_local_requirements_specification_item_status_id`.
 
-**Seed note:** `ETJANST-UPP-2026` contains two seeded
-specification-local requirements and therefore demonstrates the
-ID format, join tables, and delete semantics for this
-feature.
-
-The local privacy rejection for content `local:2` is dated 17 April 2026,
-before the draft created on 18 April. Library content `lib:20` has its first
-draft cancelled on 14 May before the later request on 15 May. The seed test
-checks all library and local case timelines: a previous case must have a
-recorded outcome before the next case is created. This preserves distinct
-content histories and prevents multiple simultaneous active seed cases.
-
----
-
 ## Access Review Tables
 
 Access review tables store recurring review evidence for app-managed
@@ -3258,17 +3170,17 @@ reviewer, and external evidence reference for IdP/repository review records.
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
 | `status` | text | Review status: `draft`, `in_review`, `completed`, or `cancelled` |
-| `period_start` | text (ISO 8601) | Start of the review period |
-| `period_end` | text (ISO 8601) | End of the review period |
-| `due_at` | text (ISO 8601) | Date/time when review evidence is due |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `period_start` | datetime2 | Start of the review period |
+| `period_end` | datetime2 | End of the review period |
+| `due_at` | datetime2 | Date/time when review evidence is due |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
 | `created_by_hsa_id` | text | HSA-id for the Admin that created the run (nullable after privacy erasure) |
 | `created_by_display_name` | text | Display-name snapshot for the creator |
 | `reviewer_hsa_id` | text | HSA-id for the assigned reviewer (nullable after privacy erasure) |
 | `reviewer_display_name` | text | Display-name snapshot for the assigned reviewer |
 | `external_evidence_reference` | text | Reference to external IdP/repository/client-access review evidence |
-| `completed_at` | text (ISO 8601) | Completion timestamp (nullable) |
+| `completed_at` | datetime2 | Completion timestamp (nullable) |
 | `completed_by_hsa_id` | text | HSA-id for the Admin that completed the run (nullable after privacy erasure) |
 | `completed_by_display_name` | text | Display-name snapshot for the completing Admin |
 <!-- markdownlint-enable MD013 -->
@@ -3280,12 +3192,6 @@ reviewer, and external evidence reference for IdP/repository review records.
 review lifecycle values above. `chk_access_review_runs_period_order` requires
 `period_start` to be earlier than or equal to `period_end`; `due_at` remains an
 independent deadline.
-
-**Seed note:** Local privacy seed data includes two completed access-review
-runs for `SE5560000001-linneab`: one where that HSA identity created the run
-and one created by another user where that HSA identity is the reviewer. The
-same fixture also covers completed-by and item decision/principal snapshots for
-Admin Privacy preview coverage.
 
 ### `access_review_items`
 
@@ -3305,11 +3211,11 @@ Point-in-time snapshot of one app-managed assignment in an access-review run.
 | `scope_label` | text | Human-readable scope label |
 | `permission_type` | text | App permission type such as requirement area owner, co-author, or specification lead |
 | `decision` | text | Review decision: `pending`, `approved`, `revoke_required`, `changed`, or `not_applicable` |
-| `decided_at` | text (ISO 8601) | Decision timestamp (nullable) |
+| `decided_at` | datetime2 | Decision timestamp (nullable) |
 | `decided_by_hsa_id` | text | HSA-id for the actor that recorded the decision (nullable after privacy erasure) |
 | `decided_by_display_name` | text | Display-name snapshot for the deciding actor |
 | `comment` | text | Optional review note |
-| `created_at` | text (ISO 8601) | Snapshot creation timestamp |
+| `created_at` | datetime2 | Snapshot creation timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Indexes:** `idx_access_review_items_run_id_decision`,
@@ -3371,10 +3277,6 @@ without deleting action, target, time, decision, request ID, or correlation ID.
 `client_ip` is operational forensic metadata and is not handled by the Privacy
 preview/export/erasure workflow in this slice.
 
-**Seed note:** Development seed data includes allowed, denied, human, and MCP
-action-log rows, including validated client IPs and `SE5560000001-linneab` actor
-snapshots for privacy preview/export coverage.
-
 ### `archiving_retention_policies`
 
 Archiving retention policies that define which app-owned information set can be
@@ -3390,11 +3292,11 @@ the delete run, but the policy action itself is deletion.
 | `action` | text | Retention action. V1 uses `delete`; export requirements are candidate metadata, not a separate policy action. |
 | `age_days` | integer | Minimum age before rows become candidates |
 | `status_condition` | text | Human-readable status condition for candidate selection |
-| `is_enabled` | boolean (integer) | Whether the policy may be previewed and executed |
+| `is_enabled` | bit | Whether the policy may be previewed and executed |
 | `decision_reference` | text | Reference to the documented management decision |
-| `last_run_at` | text (ISO 8601) | Last successful retention execution timestamp |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-updated timestamp |
+| `last_run_at` | datetime2 | Last successful retention execution timestamp |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-updated timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Unique indexes:** `uq_archiving_retention_policies_policy_key`.
@@ -3431,8 +3333,8 @@ payloads from affected business records.
 | `id` | integer PK | Auto-increment primary key |
 | `policy_id` | integer FK → `archiving_retention_policies.id` (CASCADE DELETE) | Policy that was executed |
 | `status` | text | Execution status; v1 stores `completed` |
-| `started_at` | text (ISO 8601) | Execution start timestamp |
-| `completed_at` | text (ISO 8601) | Execution completion timestamp |
+| `started_at` | datetime2 | Execution start timestamp |
+| `completed_at` | datetime2 | Execution completion timestamp |
 | `executed_by_hsa_id` | text | HSA-id for the PrivacyOfficer that executed the run |
 | `executed_by_display_name` | text | Display-name snapshot for the executing officer |
 | `preview_token` | text | Hash of the preview used to guard against stale execution |
@@ -3463,16 +3365,53 @@ specific retention policy. Exceptions may expire automatically via
 | `reason` | text | Documented exception reason |
 | `created_by_hsa_id` | text | HSA-id for the officer that created the exception |
 | `created_by_display_name` | text | Display-name snapshot for the officer |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `expires_at` | text (ISO 8601) | Optional exception expiry timestamp |
+| `created_at` | datetime2 | Creation timestamp |
+| `expires_at` | datetime2 | Optional exception expiry timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Unique indexes:** `uq_archiving_retention_exceptions_subject`.
 **Indexes:** `idx_archiving_retention_exceptions_policy_source`.
 
----
-
 ## Join / Bridge Tables
+
+### `rfi_question_version_requirement_packages`
+
+Advisory links owned by an RFI question version. Both columns form the primary
+key. Deleting the version cascades to its links; a referenced target cannot be
+deleted while a link remains. Links do not select requirements automatically.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| --- | --- | --- |
+| `rfi_question_version_id` | int PK, FK → `rfi_question_versions.id` | Owning RFI question version |
+| `requirement_package_id` | int PK, FK → `requirement_packages.id` | Advisory target |
+<!-- markdownlint-enable MD013 -->
+
+### `rfi_question_version_requirements`
+
+Advisory links owned by an RFI question version. Both columns form the primary
+key. Deleting the version cascades to its links; a referenced target cannot be
+deleted while a link remains. Links do not select requirements automatically.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| --- | --- | --- |
+| `rfi_question_version_id` | int PK, FK → `rfi_question_versions.id` | Owning RFI question version |
+| `requirement_id` | int PK, FK → `requirements.id` | Advisory target |
+<!-- markdownlint-enable MD013 -->
+
+### `rfi_question_version_requirement_selection_questions`
+
+Advisory links owned by an RFI question version. Both columns form the primary
+key. Deleting the version cascades to its links; a referenced target cannot be
+deleted while a link remains. Links do not select requirements automatically.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| --- | --- | --- |
+| `rfi_question_version_id` | int PK, FK → `rfi_question_versions.id` | Owning RFI question version |
+| `requirement_selection_question_id` | int PK, FK → `requirement_selection_questions.id` | Advisory target |
+<!-- markdownlint-enable MD013 -->
 
 ### `requirement_area_co_authors`
 
@@ -3484,7 +3423,7 @@ directly and do not reference `owners`.
 | -------- | ------ | ------------- |
 | `area_id` | integer FK → `requirement_areas.id` (CASCADE DELETE), PK part 1 | Requirement area assignment |
 | `hsa_id` | text FK → `requirement_responsibility_people.hsa_id`, PK part 2 | HSA-id for the co-author |
-| `created_at` | text (ISO 8601) | Assignment creation timestamp |
+| `created_at` | datetime2 | Assignment creation timestamp |
 | `created_by_hsa_id` | text | HSA-id of the actor that created the assignment (nullable after privacy erasure) |
 | `created_by_display_name` | text | Display-name snapshot for the actor that created the assignment |
 <!-- markdownlint-enable MD013 -->
@@ -3502,7 +3441,7 @@ HSA-id directly and do not reference `owners`.
 | -------- | ------ | ------------- |
 | `specification_id` | integer FK → `requirements_specifications.id` (CASCADE DELETE), PK part 1 | Specification assignment |
 | `hsa_id` | text FK → `requirement_responsibility_people.hsa_id`, PK part 2 | HSA-id for the co-author |
-| `created_at` | text (ISO 8601) | Assignment creation timestamp |
+| `created_at` | datetime2 | Assignment creation timestamp |
 | `created_by_hsa_id` | text | HSA-id of the actor that created the assignment (nullable after privacy erasure) |
 | `created_by_display_name` | text | Display-name snapshot for the actor that created the assignment |
 <!-- markdownlint-enable MD013 -->
@@ -3521,7 +3460,7 @@ permission.
 | -------- | ------ | ------------- |
 | `requirement_package_id` | integer FK → `requirement_packages.id` (CASCADE DELETE), PK part 1 | Requirement package assignment |
 | `hsa_id` | text FK → `requirement_responsibility_people.hsa_id`, PK part 2 | HSA-id for the co-author |
-| `created_at` | text (ISO 8601) | Assignment creation timestamp |
+| `created_at` | datetime2 | Assignment creation timestamp |
 | `created_by_hsa_id` | text | HSA-id of the actor that created the assignment (nullable after privacy erasure) |
 | `created_by_display_name` | text | Display-name snapshot for the actor that created the assignment |
 <!-- markdownlint-enable MD013 -->
@@ -3557,8 +3496,6 @@ Archived.
 on `(requirement_package_id)` — reverse-lookup index for
 requirement-package-to-requirement queries.
 
----
-
 ### `requirement_version_norm_references`
 
 Many-to-many link between requirement versions and norm
@@ -3588,8 +3525,6 @@ remove its norm-reference links.
 on `(norm_reference_id)` — reverse-lookup index for
 norm-reference-to-requirement queries.
 
----
-
 ### `specification_local_requirement_norm_references`
 
 Many-to-many link between specification-local requirements and
@@ -3613,8 +3548,6 @@ norm references.
 **Index:**
 `idx_specification_local_requirement_norm_references_norm_reference_id`.
 
----
-
 ### `requirements_specification_items`
 
 Links individual requirements (pinned to a specific version) into a specification.
@@ -3629,8 +3562,8 @@ Links individual requirements (pinned to a specific version) into a specificatio
 | `needs_reference_id` | integer FK → `specification_needs_references.(specification_id, id)` | Optional specification-scoped needs reference |
 | `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Required usage status, defaults to Included (ID 1) |
 | `note` | text | Optional free-text note (nullable) |
-| `status_updated_at` | text (ISO 8601) | When the usage status was last changed (nullable) |
-| `created_at` | text (ISO 8601) | When the item was added |
+| `status_updated_at` | datetime2 | When the usage status was last changed (nullable) |
+| `created_at` | datetime2 | When the item was added |
 | `valid_from` | datetime2, required | Inclusive UTC start of binding applicability; existing rows start at their recorded creation time. |
 | `valid_until` | datetime2, nullable | Exclusive UTC end; null denotes the continuing binding. Draft-only content has an empty interval until activation. |
 | `binding_created_by_hsa_id` | nvarchar(64), nullable | Actor who created this binding; exact HSA-id privacy matching. |
@@ -3648,8 +3581,6 @@ workflows reject clearing an assigned usage status to null.
 `idx_requirements_specification_items_requirements_specification_id`,
 `idx_requirements_specification_items_requirement_id`,
 `idx_requirements_specification_items_specification_item_status_id`.
-
----
 
 ### `specification_local_requirement_deviations`
 
@@ -3677,19 +3608,17 @@ ending separately in `specification_deviation_endings`.
 | `renews_deviation_id` | int, nullable FK → `specification_local_requirement_deviations.id` | Previous approval for the same exact content; NO ACTION deletion preserves links. |
 | `decided_by` | text | Display-name snapshot for the actor that recorded the decision or cancellation |
 | `decided_by_hsa_id` | text | HSA-id for the actor that recorded the decision or cancellation (nullable after privacy erasure) |
-| `decided_at` | text (ISO 8601) | When the decision or cancellation was recorded |
+| `decided_at` | datetime2 | When the decision or cancellation was recorded |
 | `created_by` | text | Display-name snapshot for the actor that registered the deviation |
 | `created_by_hsa_id` | text | HSA-id for the actor that registered the deviation (nullable after privacy erasure) |
-| `created_at` | text (ISO 8601) | When registered |
-| `updated_at` | text (ISO 8601) | When last updated |
+| `created_at` | datetime2 | When registered |
+| `updated_at` | datetime2 | When last updated |
 <!-- markdownlint-enable MD013 -->
 
 **Index:**
 `idx_specification_local_requirement_deviations_specification_local_requirement_id`,
 `idx_specification_local_requirement_deviations_created_by_hsa_id`,
 `idx_specification_local_requirement_deviations_decided_by_hsa_id`.
-
----
 
 Permission is evaluated separately from the recorded decision. The most recent
 approval by `decided_at`, then `id`, is the only candidate; rejection does not
@@ -3722,11 +3651,11 @@ ending separately in `specification_deviation_endings`.
 | `renews_deviation_id` | int, nullable FK → `deviations.id` | Previous approval for the same exact content; NO ACTION deletion preserves links. |
 | `decided_by` | text | Display-name snapshot for the actor that recorded the decision or cancellation |
 | `decided_by_hsa_id` | text | HSA-id for the actor that recorded the decision or cancellation (nullable after privacy erasure) |
-| `decided_at` | text (ISO 8601) | When the decision or cancellation was recorded |
+| `decided_at` | datetime2 | When the decision or cancellation was recorded |
 | `created_by` | text | Display-name snapshot for the actor that registered the deviation |
 | `created_by_hsa_id` | text | HSA-id for the actor that registered the deviation (nullable after privacy erasure) |
-| `created_at` | text (ISO 8601) | When registered (default: now) |
-| `updated_at` | text (ISO 8601) | When last updated (default: now) |
+| `created_at` | datetime2 | When registered (default: now) |
+| `updated_at` | datetime2 | When last updated (default: now) |
 <!-- markdownlint-enable MD013 -->
 
 **Indexes:** `idx_deviations_specification_item_id`,
@@ -3752,19 +3681,19 @@ draft → review requested → resolved or dismissed.
 | `requirement_id` | integer FK → `requirements.id` (CASCADE DELETE) | The requirement this suggestion applies to |
 | `requirement_version_id` | integer FK → `requirement_versions.id` (SET NULL) | Optional: the specific version being reviewed |
 | `implementing_requirement_version_id` | integer FK → `requirement_versions.id` (NO ACTION) | Optional implementing version row; must belong to the same requirement |
-| `implementation_recorded_at` | text (ISO 8601) | Evidence attachment time; retained when its version is removed |
+| `implementation_recorded_at` | datetime2 | Evidence attachment time; retained when its version is removed |
 | `content` | text NOT NULL | The suggestion text |
 | `created_by` | text | Display-name snapshot for the actor that submitted the suggestion |
 | `created_by_hsa_id` | text | HSA-id for the actor that submitted the suggestion (nullable after privacy erasure) |
 | `is_review_requested` | integer NOT NULL DEFAULT 0 | 0 = draft, 1 = submitted for review |
-| `review_requested_at` | text (ISO 8601) | When review was requested (null = draft) |
+| `review_requested_at` | datetime2 | When review was requested (null = draft) |
 | `resolution` | integer | Null = pending, 1 = resolved, 2 = dismissed |
 | `resolution_motivation` | text | Rationale for resolving or dismissing |
 | `resolved_by` | text | Display-name snapshot for the actor that resolved/dismissed |
 | `resolved_by_hsa_id` | text | HSA-id for the actor that resolved/dismissed (nullable after privacy erasure) |
-| `resolved_at` | text (ISO 8601) | When the resolution was recorded |
-| `created_at` | text (ISO 8601) | When registered (default: now) |
-| `updated_at` | text (ISO 8601) | When last updated (default: now) |
+| `resolved_at` | datetime2 | When the resolution was recorded |
+| `created_at` | datetime2 | When registered (default: now) |
+| `updated_at` | datetime2 | When last updated (default: now) |
 <!-- markdownlint-enable MD013 -->
 
 **Indexes:** `idx_improvement_suggestions_requirement_id`,
@@ -3790,9 +3719,7 @@ resolutions and dismissals need no implementing version.
 The implementing FK uses NO ACTION to avoid SQL Server multiple cascade paths.
 Draft deletion and Admin Archiving clear this FK inside their deletion transaction,
 retaining the evidence timestamp as an unavailable marker. Deleting the parent
-requirement removes the suggestion and its evidence. Demo suggestion 1 links
-feedback version row 1 to implementing version row 2; other motivation-only
-examples remain unlinked. No import JSON Schema fields change.
+requirement removes the suggestion and its evidence.
 
 ## Indexes & Constraints Reference
 
@@ -3864,6 +3791,8 @@ its purpose and the table/column(s) it covers.
 | `uq_specification_agreements_current` | `specification_agreements` | `specification_id WHERE is_current = 1` | Agreement-context integrity. |
 | `uq_specification_agreement_items_library` | `specification_agreement_items` | `specification_agreement_id, specification_item_id WHERE specification_item_id IS NOT NULL` | Agreement-context integrity. |
 | `uq_specification_agreement_items_local` | `specification_agreement_items` | `specification_agreement_id, specification_local_requirement_id WHERE specification_local_requirement_id IS NOT NULL` | Agreement-context integrity. |
+| `uq_rfi_question_versions_question_version` | `rfi_question_versions` | `rfi_question_id, version_number` | Enforces unique rfi_question_id, version_number |
+| `uq_rfi_questions_question_code` | `rfi_questions` | `question_code` | Enforces unique question_code |
 <!-- markdownlint-enable MD013 -->
 
 ### Non-Unique Indexes
@@ -3984,26 +3913,27 @@ its purpose and the table/column(s) it covers.
 | `idx_deviations_renews_deviation_id` | `deviations` | `renews_deviation_id` | Renewal history lookup. |
 | `idx_specification_local_requirement_deviations_renews_deviation_id` | `specification_local_requirement_deviations` | `renews_deviation_id` | Renewal history lookup. |
 | `idx_specification_deviation_endings_agreement_id` | `specification_deviation_endings` | `agreement_id` | Agreement ending lookup. |
+| `idx_rfi_question_suggestions_rfi_question_id` | `rfi_question_suggestions` | `rfi_question_id` | Supports lookups by rfi_question_id |
+| `idx_rfi_question_suggestions_created_by_hsa_id` | `rfi_question_suggestions` | `created_by_hsa_id` | Supports lookups by created_by_hsa_id |
+| `idx_rfi_question_suggestions_resolved_by_hsa_id` | `rfi_question_suggestions` | `resolved_by_hsa_id` | Supports lookups by resolved_by_hsa_id |
+| `idx_rfi_question_version_requirement_packages_package_id` | `rfi_question_version_requirement_packages` | `requirement_package_id` | Supports lookups by requirement_package_id |
+| `idx_rfi_question_version_requirement_selection_questions_question_id` | `rfi_question_version_requirement_selection_questions` | `requirement_selection_question_id` | Supports lookups by requirement_selection_question_id |
+| `idx_rfi_question_version_requirements_requirement_id` | `rfi_question_version_requirements` | `requirement_id` | Supports lookups by requirement_id |
+| `idx_rfi_question_versions_created_by_hsa_id` | `rfi_question_versions` | `created_by_hsa_id` | Supports lookups by created_by_hsa_id |
+| `idx_rfi_questions_area_sort_order` | `rfi_questions` | `area_id, sort_order` | Supports lookups by area_id, sort_order |
+| `idx_rfi_questions_is_archived` | `rfi_questions` | `is_archived, archived_at` | Supports lookups by is_archived, archived_at |
+| `idx_specification_rfi_lists_locked_by_hsa_id` | `specification_rfi_lists` | `locked_by_hsa_id` | Supports lookups by locked_by_hsa_id |
+| `idx_specification_rfi_question_items_version_id` | `specification_rfi_question_items` | `rfi_question_version_id` | Supports lookups by rfi_question_version_id |
+| `idx_specification_rfi_question_items_changed_by_hsa_id` | `specification_rfi_question_items` | `changed_by_hsa_id` | Supports lookups by changed_by_hsa_id |
 <!-- markdownlint-enable MD013 -->
 
 ### Named Foreign Key Constraints
 
-Every foreign key is declared on TypeORM `@ManyToOne` /
-`@JoinColumn` decorators with an explicit
-`foreignKeyConstraintName` and explicit `onDelete` /
-`onUpdate` referential actions. Migration `0001`
-created the constraints, and migration `0003` made
-the `ON DELETE` / `ON UPDATE` clauses explicit on
-every constraint so the SQL emitted by the migration
-matches the entity intent. Default semantics for
-referential actions are `NO ACTION`.
-
-The drift guard in
-`tests/unit/entities-migration-fk-actions.test.ts`
-fails if any FK in the migration source does not emit
-both clauses or disagrees with the entity declaration.
-
-The following table lists every named FK constraint:
+Foreign keys are declared in TypeORM `EntitySchema` `relations` entries with
+explicit `joinColumn.name` and `joinColumn.foreignKeyConstraintName` values.
+Referential actions must match the migration SQL; `NO ACTION` prevents deletion
+or key changes while references remain. The table below records the named FK
+constraints and their referential actions:
 
 <!-- markdownlint-disable MD013 -->
 | Constraint Name | Table | Column(s) | References | On Delete | On Update |
@@ -4109,6 +4039,22 @@ The following table lists every named FK constraint:
 | `fk_specification_deviation_endings_agreement_item_id` | `specification_deviation_endings` | `agreement_item_id` | `specification_agreement_items.id` | NO ACTION | NO ACTION |
 | `fk_specification_deviation_endings_deviation_id` | `specification_deviation_endings` | `deviation_id` | `deviations.id` | NO ACTION | NO ACTION |
 | `fk_specification_deviation_endings_local_deviation_id` | `specification_deviation_endings` | `local_deviation_id` | `specification_local_requirement_deviations.id` | NO ACTION | NO ACTION |
+| `fk_rfi_question_sequences_area_id` | `rfi_question_sequences` | `area_id` | `requirement_areas.id` | CASCADE | NO ACTION |
+| `fk_rfi_question_suggestions_area_id` | `rfi_question_suggestions` | `area_id` | `requirement_areas.id` | NO ACTION | NO ACTION |
+| `fk_rfi_question_suggestions_rfi_question_id` | `rfi_question_suggestions` | `rfi_question_id` | `rfi_questions.id` | NO ACTION | NO ACTION |
+| `fk_rfi_question_suggestions_specification_id` | `rfi_question_suggestions` | `specification_id` | `requirements_specifications.id` | SET NULL | NO ACTION |
+| `fk_rfi_question_version_requirement_packages_rfi_question_version_id` | `rfi_question_version_requirement_packages` | `rfi_question_version_id` | `rfi_question_versions.id` | CASCADE | NO ACTION |
+| `fk_rfi_question_version_requirement_packages_requirement_package_id` | `rfi_question_version_requirement_packages` | `requirement_package_id` | `requirement_packages.id` | NO ACTION | NO ACTION |
+| `fk_rfi_question_version_requirement_selection_questions_rfi_question_version_id` | `rfi_question_version_requirement_selection_questions` | `rfi_question_version_id` | `rfi_question_versions.id` | CASCADE | NO ACTION |
+| `fk_rfi_question_version_requirement_selection_questions_requirement_selection_question_id` | `rfi_question_version_requirement_selection_questions` | `requirement_selection_question_id` | `requirement_selection_questions.id` | NO ACTION | NO ACTION |
+| `fk_rfi_question_version_requirements_rfi_question_version_id` | `rfi_question_version_requirements` | `rfi_question_version_id` | `rfi_question_versions.id` | CASCADE | NO ACTION |
+| `fk_rfi_question_version_requirements_requirement_id` | `rfi_question_version_requirements` | `requirement_id` | `requirements.id` | NO ACTION | NO ACTION |
+| `fk_rfi_question_versions_rfi_question_id` | `rfi_question_versions` | `rfi_question_id` | `rfi_questions.id` | CASCADE | NO ACTION |
+| `fk_rfi_questions_area_id` | `rfi_questions` | `area_id` | `requirement_areas.id` | NO ACTION | NO ACTION |
+| `fk_specification_rfi_lists_specification_id` | `specification_rfi_lists` | `specification_id` | `requirements_specifications.id` | CASCADE | NO ACTION |
+| `fk_specification_rfi_question_items_specification_id` | `specification_rfi_question_items` | `specification_id` | `requirements_specifications.id` | CASCADE | NO ACTION |
+| `fk_specification_rfi_question_items_rfi_question_id` | `specification_rfi_question_items` | `rfi_question_id` | `rfi_questions.id` | NO ACTION | NO ACTION |
+| `fk_specification_rfi_question_items_rfi_question_version_id` | `specification_rfi_question_items` | `rfi_question_version_id` | `rfi_question_versions.id` | NO ACTION | NO ACTION |
 <!-- markdownlint-enable MD013 -->
 
 ### Index Relationship Diagram
@@ -4117,6 +4063,34 @@ The following table lists every named FK constraint:
 <!-- markdownlint-disable MD013 -->
 ```mermaid
 graph LR
+    rfi_question_sequences[rfi_question_sequences]
+    rfi_question_sequences -->|area_id| requirement_areas[requirement_areas]
+    rfi_question_suggestions[rfi_question_suggestions]
+    rfi_question_suggestions -->|area_id| requirement_areas[requirement_areas]
+    rfi_question_suggestions -->|rfi_question_id| rfi_questions[rfi_questions]
+    rfi_question_suggestions -->|specification_id| requirements_specifications[requirements_specifications]
+    rfi_question_version_requirement_packages[rfi_question_version_requirement_packages]
+    rfi_question_version_requirement_packages -->|rfi_question_version_id| rfi_question_versions[rfi_question_versions]
+    rfi_question_version_requirement_packages -->|requirement_package_id| requirement_packages[requirement_packages]
+    rfi_question_version_requirement_selection_questions[rfi_question_version_requirement_selection_questions]
+    rfi_question_version_requirement_selection_questions -->|rfi_question_version_id| rfi_question_versions[rfi_question_versions]
+    rfi_question_version_requirement_selection_questions -->|requirement_selection_question_id| requirement_selection_questions[requirement_selection_questions]
+    rfi_question_version_requirements[rfi_question_version_requirements]
+    rfi_question_version_requirements -->|rfi_question_version_id| rfi_question_versions[rfi_question_versions]
+    rfi_question_version_requirements -->|requirement_id| requirements[requirements]
+    rfi_question_versions[rfi_question_versions]
+    rfi_question_versions -->|rfi_question_id| rfi_questions[rfi_questions]
+    rfi_questions[rfi_questions]
+    rfi_questions -->|area_id| requirement_areas[requirement_areas]
+    specification_rfi_assessments[specification_rfi_assessments]
+    specification_rfi_assessments -->|specification_id| requirements_specifications[requirements_specifications]
+    specification_rfi_assessments -->|rfi_question_version_id| rfi_question_versions[rfi_question_versions]
+    specification_rfi_lists[specification_rfi_lists]
+    specification_rfi_lists -->|specification_id| requirements_specifications[requirements_specifications]
+    specification_rfi_question_items[specification_rfi_question_items]
+    specification_rfi_question_items -->|specification_id| requirements_specifications[requirements_specifications]
+    specification_rfi_question_items -->|rfi_question_id| rfi_questions[rfi_questions]
+    specification_rfi_question_items -->|rfi_question_version_id| rfi_question_versions[rfi_question_versions]
     RFIASSESS[specification_rfi_assessments] -->|specification_id, id| RFISPEC[requirements_specifications]
     RFIASSESS -->|rfi_question_version_id| RFIVERSION[rfi_question_versions]
     RFIASSESS -->|created_by_hsa_id| RFIACTOR[Assessment author privacy lookup]
@@ -4433,7 +4407,7 @@ graph LR
 
 ## Database Roles
 
-Migration 0054 creates the custom `kravhantering_runtime` database role. The
+The application uses the custom `kravhantering_runtime` database role. The
 release-versioned manifest in
 [`typeorm/runtime-permission-manifest.mjs`](../../typeorm/runtime-permission-manifest.mjs)
 is authoritative for exact object, operation, and update-column grants. Future
@@ -4469,12 +4443,3 @@ lacks `kravhantering_runtime` membership and verifies the restricted permission
 contract. If the user belongs to either broad read/write role, reconciliation
 removes that membership after the custom contract verifies. It does not change
 the migration login's `db_owner` privileges.
-
-## Approval validity demo scenarios
-
-The `GILTIGHET` examples in specification 8 include dated and undated approvals,
-expired Avviken, verified follow-up, pending and rejected renewals, an expired
-replacement without fallback, and manual closure. `GILTIGHET-AVSLUT` preserves
-an ended agreement with unresolved historical use. These use separate local
-content identities and retain the existing fixture identifiers. Renewal and
-closure do not grant verification, extend dates or trigger retention.

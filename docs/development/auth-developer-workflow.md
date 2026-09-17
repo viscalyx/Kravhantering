@@ -1,45 +1,45 @@
 # Auth developer workflow
 
-This document covers how authentication works in local development and in
-tests. For the runtime architecture, see
+This document helps developers configure local authentication, refresh test
+identities, run authenticated requests, and diagnose sign-in failures. For the
+runtime architecture, see
 [auth-how-it-works.md](../security-privacy/auth-how-it-works.md). For the
 production target setup and IdP contract, see
 [oidc-identity-provider-integration.md](../integrations/oidc-identity-provider-integration.md).
 
 ## Auth is mandatory in every build target
 
-Authentication is always on. Every request hits the OIDC flow against
-the configured issuer (Keycloak in dev and the local-prod target — both
-point at the local Keycloak at `http://localhost:8080` — and the real
-OIDC provider in deployed environments). Identity is derived only from
+Authentication is always on for protected routes. Browser sign-in uses the
+configured issuer (local Keycloak at `http://localhost:8080` for dev and
+local-prod, and the configured OIDC provider in deployed environments).
+Subsequent browser requests validate the session cookie without repeating the
+OIDC flow. Signed-out page requests redirect to login; protected API requests
+return JSON with status `401`. Public routes such as the authentication
+endpoints and health probes remain available without a session.
+Identity is derived only from
 the verified iron-session cookie (browser flow) or a verified
 `Authorization: Bearer` JWT (MCP flow). `x-user-id` and
 `x-user-roles` request headers are not identity sources, and
 `proxy.ts` strips both headers from every inbound request before
 any handler runs.
 
-If the dev server cannot reach the IdP, requests fail loudly instead of
+If the dev server cannot reach the IdP, new sign-ins fail instead of
 falling back to an unauthenticated mode. Bring up Keycloak first with
 `npm run idp:up` (or via the devcontainer compose).
 
-Direct access to the Next.js development server keeps `GET /api/ready`
-available without a browser session. Production and prodlike Nginx edges expose
-it only to configured probe networks. It validates runtime configuration,
-performs read-only SQL Server and schema probes, checks temporary storage, and
-checks OIDC discovery with a short timeout. Concurrent requests share one
-evaluation, and both outcomes are cached internally for five seconds. The
-response is deliberately terse: `{ "status": "ready" }` on success or
-`{ "status": "not_ready" }` on failure. Detailed dependency identifiers are
-written only to sanitized server logs.
+For a quick dependency check, request `GET /api/ready` directly from the local
+Next.js server. It returns `{ "status": "ready" }` or
+`{ "status": "not_ready" }`; check server logs for failure details.
 
 ## Local IdP (Keycloak)
 
 <!-- cSpell:ignore socat -->
 
 Both setups use the same Keycloak image (`quay.io/keycloak/keycloak:26.7.3-0`)
-and import the realm config from `dev/keycloak/realm-kravhantering-dev.json`
-on every start. The JSON file is the source of truth — changes made via
-the admin UI on `http://localhost:8080` are NOT persisted across restarts.
+and import `dev/keycloak/realm-kravhantering-dev.json` when the realm does not
+already exist. The JSON file is the source of truth. Admin UI edits survive a
+container restart but are lost when the container is recreated; use the reset
+steps below to import committed realm changes.
 
 Keycloak publishes one port:
 
@@ -52,10 +52,6 @@ Keycloak publishes one port:
   (Keycloak's default `sslRequired: external` would refuse HTTP from
   non-loopback clients — the socat hop makes Keycloak see the request
   coming from the app container's docker IP, not loopback). Dev only.
-
-`start-dev` does not enable HTTPS in Keycloak 26 unless you provide
-certificates, which we don't ship. The relax-on-startup approach above
-keeps the dev setup to a single port with no certificate friction.
 
 Keycloak Admin UI console credentials default to `admin` / `admin`. Outside
 the devcontainer they come from `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD`
@@ -94,12 +90,12 @@ the `app` service still uses
 because Keycloak takes ~30s to boot. OIDC discovery happens lazily on
 first sign-in, so the devcontainer attach is not blocked.
 
-Both port `3000` (Next.js) and port `8080` (Keycloak) are published to
-the host by the compose file and additionally listed in
-`forwardPorts` in `devcontainer.json`, so a host browser can reach
-`http://localhost:3000` and follow the OIDC redirect chain through
-`http://localhost:8080` even when the devcontainer is remote (Codespaces
-or a remote SSH host).
+Port `3000` (Next.js) is forwarded by VS Code through `forwardPorts` in
+`devcontainer.json`; the app service does not publish it through Compose.
+Keycloak publishes port `8080` and also has a VS Code forward. Ensure both
+are reachable at `localhost` on the browser's machine, including when using
+a remote devcontainer: the committed client registrations expect
+`http://localhost:3000` and `http://localhost:8080`.
 
 Inside the `app` container, however, `localhost:8080` does **not** reach
 Keycloak — Keycloak runs in the sibling `idp` container and is reachable
@@ -121,10 +117,9 @@ idempotent helper script:
 bash .devcontainer/start-keycloak-forwarder.sh
 ```
 
-The script logs to `/tmp/socat-keycloak.log` and exits quickly if the
-forwarder is already running. If `socat` itself is missing (older
-devcontainer image), rebuild the container ("Dev Containers: Rebuild
-Container") so the updated `.devcontainer/Dockerfile` installs it.
+The forwarder logs to `/tmp/socat-keycloak-http.log`. The script reuses a
+running forwarder. If `socat` is missing, rebuild the container with
+"Dev Containers: Rebuild Container".
 
 If you want to bring Keycloak up explicitly without restarting the
 devcontainer:
@@ -145,7 +140,8 @@ In the devcontainer, the `app` service receives
 role-specific client certificate, key, CA, and `kong` server name. The app
 posts to the internal Kong route, Kong routes to
 `hsa-person-lookup-adapter`, and the adapter calls the HSA directory mock SOAP
-`GetHsaPerson` endpoint with strict mTLS. No Kong ports are forwarded to the host.
+`GetHsaPerson` endpoint with strict mTLS. No Kong ports are forwarded to the
+host.
 
 Use these checks from the workspace when HSA-id verification behaves
 unexpectedly:
@@ -167,18 +163,8 @@ node scripts/devcontainer/hsa-mock.mjs rotate app-to-kong
 node scripts/devcontainer/hsa-mock.mjs rollback-verify app-to-kong
 ```
 
-Ensure stops the endpoint processes before inspecting the persistent
-generation. It restarts and authenticates reusable material without copying it.
-For automatic renewal it deploys the promoted generation, force-recreates the
-endpoints, authenticates the complete chain, and finalizes. A failed
-authentication restores and authenticates the prior generation.
-
-The same lifecycle is available as a persistent local demo with
-`npm run hsa:mtls:ensure`, `npm run hsa:mtls:verify`,
-`npm run hsa:mtls:inspect`, `npm run hsa:mtls:rotate -- <trust-domain>`, and
-`npm run hsa:mtls:rollback-verify -- <trust-domain>`. Rotation authenticates
-the complete chain before finalization; rollback verification injects a failed
-post-promotion check, restores the prior generation, and authenticates it.
+For certificate inspection, rotation and rollback behavior, see
+[HSA person lookup integration](../integrations/hsa-person-lookup-integration.md#rotation-and-rollback).
 
 Host-based development with only `npm run idp:up` starts Keycloak but not
 Kong, the adapter or the HSA directory mock. To test responsibility-assignment
@@ -224,8 +210,8 @@ npm run idp:reset
 
 If you use the devcontainer-managed IdP, `npm run idp:reset` targets the
 wrong compose project. Recreate the devcontainer `idp` service from the
-**host** instead so it boots with a fresh in-memory database and re-imports
-the JSON:
+**host** instead so it boots with a fresh container-local database and
+re-imports the JSON:
 
 <!-- markdownlint-disable MD013 -->
 ```sh
@@ -245,8 +231,8 @@ npm run idp:reset:elevated
 Run this on macOS/Windows/Linux outside the devcontainer — the
 devcontainer itself does not have access to the host Docker daemon.
 The compose file does not mount a Keycloak data volume, so recreation
-is non-destructive (the JSON is the source of truth). The standalone
-`npm run idp:reset` command waits for Keycloak readiness before returning;
+discards local Admin UI edits and imports the JSON source of truth. The
+standalone `npm run idp:reset` command waits for Keycloak readiness before returning;
 devcontainer-specific recreate commands may still return before Keycloak
 is ready for sign-in.
 
@@ -267,22 +253,9 @@ them:
 <!-- markdownlint-disable MD013 -->
 ```sh
 rm -f test-results/auth/admin.json test-results/auth/admin-only.json
-npm run test:integration -- tests/integration/admin-entrypoint.spec.ts
+npm run test:integration -- tests/integration/admin/entrypoint.spec.ts
 ```
 <!-- markdownlint-enable MD013 -->
-
-### Full-scan temporary realm
-
-The full active ZAP workflow does not edit
-`dev/keycloak/realm-kravhantering-dev.json`. It generates a temporary realm
-import under `test-results/security-dast-full/keycloak` by running
-`scripts/security/create-full-scan-keycloak-realm.mjs`, then starts Keycloak
-with a compose override that imports `kravhantering-full-scan`.
-
-That realm contains a single throwaway browser user, `full.scan`, with the
-local `devpass` password and the roles needed for broad DAST coverage. The app
-is pointed at it only for the full-scan workflow through
-`AUTH_OIDC_ISSUER_URL=http://localhost:8080/realms/kravhantering-full-scan`.
 
 ### Prodlike local client (`kravhantering-prodlike`)
 
@@ -335,55 +308,12 @@ clients live in the same realm and share the same protocol mappers.
 
 ### Container stack realm (`kravhantering-test`)
 
-The production-like container stack has its own Keycloak realm file:
-[`containers/keycloak/realm-kravhantering-test.json`](../../containers/keycloak/realm-kravhantering-test.json).
-It is not generated from, or reused from,
-[`dev/keycloak/realm-kravhantering-dev.json`](../../dev/keycloak/realm-kravhantering-dev.json).
-
-The realm is intended for nginx-backed container smoke tests and local
-test runs. It targets this public issuer URL:
-
-```text
-https://kravhantering.test/auth/realms/kravhantering-test
-```
-
-The matching app container values are:
-
-```dotenv
-AUTH_OIDC_ISSUER_URL=https://kravhantering.test/auth/realms/kravhantering-test
-AUTH_OIDC_CLIENT_ID=kravhantering-app
-AUTH_OIDC_CLIENT_SECRET=container-demo-app-secret-not-for-production
-AUTH_OIDC_REDIRECT_URI=https://kravhantering.test/api/auth/callback
-AUTH_OIDC_POST_LOGOUT_REDIRECT_URI=https://kravhantering.test/
-AUTH_OIDC_API_AUDIENCE=kravhantering-app
-```
-
-Keycloak itself should use `KC_HOSTNAME=https://kravhantering.test/auth` and
-`KC_PROXY_HEADERS=xforwarded`, matching the static nginx config under
-`containers/nginx/`.
-
-The container stack helpers in
-[`containers/compose/README.md`](../../containers/compose/README.md) generate the
-runtime Compose file and wait for this issuer through nginx:
-
-```bash
-NODE_EXTRA_CA_CERTS=tmp/container-tls/ca.crt npm run container:wait -- keycloak
-```
-
-The container realm contains only the clients, roles, claim mappers, and
-minimal users needed for the container stack:
-
-<!-- markdownlint-disable MD013 -->
-| Username | Role(s) | `employeeHsaId` | Password |
-| --- | --- | --- | --- |
-| `release-smoke-user` | _(none)_ | `SE5560000001-smoke1` | `release-smoke-user-not-for-production` |
-| `release-smoke-admin` | `Admin` | `SE5560000001-smoke2` | `release-smoke-admin-not-for-production` |
-<!-- markdownlint-enable MD013 -->
-
-The committed client secrets and smoke-user passwords are public demo values.
-They are unsafe for exposed operation and must be replaced with runtime
-secrets before any environment is reachable outside a local or CI smoke-test
-context.
+Container smoke tests use a separate realm, `kravhantering-test`, through the
+HTTPS issuer `https://kravhantering.test/auth/realms/kravhantering-test`.
+The local dev users and client secrets above do not apply to that stack.
+Follow the [container stack workflow](../../containers/compose/README.md) for
+setup. Its demo users and credentials are defined in
+[the container realm](../../containers/keycloak/realm-kravhantering-test.json).
 
 ### Roles claim
 
@@ -407,13 +337,9 @@ token and userinfo response. The value is sourced from each user's
 - Maximum length: 31 characters.
 - Examples: `SE5560000001-1003`, `NO5560000001-1003`.
 
-Login is rejected with 401 when the claim is missing or fails this
-check.
-
-The production Keycloak realm template also declares `hsaId` as a managed
-user-profile attribute with administrator view/edit permissions. That keeps the
-attribute visible in newer Keycloak admin consoles and aligns the stored user
-attribute with the `employeeHsaId` protocol mapper.
+Login is rejected when the claim is missing or fails this check. JSON callback
+clients receive `401`; browser callbacks redirect to `/auth/error` with
+`hsa_id_missing` or `hsa_id_invalid`.
 
 ### MCP service-account HSA-id
 
@@ -424,9 +350,8 @@ service-account flow. This gives MCP write workflows a real-format HSA-id
 for actor stamping in requirement history, deviations, and improvement
 suggestions.
 
-For local and prodlike Keycloak realms that were imported before that mapper
-existed, reset the IdP so it imports the current realm JSON. The application
-does not compensate for a stale realm by deriving a replacement identity from
+If a local MCP token lacks this claim, reset the IdP to import the current
+realm JSON. The application does not derive a replacement identity from
 `client_id` or `azp`; MCP tokens must carry a real-format `employeeHsaId`.
 
 ### No refresh tokens
@@ -471,19 +396,15 @@ section above.
 
 ## Environment variable reference
 
-All `AUTH_*` variables are read once at process start by
-[lib/auth/config.ts](../../lib/auth/config.ts) and frozen in an `authConfig`
-singleton — runtime mutation has no effect. Per environment they come from
-different sources:
+Runtime auth variables are validated and cached on first use by
+[lib/auth/config.ts](../../lib/auth/config.ts). Restart the application after
+changing them. Per environment they come from different sources:
 
 - **Local dev**: `.env.development.local` (and the defaults shipped in
   `.env.example`).
-- **CI / tests**: injected by the test harness (`tests/support/oidc-mock.ts`
-  generates a per-worker issuer + client and writes the matching values).
-- **OpenShift dev/test/prod**: split between a `kravhantering-auth` Secret
-  (anything sensitive) and a ConfigMap (everything else). See
-  [oidc-identity-provider-integration.md](../integrations/oidc-identity-provider-integration.md)
-  for the committed production mapping.
+- **Playwright / CI**: the runner and workflow supply environment values for
+  the real local Keycloak realm; prodlike uses `.env.prodlike`.
+  Auth unit tests supply isolated environment values and mocks.
 
 Committed `dev-only`, `prodlike`, `container-demo`, and `replace-with` values
 are non-production fixtures. Production builds and the application container
@@ -500,10 +421,10 @@ envs at the per-env OIDC issuer and client registration.
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
 | `AUTH_OIDC_ISSUER_URL` | yes | _(none)_ | Issuer base URL. The app appends `/.well-known/openid-configuration` to discover the authorization, token, JWKS, and end-session endpoints. Must exactly match the `iss` claim the IdP emits — trailing slash matters. |
-| `AUTH_OIDC_CLIENT_ID` | yes | `kravhantering-app` (dev) | Confidential web-client id registered in the IdP. In OpenShift this comes from the `kravhantering-auth` Secret in the per-environment production setup. |
+| `AUTH_OIDC_CLIENT_ID` | yes | _(none)_ | Confidential web-client id registered in the IdP; set `kravhantering-app` for local dev. |
 | `AUTH_OIDC_CLIENT_SECRET` | yes | _(none)_ | Web-client secret. **Secret**: never commit a real value, never log. Local dev uses the placeholder `dev-only-app-secret` baked into the Keycloak realm JSON. |
-| `AUTH_OIDC_REDIRECT_URI` | yes | `http://localhost:3000/api/auth/callback` | Full callback URL, scheme + host + path. Must be an absolute `http://` or `https://` URL and **must be pre-registered in the IdP**; mismatches surface as `redirect_uri_mismatch` from the configured OIDC provider. This URL's origin is also the canonical origin for CSRF checks; forwarded headers do not override it. Re-register on every OpenShift Route hostname change (blue/green cutover). |
-| `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` | yes | `http://localhost:3000/` | Where the IdP sends the browser after `end_session_endpoint`. Must be an absolute `http://` or `https://` URL and also pre-registered per env. |
+| `AUTH_OIDC_REDIRECT_URI` | yes | _(none)_ | Full callback URL, scheme + host + path; local dev uses `http://localhost:3000/api/auth/callback`. Must be an absolute `http://` or `https://` URL and **must be pre-registered in the IdP**; mismatches produce a provider redirect-URI error. This URL's origin is also the canonical origin for CSRF checks; forwarded headers do not override it. |
+| `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` | yes | _(none)_ | Where the IdP sends the browser after `end_session_endpoint`; local dev uses `http://localhost:3000/`. Must be an absolute `http://` or `https://` URL and also pre-registered per env. |
 | `AUTH_OIDC_SCOPES` | no | `openid profile email` | Space-separated. `openid` is mandatory; `profile` carries `name` / `given_name` / `family_name`; `email` carries `email` / `email_verified`. Add custom scopes if your OIDC provider requires them to release the `roles` claim. |
 | `AUTH_OIDC_ROLES_CLAIM` | no | `roles` | Claim name the parser in [lib/auth/roles.ts](../../lib/auth/roles.ts) reads as a JSON array of exact canonical role strings. Override only if the IdP cannot emit `roles` and the committed auth contract has been updated accordingly. |
 | `AUTH_OIDC_API_AUDIENCE` | no | falls back to `AUTH_OIDC_CLIENT_ID` | Audience expected on **access tokens** validated by the MCP path ([lib/auth/mcp-token.ts](../../lib/auth/mcp-token.ts)). Set explicitly when the MCP client receives tokens scoped to a different `aud` than the web client. |
@@ -534,7 +455,7 @@ lifetime.
 <!-- markdownlint-disable MD013 -->
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
-| `AUTH_SESSION_COOKIE_PASSWORD` | yes | _(none)_ | Encryption + signing key for the session cookie. **Must be ≥ 32 characters.** Generate with `openssl rand -base64 48`. **Secret**: per env, lives in the OpenShift Secret. Rotating invalidates every live session — schedule during low traffic. |
+| `AUTH_SESSION_COOKIE_PASSWORD` | yes | _(none)_ | Encryption + signing key for the session cookie. **Must be ≥ 32 characters.** Generate with `openssl rand -base64 48`. **Secret**: changing it invalidates existing sessions. |
 | `AUTH_SESSION_COOKIE_NAME` | no | `kravhantering_session` | Base name; secure builds add `__Host-` unless already present. Override for another deployment on the same host. |
 | `AUTH_SESSION_TTL_SECONDS` | no | `28800` (8 h) | Absolute encrypted-cookie lifetime. The cached access-token expiry normally forces a new sign-in sooner. |
 <!-- markdownlint-enable MD013 -->
@@ -577,25 +498,25 @@ standalone Next.js deployments this prevents failed callbacks from redirecting
 the browser to an internal bind host such as `https://0.0.0.0:3000`.
 
 In `local-prod` and `prod`, cookies are created with the `Secure` flag. On a
-non-`localhost` test host, running the app over plain `http://` means the browser
-will not return the login-state cookie, so the login fails at callback time.
+non-`localhost` test host, running the app over plain `http://` means the
+browser will not return the login-state cookie, so the login fails at callback time.
 Fix the environment rather than weakening cookie flags: terminate TLS on the
 public host, make `AUTH_OIDC_REDIRECT_URI` use that exact `https://` callback
 URL, and ensure the IdP client registration uses the same callback host.
 
 ### Session and token timeouts
 
-Two systems control how long a sign-in stays valid: this app (cookie
-lifetime) and the IdP (SSO session + token lifespans). They are
-independent — the shortest one wins.
+The app checks the cookie lifetime and the recorded access-token expiry.
+The IdP's SSO lifetime determines whether the next sign-in can complete
+without asking for credentials again.
 
 **App side (this repo):**
 
 <!-- markdownlint-disable MD013 -->
 | Knob | Where | Default | Meaning |
 | --- | --- | --- | --- |
-| `AUTH_SESSION_TTL_SECONDS` | env → [lib/auth/config.ts](../../lib/auth/config.ts), [lib/auth/session.ts](../../lib/auth/session.ts) | `28800` (8 h) | Absolute lifetime of the encrypted `iron-session` cookie. **Does not slide on activity.** If the cookie expires first, the next request hits `/api/auth/login` and is silently re-authenticated if the IdP SSO session is still alive; otherwise the user sees the IdP login page. |
-| `session.accessTokenExpiresAt` | written in [app/api/auth/callback/route.ts](../../app/api/auth/callback/route.ts) | `tokens.expiresIn()` from the IdP, falling back to `AUTH_SESSION_TTL_SECONDS` | Active browser-session validity boundary. The client warns two minutes before this timestamp and redirects through `/api/auth/login` at expiry. The proxy also treats cookies past this timestamp as signed out. |
+| `AUTH_SESSION_TTL_SECONDS` | env → [lib/auth/config.ts](../../lib/auth/config.ts), [lib/auth/session.ts](../../lib/auth/session.ts) | `28800` (8 h) | Absolute lifetime of the encrypted `iron-session` cookie. **Does not slide on activity.** If the cookie expires first, the next protected page request redirects to `/api/auth/login` and is silently re-authenticated if the IdP SSO session is still alive; otherwise the user sees the IdP login page. |
+| `session.accessTokenExpiresAt` | written in [app/api/auth/callback/route.ts](../../app/api/auth/callback/route.ts) | `tokens.expiresIn()` from the IdP, falling back to `300` seconds | Active browser-session validity boundary. The client warns two minutes before this timestamp and redirects through `/api/auth/login` at expiry. The proxy also treats cookies past this timestamp as signed out. |
 <!-- markdownlint-enable MD013 -->
 
 The app does **not** implement an idle/inactivity timeout. There is no
@@ -626,64 +547,26 @@ Production values are set per environment by ops on the real IdP.
   through `/api/auth/login`, which silently re-auths against the still-valid
   SSO session at the IdP and writes a fresh cookie. There is no in-process
   refresh-token round-trip.
-- Idle user past 8 h: the local cookie and IdP SSO session have both
-  expired → full IdP login on next request.
-- To enforce a shorter inactivity window (e.g. 30 min idle), lower
-  `ssoSessionIdleTimeout` on the IdP and lower
-  `AUTH_SESSION_TTL_SECONDS` to a comparable value. There is no
-  app-level idle timer to configure.
-- Immediate IdP-side invalidation before `accessTokenExpiresAt` is a later
-  provider-contract phase. Prefer production IdP front-channel logout,
-  back-channel logout, or equivalent session notification hooks; do not store
-  browser access tokens just to introspect them periodically. If the production
-  IdP cannot support those hooks, reduce token/session lifetimes to bound stale
-  access.
+- Returning after the browser has been closed for more than 8 h requires
+  a full IdP login with the default local lifetimes.
+- IdP-side session invalidation does not immediately invalidate the app cookie.
+  Account for the remaining access-token lifetime when testing revocation.
 
 ### Build-target auth constants
 
 <!-- markdownlint-disable MD013 -->
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
-| `AUTH_OIDC_ALLOW_INSECURE_ISSUER` | no | `false` | Build-target constant (not a runtime env var). Both the `dev` and `local-prod` build targets set it to `true` so the local Keycloak on `http://localhost:8080` works; the `prod` build target hard-codes it to `false`. |
+| `ALLOW_INSECURE_OIDC_ISSUER` | no | build target | Build-target constant (not a runtime env var). Both the `dev` and `local-prod` build targets set it to `true` so the local Keycloak on `http://localhost:8080` works; the `prod` build target hard-codes it to `false`. |
 <!-- markdownlint-enable MD013 -->
-
-### Sensitive vs non-sensitive
-
-For OpenShift, this is the split between Secret and ConfigMap:
-
-- **Secret (`kravhantering-auth`)**: `AUTH_OIDC_CLIENT_ID`,
-  `AUTH_OIDC_CLIENT_SECRET`, `AUTH_SESSION_COOKIE_PASSWORD`.
-- **ConfigMap**: `AUTH_OIDC_ISSUER_URL`, `AUTH_OIDC_REDIRECT_URI`,
-  `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI`, `AUTH_OIDC_SCOPES`,
-  `AUTH_OIDC_ROLES_CLAIM`, `AUTH_OIDC_API_AUDIENCE`,
-  `AUTH_SESSION_COOKIE_NAME`, `AUTH_SESSION_TTL_SECONDS`, `MCP_CLIENT_ID`,
-  `AUTH_MCP_REQUIRED_SCOPES`, `AUTH_MCP_ROLES_CLAIM`, and
-  `AUTH_MCP_TOKEN_MAX_AGE_SECONDS`.
-
-`AUTH_OIDC_CLIENT_ID` is technically not secret (it's quoted in every
-authorization request), but it's grouped with the secret because ops
-hands the id and secret over together per env.
 
 ## Tests
 
 ### Integration-test CI dependency
 
-The GitHub Actions integration-test workflow in
-[`.github/workflows/integration-tests.yml`](../../.github/workflows/integration-tests.yml)
-brings up a local Keycloak realm before running Playwright. The
-`Dev Server Smoke (Developer Mode)` job runs a focused dev-server smoke
-through `npm run test:integration`, while
-`Pruned Runtime Contract` runs five fixed specifications (17 tests) through
-`npm run test:integration:prodlike`. Its standalone server is staged outside
-repository dependency ancestry; Playwright retains full dependencies. Only
-admin and no-role stored sessions are prepared for that contract.
-`Browser Functional Integration` runs the remaining browser journeys through
-`npm run test:integration`, in sequential development-server chunks with a
-shared seed and a process restart between chunks. Failed chunks do not suppress
-later results. Both jobs use `npm run idp:up` and `npm run idp:down`; startup
-waits for OIDC discovery and JWKS. See
-[CI integration ownership](ci-integration-ownership.md) for the complete risk
-allocation and required branch-protection contexts.
+CI starts the same local Keycloak realm before running browser tests. See
+[CI integration ownership](ci-integration-ownership.md) for job selection and
+coverage responsibilities.
 
 Because CI imports
 [`dev/keycloak/realm-kravhantering-dev.json`](../../dev/keycloak/realm-kravhantering-dev.json),
@@ -709,8 +592,8 @@ Playwright integration tests run against the real Keycloak. The shared
 stores the resulting iron-session cookie under `test-results/auth/<role>.json`.
 Every spec then loads that storageState by default (configured in
 `playwright.config.ts` and `playwright.prodlike.config.ts`). The dedicated
-`tests/integration/auth-login.spec.ts` exercises the full redirect chain
-without the storageState fixture.
+`tests/integration/authentication/login.spec.ts` exercises the full redirect
+chain without the storageState fixture.
 
 When `PLAYWRIGHT_SKIP_WEBSERVER` is set (Playwright will not boot a web
 server, you point the suite at an already-running app), `globalSetup`
@@ -719,15 +602,19 @@ skips the Keycloak login entirely and reuses the cached cookies in
 fast with an explicit message naming the missing file(s); seed the
 cache by running Playwright once normally first (so `globalSetup` can
 log in against the local IdP via `npm run idp:up`) and then re-run with
-`PLAYWRIGHT_SKIP_WEBSERVER=1`.
+`PLAYWRIGHT_SKIP_WEBSERVER=1`. Existing files are checked for presence, not
+session validity. After expiry, a realm reset, or a cookie configuration change,
+regenerate them. To log in against an intentionally managed running app, set
+`PLAYWRIGHT_SKIP_WEBSERVER=1`, `PLAYWRIGHT_FORCE_AUTH_SETUP=1`, and
+`PLAYWRIGHT_BASE_URL` to that app's origin. The dev and prodlike runners share
+these file paths, so regenerate sessions when switching targets.
 
 ## Authenticated `curl` against the dev server
 
-The OIDC redirect chain makes plain `curl http://localhost:3000/...`
-useless for any protected route — the proxy always returns `302
-/api/auth/login`. Use the helper at `scripts/dev-login.mjs` (or the
-`scripts/dev-curl.sh` wrapper) to log in once via the dev Keycloak realm
-and reuse the resulting cookie jar:
+Unauthenticated requests to protected pages return `302` to `/api/auth/login`;
+protected APIs return JSON with status `401`. Use the helper at
+`scripts/dev-login.mjs` (or the `scripts/dev-curl.sh` wrapper) to log in once
+via the dev Keycloak realm and reuse the resulting cookie jar:
 
 <!-- markdownlint-disable MD013 -->
 ```sh
@@ -738,8 +625,8 @@ node scripts/dev-login.mjs
 
 # Convenience wrapper: logs in if needed, then runs curl with cookies
 # attached. Bare paths are resolved against $DEV_LOGIN_BASE_URL.
-scripts/dev-curl.sh -s /api/auth/me
-scripts/dev-curl.sh -i /sv/requirements/IDN0001/4
+scripts/dev-curl.sh /api/auth/me -s
+scripts/dev-curl.sh /sv/requirements/IDN0001/4 -i
 
 # Switch users / base URL via env vars.
 DEV_LOGIN_USER=rita.reviewer scripts/dev-curl.sh /sv/requirements
@@ -748,24 +635,37 @@ DEV_LOGIN_BASE_URL=http://localhost:3000 scripts/dev-curl.sh /api/auth/me
 <!-- markdownlint-enable MD013 -->
 
 The cookie jar is written under `.auth/` (gitignored) with mode `0600`.
-Set `DEV_LOGIN_DEBUG=1` to trace the OIDC redirect chain on stderr.
+Put a bare path before curl options, as above; use a full URL if placing the
+URL after an option. For mutating requests, supply both `Origin` matching the
+origin of `AUTH_OIDC_REDIRECT_URI` (for example, `http://localhost:3000`) and
+`X-Requested-With: XMLHttpRequest`; the wrapper adds cookies but does not add
+the CSRF headers.
 
-## Inspecting tokens
+Set `DEV_LOGIN_DEBUG=1` to trace the OIDC redirect chain on stderr. Debug
+output includes cookies and redirect URLs with authentication parameters;
+keep it local and redact it before sharing.
+
+## Inspecting the signed-in identity
 
 After signing in via `http://localhost:3000/api/auth/login`, the session
-cookie holds an encrypted projection of the validated claims (not the raw
-token). To see what the IdP issued, use Keycloak's account console at
-`http://localhost:8080/realms/kravhantering-dev/account` or hit the
-discovery URL above and exchange a code manually.
+cookie holds an encrypted projection of validated claims and may retain the
+ID token for logout when it fits the cookie budget. It contains no access or
+refresh token. Inspect the application-visible identity with:
+
+```sh
+scripts/dev-curl.sh /api/auth/me -s
+```
+
+The response exposes `sub`, `hsaId`, names, roles, and `expiresAt`; email is
+present only when verified by the IdP. Raw tokens and assurance claims such as
+`acr` are not returned. Compare these fields with the seeded user and realm
+mappers when diagnosing identity or role problems.
 
 ## Tailing the security audit stream
 
-Security events (`auth.login.succeeded`, `auth.login.failed`, `auth.logout`,
-`auth.session.rejected`, `auth.token.rejected`, `auth.mcp.token.accepted`,
-`auth.roles.changed`, `auth.csrf.rejected`, `auth.authorization.denied`, and
-`requirements.sensitive_mutation.succeeded`) and AI safety metadata events are
-emitted as single-line JSON to `console.info` and tagged with
-`"channel":"security-audit"`. To watch them locally:
+Authentication failures and other security events are emitted as single-line
+JSON to `console.info`, tagged with `"channel":"security-audit"`. To watch
+them locally:
 
 ```bash
 npm run dev | grep '"channel":"security-audit"' | jq .
@@ -782,49 +682,22 @@ Use `jq 'select(.event=="auth.login.failed")'` to filter by event, or
 `select(.outcome=="failure")` to surface only rejections. Tokens, PKCE
 verifiers, `state`, `nonce`, and `code` values are stripped before emit.
 
-There is no raw AI forensic stdout channel. Time-limited AI evidence capture
-uses the isolated SQL tables and the protected
-`/api/admin/ai-forensic-captures` workflow. Local diagnosis should inspect the
-metadata-only `security-audit` lifecycle events and use the requester/approver
-evidence read endpoint only after the capture has stopped.
-
-When the trusted edge supplies a valid `X-Kravhantering-Client-IP` header,
-audit events may include `request.ip`. The application ignores raw forwarding
-headers; see
-[Access Logging and Client IP Trust](../operations/access-log-and-client-ip-trust.md)
-for the deployment boundary.
-
-## Single-node container identity profile
-
-For disposable single-node Quadlet tests, explicitly select
-`IDENTITY_PROVIDER_MODE=bundled` in `release.env` and
-`KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=prodlike` in `app.env`.
-An explicitly identified `staging` environment also permits `bundled`.
-The production smoke setup supplies `prodlike` deliberately; `NODE_ENV=test`
-alone does not permit the convenience profile. Production requires `external`
-or `hardened-bundled`. Local dev and app-node authentication remain unchanged.
-
-The release smoke repeats fresh browser sign-in after switching to
-`hardened-bundled`, alongside public administration denial and management
-mTLS checks. Record live evidence separately from renderer tests; see
-[Release smoke checks](../../tests/release-smoke/release-smoke.md#identity-profile-deployment-checks).
-
 ## Pre-prod smoke test
 
 Before any first cutover to a deployed environment, run a manual smoke
 test against the real deployed OIDC provider in a dev or pre-prod
 environment. The in-process mock and Keycloak both implement the spec but
 cannot surface provider-specific quirks (claim format, custom `acr_values`,
-end-session parameters, case
-sensitivity in `iss`).
+end-session parameters, case sensitivity in `iss`).
 
 1. Sign in interactively and complete the callback round-trip successfully.
    Confirm the browser lands on the expected post-login page without callback
    errors.
 2. Call `/api/auth/me` with the signed-in session and verify the returned user
    data matches the expected claims.
-   Check `sub`, `employeeHsaId`-derived fields, role claims, and any expected
-   `acr_values` formatting from the deployed OIDC provider.
+   Check `sub`, `hsaId` (derived from `employeeHsaId`), names, and roles.
+   Verify any required authentication assurance separately with the provider;
+   `/api/auth/me` does not expose `acr` or `acr_values`.
 3. Open a protected page while signed out and verify the browser is redirected
    to the login flow, then back to the original page after authentication.
 4. Call a protected API without a valid session and verify it returns `401`
@@ -832,6 +705,7 @@ sensitivity in `iss`).
 5. Trigger logout and verify both the local session and the IdP session end as
    expected.
    Confirm the post-logout redirect lands on the configured return URL.
-6. Exercise the MCP bearer-token flow end to end.
-   Verify token issuance, issuer/audience values, and successful access to an
-   MCP-protected endpoint with the issued token.
+6. If MCP is enabled, exercise the service-token flow end to end.
+   Verify token issuance, issuer/audience, `client_id`, scopes, token lifetime,
+   `employeeHsaId`, and a successful call to `/api/mcp`. If MCP is disabled,
+   verify `/api/mcp` returns `404`.

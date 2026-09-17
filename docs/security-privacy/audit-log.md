@@ -1,5 +1,8 @@
 # Application Action Log
 
+This guide helps administrators and security reviewers interpret, filter, and
+export application action evidence and understand its privacy boundaries.
+
 The application action log is a database-backed record of successful
 state-changing actions and authorization denials. It complements, but does not
 replace, the platform `security-audit` JSON log stream.
@@ -11,9 +14,9 @@ requirement create/edit/transition, specification/package changes, deviation
 and improvement-suggestion decisions, Admin taxonomy and status-catalog
 updates, privacy erasure execution, archiving execution, access-review
 decisions, and authorization denials. System-derived cleanup of
-requirement-selection answer
-links is also logged when requirement package archiving/deletion, retention, or
-requirement publication-state changes remove obsolete links.
+requirement-selection answer links is also logged when requirement package
+archiving/deletion, retention, or requirement publication-state changes remove
+obsolete links.
 
 The action log intentionally excludes normal browsing, list/detail reads, report
 and CSV exports of business artifacts, action-log reads, action-log CSV export,
@@ -23,6 +26,7 @@ and auth/session events.
 
 Each row contains:
 
+- event identity and time: `id`, `occurred_at`
 - actor snapshot: `actor_hsa_id`, `actor_display_name`, `actor_kind`,
   `actor_client_id`
 - action and target: dot-separated `action`, `target_kind`, `target_id`,
@@ -38,29 +42,17 @@ tokens, secrets, or submitted free text.
 
 Requirement-selection cleanup events use action
 `requirement_selection_answer.cleanup`, actor kind `system`, and target kind
-`requirement_selection_answer`. Their details contain only link counts,
-affected answer IDs, affected package/requirement IDs, source action, and route
-or retention metadata. They reuse the surrounding request and correlation IDs
-when cleanup happens inside a user-triggered mutation.
-
-Top-level requirements specification create, update, and delete actions use
-`specification.create`, `specification.update`, and `specification.delete`.
-Their target kind is `RequirementsSpecification`, target ID is the numeric
-database ID, and target unique ID is the specification code. Create and delete
-details contain only the specification lifecycle-status ID. Update details
-contain sorted changed-field names and, when the lifecycle status changes, the
-previous and new lifecycle-status IDs. Names, business-needs text, HSA-id
-values, display names, and full before/after payloads are excluded.
+`requirement_selection_answer`. When triggered by a user mutation, they share
+its request and correlation IDs, so the cleanup can be traced to that action.
 
 ## Failure Mode
 
 Action-log writes are fail-closed. If an action-log insert fails, the mutation
 or denial response fails instead of silently losing the action-log row. Where
 the underlying service owns a database transaction, the action-audit insert is
-executed in that transaction. Requirements specification create, update, and
-delete always persist the business mutation and its success evidence in one
-transaction. Update and delete lock and snapshot the target before changing it,
-so a missing target produces neither a business mutation nor a success row.
+executed in that transaction. A failed response alone does not guarantee that
+an earlier business write outside that transaction was rolled back; check the
+target before retrying.
 
 ## Admin Access
 
@@ -75,10 +67,13 @@ Supported filters:
 - `target_id`
 - `client_ip`
 - `decision`
-- `from` / `to`
-- `page` / `pageSize` for the interactive JSON list
+- `from` / `to` (inclusive date-time bounds; use ISO timestamps with a timezone)
+- `page` / `pageSize` for the interactive JSON list (default 50 rows, maximum 200)
 - `format=csv`
 - `locale` (`en` or `sv`) for CSV labels; omitted locale defaults to English
+
+Actor, action, target, IP, and decision filters use exact equality rather than
+substring search. Combine them with time bounds to narrow an investigation.
 
 The action-log read and CSV export do not themselves create action-log rows.
 CSV downloads use UTF-8 with BOM, localize column headers and decision values
@@ -88,13 +83,13 @@ and traverses the complete filtered result in `occurred_at DESC, id DESC`
 order. The highest event ID present when generation starts excludes later
 inserts. It does not freeze actor-filter membership: privacy erasure can change
 or remove actor data before a row is read so that the row no longer matches.
-Materialized matching IDs or a consistent snapshot would be required to
-preserve the initial actor-filter membership.
 
-Generation uses private bounded spool storage and the shared Admin CSV row,
-byte, timeout, and per-node concurrency limits. It reads at most the configured
-row limit plus one and exposes no download headers or partial body when the
-result is too large. Zero matches produce a header-only CSV.
+CSV exports are subject to the shared row, file-size, timeout, and concurrency
+limits and the requesting administrator's export quota. An oversized result
+fails without a partial download; narrow the filters before retrying. Zero
+matches produce a header-only CSV. See
+[Export and report admission](../operations/export-report-admission.md)
+for quota and capacity errors and retry guidance.
 
 ## Privacy
 
@@ -108,8 +103,8 @@ correlation ID, and non-personal details.
 `client_ip` is operational forensic metadata derived from a validated
 `X-Kravhantering-Client-IP` value produced by the trusted Nginx edge. The
 application ignores raw forwarding chains and accepts only one valid address.
-IP addresses are not included in the Privacy preview/export/erasure workflow
-in this slice; retention and access are handled through the action-log
-retention decision and Admin-only action-log access. The topology and
-operational boundary are documented in
+IP addresses are not included in the Privacy preview/export/erasure workflow.
+Erasing an actor's identity therefore does not remove the IP address from
+these rows. Access remains Admin-only. The topology and operational boundary
+are documented in
 [Access Logging and Client IP Trust](../operations/access-log-and-client-ip-trust.md).

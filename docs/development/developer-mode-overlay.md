@@ -34,15 +34,21 @@ test update.
 
 ## Activation
 
-Local development enables Developer Mode automatically. Toggle the overlay with
-the upstream shortcut:
+Local development includes Developer Mode automatically, but the overlay starts
+hidden. Use it in a desktop browser and toggle it with the upstream shortcut:
 
 - macOS: `Command+Option+Shift+H`
 - Windows/Linux: `Ctrl+Alt+Shift+H`
 
 Focus a non-editable part of the page first. The shortcut is ignored inside
-inputs, textareas, selects, and `[contenteditable]` regions. Enabled state
-survives client-side navigation and resets on hard reload.
+inputs, textareas, selects, and editable content. Enabled state survives
+client-side navigation and resets on hard reload.
+
+Once the Developer Mode badge appears, hover over a UI surface to show its
+outline and name chip. Click the chip to copy the full contextual reference;
+the toast confirms whether copying succeeded. The chip displays a compact
+label, while the copied text includes the surrounding context. Use the same
+shortcut to hide the overlay.
 
 ## Runtime Wiring
 
@@ -76,7 +82,9 @@ For the production alias rationale, see the upstream
 
 ## Marker Contract
 
-`devMarker(...)` emits these attributes:
+`devMarker(...)` requires a `name` and accepts optional `context`, `value`, and
+`priority` fields. Values can be strings, numbers, or booleans; priority accepts
+a number or numeric string. It emits these attributes for populated fields:
 
 - `data-developer-mode-context`
 - `data-developer-mode-name`
@@ -133,68 +141,14 @@ devMarker({
 
 ## Common Marker Names
 
-These names are intentionally reused across the app. Check nearby code and tests
-before adding another variant.
+Reuse names such as `dialog`, `navigation`, and `floating pill` for layout;
+`column header`, `filter button`, and `table action` for tables;
+`detail section` and `detail action` for detail views; and `crud form`,
+`text field`, and `empty state` for forms and admin pages.
 
-Core layout:
-
-- `navigation`
-- `tab panel`
-- `dialog`
-- `dialog title`
-- `side panel`
-- `floating action rail`
-- `floating pill`
-- `floating pill menu`
-
-Tables and lists:
-
-- `requirements table`
-- `table space`
-- `column header`
-- `sort button`
-- `filter button`
-- `resize handle`
-- `header chip`
-- `table row`
-- `row checkbox`
-- `column picker`
-- `column picker option`
-
-Detail views:
-
-- `inline detail pane`
-- `detail section`
-- `detail action`
-- `reference item`
-- `requirement package chip`
-- `version history`
-- `version pill`
-- `version history toggle`
-
-Forms and admin:
-
-- `create button`
-- `crud form`
-- `crud table`
-- `crud-admin-visible-error`
-- `empty state`
-- `empty state create button`
-- `error banner`
-- `text field`
-- `table action`
-- `edge tab`
-
-Status, reports, and cards:
-
-- `status stepper`
-- `status step`
-- `type card`
-- `iso badge`
-- `quality heading`
-- `report button`
-- `report option`
-- `report state`
+Before adding a variant, search nearby `devMarker(...)` calls and their unit
+tests for the same kind of surface. Exact coverage belongs in code and tests,
+so this guide does not duplicate the full marker inventory.
 
 ## Update Checklist
 
@@ -224,20 +178,10 @@ Core tests:
 - `tests/unit/next-config.test.ts`
 - `tests/integration/developer-mode/overlay.spec.ts`
 
-Representative marker coverage:
-
-- `tests/unit/requirements-table.test.tsx`
-- `tests/unit/requirement-detail-client.test.tsx`
-- `tests/unit/requirements-specification-detail-client.test.tsx`
-- `tests/unit/reference-data-developer-mode.test.tsx`
-- `tests/unit/navigation.test.tsx`
-- `tests/unit/theme-toggle.test.tsx`
-- `tests/unit/status-stepper.test.tsx`
-- `tests/unit/version-history.test.tsx`
-- `tests/unit/ai-requirement-generator-dev-markers.test.tsx`
-
-The integration flow documentation lives in
-`tests/integration/developer-mode/overlay.spec.ts`.
+For a changed UI component, also update its existing marker assertions in
+`tests/unit/`. Search for its `data-developer-mode-*` attributes or marker names
+to find the relevant assertions. The integration spec above covers activation,
+copying contextual references, and navigation persistence.
 
 [upstream-core]: https://github.com/viscalyx/developer-mode/blob/main/specifications/developer-mode-core/README.md
 [upstream-react]: https://github.com/viscalyx/developer-mode/blob/main/specifications/developer-mode-react/README.md

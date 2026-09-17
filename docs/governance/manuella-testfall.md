@@ -9,25 +9,31 @@ Den här manualen används för riktad eller full manuell testning när
 integrationstester inte kan köras. Testfallen utgår från lokal utvecklingsmiljö,
 seedad SQL Server-databas och lokal Keycloak-realm.
 
-Alla steg beskriver vad en testare ska göra i webbläsaren. När ett testfall
-explicit anger API-kontroll ska den göras med `scripts/dev-curl.sh`, eftersom
-vanlig `curl` inte använder samma lokala autentiseringsstöd.
+Testfallen beskriver webbläsarsteg och uttryckliga API-kontroller. Använd
+`scripts/dev-curl.sh` för API-kontroller i terminalen; exemplen med `fetch`
+körs i webbläsarens utvecklarkonsol på applikationens sida.
+
+Terminalverktyget använder en egen session, inte webbläsarens. Ange därför
+testperson med `DEV_LOGIN_USER`, till exempel:
+
+```bash
+DEV_LOGIN_USER=noah.noroles scripts/dev-curl.sh /api/auth/me -i
+```
+
+Utan variabeln används `ada.admin`. Verktyget tar vanliga curl-argument:
+GET är standard och andra metoder anges med `-X`. För anonym kontroll används
+`-H 'Cookie:'` för att utelämna sessionscookien. Vid muterande API-kontroller
+krävs både `-H 'X-Requested-With: XMLHttpRequest'` och
+`-H 'Origin: http://localhost:3000'`; anpassa ursprunget till testmiljön.
+Undantaget är AUTH-12, som uttryckligen prövar felaktiga CSRF-anrop.
 
 ## Automatiserad täckning i CI
 
-[CI integration ownership](../development/ci-integration-ownership.md) anger
-ägande kontroll för varje flyttad scenariofamilj. Vanliga arbetsflöden körs en
-gång på skrivbord. Separata mobila kontroller avser navigation, geometri och
-tillgänglighet. AUTH-01, NAV-01 och REQ-01 har också en sammanhängande mobil
-rökprovning: logga in, öppna menyn och gå till kravbiblioteket.
-
-REQ-16C:s budgetgränser, AUTHZ-11:s API-kombinationer, AUTHZ-01:s anonyma och
-rollösa API-fall, AUTHZ-03:s RFI-listavgränsning, SPEC-10b/10c:s rapportprofiler,
-SPEC-10e:s kompletta datamängd och SPEC-16b:s negativa områdesbehörighet ägs av
-fokuserade tester. Detsamma gäller avstegsstatus före godkännande. Manuella
-användarsteg och synliga behörighetsgränser finns kvar i respektive fall.
-Rapporternas verkliga PDF- och CSV-beroenden provas i `Pruned Runtime Contract`.
-MCP-korpusen ägs enbart av Security MCP.
+[CI integration ownership](../development/ci-integration-ownership.md) beskriver
+ansvarsfördelningen mellan automatiserade testsviter. Vid manuell körning gäller
+stegen och förväntningarna i respektive fall. Kontrollera hela det filtrerade
+rapportresultatet i SPEC-10e; fokuserade kontroller av filteröverföring och
+hämtning i flera sidor verifierar inte ensamma rapportens fullständiga innehåll.
 
 ## Innehåll
 
@@ -37,7 +43,7 @@ MCP-korpusen ägs enbart av Security MCP.
 - [Tillgänglighet](#tillgänglighet)
 - [Autentisering och behörighet](#autentisering-och-behörighet)
   - [AUTH-01 till AUTH-13](#auth-01-logga-in-via-keycloak)
-  - [AUTHZ-00 till AUTHZ-10](#authz-00-fas-0-testdata-och-identiteter)
+  - [AUTHZ-00 till AUTHZ-11](#authz-00-fas-0-testdata-och-identiteter)
 - [Kravbibliotek](#kravbibliotek)
 - [Skapa krav och livscykel](#skapa-krav-och-livscykel)
 - [Samarbete i kravdetalj](#samarbete-i-kravdetalj)
@@ -75,6 +81,9 @@ utveckling och test.
 
 1. Starta lokal IdP vid behov: `npm run idp:up`.
 1. Återställ databas när testet kräver ren seed: `npm run db:setup`.
+   Kommandot raderar och återskapar den konfigurerade databasen. Använd bara
+   en lokal testdatabas vars innehåll får försvinna; se
+   [SQL Server-arbetsflödet](../development/sql-server-developer-workflow.md).
 1. Starta applikationen: `npm run dev`.
 1. Öppna `http://localhost:3000`.
 1. Logga ut mellan rollkänsliga testfall.
@@ -183,9 +192,9 @@ samtidigt som granskade publika resurser förblir tillgängliga.
 **Steg:**
 
 1. Logga ut ur applikationen.
-1. Kör `scripts/dev-curl.sh GET /api/auth/me --anonymous` och bekräfta att
+1. Kör `scripts/dev-curl.sh /api/auth/me -i -H 'Cookie:'` och bekräfta att
    sessionskontrollen är maskinläsbar utan HTML-redirect.
-1. Kör en skyddad API-yta anonymt, till exempel `/api/requirements`.
+1. Kör `scripts/dev-curl.sh /api/requirements -i -H 'Cookie:'`.
 1. Hämta `/build.json`, `/logo-small.png`, `/robots.txt`, `/sitemap.xml` och
    `/api-docs/hsa-person-lookup/` utan sessionscookie. Bekräfta att
    Swagger-sökvägen omdirigerar till
@@ -212,7 +221,7 @@ specifikation. Auth-felsidan renderas med sina Next.js-resurser.
 **Steg:**
 
 1. Logga in som `ada.admin`.
-1. Kör `scripts/dev-curl.sh GET /api/auth/me`.
+1. Kör `DEV_LOGIN_USER=ada.admin scripts/dev-curl.sh /api/auth/me`.
 1. Kontrollera svarets fält.
 
 **Förväntat resultat:** Svaret visar autentisering, HSA-id och roller men inte
@@ -309,12 +318,12 @@ data. API:erna svarar 403 för privilegierade åtgärder.
 **Förväntat resultat:** Callback-sidan visar ett tydligt fel och användaren måste
 logga in på nytt.
 
-<a id="auth-10-behorighetsmatris-for-ansvarstilldelningar"></a>
-
 Vid byte av cookienamn under pågående inloggning: slutför en inloggning
 som startats med det äldre inloggningslägets cookie. Bekräfta felet
 `login_state_cookie_missing` och använd **Försök logga in igen**. Ny
 inloggning ska lyckas utan att den äldre cookiens livslängd förlängs.
+
+<a id="auth-10-behorighetsmatris-for-ansvarstilldelningar"></a>
 
 ### AUTH-10: behörighetsmatris för ansvarstilldelningar
 
@@ -351,7 +360,7 @@ kravets detaljsida saknas eller är inaktiva redan i UI:t, och API:t nekar samma
 
 **Steg:**
 
-1. Gå igenom `AUTHZ-00` till `AUTHZ-10` nedan.
+1. Gå igenom `AUTHZ-00` till `AUTHZ-11` nedan.
 1. Jämför varje fas med motsvarande spec-fil och fasdokument.
 1. Kontrollera att positiva och negativa behörighetspåståenden finns både i
    manual och automatiserade tester.
@@ -370,7 +379,8 @@ Playwright-scenarios titel.
 **Steg:**
 
 1. Logga in som `ada.admin`.
-1. Kör en muterande API-kontroll med sessionskaka men utan
+1. Kör en muterande API-kontroll med sessionskaka och korrekt
+   `Origin: http://localhost:3000` för den lokala miljön, men utan
    `X-Requested-With: XMLHttpRequest`, till exempel mot
    `/api/requirement-areas`.
 1. Upprepa kontrollen med `X-Requested-With: XMLHttpRequest` men med
@@ -815,8 +825,7 @@ dialogen ska ligga kvar i fasen `Genererar PDF …`. Starta `Kravlista` från
 rapportmenyn och välj `Avbryt` innan nedladdningen börjar.
 
 **Förväntat resultat:** Generering och överföring stoppas, dialogen stängs och
-fokus återgår till rapportknappen. Ingen PDF eller delfil laddas ned och den
-privata spoolfilen tas bort.
+fokus återgår till rapportknappen. Ingen PDF eller delfil laddas ned.
 
 ### REQ-11: svensk länk till krav omdirigerar till befintlig kravdetalj
 
@@ -995,8 +1004,9 @@ Ingen modell, leverantör eller profil kan väljas i dialogen.
 
 ### REQ-16: Admin Center stänger av AI-kravgenerering
 
-**Steg:** Logga in som `Admin`, öppna `/sv/admin?tab=ai`, stäng av
-kravgenerering och spara. Öppna kravbiblioteket och kontrollera AI-knappen.
+**Steg:** Logga in som `Admin`, öppna `/sv/admin?tab=settings`, stäng av
+kravgenerering och invänta sparbekräftelsen. Öppna kravbiblioteket och
+kontrollera AI-knappen.
 Öppna därefter en redan öppen AI-dialog i en annan flik och försök generera.
 
 **Förväntat resultat:** Inställningen sparas, AI-knappen i kravbiblioteket är
@@ -1006,17 +1016,19 @@ driftkonfigurationen har högre prioritet.
 
 ### REQ-16B: Admin Center styr MCP-anropsgräns
 
-**Steg:** Logga in som `Admin`, öppna `/sv/admin?tab=ai` och kontrollera att
+**Steg:** Logga in som `Admin`, öppna `/sv/admin?tab=settings` och kontrollera att
 sektionen `AI-assistering` innehåller `Kravgenerering`. Kontrollera att
 sektionen `AI-säkerhet` visas efter `AI-assistering`, innehåller
 `Cachetid för säkerhetsregler` och `AI-säkerhetsregler`, och saknar en global
 inställning för AI-forensisk evidensinsamling. Kontrollera att sektionen
 `MCP-gränssnitt` visas därefter med
 `MCP-anropsgräns` med synligt tillåtet intervall och steg. Notera aktuell
-gräns, ställ in `1 MiB` och spara. Expandera en AI-säkerhetsregel, välj
+gräns, ange `1024` i KiB-fältet för `1 MiB` och lämna fältet för att spara.
+Expandera en AI-säkerhetsregel, välj
 `Återställ standard`, kontrollera bekräftelsedialogen och avbryt. Höj därefter
-gränsen ett steg med plusknappen, kontrollera att den blir `2 MiB` och spara.
-Återställ därefter ursprungligt värde och spara.
+gränsen ett steg med plusknappen och invänta sparbekräftelsen. Kontrollera att
+fältet visar `2048` KiB och aktuell gräns `2 MiB`. Återställ därefter
+ursprungligt värde och invänta sparbekräftelsen.
 
 **Förväntat resultat:** Gränsen sparas i Admincenter och visas som aktuell
 gräns. Det tillåtna intervallet visas som `1 MiB` till `10 MiB` med steg
@@ -1119,8 +1131,7 @@ dialogen ska ligga kvar i fasen `Förbereder CSV-export …`. Välj `Exportera` 
 sedan `Avbryt` innan nedladdningen börjar.
 
 **Förväntat resultat:** Export och överföring stoppas, dialogen stängs och
-fokus återgår till exportknappen. Ingen CSV eller delfil laddas ned och den
-privata spoolfilen tas bort.
+fokus återgår till exportknappen. Ingen CSV eller delfil laddas ned.
 
 ### REQ-19: första inläsningsfelet skiljs från ett tomt resultat
 
@@ -1258,13 +1269,14 @@ den nyare utkastversionen finns.
 ### LIFE-07: återställ arkiverad kravversion
 
 **Steg:** Öppna ett arkiverat krav, kontrollera att kravversionen inte kan
-redigeras och använd återställningsåtgärden. Kontrollera även ett arkiverat
+redigeras och välj `Återskapa version`. Kontrollera även ett arkiverat
 krav som redan har en ny utkastversion.
 
-**Förväntat resultat:** Den arkiverade kravversionen är skrivskyddad tills den
-återställs. Återställning skapar aktiv hantering som utkast. Ett krav med en
-arkiverad föregångare fortsätter att visas med beräknad kravstatus
-`Arkiverad` medan den nya utkastversionen väntar.
+**Förväntat resultat:** Den arkiverade kravversionen förblir skrivskyddad.
+Återskapandet skapar en ny utkastversion med den valda versionens innehåll
+och lämnar den arkiverade versionen oförändrad. Om kravet saknar publicerad
+version och har en arkiverad föregångare fortsätter det att visas med
+beräknad kravstatus `Arkiverad` medan den nya utkastversionen väntar.
 
 ### LIFE-08: avbryt initiering av arkivering
 
@@ -1424,9 +1436,6 @@ Förslaget kan inte lösas eller avvisas en gång till.
 **Förväntat resultat:** Rapporten för förslagshistorik kan hämtas som PDF för
 krav med förslag och servern returnerar PDF-svar. En prioritet visas med P-kod,
 lokaliserat namn, kontrastsäker färg och enbart en giltig konfigurerad ikon.
-Automatiserad täckning får verifiera serverns PDF-svar och rapportens datakälla
-via befintlig
-rapportmodell eller rapportslutpunkt.
 
 ### COL-07: metadata visar kravområdesägare och taxonomi
 
@@ -1675,9 +1684,7 @@ kravfält och en separat Norm-URI-kolumn. Båda CSV-profilerna innehåller alla
 `Förbereder CSV-export …`, har fokuserad avbrytknapp och använder serverns
 filnamn. Efter slutförd nedladdning, avbrott och stängt gränsfel återgår fokus
 till exportmenyn. Ett avbrott laddar inte ned någon delvis fil och gränsfelet
-visar inte rå servertext. Automatiserad täckning får verifiera rapportens fält
-via befintlig strukturerad rapportslutpunkt och CSV-innehållet via
-exportslutpunkten.
+visar inte rå servertext.
 
 ### SPEC-10b: generera genomföranderapport för införande och utveckling
 
@@ -1690,8 +1697,7 @@ innehåller intern uppföljningsmetadata, kravversion, kravområde, kategori, ty
 kvalitetsegenskap, prioritet som P-kod och lokaliserat namn,
 kravversionsstatus, verifierbarhet, behovsreferens, användningsstatus och
 normreferenser. `Anbuds-CSV` visas inte.
-`Full CSV-export` visas. Automatiserad täckning får verifiera fälten via
-befintlig strukturerad rapportslutpunkt.
+`Full CSV-export` visas.
 
 ### SPEC-10c: generera förvaltningsrapport
 
@@ -1700,9 +1706,7 @@ rapportmenyn och välj `Förvaltningsrapport`.
 
 **Förväntat resultat:** Rapporten återanvänder genomföranderapportens fält och
 visar dessutom avstegssignal och rest från införande. Avvikna krav flaggas via
-avstegssignalen, inte genom att räknas som implementerad rest. Automatiserad
-täckning får verifiera fälten och den strukturerade prioritetsidentiteten via
-befintlig strukturerad rapportslutpunkt.
+avstegssignalen, inte genom att räknas som implementerad rest.
 
 ### SPEC-10d: kravunderlagsrapporter kräver läsbehörighet
 
@@ -1729,8 +1733,6 @@ verifierbarhet/verifieringsmetod och anteckning. Rapporten omfattar hela det
 serverfiltrerade resultatet i samma
 databasstyrda ordning även när resultatet kräver flera serversidor. Webbläsaren
 skickar filter- och sorteringsläget, inte en lista med kravtillämpningsreferenser.
-Automatiserad täckning får verifiera filtrerat innehåll och resultat över 100
-rader via befintlig traceability-endpoint.
 
 ### SPEC-11: återställ kolumnvyer för kravunderlag
 
@@ -1763,8 +1765,8 @@ scope-reglage och kontrollera att reglagets tooltip växlar mellan
 `Ingår i RFI` och `Ingår inte i RFI`. Kontrollera att frågan inte längre ingår
 och att reglaget fortfarande är aktiverat och kan slås på igen. Kontrollera att
 frågereglaget visar check när frågan ingår och kryss när den inte ingår. Välj
-bort frågan igen och kontrollera att kravområdet visar `Delvis`, med tummen
-till höger men utan ikon, och att hjälpmedel får beskrivningen `Delvis: några
+bort frågan igen och kontrollera att kravområdet visar `Delvis`
+och att hjälpmedel får beskrivningen `Delvis: några
 RFI-frågor ingår i RFI`. Slå på kravområdets scope-reglage och kontrollera att
 alla frågor i området ingår igen. Välj bort en fråga på nytt, aktivera
 filterknappen med tooltip `Visa endast de som ingår i RFI` och kontrollera CSV-
@@ -2116,8 +2118,6 @@ gäller även för historiska sammanhang.
 Tidigare, avslutade och avbrutna avtal visar upphörd tillåtelse utan att ange
 aktuellt behov av uppföljning.
 
-## Avsteg
-
 ### SPEC-29: ta bara bort krav med användningsstatus Inkluderad
 
 **Steg:** Lägg till ett bibliotekskrav och ett lokalt krav i samma kravunderlag.
@@ -2141,6 +2141,8 @@ aktuellt tillstånd; ett avvisat anrop ändrar varken innehåll, medlemskap elle
 avstegshistorik. Behörighet, avtalslåsning och avstegsbeslut gäller även med
 Inkluderad. Borttagningen kvarstår efter omladdning; bibliotekskravet finns
 kvar i kravbiblioteket. Ett borttaget utkastkrav markeras som Borttaget.
+
+## Avsteg
 
 ### DEV-01: skapa avstegsutkast
 
@@ -2238,7 +2240,6 @@ avsteg får begäras. Upprepa för båda kravtyperna och i ett kommande avtal.
 aktör och tidpunkt. Det kan inte längre skickas till granskning och blockerar
 inte ett nytt avsteg. Ett delat ärende visar berörda avtalsreferenser före
 bekräftelsen. Fel visas vid åtgärden och dialogen behåller inmatningen.
-Knapparna Stäng och Avsluta utan beslut har mellanrum även i smal vy.
 
 ### DEV-11: förnya och avsluta gemensam tillåtelse
 
@@ -2392,9 +2393,8 @@ Resolverade prioriteter visar P-kod, tankstreck och lokaliserat namn.
 
 **Steg:** Kör gallringsförhandsgranskning för arkiverade kravurvalsdata.
 
-**Förväntat resultat:** Sparad historik undantas enligt retentionregeln.
-Automatiserad täckning ska verifiera serverns gallringsförhandsgranskning så
-att historiska sparade svar inte förekommer bland kandidaterna.
+**Förväntat resultat:** Historiska sparade svar förekommer inte bland
+kandidaterna för gallring.
 
 ### ADMIN-13: kravområdesansvar visas i listan
 
@@ -2435,8 +2435,8 @@ omkastade svar och kontrollera åtgärdsloggen. Kör därefter CSV/PDF som träf
 ändrade gränser.
 
 **Förväntat resultat:** AI- och applikationsdata hämtas parallellt. En
-felaktig datakälla visar ett lokalt fel och `Försök igen`. Filstorlek visas i
-MiB men sparas i byte. Filstorlekarna ändras i 1 MiB-steg och sparas i byte.
+felaktig datakälla visar ett lokalt fel och `Försök igen`. Filstorlekar visas i
+MiB, ändras i 1 MiB-steg och sparas i byte.
 Worker-minnet ändras i 128 MiB-steg och visar det lagrade heltalsvärdet direkt
 i MiB. Varje gränsfält visar `Sparar`/`Sparat`/fel, äldre svar skriver inte över
 nyare värde, och exakt ett fält auditeras med gammalt/nytt värde. Runtime
@@ -2495,7 +2495,10 @@ avsiktligt bara visar metadata och aldrig evidensinnehåll.
    ```js
    fetch('/api/admin/ai-forensic-captures', {
      method: 'POST',
-     headers: { 'Content-Type': 'application/json' },
+     headers: {
+       'Content-Type': 'application/json',
+       'X-Requested-With': 'XMLHttpRequest',
+     },
      body: JSON.stringify({
        operation: 'ai.generate-requirement-import',
        direction: 'input',
@@ -2511,7 +2514,10 @@ avsiktligt bara visar metadata och aldrig evidensinnehåll.
    const captureWindowId = 47
    fetch('/api/admin/ai-forensic-captures', {
      method: 'PATCH',
-     headers: { 'Content-Type': 'application/json' },
+     headers: {
+       'Content-Type': 'application/json',
+       'X-Requested-With': 'XMLHttpRequest',
+     },
      body: JSON.stringify({ action: 'approve', captureWindowId }),
    }).then(response => response.json()).then(console.log)
    ```
@@ -2532,7 +2538,10 @@ avsiktligt bara visar metadata och aldrig evidensinnehåll.
    ```js
    fetch('/api/admin/ai-forensic-captures', {
      method: 'PATCH',
-     headers: { 'Content-Type': 'application/json' },
+     headers: {
+       'Content-Type': 'application/json',
+       'X-Requested-With': 'XMLHttpRequest',
+     },
      body: JSON.stringify({ action: 'stop', captureWindowId }),
    }).then(response => response.json()).then(console.log)
    ```
@@ -2568,8 +2577,8 @@ nekas åtkomst.
 **Förutsättningar:** Kör mot en lokal engångsmiljö med aktuell migrering och
 Admin-session. Konfigurera `controlled_test@1` med utvecklingsadressen
 `https://localhost:4443`, motsvarande egress-, TLS- och datapolicyer. Använd
-bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
-återställa de tre stabila profilernas tidigare konfiguration och pausläge.
+bara syntetiska värden. Notera de tre stabila profilernas konfiguration och
+pausläge före testet och återställ dem efteråt.
 
 1. Öppna `Administrationscenter > Inställningar > AI`. Skapa en anslutning med
    `controlled_test@1`, autentisering `Ingen applikationsuppgift`, testadressen
@@ -2645,9 +2654,8 @@ bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
    säger att revisionen och verifieringsbeviset raderas, att åtgärden inte kan
    ångras och att modellbehållaren också tas bort när detta är sista revisionen.
    Bekräfta och kontrollera att modellen försvinner.
-10. Upprepa huvudflödet vid både 1440 × 1200 och 375 × 812. Kontrollera att
-    formulär, verifieringsförlopp, bekräftelser och profilkort kan användas med
-    tangentbord och ryms i aktuell viewport.
+10. Kontrollera att formulär, verifieringsförlopp, bekräftelser och profilkort
+    kan användas med tangentbord.
 
 **Förväntat resultat:** En modellrevision kan endast sparas från ett aktuellt,
 slutfört verifieringsförsök. Den stabila profilen väljer direkt en kompatibel

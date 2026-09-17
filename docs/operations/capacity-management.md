@@ -2,10 +2,9 @@
 
 <!-- cSpell:words traceparent -->
 
-This document describes the v1 support for capacity measurements, alerting
-signals, and throttling in Kravhantering. The implementation addresses action
-5 by writing structured JSON events that an external logging, SIEM, or APM
-service can collect through the platform log pipeline.
+Use this guide to configure capacity dashboards and alerts, size export
+storage, and diagnose throttling in production. It is intended for operators
+collecting application logs through the platform log pipeline.
 
 ## Event Flow
 
@@ -38,7 +37,8 @@ separate `security-audit` channel.
 
 - `request_id` identifies one HTTP or MCP request.
 - `correlation_id` tracks a workflow across multiple events. The application
-  uses `X-Correlation-Id` when present, otherwise `traceparent`, otherwise
+  uses `X-Correlation-Id` when present, otherwise the trace ID from
+  `traceparent` , otherwise
   `request_id`.
 - `event_id` is unique for each capacity event.
 
@@ -47,15 +47,19 @@ must never be used for authorization or trust decisions.
 
 ## Events And Metrics
 
-The following events are used in v1:
+The following events are available:
+
+<!-- markdownlint-disable MD013 -->
 
 | Event | Purpose |
 | --- | --- |
 | `capacity.operation.completed` | A measured flow completed. |
 | `capacity.operation.failed` | A measured flow failed. |
 | `capacity.operation.cancelled` | The client cancelled measured work. |
-| `capacity.threshold_exceeded` | A flow exceeded its duration threshold. |
+| `capacity.threshold_exceeded` | A duration, item, or byte limit was exceeded. |
 | `capacity.throttled` | A request was blocked by throttling. |
+
+<!-- markdownlint-enable MD013 -->
 
 Safe metrics may be included when relevant:
 
@@ -84,10 +88,10 @@ tokens, secrets, HSA-id values, or other user identity.
 
 ## Measured Flows
 
-V1 measures:
+Measured flows include:
 
 - AI-assisted authoring through `/api/ai/generate-requirement-import`.
-- AI authoring-profile availability and terminal generation outcomes.
+- JSON repair through `/api/ai/repair-requirement-import-json`.
 - Shared service operations through service logging.
 - Requirements specification item pages for the `editor-preload`, `rest`, and
   `mcp` surfaces. These events use
@@ -103,26 +107,20 @@ V1 measures:
 - Server-side PDF rendering for requirement, specification, privacy, and
   access-review exports.
 
-The large requirements-list PDF and privacy PDF are rendered in isolated Node
-worker threads from production-bundled renderers so production CSP can stay
-strict without `unsafe-eval` or `wasm-unsafe-eval`. All PDFs share the
-Admin-configured PDF item, byte, timeout, and process-local per-node concurrency
-limits. The worker-memory limit applies only to PDFs rendered in isolated Node
-worker threads; direct `renderToBuffer` renderers do not enforce that setting.
-Requirements Library CSV, procurement and full requirements-specification CSV,
-Action-log CSV, and privacy JSON use the CSV item, byte, timeout, and shared
-process-local structured-export pool. Each operation uses one database settings
-snapshot.
+PDF exports share the Admin-configured item, byte, timeout, and per-node
+concurrency limits. The worker-memory limit applies only to PDFs rendered in
+isolated workers, including the large requirements-list and privacy PDFs.
+Requirements Library CSV, requirements-specification CSV, Action-log CSV,
+and privacy JSON share the CSV limits and per-node concurrency pool.
+Configure these limits in Admin Center before increasing workload or scaling
+nodes. Each generation uses a settings snapshot; changes apply to subsequent
+operations.
 
-The PDF item setting counts distinct requirement IDs for selected reports,
+The PDF item limit counts distinct requirements for selected reports,
 versions for history and review, versions plus suggestions for suggestion
 history, and top-level rows for list, specification, traceability, RFI,
-access-review, and data-subject reports; for a data-subject report it counts
-exported data items rather than requirements. The exact limit is accepted. Bounded
-collectors request no more than the limit plus one before broad enrichment.
-Privacy PDF rendering is terminable on deadline or request cancellation. Other
-direct PDF renderers require active capacity admission and do not release that
-admission until abandoned React-PDF work settles.
+access-review, and data-subject reports. For a data-subject report it counts
+exported data items rather than requirements. The exact limit is accepted.
 
 These flows use `operation == "admin.action_log_csv_export"`,
 `operation == "privacy.data_subject_json_export"`,
@@ -131,29 +129,31 @@ These flows use `operation == "admin.action_log_csv_export"`,
 `operation == "requirements.specification_csv_export"`, or
 `operation == "requirements.list_pdf_report"` with `surface == "export"` or
 `surface == "report"` and `source == "rest"`. Both specification profiles use
-the same operation name. Terminal reason is one of
+the same operation name. The `capacity_reason` field identifies failures such as
 `item_limit_exceeded`, `byte_limit_exceeded`, `generation_timeout`,
 `temporary_storage_unavailable`, `worker_memory_exceeded`, `worker_failed`,
-`client_cancelled`, or `concurrency_limit`. Action-log CSV telemetry includes
-only the common bounded metrics and operation name. Events never include raw
-errors, temporary paths, filters, identities, action-log contents, requirement
-IDs, or requirement text.
+`client_cancelled`, or `concurrency_limit`. Use it to distinguish a configured
+limit from storage or worker failure.
 
 Generated files are written before response headers to a private spool root
 selected by `KRAVHANTERING_EXPORT_TEMP_DIR`, or the operating-system temporary
 directory when the variable is unset or blank. Operation directories use mode
-`0700`; files use `0600`. An explicitly configured base directory must already
-exist, remain inaccessible to other users, and grant the non-root
+`0700`; files use `0600`. An explicitly configured base directory must be
+absolute, already exist, remain inaccessible to other users, and grant the
+non-root
 operating-system account under which the Node.js process runs read, write, and
 search access. An app-owned directory with mode `0700` meets that contract.
 Logical maximum bytes are reserved against current filesystem capacity before
 generation. Files are removed after complete transfer, cancellation, or error,
-and stale owned operation directories older than 15 minutes are removed on
-startup. `/api/ready` fails its sanitized `temporary_storage` check when the
-runtime cannot create, write, close, and remove a probe file. Each application
-process shares concurrent readiness work and caches the completed aggregate
-result for five seconds, reducing repeated database, schema, storage, and OIDC
-load without enabling HTTP cache reuse.
+and stale owned operation directories older than 15 minutes are removed when
+the process first acquires export storage. `/api/ready` fails its sanitized
+`temporary_storage` check when the runtime cannot create, write, close, and
+remove a probe file.
+
+Size free storage on each node for at least the configured CSV concurrency
+multiplied by its maximum file size, plus PDF concurrency multiplied by its
+maximum file size, with additional headroom. When processes share a filesystem,
+include every process in that budget; storage reservations are process-local.
 
 Successful file responses set exact `Content-Length`,
 `Cache-Control: no-store`, and `X-Accel-Buffering: no`. Production Nginx grants
@@ -161,30 +161,36 @@ the Requirements Library CSV, numeric requirements-specification CSV, and
 localized list-PDF routes a 660-second read timeout, leaving 60 seconds of
 proxy margin over the maximum 600-second application setting.
 
-Requirements-specification CSV reuses the existing
-`KRAVHANTERING_EXPORT_TEMP_DIR` environment contract and storage-sizing
-formula. It adds no environment variable or separate storage reservation.
-
 ## Throttling
 
-V1 uses process-local in-memory throttling:
+AI-assisted authoring and JSON repair each allow 5 requests per minute per
+actor/process. These request throttles are separate from the SQL-coordinated
+AI execution admission described in the [AI connections runbook](./ai-connections.md).
 
-- AI-assisted authoring: 5 requests per minute per actor/process.
-- AI model metadata refreshes and cache misses: 10 requests per minute per
-  actor/process.
-- AI credit lookup: 20 requests per minute per actor/process.
+Exports and reports also enforce SQL-coordinated limits per actor across all
+nodes and output formats. Admin Center configures starts per rolling minute
+and active operations; the defaults are 10 starts and 1 active operation.
+Admission remains held through file delivery. Rate rejection returns
+`429 actor_rate_limit` with `Retry-After`; active-work rejection returns
+`429 actor_concurrency_limit` without an estimated retry time. SQL coordination
+failure returns `503 quota_check_unavailable` with `Retry-After: 5`, with no
+local fallback. Monitor `operation == "generated_output.actor_admission"`
+and its `capacity_reason` field separately from per-node generation capacity.
 
-HSA person verification is the workload-specific exception. It uses a SQL
-Server-backed HSA verification quota shared by every app node: 50 requests per
-actor, 10 per actor-target combination, and 10 per target in a minute-aligned
+An export's overall lifetime is limited to 12 minutes, including delivery.
+If admitted work still cannot settle, a watchdog terminates the application
+process at 14 minutes, before SQL admission recovery at 15 minutes. Ensure the
+runtime supervisor restarts terminated processes and investigate repeated
+restarts alongside export failures.
+
+HSA person verification uses a SQL Server-backed quota shared by every app
+node: 50 requests per actor, 10 per actor-target combination, and 10 per target
+in a minute-aligned
 60-second fixed window. Evaluation stops at the first denied bucket. A denial
 emits identity-free `capacity.throttled` with retry time. SQL coordination
 failure emits identity-free `capacity.operation.failed`, returns generic `503`
 with `Retry-After: 5`, and must alert operators; there is no process-local
 fallback.
-
-When a limit is reached, REST flows respond with `429` and `Retry-After`. MCP
-flows return a tool error and log `capacity.throttled`.
 
 Generated output uses `429 capacity_busy` with `Retry-After: 5` when its
 process-local concurrency slot is unavailable. Item and completed-file limits
@@ -196,22 +202,25 @@ worker failures return stable `503` error codes. Client cancellation stops
 cancellation-aware upstream work, keeps any non-cancellable direct render
 admitted until it settles, and exposes no response body.
 
-Other actor- and target-based request throttles remain process-local guardrails,
-not cross-node quotas. Scaled deployments account for those limits per instance
-and can add platform rate limiting when another shared request quota is
-required. Generated-output admission remains deliberately per node, while AI
-execution uses its separately documented SQL-coordinated admission model.
+Per-node output concurrency protects each process in addition to the shared
+actor quota. Scaling nodes increases aggregate generation capacity but does
+not increase an actor's shared allowance.
 
 ## Recommended Alerts
 
 The provider-neutral AI integration uses distributed queue, retry, and
 circuit-breaker coordination for AI connections. Its required operator alerts
 and recovery boundary are documented in the
-[AI connections runbook](./ai-connections.md). The run-profile and adapter
-contract is [ADR 0051](../adr/0051-ai-integrationslager-med-korprofiler-och-adaptrar.md).
+[AI connections runbook](./ai-connections.md).
 
 - `capacity.operation.failed` above 5 percent for AI flows over 15 minutes.
-- More than 20 `capacity.throttled` events over 10 minutes.
+- More than 20 `capacity.throttled` events over 10 minutes, grouped by
+  operation and `capacity_reason`.
+- Any `quota_check_unavailable` failure for
+  `generated_output.actor_admission`; check SQL availability, permissions,
+  and lock pressure.
+- Repeated `temporary_storage_unavailable` failures; check free space,
+  configured spool-directory access, and `/api/ready`.
 - Any `capacity.operation.failed` event for
   `requirements.hsa_verification`; correlate it with SQL Server availability,
   migration readiness, runtime permissions, and lock pressure.

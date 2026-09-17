@@ -16,7 +16,8 @@ Prerequisites:
 
 - a Linux x86_64 host with x86-64-v3 CPU support, Docker, cgroup v2, and at
   least 10 GiB free;
-- Node.js and the repository dependencies already installed;
+- Node.js, npm, `tar`, OpenSSL, and the repository dependencies already
+  installed;
 - GitHub CLI authenticated with access to the workflow run; and
 - an internet connection for the pinned vendor image pulls.
 
@@ -25,10 +26,16 @@ CPU capabilities; an Ubuntu debug host does not remove the x86-64-v3
 requirement. See [shared UBI runtime packaging](../../containers/node/README.md).
 
 Run from the repository root while the branch containing the proposed fix is
-checked out:
+checked out. The current wrapper requires the checkout at `/workspace`: it
+mounts that directory inside the debug host and passes absolute host paths for
+the archive, images, and evidence without translating them.
+
+The wrapper creates missing `containers/*/.env.*.local` files and regenerates
+the certificates in `tmp/container-tls/`. Use a checkout whose TLS files are
+not in use by development services.
 
 ```bash
-npm run container:production-smoke:debug -- run --run-id 31331091579
+npm run container:production-smoke:debug -- run --run-id <github-run-id>
 ```
 
 The PR workflow keeps OCI artifacts for two days, so start from a recent run.
@@ -68,12 +75,20 @@ Open a shell in the retained host:
 npm run container:production-smoke:debug -- shell
 ```
 
-Useful commands inside it include:
+After installation creates the `kravhantering` service user, set up a helper
+inside that shell so commands reach its rootless runtime and systemd bus:
 
 ```bash
-sudo -u kravhantering systemctl --user --failed
-sudo -u kravhantering journalctl --user -u 'kravhantering-*' --no-pager
-sudo -u kravhantering podman ps --all
+smoke_service_uid=$(id -u kravhantering)
+as_smoke_service() {
+  sudo -H -u kravhantering env \
+    XDG_RUNTIME_DIR="/run/user/$smoke_service_uid" \
+    DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$smoke_service_uid/bus" \
+    "$@"
+}
+as_smoke_service systemctl --user --failed
+as_smoke_service journalctl --user -u 'kravhantering-*' --no-pager
+as_smoke_service podman ps --all
 ```
 
 Use the script to refresh the standard redacted evidence bundle:
@@ -83,29 +98,18 @@ npm run container:production-smoke:debug -- evidence
 ```
 
 The wrapper supports one named debug host at a time and verifies its ownership
-label before entering, collecting evidence, or removing it.
+label before entering, collecting evidence, or removing it. Run `down` before
+starting another reproduction, including a retry of the same run.
 
 ## Compare hosted-runner evidence
 
-Every PR and trusted release smoke run uploads `runtime-diagnostics/` in its
-runtime artifact, including runs that stop during toolchain setup, the early
-journald preflight, Quadlet installation, or service startup.
-
-The bootstrap supports both hosted-runner toolchains. For package-based
-runners, it resets the disposable rootless state and reinstalls Ubuntu's
-Podman, conmon, crun, and Quadlet packages. For runners with Podman 5.x under
-`/usr/local`, it keeps the static Podman, crun, and Quadlet components and
-replaces the bundled conmon with Ubuntu's journald-capable conmon package. It
-verifies command resolution, helper selection, package ownership, and
-generator resolution before the workflow runs a live rootless journald
-preflight. This keeps regional runner-image differences from silently changing
-the production-smoke runtime contract.
-
-The production Quadlet installer likewise discovers generators from both the
-static `/usr/local` runner layout and Ubuntu's package-owned `/usr` layout.
-Regional runner updates can leave multiple layouts active concurrently, so a
-new generator location supplements the existing candidates until the older
-runner profile is explicitly retired.
+PR and trusted release smoke workflows collect `runtime-diagnostics/` on
+success and failure, including failures during toolchain setup, the early
+journald preflight, Quadlet installation, or service startup. Collection is
+best effort and is skipped
+for cancelled runs. PR runs include it in `production-assembly-evidence`;
+trusted releases include it in `container-release-runtime-<run-id>` when
+release artifact staging runs.
 
 The job summary lists any recognized infrastructure signatures:
 
@@ -157,21 +161,13 @@ diff -u \
 
 Use `runner.json`, `runner-platform.txt`, and the separate
 `runner-metadata/github-runner-metadata.txt` artifact to compare the image,
-provisioner, and provisioned host. The metadata follow-up job runs after the
-smoke job completes, so GitHub makes the target job log available before the
-allowlisted runner header is extracted. Trusted releases provide the analogous
+provisioner, and provisioned host. Trusted releases provide the analogous
 `container-release-runner-metadata-<run-id>` artifact. Then compare
 `runtime-components.txt` and `podman-info.json` for every expected and selected
 binary path, package ownership, version, hash, and Podman's selected helpers.
 Compare `meminfo.txt`, `free.txt`, `pressure-*.txt`, `kernel-oom.txt`, and
-`service-cgroups.txt` for host or cgroup pressure. The process report contains
-only PID, parent PID, user, executable name, and RSS; it deliberately omits
-command arguments. The collector never dumps the environment or container
-environment variables.
-
-The collector extracts only allowlisted runner and provisioner header fields
-from the completed target job log. A missing target log or missing header fails
-the follow-up job instead of silently publishing incomplete metadata.
+`service-cgroups.txt` for host or cgroup pressure. For disk exhaustion, compare
+`filesystems.txt` and `filesystem-inodes.txt`.
 
 ## Clean up
 
@@ -184,11 +180,6 @@ npm run container:production-smoke:debug -- down
 Cleanup preserves the downloaded artifacts and evidence under
 `tmp/production-smoke-debug/<run-id>/` for later comparison. Remove that exact
 run directory manually when it is no longer needed.
-
-`down` removes the nested stack's containers, named volumes, and four Podman
-networks before removing the disposable Docker host. The host uses Docker's
-existing default bridge, so the debug workflow does not create a separate
-Docker network.
 
 ## What this proves
 

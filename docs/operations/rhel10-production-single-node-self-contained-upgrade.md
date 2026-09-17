@@ -18,7 +18,7 @@ Before the change, read `IDENTITY_PROVIDER_MODE` from
 - `bundled` is an explicit test-oriented choice; do not relabel it as production
   hardened during an upgrade.
 - `external` has no bundled Keycloak unit, image, identity network or volume.
-  Skip Keycloak image, realm-sync, backup and recovery steps and coordinate
+  Skip Keycloak image, backup and recovery steps and coordinate
   provider changes with its deployer.
 - `hardened-bundled` must preserve the management bind, mTLS certificates,
   `KC_HOSTNAME_ADMIN`, user-facing deny rules, named MFA administrators and
@@ -28,9 +28,8 @@ Before the change, read `IDENTITY_PROVIDER_MODE` from
 
 ## Identity Profile Upgrade Impact
 
-No current production installations require migration for this change.
-Older test configurations must explicitly supply `IDENTITY_PROVIDER_MODE`
-in `release.env` and `KRAVHANTERING_DEPLOYMENT_ENVIRONMENT` in `app.env`.
+Explicitly supply `IDENTITY_PROVIDER_MODE` in `release.env` and
+`KRAVHANTERING_DEPLOYMENT_ENVIRONMENT` in `app.env`.
 Use `prodlike` or `staging` only for the corresponding non-production
 environment. Production requires `external` or fully configured
 `hardened-bundled`; no automatic identity or data conversion takes place.
@@ -41,6 +40,15 @@ installed resources. Fix the named setting in the indicated file and retry;
 a shell or `release.env` environment override cannot authorize `bundled` for
 production. Status, network diagnostics and removal do not require these
 choices. Preserve these explicit settings during rollback as well.
+
+>[!IMPORTANT]
+>The current Quadlet helper still requires `KEYCLOAK_ADMIN` and
+>`KEYCLOAK_ADMIN_PASSWORD` in `keycloak.env` for both bundled profiles during
+>`render`, `install`, and `verify-host`. After bootstrap credential removal,
+>a `hardened-bundled` deployment cannot pass these checks. Resolve this helper
+>limitation in the target release before scheduling downtime; do not restore
+>retired credentials or weaken the identity profile to bypass it. Verify that
+>the selected rollback release also supports the retired-bootstrap state.
 
 For `hardened-bundled`, back up Keycloak data and configuration before the
 upgrade and verify public denial before upstream selection, management-only
@@ -90,11 +98,12 @@ and test database plus keyring restore as one recovery set. Follow
 [AI Connections Operations](./ai-connections.md); do not put root keys in
 `app.env` or release artifacts.
 
-The production `db-job` image carries the plain-Node provider-secret
-maintenance module. Use its bounded `provider-secret-root-rotate` command for
-root-key rotation and `provider-secret-restore-verify` for restore and old-key
-removal proof; never run the TypeScript application service as an operations
-script.
+Before downtime, complete the compatibility and recovery-set preflight in
+[Release-Independent Transient-State Cleanup](transient-state-cleanup.md#upgrade-rollback-and-recovery-set).
+Retain the compatible cleanup release, image and configuration independently of
+both application releases. Pause its manager after traffic is drained and
+before any persistent-state change; resume it successfully before reopening
+traffic.
 
 1. Confirm the target release bundle, checksum and locked image identities.
    Download the target bundle and checksum from the approved release source:
@@ -133,25 +142,28 @@ script.
    Ensure the site has approved tag-style image refs for every single-node
    image named in the target release lock. Each configured ref must resolve to
    the locked `imageId`. The helper also accepts `image:tag@sha256:digest` refs
-   when a site explicitly requires pull-time digest pinning. The optional
-   `kravhantering-demo-seed` image can be listed separately in the GitHub
-   Release notes, but it is not part of `container-stack.lock.json`,
-   `release.env` or the production upgrade path.
+   when a site explicitly requires pull-time digest pinning.
 
 2. Confirm a tested SQL Server backup, volume snapshot or restore point.
-   Complete the site-approved restore procedure before the window begins and
-   record the backup, snapshot or restore-point identifier. Do not continue
-   unless the restore point covers the database state before any target-release
-   migration runs.
+   Test the site-approved restore procedure before the window begins and
+   record the backup, snapshot or restore-point identifier. Preserve the
+   previous release's configuration alongside it, including `release.env`,
+   application and database-job settings, TLS material, and, for bundled
+   profiles, Keycloak data, realm configuration and management certificates.
+   Do not continue unless the restore point covers the database state before
+   any target-release migration runs.
 
 3. Before draining traffic, complete the extraction and review in step 5
-   without changing `current`. Configure the explicit identity choices above,
-   then validate with the target release helper as the service user:
+   without changing `current`. Configure the explicit identity choices above.
+   For a bundled profile missing `NGINX_IDENTITY_RESOLVER`, first perform the
+   temporary resolver configuration in step 8; the helper requires this value
+   during preflight. Then validate with the target release helper as the
+   service user:
 
    ```bash
    sudo -iu kravhantering
-   # Set VERSION to the target release tag in this service-user shell.
-   VERSION=vX.Y.Z
+   # Use the same VERSION directory name as in step 1.
+   VERSION=1.2.4
    "/opt/kravhantering/releases/${VERSION}/bin/kravhantering-quadlet.sh" \
      verify-host --topology single-node
    exit
@@ -161,7 +173,8 @@ script.
    units and running stack intact. Then drain or disable traffic to the host.
    Use the site's load balancer, reverse proxy or firewall procedure so no new
    browser traffic reaches `PUBLIC_HOSTNAME`. Keep administrative access to the
-   host available for the remaining steps.
+   host available for the remaining steps. Pause the retained cleanup manager
+   using the linked cleanup procedure before continuing.
 
 4. Stop the current stack by stopping its Quadlet target:
 
@@ -221,8 +234,6 @@ script.
 
    - For disconnected upgrades, derive refs from the transferred
      `offline-manifest.json`.
-   - For connected staging only, derive public upstream refs from the target
-     release lock.
    - For an internal registry mirror that preserves repository paths, rewrite
      only the registry host while keeping the locked tags.
    - For an internal mirror with a custom repository layout, set the four
@@ -235,7 +246,6 @@ script.
 
    ```bash
    TOPOLOGY=single-node
-   # Test/demo only: set TOPOLOGY=single-node-demo.
    OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
    TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
    MANIFEST="$OFFLINE_ROOT/offline-manifest.json"
@@ -269,55 +279,6 @@ script.
    update_ref SQLSERVER_IMAGE_REF "$(target_ref sqlserver)"
    if [ "$IDENTITY_PROVIDER_MODE" != "external" ]; then
      update_ref KEYCLOAK_IMAGE_REF "$(target_ref keycloak)"
-   fi
-   if [ "$TOPOLOGY" = "single-node-demo" ]; then
-     update_ref KONG_IMAGE_REF "$(target_ref kong)"
-     update_ref HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF \
-       "$(target_ref hsa-person-lookup-adapter)"
-     update_ref HSA_MTLS_PROVISIONER_IMAGE_REF \
-       "$(target_ref hsa-mtls-provisioner)"
-     update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
-       "$(target_ref hsa-directory-mock)"
-   fi
-   ```
-
-   For connected staging only, derive the public upstream refs from the target
-   release lock and verify them immediately:
-
-   ```bash
-   IDENTITY_PROVIDER_MODE="$(
-     sudo sed -n 's/^IDENTITY_PROVIDER_MODE=//p' \
-       /etc/kravhantering/release.env
-   )"
-   : "${IDENTITY_PROVIDER_MODE:?Set IDENTITY_PROVIDER_MODE in release.env}"
-   update_ref() {
-     sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
-   }
-
-   LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
-   service_image() {
-     jq -r --arg name "$1" \
-       '.services[] | select(.name == $name) | .image' "$LOCK_FILE"
-   }
-   service_tag() {
-     jq -r --arg name "$1" \
-       '.services[] | select(.name == $name) | .tag' "$LOCK_FILE"
-   }
-   service_ref() {
-     printf '%s:%s\n' "$(service_image "$1")" "$(service_tag "$1")"
-   }
-
-   update_ref APP_RUNTIME_IMAGE_REF \
-     "$(service_ref app-runtime)"
-   update_ref DB_JOB_IMAGE_REF \
-     "$(service_ref db-job)"
-   update_ref NGINX_IMAGE_REF \
-     "$(service_ref nginx)"
-   update_ref SQLSERVER_IMAGE_REF \
-     "$(service_ref sqlserver)"
-   if [ "$IDENTITY_PROVIDER_MODE" != "external" ]; then
-     update_ref KEYCLOAK_IMAGE_REF \
-       "$(service_ref keycloak)"
    fi
    ```
 
@@ -399,19 +360,9 @@ script.
    sudo -iu kravhantering
    cd /opt/kravhantering/current
    TOPOLOGY=single-node
-   # Test/demo only: set TOPOLOGY=single-node-demo.
-
-   SUPPORT_LOCK_ARGS=()
-   if [ "$TOPOLOGY" = "single-node-demo" ]; then
-     SUPPORT_LOCK_ARGS=(
-       --hsa-integration-lock-file container-hsa-integration-support.lock.json
-       --test-lock-file container-test-support.lock.json
-     )
-   fi
 
    bin/kravhantering-images.sh --topology "$TOPOLOGY" \
      --lock-file container-stack.lock.json \
-     "${SUPPORT_LOCK_ARGS[@]}" \
      --env-file /etc/kravhantering/release.env \
      verify
 
@@ -427,11 +378,11 @@ script.
    `bootstrap`.
 
    Set `RUN_BOOTSTRAP=true` only for the self-contained single-node
-   bootstrap `db-job.env` that still includes `DB_BOOTSTRAP_ADMIN_*` and
-   `DB_BOOTSTRAP_APP_*`, and only when the window intentionally performs SQL
-   Server password provisioning or rotation. For DBA-pre-provisioned production
-   environments where the `DB_BOOTSTRAP_*` values have been removed, leave
-   `RUN_BOOTSTRAP=false` to avoid unintended `ALTER LOGIN` password rotations.
+   bootstrap `db-job.env` that includes `DB_BOOTSTRAP_ADMIN_*` and
+   `DB_BOOTSTRAP_APP_*`, and only when the window intentionally provisions
+   missing SQL Server principals or role membership. Bootstrap does not rotate
+   existing login passwords. For an already provisioned production database,
+   leave `RUN_BOOTSTRAP=false`.
 
    Before installing the new units, provision the SQL Server certificate and
    key described in the deployment guide's
@@ -584,148 +535,50 @@ script.
    RUN_BOOTSTRAP=false
    DB_CA_SOURCE=/etc/kravhantering/tls/ca.crt
    DB_CA_TARGET=/run/kravhantering/sqlserver-ca.crt
+   VERSION="$(basename "$(readlink -f /opt/kravhantering/current)")"
    EVIDENCE_DIR="/var/tmp/kravhantering-upgrade-${VERSION}-evidence"
    mkdir -p "$EVIDENCE_DIR"
 
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
      --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
-     "$DB_JOB_IMAGE_REF" wait
+     "$DB_JOB_IMAGE_REF" wait || exit
    if [ "$RUN_BOOTSTRAP" = "true" ]; then
      podman run --rm --network "$STACK_NETWORK" \
        --env-file /etc/kravhantering/db-job.env \
        --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
-       "$DB_JOB_IMAGE_REF" bootstrap
+       "$DB_JOB_IMAGE_REF" bootstrap || exit
    fi
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
      --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
      "$DB_JOB_IMAGE_REF" migration-status \
-     > "$EVIDENCE_DIR/migration-status-before-${VERSION}.json"
+     > "$EVIDENCE_DIR/migration-status-before-${VERSION}.json" || exit
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
      --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
      "$DB_JOB_IMAGE_REF" migrate --json \
-     > "$EVIDENCE_DIR/migration-run-${VERSION}.json"
+     > "$EVIDENCE_DIR/migration-run-${VERSION}.json" || exit
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
      --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
      "$DB_JOB_IMAGE_REF" migration-status \
-     > "$EVIDENCE_DIR/migration-status-after-${VERSION}.json"
+     > "$EVIDENCE_DIR/migration-status-after-${VERSION}.json" || exit
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
      --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
      "$DB_JOB_IMAGE_REF" permission-status \
-     > "$EVIDENCE_DIR/runtime-permissions-${VERSION}.json"
+     > "$EVIDENCE_DIR/runtime-permissions-${VERSION}.json" || exit
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
      --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
-     "$DB_JOB_IMAGE_REF" seed:required
+     "$DB_JOB_IMAGE_REF" seed:required || exit
 
    exit
    ```
 
-   For disposable test and development deployments that use bundled demo users,
-   rerun the running Keycloak realm sync as the `kravhantering` host user while
-   `keycloak` is running. The container reads the Keycloak admin credentials
-   from `/etc/kravhantering/keycloak.env`. The sync adds, updates and removes
-   generated demo users, adopts same-username users into the demo set and
-   preserves unrelated users.
-
-   Before running the sync against a realm whose user profile does not already
-   declare it, add an administrator-only `kravhanteringDemoUser` user-profile
-   attribute to the running Keycloak realm. In the Keycloak admin console, open
-   **Realm settings**, **User profile**, and add this managed attribute. Do not
-   enable arbitrary unmanaged attributes:
-
-   ```json
-   {
-     "name": "kravhanteringDemoUser",
-     "displayName": "Kravhantering demo user marker",
-     "group": "user-metadata",
-     "validations": {
-       "length": { "max": 4 },
-       "pattern": {
-         "pattern": "^true$",
-         "error-message": "Invalid demo user marker"
-       }
-     },
-     "permissions": {
-       "view": ["admin"],
-       "edit": ["admin"]
-     },
-     "multivalued": false
-   }
-   ```
-
-   The `*_CONTAINER_FILE` paths below exist inside the temporary container, not
-   on the host:
-
-   ```bash
-   sudo -iu kravhantering
-   cd /opt/kravhantering/current
-   set -a
-   . /etc/kravhantering/release.env
-   set +a
-
-   if [ "$IDENTITY_PROVIDER_MODE" = "external" ]; then
-     printf '%s\n' \
-       'Skip bundled Keycloak demo-user synchronization for external OIDC.'
-     exit
-   fi
-
-   STACK_NETWORK="$(
-     bin/kravhantering-quadlet.sh print-network \
-       --topology single-node --purpose identity
-   )"
-   DEMO_USERS_FILE=$PWD/keycloak/demo-users.not-for-production.json
-   DEMO_USERS_CONTAINER_FILE=/tmp/demo-users.not-for-production.json
-   SCRIPT_FILE=$PWD/scripts/keycloak-demo-users.mjs
-   SCRIPT_CONTAINER_FILE=/tmp/keycloak-demo-users.mjs
-
-   podman run --rm --pull=never --network "$STACK_NETWORK" \
-     --entrypoint node --user 0:0 \
-     --env-file /etc/kravhantering/keycloak.env \
-     --volume "$SCRIPT_FILE:$SCRIPT_CONTAINER_FILE:ro" \
-     --volume "$DEMO_USERS_FILE:$DEMO_USERS_CONTAINER_FILE:ro" \
-     "$DB_JOB_IMAGE_REF" \
-     "$SCRIPT_CONTAINER_FILE" demo-users:sync \
-     --users "$DEMO_USERS_CONTAINER_FILE" \
-     --base-url http://keycloak:8080 \
-     --realm kravhantering-production
-
-   exit
-   ```
-
-   For disposable test and development databases that should match the new
-   release's current fixtures, rerun the destructive demo seed after
-   `seed:required` with the optional `kravhantering-demo-seed` image listed
-   under Demonstration Container Images in the GitHub Release notes. This image
-   is not configured in `/etc/kravhantering/release.env`.
-
-   ```bash
-   sudo -iu kravhantering
-   cd /opt/kravhantering/current
-   set -a
-   . /etc/kravhantering/release.env
-   set +a
-
-   STACK_NETWORK="$(
-     bin/kravhantering-quadlet.sh print-network \
-       --topology single-node --purpose database
-   )"
-   DB_CA_SOURCE=/etc/kravhantering/tls/ca.crt
-   DB_CA_TARGET=/run/kravhantering/sqlserver-ca.crt
-   DEMO_SEED_IMAGE_REF=ghcr.io/viscalyx/kravhantering-demo-seed:replace-with-release-tag
-
-   podman pull "$DEMO_SEED_IMAGE_REF"
-   podman run --rm --network "$STACK_NETWORK" \
-     --env-file /etc/kravhantering/db-job.env \
-     --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
-     "$DEMO_SEED_IMAGE_REF"
-
-   exit
-   ```
+   Stop on any failed job. Inspect the saved migration and permission evidence
+   before proceeding; later successful commands do not override a failure.
 
 9. Start the stack from the new release. Reinstall the units after correcting
    `NGINX_RESOLVER` and, for bundled profiles, `NGINX_IDENTITY_RESOLVER`. Then
@@ -769,13 +622,10 @@ script.
       https://kravhantering.example.internal/api/health
     ```
 
-    The Quadlet networks retain the established edge, database, and egress
-    names documented in the deployment guide. Bundled profiles also retain the
-    identity network. The SQL Server volume retains its established name, and
-    bundled profiles retain the Keycloak volume name.
-
-11. Re-enable traffic.
-    Put the host back into the load balancer, reverse proxy or firewall
+11. Resume the retained cleanup manager and require a successful one-shot run
+    and an active timer, following the linked cleanup procedure. Re-enable
+    traffic only after this succeeds. Put the host back into the load balancer,
+    reverse proxy or firewall
     rotation only after the readiness probes and read-only workflow succeed.
     Add the final bundle checksum, image refs, restore-point reference and
     `migration-status-before-<version>.json`,
@@ -795,10 +645,8 @@ script.
 Set `AI_REQUIREMENT_GENERATION_DISABLED=1` before starting rollback. Restore
 SQL Server and every referenced external root-key version together when the
 database is restored. Use suspension or select a still-usable verified model
-revision on the stable profile; the direct OpenRouter path does not exist.
+revision on the stable profile.
 Repeat the AI deployment evidence gate before releasing the guard.
-
-Choose the rollback boundary that matches the failed step:
 
 The selected rollback release must already support the shared SQL-backed HSA
 verification quota. A release with per-process HSA verification counters is
@@ -806,6 +654,8 @@ not eligible for production rollback, regardless of whether its matching
 pre-upgrade database state is available. If no eligible rollback release and
 database restore point exist, keep access closed and forward-fix the target
 release.
+
+Choose the rollback boundary that matches the failed step:
 
 - Before the current Quadlet target is stopped, no runtime migration has
   occurred. Leave the current release active and end the change window.
@@ -819,29 +669,31 @@ release.
 
 For either rollback that follows a failed Quadlet start:
 
-1. Disable traffic and run
+1. Disable traffic, pause the retained cleanup manager, and, as the
+   `kravhantering` service user, run
    `systemctl --user disable --now kravhantering-single-node.target`.
 2. If migration started, stop SQL Server and restore the recorded pre-upgrade
    database or named-volume snapshot. Use the migration evidence to confirm
    the boundary.
 3. Point `/opt/kravhantering/current` back to the eligible previous release
-   directory and restore its `/etc/kravhantering/release.env` image refs.
+   directory and restore its configuration and
+   `/etc/kravhantering/release.env` image refs. For bundled profiles, restore
+   compatible Keycloak data and its image, nginx profile and management
+   certificates together if the target Keycloak has started, even when no
+   application database migration ran.
 4. Install the eligible previous release's `single-node` topology, run
    `systemctl --user daemon-reload`, and enable
    `kravhantering-single-node.target`.
-5. Verify `/api/health`, `/api/ready` and sign-in before enabling traffic.
+5. Verify `/api/health`, `/api/ready` and sign-in. Resume the retained cleanup
+   manager and confirm its successful run and active timer before enabling
+   traffic.
 
 Do not rely on app-only image rollback after schema migration unless the
 specific release notes explicitly say it is supported.
 
-Never start a release with per-process HSA verification counters as a
-production rollback. After an eligible rollback, verify the existing SQL and
+After an eligible rollback, verify the existing SQL and
 migration readiness signal, the `hsa_verification_quota_buckets` cleanup
 target, and HSA verification capacity events before reopening access.
 
-The host owns transient-state cleanup independently of the application.
-Complete the compatibility and recovery-set preflight in
-[Release-Independent Transient-State Cleanup](transient-state-cleanup.md).
-Pause the retained manager before migration or restore, preserve it during
-application rollback, and require a successful `resume` and active timer before
-restoring traffic. Never remove the host cleanup units for application rollback.
+Never remove the host cleanup units for application rollback or replace their
+retained image with the older application's database-job image.

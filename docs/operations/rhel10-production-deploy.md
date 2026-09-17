@@ -1,12 +1,5 @@
 # RHEL 10 Production Deployment From Release Artifacts
 
-CI acceptance distinguishes `Production Assembly Acceptance` (the exact core
-production archive, rootless Quadlet containment, HTTPS, and one author browser
-journey) from trusted-release lifecycle, recovery, boundary, concurrency, and
-HSA qualification. Operator installation and upgrade procedures use the same
-release artifacts and supported production contracts. See
-[CI integration ownership](../development/ci-integration-ownership.md).
-
 <!-- cSpell:words coreutils datawriter firewalld fullchain nameserver privkey -->
 <!-- cSpell:words ipv4 resolv -->
 
@@ -53,23 +46,6 @@ To uninstall a first install of this topology, use
 <!-- markdownlint-disable MD013 -->
 ![Kravhantering Infographic Production Access and Service Flow](../images/infographic-production-access-and-service-flow.png)
 <!-- markdownlint-enable MD013 -->
-
-## Session cookie cutover
-
-Secure builds (`prod` and `local-prod`) automatically add `__Host-` to
-`AUTH_SESSION_COOKIE_NAME` unless that exact prefix is already present.
-Unset, blank, or explicit `kravhantering_session` values resolve to
-`__Host-kravhantering_session`; custom names follow the same rule. The
-login-state name appends `_login` to the effective session name. Both cookies
-remain host-only, with `Secure`, `HttpOnly`, `SameSite=Lax`, and `Path=/`.
-
-A changed effective name requires fresh login; an interrupted login must
-restart from the error page. Already-prefixed deployments keep their name.
-Legacy cookies expire naturally under the existing lifetimes and are never
-accepted or refreshed by the new application. Renaming does not revoke them:
-older instances can still accept them during a mixed-version rollout or
-rollback. Coordinate the cutover across instances and drain older instances
-together. See [cookie-name migration](../security-privacy/auth-how-it-works.md#cookie-name-migration).
 
 ## Release Inputs
 
@@ -454,6 +430,9 @@ paths, rewrite only the registry host while keeping the locked tags:
 
 ```bash
 TARGET_IMAGE_REGISTRY=registry.example.internal
+update_ref() {
+  sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
+}
 LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
 service_image() {
   jq -r --arg name "$1" \
@@ -700,7 +679,9 @@ Keep `AUTH_OIDC_SCOPES=openid profile email` unless the IdP needs additional
 scopes to release the required claims. `openid` must always be present. Keep
 `AUTH_SESSION_COOKIE_NAME=__Host-kravhantering_session` unless this host must serve
 another deployment on the same browser cookie scope. Changing the cookie name
-signs out existing browser sessions.
+requires fresh login. For an existing deployment, follow the coordinated
+[cookie-name migration](../security-privacy/auth-how-it-works.md#cookie-name-migration)
+before changing it.
 
 Keep `AUTH_SESSION_TTL_SECONDS=28800` for an eight-hour absolute session-cookie
 lifetime unless the site has approved another browser-session lifetime. It is
@@ -809,21 +790,6 @@ and restarting Keycloak only affects a first import, not a running realm.
 Do not import the release-smoke realm into production. The smoke-test realm
 contains public test credentials.
 
-### Production-Hardened Bundled Keycloak Appendix
-
-This app-node guide normally uses a deployer-operated external IdP. If the
-deployment instead chooses bundled Keycloak on the self-contained single-node
-host, the complete and equivalent production-hardening contract is
-[Appendix C in the single-node topology guide](./rhel10-production-single-node-self-contained-deploy.md#appendix-c-production-hardened-bundled-keycloak).
-
-That appendix is mandatory for this choice. It separates **user-facing
-application access** from **management-only access** without assuming either
-surface is exposed to the public Internet. It covers fail-closed ingress,
-individual administrator identities, MFA and recovery, bootstrap-account
-retirement, verification, upgrades, rollback, backup, recovery, uninstall and
-incident response. Do not substitute `KC_HOSTNAME_ADMIN` alone for the reverse
-proxy and network controls in that appendix.
-
 ## App Node Start Alternatives
 
 Choose exactly one app-node exposure alternative for the host. Use that
@@ -832,7 +798,8 @@ below. Both alternatives preserve the purpose-specific
 `kravhantering-app-node_edge` and `kravhantering-app-node_egress` Podman
 network names. Do not install both alternatives on one host.
 
-Run the common database jobs:
+Run the common database jobs. Stop if any command fails; inspect its output
+before proceeding to the next command or starting application services:
 
 ```bash
 sudo -iu kravhantering
@@ -1201,7 +1168,9 @@ podman run --rm --env-file /etc/kravhantering/db-job.env \
 exit
 ```
 
-Then run bootstrap, migration, permission verification and required seed:
+Then run bootstrap, migration, permission verification and required seed.
+Stop if any command fails; retain the evidence and resolve the failure before
+continuing:
 
 ```bash
 sudo -iu kravhantering
@@ -1215,7 +1184,14 @@ mkdir -p "$EVIDENCE_DIR"
 podman run --rm --env-file /etc/kravhantering/db-job.env \
   "$DB_JOB_IMAGE_REF" bootstrap
 podman run --rm --env-file /etc/kravhantering/db-job.env \
-  "$DB_JOB_IMAGE_REF" migrate
+  "$DB_JOB_IMAGE_REF" migration-status \
+  > "$EVIDENCE_DIR/migration-status-before-${VERSION}.json"
+podman run --rm --env-file /etc/kravhantering/db-job.env \
+  "$DB_JOB_IMAGE_REF" migrate --json \
+  > "$EVIDENCE_DIR/migration-run-${VERSION}.json"
+podman run --rm --env-file /etc/kravhantering/db-job.env \
+  "$DB_JOB_IMAGE_REF" migration-status \
+  > "$EVIDENCE_DIR/migration-status-after-${VERSION}.json"
 podman run --rm --env-file /etc/kravhantering/db-job.env \
   "$DB_JOB_IMAGE_REF" permission-status \
   > "$EVIDENCE_DIR/runtime-permissions-${VERSION}.json"
@@ -1248,19 +1224,11 @@ Keep these files with the deployment record:
 Do not archive `/etc/kravhantering/*.env`, private keys or raw container
 inspect output in general release evidence stores.
 
-## Scheduled Transient-State Cleanup
-
-Scheduled cleanup for expired MCP import-validation sessions runs as a separately
-installed host service. The Independent Cleanup Installation Gate below defines
-the installation requirement. Follow
-[Release-Independent Transient-State Cleanup](transient-state-cleanup.md) to configure
-bounds, verify the timer, monitor aggregate backlog telemetry and retry safely.
-
 ## Independent Cleanup Installation Gate
 
 Install the host cleanup service with its separate image configuration and
 verified release compatibility contract before opening normal traffic. Follow
 [Release-Independent Transient-State Cleanup](transient-state-cleanup.md)
 for the runtime identity, topology network, TLS, first successful run and active
-schedule requirements. Application target activation alone does not install or
-start this host service.
+schedule requirements, cleanup bounds, backlog monitoring and safe retries.
+Application target activation alone does not install or start this host service.

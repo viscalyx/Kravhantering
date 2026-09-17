@@ -1,6 +1,8 @@
 # Privacy Data Subject Access Export
 
-Kravhantering supports data subject access export for one registered HSA-id.
+This guide helps privacy officers assess the scope of a data subject access
+export and API consumers request and interpret it. Kravhantering exports data
+for one registered HSA-id.
 The JSON payload is the source of truth and remains the machine-readable
 format. PDF export returns a server-rendered report that presents the same
 collected scope in plain Swedish or English for a person who wants to
@@ -18,13 +20,18 @@ The request body is:
 ```json
 {
   "delivery": "json",
+  "locale": "sv",
   "target": { "hsaId": "SE5560000001-example" }
 }
 ```
 
 `target` is optional. When it is omitted, the server derives the subject from
 the signed-in actor's verified session HSA-id. A target matching the actor is
-allowed. Exporting any other HSA-id requires `PrivacyOfficer`.
+allowed. Exporting any other HSA-id requires `PrivacyOfficer`. The optional
+`locale` accepts `sv` or `en` and defaults to `sv`; it controls PDF language
+and the filename. Requests require an authenticated human actor with HSA-id
+and the normal mutation-route CSRF protection; see
+[API security](./api-security.md).
 
 ## Export Schema
 
@@ -78,80 +85,75 @@ sources include:
 - requirement-area and package owner references
 - local requirement responsibility person identity rows, including standalone
   rows until retention deletes them
+- access review assignments and decisions, and action-log actor snapshots
+- AI forensic capture-window actors and evidence actor metadata, excluding
+  captured evidence content
+- RFI assessment authors and agreement actors, described below
 - current auth session claims for self-export only
 - short-lived MCP import validation-session metadata and principal creation-rate
   metadata, matched by the exact keyed principal fingerprint
 - short-lived HSA verification quota kind, count, and timestamps, matched by
   the exact keyed actor-subject or target fingerprint
+- export and report actor-quota creation, release, and expiry timestamps,
+  matched by the exact actor fingerprint
 
-Matching is exact HSA-id matching only. Names and email addresses are never used
-to find a subject. MCP sources derive the same purpose-separated keyed HMAC used
+Matching uses HSA-id identity fields or fingerprints derived from HSA-id.
+Names and email addresses are never used to find a subject. MCP sources derive
+the same purpose-separated keyed HMAC used
 at session creation and never query those tables with raw HSA-id. They export
 only destination kind, reserved bytes, aggregate successful creations and
 timestamps; tokens/hashes, payloads, validation/execution JSON, destination
-IDs/names, session/row IDs and issue arrays are excluded. Privacy erasure offers
-delete or skip for the same exact fingerprint. Deleting a session invalidates
-its token; deleting a rate bucket resets the current short-lived counter.
+IDs/names, session/row IDs and issue arrays are excluded.
 
 HSA verification quota sources derive the same purpose-separated target
 fingerprint as verification. They match rows where the person is the actor or
 target, but export only bucket kind, consumed count, window start, and expiry.
 The other party's fingerprint and the complete actor-context fingerprint are
-never exported. Erasure offers delete or skip; deletion can reset a live
-60-second counter.
+never exported.
 
 ## Limits
 
-Both delivery modes acquire generated-output capacity before broad source
-queries. The collector applies one aggregate item budget across session claims
-and every database source, requests only the remaining budget plus one row to
-detect overflow, and rejects the complete export instead of returning partial
-content. Collection observes the request deadline and cancellation signal
-between source queries.
+Both delivery modes apply the shared export and report actor quota before
+collection, then check server capacity. One aggregate item limit covers session
+claims and all database sources. Exceeding a limit rejects the complete export;
+the service does not return a truncated collection.
 
-Privacy JSON uses the Admin Center CSV/structured-export item, completed-file,
-timeout, and per-node concurrency settings. The JSON artifact is written to the
-private bounded spool before response headers are returned. Browser downloads
-add the existing UTF-8 BOM while API JSON remains BOM-free; the three BOM bytes
-are reserved within the configured completed-file limit.
+JSON uses the Admin Center CSV/structured-export item, file-size, timeout, and
+per-node concurrency settings. PDF uses the PDF item, file-size, timeout,
+concurrency, and worker-memory settings. Files finish generation before download
+headers are returned. Browser JSON downloads include a UTF-8 BOM; API JSON is
+BOM-free.
 
-Privacy PDF uses the Admin Center PDF item, completed-file, timeout,
-concurrency, and worker-memory settings. Rendering runs in a terminable worker
-thread and streams into the private bounded spool, so timeout, cancellation,
-byte overflow, renderer-memory exhaustion, and renderer failure cannot return
-a partial PDF. Exact item limits are accepted; one item over is rejected with
-`422 output_limit_exceeded`. Busy capacity returns `429 capacity_busy` with
-`Retry-After`, while timeout and worker failures use stable `503` responses.
+API consumers should handle these failures:
 
-Free-text fields are excluded because product policy tells users not to enter
-person-identifying data there. Platform security-audit logs are operational logs
+- `422 output_limit_exceeded`: the item or file-size limit is exceeded.
+- `429 actor_rate_limit` or `capacity_busy`: wait for the response's
+  `Retry-After` interval before retrying.
+- `429 actor_concurrency_limit`: finish or cancel an active export or report
+  before retrying.
+- `503`: generation timed out, the PDF worker failed or exhausted memory,
+  temporary storage is unavailable, or the actor quota cannot be checked.
+
+## Export Limitations
+
+Free text is not scanned to discover a subject. Selected contextual text,
+including an RFI assessment reason, can still appear in a record matched by
+its actor HSA-id. Platform security-audit logs are operational logs
 outside the application database and are documented as a limitation of this
 export. Database action-audit actor snapshots are included through
 `action_audit_events.actor`, but raw audit details and action-audit client IP
 values are not exported. Direct transfer to another controller is not
-implemented in this slice.
+implemented. Session claims are available only for self-export; an officer
+exporting another person’s data cannot retrieve that person’s browser session.
 
-## Action Log And Filenames
+## Security Log And Filenames
 
-Successful export generation records
+Successful export generation records a security-log event,
 `privacy.data_subject_export.generated` with delivery, item count, source count,
-and target fingerprint. Action-log detail must not include the raw target HSA-id.
+and target fingerprint. The event detail excludes the raw target HSA-id.
 
 Downloaded filenames use the target fingerprint and generation date rather than
 the raw HSA-id.
-
-## API Contract Status
-
-This route is covered by the OpenAPI/Schemathesis contract in
-[api-security.md](./api-security.md). The contract includes HSA-id-only
-generated examples for self-export and `PrivacyOfficer` cross-user export, and
-documents `Cache-Control: no-store` for JSON/PDF export responses and
-validation/authorization errors.
-
-Focused route tests cover the privacy role matrix, exact and excessive item
-boundaries, JSON byte limits, capacity admission and release, timeout and
-cancellation, PDF worker byte/memory failure, no-store response headers, and
-audit-redaction assertions.
 
 ## RFI assessment authors
 
@@ -160,8 +162,7 @@ assessment author's HSA-id. It exports that author's identity snapshot,
 assessment outcome, reason, document reference, link and timestamp, with the
 specification code and question version as context. Duplicate display names do
 not match another person's records. Free text mentioning other people is not
-automatically discovered. Privacy erasure anonymizes the two actor fields while
-preserving evidence and version history; retention remains a separate workflow.
+automatically discovered.
 
 ## Agreement actors
 
@@ -169,9 +170,7 @@ Register extracts include agreement creation, confirmation, cancellation and end
 actors, binding creation actors, and actors who authorize or cancel deviation
 ending plans. Each source matches the exact HSA identity and references the
 stored business record. Correction actors are exported from their own retained
-business history, separately from the action log. Their stored display names
-and HSA identities are anonymized together. Anonymization removes identity
-without altering agreement content,
-original deviation decisions, effective dates, planned endings or their
-cancellation and actual ending timestamps. Draft discard and privacy erasure
-remain separate operations with different evidence scopes.
+business history, separately from the action log. The extract contains actor
+HSA-id and display-name snapshots with a reference to the business record; it
+does not export the agreement content.
+Generating an extract does not anonymize or delete the source records.

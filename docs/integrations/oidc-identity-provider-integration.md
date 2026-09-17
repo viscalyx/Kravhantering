@@ -1,16 +1,12 @@
 # OIDC Identity Provider Integration
 
-This document describes the deployment contract Kravhantering expects from an
-OIDC-compatible identity provider in production or pre-production environments.
+This guide is for operators and identity-provider administrators configuring
+Kravhantering in production or pre-production environments. It describes the
+hosting requirements and OIDC client and token contracts.
 For implemented browser, session, MCP-token and audit flows, see
 [auth-how-it-works.md](../security-privacy/auth-how-it-works.md). For the
 provider handoff checklist and request text, see
 [external-idp-handoff.md](./external-idp-handoff.md).
-
-Treat this as the target contract for a reverse-proxied, multi-instance
-deployment and for the external IdP. Where this document and the current code
-differ, this document should be read as target deployment intent rather than
-current implementation.
 
 ## Self-Contained Single-Node Identity Profiles
 
@@ -58,7 +54,7 @@ flowchart LR
 
     Browser -->|HTTPS + session cookie| Proxy
     MCP -->|HTTPS + Bearer JWT| Proxy
-    Proxy -->|Forwarded host and proto| App
+    Proxy -->|Proxied application requests| App
     Secret -->|Client credentials and session secret| App
     Config -->|Issuer, redirect URIs, scopes, audience, flags| App
     App -->|OIDC discovery, token exchange, JWKS, end-session| IdP
@@ -71,7 +67,8 @@ flowchart LR
   `dev`, `test`, and `prod`.
 - Provide per-environment secret configuration for
   `AUTH_OIDC_CLIENT_ID`, `AUTH_OIDC_CLIENT_SECRET`, and
-  `AUTH_SESSION_COOKIE_PASSWORD`.
+  `AUTH_SESSION_COOKIE_PASSWORD` (at least 32 characters). All application
+  replicas must share the cookie password and cookie settings.
 - Inject unique production secrets before deployment. Production preflight and
   application startup reject blank values and shipped development or template
   placeholders. With bundled Keycloak, the application client secret must match
@@ -90,12 +87,11 @@ flowchart LR
   See [cookie-name migration](../security-privacy/auth-how-it-works.md#cookie-name-migration).
 - Terminate TLS at the public reverse proxy or load balancer and set
   `AUTH_OIDC_REDIRECT_URI` and `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` to the
-  public HTTPS host. CSRF origin checks in `lib/auth/csrf.ts` and
-  `proxy.ts` compare only the URL origin (scheme + host + port) of
-  `AUTH_OIDC_REDIRECT_URI`, not its path or query, and ignore inbound
+  public HTTPS host. CSRF origin checks compare only the URL origin
+  (scheme + host + port) of `AUTH_OIDC_REDIRECT_URI`, not its path or query,
+  and ignore inbound
   `X-Forwarded-*` headers. The same edge layer may also distribute traffic
-  across multiple app replicas; because the session is carried in the encrypted
-  cookie, the app does not require sticky sessions.
+  across multiple app replicas.
 - Select the deployed client-address trust model and configure only exact proxy
   CIDRs as described in
   [Access Logging and Client IP Trust](../operations/access-log-and-client-ip-trust.md).
@@ -104,51 +100,49 @@ flowchart LR
 - Pre-register the exact redirect URI and post-logout URI for every
   environment. Public hostname changes require both app configuration and IdP
   updates.
-- Auth is mandatory in every build target. The insecure-issuer allowance
-  is now a build-target constant that is `true` only for `dev` and `local-prod`.
-  The `local-prod` target, booted via `npm run start:prodlike` on port `3001`,
-  authenticates against a dedicated dev-only Keycloak client
-  (`kravhantering-prodlike`) wired up in [`.env.prodlike`](../../.env.prodlike);
-  see the
-  [Prodlike local client](../development/auth-developer-workflow.md#prodlike-local-client-kravhantering-prodlike)
-  section in the developer workflow for the full client/redirect/secret
-  contract. These auth-related build-target constants, including the
-  insecure-issuer allowance, are baked into the bundle when the build target is
-  selected, so changing them requires rebuilding for that target. They are not
-  runtime environment variables that can be toggled on a deployed instance.
+- Authentication is mandatory. Production builds require an HTTPS issuer;
+  the local development HTTP allowance cannot be enabled through runtime
+  environment variables.
 - Keep the session model stateless. The app expects an encrypted cookie-based
   session, not a server-side session store, and it does not require sticky
   sessions between replicas. Browser access tokens are not stored for periodic
   introspection.
 - If MCP is enabled in production, provision a separate confidential client
   for the service-to-service `client_credentials` flow and set
-  `AUTH_OIDC_API_AUDIENCE` explicitly when its access-token `aud` differs from
-  the browser client.
+  `MCP_CLIENT_ID` and `AUTH_MCP_REQUIRED_SCOPES`. Without `MCP_CLIENT_ID`,
+  the MCP endpoint is disabled. Set `AUTH_OIDC_API_AUDIENCE` explicitly when
+  the access-token `aud` differs from the browser client ID.
 
 ## IdP Contract
 
 ### Browser Client
 
 - Support OIDC Authorization Code + PKCE for the browser-facing web client.
-- Register the app as a confidential client with a client id and client secret.
+- Register the app as a confidential client with a client ID and client
+  secret, using `client_secret_post` for token-endpoint authentication.
 - Expose a discovery document at the configured issuer URL. The app expects
   `/.well-known/openid-configuration` under `AUTH_OIDC_ISSUER_URL`.
 - Expose authorization, token, and JWKS endpoints. An
   `end_session_endpoint` is strongly preferred so logout can also terminate
   the IdP session.
-- For immediate invalidation before `accessTokenExpiresAt`, prefer standard
-  OIDC front-channel logout, back-channel logout, or equivalent provider
-  session notifications in production. If the production IdP cannot support
-  those hooks, keep using the stateless session model and bound stale access by
-  shortening token/session lifetimes instead of storing browser access tokens.
-- Issue ID tokens that include the required claims:
-  `sub`, `given_name`, `family_name`, and `employeeHsaId`.
+  Verify logout both with and without `id_token_hint`: the app omits that
+  hint when the ID token would exceed the session-cookie size budget.
+- The app does not implement front-channel or back-channel logout receivers,
+  token introspection, or browser-token refresh. IdP account or role changes
+  therefore do not immediately invalidate an existing application session.
+  Bound stale access with access-token and application-session lifetimes.
+  Return a positive `expires_in` in the token response; the app uses a
+  five-minute expiry when it is missing or invalid.
+- Issue ID tokens with non-empty `sub`, `given_name`, and `family_name`, and
+  `employeeHsaId` matching the [HSA-id syntax](../reference/hsa-id.md).
+  Optional `email` is used only when `email_verified` is the boolean `true`.
 - For Keycloak realms, keep the underlying user attribute named `hsaId` and
   map it to the token claim `employeeHsaId`. Newer Keycloak admin consoles
   expose that field through the realm user-profile configuration.
 - Emit global role information as a JSON array of exact canonical app role
   strings: `Reviewer`, `Admin`, and `PrivacyOfficer`. The default claim name is
-  `roles`. Non-array role claims and unknown values grant no global roles.
+  `roles`. A non-array claim grants no global roles; unknown entries in an
+  array are ignored while recognized entries are retained.
   `PrivacyOfficer` is a narrow role for privacy, archiving retention, and
   access-review handling; it does not imply `Admin`.
 - Do not model authoring rights as IdP roles. The application derives
@@ -163,16 +157,16 @@ flowchart LR
   Opaque access tokens are not sufficient for the current MCP implementation.
 - Set the protected access-token header type to `at+jwt` and issue tokens with
   a lifetime no greater than `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` (for example,
-  `300` seconds).
+  `300` seconds, the default). The configured maximum must be an integer
+  from `60` through `900` seconds. Keep issuer and application clocks
+  synchronized; validation allows 30 seconds of clock skew.
 - Ensure MCP access tokens match the configured issuer and API audience and
   emit a top-level `client_id` equal to `MCP_CLIENT_ID`. `azp` is not accepted
-  as a substitute.
+  as a substitute and, if present, must also equal `MCP_CLIENT_ID`.
 - Include numeric `exp` and `iat`, a non-empty `sub`, and a real-format
   `employeeHsaId` on every MCP access token.
   The value must match the HSA-id syntax documented in
-  [hsa-id.md](../reference/hsa-id.md). If a local or prodlike token lacks the
-  claim, update the Keycloak realm configuration or reset the local IdP so the
-  current realm JSON is imported.
+  [hsa-id.md](../reference/hsa-id.md).
 - Assign the `kravhantering:mcp` client scope and emit it in the standard
   top-level, space-separated `scope` string. Every scope configured in
   `AUTH_MCP_REQUIRED_SCOPES` is mandatory.
@@ -186,16 +180,6 @@ flowchart LR
 
 - The claim name `employeeHsaId` is fixed by the application contract.
 - `employeeHsaId` is treated as person-stable for the same person over time.
-- Verified session name and e-mail fields may refresh the signed-in actor's
-  live requirement-responsibility person row after successful mutations only
-  when the signed-in actor's current HSA-id is still linked to a live
-  requirement-responsibility assignment. This refresh is asynchronous
-  best-effort work: it does not run in the login critical path, does not call
-  HSA, and sanitized refresh failures must not fail login or the original
-  mutation.
-- The exact redirect URIs and post-logout URIs must be registered for each
-  deployed environment.
-- The IdP must be reachable from the hosting environment over TLS.
 
 ## Rollout Items
 
@@ -203,4 +187,4 @@ flowchart LR
   pre-production smoke verification against the real IdP belong to the
   production rollout.
 - Day-2 auth credential rotation is handled by the RHEL 10 production upgrade
-  and rollback guide.
+  and rollback [guide](../operations/rhel10-production-upgrade.md).

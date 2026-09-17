@@ -2,7 +2,7 @@
 
 This document is for contributors who maintain the Azure VM Remote SSH
 implementation. The operator workflow, configuration examples, cost warning,
-disk tree, and daily commands live in
+storage locations, and daily commands live in
 [Azure VM Remote SSH Development](./azure-vm-remote-ssh-development.md).
 
 Do not duplicate operator instructions here. Add content here when it explains
@@ -33,22 +33,8 @@ service startup.
 
 ## Source Layout
 
-`scripts/azure-dev.ps1` is the only public entry point. It imports modules in
-this order:
-
-```text
-AzureDev.Config.psm1
-AzureDev.Logging.psm1
-AzureDev.Azure.psm1
-AzureDev.Ssh.psm1
-AzureDev.Bootstrap.psm1
-AzureDev.Validation.psm1
-AzureDev.Podman.psm1
-AzureDev.LifecycleLock.psm1
-AzureDev.Lifecycle.psm1
-```
-
-Module responsibilities:
+`scripts/azure-dev.ps1` is the public entry point. Use these module boundaries
+when deciding where to make a change:
 
 <!-- markdownlint-disable MD013 -->
 | Module | Responsibility |
@@ -62,6 +48,7 @@ Module responsibilities:
 | `AzureDev.Bootstrap.psm1` | Uploads `bootstrap-host.sh`, Quadlet templates, and the selected Zsh profile with `scp`, then invokes bootstrap over SSH with port forwarding disabled. |
 | `AzureDev.Validation.psm1` | Checks the workstation terminal font, runs post-setup smoke validation over SSH, and reports remote diagnostics on failure. |
 | `AzureDev.Podman.psm1` | Shared support-service unit and port metadata used by validation. |
+| `AzureDev.Workstation.psm1` | Named workstation access, CIDR policy, signed requests, encrypted packages, extraction, cleanup, and readiness reporting. |
 <!-- markdownlint-enable MD013 -->
 
 Keep parsing and planning logic separate from Azure and filesystem mutations.
@@ -74,25 +61,17 @@ The entry point validates the command name with PowerShell's `ValidateSet`.
 `start`, `stop`, and lifecycle `status` delegate their command name, repository
 root, and selected environment file to the lifecycle module, which loads one
 narrow immutable snapshot. Other commands build the broader context object
-with resolved config, operator switches, and derived local paths:
+with resolved config, operator switches, and derived local paths.
 
-```text
-.azure/development.state.json
-.azure/development.lock
-.azure/logs/
-scripts/azure-dev/templates/main.bicep
-scripts/azure-dev/templates/bootstrap-host.sh
-scripts/azure-dev/templates/zshrc.template.example
-```
+`setup` and `approve-workstation` require the selected primary environment
+file to exist; it defaults to `.env.azure.development`. `estimate-cost`,
+`new-workstation-request`, `extract-workstation-package`, and
+`cleanup-workstation-package` allow missing Azure scope values. `ssh-config`
+and `prepare-workstation-access` also support direct-host configuration without
+Azure scope. Commands that contact Azure validate their required target values.
 
-Only `setup` requires `.env.azure.development` to exist. `estimate-cost` allows
-missing Azure scope values so it can read local defaults and print cost drivers
-without Azure access. Other commands still validate required Azure scope values
-before calling Azure.
+Setup preserves these provisioning boundaries:
 
-The command flow is intentionally narrow:
-
-- `estimate-cost` prints local cost drivers only.
 - `setup` verifies the workstation Powerlevel10k font before any Azure
   mutation, validates prerequisites, resolves SSH CIDR, preserves an existing
   VM's immutable image reference or resolves the latest active Gen2 image from
@@ -118,26 +97,6 @@ The command flow is intentionally narrow:
 - `setup` queries the existing exact image version's Marketplace
   deprecation state. Scheduled, non-active, missing, or unavailable metadata
   produces a non-blocking warning; active metadata remains quiet.
-- Lifecycle `start` and `stop` use the dedicated lifecycle module rather than
-  setup prerequisites or connection preparation.
-- Lifecycle `status` reads and normalizes the exact VM power state immediately.
-  It does not inspect setup state or image and network metadata, lock, wait, or
-  infer desired state.
-- `add-cidr`, `set-cidr`, `list-cidrs`, and `remove-cidr` manage named,
-  Azure-visible SSH sources without replacing another workstation's rules.
-- `new-workstation-request` creates a destination-local key and a signed,
-  ASCII-armored request for connect-only or management use without requiring
-  Azure scope.
-- `approve-workstation` verifies the request, adds its public key and CIDR, and
-  creates a response package encrypted to the destination SSH public key.
-- `extract-workstation-package` validates and extracts a package into one
-  explicitly selected directory without applying workstation changes.
-- `prepare-workstation-access` uses local-only direct-host checks for
-  connect-only configuration and Azure prerequisites for management
-  configuration.
-- `ssh-config` prints the managed OpenSSH block or applies it when requested.
-- `remove` deletes only live resources selected by ownership tags, then removes
-  owned local state and the managed SSH config block.
 
 ## Mutation Rules
 
@@ -367,8 +326,9 @@ lock is released and stable-stop polling continues under the original
 stable-stop deadline.
 
 The local lock is intentionally not a distributed lock. It serializes one
-checkout, while the guarded Azure reread lets invocations from other checkouts
-or workstations converge without duplicate mutations. The immutable
+checkout, while the guarded Azure reread lets an invocation reconsider changes
+from other checkouts or workstations. It cannot serialize those other callers.
+The immutable
 configuration snapshot keeps every reread and mutation on the original
 subscription, resource group, and VM.
 
@@ -393,21 +353,9 @@ normal nonzero interruption. Lock ownership is released by the lock module's
 `finally` path, no compensating Azure action runs, and an interrupted attempt
 returns no lifecycle result or terminal lifecycle record.
 
-The dispatcher acquires the target-derived lock, validates the Azure session,
-reads the decisive state, calls the planner, and submits at most one mutation:
-
-```text
-az vm start --subscription <subscription-id> \
-  --resource-group <resource-group> --name <vm-name> \
-  --no-wait --output none --only-show-errors
-```
-
-The lock is released before polling. The running wait uses the lifecycle timing
-contract: five-second polls, 30-second heartbeats, and a ten-minute deadline.
-During the wait, only state changes and heartbeats reach the information
-stream. A timeout uses failure phase `running-wait`, states that Azure can still
-complete the earlier operation, and submits neither rollback nor a second
-start.
+A start submission uses `az vm start --no-wait` with the explicit subscription,
+resource group, and VM name. A timeout uses failure phase `running-wait` and
+states that Azure can still complete the earlier operation.
 
 After `running`, the command returns exactly one `AzureDev.LifecycleResult` on
 the success stream. It writes only `SSH: ssh <alias>` and
@@ -419,51 +367,19 @@ probe SSH readiness. Connection preparation and trust repair remain owned by
 
 ### Offline Lifecycle Acceptance Boundary
 
-The opt-in Pester public-command harness invokes `scripts/azure-dev.ps1` with a
-temporary repository root, isolated home and Azure CLI directory, scripted
-fake `az`, and an argument log. It supplies no real credentials, Azure access,
-SSH state, or real home directory. The fake exposes cached-identity, token,
-targeted-login, state-sequence, mutation-acceptance, and mutation-rejection
-modes. Every recorded argument array is available for exact assertions.
+Lifecycle acceptance tests must exercise the public entry point with isolated
+home, repository, and Azure CLI state, a fake `az`, and injected time. Keep
+these cases offline and opt-in through `npm run test:powershell:integration`.
 
-The public suite covers both previews, all ten normalized status observations,
-the complete start and stop transition tables, idempotent outcomes, targeted
-authentication repair, configuration and lock failures, rejected mutations,
-both transition timeouts, progress, diagnostic-write warning, outside
-interference, and interruption. Child-process cases verify exit behavior;
-in-process cases verify typed results, terminating errors, stream separation,
-and the lifecycle record schema.
+When changing lifecycle behavior, cover the state tables above, exact target
+selection, bounded waits, lock release during polling, authentication repair,
+stream and exit contracts, interruption, and diagnostic-write failure. Ensure
+lifecycle commands cannot invoke SSH preparation, trust repair, connection
+probes, interactive login, subscription enumeration, or global subscription
+selection. Test failed and empty polling reads deterministically; a live VM
+cannot reliably reproduce them.
 
-For a manual startup regression check on a development VM:
-
-1. With the VM deallocated, run `./scripts/azure-dev.ps1 start` once.
-2. If a poll reports `unavailable`, leave the command running. Verify it keeps
-   polling and reaches `running` with action `start-requested` when Azure
-   reports the VM running, without another `submission` event.
-3. If reads remain unavailable throughout the running deadline, verify the
-   command fails in phase `running-wait` after ten minutes and records
-   `unavailable` without submitting another mutation.
-
-The offline public-command cases reproduce failed and empty reads
-deterministically; a live VM may reach `running` without either observation.
-
-The injected monotonic clock and delay advance the waits without sleeping.
-Together with focused unit coverage, the suite fixes the timing contract at
-five-second polls, 30-second heartbeats, a 15-second lock deadline, independent
-ten-minute stable-stop and running deadlines, and a two-minute deadline for
-each Azure CLI call. The state-sequence log also proves the lock is released
-during polling and reacquired before a refreshed decision.
-
-Stubs for SSH, key, transfer, Git, host-resolution, download, and VS Code tools
-fail and record evidence if invoked. The isolated `PATH`, untouched malformed
-setup-state sentinel, absent SSH home, exact Azure argument log, and empty job
-set prove the lifecycle path performs no SSH preparation, trust refresh,
-readiness polling, setup-state read, unrelated discovery, interactive login,
-subscription enumeration, or global subscription selection. Result and log
-assertions prove
-that progress and exact connection guidance stay outside the success stream,
-and that best-effort lifecycle records remain allowlisted, secret-free,
-self-identifying, and non-authoritative.
+### Setup Preview And Native Commands
 
 `setup -WhatIf` must remain read-only. It may inspect local tools, Azure login,
 subscription visibility, SKU availability, resource-group tags, SSH CIDR, and
@@ -484,7 +400,8 @@ real key does not exist. Real setup creates or reuses the configured local
 
 All native commands must go through `Invoke-AzureDevNativeCommand` unless there
 is a specific reason not to. That helper writes the redacted formatted command
-with `Write-Verbose` and writes the raw command output with `Write-Debug`.
+with `Write-Verbose` and writes output filtered through
+`ConvertTo-AzureDevPiiSafeText` with `Write-Debug`.
 Keep new secret-bearing arguments compatible with `Format-AzureDevCommand`
 redaction.
 
@@ -534,10 +451,11 @@ AZURE_CLIENT_ID
 AZURE_CLIENT_SECRET
 ```
 
-If any one value is set, all three must be set. For real Azure commands, a
-complete triple is used before an existing Azure CLI user session. For
-`-WhatIf`, the script must not run `az login --service-principal` because that
-mutates local Azure CLI state.
+If any one value is set, all three must be set. Setup and access commands use
+a complete triple before an existing Azure CLI user session. Lifecycle commands
+first probe the cached identity and token, then repair authentication when
+needed as described above. For `-WhatIf`, the script must not run
+`az login --service-principal` because that mutates local Azure CLI state.
 
 Never print or log secret values. State files must contain only non-secret
 cache data that can be rebuilt from Azure or config.
@@ -556,30 +474,11 @@ upload.
 
 ## Azure Provisioning
 
-PowerShell shells out to Azure CLI for:
-
-- cloud and account checks
-- service-principal login when configured
-- subscription selection
-- provider and SKU/image inspection
-- resource-group lookup and creation
-- Bicep what-if and deployment
-- output capture
-- power operations
-- tag-filtered resource deletion
-
-Bicep owns these resources:
-
-- VNet `namePrefix-vnet`
-- subnet `snet-dev`
-- NSG `namePrefix-nsg`
-- optional public IP `namePrefix-pip` in `public-ssh` mode
-- NIC `namePrefix-nic`
-- SSH public-key resource `namePrefix-ssh-key`
-- VM `vmName`
-- managed OS disk `vmName-osdisk`
-- managed data disk `vmName-data`
-- optional DevTestLab schedule `shutdown-computevm-vmName`
+PowerShell uses Azure CLI to inspect and mutate the target environment. Bicep
+owns the network, SSH access, VM and disks, optional public IP, and optional
+auto-shutdown schedule. Change the resource graph in
+`scripts/azure-dev/templates/main.bicep`; keep lifecycle power operations in the
+lifecycle module.
 
 All resources receive the common tag set:
 
@@ -597,9 +496,11 @@ the resource group and does not delete the resource group itself.
 
 The VM admin user is always `vscode`. Azure password authentication is disabled
 and the configured SSH public key is written to
-`/home/vscode/.ssh/authorized_keys` through the VM OS profile. Azure does not
-allow that OS-profile SSH key to be changed in place, so setup detects a VM
-created with a different key and fails with a remove-and-recreate instruction.
+`/home/vscode/.ssh/authorized_keys` through the VM OS profile on creation.
+Azure does not allow that OS-profile SSH key to be changed in place.
+`Get-AzureDevDeploymentSshPublicKey` therefore preserves the live infrastructure
+key on setup reruns. Additional approved workstation keys live in the guest's
+`authorized_keys` file; their owners need not possess the original private key.
 
 The OS and data disks use `deleteOption: Delete` in Bicep so VM teardown deletes
 them with the VM instead of leaving detached managed disks behind.
@@ -858,16 +759,17 @@ that resets or rewrites guest SSH configuration.
 ## Guest Bootstrap
 
 `AzureDev.Bootstrap.psm1` uploads the current local bootstrap script, Quadlet
-templates, Zsh profile, and development-tooling files to `/tmp` on the VM,
-waits for cloud-init when available, and runs:
+templates, Zsh profile, and development-tooling files to `/tmp` on the VM.
+It waits for cloud-init when available, then invokes the uploaded script with
+`sudo env ... bash /tmp/krav-bootstrap-host.sh`.
 
-<!-- markdownlint-disable MD013 -->
-
-```text
-sudo env AZURE_DEV_QUADLET_SOURCE=/tmp/krav-azure-dev/quadlet AZURE_DEV_ZSHRC_SOURCE=/tmp/krav-azure-dev/zshrc AZURE_DEV_CODEX_CONFIG_SOURCE=/tmp/krav-azure-dev/tooling/codex-config.toml AZURE_DEV_CODEX_CONFIG_MERGER=/tmp/krav-azure-dev/tooling/merge-codex-config.py AZURE_DEV_CODEX_INSTALLER=/tmp/krav-azure-dev/tooling/install-codex.sh AZURE_DEV_CODEX_ORCHESTRATOR=/tmp/krav-azure-dev/tooling/install-azure-codex.sh AZURE_DEV_CODEX_SESSION_POLICY=/tmp/krav-azure-dev/tooling/install-azure-codex-session-policy.sh AZURE_DEV_DOTENV_LINTER_INSTALLER=/tmp/krav-azure-dev/tooling/install-dotenv-linter.sh AZURE_DEV_ROLLING_GIT_INSTALLER=/tmp/krav-azure-dev/tooling/install-rolling-git-source.sh AZURE_DEV_WORKTREE_STORAGE_SOURCE=/tmp/krav-azure-dev/tooling/worktree-storage.sh AZURE_DEV_APT_KEY_VERIFIER=/tmp/krav-azure-dev/tooling/verify-apt-key.sh AZURE_DEV_GIT_USER_NAME='<full-name>' AZURE_DEV_GIT_USER_EMAIL='<email-address>' AZURE_DEV_GIT_SSH_SIGNING_PUBLIC_KEY='<public-key>' bash /tmp/krav-bootstrap-host.sh
-```
-
-<!-- markdownlint-enable MD013 -->
+`Invoke-AzureDevBootstrap` assembles the exact environment assignments. They
+select the uploaded templates, configuration merger, Podman client wrapper,
+installers, storage helpers, and protected support-service staging directory.
+The command also sets `AZURE_DEV_CODEX_MODE=user-managed` and the resolved Git
+identity and public signing key. When adding a bootstrap input, update its
+upload mapping and environment assignment together so setup uses the current
+local file instead of a potentially older checkout on the guest.
 
 The Git identity and public signing-key values are shell-quoted before being
 added to the bootstrap command. Bootstrap writes them to
@@ -887,9 +789,7 @@ Git object, verifies the checkout, and records the resolved object in bootstrap
 output. These upstream branches do not provide a consistently signed rolling
 head, so ADR 0045 explicitly accepts the publisher-authenticity exception for
 each channel. The object is not pinned in the repository; a later new
-installation resolves the then-current branch again. The rolling-source tests
-exercise the shared fail-closed resolution and checkout control.
-
+installation resolves the then-current branch again.
 Bootstrap prepends the managed storage environment to the installed profile
 before Powerlevel10k's instant-prompt preamble. VS Code injects shell integration
 when it starts the terminal, so the profile does not source that integration.
@@ -939,8 +839,7 @@ against it, and emits the same result for the workstation bootstrap module.
 `Invoke-AzureDevBootstrapAndSmokeValidation` carries that validated target
 unchanged from bootstrap into smoke validation; the setup entry point uses this
 single PowerShell orchestration seam instead of reconstructing the version.
-The PowerShell setup flow validates that one result and passes its version
-directly to smoke validation. Smoke does not resolve release metadata or write
+Smoke does not resolve release metadata or write
 a version marker. Forwarded GitHub tokens remain subprocess environment/input
 only and do not appear in result records or command arguments.
 
@@ -971,13 +870,10 @@ does not set a Codex IDE extension executable override. Setup reloads OpenSSH
 configuration but does not restart open terminals or the VS Code Server, so a
 reconnect is the convergence boundary.
 
-Any object at `/usr/local/bin/codex` is a blocking legacy collision. Setup does
-not remove, migrate, tolerate, or redirect it. Operators preserve remote-only
-work, run `remove`, run `setup -Yes`, reconnect, and complete a fresh
-environment-local `codex login`. `remove` preserves workstation SSH keys by
-default but deletes both VM disks. A failed replacement setup preserves the VM,
-both disks, and created Azure resources for diagnosis and retry; it never
-recreates the legacy installation.
+Any object at `/usr/local/bin/codex` is a blocking legacy collision. Setup must
+fail with the replacement guidance in the development guide rather than remove
+or migrate it. A failed replacement setup preserves the VM, both disks, and
+created Azure resources for diagnosis and retry.
 
 The shared dotenv-linter helper applies the same fail-closed release-asset
 digest contract. Bootstrap configures NodeSource and Tailscale directly as
@@ -1050,8 +946,8 @@ requirement, change the devcontainer and Azure VM bootstrap together.
 
 ## Storage Invariants
 
-The development guide contains the human-readable disk tree. The contributor
-contract is:
+The development guide describes storage locations and inspection commands.
+The contributor contract is:
 
 - `/mnt/krav-azure-dev-data` is the Azure data disk mount.
 - `/mnt/krav-azure-dev-data/.worktrees` is a real directory owned and writable
@@ -1198,7 +1094,7 @@ public IP or Tailscale target, SSH alias and key paths, deployment outputs,
 last known named SSH CIDRs, and last validation status. Destructive paths must
 verify live Azure resources instead of trusting this file.
 
-Mutating commands create:
+Real `setup` and `remove` commands create:
 
 ```text
 .azure/development.lock
@@ -1207,6 +1103,14 @@ Mutating commands create:
 The lock contains command name, process ID, host, user, environment ID, and
 start time. `-ForceUnlock` may remove stale local locks only. It must not
 bypass Azure ownership checks or destructive confirmations.
+
+Lifecycle `start` and `stop` instead use a named operating-system mutex and a
+diagnostic record at `.azure/lifecycle-locks/lifecycle-<target-hash>.lock`.
+The target hash covers the subscription, resource group, and VM; the mutex
+identity also includes the checkout path. Contention lasts at most 15 seconds.
+The operating system recovers abandoned mutexes, and deleting the diagnostic
+file cannot release a live lock. `-ForceUnlock` does not apply to lifecycle
+locks. Keep release owner-safe and release the mutex before transition polling.
 
 JSONL logs are written under:
 
@@ -1301,21 +1205,8 @@ When changing Azure VM Remote SSH behavior:
 - Redact new secret-bearing values in command formatting, state, and logs.
 - Update bootstrap and smoke validation together when changing host layout,
   Podman storage, support ports, or service startup order.
-- Avoid adding tests that target `.ps1`, `.psm1`, or docs unless that policy is
-  deliberately changed.
-
-## Decision Inputs
-
-The original design work is tracked in:
-
-<!-- markdownlint-disable MD013 -->
-- [Compare Ubuntu 24.04 and Rocky Linux for Azure VM base OS](https://github.com/viscalyx/Kravhantering/issues/432)
-- [Choose secure connectivity model for Azure Remote SSH](https://github.com/viscalyx/Kravhantering/issues/433)
-- [Choose Azure provisioning substrate and permissions model](https://github.com/viscalyx/Kravhantering/issues/434)
-- [Define VM cost, size, region, and lifecycle guardrails](https://github.com/viscalyx/Kravhantering/issues/435)
-- [Define host bootstrap parity with the devcontainer](https://github.com/viscalyx/Kravhantering/issues/436)
-- [Design Podman topology for development support services](https://github.com/viscalyx/Kravhantering/issues/437)
-- [Define operator configuration, credentials, and SSH integration contract](https://github.com/viscalyx/Kravhantering/issues/438)
-- [Define idempotency, teardown, and state-safety contract](https://github.com/viscalyx/Kravhantering/issues/439)
-- [Define validation and acceptance checks for the Azure development environment](https://github.com/viscalyx/Kravhantering/issues/440)
-<!-- markdownlint-enable MD013 -->
+- Add or update Pester 6 coverage for changed PowerShell behavior, following
+  [the Pester test instructions](../../.github/instructions/pester.instructions.md).
+  Keep unit tests isolated and integration tests opt-in. The explicit
+  `npm run test:powershell:integration` runner executes both suites in an
+  isolated offline container; do not add it to default quality checks.

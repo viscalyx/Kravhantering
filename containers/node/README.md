@@ -66,7 +66,7 @@ Final Dockerfiles identify the images as Viscalyx/Kravhantering, clear stale
 base-image build metadata and retain component provenance. Using UBI does not
 imply Red Hat endorsement, certification or support for Kravhantering.
 
-The [UBI documentation research](../../docs/reference/ubi10-container-documentation-research.md)
+The [UBI documentation research](https://github.com/viscalyx/Kravhantering/issues/1292#issuecomment-5716421171)
 records upstream evidence for host requirements, TLS policy, redistribution,
 and support boundaries. Runtime license files and SBOMs do not constitute a
 corresponding-source archive; the current release workflow does not collect

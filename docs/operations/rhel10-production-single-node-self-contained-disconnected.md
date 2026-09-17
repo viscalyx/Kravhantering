@@ -4,16 +4,15 @@
 
 This guide describes how to prepare and import disconnected release artifacts
 for the self-contained single-node RHEL 10 production topology, where nginx,
-`app-runtime`, SQL Server, Keycloak and `db-job` run in one rootless Podman
-Quadlet deployment split across the edge, identity, database, and application
-egress networks.
+`app-runtime`, SQL Server and `db-job` run in one rootless Podman Quadlet
+deployment. A bundled identity profile also runs Keycloak. The deployment
+uses separate edge, identity, database, and application egress networks.
 
 The default disconnected topology is `single-node`. The optional
 `single-node-demo` selection is reserved for verifying and moving Kong, the HSA
 person lookup adapter, and the HSA directory mock from the support-image lock
-files. It is not a runnable production or Quadlet-helper topology. Release smoke
-uses the separately named CI-only Quadlet overlay, while production installation
-continues to use `single-node`.
+files. It is not a runnable production or Quadlet-helper topology. Production
+installation uses `single-node`.
 
 The standard `single-node` and `single-node-demo` disconnected image bundles do
 not include the optional `kravhantering-demo-seed` image. Treat demo seed as a
@@ -46,11 +45,14 @@ The export host needs:
 
 - outbound access to the approved release repository
 - outbound access to the approved image registry or mirror
-- `podman`, `tar`, `gzip`, `coreutils`, `jq` and `curl`
+- Bash, `podman`, `tar`, `gzip`, `coreutils`, `jq` and `curl`
+- an organization-approved GitHub CLI with the attestation verification flags
+  listed in [Release Artifact And Image Verification](release-artifact-and-image-verification.md#verify-the-deployment-archive)
 - one operator account that runs all `podman pull`, verify and export commands
 
 Podman image storage is per user. Pull, verify and export images with the same
-connected-host account.
+connected-host account. Run the command blocks in Bash and stop if any command
+fails; do not package or import a bundle after a failed verification.
 
 ### Create The Disconnected Bundle
 
@@ -93,7 +95,7 @@ curl -fLO "${RELEASE_DOWNLOAD_URL}/${RELEASE_ARCHIVE}"
 curl -fLO "${RELEASE_DOWNLOAD_URL}/${RELEASE_ARCHIVE}.sha256"
 curl -fLO "${RELEASE_DOWNLOAD_URL}/${RELEASE_ATTESTATION}"
 curl -fLO "${RELEASE_DOWNLOAD_URL}/${RELEASE_TRUSTED_ROOT}"
-sha256sum -c "${RELEASE_ARCHIVE}.sha256"
+sha256sum -c "${RELEASE_ARCHIVE}.sha256" || exit 1
 
 ```
 
@@ -448,10 +450,13 @@ mkdir -p "$OFFLINE_ROOT"
 (
   cd "$(dirname "$OFFLINE_BUNDLE")"
   sha256sum -c "$(basename "$OFFLINE_BUNDLE").sha256"
-)
+) || exit 1
 tar -xzf "$OFFLINE_BUNDLE" -C "$OFFLINE_ROOT" --strip-components=1
-(cd "$OFFLINE_ROOT" && sha256sum -c hashes.sha256)
-(cd "$OFFLINE_ROOT/release" && sha256sum -c "${RELEASE_ARCHIVE}.sha256")
+(cd "$OFFLINE_ROOT" && sha256sum -c hashes.sha256) || exit 1
+(
+  cd "$OFFLINE_ROOT/release"
+  sha256sum -c "${RELEASE_ARCHIVE}.sha256"
+) || exit 1
 ```
 
 Verify provenance offline now, before preparing the release directory. Read the
@@ -548,7 +553,10 @@ target_ref() {
       "$(target_ref hsa-directory-mock)"
   fi
 } > "$IMAGE_ENV"
-sudo chgrp kravhantering "$IMAGE_ENV"
+# Allow the service user to traverse and read the staged release artifacts,
+# including when the importing operator has a restrictive umask.
+sudo chgrp -R kravhantering "$OFFLINE_ROOT"
+chmod -R g+rX "$OFFLINE_ROOT"
 chmod 0640 "$IMAGE_ENV"
 ```
 
@@ -636,10 +644,13 @@ mkdir -p "$OFFLINE_ROOT"
 (
   cd "$(dirname "$OFFLINE_BUNDLE")"
   sha256sum -c "$(basename "$OFFLINE_BUNDLE").sha256"
-)
+) || exit 1
 tar -xzf "$OFFLINE_BUNDLE" -C "$OFFLINE_ROOT" --strip-components=1
-(cd "$OFFLINE_ROOT" && sha256sum -c hashes.sha256)
-(cd "$OFFLINE_ROOT/release" && sha256sum -c "${RELEASE_ARCHIVE}.sha256")
+(cd "$OFFLINE_ROOT" && sha256sum -c hashes.sha256) || exit 1
+(
+  cd "$OFFLINE_ROOT/release"
+  sha256sum -c "${RELEASE_ARCHIVE}.sha256"
+) || exit 1
 ```
 
 Verify provenance offline now, before preparing the target release directory.
@@ -733,7 +744,10 @@ target_ref() {
       "$(target_ref hsa-directory-mock)"
   fi
 } > "$IMAGE_ENV"
-sudo chgrp kravhantering "$IMAGE_ENV"
+# Allow the service user to traverse and read the staged release artifacts,
+# including when the importing operator has a restrictive umask.
+sudo chgrp -R kravhantering "$OFFLINE_ROOT"
+chmod -R g+rX "$OFFLINE_ROOT"
 chmod 0640 "$IMAGE_ENV"
 ```
 

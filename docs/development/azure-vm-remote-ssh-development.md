@@ -12,6 +12,10 @@ session. Open a PowerShell 7 terminal, change to the repository root, and keep
 that session open for the workflow. Do not prefix the script commands with
 `pwsh`.
 
+Examples labeled `sh` or `bash` require a Bash-compatible shell, such as Cloud
+Shell Bash or the VM terminal. Run workstation setup examples labeled
+`powershell` in the local PowerShell session.
+
 ## Get the tenant ID and subscription ID
 
 The simplest lookup path is Azure Portal Cloud Shell:
@@ -27,19 +31,8 @@ az account list \
   -o table
 ```
 
-Use the `tenantId` value from the row that contains the development
-subscription. For one known subscription, query only that subscription:
-
->[!NOTE]
->
-> Can also use PowerShell in Cloud Shell to list subscriptions and their tenants:
->
->```powershell
->Connect-AzAccount
->Get-AzSubscription | Select-Object Name, Id, TenantId
->```
-
-- From Azure PowerShell, list subscriptions and their tenants:
+Use the `tenantId` and `subscriptionId` values from the row that contains the
+development subscription. Alternatively, in Cloud Shell PowerShell:
 
 ```powershell
 Connect-AzAccount
@@ -48,23 +41,24 @@ Get-AzSubscription | Select-Object Name, Id, TenantId
 
 ## Login to the Tenant
 
-Log Azure CLI into the tenant. The setup script uses the subscription ID from
-the merged Azure development configuration, so that subscription must be
-visible in the active Azure CLI login.
+On the workstation, install Azure CLI if needed, then log it into the tenant.
+The setup script uses the subscription ID from the merged Azure development
+configuration, so that subscription must be visible in the active Azure CLI
+login.
 
 Make sure Azure CLI is using the public Azure cloud, then sign in directly to
 the tenant:
 
-```sh
+```powershell
 az cloud set --name AzureCloud
 az login --tenant "<tenant-id>"
 ```
 
 Verify that the development subscription is visible after login:
 
-```sh
-az account list --all \
-  --query "[].{name:name,id:id,tenant:tenantId,state:state}" \
+```powershell
+az account list --all `
+  --query "[].{name:name,id:id,tenant:tenantId,state:state}" `
   -o table
 ```
 
@@ -89,122 +83,9 @@ is used for the repository checkout, VM host state, and rootless Podman storage.
 `/home/vscode/.local/share/containers/storage` are bind mounts into the data
 disk. The bootstrap fails if the data disk is missing.
 
-Disk layout after setup:
-
-```text
-OS disk
-`-- /
-    |-- etc/
-    |   |-- apt/
-    |   |   |-- keyrings/
-    |   |   `-- sources.list.d/
-    |   |-- fstab
-    |   |-- krav-dev/                         -> optional Tailscale env read
-    |   |-- ssh/sshd_config.d/
-    |   |   |-- 00-kravhantering-root-login.conf
-    |   |   `-- 01-kravhantering-environment.conf
-    |   `-- sudoers.d/
-    |       `-- 90-krav-vscode
-    |
-    |-- home/
-    |   `-- vscode/
-    |       |-- .cache/               -> bind mount to data disk cache
-    |       |-- .codex/               -> bind mount to data disk Codex data
-    |       |   |-- config.toml
-    |       |   |-- sqlite/
-    |       |   `-- tmp/
-    |       |-- .config/
-    |       |   |-- containers/
-    |       |   |   |-- containers.conf
-    |       |   |   |-- storage.conf  -> rootless storage points to data disk
-    |       |   |   `-- systemd/      -> Quadlet unit files
-    |       |   `-- krav-dev/         -> support service env files
-    |       |-- .dotnet/
-    |       |-- .local/
-    |       |   `-- share/
-    |       |       `-- containers/
-    |       |           `-- storage/  -> bind mount to data disk Podman storage
-    |       |-- .npmrc                -> data-disk-backed npm cache setting
-    |       |-- .nuget/
-    |       |-- .oh-my-zsh/
-    |       |   `-- custom/
-    |       |       |-- plugins/
-    |       |       `-- themes/
-    |       |           `-- powerlevel10k/
-    |       |-- .zshrc                 -> selected repository template
-    |       |-- .vscode-server/        -> bind mount to data disk VS Code data
-    |       `-- ...
-    |
-    |-- mnt/
-    |   `-- krav-azure-dev-data/      -> data disk mount point
-    |
-    |-- opt/
-    |   `-- google/
-    |       `-- chrome/
-    |           `-- chrome            -> symlink to Playwright/system Chrome
-    |
-    |-- run/
-    |   `-- user/
-    |       `-- <vscode-uid>/         -> user systemd runtime
-    |
-    |-- tmp/
-    |   `-- krav-bootstrap-repo.*
-    |
-    |-- usr/
-    |   |-- local/
-    |   |   `-- bin/                  -> managed tools and storage-report
-    |   `-- share/
-    |       `-- keyrings/
-    |
-    |-- workspace/                    -> bind mount to data disk workspace/
-    |
-    `-- var/
-        |-- lib/
-        |   |-- containerd/           -> bind mount to data disk
-        |   |-- docker/               -> bind mount to data disk
-        |   |-- krav-azure-dev/       -> bind mount to data disk host-state/
-        |   `-- systemd/
-        |       `-- linger/
-        |           `-- vscode
-        `-- tmp/
-            `-- krav-vscode/          -> bind mount to data disk user temp
-
-Data disk
-`-- /mnt/krav-azure-dev-data/
-    |-- .worktrees/                   -> linked Git worktrees
-    |-- workspace/                    -> repository checkout
-    |   |-- .env.development.local    -> managed Azure VM block
-    |   |-- containers/
-    |   |   `-- kong/
-    |   |       `-- kong.strict.yml
-    |   |-- node_modules/
-    |   `-- ...
-    |
-    |-- home/
-    |   `-- vscode/
-    |       |-- .cache/               -> Playwright and tool caches
-    |       |-- .codex/               -> Codex state and credentials
-    |       |-- .local/
-    |       |   `-- share/
-    |       |       `-- containers/
-    |       |           `-- storage/  -> rootless Podman images and volumes
-    |       |-- .vscode-server/       -> Remote SSH server and extensions
-    |       `-- tmp/                  -> vscode user temporary files
-    |
-    |-- cache/
-    |   `-- npm/
-    |       |-- root/
-    |       `-- vscode/
-    |-- host-state/                   -> managed host state
-    `-- var/
-        `-- lib/
-            |-- containerd/
-            `-- docker/
-```
-
-Package installation also writes normal Ubuntu, Node.js, Docker, GitHub CLI,
-Codex CLI, GitHub Copilot CLI, and .NET package-manager files under standard
-system locations such as `/usr`, `/lib`, and `/var`.
+The data disk also holds linked worktrees, VS Code Server data, Codex state,
+user caches, and container storage. Use `storage-report` to inspect usage
+before cleaning up; see [Storage warnings and diagnostics](#storage-warnings-and-diagnostics).
 
 `/home/vscode` itself remains on the OS disk so SSH login and shell startup do
 not depend on mounting the whole home directory. Selected large directories
@@ -239,7 +120,7 @@ The personal shortcut is subscription-scope `Contributor`. With that role,
 The shared-subscription option is a pre-created resource group plus one of
 these resource-group scoped roles:
 
-- a project-specific custom role with only the actions listed below
+- a project-specific custom role covering the operations described below
 - the built-in `Contributor` role when a custom role is not available
 
 ### Create resource group
@@ -247,15 +128,15 @@ these resource-group scoped roles:
 In a shared subscription, prefer an admin-created resource group and a custom
 role scoped to that resource group. Ask the admin to create and tag the group:
 
-```sh
-az group create \
-  --subscription "<subscription-id>" \
-  --name "<resource-group-name>" \
-  --location "eastus2" \
-  --tags \
-    "managed-by=kravhantering-azure-dev" \
-    "environment-id=<stable-environment-id>" \
-    "repository=viscalyx/Kravhantering" \
+```powershell
+az group create `
+  --subscription "<subscription-id>" `
+  --name "<resource-group-name>" `
+  --location "eastus2" `
+  --tags `
+    "managed-by=kravhantering-azure-dev" `
+    "environment-id=<stable-environment-id>" `
+    "repository=viscalyx/Kravhantering" `
     "purpose=personal-development"
 ```
 
@@ -265,7 +146,7 @@ group. If the group exists without them, setup fails closed and prints the
 
 ### Register providers
 
-The least-practical custom role needs resource-group deployment, compute,
+The custom role needs resource-group deployment, compute,
 network, disk, public IP, SSH public-key, Azure Run Command, and optional
 DevTestLab schedule actions. Host-key authentication specifically requires
 `Microsoft.Compute/virtualMachines/runCommand/action`. The setup command does
@@ -275,19 +156,19 @@ not create role assignments and does not use Azure SSH key-pair generation or
 If your tenant requires explicit provider registration, an owner can check or
 register these providers:
 
-```sh
-az provider show --subscription "<subscription-id>" \
-  --namespace "Microsoft.Compute" \
-  --query registrationState \
+```powershell
+az provider show --subscription "<subscription-id>" `
+  --namespace "Microsoft.Compute" `
+  --query registrationState `
   -o tsv
 
-az provider register --subscription "<subscription-id>" \
+az provider register --subscription "<subscription-id>" `
   --namespace "Microsoft.Compute"
 
-az provider register --subscription "<subscription-id>" \
+az provider register --subscription "<subscription-id>" `
   --namespace "Microsoft.Network"
 
-az provider register --subscription "<subscription-id>" \
+az provider register --subscription "<subscription-id>" `
   --namespace "Microsoft.DevTestLab"
 ```
 
@@ -298,9 +179,7 @@ Install these tools on the workstation:
 - PowerShell 7+ terminal
 - Azure CLI
 - OpenSSH 8.6 or later on Windows, or OpenSSH 8.5 or later on macOS and Linux,
-  plus `ssh-keygen` and `scp`. The workflow reads Windows application-version
-  metadata through PowerShell and reads the OpenSSH version output on macOS and
-  Linux.
+  plus `ssh-keygen` and `scp`.
 - VS Code with Remote SSH
 - GitHub CLI when GitHub access is required from the remote environment
 - MesloLGS Nerd Font Mono installed on the workstation
@@ -370,9 +249,11 @@ Warning: processes in the destination `vscode` user's Remote SSH process tree
 can read the forwarded values. Connect only to trusted VMs and workspaces, and
 use short-lived, least-privilege tokens.
 
-After changing or rotating either token, close the Remote SSH connection and
-open a new one so the VS Code Server receives the current values. Verify
-forwarding without displaying them:
+After changing or rotating either token, restart the remote VS Code Server
+before reconnecting from the shell with the new values. Closing a window alone
+can leave the server running with its old environment; follow
+[the token troubleshooting steps](#vs-code-uses-stale-forwarded-github-tokens).
+Verify forwarding in the VM terminal without displaying the values:
 
 ```sh
 test -n "${GH_TOKEN:-}" &&
@@ -385,7 +266,7 @@ test -n "${GH_TOKEN:-}" &&
 Setup mirrors workstation SSH commit signing when all three effective Git
 settings are present for this checkout:
 
-```sh
+```powershell
 git config --get gpg.format
 git config --get --bool commit.gpgsign
 git config --get user.signingKey
@@ -399,7 +280,8 @@ copies the private key.
 Load the matching private key into the workstation SSH agent before setup and
 before each Remote SSH connection:
 
-```sh
+```powershell
+ssh-add "<signing-private-key-path>"
 ssh-add -l
 ```
 
@@ -415,8 +297,8 @@ the private key. Enable this workflow only for a VM you trust.
 
 Copy the example and edit the required non-secret Azure values:
 
-```sh
-cp .env.azure.development.example .env.azure.development
+```powershell
+Copy-Item .env.azure.development.example .env.azure.development
 ```
 
 Required non-secret values:
@@ -426,8 +308,11 @@ AZURE_DEV_VM_RESOURCE_GROUP=rg-krav-dev-personal
 AZURE_DEV_VM_LOCATION=eastus2
 ```
 
-The other non-secret Azure VM values use code defaults and can be left
-unchanged:
+The following values are the built-in defaults. The copied example explicitly
+sets `AZURE_DEV_VM_DATA_DISK_GIB=256`, overriding the 64 GiB code default; review
+that choice before estimating costs or running setup. Keep `AZURE_DEV_VM_NAME`
+explicit in the file because lifecycle commands require it even though setup
+has a default:
 
 ```env
 AZURE_DEV_VM_AUTO_STOP_ENABLED=true
@@ -499,8 +384,10 @@ private-key content in an Azure development environment file.
 
 Create this file only when you need per-workstation overrides or secrets:
 
-```sh
-touch .env.azure.development.local
+```powershell
+if (-not (Test-Path .env.azure.development.local)) {
+  New-Item -ItemType File .env.azure.development.local
+}
 ```
 
 The file is gitignored by the existing `.env.*.local` rule. Put secrets here
@@ -587,13 +474,13 @@ can manage more resource types inside that group than this tool needs.
 If you are allowed to create app registrations and assign Azure RBAC at the
 resource-group scope, create the credentials and role assignment in one command:
 
-```sh
-az ad sp create-for-rbac \
-  --name "krav-dev-<stable-environment-id>" \
-  --role "<role-name-or-id>" \
-  --scopes \
-    "/subscriptions/<subscription-id>/resourceGroups/<resource-group-name>" \
-  --query "{tenantId:tenant,clientId:appId,clientSecret:password}" \
+```powershell
+az ad sp create-for-rbac `
+  --name "krav-dev-<stable-environment-id>" `
+  --role "<role-name-or-id>" `
+  --scopes `
+    "/subscriptions/<subscription-id>/resourceGroups/<resource-group-name>" `
+  --query "{tenantId:tenant,clientId:appId,clientSecret:password}" `
   -o json
 ```
 
@@ -614,20 +501,20 @@ does not let you read the same secret value later.
 If the tenant admin creates the identity before assigning access, ask them to
 run:
 
-```sh
-az ad sp create-for-rbac \
-  --name "krav-dev-<stable-environment-id>" \
-  --query "{tenantId:tenant,clientId:appId,clientSecret:password}" \
+```powershell
+az ad sp create-for-rbac `
+  --name "krav-dev-<stable-environment-id>" `
+  --query "{tenantId:tenant,clientId:appId,clientSecret:password}" `
   -o json
 ```
 
 Then assign the role at the resource-group scope:
 
-```sh
-az role assignment create \
-  --assignee "<client-id>" \
-  --role "<role-name-or-id>" \
-  --scope \
+```powershell
+az role assignment create `
+  --assignee "<client-id>" `
+  --role "<role-name-or-id>" `
+  --scope `
     "/subscriptions/<subscription-id>/resourceGroups/<resource-group-name>"
 ```
 
@@ -648,11 +535,11 @@ does not let you read the same secret value later.
 If the secret is lost or expired, reset it and update
 `.env.azure.development.local` with the new `clientSecret`:
 
-```sh
-az ad sp credential reset \
-  --id "<client-id>" \
-  --append \
-  --query "{clientSecret:password}" \
+```powershell
+az ad sp credential reset `
+  --id "<client-id>" `
+  --append `
+  --query "{clientSecret:password}" `
   -o json
 ```
 
@@ -691,8 +578,8 @@ Azure VM cannot install a font used by the local VS Code terminal renderer.
 To customize the profile before setup, copy the example to the ignored local
 override and edit it:
 
-```sh
-cp scripts/azure-dev/templates/zshrc.template.example \
+```powershell
+Copy-Item scripts/azure-dev/templates/zshrc.template.example `
   scripts/azure-dev/templates/zshrc.template
 ```
 
@@ -845,22 +732,11 @@ and replaces only the entries authenticated by that evidence. If Azure Run
 Command cannot return valid keys, do not remove `known_hosts` entries manually;
 restore VM Agent/control-plane access and retry.
 
-The first setup can take a while. It installs host packages, mounts the data
-disk at `/mnt/krav-azure-dev-data`, bind-mounts
-`/mnt/krav-azure-dev-data/workspace` to `/workspace`, bind-mounts
-`/mnt/krav-azure-dev-data/host-state` to `/var/lib/krav-azure-dev`, and
-bind-mounts the data-disk-backed Podman storage directory to
-`/home/vscode/.local/share/containers/storage`. It creates the dedicated
-worktree root at `/mnt/krav-azure-dev-data/.worktrees`. It also bind-mounts
-Docker, containerd, VS Code Server, Codex data, user caches, and the `vscode`
-temporary directory to the data disk. It clones the repo to `/workspace`,
-configures rootless Podman to use its normal home storage path, runs `npm install`,
-restores .NET tools, installs Codex CLI, GitHub Copilot CLI, the rolling
-verified dotenv-linter, the pinned Lychee link checker, and Playwright
-browsers, verifies the checked-out Kong config, builds HSA support images with
-Podman, recreates the managed support containers from the current Quadlet
-templates and checked-out Kong config while preserving named volumes, starts
-Quadlet services, and runs smoke validation.
+The first setup can take a while. It prepares the data-disk mounts, clones the
+repository to `/workspace`, installs development tools and dependencies, builds
+HSA support images, and starts the rootless Podman services. Rerunning setup
+recreates the managed support containers from the current templates while
+preserving their named volumes.
 
 ### Storage warnings and diagnostics
 
@@ -918,15 +794,9 @@ environments also use a temporary worktree root outside the repository checkout.
 
 ### Codex and GitHub Copilot CLIs in Remote SSH
 
-Setup installs the current stable Codex CLI as a user-managed installation owned
-by `vscode`. Its launcher is `/home/vscode/.local/bin/codex`; Codex packages and
-state remain under `/home/vscode/.codex`. The verified installer runs as
-`vscode`, requires the upstream SHA-256 release-asset digest before execution,
-and validates the absolute launcher against the exact release resolved by the
-same setup transaction. Missing or mismatched evidence stops setup. GitHub
-Copilot CLI remains system-wide; its rolling `@github/copilot` channel relies on
-npm registry SRI metadata and npm's package-integrity verification under ADR
-0045.
+Setup installs the current stable Codex CLI for `vscode` at
+`/home/vscode/.local/bin/codex`, with packages and state under
+`/home/vscode/.codex`. GitHub Copilot CLI is installed system-wide.
 
 To update the managed tools on an existing VM, run setup again from the
 workstation repository root:
@@ -953,20 +823,10 @@ do not receive `/home/vscode/.local/bin`. The Codex IDE extension continues to
 use its bundled executable; setup does not configure an extension executable
 override.
 
-Setup also runs `codex app-server daemon bootstrap` as `vscode` after the user
-systemd session and lingering are active. The resulting user service starts the
-shared Codex background server on VM boot and exposes its control socket under
-`/home/vscode/.codex/app-server-control`. Setup and smoke validation require the
-user service to be enabled and active, the Codex PID daemon to be reachable,
-and the CLI and app-server versions to match. A Codex CLI session started after
-setup can therefore use `/agents` immediately without a manual server start or
-CLI restart.
-
-Setup applies a managed path footer after either the tracked Zsh template or the
-operator-provided `zshrc.template`. The footer moves the managed binary
-directory to the front once while preserving other custom path entries and
-unrelated template customization. An alias or function named `codex` blocks
-setup because it masks the managed external command.
+Setup enables the Codex background server to start on VM boot. After setup,
+a new Codex CLI session can use `/agents` without manually starting the server.
+An alias or function named `codex` blocks setup because it masks the managed
+command; remove that override from your custom shell profile before retrying.
 
 > [!WARNING]
 > Avoid using npm to install or update Codex CLI on the Azure development VM.
@@ -975,27 +835,11 @@ setup because it masks the managed external command.
 > put the VM out of sync with the Azure provisioning workflow. Use one of the
 > update procedures above instead.
 
-Setup also resolves Oh My Zsh, `zsh-autosuggestions`,
-`zsh-syntax-highlighting`, and Powerlevel10k as four rolling Git channels at
-install time without repository pins. Each branch resolves to an exact object
-and its checkout is verified. Because these upstream branches do not provide a
-consistently signed rolling head, ADR 0045 explicitly accepts the publisher-
-authenticity exception for each channel; the shared rolling-source tests cover
-the fail-closed resolution and checkout behavior. Other network installation
-paths use verified release assets or signed APT repositories whose trust roots
-match the reviewed fingerprints in the bootstrap.
-
 Codex service authentication is separate from GitHub authentication. Run
 `codex login` and complete its browser flow before first use. The Codex GitHub
 MCP server uses the classic token in `GH_TOKEN`. GitHub Copilot CLI uses the
 fine-grained token in `COPILOT_GITHUB_TOKEN`; its user must have an active
 Copilot plan, and the organization policy must allow Copilot CLI.
-
-Azure setup installs the distribution `bubblewrap` package and the Ubuntu
-24.04 AppArmor profile required for unprivileged user namespaces. Bootstrap
-tests Bubblewrap as `vscode` with an isolated network namespace, and smoke
-validation repeats that test. Setup fails early if the Codex sandbox cannot
-initialize loopback networking.
 
 Setup also uploads `scripts/azure-dev/templates/codex-config.toml` and merges
 its Azure-specific settings into `/home/vscode/.codex/config.toml`. The merge
@@ -1008,42 +852,18 @@ The profile grants workspace access, including write access to `.git` so Codex
 can stage and commit changes and to `.codex` so it can maintain repository-local
 configuration. It grants write access to
 `/mnt/krav-azure-dev-data/.worktrees` for linked Git worktrees on the data disk.
-Smoke validation checks this access with a temporary directory and file inside
-the Codex sandbox. Host filesystem ownership alone does not grant sandbox
-access. It also grants write access specifically to `~/.codex/skills`
-so repository skills can be synchronized without opening the rest of the
-user-level Codex state. The inherited workspace protection for `.agents`
-remains read-only. The profile also grants network access to the loopback
-addresses used by host-side development and the Podman support services. The
-devcontainer config in `.devcontainer/codex-config.toml` selects the same
-profile name with devcontainer-specific service domains; it is not installed
-on the Azure VM.
+The profile also grants write access to `~/.codex/skills` and network access
+to the loopback services used by development. Other user-level Codex state and
+workspace `.agents` remain protected. Host filesystem ownership alone does not
+grant sandbox access.
 
-For Podman commands, setup enables the `vscode` user service's `podman.socket`
-and sets `CONTAINER_HOST` in the Codex shell environment to
-`unix:///run/user/<uid>/podman/podman.sock`. The configuration merger resolves
-the actual installing user's UID and allows that specific Unix socket in the
-permission profile. The rootless engine manages the existing host containers
-and data-disk storage outside the sandbox. This avoids writes to the
-sandbox's read-only `/run/user/<uid>` and container storage, and avoids running
-the engine inside the sandbox's user namespace. Setup installs a launcher at
-`/home/vscode/.local/bin/podman` because Podman 4.9 initializes local temporary
-state even in remote mode. When `CONTAINER_HOST` is set, the launcher gives
-only the Podman client a private temporary `XDG_RUNTIME_DIR` and removes it on
-exit. The host socket address and the surrounding shell's runtime directory
-stay unchanged. Without `CONTAINER_HOST`, it executes native `/usr/bin/podman`
-with the original environment. The socket grants control of
-containers as `vscode`; it is local to that user and has no TCP listener.
-Ordinary SSH terminals and the Quadlet services continue using native Podman.
-Commands available only in native Podman must run from an ordinary SSH
-terminal. See the [Podman service documentation](https://docs.podman.io/en/latest/markdown/podman-system-service.1.html).
+Codex uses the `vscode` user's rootless Podman socket through `CONTAINER_HOST`.
+The managed Podman launcher supplies the client runtime directory needed inside
+the sandbox. Ordinary SSH terminals and Quadlet services use native Podman;
+run commands that are unavailable in remote Podman from an ordinary SSH
+terminal. The socket controls the user's existing containers and volumes.
 
-Bootstrap checks `podman info` through `codex sandbox`. Smoke validation also
-checks socket activation, the expected storage directory, container listing,
-and execution of an automatically removed container using the already-built
-HSA directory mock image, with networking disabled and a read-only filesystem.
-
-To apply only this repair to an existing Azure VM, run these commands as
+To repair only Podman access from Codex, run these commands as
 `vscode` in a regular Remote SSH terminal from `/workspace`:
 
 ```bash
@@ -1086,6 +906,14 @@ explicitly supplied. Codex authentication is environment-local and is not
 copied from the workstation or deleted VM. There is no supported in-place
 migration, automated backup, or legacy fallback installation.
 
+## Step 7: Open and Run the App
+
+Open the VM through VS Code Remote SSH:
+
+```sh
+code --remote ssh-remote+kravhantering-azure-dev /workspace
+```
+
 For administration tasks, use the generated regular SSH command:
 
 ```sh
@@ -1097,35 +925,22 @@ ssh -i "<private-key-path>" -o IdentitiesOnly=yes \
   vscode@<public-ip-or-tailscale-name>
 ```
 
-Setup fills in the configured private-key path and the resolved remote host.
-The matching public key is installed on the VM and is not passed to the SSH
-client. `IdentitiesOnly=yes` ensures that SSH offers only that private key.
-The managed host block sets `ForwardAgent yes`, allowing remote Git processes
-to request signatures from the workstation's SSH agent without copying private
-keys to the VM. Bootstrap stores the selected public key inline in the remote
-Git configuration, enables `commit.gpgSign`, selects the SSH signature format,
-and removes any workstation-specific `gpg.ssh.program` override. Smoke
-validation creates a temporary signed commit through the forwarded agent.
+Setup fills in the configured private-key path and resolved remote host. For
+Git signing through the workstation agent, connect with the managed SSH alias:
+
+```powershell
+ssh kravhantering-azure-dev
+```
+
+The managed alias enables agent forwarding as described in
+[Prepare SSH commit signing](#prepare-ssh-commit-signing).
+
 Bootstrap explicitly disables direct SSH login as `root`. Connect as `vscode`
 and use `sudo` for administrative commands. This restriction applies only to
 OpenSSH; Azure control-plane operations, Run Command, VM Access, and Serial
 Console remain available for management and recovery. After using an Azure
 recovery action that resets or rewrites SSH configuration, rerun `setup` to
 restore and validate the managed policy.
-
-The generated managed SSH host block also contains `SendEnv` entries for
-`GH_TOKEN` and `COPILOT_GITHUB_TOKEN`. The VM accepts both named GitHub
-environment variables in addition to its standard OpenSSH environment policy.
-Before running either generated connection command, set both variables in the
-workstation environment as described in
-[Prepare GitHub authentication](#prepare-github-authentication). Setup prints
-the same reminder after a successful setup operation.
-
-To start a development environment, use the generated VS Code command:
-
-```sh
-code --remote ssh-remote+kravhantering-azure-dev /workspace
-```
 
 Before opening the workspace, choose how VS Code should install the extensions
 listed in `.vscode/extensions.json`:
@@ -1149,14 +964,6 @@ After VS Code connects, optionally open its integrated terminal and run
 `p10k configure` to customize the prompt. The repository defaults are already
 active, so this step is not required.
 
-## Step 7: Open and Run the App
-
-Open the VM through VS Code Remote SSH:
-
-```sh
-code --remote ssh-remote+kravhantering-azure-dev /workspace
-```
-
 On the VM:
 
 ```sh
@@ -1166,41 +973,34 @@ npm run dev
 
 The app runs directly on the VM host. Containers run only the support services.
 
+Open `http://localhost:3000` in the workstation browser while the SSH connection
+is open. The managed SSH block forwards both the app on port `3000` and Keycloak
+on port `8080`; both local ports must be available for the login redirects to
+work. Use `localhost`, as configured in the development OIDC redirect URLs.
+Sign in with a development realm user, for example `ada.admin` / `devpass`.
+These app credentials are separate from `KEYCLOAK_ADMIN_PASSWORD`, which
+protects the Keycloak administration console. See the
+[authentication workflow](auth-developer-workflow.md) for other test users and
+authenticated request examples.
+
 ## Step 8: Manage the Environment
 
-Every lifecycle command reads a narrow, immutable snapshot of the configured
-subscription, resource group, VM name, and optional complete service-principal
-credential triple. Those three Azure target fields are mandatory and have no
-lifecycle defaults. `start` alone also resolves and validates the SSH alias,
-using `kravhantering-azure-dev` when no source sets it; `stop` and `status` do
-not read the alias. Values otherwise follow the configuration precedence
-documented in Steps 4 and 5: the current PowerShell session wins, then
-`.env.azure.development.local`, then `.env.azure.development`. Every Azure read
-and mutation names the configured subscription, resource group, and VM; the
-commands do not enumerate subscriptions or change the Azure CLI global
-subscription.
+Set `AZURE_DEV_VM_SUBSCRIPTION_ID`, `AZURE_DEV_VM_RESOURCE_GROUP`, and
+`AZURE_DEV_VM_NAME` explicitly before using `start`, `stop`, or `status`.
+These commands have no defaults for the Azure target. Configuration precedence
+is the current PowerShell session, then `.env.azure.development.local`, then
+`.env.azure.development`.
 
-A matching cached Azure CLI identity is reused after a silent token check. A
-stale or mismatched configured service principal is repaired with one targeted,
-non-interactive login. Without service-principal configuration, lifecycle
-commands reuse only a matching Azure CLI user session and tell you to log in if
-it is unusable; they never initiate interactive login. Each Azure CLI call has
-a two-minute deadline.
+Lifecycle commands reuse a valid Azure CLI login. With a complete configured
+service-principal credential triple, they can repair its login automatically.
+Otherwise, sign in with Azure CLI before retrying an authentication failure;
+the commands never open an interactive login.
 
-A lifecycle command waits at most 15 seconds for another local lifecycle
-command that owns the same target lock. On timeout it reports the recorded
-owner and submits no Azure mutation. Interrupt a stuck live owner and retry;
-the operating system recovers an abandoned mutex automatically. Deleting the
-diagnostic lock file cannot release a live mutex.
-
-Real `start` and `stop` attempts return exactly one structured result on
-success. Progress and connection guidance are separate terminal information,
-not result objects. A failure returns no result and exits with code `1` and one
-terminating lifecycle error. After lock release, a completed real attempt also
-tries to append one self-identifying JSONL record under `.azure/logs/`. That
-local record is secret-free diagnostic evidence, not an authoritative Azure
-state or billing record. A logging warning never replaces the primary success
-or failure.
+Concurrent `start` and `stop` commands from the same checkout wait up to 15
+seconds for each other. If a command reports a lock timeout, inspect the
+reported owner
+and interrupt it only if it is stuck, then retry. Deleting the diagnostic lock
+file does not release a running command's lock.
 
 Start the VM:
 
@@ -1208,50 +1008,19 @@ Start the VM:
 ./scripts/azure-dev.ps1 start
 ```
 
-`start` uses the configured subscription, resource group, and VM name for
-every Azure call. It holds the target-specific local lock only while it checks
-authentication, reads a decisive state, and optionally submits one start:
+`start` returns `already-running` when the VM is running. Otherwise it joins
+an existing start or submits a start request and waits up to ten minutes for
+`running`. If the VM is stopping or deallocating, it first waits up to ten
+minutes for that transition to finish, then checks the state again before
+starting it. This supports running `start` soon after `stop`.
 
-- `running` returns `already-running` with action `none`.
-- `starting` joins the Azure transition without another mutation, then returns
-  result `running` with action `joined-start` when the VM reaches `running`.
-- `stopped-allocated` or `deallocated` submits one asynchronous start request,
-  then returns result `running` with action `start-requested` when the VM
-  reaches `running`.
-- `stopping` or `deallocating` releases the local lock and waits for
-  Azure to leave the downward transition outside the lock. It normally sees
-  `stopped-allocated` or `deallocated`; if another actor starts the VM between
-  polls, it can instead see an upward state. It then reacquires the target
-  lock, revalidates Azure CLI authentication, and rereads the exact VM before
-  choosing an action.
-- `not-found`, `unavailable`, `creating`, or `unrecognized` fails without a
-  mutation.
+A timeout or an unexpected downward transition fails without submitting a
+second start or rolling back an accepted Azure operation. Use `status` to check
+what Azure actually completed before retrying. Pressing Ctrl+C stops local
+polling and exits with code `130`; an operation Azure already accepted may
+still complete.
 
-This makes a rapid `stop` followed by `start` safe: the start invocation waits
-up to ten minutes for Azure to leave the downward transition, then makes its
-decision from a fresh guarded observation. If another checkout, workstation,
-or Azure actor has already moved the VM to `starting` or `running`, the command
-joins or completes that state without submitting another start. The local lock
-coordinates only processes that use the same repository checkout; Azure
-rereads provide cross-workstation convergence.
-
-After joining or submitting an upward transition, the command releases the
-lock and uses a separate ten-minute deadline to wait for `running`. Both waits
-poll every five seconds, report state changes, and emit a heartbeat every 30
-seconds. During the running wait, an empty or failed state read appears as
-`unavailable`; polling continues within the same deadline without another start
-request. An initial `unavailable` observation still fails before any mutation.
-Any later downward state—`stopping`, `stopped-allocated`,
-`deallocating`, or `deallocated`—is outside interference: the command fails
-without a second mutation and explains that Azure may still complete the
-earlier operation. A timeout has the same no-rollback, no-repeat rule.
-
-Pressing Ctrl+C stops local polling promptly. Any owned local lock is released,
-and the interruption exits with code `130` without a lifecycle result or
-terminal lifecycle record. The command does not submit a compensating stop or
-start; an operation Azure already accepted may still complete.
-
-Success returns one typed lifecycle result and prints only these entry points,
+Success returns one structured lifecycle result and prints these entry points,
 using the configured alias:
 
 ```text
@@ -1270,28 +1039,11 @@ Stop compute charges:
 ./scripts/azure-dev.ps1 stop
 ```
 
-`stop` is an asynchronous cost-control command. It acquires the target-specific
-lifecycle lock, then authenticates and reads the exact VM state inside that
-lock. It returns an idempotent outcome without submission when Azure already
-reports `deallocated` or `deallocating`. Otherwise it requests deallocation
-with `--no-wait` and returns as soon as Azure accepts the request; it does not
-wait for the VM to become `deallocated`.
-
-The command returns one structured lifecycle result:
-
-- `requested` with action `deallocation-requested` means Azure accepted one
-  request. This applies to `starting`, `running`, `stopping`,
-  `stopped-allocated`, and `creating`.
-- `already-requested` with action `none` means Azure already reports
-  `deallocating`; no duplicate request is sent.
-- `already-deallocated` with action `none` means Azure already reports
-  `deallocated`; no request is sent.
-
-If the state read is unavailable, `stop` still requests deallocation because
-stopping compute charges is the safer outcome. A definite `not-found` result or
-an unrecognized state fails without mutation. Authentication, lock, state, and
-submission failures return no lifecycle result and exit nonzero. A local
-lifecycle-log warning does not change an accepted result or primary failure.
+`stop` requests deallocation and returns as soon as Azure accepts it. Its
+structured result is `requested`, `already-requested` when the VM is already
+`deallocating`, or `already-deallocated`. If the state read is unavailable,
+`stop` still requests deallocation. A definite missing VM or unrecognized state
+fails without changing it.
 
 An accepted request does not prove deallocation is complete. Use `status` to
 observe convergence. Compute charges stop when Azure reaches `deallocated`;
@@ -1304,11 +1056,13 @@ Show current state:
 ./scripts/azure-dev.ps1 status
 ```
 
-`status` reports the exact VM's normalized Azure power state immediately. It
-does not acquire a lifecycle lock, wait, read setup state, or infer a target.
-It distinguishes `starting`, `running`, `stopping`, `stopped-allocated`,
-`deallocating`, `deallocated`, `creating`, `not-found`, `unavailable`, and
-`unrecognized`.
+`status` reports the configured VM's current power state without waiting. Use
+it to distinguish `stopped-allocated`, which still incurs compute charges,
+from `deallocated`.
+
+Completed real `start` and `stop` attempts append diagnostic records under
+`.azure/logs/`. A logging warning does not change the command's outcome; use
+Azure state to confirm completion and billing status.
 
 Preview lifecycle plans without reading live VM state:
 
@@ -1317,12 +1071,9 @@ Preview lifecycle plans without reading live VM state:
 ./scripts/azure-dev.ps1 stop -WhatIf
 ```
 
-A preview validates lifecycle configuration and may inspect the cached Azure
-CLI profile identity. It does not acquire a token, repair login, read live VM
-state, operate a lock, mutate or poll the VM, write a lifecycle record, or
-return a lifecycle-result object. Normal `What if:` output describes the
-conditional lock, login-repair, VM-action, and record plans. A matching cached
-identity does not imply login repair merely because token usability is unknown.
+A preview validates configuration and may inspect the cached Azure CLI
+identity. It does not log in, query the live VM, change resources, or write a
+lifecycle record.
 
 Refresh only the SSH source CIDR after your public IP changes:
 
@@ -1406,22 +1157,10 @@ sequenceDiagram
     Destination-->>User: Readiness report and code command
 ```
 
-The request is Base64-encoded text, not encrypted. Schema 3 records the selected
-mode, expected approver fingerprint, and public onboarding data:
-
-```text
------BEGIN KRAVHANTERING WORKSTATION REQUEST-----
-Version: 3
-
-<Base64 payload>
------END KRAVHANTERING WORKSTATION REQUEST-----
-```
-
-The request is signed by the destination key. Its schema binds the absolute
-destination private-key path and expected approver public-key fingerprint
-alongside the intended use and public onboarding data. The approving user must
-still compare the displayed fingerprint or verification code because an
-attacker could replace the entire request with a separately signed request.
+The signed request contains public onboarding data and is not encrypted.
+The approving user must compare the displayed fingerprint or verification code
+with the destination user through a separate trusted channel; a signature alone
+does not rule out replacement of the entire request.
 
 Before creating the request, provision the approving workstation's managed SSH
 public key on the destination through a trusted channel. Store it outside the
@@ -1572,21 +1311,9 @@ The package contents depend on the signed mode:
   those destination values without changing the source. Otherwise packaging
   creates a minimal two-value local file.
 
-The `.kravpkg` response is one plain ASCII schema-3 envelope. It carries the
-exact native `age` armored payload and an SSH signature over those exact bytes:
-
-```text
------BEGIN KRAVHANTERING WORKSTATION PACKAGE-----
-Version: 3
-
-<Base64 response envelope>
------END KRAVHANTERING WORKSTATION PACKAGE-----
-```
-
-Transfer it as a normal attachment or copy the complete block through a
-text-only channel. When copying text, save the complete block as a plain-text
-`.kravpkg` file on the destination workstation without changing the markers.
-Do not split the signature into a sidecar file.
+Transfer the `.kravpkg` response as an attachment or copy its complete armored
+text block through a text-only channel. Save copied text as a plain-text
+`.kravpkg` file without changing the markers or separating the signature.
 
 ### Extract and configure manually
 
@@ -1598,41 +1325,19 @@ On the destination workstation:
   -DestinationPath "<private-extraction-directory>"
 ```
 
-Extraction first parses the schema-3 envelope and verifies the signature over
-the encrypted payload with `AZURE_DEV_WORKSTATION_APPROVER_PUBLIC_KEY_PATH`.
-Only then does it invoke `age`, open the archive, or create the destination.
-Missing or malformed armor, missing or invalid signatures, modified payloads,
-and a changed approver key fail without retaining plaintext. Provision the
-expected key and regenerate both request and response; unsigned schema-2
-`.age` responses are intentionally incompatible. After authentication,
-extraction validates the package, rejects unsafe archive paths, and writes
-every validated manifest entry, including permitted environment files, only
-under the selected destination. It does not automatically apply those files
-to the repository, configure the environment, update SSH configuration, edit
-shell profiles, install tokens, or launch VS Code.
+Extraction verifies the configured approver's signature before decrypting the
+package into the private destination. If verification fails, check the trusted
+approver public key and regenerate the request and response. Unsigned schema-2
+`.age` responses are unsupported. On Windows, extraction fails if it cannot
+restrict access to the current user.
 
-On Windows, extraction removes inherited access rules from the new destination,
-grants only the current user full control, and validates the protected ACL
-before writing package contents. If that ACL cannot be applied and confirmed,
-extraction fails and removes the destination.
+Open the generated `README.md` and follow its PowerShell 7 commands. Extraction
+does not apply configuration or launch VS Code. Copy configuration only when
+the destination file is absent; use the provided comparison and merge steps
+when it exists, preserving existing local secrets.
 
-Open the generated `README.md`. It prominently states the mode and uses
-PowerShell 7 commands with known absolute paths. Extraction never applies
-configuration, edits SSH files, loads secrets, or launches VS Code.
-
-When a destination primary file is absent, the README gives an exact
-`Copy-Item` command. When it exists, the README gives an exact `code --diff`
-command and requires a deliberate merge or replacement. The local file is
-copied only when its destination is absent. Otherwise, the README lists the
-required assignments for manual editing and never recommends an overwrite.
-
-The host-key fingerprint comparison is mandatory. After it succeeds, the
-README provides a rerunnable PowerShell block that creates `.ssh` and
-`known_hosts` as needed, appends only missing source lines, preserves unrelated
-entries, and applies private permissions where supported. Readiness normalizes
-the nonblank installed entries and requires every packaged, verified host-key
-entry for the fixed host to match; another key for the same hostname is not
-sufficient. Direct connect-only SSH uses `StrictHostKeyChecking yes`. If the
+Compare the host-key fingerprint as instructed before installing the provided
+`known_hosts` entries. Connect-only access uses strict host-key checking. If the
 fixed VM address or host keys change, create and approve a new signed request;
 there is no Azure lookup or trust-on-first-use fallback.
 
@@ -1654,19 +1359,12 @@ After manual configuration, validate readiness:
   -DestinationPath "<private-extraction-directory>"
 ```
 
-For connect-only, readiness determines the mode from the extracted schema 3
-manifest before loading configuration. A partially applied local file can
-therefore report the missing fixed host, alias, destination private key,
-verified `known_hosts` entries, exact managed SSH block, and any required
-signing key without entering Azure validation. It reports token presence as a
-warning. It does not call Azure prerequisites, start the VM, attempt SSH,
-launch VS Code, or inspect other shells. Required SSH, host-key, configuration,
-or signing failures produce an unsuccessful exit and an exact remediation.
-
-Manage-environment readiness retains Azure prerequisite checks. Its
-destination-ready local configuration guarantees the required subscription
-and private-key path. Missing GitHub tokens remain warnings because another
-launching shell may provide them.
+Readiness checks the local configuration, destination SSH key, verified host
+keys, managed SSH block, and any required signing key. Follow each reported
+remediation before connecting. Connect-only checks do not require Azure login;
+manage-environment checks also validate Azure prerequisites. Missing GitHub
+tokens produce warnings because another launching shell may provide them.
+The command does not start the VM, attempt SSH, or launch VS Code.
 
 You decide when the transfer and manual configuration are finished. Then remove
 the plaintext extraction directory:
@@ -1725,11 +1423,10 @@ The VM bootstrap writes a managed block to `/workspace/.env.development.local`
 so HSA lookup uses strict mTLS through Kong on `127.0.0.1:18443` with the
 role-specific App bundle under `/workspace/.hsa-mtls/app`.
 
-Bootstrap automatically renews persistent HSA material inside the 30-day
-threshold. It authenticates a promoted generation before deleting its prior
-generation. If that authentication fails, bootstrap restores and deploys the
-prior generation, restarts mock, Adapter, and Kong in server-first order, and
-requires recovery authentication to succeed.
+Bootstrap renews persistent HSA certificates within 30 days of expiry and
+validates authentication through the support stack. If renewal fails, it
+attempts to restore the prior generation and validate recovery. Inspect the
+bootstrap output and service logs before retrying a failed renewal.
 
 ## Tailscale
 
@@ -1743,15 +1440,11 @@ the VM with `AZURE_DEV_TAILSCALE_AUTH_KEY`, bootstrap joins the tailnet with
 keys. If teardown cannot remove the Tailscale device automatically, delete the
 VM device from the Tailscale admin console.
 
-## Step 10: Validate
+## Step 11: Validate
 
-Default smoke validation checks SSH, the data-disk bind mounts, `/workspace`,
-write access to the standard `vscode` user directories, major tool versions
-including `btop`, the exact user-managed Codex launcher and bootstrap target,
-GitHub Copilot CLI, and Lychee, the configured
-global Git identity and SSH signing behavior, rootless Podman units,
-loopback-only support ports, HSA lookup through Kong, `npm run db:setup`,
-`npm run db:health`, and Playwright browser availability.
+Setup runs smoke validation for SSH, storage and write access, installed tools,
+Git identity and signing when configured, support-service health, database
+setup, HSA lookup through Kong, and Playwright browser availability.
 
 Optional heavier checks after the environment is accepted:
 
@@ -1760,28 +1453,7 @@ npm run check
 npm run test:integration
 ```
 
-### Isolated PowerShell integration tests
-
-Run the PowerShell integration tests only through the explicit isolated
-command:
-
-```sh
-npm run test:powershell:integration
-```
-
-The command downloads the pinned Pester version in a temporary container. It
-then runs the tests in a separate container without network access, without
-host credentials, and with the repository mounted read-only. Only the ignored
-`test-results/pester` directory is writable for the NUnit result.
-
-The command runs every Pester integration test under
-`tests/powershell/Integration`. The isolated runner does not provide access to
-real Azure or other networked services and must not receive external-service
-credentials. Keep the suites compatible with that offline boundary. Use
-separately documented environment validation when behavior against a real
-service must be verified.
-
-## Step 11: Tear Down
+## Step 12: Tear Down
 
 Preview deletion:
 
@@ -1869,8 +1541,7 @@ before bootstrap credential generation or upload.
 
 If setup reports that the existing VM was created with a different SSH public
 key, the VM must be recreated. Azure does not allow changing
-`osProfile.linuxConfiguration.ssh.publicKeys` on an existing VM. This can
-happen if an earlier dry run created resources with the placeholder key.
+`osProfile.linuxConfiguration.ssh.publicKeys` on an existing VM.
 
 Preview and then remove the managed environment:
 
@@ -1892,7 +1563,3 @@ If SQL Server rootless volume validation fails, inspect:
 journalctl --user -u krav-db.service
 podman volume inspect krav-sqlserver
 ```
-
-The Ubuntu 24.04 bootstrap installs `dotnet-sdk-8.0` from the Ubuntu package
-feeds. It does not add the Microsoft package feed or install
-`packages-microsoft-prod.deb`.

@@ -9,17 +9,8 @@ readiness checks.
 `/api/health` remains the public, dependency-free liveness check. Do not replace
 it with readiness for process supervision.
 
-AI-assisted authoring is optional. AI connection health, circuit-breaker
-state, missing provider secrets, blocked run profiles, and missing root-key
-versions do not affect either probe. Operators monitor and recover those
-conditions through the separate
-[AI connections runbook](./ai-connections.md), as required by
-[ADR 0052](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
-
-HSA verification quota coordination uses the same required SQL Server and
-migration boundary already covered by `/api/ready`; it does not add a separate
-quota probe. Per-request lock timeout or quota-table access failures fail the
-verification request closed and are monitored through capacity events.
+AI availability does not affect either probe. Monitor and recover AI through
+the separate [AI connections runbook](./ai-connections.md).
 
 ## Prepare before installation or upgrade
 
@@ -43,6 +34,11 @@ Host routes (`/32` and `/128`) and bounded networks are valid. Hostnames,
 additional Nginx directives, and unrestricted IPv4 or IPv6 `/0` networks are
 invalid. Rendering fails when the file is missing, unreadable, symbolic-linked,
 empty, or malformed; there is no permissive default.
+
+Use an absolute path to a root-owned file that is not writable by group or
+others. Its parent directories must not be writable by the service account
+running the topology installer. Rendering rejects files that do not meet
+these requirements.
 
 Install the file and set its path in `release.env`:
 
@@ -76,10 +72,15 @@ without reaching the application.
 
 Each application process coalesces concurrent readiness requests and caches
 the completed ready or not-ready result for five seconds. The internal cache
-does not change the response `Cache-Control: no-store` policy. Fresh failures
-produce one sanitized operator warning with fixed check, reason, diagnostic,
-request, and correlation identifiers. Dependency names and reasons never
-appear in the response.
+does not change the response `Cache-Control: no-store` policy. When a fresh
+check fails, inspect the application readiness warning for its check, reason,
+diagnostic, request, and correlation identifiers. Dependency names and reasons
+never appear in the response.
+
+Readiness checks runtime configuration, SQL Server connectivity, database
+migration compatibility, temporary export storage, and OIDC discovery. A 200
+confirms these checks passed; it does not guarantee every application feature
+or external integration is available.
 
 ## Roll out and verify
 
@@ -90,7 +91,7 @@ monitoring source and a source outside the configured networks.
 From an allowed source:
 
 ```bash
-curl --fail --silent --show-error \
+curl --include --silent --show-error \
   https://kravhantering.example.internal/api/ready
 curl --head --silent --show-error \
   https://kravhantering.example.internal/api/ready

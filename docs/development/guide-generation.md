@@ -1,10 +1,9 @@
 # Browser-Driven Guide Generation
 
-Browser-driven documentation generators are scripts. The user-guide entry
-point is `scripts/guide/generate-guide.ts`. It uses Playwright Test for browser
-fixtures, authenticated state, assertions, steps, reports, screenshots, and
-traces. Its single scenario generates documentation and mutates seeded data;
-it is a one-shot workflow outside the repeatable integration suite.
+This workflow is for developers regenerating the user guide or maintaining
+its browser automation. The entry point is `scripts/guide/generate-guide.ts`.
+Its single Playwright scenario generates documentation and mutates seeded
+data; it is a one-shot workflow outside the repeatable integration suite.
 
 ## Naming and Discovery
 
@@ -20,14 +19,9 @@ testDir: './scripts/guide',
 testMatch: '**/generate-guide.ts',
 ```
 
-Playwright supports custom filenames through
-[`testMatch`](https://playwright.dev/docs/api/class-testconfig#test-config-test-match).
-The runner's `test()` and `test.step()` APIs provide orchestration and reporting;
-they do not classify this script as an integration test. Generator entry points
-have no `.spec.ts` or `.test.ts` suffix, so Vitest does not collect them. Both
-integration configurations restrict discovery to `tests/integration/`.
-The app container build context excludes `scripts/guide/` alongside the test
-helpers and documentation that it uses.
+Keep generator entry points free of `.spec.ts` and `.test.ts` suffixes so
+Vitest does not collect them. Both integration configurations restrict
+discovery to `tests/integration/`.
 
 ## Generate the User Guide
 
@@ -52,8 +46,6 @@ that reset.
 
 The shared `tests/integration/global-setup.ts` authenticates through Keycloak;
 the guide uses the `ada.admin` session at `test-results/auth/admin.json`.
-The runner uses desktop Chromium at 1440 × 1200, serial execution, one worker,
-zero retries, and a ten-minute scenario timeout.
 
 By default Playwright starts or reuses `npm run dev` at `http://localhost:3000`.
 `PLAYWRIGHT_BASE_URL` overrides the browser target. With
@@ -61,6 +53,18 @@ By default Playwright starts or reuses `npm run dev` at `http://localhost:3000`.
 the shared setup's cached role storage states, or set
 `PLAYWRIGHT_FORCE_AUTH_SETUP=1` to obtain fresh sessions against that server.
 The npm command still performs port cleanup and database setup.
+Port cleanup stops listeners on port 3000 even when
+`PLAYWRIGHT_SKIP_WEBSERVER=1`, so it can stop a server you started separately.
+To use an existing local server on that port, reset the disposable database
+first, start the server, then invoke Playwright directly:
+
+```sh
+PLAYWRIGHT_SKIP_WEBSERVER=1 PLAYWRIGHT_FORCE_AUTH_SETUP=1 \
+  npx playwright test --config playwright.guide.config.ts
+```
+
+The server must use the same seeded development database. This direct command
+does not reset the database; reset it before each generation and afterward.
 
 Outputs stay at these locations:
 
@@ -69,6 +73,11 @@ Outputs stay at these locations:
 - `playwright-report-guide/`: HTML execution report.
 - `test-results/guide/`: runner artifacts, including scenario screenshots
   on every run and traces retained on failure.
+
+The generator clears the guide images directory before its scenario starts
+and writes the README only after completing the scenario. A failed or skipped
+run can therefore leave the existing README alongside incomplete or missing
+images. Review the report and rerun successfully before publishing the guide.
 
 Open the report with:
 

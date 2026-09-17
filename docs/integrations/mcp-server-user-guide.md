@@ -2,7 +2,8 @@
 
 ## Overview
 
-This project exposes a requirements-management MCP server named
+This guide is for people connecting an MCP client to Kravhantering and using
+it to read, manage, or import requirements. The server is named
 `requirement-management-mcp-server`.
 
 - Transport: stateless Streamable HTTP
@@ -13,8 +14,7 @@ This project exposes a requirements-management MCP server named
 - Locales: `en` or `sv`
 
 The server is designed for MCP-capable clients such as Visual Studio Code and
-GitHub Copilot coding agent. It keeps the tool surface intentionally small so
-agents can use it reliably.
+GitHub Copilot cloud agent (formerly coding agent).
 
 ## What The Server Exposes
 
@@ -203,23 +203,12 @@ The response is:
 library Krav, deduplicated across linked kravversioner and sorted by `uniqueId`;
 kravunderlagslokala krav are not included.
 
-For `operation: "create"`, omit `normReferenceId` to let the service allocate
-the natural generated ID, then its deterministic suffixes through `-999` when
-needed. Concurrent creates therefore receive distinct IDs. A supplied ID is
-never rewritten: if it already exists, the tool returns `isError: true` with:
-
-```json
-{
-  "error": {
-    "code": "conflict",
-    "reason": "norm_reference_id_exists"
-  }
-}
-```
-
-If every generated candidate is unavailable, the response instead has reason
-`norm_reference_id_generation_exhausted`. Correct the supplied ID, or inspect
-the generated candidates before attempting a new create.
+For `operation: "create"`, omit `normReferenceId` to generate an available ID.
+A supplied ID is never rewritten: if it already exists, the tool returns
+`isError: true` with `error.code: "conflict"` and
+`error.reason: "norm_reference_id_exists"`. Choose an unused ID and retry.
+If automatic generation returns `norm_reference_id_generation_exhausted`,
+supply an unused ID explicitly.
 
 ## Needs Reference Discovery
 
@@ -343,86 +332,32 @@ flowchart TD
 
 ## Current Security Status
 
-The MCP route is optional and authenticated. `MCP_CLIENT_ID` enables it and
-identifies the only approved calling OAuth service client. When that variable
-is empty, GET, POST, and DELETE return `404` before authentication, audit,
-discovery, database, transport, or tool work. Every request to an enabled
-endpoint must include an `Authorization: Bearer <token>` header.
+The MCP route is optional and authenticated. An administrator must enable it
+with `MCP_CLIENT_ID`; a disabled endpoint returns `404`. Every request must
+include `Authorization: Bearer <token>`. Browser login cookies do not work.
 
-The MCP HTTP route validates the JWT against the configured issuer JWKS and API
-audience before database acquisition or MCP transport and tool work. Accepted
-tokens must use protected-header `typ: at+jwt`; contain numeric `exp` and `iat`,
-non-blank `sub`, exact top-level `client_id`, every configured top-level
-`scope`, and a real-format `employeeHsaId`; and remain within the configured
-current-age and declared-lifetime bound. The committed local client emits a
-five-minute token with `kravhantering:mcp` and
-`employeeHsaId=SE5560000001-mcp1`.
+Obtain a token for the approved OAuth service client, API audience, required
+scopes, and HSA-id identity from your administrator. For the full token
+contract, see [OIDC integration](oidc-identity-provider-integration.md).
+Permissions come from the verified token and the actor's assignments.
 
-The server reads roles only from `AUTH_MCP_ROLES_CLAIM`. A missing or empty
-array grants no roles; a malformed, duplicate, or unknown entry makes the
-entire claim grant no roles. Browser-role parsing is unchanged.
-
-Invalid or missing tokens return `401` with `WWW-Authenticate: Bearer` and a
-stable JSON-RPC error body. Authentication configuration failures return `500`,
-and discovery or JWKS availability failures return `503`; these responses also
-use stable generic messages and the Bearer challenge. They never include token
-verification, issuer, network, JWKS, or configuration details. MCP does not use
-browser cookies and is intentionally excluded from browser CSRF checks. Tool
-handlers build their actor context only from the verified token attached at the
-HTTP edge.
-
-Authorization denials remain fail-closed. If the server cannot record the
-required denial evidence, it keeps the requested work blocked and returns a
-tool result with `isError: true` whose only message is
-`Error: An internal error occurred`. The result contains no authorization,
-persistence, or other internal cause details. Treat the call as failed; do not
-infer the cause from the generic result.
+Missing, invalid, or expired tokens return `401`; obtain a fresh token and
+update your client. Authentication configuration failures return `500`, and
+identity-provider discovery or key availability failures return `503`; contact
+the administrator if these persist. A tool result with `isError: true` is a
+failed call even when its only message is `Error: An internal error occurred`.
+Do not assume a generic error means a permission denial.
 
 ## Run It Locally
 
-The MCP server is part of the Next.js app and uses the same SQL Server +
-TypeORM stack. For the full developer setup, see
-[sql-server-developer-workflow.md](../development/sql-server-developer-workflow.md).
+The MCP server runs inside the Next.js app; there is no separate MCP process.
+Follow the [local developer setup](../development/sql-server-developer-workflow.md)
+and [authentication setup](../development/auth-developer-workflow.md) to start
+the app, SQL Server, and local identity provider. Ensure the app is configured
+with `MCP_CLIENT_ID=kravhantering-mcp` and
+`AUTH_MCP_REQUIRED_SCOPES=kravhantering:mcp` before starting it.
 
-1. Install the canonical npm with
-   `node scripts/install-repository-npm.mjs`, then install dependencies with
-   `npm install`.
-2. Start the local SQL Server with `npm run db:up`.
-3. Migrate and seed the local database with `npm run db:setup`.
-4. Start the app with `npm run dev`.
-
-   To obtain a dev MCP token, first make sure the local IdP is running with
-   the current realm JSON (`npm run idp:up` if the realm may be stale), then
-   run the token helper with the explicit local contract:
-
-   ```sh
-   MCP_CLIENT_ID=kravhantering-mcp \
-   AUTH_MCP_REQUIRED_SCOPES=kravhantering:mcp \
-   node scripts/security/get-mcp-token.mjs
-   ```
-
-5. Configure your MCP client with the non-production Bearer token from
-   `scripts/security/get-mcp-token.mjs` for the local issuer/audience and
-   connect to `http://localhost:3000/api/mcp`.
-
-The server is implemented inside the Next.js app, so there is no separate MCP
-process to start.
-
-## Configure Remote MCP Clients
-
-Use the same Streamable HTTP endpoint shape for any MCP client that can send
-the required `Authorization: Bearer <token>` header:
-
-- Local development: `http://localhost:3000/api/mcp`
-- Deployed environments: `https://<public-origin>/api/mcp`
-- GitHub Codespaces:
-  `https://<codespace-name>-3000.app.github.dev/api/mcp`
-
-For Codespaces, port `3000` must be public and the dev server must be running.
-See [github-codespaces.md](../development/github-codespaces.md) for the
-Codespaces-specific forwarding workflow.
-
-For local development, obtain a dev MCP token with:
+Obtain a non-production token with:
 
 ```sh
 MCP_CLIENT_ID=kravhantering-mcp \
@@ -430,13 +365,21 @@ AUTH_MCP_REQUIRED_SCOPES=kravhantering:mcp \
 node scripts/security/get-mcp-token.mjs
 ```
 
-The helper has no implicit client id. It requests the configured scopes and
-checks the returned JWT's non-secret header and payload shape before printing
-it. This local check does not replace the server's signature and JWKS
-verification.
+The local client issues five-minute tokens. Renew the token when it expires;
+the helper's environment variables do not enable MCP in an already running
+app. Do not commit tokens to repository files.
 
-Do not commit tokens to repository files. If a client cannot send the Bearer
-header, it cannot use the current protected MCP route.
+## Configure Remote MCP Clients
+
+Use the URL appropriate for the client:
+
+- Local: `http://localhost:3000/api/mcp`
+- Deployed: `https://<public-origin>/api/mcp`
+- Codespaces: `https://<codespace-name>-3000.app.github.dev/api/mcp`
+
+For a remote client using Codespaces, port `3000` must be public and the dev
+server must be running. See the
+[Codespaces forwarding workflow](../development/github-codespaces.md).
 
 ## Configure Visual Studio Code
 
@@ -466,21 +409,9 @@ substitute environment variables, use a placeholder such as
 `Bearer <paste-non-production-token-here-do-not-commit>` only in local,
 uncommitted configuration.
 
-For a deployed environment, replace the URL with your public HTTPS origin:
-
-```json
-{
-  "servers": {
-    "requirement-management": {
-      "type": "http",
-      "url": "https://your-domain.example/api/mcp",
-      "headers": {
-        "Authorization": "Bearer <token>"
-      }
-    }
-  }
-}
-```
+For a deployed environment, replace `url` with
+`https://your-domain.example/api/mcp` and supply that environment's token.
+Set `MCP_TOKEN` in the environment available to VS Code before connecting.
 
 ### Use It In Chat
 
@@ -490,46 +421,10 @@ For a deployed environment, replace the URL with your public HTTPS origin:
 4. Enable the `requirement-management` server or individual tools from it.
 5. Ask a natural-language question, or explicitly reference a tool with `#`.
 
-Examples:
-
-- `List the published requirements for the Integration area.` (in Swedish:
-  `Lista publicerade krav för integrationsområdet.`)
-- `Show requirement INT0001 and include the latest version details.`
-- `Show me the properties of the requirement INT0002`
-- `Show me all version of the requirement IND0001 and what status each have`
-  (fail case, wrong ID)
-- `Show me all version of the requirement IDN0001 and what status each have`
-- `Show requirement IDN0001`
-- `Show me all version of IDN0001`
-- `Show me the details of version 2 of IDN0001`
-- `Show me requirement ANV0001` (fail case, there is no published version)
-- `Use #requirements_query_catalog to list available statuses first, then move`
-  `INT0001` to review.
-- `Hämta krav ANV0001 med version 1 och flytta det sen till granskning`
-
-More advanced examples:
-
-```text
-For requirement IDN0001, return a table with three columns; version numbers,
-status and date. Use dates like this:
-- Draft: created date
-- Published: Published date
-- Archived: Archive date
-- Review: (no date)
-```
-
-```text
-Open requirement INT0002 in the MCP app view.
-```
-
-```text
-För krav-ID IDN0001, returnera en tabell med tre kolumner: versionsnummer,
-status och datum. Använd datum enligt följande:
-- Utkast skapandedatum
-- Publicerad: publiceringsdatum
-- Arkiverad: arkiveringsdatum
-- Granskning: (inget datum)
-```
+Try `List the published requirements for the Integration area`, or
+`Show the version history for INT0001`. Replace example IDs with IDs returned
+by the server. To open the app view, ask
+`Open requirement INT0001 in the MCP app view`.
 
 ### MCP Apps In Visual Studio Code
 
@@ -541,8 +436,6 @@ If the app is not rendering:
 
 1. Confirm the server is connected with `MCP: List Servers`.
 2. Restart the server from that command if needed.
-3. Enable the `chat.mcp.apps.enabled` setting if your VS Code build still
-   requires it.
 
 ### Useful VS Code Commands
 
@@ -572,9 +465,9 @@ If the app is not rendering:
 
 ## Configure GitHub Copilot Coding Agent
 
-GitHub Copilot coding agent supports MCP tools, but not MCP resources or MCP
-Apps. For this server, that means the tools are available, but the
-HTML-based requirement view is ignored by the coding agent.
+GitHub Copilot cloud agent supports MCP tools; use VS Code for resources and
+MCP Apps. Repository MCP settings also apply to Copilot code review. See the
+[GitHub MCP setup guide](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/configure-mcp-servers).
 
 Because coding agent runs remotely, do not point it at
 `http://localhost:3000/api/mcp`. Use a reachable HTTPS deployment instead.
@@ -583,7 +476,7 @@ Open your repository settings on GitHub:
 
 1. `Settings`
 2. `Copilot`
-3. `Coding agent`
+3. `MCP servers`
 4. `MCP configuration`
 
 Use a configuration like this:
@@ -616,48 +509,17 @@ Use a configuration like this:
 }
 ```
 
-This explicit allowlist is preferable to `"*"` because coding agent can use the
-tools autonomously. The `Authorization` value must contain the full Bearer
-header value, usually supplied through a Copilot environment secret.
+Limit the allowlist to the tasks you want the agent to perform: it can call
+these tools autonomously. The example includes mutations but excludes imports;
+add the import and reference tools from the inventory only when needed.
 
 ### Auth Header Example For Coding Agent
 
-Configure headers with Copilot environment variables or secrets prefixed with
-`COPILOT_MCP_`.
-
-Example:
-
-```json
-{
-  "mcpServers": {
-    "requirement-management": {
-      "type": "http",
-      "url": "https://your-domain.example/api/mcp",
-      "tools": [
-        "requirements_query_catalog",
-        "requirements_get_requirement",
-        "requirements_manage_requirement",
-        "requirements_transition_requirement",
-        "requirements_list_specifications",
-        "requirements_get_specification_items",
-        "requirements_list_graduation_target_areas",
-        "requirements_add_to_specification",
-        "requirements_graduate_local_requirement",
-        "requirements_remove_from_specification",
-        "requirements_list_improvement_suggestions",
-        "requirements_manage_improvement_suggestion"
-      ],
-      "headers": {
-        "Authorization":
-          "$COPILOT_MCP_REQUIREMENT_MANAGEMENT_AUTHORIZATION"
-      }
-    }
-  }
-}
-```
-
-In that example, the Copilot environment secret value should already contain the
-full header value, for example `Bearer <token>`.
+Create an Agents secret named
+`COPILOT_MCP_REQUIREMENT_MANAGEMENT_AUTHORIZATION` with the full header value
+`Bearer <token>`. The JSON above references this secret. Supply a fresh token
+before a task and replace it when it expires; a static secret does not refresh
+an access token automatically.
 
 ## How To Work With The Tools Effectively
 
@@ -680,9 +542,9 @@ editing may require IDs for areas and classification fields.
 For edits, also fetch the requirement immediately before preparing the edit
 with `view: "history"`. Use `requirement.versions[0].id` as
 `requirement.baseVersionId` and `requirement.versions[0].revisionToken` as
-`requirement.baseRevisionToken`. If the server returns `409 Conflict` with
-`reason: "stale_requirement_edit"`, read the returned latest snapshot and
-compare before retrying.
+`requirement.baseRevisionToken`. If an edit fails because its base is stale,
+fetch history again and compare the latest version with your intended edit
+before retrying. MCP reports tool failures with `isError: true`.
 
 ### 2. Prefer `uniqueId`
 
@@ -743,7 +605,7 @@ For `catalog: "requirements"`, both operations return `result` plus
 accepts 1 through 100. Continue with `pagination.nextCursor`; callers may
 reduce `limit` during continuation. On `invalid_cursor`, restart without
 `cursor` while retaining the normalized filters, locale, and sort. Requirement
-search runs in SQL Server over `id`, `uniqueId`, `version.description`, and
+search matches `id`, `uniqueId`, `version.description`, and
 `version.acceptanceCriteria`. Search rows include `match.matchedFields` without
 `match.quality`.
 
@@ -773,14 +635,6 @@ Split a larger filter into separate paginated calls; duplicate IDs are invalid.
 
 For `quality_characteristics`, `typeId` filters rows to one requirement type.
 
-Lookup rows for statuses, priority levels, and usage statuses include
-`iconName` when an admin has configured an allowed icon. Requirement list and
-detail versions also include status fields such as `statusIconName`,
-list-response priority-level fields such as `priorityLevelColor` and
-`priorityLevelIconName`, and the detail-response `priorityLevel` object with
-its additive `iconName`. These priority-level fields are separate from the
-unchanged status fields.
-
 ## Example Tasks
 
 ### Read-Only
@@ -788,7 +642,8 @@ unchanged status fields.
 - `Search requirements that mention login.`
 - `Show the version history for SEC0012.`
 - `List available requirement transitions.`
-- `Show all requirement packages and then tell me which ones are linked to INT0001.`
+- Show all requirement packages and then tell me which ones are linked to
+  INT0001.
 
 ### Mutating
 
@@ -805,10 +660,14 @@ unchanged status fields.
 - `Show all requirements in specification SAKLYFT-INFOR-Q2.`
 - `Search for requirements about login in specification SAKLYFT-INFOR-Q2.`
 - `Add requirements INT0001 and INT0002 to specification SAKLYFT-INFOR-Q2.`
-- `Add requirement INT0005 to specification GDPR-FORV-2026 with needs reference text "Behov 4.1".` <!-- markdownlint-disable-line MD013 -->
-- `Add requirement INT0005 to specification GDPR-FORV-2026 with needs reference id 12.` <!-- markdownlint-disable-line MD013 -->
-- `List graduation target requirement areas for unique requirement 41 in SAKLYFT-INFOR-Q2.`
-- `Graduate unique requirement 41 from specification SAKLYFT-INFOR-Q2 into requirement area 3.` <!-- markdownlint-disable-line MD013 -->
+- Add requirement INT0005 to specification GDPR-FORV-2026 with needs reference
+  text "Behov 4.1".
+- Add requirement INT0005 to specification GDPR-FORV-2026 with needs reference
+  id 12.
+- List graduation target requirement areas for unique requirement 41 in
+  SAKLYFT-INFOR-Q2.
+- Graduate unique requirement 41 from specification SAKLYFT-INFOR-Q2 into
+  requirement area 3.
 - `Remove requirement INT0003 from specification SAKLYFT-INFOR-Q2.`
 
 > **Note:** Specifications are identified in MCP tools by numeric
@@ -835,70 +694,8 @@ unchanged status fields.
 Removal requires usage status **Included** (`specificationItemStatusId: 1`)
 for every targeted application. Permission, agreement and deviation checks
 still apply. A status conflict explains that Included is required and rolls
-back the entire removal request. REST responses also include the reason
-`removal_requires_included`. Refresh specification items before retrying;
+back the entire removal request. Refresh specification items before retrying;
 library requirements themselves remain in the library.
-
-## Limitations
-
-### Persisted import validation sessions
-
-`requirements_manage_import validate` returns a random validation token. The
-token is usable only by the same authenticated, normalized HSA-id principal
-that created it; sharing it with another principal produces the same not-found
-response as an unknown or expired token. `inspect_validation` re-authorizes the
-stored destination, and `execute` repeats authorization inside the serializable
-mutation transaction. A role change, removed co-author assignment or archived
-destination can therefore stop a previously validated import.
-
-The row ceiling is the smaller of the current AI MCP limit and the global
-requirement-import budget. The server loads these settings when validating
-and executing an import. Discovery may advertise an older AI limit; that
-number is informational. A successful admin reduction applies to subsequent
-validation admission and execution on every node. An import transaction that
-already holds the settings locks finishes before the admin change commits.
-
-If the effective budget changes during validation, a conflict asks you to
-validate again. If it changes after validation, `execute` returns
-`import_budget_stale`; reduce the payload if needed and run `validate` again.
-Unavailable settings stop admission and execution; retry when the settings store
-recovers.
-
-Admission is bounded by four Admin-managed quotas: unexpired sessions per
-principal, unexpired sessions per destination, successful creations per fixed
-epoch-aligned 10-minute principal window, and global reserved bytes. Executed
-sessions remain active until expiry. Rejected validation, authorization and
-schema attempts do not consume the creation counter. Quota failures use stable
-issue codes:
-
-- `import_validation_principal_session_quota_exceeded`
-- `import_validation_creation_rate_exceeded` (includes `retryAfterSeconds`)
-- `import_validation_destination_session_quota_exceeded`
-- `import_validation_storage_quota_exceeded`
-
-Wait for session expiry, retry after the supplied rate delay, reduce the
-payload, or ask an administrator to review the limits. Rotating
-`AUTH_SESSION_COOKIE_PASSWORD` intentionally invalidates ownership matching for
-existing validation sessions; run `validate` again after rotation.
-
-- The server is HTTP-only in this project. There is no stdio transport.
-- GitHub Copilot coding agent only uses tools from this server. It does not use
-  the requirement resource or the requirement app view.
-- Status transitions require numeric status IDs. Use the transitions or statuses
-  catalogs instead of guessing them.
-
-## Official Client References
-
-- Visual Studio Code MCP setup:
-  <https://code.visualstudio.com/docs/copilot/customization/mcp-servers>
-- Visual Studio Code MCP configuration reference:
-  <https://code.visualstudio.com/docs/copilot/reference/mcp-configuration>
-- Visual Studio Code tool usage:
-  <https://code.visualstudio.com/docs/copilot/agents/agent-tools>
-- GitHub Copilot coding agent MCP integration:
-  <https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/extend-coding-agent-with-mcp>
-- GitHub Copilot coding agent MCP capabilities:
-  <https://docs.github.com/en/copilot/concepts/agents/coding-agent/mcp-and-coding-agent>
 
 ### Link a suggestion to the implementing version
 
@@ -919,3 +716,59 @@ Otherwise `recordedAt` identifies the attachment time and `version` contains
 the implementing row ID, requirement ID, version number, and current localized
 status. `version: null` means the target is deleted or the caller cannot read it.
 Do not infer a replacement target from a reused version number.
+
+## Limitations
+
+### Persisted import validation sessions
+
+`requirements_manage_import validate` returns a random validation token. The
+token is usable only by the same authenticated, normalized HSA-id principal
+that created it; sharing it with another principal produces the same not-found
+response as an unknown or expired token. A role change, removed co-author
+assignment, or archived destination can stop inspection or execution of a
+previously validated import.
+
+The row ceiling is the smaller of the current AI MCP limit and the global
+requirement-import budget. The server loads these settings when validating
+and executing an import. Discovery may advertise an older AI limit; that
+number is informational. Use the current limits reported by the server when
+preparing an import.
+
+If the effective budget changes during validation, a conflict asks you to
+validate again. If it changes after validation, `execute` returns
+`import_budget_stale`; reduce the payload if needed and run `validate` again.
+Unavailable settings stop admission and execution; retry when the settings store
+recovers.
+
+Admission is bounded by four Admin-managed quotas: unexpired sessions per
+principal, unexpired sessions per destination, successful creations per
+10-minute principal window, and global reserved bytes. Executed sessions still
+count toward session quotas until expiry. Quota failures use stable issue codes:
+
+- `import_validation_principal_session_quota_exceeded`
+- `import_validation_creation_rate_exceeded` (includes `retryAfterSeconds`)
+- `import_validation_destination_session_quota_exceeded`
+- `import_validation_storage_quota_exceeded`
+
+Wait for session expiry, retry after the supplied rate delay, reduce the
+payload, or ask an administrator to review the limits. If the administrator
+invalidates existing sessions, run `validate` again.
+
+- The server supports HTTP transport only.
+- GitHub Copilot coding agent only uses tools from this server. It does not use
+  the requirement resource or the requirement app view.
+- Status transitions require numeric status IDs. Use the transitions or statuses
+  catalogs instead of guessing them.
+
+## Official Client References
+
+- Visual Studio Code MCP setup:
+  <https://code.visualstudio.com/docs/copilot/customization/mcp-servers>
+- Visual Studio Code MCP configuration reference:
+  <https://code.visualstudio.com/docs/copilot/reference/mcp-configuration>
+- Visual Studio Code tool usage:
+  <https://code.visualstudio.com/docs/copilot/agents/agent-tools>
+- GitHub Copilot coding agent MCP integration:
+  <https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/extend-coding-agent-with-mcp>
+- GitHub Copilot coding agent MCP capabilities:
+  <https://docs.github.com/en/copilot/concepts/agents/coding-agent/mcp-and-coding-agent>

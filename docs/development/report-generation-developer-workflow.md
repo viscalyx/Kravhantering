@@ -1,8 +1,9 @@
 # Report Generation Developer Workflow
 
-This document covers implementation architecture and contributor workflow for
-report generation. Product-facing report types, field profiles, CSV contracts,
-authorization behavior, filenames, and output semantics live in
+Use this workflow when adding reports, changing their layout or styling, or
+changing PDF delivery and packaging. Product-facing report types, field
+profiles, CSV contracts, authorization behavior, filenames, and output semantics
+live in
 [reports.md](../reference/reports.md).
 
 ## Architecture
@@ -21,7 +22,7 @@ Shared Layer (engine-agnostic)
 Server PDF Engine
   components/reports/pdf/              PdfReportRenderer
   lib/pdf/server-response.tsx          React-PDF Node response helper
-  lib/pdf/report-worker-entry.ts        Isolated list-PDF renderer entry
+  lib/pdf/report-worker-entry.ts       Isolated list/privacy PDF renderer
   lib/pdf/report-worker.ts              Worker lifecycle/error mapping
   app/[locale]/requirements/reports/pdf/       Route handlers
   app/[locale]/specifications/[specificationId]/reports/pdf/[profile]
@@ -32,16 +33,20 @@ Server PDF Engine
 
 Report builders and template functions stay pure. They receive already
 authorized report data and do not call the authorization service themselves.
+Keep `lib/reports/` independent of React-PDF and `components/reports/`.
+Change report content and section order in templates; change PDF styling in
+`components/reports/pdf/`. For a new section type, extend the `ReportSection`
+union in `lib/reports/types.ts` and its rendering in `PdfReportRenderer.tsx`.
 
 ## Data Flow
 
 1. Route/page validates the request and authorizes its base report scope.
-2. The route reads one settings snapshot and acquires the shared process-wide
-   PDF capacity slot.
+2. Shared actor admission runs before the route reads its generation settings
+   snapshot and acquires the process-wide PDF capacity slot.
 3. The route checks explicit IDs or traverses at most the configured item
    limit plus one before broad enrichment.
 4. Route/page collects the admitted report data server-side.
-5. Template function converts raw data into a `ReportModel`, an array of typed
+5. Template function converts raw data into a `ReportModel` containing typed
    sections like header, diff, version-summary, and timeline-entry. Priority
    values become a normalized `ReportPriorityIdentity`; invalid colors and icon
    names become `null` before reaching React-PDF.
@@ -67,6 +72,10 @@ PDF routes live under `.../reports/pdf/`.
   sort order. The route still accepts `ids=...` for explicit direct calls.
 - **Combined**: `.../pdf/review-combined?ids=...`
 - **Improvement Suggestion History**: `.../pdf/suggestion-history/[id]`
+- **Deviation Review**: `.../pdf/deviation-review/[id]?item=...`, where `id`
+  identifies the requirement and `item` identifies its library requirement
+  application in a specification. Specification-local applications are not
+  supported by this route.
 
 All routes above are prefixed with `/[locale]/requirements/reports`.
 
@@ -85,15 +94,16 @@ Requirements specification reports use a separate prefix
 The traceability route accepts the normalized requirements specification item
 filters and ordering. It and lifecycle-profile outputs use the shared bounded
 server traversal; complete formal output must never depend on browser
-loaded-page state. PDF and structured report JSON intentionally use
-`collectCompleteSpecificationOutputData()`. Procurement and full CSV instead
-use `visitSpecificationOutputPages()` and serialize each enriched row directly
-through the bounded CSV runner.
+loaded-page state. Lifecycle-profile PDFs and structured report JSON use
+`collectCompleteSpecificationOutputData()`. Traceability PDF uses
+`collectSpecificationTraceabilityData()` to preserve the selected filters and
+ordering. Procurement and full CSV use `visitSpecificationOutputPages()` and
+serialize each enriched row directly through the bounded CSV runner.
 
 ## PDF Rendering
 
-Server PDF uses `@react-pdf/renderer` only from Node route handlers to render
-the shared report model to binary PDF. It is the path for report delivery,
+Server PDF uses `@react-pdf/renderer` in Node route handlers and their workers
+to render the shared report model to binary PDF. It is the path for delivery,
 sharing, and archival output. The browser never imports React-PDF, which keeps
 production CSP compatible with strict `script-src` values and avoids
 `unsafe-eval`/WebAssembly eval exceptions.
@@ -112,34 +122,22 @@ direct renderer. `report-worker-entry.ts` performs the same preload inside the
 worker because icon caches are process-local. Icon resolution must remain a
 static allowlist operation without network or file loading.
 
-Browser status icons resolve through Lucide's canonical `icons` export and a
-generated set of compatibility aliases. This preserves the complete selectable
-catalog without importing the package's prefixed and suffixed export variants.
-`scripts/prebuild.js` regenerates
-`lib/icons/status-icon-aliases.generated.ts` from the installed package before
-building. After updating Lucide, run
-`node scripts/generate-status-icon-aliases.mjs` and commit the generated file.
-The status-icon tests verify every allowed name resolves to the matching Lucide
-component; `npm run build` checks the production JavaScript bundle budgets.
-
 `runSynchronousPdfGeneration()` is the admission boundary for direct PDF
 routes. It loads `pdfReportMaxRequirements`,
 `pdfReportConcurrencyPerNode`, and `pdfReportTimeoutSeconds`, then supplies the
-active admission token required by `renderPdfResponse()` and
+active capacity token required by `renderPdfResponse()` and
 `renderReportModelPdfResponse()`. Direct callers cannot render without this
 token. The list-PDF spool acquires capacity from the same process-wide pool
 before its bounded traversal and worker render.
 Privacy PDF does not use the direct-renderer path: it acquires the same PDF
 pool and settings before collection, then renders through the terminable worker
-with the configured byte and worker-memory limits. Privacy JSON uses the CSV
-settings and shared structured-export pool, writes bounded JSON to the private
-spool, and reserves three bytes for the browser-download BOM.
+with the configured byte and worker-memory limits.
 
 The item limit counts distinct IDs for combined and selected-list reports;
-versions for history and review; versions plus suggestions for suggestion
-history; and top-level rendered rows for filtered lists, specifications,
-traceability, RFI, access review, and data-subject PDFs. A `limit + 1`
-traversal detects broad filtered results before page enrichment. Limit
+versions for history, review, and deviation review; versions plus suggestions
+for suggestion history; and top-level rendered rows for filtered lists,
+specifications, traceability, RFI, access review, and data-subject PDFs. A
+`limit + 1` traversal detects broad filtered results before page enrichment. Limit
 rejections use `422 output_limit_exceeded`; saturated capacity uses
 `429 capacity_busy` with `Retry-After: 5`. Both responses are `no-store`.
 
@@ -154,11 +152,9 @@ The large list-PDF and privacy-PDF routes write only to private spool files and
 invoke the report worker with their respective structured document models. The
 worker client passes the literal
 `./lib/pdf/report-worker-entry.ts` filename to `node:worker_threads`.
-Next.js 16.2.10 Turbopack compiles that entry and its TSX renderer, project
-aliases, translations, privacy formatting, React-PDF graph, and icon allowlist
-as part of the normal Next.js build. Standalone output retains the emitted
-worker bootstrap and traced dependency chunks without a generated root-level
-worker artifact or PDF-specific postbuild step.
+Next.js Turbopack compiles that entry and its dependencies as part of the normal
+Next.js build. Standalone output must retain the emitted worker bootstrap and
+traced dependency chunks.
 
 The production gate starts the built or prodlike runtime and exercises the
 real list-PDF endpoint. The gate requires a successful `application/pdf`
@@ -167,8 +163,7 @@ route used by clients. `KRAVHANTERING_EXPORT_TEMP_DIR` keeps its blank-value
 fallback and absolute-path requirement. An explicit directory must already
 exist and grant the non-root operating-system account under which the Node.js
 process runs read, write, and search access while remaining inaccessible to
-other users. Requirements-specification CSV reuses this environment and
-storage-sizing contract without adding a setting or variable.
+other users.
 
 When changing the worker entry or renderer dependencies, run:
 
@@ -179,8 +174,7 @@ npm run test:integration:prodlike -- \
 ```
 
 Before accepting a packaging change, inspect `.next/standalone` for the
-Turbopack worker bootstrap and run the endpoint gate without a legacy
-`bundled/pdf-report-worker.cjs` file.
+Turbopack worker bootstrap and run the endpoint gate against that build.
 
 The worker must report byte-limit and storage failures explicitly. The parent
 maps V8 `ERR_WORKER_OUT_OF_MEMORY` separately from an unexpected error/exit,
@@ -191,14 +185,19 @@ to the client.
 
 1. Create a template in `lib/reports/templates/` that returns a `ReportModel`.
 2. Add a route handler under `app/.../reports/pdf/`.
-3. In server PDF handlers, authorize the base report scope, acquire capacity,
-   and enforce an explicit ID or row limit before collecting broad data.
+3. Authorize the base report scope, then use `runSynchronousPdfGeneration()`
+   for direct rendering. It applies actor admission and process capacity;
+   enforce the supplied item limit before collecting broad data. Worker routes
+   must wrap their spool workflow with `runWithExportActorQuota()`.
 4. Add menu items in the detail view or list view to open the report. PDF menu
    item labels must be the report name only.
 5. Add translations to both `messages/en.json` and `messages/sv.json`.
 6. Update [reports.md](../reference/reports.md) when the change affects report
    types, field profiles, CSV/export contracts, authorization, filenames, or
    output behavior.
+7. Add automated coverage and matching manual cases for the report behavior,
+   including authorization and output limits. Run `npm run check`; use the
+   production endpoint gate above when changing worker packaging.
 
 ## Shared actor admission
 
@@ -206,37 +205,18 @@ See [export and report admission](../operations/export-report-admission.md) for
 covered routes, shared actor limits, distinct 429/503 reasons, English and
 Swedish messages, privacy handling and coordinated operational tuning.
 
+`runSynchronousPdfGeneration()` already wraps direct PDF work in
+`runWithExportActorQuota()`; do not add another actor admission around it.
+List and privacy worker outputs use that wrapper around their spool workflow.
+Return the wrapper's response so the actor slot remains held until response
+delivery completes, fails, or is cancelled. The process PDF capacity slot has
+a separate lifetime tied to generation.
+
 HTTP limit messages import the small `messages/service-limits.en.json` and
 `messages/service-limits.sv.json` catalogs. Keep their copy aligned with
 `generatedOutput.limits` in the main catalogs; the service-limit message tests
 compare both surfaces. Importing full catalogs into HTTP helpers also adds
-them to browser bundles used by ordinary API requests. The measured Admin
-Center and RFI bundle baselines include the compact quota response handling
-and retain five percent headroom.
-
-Actor admission and streaming lifetime tests live in
-`lib/__tests__/export-actor-quota.test.ts` and
-`tests/unit/generated-output-stream-lifetime.test.ts`. The structured runner
-has focused row, byte, query-failure and serialization tests. SQL integration
-covers shared rolling usage, concurrent connections, tuning, privacy, cleanup
-and runtime permissions. Nginx container tests cover both trusted-address
-modes and independent login limits.
-
-The watchdog tests run real child processes to verify termination with a
-blocked main event loop and survival after disarming. Those child-process
-paths and SQL integration paths are not included in the focused Vitest
-coverage totals. Additional watchdog startup-error and unexpected-exit fault
-injection remain coverage gaps; retain the real process tests when adding
-those cases.
-
-### Suggestion implementation evidence
-
-The suggestion DAL joins implementation evidence by version row ID. The report
-collector maps this data after the history route authorizes access. The shared
-suggestion-history template formats the implementation text without changing
-the original feedback-version grouping; the PDF renderer only styles that text.
-Implementation status labels use the same localized unknown-status fallback as
-the version headings.
+them to browser bundles used by ordinary API requests.
 
 ## Selected specification agreement
 

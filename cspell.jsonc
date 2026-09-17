@@ -3,6 +3,13 @@
   "language": "en,sv",
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
+    "namnclaims",
+    "landskodsbokstäver",
+    "tokenformat",
+    "integrationstestflöde",
+    "inodes",
+    "DBUS",
+    "CAROOT",
     "kravunderlagskoden",
     "avtalsvy",
     "kravuppsättning",

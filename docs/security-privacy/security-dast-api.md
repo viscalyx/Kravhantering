@@ -1,5 +1,8 @@
 # ZAP API Security Scan
 
+This guide is for developers maintaining API scan coverage and reviewers
+investigating failures in the `Security DAST API` workflow.
+
 The ZAP API workflow runs `zaproxy/action-api-scan` against a filtered
 read-only OpenAPI document generated from
 [openapi/requirements-api.yaml](../../openapi/requirements-api.yaml). The
@@ -12,27 +15,36 @@ contract.
 The generator lives in
 [scripts/security/generate-zap-api-openapi.mjs](../../scripts/security/generate-zap-api-openapi.mjs).
 Its allowlist starts with authenticated read-only operations such as
-requirements list/detail and lookup catalogs. Mutating operations stay out of
-scope until their CSRF headers, examples, and expected state changes are
-curated for active API probing.
+requirements list/detail and lookup catalogs. Mutating operations are outside
+the current scan scope. The allowlist restricts imported operations; active
+probes can still request paths outside that contract.
 
 `/api/mcp` remains outside this REST OpenAPI contract. MCP security coverage is
-owned by the seeded MCP workflow and MCP contract tests because the endpoint is
-a JSON-RPC transport, not a REST operation set.
+owned by the [seeded MCP workflow](./mcp-seeded-dast.md) and MCP contract tests
+because the endpoint is a JSON-RPC transport, not a REST operation set.
 
 ## Workflow
 
 Workflow file:
 [.github/workflows/security-dast-api.yml](../../.github/workflows/security-dast-api.yml).
 
-The workflow runs on pull requests that touch API/security-contract paths and
-on manual dispatch. It starts the shared localhost prodlike stack, logs in as
+The workflow starts on pull requests targeting `main` and on manual dispatch.
+PR scan execution is selected by the shared validation selector; the `ZAP API`
+check reports the selection and result. Manual dispatch selects the scan
+regardless of changed paths.
+
+When selected, it starts the shared localhost prodlike stack, logs in as
 `ada.admin`, generates the filtered OpenAPI JSON, guards that the target is
 exactly `http://localhost:3001`, and runs ZAP API scan with the browser session
-cookie injected through the ZAP replacer add-on.
+cookie injected through the ZAP replacer add-on. This covers an administrator
+session; it does not establish authorization coverage for other roles.
 
-The workflow uploads the ZAP reports, generated OpenAPI JSON, and app log. ZAP
-built-in issue writing stays disabled; findings are reviewed from artifacts.
+To investigate a failure, open the workflow run and review `zap-api-scan` for
+ZAP reports, `zap-api-openapi` for the exact imported contract, and
+`zap-api-app-log` for application errors. If scanning never starts, inspect the
+failed setup, login, or target-guard step. ZAP built-in issue writing stays
+disabled. A failed scan step fails the job after diagnostic uploads; its
+`continue-on-error` setting does not make scan failures non-blocking.
 
 The API rules file keeps localhost-only transport warnings non-blocking. Rule
 `100001` is downgraded to artifact-only because active API probing can generate

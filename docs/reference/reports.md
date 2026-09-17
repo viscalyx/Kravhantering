@@ -1,8 +1,8 @@
 # Report Generation
 
-The report system uses server-generated PDF as the report delivery mechanism.
-Report content is modeled in a shared template layer and rendered by the server
-PDF renderer.
+This reference is for report consumers and developers checking report scope,
+field selection, access requirements, and export formats. Reports are delivered
+as server-generated PDFs; CSV exports support spreadsheet analysis and import.
 
 Implementation architecture and contributor workflow live in
 [report-generation-developer-workflow.md](../development/report-generation-developer-workflow.md).
@@ -26,16 +26,12 @@ top-level repeated content:
 | RFI question list | RFI questions |
 | Access-review export | Access-review assignment rows |
 | Data-subject export | Exported personal-data items |
-| Deviation Review | One selected requirement application and review version |
+| Deviation Review | Versions of the selected requirement |
 <!-- markdownlint-enable MD013 -->
 
-The deviation review is a single-item report and therefore has no separate
-collection count. It still shares the PDF concurrency pool. Specification,
-traceability, filtered-list, and RFI collectors request at most the configured
-limit plus one before enrichment, so they can detect an excessive result
-without retaining every match. History, review, access-review, and
-data-subject routes check their row counts before loading the complete report
-details.
+Deviation Review covers one selected application, but its item-limit check
+counts the requirement versions loaded to prepare the report. It shares the
+PDF concurrency pool.
 
 The exact item limit is accepted. The first item above it returns
 `422 output_limit_exceeded` with `Cache-Control: no-store` and no partial PDF.
@@ -43,37 +39,14 @@ When all per-node render slots are occupied, the route returns
 `429 capacity_busy` with `Retry-After: 5`. Reduce the selected rows or narrow
 the active filters before retrying an item-limit rejection.
 
-Version summaries include requirement package names when present. Blank or
-whitespace-only package names are ignored so report output does not show empty
-package entries.
-
 ## Priority Identity in PDF Reports
 
-PDF reports represent a resolved priority as structured data containing its
-code, Swedish and English names, validated color, and optional allowlisted icon
-name. History, review, combined review, improvement suggestion history,
-deviation review, progress, management, and application traceability reports
-render the identity as `code – localized name`. If the localized name is empty,
-only the code is shown. A missing priority produces no badge or replacement
-label.
-
-Version summaries and old/new change values use the PDF badge variant. Dense
-progress, management, and traceability rows use the compact inline variant;
-both retain the complete code and name and allow text to wrap without a fixed
-height. Deviation review uses the inline variant against its amber card
-background.
-
-Only strict `#RRGGBB` configured colors enter the report model. Badge fills are
-opaque tints composited for the white PDF page, and their foreground is clamped
-to at least 4.5:1 contrast against that exact fill. Inline foregrounds use the
-same minimum against their exact white or amber background. Missing or invalid
-colors use the neutral PDF palette and never reach React-PDF as raw color
-values.
-
-Allowlisted static vector icons are preloaded before direct or isolated-worker
-rendering and use the same readable foreground as the priority text. Missing,
-empty, or unknown icon names produce no icon, fallback glyph, bullet, or
-external resource request.
+History, review, combined review, improvement suggestion history, deviation
+review, progress, management, and application traceability reports display
+priority as `code – localized name`. If the localized name is empty, only the
+code is shown. A missing priority produces no badge or replacement label.
+Priority text wraps to preserve the complete identity. Missing or invalid
+configured colors use a neutral palette; unknown icons are omitted.
 
 ## Report Types
 
@@ -84,7 +57,7 @@ Shows the timeline of changes for a specific requirement.
 - Available from the report dropdown in the detail view (all statuses)
 - Current published version summary at top (if exists)
 - Unpublished versions (draft/review) shown after published, clearly marked
-- All versions listed in reverse chronological order with status, author,
+- All versions listed in descending version order with status, author,
   timestamps, and requirement text excerpt
 
 ### 2. Review Report
@@ -97,27 +70,22 @@ latest archived version.
 - Shows metadata changes (category, type, quality characteristic, etc.)
 - Shows previous and new priorities as separate complete priority identities
 - If no published or archived version exists, displays a notice
-- **Archiving reviews** (Published → Review → Archive) are visually
-  distinct: titled "Arkiveringsförfrågan" / "Archive Request" with a
-  subtitle and amber warning banner
 
 ### 3. Requirements List
 
-Outputs the requirements currently displayed in the list view as a
-formatted table.
+Outputs the complete matching requirement set from the list view as a
+formatted table, including rows not yet loaded in the browser.
 
 - Available from the report dropdown pill (always visible in list view)
 - The PDF menu entry is labeled only with the report name:
   `Kravlista` / `Requirements List`
 - Shows Requirement ID, requirement text (truncated), requirement area, and
   status columns
-- Includes all currently visible requirements (after filtering/sorting)
 - Uses the same displayed requirement version and status as the list view, so
   Review rows are included when the current filter includes them
 - Resolves the complete matching requirement set server-side from the active
   filters and sort order instead of relying on the currently loaded client
-  page. The Admin-configured PDF item cap is checked with a bounded
-  `limit + 1` traversal before rendering.
+  page. The Admin-configured PDF item cap applies to the complete result.
 - Header shows total count and generation timestamp
 
 ### 4. Combined Review Report
@@ -130,8 +98,7 @@ Generates a multi-requirement review report from the list view.
 - The combined report menu item is disabled if any selected requirement is not
   in Review status
 - The combined report menu item shows the selected requirement count as a badge
-- Applies the Admin-configured PDF item cap to distinct selected requirement
-  IDs before per-requirement authorization or detail loading
+- Applies the Admin-configured PDF item cap to distinct selected requirements
 - Table of contents on the first page, grouped by report type:
   archiving requests first, then review reports
 - Each TOC entry shows its page number
@@ -141,23 +108,20 @@ Generates a multi-requirement review report from the list view.
 
 Requirements specification reports always cover the whole specification, include
 both linked library requirements and specification-local requirements, and sort
-rows by `Krav-ID` ascending. Library rows use the exact
-`requirement_version_id` linked to the specification item, not the latest
-requirement version.
+rows by `Krav-ID` ascending. Library rows use the exact requirement version
+linked to the specification item.
 
 Available profiles are lifecycle-driven:
 
 - **Kravbilaga för upphandling** / **Procurement requirements appendix**:
   shown only when the specification lifecycle status is `Upphandling`.
-- **Genomföranderapport** / **Progress report**: shown only when the specification
-  lifecycle status is `Införande` or `Utveckling`.
+- **Genomföranderapport** / **Progress report**: shown only when the
+  specification lifecycle status is `Införande` or `Utveckling`.
 - **Förvaltningsrapport** / **Management report**: shown only when the
   specification lifecycle status is `Förvaltning`.
 
-Each profile has a server PDF route. The specification detail menu shows only
-the profile that matches the lifecycle status. PDF menu entries use only the
-profile report name, for example
-`Genomföranderapport`, without a download verb or `(PDF)` suffix.
+The specification detail menu shows only the profile that matches the lifecycle
+status.
 
 ### 6. Requirement Application Traceability
 
@@ -167,38 +131,25 @@ not lifecycle-scoped and does not replace the profile reports. Instead, it uses
 the same filtered requirement applications currently shown in the specification
 detail list.
 
-- Includes both library requirement applications (`lib:{id}`) and
-  specification-local requirement applications (`local:{id}`)
-- Accepts the same normalized filter, locale, sort field, and sort direction as
-  the requirements specification item list
-- Traverses the complete server-filtered result in database-authoritative order
-  with bounded 100-row pages
-- Uses the current application data already stored on requirement applications:
-  needs reference, usage status, status date, deviations, risk, verifiability,
-  verification method, and note
-- Does not introduce a separate database model
+- Includes both linked library requirements and specification-local requirements
+- Uses the same filters, locale, and sort order as the specification item list
+- Includes the complete matching result, even when rows are not yet loaded in
+  the browser
+- Uses application data for the selected agreement: needs reference, usage
+  status, status date, deviations, priority, verifiability, verification method,
+  and note
 - Summary shows total requirement applications, library/local distribution,
   usage status distribution, missing needs references, and deviations per
   decision state
 - Detail rows show requirement ID, origin, version, area, needs reference,
-  usage status, status changed date, deviation state, risk, verification, and
-  note
-- The detail view keeps traceability available when matching rows have not yet
-  been loaded in the browser or the filtered result exceeds 100 items.
-
-The traceability report loads data through
-`/api/requirements-specifications/{id}/traceability-items` with the normalized
-item-list query parameters. The server applies those filters and ordering to the
-complete combined library/specification-local result. It follows opaque
-continuations internally with duplicate, progress, cursor-cycle, and maximum
-page protection; no browser-side reference enumeration or 100-reference limit
-applies.
+  usage status, status changed date, deviation state, priority, verification,
+  and note
 
 Lifecycle-profile PDFs, procurement CSV, and full CSV do not inherit editor
 filters or loaded-page state. They always traverse the complete requirements
-set in the selected agreement in stable Requirement ID order using bounded
-server pages. Every specification report identifies the agreement reference,
-effective date and state. Historical reports use the preserved follow-up;
+set in the selected agreement in stable Requirement ID order. Every
+specification report identifies the agreement reference, effective date and
+state. Historical reports use the preserved follow-up;
 draft, upcoming and cancelled agreements retain their explicit state. Before
 the first agreement, output identifies the working set as no agreement.
 
@@ -302,12 +253,13 @@ signals.
 Included fields:
 
 - All Genomföranderapport fields remain because management needs the same
-  requirement identity, ownership, status, priority, usage, and traceability view.
+  requirement identity, ownership, status, priority, usage, and traceability
+  view.
 - `Avstegssignal` shows whether a requirement has a pending, approved, or
   rejected deviation, without exposing deviation motivation text.
 - `Rest från införande` marks rows whose usage status is not `Implementerad`,
-  `Verifierad`, or `Ej tillämpbar`; `Avviken` is handled separately by the
-  deviation signal.
+  `Verifierad`, or `Ej tillämpbar`. Rows marked `Avviken` therefore remain
+  included in this residual signal.
 
 Excluded fields:
 
@@ -359,8 +311,8 @@ Included fields:
 - `Krav-ID`, `Kravtext`, `Kravområde`, `Kategori`, `Typ`,
   `Kvalitetsegenskap`, `Prioritet`, `Kravversionsstatus`, `Verifierbar`,
   `Version`, `Behovsreferens`, `Användningsstatus`, `Normreferenser`,
-  `Kravpaket`, and `Förbättringsförslag` preserve the current configurable
-  column set for internal analysis.
+  `Kravpaket`, and `Förbättringsförslag` form a fixed column set for internal
+  analysis. `Förbättringsförslag` contains a count, not suggestion text.
 - `ISO-kapitel`, `Norm-URI`, and `Avstegssignal` add machine-friendly
   traceability and management signals that are useful in spreadsheet analysis.
 
@@ -375,14 +327,12 @@ Excluded fields:
 
 ## CSV Export Format
 
-The shared `escapeCsvField()` contract in `lib/export-csv.ts` and the
-row-wise exporters produce CSV with the following conventions:
+CSV exports use the following conventions:
 
 - **Separator:** semicolon (`;`) by default for European locale
-  compatibility. Callers with another established delimiter pass that
-  delimiter to the shared encoder so quoting follows the active format.
+  compatibility.
 - **Line endings:** CRLF (`\r\n`).
-- **Escaping:** fields containing the active delimiter, `"`, `\n`, or `\r`
+- **Escaping:** fields containing the active delimiter, `"`, tab, `\n`, or `\r`
   are wrapped in double-quotes with internal `"` doubled.
 - **Formula hardening:** fields beginning with `=`, `+`, `-`, `@`, tab, or
   carriage return are prefixed with `'` and wrapped in double-quotes. Formula
@@ -394,63 +344,35 @@ row-wise exporters produce CSV with the following conventions:
   LF line endings, columns, filename, media type, and UTF-8 BOM while using the
   same shared escaping and formula-hardening contract. They keep every
   non-null field double-quoted for compatibility with existing receipts.
-- Requirements specification CSV exports are generated server-side from the
-  whole specification, stay row-oriented, do not include metadata rows, and
-  write the BOM, header, and each enriched page directly to the bounded spool.
-- The RFI question-list CSV is a distinct dataset and workflow. It is
-  inventoried but does not use the requirements-specification CSV runner.
-- Requirements Library CSV is returned with a UTF-8 BOM at the HTTP boundary
-  and is served only by `GET /api/requirements/export`. It applies the requested
-  server filters, locale, and database sort, starts from the first page, and
-  accepts no cursor or page-size parameter.
+- Requirements specification CSV covers the whole selected agreement and has
+  no metadata rows; every data row represents one requirement application.
+- Requirements Library CSV is served by `GET /api/requirements/export`. It
+  applies the requested filters, locale, and sort order to the complete result
+  and accepts no cursor or page-size parameter.
 - Action-log CSV is served by `GET /api/admin/audit-events?format=csv` to Admin
-  users. It ignores interactive `page` and `pageSize`, excludes IDs above the
-  current maximum action-log ID, and keyset-traverses the filtered result in
-  `occurred_at DESC, id DESC` order. Actor-filter membership can change during
-  concurrent privacy erasure unless matching IDs are materialized or a
-  consistent snapshot is used. Zero matches return the localized header only.
-- Requirements Library CSV, specification CSV, Action-log CSV, and filtered
-  list PDF
-  collection traverse internal bounded pages and fetch at most the Admin item
-  limit plus one row. They fail rather than return partial output if a page
-  repeats a stable identifier, does not make progress, repeats a cursor, or
-  exceeds the traversal page guard.
+  users. It ignores interactive `page` and `pageSize`, excludes entries created
+  after export begins, and orders rows by `occurred_at DESC, id DESC`.
+  Concurrent privacy erasure can change actor-filter membership during export.
+  Zero matches return the localized header only.
 
 ## Bounded Synchronous Output
 
 Requirements Library CSV, procurement and full requirements-specification CSV,
 Action-log CSV, and the requirements-list PDF are same-request, all-or-error
-operations. After authorization they read one `application_settings` snapshot,
-acquire a process-local per-node slot, reserve the configured maximum file size
-against temporary-storage capacity, and create a private spool file. All CSV
-operations share the generalized CSV row, byte, timeout, and concurrency
-settings and the same CSV pool. No response headers are sent until generation
-has completed within all configured bounds.
+operations. Item count, file size, time, and per-node capacity limits apply;
+no partial output is returned when generation exceeds a limit. CSV operations
+share the Admin-managed CSV limits and concurrency pool.
 
-CSV traverses SQL-authoritative pages and appends escaped rows directly to a
-bounded file; it never builds the complete row model or CSV string in memory.
-Specification CSV enriches one page at a time. The explicitly eager
-specification collector remains available only to PDF and structured report
-JSON callers. The large list PDF collects at most 1,000 report rows and renders
-the shared model in an isolated worker thread with an Admin-configured V8 heap
-limit. All bounded paths stop traversal/rendering on timeout or client
-cancellation and remove output after completion, cancellation, or error.
-
-The browser uses one accessible two-phase modal for these outputs:
-`Generating/Preparing` while awaiting response headers and `Downloading` while
-reading the response Blob. There is no percentage, service worker, or File
-System Access path. The server filename from `Content-Disposition` wins over
-the localized fallback filename. Server-provided CSV and PDF filenames are
-Unicode-normalized; control, format, and malformed surrogate characters are
-removed; and filenames are bounded to 240 UTF-8 bytes before
-standards-compliant header encoding. One hook instance runs only one operation
-at a time, including when different specification CSV or PDF URLs are
-requested.
+The browser shows `Generating/Preparing` while generation runs and
+`Downloading` while receiving the completed output. The server filename takes
+precedence over the localized fallback. Filenames preserve Unicode, remove
+control and malformed characters, and are limited to 240 UTF-8 bytes.
 
 Stable failures are `output_limit_exceeded` (`422`), `capacity_busy` (`429`,
 `Retry-After: 5`), and the `503` timeout, temporary-storage, PDF-memory, or
-worker failure codes. The client maps only these codes and bounded details to
-localized messages; it never displays raw server error text. A busy response
+worker failure codes. Actor quota failures are described under
+[export and report actor quota](#export-and-report-actor-quota). The client
+shows localized messages instead of raw server error text. A busy response
 enables manual retry only after the countdown and never retries automatically.
 
 ## Output Behavior
@@ -466,17 +388,15 @@ boundary. API JSON responses remain strict BOM-free JSON.
 ## Authorization
 
 Server PDF routes authorize before collecting report data. Requirement list
-PDFs are available to ordinary authenticated users, but collect only published
-requirement versions. History, review, combined review, and suggestion-history
-PDFs require history access for each requested requirement before any report
-data helper runs. Requirements specification profile PDFs authorize against the
-specification before collecting items and reject profiles that do not match the
-specification lifecycle status. Requirements specification traceability PDF and
-API routes authorize against the specification before collecting item data and
-reject selected refs that do not belong to the requested specification.
-Specification CSV validates the requested profile, specification,
-authorization, and procurement lifecycle before it reads capacity settings or
-acquires a spool slot.
+PDFs require read access to each included requirement. Filtered reports use the
+versions visible to the requesting user, so permitted Review rows can appear.
+History, review, combined review, and suggestion-history PDFs require history
+access for each requested requirement. Requirements specification profile PDFs
+require specification read access and reject profiles that do not match its
+lifecycle status. Traceability PDF and API routes require specification read
+access and collect the matching items from that specification.
+Specification CSV requires specification read access and a valid profile;
+procurement CSV also requires the procurement lifecycle status.
 
 ## PDF Filenames
 
@@ -484,6 +404,8 @@ acquires a spool slot.
   (e.g., `Historikrapport ANV0022.pdf`)
 - Review: `{localized label} {uniqueId}.pdf`
   (e.g., `Granskningsrapport ANV0022.pdf`)
+- Requirements List: `{localized label} {YYYY-MM-DD HH.MM}.pdf`
+- Deviation Review: `{localized label} {uniqueId}.pdf`
 - Combined: `{localized label} {YYYY-MM-DD HH.MM}.pdf`
   (e.g., `Kombinerad granskningsrapport 2026-03-17 16.35.pdf`)
 - Requirements specification profile report:
@@ -498,8 +420,8 @@ acquires a spool slot.
 
 ## Archiving Reviews
 
-When a requirement transitions from Published to Review for archiving
-(`archiveInitiatedAt` is set), the review report uses distinct styling:
+When a requirement transitions from Published to Review for archiving,
+the review report uses distinct styling:
 
 - Title: "Arkiveringsförfrågan" / "Archive Request"
 - Subtitle: "Kravet granskas för arkivering"
@@ -512,7 +434,7 @@ See [export and report admission](../operations/export-report-admission.md) for
 covered routes, shared actor limits, distinct 429/503 reasons, English and
 Swedish messages, privacy handling and coordinated operational tuning.
 
-### Implementing versions in suggestion history
+## Implementing versions in suggestion history
 
 Suggestion history keeps its grouping by the original feedback version. Each
 resolved suggestion with implementation evidence also shows the implementing
@@ -543,11 +465,10 @@ formula-injection protection. No document is uploaded or fetched by the export.
 The management PDF, application traceability PDF and Full CSV distinguish
 recorded approval outcomes from applicable permission. Traceability cells show
 each outcome label and count once, followed by applicability and follow-up
-state. Dated permission is
-inclusive in Europe/Stockholm. Pending renewal grants no extension. An ended
-approval without replacement shows action required until the current usage
-status is Verified. Previous, ended, and cancelled agreements retain history
-without current follow-up work.
+state. Dated permission is inclusive in Europe/Stockholm. Pending renewal
+grants no extension. An ended approval without replacement shows action
+required until the current usage status is Verified. Previous, ended, and
+cancelled agreements retain history without current follow-up work.
 Selected historical agreements use their preserved cutoff. Compact outputs
 exclude full conditions and closure reasons; mandatory archive JSON preserves
 these terms. The deviation review report used before a decision keeps its

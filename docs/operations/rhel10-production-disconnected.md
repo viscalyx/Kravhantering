@@ -14,19 +14,12 @@ the downtime window for a disconnected planned upgrade with
 The connected export host prepares one app-node disconnected bundle per
 release. Use the same bundle on every disconnected app node for that release.
 
-The application image uses UBI 10 Node.js 24. Export the complete published
-application image with the release bundle. Disconnected hosts import and verify
-that image; they do not download a UBI base or install RPM packages. Runtime
-commands, configuration, UID/GID `1000:1000`, certificate mounts, and writable
-mount boundaries remain the same. Follow the release's package and transfer-size
-evidence when preparing storage and transfer capacity.
-
-The `db-job` image also uses UBI 10 Node.js 24. Export and verify the complete
-released database-job image through the existing bundle workflow. Its default
-health command, administrative commands, required seeds, and scheduled
-transient cleanup retain their existing configuration and mounts. Database jobs
-keep UID/GID `1000:1000` and supported administrative user overrides. No Red Hat
-credentials or RPM downloads are needed on disconnected database-job hosts.
+Export the complete published `app-runtime`, `db-job` and nginx images from
+the same release lock. Disconnected hosts import and verify those images
+without downloading base images or installing packages inside containers.
+Host runtime packages must already be available through an approved internal
+repository or installation source. Allow space for the transferred archives,
+extracted staging files and imported Podman images.
 
 ![Disconnected Bundle Journey](../images/disconnected-release-bundle-journey.png)
 
@@ -40,7 +33,8 @@ The export host needs:
 
 - outbound access to the approved release repository
 - outbound access to the approved image registry or mirror
-- `podman`, `tar`, `gzip`, `coreutils`, `jq` and `curl`
+- `bash`, `podman`, `tar`, `gzip`, `coreutils`, `sed`, `jq` and `curl`
+- an organization-approved GitHub CLI for archive provenance verification
 - one operator account that runs all `podman pull`, verify and export commands
 
 Podman image storage is per user. Pull, verify and export images with the same
@@ -94,9 +88,8 @@ sha256sum -c "${RELEASE_ARCHIVE}.sha256"
 Verify provenance now, before extracting the release archive, by following
 [Verify The Deployment Archive](./release-artifact-and-image-verification.md#verify-the-deployment-archive).
 Use `SOURCE_COMMIT`, `SOURCE_REF`, and `RELEASE_TAG` above. Do not continue when
-verification fails. Only an explicitly approved disconnected exception may
-skip verification; the SHA-256 check remains required. Retain the attestation
-bundle and trusted roots for the disconnected handoff.
+verification fails. Retain the attestation bundle and trusted roots for the
+disconnected handoff.
 
 ```bash
 tar -xzf "$RELEASE_ARCHIVE" -C "$OFFLINE_WORK" --strip-components=1
@@ -109,16 +102,20 @@ connected export host can pull from. Keep tag refs for disconnected import
 unless the target Podman hosts can resolve loaded `image:tag@sha256:digest`
 refs locally without registry access.
 
+Define the shared helper before choosing alternative A or B:
+
+```bash
+update_ref() {
+  sed -i "s#^${1}=.*#${1}=${2}#" "$OFFLINE_ROOT/release.env"
+}
+```
+
 #### Alternative A: Public Upstream Refs
 
 Use this when the connected export host is approved to pull public upstream
 refs directly. Derive refs from the release lock:
 
 ```bash
-update_ref() {
-  sed -i "s#^${1}=.*#${1}=${2}#" "$OFFLINE_ROOT/release.env"
-}
-
 LOCK_FILE="$OFFLINE_WORK/container-stack.lock.json"
 service_image() {
   jq -r --arg name "$1" \
@@ -425,11 +422,6 @@ Create and transfer the disconnected bundle before the downtime window. During
 the window, follow the regular upgrade guide for backup, traffic drain and
 service stop. Then use this section instead of the connected artifact download,
 extraction and image-pull steps.
-
-The shared HSA verification quota needs no extra image, network endpoint,
-secret or configuration in the disconnected bundle. Keep the app and database
-job images on the same release so the quota migration, runtime permissions and
-application protocol move together.
 
 Unpack and verify the disconnected bundle on every disconnected app node:
 

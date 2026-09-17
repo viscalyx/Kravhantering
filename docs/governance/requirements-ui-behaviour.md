@@ -1,19 +1,22 @@
 # Requirements Library UI Behaviour
 
-This document explains the intended behavior of the Requirements Library list
-UI so
-contributors can change the table without breaking user expectations.
+This document explains the UI behavior of the Requirements Library and related
+specification and stewardship workflows so contributors can change shared
+tables, forms and detail views without breaking user expectations.
 
 For the admin-managed source of default column settings, see
 [admin-center.md](./admin-center.md).
 
 ## Scope
 
-The behaviors below apply to the requirement list rendered by:
+The shared requirement-list behavior is implemented by:
 
 - `app/[locale]/requirements/requirements-client.tsx`
 - `components/RequirementsTable.tsx`
 - `lib/requirements/list-view.ts`
+
+The workflow sections also cover specification detail, requirement detail and
+stewardship components that use these shared surfaces.
 
 ## List Workspace and Reading Width
 
@@ -370,11 +373,9 @@ retain their existing semantics.
   in the complete specification. The server computes this facet independently
   of paging and active filters; specification-local requirements never
   contribute packages or match an active package filter.
-- The specification-items package catalog uses its own cursor-paginated REST
-  resource, with 50 packages per page by default. The server preloads the first
-  bounded page and the client continues through the remaining pages in the
-  background before enabling the chooser. Item pages load independently and do
-  not carry or wait for the package catalog.
+- The specification-items package chooser becomes available only after the
+  complete catalog loads. Requirement rows load independently, so a slow
+  package catalog does not block the list.
 - Adding or removing library requirements refreshes the specification-items
   package facet. Selections that are no longer present in the refreshed facet
   are cleared. Other left-list filters remain unchanged, and a status message
@@ -397,20 +398,9 @@ retain their existing semantics.
 
 - The Requirements Library and the available-requirements panel load additional
   rows with forward-only opaque cursors.
-- Requirements Library REST pages allow 1 through 200 rows and default to 200.
-  Their cursor carries the complete database sort boundary and query
-  fingerprint, so no previous anchor row is read. Free-text and lookup-name
-  boundaries use the same normalized, bounded SQL sort key and numeric
-  Requirement ID as the query; the system-generated unique Requirement ID uses
-  its indexed database key. Filters, locale, sort, direction, and visibility
-  are part of the query identity; page size is not, so a continuation may
-  reduce it.
-- Requirements-specification item reads use the same shared service page
-  boundary for preload, REST, and MCP. Pages default to 50 rows, allow 1 through
-  100, expose page count and continuation availability, and never expose an
-  exact result total. The editor preload contains only the first page and
-  appends later pages in database order as the user reaches the end of the
-  scrollable list.
+- The specification editor initially loads one page and appends later pages
+  in server order as the user reaches the end of the scrollable list. It does
+  not show an exact result total.
 - Changing filters, sorting, direction, locale, or visibility scope starts
   again from the first page.
 - The editor automatically requests the next page when the list-end sentinel
@@ -426,12 +416,10 @@ retain their existing semantics.
   rows, query, and selection and presents a labelled retry action.
 - Initial and continuation reads cancel superseded requests, suppress stale
   responses, and defensively remove duplicate Requirement IDs before rendering.
-- Requirements Library CSV uses `/api/requirements/export`, accepts current
-  server filters, locale, and sort, and accepts neither cursor nor page size.
-  The server traverses the database-ordered result in bounded pages up to the
-  Admin-configured limit plus one. It fails on an item/byte limit, duplicates,
-  missing progress, cursor cycles, timeout, or traversal guard, and stops on
-  cancellation instead of returning a partial export.
+- Requirements Library CSV covers the complete result for the active filters,
+  locale and sort, including unloaded rows. Exceeding an export limit or
+  cancelling the operation must not produce a partial file presented as
+  complete.
 - A completed generated-output download closes its progress dialog, restores
   focus to the initiating action, and shows a four-second success status.
 
@@ -463,9 +451,9 @@ retain their existing semantics.
   offset.
 - The sticky table chrome keeps the requirement-package chips visible together with
   the header when those chips are present.
-- Sticky requirement-package and norm-reference chip rows stay single-line and
-  horizontally scrollable on all viewport sizes so the sticky chrome does not
-  cover the table body or inline detail pane.
+- The compact requirement-package filter band wraps selected badges and grows
+  the sticky chrome in normal layout flow. The alternative package chip row
+  and norm-reference chip row stay single-line and horizontally scrollable.
 - Specification-detail split tables also keep their list title bar sticky in that
   same chrome so the left-panel tabs, section actions, and top rail stay visible
   with the headers.
@@ -624,24 +612,27 @@ retain their existing semantics.
   requirements panel (right side) in the specification detail view via
   `excludeColumns`. It is only selectable in the specification-items panel (left
   side) of the specification detail view.
-- In the **specification detail** left panel (items in specification), the
-  column renders
-  an inline `<select>` dropdown for each item that has a `specificationItemId`.
-  Changing the dropdown value calls `PATCH /api/requirements-specifications/{id}/items/{itemId}`
-  and applies an optimistic update to the local row state.
+- In the **specification detail** left panel (items in specification), actors
+  allowed to update follow-up see an inline `<select>` for rows with an
+  `itemRef`. Changing it applies an optimistic update and sends that stable
+  reference to the item endpoint:
+  `PATCH /api/requirements-specifications/{id}/items/{itemRef}`.
+  The request includes the selected agreement context when present.
 - The same inline status control is also available for unique requirements via
   specification-context item refs (`lib:*` / `local:*`) even though unique rows
   do not have a library-backed `requirementsSpecificationItemId`.
 - When a requirement is **added** to a specification, including a
   unique requirement, its usage status is automatically set to
   **Included** (ID 1). The user can change it once work on the requirement begins.
-- The inline select offers the fixed usage statuses for specification
-  items.
-- Outside the specification detail context (e.g. the main requirements library),
-  the column renders a read-only color dot + label, or an em dash when no
-  usage status applies to the row.
+- The inline select offers the fixed usage statuses for specification items.
+  A deviation status is selectable only with applicable approval. Without
+  approval, a currently assigned deviation status remains visible but disabled;
+  other deviation options are omitted.
+- When follow-up cannot be edited, the column renders a read-only status badge
+  with its icon and label, or an em dash when no usage status applies.
 - The column supports multi-select filtering via `specificationItemStatusIds`.
-- Client-side filtering in the specification detail matches on `specificationItemStatusId`.
+- Usage-status filtering is sent to the server with the paginated item query,
+  so it covers the whole specification, including unloaded rows.
 - Sorting is disabled for this column (`canSort: false`).
 - Each status has an optional **definition** (bilingual `description_sv` /
   `description_en`), editable from the admin panel under Usage Statuses.
@@ -748,8 +739,8 @@ previews.
 
 - When `selectable` is true, a checkbox column appears as the first column.
 - The checkbox column has a fixed width of 36px and is not resizable.
-- The 36px is subtracted from the available grow space so default columns
-  still fit without horizontal scrolling.
+- The 36px is subtracted from the available grow space. Horizontal scrolling
+  still applies when the column widths exceed the remaining space.
 - A header checkbox toggles select-all for visible rows.
 - Individual row checkboxes toggle selection without triggering row click.
 - Selection is cleared when filters change.
@@ -793,10 +784,6 @@ previews.
   requirement that exists only in the current specification.
 - Specification-local rows use short specification-scoped Krav-ID values such as
   `KRAV0001`; the specification context itself disambiguates them.
-- The specification-local inline detail pane now reuses the same core content-card
-  layout as the requirements library inline detail view: description first,
-  acceptance criteria second, verification method third, then the shared
-  metadata grid and references.
 - When a library requirement is opened from the specification list `Krav i underlaget`,
   its inline detail metadata also includes the specification-specific fields
   **Behovsreferens** and **Användningsstatus** in the same properties grid.
@@ -804,9 +791,6 @@ previews.
   right-side specification action rail, directly after the deviation controls.
   It uses the same full-width destructive button treatment as other delete and
   unlink actions.
-- The specification-local content card uses the same section spacing and card chrome
-  as the library requirement detail card in specification context, so the properties
-  block reads with the same vertical rhythm and grouping.
 - The expanded specification-local inline pane also uses the same outer inline inset
   as the library requirement detail (`px-6 py-4`), so the properties card and
   right-side rail do not sit flush against the expanded row edges.
@@ -819,19 +803,18 @@ previews.
   Requirement area field. The same form also omits requirement packages and uses
   a compact norm-reference column so the modal does not reserve unused space for
   hidden library-only associations.
-- Specification-local inline detail now follows the specification-item detail
-  chrome more
-  closely: deviation pills sit above the card, the right-side action rail
-  starts with report and deviation controls, and local edit/delete actions are
-  appended in the same vertical rail.
+- Specification-local inline detail places deviation pills above the card and
+  keeps deviation, local edit/delete and graduation controls in the right-side
+  action rail.
 - That unique-requirement action rail also uses the same full-width button
   sizing rhythm as the library requirements specification-item rail, including
   the shared pointer-target policy and stacked spacing.
-- Edit and Delete for unique requirements are only enabled when
-  **Användningsstatus** is **Inkluderad** and there is no pending deviation
-  draft or review request. Otherwise the buttons stay disabled and expose a
-  tooltip explaining why the action is blocked, while the controls are also
-  visually muted so they read as inactive actions.
+- Edit and Delete for unique requirements are shown only when the actor may
+  change content in the selected agreement context. They require
+  **Användningsstatus** to be **Inkluderad** and no pending deviation draft or
+  review request. Blocked actions explain the reason. Removal that requires
+  ending an approved deviation also requires permission to authorize that
+  ending.
 - Clicking **Edit** for a unique requirement opens a modal form instead of
   replacing the inline detail pane. The modal title is
   **Edit unique requirement** and the unique requirement's
@@ -841,8 +824,9 @@ previews.
   outside the modal does not close it. A successful save closes the modal,
   refreshes the inline detail, and leaves the same row expanded.
 - The same specification-local action rail may show **Graduate to library** when
-  the actor owns or co-authors at least one requirement area. The action is
-  available regardless of **Användningsstatus**. Opening the action shows a
+  the actor may change content and owns or co-authors at least one requirement
+  area. The action does not additionally restrict **Användningsstatus**.
+  Opening the action shows a
   modal target requirement area picker over a dimmed background, including the
   copy-only outcome text. Pressing the modal's **Graduate** action copies the
   unique requirement into the selected library requirement area as a new Draft
@@ -856,8 +840,7 @@ previews.
   route.
 - Passes the list view's active filters and sort order to the localized PDF
   route so the server resolves the complete matching requirement set.
-- Applies the Admin-configured list-PDF item cap before rendering and creates
-  the PDF in a memory-limited isolated worker.
+- Applies the Admin-configured list-PDF item cap before rendering.
 - The report shows Requirement ID, requirement text, requirement area, and
   status columns.
 
@@ -896,12 +879,8 @@ previews.
   and focus restoration.
 - Only one specification CSV or PDF operation can run at a time in this view.
   Both CSV actions are disabled while either profile is active.
-- Procurement and full CSV enrich bounded pages and append rows directly to a
-  private same-request spool under the shared Admin CSV item, byte, timeout,
-  and concurrency settings. A partial file is never presented as complete.
-- Complete outputs traverse bounded server pages with progress, duplicate,
-  cursor-cycle, and maximum-page protection. They never use only the rows
-  currently loaded in the editor.
+- Export limits or failures never produce a partial file presented as
+  complete. Complete outputs include unloaded rows.
 
 ## Requirement Selection Question Stewardship
 
@@ -1077,10 +1056,6 @@ previews.
   completes, the UI shows localized conflict feedback and reloads suggestions.
   A missing row is distinct from an existing suggestion in an incompatible
   lifecycle state.
-- Creation, review request, resolution, and deletion each commit with exactly
-  one successful action-log event. The log includes target and lifecycle
-  transition metadata but excludes suggestion content and resolution
-  motivation.
 
 ## Combined Review Report In Requirements Library
 
@@ -1100,18 +1075,20 @@ previews.
 
 - A report dropdown button appears in the action buttons column before the
   share button.
-- Always shows "History Report".
-- Shows "Review Report" only when the current version has Review status.
+- Library detail always offers "History Report" and "Improvement suggestion
+  history". It also offers "Review Report" when the current version has Review
+  status.
+- In the library requirement detail opened in specification context, a draft
+  deviation hides this menu. A deviation awaiting review offers only the
+  deviation review report; other states offer history and suggestion history.
 - PDF report URLs, Requirements Library CSV, and both requirements-specification
   CSV profiles use the shared Blob helper. Its accessible modal opens
   immediately, shows separate indeterminate generation/preparation and download
   phases, and provides Cancel in both phases.
-- The helper uses the server filename when provided and otherwise the
-  caller-provided fallback filename, permits only one active operation per hook
-  even across different URLs, restores focus, and maps stable error codes to
-  localized text. Busy capacity shows a five-second countdown before manual
-  Retry; there is no automatic retry, percentage, service worker, or File
-  System Access path.
+- Downloads use the server filename when provided, otherwise the caller's
+  fallback filename. Each download control permits one active operation,
+  restores focus and shows localized errors. Busy capacity shows a five-second
+  countdown before manual Retry; there is no automatic retry or percentage.
 
 For report implementation details, see
 [report-generation-developer-workflow.md](../development/report-generation-developer-workflow.md).
@@ -1155,36 +1132,24 @@ the tooltip surface.
 
 ## Contributor Guardrails
 
-- If you change resize behaviour, update both:
-  - `tests/unit/requirements-table.test.tsx`
-  - this document
-- If you change resize behaviour materially, also update:
-  - `tests/integration/requirements-table-resize.spec.ts`
-  - `tests/integration/requirements-table-resize.md`
-- Table resize tests should verify rendered widths or table width changes,
-  not only callback payloads.
-- Table resize tests should cover both:
-  - live preview during drag
-  - a single committed width update when the drag ends
-- If you change width persistence semantics, update:
-  - `lib/requirements/list-view.ts`
-  - `tests/unit/requirement-list-view.test.ts`
-  - `tests/unit/requirements-client.test.tsx`
-- If you change table labels, named table surfaces, floating pills, or the
-  inline detail pane used by Developer Mode, also update:
-  - `docs/development/developer-mode-overlay.md`
-  - `tests/unit/developer-mode.test.ts`
-  - `tests/unit/developer-mode-provider.test.tsx`
-  - `tests/unit/requirements-table.test.tsx`
-  - `tests/integration/developer-mode/overlay.spec.ts`
+Follow the [requirements-table instructions](../../.github/instructions/requirements-table.instructions.md)
+when changing resizing or persistence. Verify rendered widths during drag and
+one committed update on release, including header/body alignment and pointer
+cancellation. Update this behavior contract and the relevant unit and manual
+integration cases when behavior changes.
 
-### RFI assessment evidence and history
+For visible labels, table surfaces, action pills and detail panes, follow the
+[Developer Mode instructions](../../.github/instructions/developer-mode.instructions.md)
+for markers and coverage. Feature-specific marker inventories belong in code
+and tests.
+
+## RFI assessment evidence and history
 
 Included questions in a locked list have an assessment editor. Authors choose
 Relevant or Not relevant and save the complete assessment explicitly. Reason,
 document reference and HTTP/HTTPS link are independently optional. Fields have
 localized help, and readers see the saved evidence with version, author and
-time. Developer Mode identifies the editor, save action and history surface.
+time.
 
 A new bank version does not change an assessment of the retained locked
 version. Adopting a different version clears current relevance and shows the

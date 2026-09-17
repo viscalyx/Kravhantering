@@ -1,5 +1,10 @@
 # Trusted Container Publishing
 
+This guide is for maintainers who publish container releases, investigate
+failed gates, and manage release vulnerability tracking and publishing access.
+For deployment and verification of a published release, use
+[Release Artifact And Image Verification](../operations/release-artifact-and-image-verification.md).
+
 The trusted container flow runs from `.github/workflows/container-release.yml`
 for `main`, stable `vX.Y.Z` tags, and manual workflow runs. Preview release
 tags such as `vX.Y.Z-preview.N` are created by the `main` run and are excluded
@@ -36,21 +41,6 @@ See [shared UBI runtime packaging](../../containers/node/README.md) for the
 complete image scope, build network access, and retained license files. Build
 and test hosts must meet the UBI 10 CPU requirements documented there.
 
-The builder installs the npm version selected by `packageManager` before
-`npm ci`. The application keeps the locked glibc native packages and Next.js
-standalone tracing. The shared `containers/node/ubi-compat.sh` adaptation creates
-the supported `node` identity at UID/GID `1000:1000` and removes the runtime npm
-CLI. Inherited nodemon remains present. Consumers declare workload packages
-separately and explicitly set their command, entrypoint, home, path, and user.
-The builder resets the S2I npm prefix to `/usr/local`; runtime command execution
-uses system paths and bypasses the inherited S2I entrypoint.
-
-The application keeps port 3000, its authentication startup checks, private CA
-and client-key mounts, read-only root, and existing writable mounts. Numeric
-administrative user overrides remain supported. This does not introduce a new
-arbitrary-UID OpenShift contract. Existing production smoke remains the
-functional acceptance gate.
-
 For focused local image checks, build the application image and run:
 
 ```bash
@@ -71,14 +61,8 @@ subset with development and optional packages omitted and install scripts
 disabled. The separate demo image reuses this dependency stage.
 
 The production `db-job` uses the minimal runtime pin and shared compatibility
-adaptation. Its default command remains `health`; migration, required seeds,
-runtime permission reconciliation, and provider-secret maintenance retain their
-existing CLI. Demo-only seed and clear commands remain restricted to the demo
-image. Compiled transient cleanup uses `/usr/local/bin/node`, supplied by the
-shared adaptation, so the existing scheduled service needs no command change.
-The supported identity remains UID/GID `1000:1000`, including numeric
-administrative overrides, read-only roots, and the existing temporary mount.
-SQL Server encryption and certificate verification settings remain unchanged.
+adaptation. Demo-only seed and clear commands remain restricted to the separate
+demo image.
 
 For focused local image checks:
 
@@ -154,8 +138,7 @@ package, public fixed-base digest and availability timestamp, project image
 digest, and stable publication timestamp. Record unavailable timestamps as
 unknown. Detection does not establish public availability; preview publication
 does not establish stable delivery, and publication does not establish operator
-installation. Continue the existing maintenance and release policy without a
-new schedule, urgent-release route or automatic site upgrade.
+installation.
 
 ## Reproducibility
 
@@ -172,13 +155,10 @@ tag aliases for commit traceability. Preview releases use GitVersion's
 names strip SemVer build metadata from the first `+` onward. For example,
 `1.2.0-preview.4+Branch.main.Sha.abcdef` becomes `1.2.0-preview.4`.
 
-Local Compose startup honors `--lock-file`; `run-local-stack.mjs` writes the
-local image identities before `generate-compose.mjs` reads it. Trusted release
-smoke does not use that Compose path. It stages the production archive from
-recorded candidate metadata and the stack lock, then the archive's image helper
-refuses image IDs that differ from the lock.
-
 ## Vulnerability Promotion Policy
+
+Fixable High and Critical findings block promotion unless an exact, active
+reviewed exception applies.
 
 `.github/container-vulnerability-exceptions.json` is the reviewed,
 machine-readable exception source. The default document contains no
@@ -231,17 +211,11 @@ Stable means supported and monitored. Preview means
 monitored, not supported. Change those bounded counts through normal review
 when the product support policy changes.
 
-Preview version comparison requires a numeric `vX.Y.Z` core followed by `-`
-and non-empty alphanumeric identifiers separated by single dots or hyphens,
-such as `v1.2.3-preview.4`. Leading, trailing, or consecutive suffix separators
-make the version unrecognized; these tags remain monitored conservatively.
-
 ### Trusted Input And Public Classification
 
 For each selected release, the monitor downloads `release-metadata.json` and
-every project-owned SPDX asset declared by that release. Releases predating the
-strict-PKI provisioner declare five images; newer releases declare six. The
-monitor requires the metadata and release assets to declare the same image set.
+every project-owned SPDX asset declared by that release. The monitor requires
+the metadata and release assets to declare the same image set.
 It verifies every GitHub Release asset against the SHA-256 digest returned by
 the GitHub Releases API, requires the metadata to name the expected
 `ghcr.io/viscalyx` image and immutable manifest digest, and verifies the SBOM
@@ -286,16 +260,11 @@ encoded paths, mismatched identifiers, and generic scanner URLs cannot become
 public advisory links. A valid-looking RHSA cannot make an unverified CVE
 source eligible. No advisory content is fetched during classification.
 
-The RPM fixture uses synthetic identities and versions with the reviewed
-[pinned Grype RPM matcher](https://github.com/anchore/grype/blob/v0.110.0/grype/matcher/rpm/matcher.go),
-[match evidence serializer](https://github.com/anchore/grype/blob/v0.110.0/grype/matcher/internal/result/provider.go),
-[Red Hat advisory mapping](https://github.com/anchore/grype/blob/v0.110.0/grype/db/v6/build/transformers/os/testdata/rhel-8.json),
-and [RPM version syntax](https://rpm.org/docs/6.0.x/manual/spec.html).
-It is not evidence of an actual release vulnerability. Other RPM namespaces,
-unknown shapes, and contradictory evidence remain confidential. This affects
-public eligibility only: all fixable High/Critical findings still enter the
-unchanged full Grype policy and reviewed-exception gate, including confidential
-observations. Their content, existence, and count cannot change public tracker
+Other RPM namespaces, unknown shapes, and contradictory evidence remain
+confidential. This affects public eligibility only: all fixable High/Critical
+findings still enter the full Grype policy and reviewed-exception gate,
+including confidential observations. Their content, existence, and count cannot
+change public tracker
 output.
 
 ### Identity, Current State, And Journal
@@ -318,13 +287,9 @@ not create one. A journal root links the canonical workflow run and names the
 restricted evidence artifact and its 30-day retention without copying any
 restricted content.
 
-The body and every automation comment are bounded to both 60,000 UTF-8 bytes
-and 60,000 Unicode characters. Oversized current state uses at most ten parts
-in one verified active A/B continuation bank. Oversized journals use at most
-ten immutable linked parts. Splits occur only between complete vulnerability
-groups, package rows, or journal entries. Automation stages, links, rereads,
-and hash-verifies an inactive bank before activating the body last. It never
-truncates an atomic item or depends on deleting comments.
+Large issue states and journals can continue in linked comments. Treat the
+body and its active continuation links as the current state; leave automation
+markers and linked comments intact so reconciliation can verify them.
 
 ### Lifecycle And Recovery
 
@@ -385,30 +350,9 @@ The workflow completes registry validation and all selected remote detection
 before changing any issue. A failure leaves existing detector-owned issues
 untouched and fails the workflow.
 
-Kong is a vendor-updated HSA integration support image. Its lock under
-`containers/kong/` is copied into
-`container-hsa-integration-support.lock.json` during container releases and is
-used by the CI-only release-smoke overlay. Kong is not part of the required
-production runtime topology. Dependency maintenance also requires
-every active devcontainer and Azure VM Kong runtime reference to match the
-lock's exact tag and Linux AMD64 manifest digest.
-
-The HSA person lookup adapter, one-shot strict-PKI provisioner, and HSA
-directory mock are project-owned support images. The container release
-workflow builds and publishes
-`kravhantering-hsa-person-lookup-adapter` and
-`kravhantering-hsa-mtls-provisioner` and
-`kravhantering-hsa-directory-mock` to GHCR with the same release tags as
-`app-runtime` and `db-job`. The adapter is recorded in
-`container-hsa-integration-support.lock.json` together with the provisioner;
-the mock is recorded in
-`container-test-support.lock.json`. All three images get SBOM and provenance
-attestations. Their npm dependencies use native Dependabot lanes. The adapter
-and mock consume both UBI Node roles; the provisioner consumes the minimal
-runtime role and records its RPM toolchain separately. The Docker Official Node
-lane continues to maintain the local HSA topology helper. Follow
-[UBI Node maintenance](dependency-workflow.md#ubi-node-builder-and-runtime-maintenance)
-to update one role and all of its consumers together.
+Follow the [dependency workflow](dependency-workflow.md) for maintenance
+units, synchronized image references, and verification. UBI builder and runtime
+updates must include all consumers of the selected role.
 
 Detector-created issues carry `automation:dependency-drift`, `dependencies`,
 and `ready-for-agent`. A stable hidden marker owns deduplication. A successful
@@ -581,36 +525,11 @@ The workflow uploads these artifact groups:
 - `container-release-deployment-*` for the production deployment bundle and
   its flat checksum, Sigstore bundle and trusted-root material.
 
-The production deployment bundle includes `bin/kravhantering-images.sh`, a
-Bash and jq helper for explicit operator verification. It can verify configured
-tag-style `release.env` image refs against locked image IDs, optionally verify
-tag-and-digest refs against locked manifest digests, export already present
-verified local images into a transport bundle, and load and tag that bundle on
-a disconnected host.
-It also includes `bin/kravhantering-quadlet.sh` and topology-specific Quadlet
-templates for `app-node-tls`, `app-node-http`, and `single-node`. The helper
-renders release environment values into rootless `.container`, `.network`,
-`.volume`, and `.target` files. Production operators control topology targets
-and individual services with `systemctl --user`; database jobs remain explicit
-`podman run --rm` release operations.
-
-The bundled nginx Quadlet templates mount `api-docs/` and serve the HSA-person
-lookup Swagger UI at `/api-docs/hsa-person-lookup/` on the same public origin
-as the application. They also mount the shared
-`nginx/templates/api-docs-security-headers.conf` contract. Release smoke
-therefore exercises static files from nginx rather than from the app-runtime
-image and verifies the redirect, representative files, a 404 response, exact
-single-value security headers, rendered specification and absence of CSP
-console violations.
-
-Nginx is the bundled reference implementation, not a universal production
-requirement. An external load balancer, reverse proxy or CDN that serves files
-below `/api-docs/` owns their final headers and must implement equivalent
-values for success, redirect and error responses. It must strip or replace
-upstream values instead of appending duplicates. The deployment bundle
-includes the canonical
+The deployment bundle contains operator image-verification and Quadlet
+helpers, topology templates, and the static HSA API documentation. Changes to
+its API documentation serving contract must preserve the bundled
 [API Documentation Edge Verification](../operations/api-docs-edge-verification.md)
-procedure, which the production deploy and upgrade guides reference.
+procedure, including security headers on success, redirect and error responses.
 
 The production deployment bundle is also uploaded to GitHub Releases as:
 
@@ -632,13 +551,7 @@ See
 for the self-contained single-node workflow with bundled SQL Server and
 Keycloak.
 The bundle also includes the matching topology-specific disconnected guides,
-upgrade guides and uninstall guides. The disconnected guides document how
-operators create a transferable bundle that contains the production deployment
-archive, its checksum, attestation bundle, trusted roots, exported images,
-image refs and hashes.
-
-Operator verification of published release evidence is documented in
-[Release Artifact And Image Verification](../operations/release-artifact-and-image-verification.md).
+upgrade guides and uninstall guides.
 
 ## Public GHCR Packages
 
@@ -647,6 +560,7 @@ artifacts anonymously:
 
 - `ghcr.io/<owner>/kravhantering-app-runtime`
 - `ghcr.io/<owner>/kravhantering-db-job`
+- `ghcr.io/<owner>/kravhantering-demo-seed` for opt-in demonstration data
 - `ghcr.io/<owner>/kravhantering-hsa-person-lookup-adapter` for optional HSA
   integration support
 - `ghcr.io/<owner>/kravhantering-hsa-mtls-provisioner` for one-shot test-only
@@ -661,9 +575,9 @@ through manifest/index-style Buildx outputs.
 
 GHCR visibility is managed outside the workflow through package settings or the
 organization defaults for new packages. The workflow does not change package
-visibility and does not check the GitHub Packages API after publishing. GitHub
-normally makes new packages private on first publication unless the organization
-has selected a different default.
+visibility or verify anonymous pull access. Release-note generation does query
+the GitHub Packages API for package-version links. Verify anonymous access
+separately when preparing packages for public consumption.
 
 GHCR can also show digest-derived `sha256-*` entries for release evidence, such
 as registry-pushed attestations or Cosign signature helper artifacts. Those
@@ -692,8 +606,8 @@ above so its protected-branch PR triggers the required checks.
 The repository or organization GitHub Actions setting must allow `GITHUB_TOKEN`
 to have write permissions. The workflow requests these permissions:
 
-- `packages: write` to log in to GHCR and push `app-runtime` and
-  `db-job`.
+- `actions: read` to verify validation evidence from the trusted workflow run.
+- `packages: write` to log in to GHCR and push all six project-owned images.
 - `contents: write` to create preview tags and create or update the GitHub
   Release with artifacts.
 - `id-token: write` for GitHub Artifact Attestations.

@@ -1,7 +1,8 @@
 # AI-Assisted Authoring Developer Workflow
 
-This document covers local adapter setup and test policy for AI-assisted
-requirement generation. Behavioral contracts for prompts,
+This guide is for developers configuring local AI-assisted authoring or changing
+its adapters and integration tests. It covers local setup, adapter contracts,
+and verification without live provider calls. Behavioral contracts for prompts,
 provider requests, taxonomy loading, and generated-requirement validation live in
 [reference-data-and-ai.md](../governance/reference-data-and-ai.md).
 
@@ -14,8 +15,8 @@ verified AI connection model revision before the adapter runs. Application
 routes and business services do not select providers, models, transports, or
 provider configuration.
 
-The runtime resolver reads exactly one of the three stable profiles in a single
-SQL Server query. It rejects disconnected, paused, or derived-blocked profiles
+The runtime resolver selects one of the three stable profiles.
+It rejects disconnected, paused, or derived-blocked profiles
 before resolving transient adapter configuration. The exact connection, model
 revision, stable profile ID, profile configuration version, adapter version,
 and application-owned capability selection are frozen for the run. Missing
@@ -35,15 +36,11 @@ the exact registered adapter type-and-version pair and does not retry through
 or fall back to another adapter. Multiple registered versions of one adapter
 type remain independent selections.
 
-OpenRouter remains the first adapter, alongside a fully registrable controlled
+OpenRouter is available alongside a fully registrable controlled
 test adapter. Both pass the same run-profile, safety-gate, route, and terminal
 outcome contracts. The trust boundary, AI connection lifecycle, encrypted
 provider secrets, and external root keyring are governed by
 [ADR 0052](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
-Deployment verification is split into explicit modes by
-[ADR 0054](../adr/0054-global-ai-sparr-och-driftsattningsbevis.md), while
-[ADR 0055](../adr/0055-innehallsfri-ai-observerbarhet-och-syntetisk-liveverifiering.md)
-defines the content-free telemetry and synthetic staging-live contract.
 The three deployment-owned JSON trust maps are explained step by step in the
 [AI connection deployment-policy guide](../operations/ai-connection-deployment-policies.md).
 
@@ -64,13 +61,9 @@ free-text entered by a user is not identity-scrubbed by this rule.
 The MCP server exposes import schema, instruction, validation, and execution;
 it does not expose a server-hosted AI generation tool. Any AI egress performed
 by an external MCP client is client-owned and outside the app's privacy-minimum
-enforcement. Document that boundary when MCP tools change. Provider and model
-admission allowlisting remains coordinated through
-[the separate allowlisting work](https://github.com/viscalyx/Kravhantering/issues/194).
+enforcement. Document that boundary when MCP tools change.
 
-<!-- markdownlint-disable MD013 -->
-![Technical infographic showing AI-assisted authoring in Kravhantering. The flow illustrates how user input is checked, processed through an LLM integration layer, sent to OpenRouter, validated, and reviewed by a human before being imported into a requirements library or requirements document.](../images/ai-assisted-authoring-llm-integration-architecture.png)
-<!-- markdownlint-enable MD013 -->
+![AI authoring: input, integration, provider, validation, human review, and import.](../images/ai-assisted-authoring-llm-integration-architecture.png)
 
 ## Adapter Verification Design Contract
 
@@ -118,11 +111,9 @@ Safe adapter diagnostics, including a normalized upstream HTTP status, travel
 with failed verification results. Raw provider error bodies remain excluded.
 
 OpenRouter verification and runtime requests use `max_completion_tokens` for
-the output token limit, as specified by its
-[Chat Completions API](https://openrouter.ai/docs/api/api-reference/chat/create-a-chat-completion).
-The deprecated `max_tokens` parameter can exclude otherwise eligible endpoints
-when strict parameter support is required. Keep reasoning controls, the token
-limit, and the privacy minimum together in the shared request builder.
+the output token limit. Keep reasoning controls, the token limit, and the
+privacy minimum together in the shared request builder in
+[openrouter-adapter.ts](../../lib/ai/openrouter-adapter.ts).
 
 An adapter may need several request dialects for different provider or server
 versions. Keep those variants as internal adapter implementations behind the
@@ -158,12 +149,23 @@ ID must not be a dispatch key.
 AI-assisted authoring is available only when an administrator has configured
 and enabled a valid profile for that exact action. Local development uses the
 same connection, secret, verification, and profile workflow as production.
+Start with the database and development server configured through the
+[SQL Server developer workflow](sql-server-developer-workflow.md) and an
+administrator account from the
+[authentication developer workflow](auth-developer-workflow.md). Required seed
+leaves AI unconfigured; demo seed supplies only unverified connection drafts.
 
 1. Provision the ignored local provider-secret root keyring:
 
    ```bash
    node scripts/provision-ai-provider-secret-keyring.mjs
    ```
+
+   Run this from the repository root. The default file is
+   `.local/ai-provider-secret-keyring.json`, matching `.env.development`.
+   The script validates and preserves an existing keyring. If the application
+   uses a different `AI_PROVIDER_SECRET_KEYRING_FILE`, pass that same path with
+   `--path`; the provisioning command does not load dotenv files itself.
 
 2. Use the committed `.env.development` egress, data, and TLS policy maps for
    the seeded OpenRouter connection with synthetic demo data. They cover all
@@ -173,9 +175,11 @@ same connection, secret, verification, and profile workflow as production.
    Use `.env.development.local` for overrides and restart the development
    server after policy changes. Other connections need their own policies as
    described in [AI Connections Operations](../operations/ai-connections.md).
-3. In Admin Center under `AI`, register a connection, write its provider secret,
-   attest it, run the unified model verification, save the verified model
-   revision, and activate the connection.
+3. In Admin Center under `AI`, register a connection or use the seeded draft.
+   Write its provider secret, test and activate that candidate, and attest the
+   connection. Run the unified model verification, save the verified model
+   revision, and activate the connection. Saving a secret candidate alone does
+   not make it available to authoring.
 4. Select that compatible revision directly on the stable profiles for
    generation without images, generation with images, and invalid-import repair
    as needed.
@@ -188,7 +192,8 @@ as encrypted revisions. Do not put provider credentials in environment files or
 browser-visible configuration. The authoring UI does not select models or show
 provider credits.
 
-AI-assisted requirement generation is enabled by default after migrations. An
+The administrator preference for AI-assisted authoring is enabled by default
+after migrations; usable profiles still require the setup above. An
 administrator can turn generation off in Admin Center under `AI`. That setting
 disables AI-assisted authoring across the requirements UI and REST routes.
 
@@ -197,6 +202,14 @@ Verify local setup against the app API:
 ```bash
 scripts/dev-curl.sh -s /api/ai/authoring-profiles | jq .
 ```
+
+Check top-level `enabled: true` and `available: true` for each intended action
+under `profiles`. The action keys are `generate_without_images`,
+`generate_with_images`, and `repair_invalid_import_json`. `enabled: true` alone
+does not establish that a profile is usable. An unavailable profile reports
+`missing`, `suspended`, or `blocked`; inspect that profile's blockers in Admin
+Center. If `enabled` is false, check the administrator preference and the
+`AI_REQUIREMENT_GENERATION_DISABLED` environment guard described below.
 
 Do not commit provider credentials or the generated root keyring.
 
@@ -220,17 +233,12 @@ The repo-owned responsibility is to verify the integration boundary:
 - sanitization so provider keys, prompts, SQL fragments, stack traces, and
   other sensitive details are not written to scan artifacts.
 
-The production-boundary acceptance test uses an encrypted controlled-adapter
-scenario through the persisted profile source, transient credential scope,
-trust boundary, run coordinator, and real authoring route projection. It does
-not replace the HTTP endpoints with route mocks. Adapter deltas stay
-quarantined. A safe-screened schema-invalid terminal becomes the neutral
-`invalid_response` failure before coordinator persistence, health updates, and
-telemetry. A one-shot authoring projection tied to that failed terminal carries
-the screened raw result and validation issues as `invalid_output`; the
-generation route projects it as `validation_error` so repair can continue
-without exposing unscreened or partial output. The shared integration stream
-still has only `completed`, `failed`, and `cancelled` terminal events.
+Keep acceptance coverage through the persisted profile source, encrypted
+credentials, trust boundary, coordinator, and real authoring route projection.
+Adapter deltas must stay quarantined. Only safety-screened, schema-invalid
+terminal output may reach the generation route as `validation_error` for repair;
+unscreened or partial output must not reach the user. The shared integration
+stream has only `completed`, `failed`, and `cancelled` terminal events.
 
 Do not add production provider secrets or live provider calls to CI. A manual
 provider smoke test may be run outside CI when changing provider configuration
@@ -242,8 +250,9 @@ The authoring routes project adapter failures into stable response contracts.
 JSON responses return `{ code, error }` and SSE error events return
 `{ code, message }`. Request and correlation identifiers remain in response
 headers rather than error payloads.
-An upstream rate limit detected before streaming begins returns HTTP `429`;
-other provider failures return HTTP `503`.
+Non-streaming provider failures return HTTP `429` for an upstream rate limit
+and HTTP `503` otherwise. Once the generation SSE response starts, provider
+failures arrive as error events within that response.
 
 Provider failures use these codes:
 
@@ -262,13 +271,9 @@ authoring error summary shows it for support and troubleshooting. Provider
 response bodies, prompts, model output, personal data, secrets, and nested
 exception text remain excluded.
 
-Error bodies are inspected only for JSON media types and stop at 16 KiB.
-Successful JSON bodies stop at 4 MiB. SSE frames stop at 256 KiB, and combined
-model content plus reasoning stops at 4 MiB. Diagnostics use the
-`ai-provider-observability` channel and contain only stable codes, operation,
-gateway, validated provider/status/identifier fields, content-type category,
-observed byte count, and truncation state. They never contain provider body
-text, prompts, model output, personal data, secrets, or nested exception text.
+Keep provider response parsing bounded and diagnostics content-free. For the
+OpenRouter response limits and parsing checks, see
+[openrouter-adapter.ts](../../lib/ai/openrouter-adapter.ts).
 
 Caller cancellation produces no provider error payload or provider-failure
 diagnostic.
@@ -295,9 +300,8 @@ misconfigured.
 ## Final Provider-Neutral Acceptance
 
 The shared adapter contract runs for both OpenRouter and `controlled_test`.
-The provider-neutral coordinator tests own total and inactivity deadlines,
-queue/retry sharing, exact token/byte/memory/event limits, pull backpressure,
-delta serialization, cancellation, read failure, and silent EOF normalization.
+Coordinator coverage checks resource limits, deadlines, retries, cancellation,
+and stream failures independently of provider behavior.
 Run the focused acceptance set without an external AI call:
 
 ```bash
@@ -316,12 +320,8 @@ external live AI call. The existing lockstep manual/Playwright cases are
 `ADMIN-20` for configuration and safe recovery and `REQ-15` through `REQ-15D`
 for authoring, quarantine, repair, cancellation, and profile availability.
 
-The opt-in staging-live procedure is an operator verification, not a normal
-developer or CI test. It uses only the fixed synthetic payload and prints
-content-free evidence from the non-mutating `verify_live_path` operation. The
-operation rejects `controlled_test` and binds the just-completed fixed-v2 run
-to its exact active connection/model revision and stable profile configuration;
-see
+For the separate operator procedure using a fixed synthetic live-provider
+payload, see
 [AI Connections Operations](../operations/ai-connections.md#staging-live-synthetic-probe).
 
 Reasoning activity is mandatory for all three profiles. The `reasoning` revision

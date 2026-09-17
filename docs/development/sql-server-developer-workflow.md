@@ -1,7 +1,7 @@
 # SQL Server Developer Workflow
 
-This document describes the developer workflow for the application's sole
-database stack: **Microsoft SQL Server + TypeORM**.
+Use this guide to configure a local **Microsoft SQL Server + TypeORM**
+database, apply migrations and seeds, browse data, and run database checks.
 
 See also:
 
@@ -9,13 +9,15 @@ See also:
 
 ## Local SQL Server Container
 
-Before using the host-side SQL Server scaffold, copy the example env file:
+For host-side development, create the local environment file if it does not
+already exist:
 
 ```bash
 cp .env.sqlserver.example .env.sqlserver
 ```
 
-Before rebuilding the default devcontainer profile, copy:
+For the default devcontainer profile, create its environment file if it does
+not already exist, then rebuild the devcontainer:
 
 ```bash
 cp .devcontainer/.env.example .devcontainer/.env
@@ -34,11 +36,13 @@ npm run db:down
 ```
 
 The default Compose file is [docker-compose.sqlserver.yml](../../docker-compose.sqlserver.yml).
-It exposes SQL Server on `127.0.0.1:1433` and persists data in a named Docker
-volume.
+It publishes SQL Server on host port `1433` and persists data in a named
+Docker volume. The port mapping does not restrict the bind address to loopback.
 
 If your machine already has a local SQL Server using `1433`, override
-`SQLSERVER_HOST_PORT` in `.env.sqlserver` or `.devcontainer/.env`.
+`SQLSERVER_HOST_PORT` in `.env.sqlserver` or `.devcontainer/.env`. Match
+`DB_PORT` to that published port for host-side clients; clients inside the
+devcontainer still connect to `db:1433`.
 
 The local SQL Server workflow uses `encrypt=true` together with
 `trustServerCertificate=true` by default. That is intentional for local
@@ -47,17 +51,24 @@ certificate unless you add your own trusted certificate chain.
 
 ## Environment Variables
 
-The SQL Server admin scripts and runtime read environment variables from
-`.env.sqlserver` (host) and `.devcontainer/.env` (devcontainer).
+`db:up` and `db:down` pass `.env.sqlserver` to Docker Compose. The admin CLI
+loads `.env`, `.env.development`, `.env.local`, then `.env.development.local`
+from the working directory. Later files override earlier files, but variables
+already in the process environment take precedence over all four files.
+Run the commands from the repository root.
 
-`db:up` reads its SQL Server variables from `.env.sqlserver`, not from
-committed Compose defaults.
+The Next.js development runtime uses its standard environment-file loading;
+neither it nor the admin CLI automatically loads `.env.sqlserver`. Put host
+connection overrides in `.env.development.local` or the process environment.
+When changing the container password or published port in `.env.sqlserver`,
+keep the client settings in sync. The SQL integration and specification
+performance npm commands explicitly load `.env.sqlserver` through `dotenv`.
+The requirement-list performance script uses the admin CLI's four-file loader.
 
-The default devcontainer Compose stack now reads its SQL Server variables from
-`.devcontainer/.env`.
-
-The elevated devcontainer Compose stack reuses the same SQL Server variables
-from `.devcontainer/.env`.
+The default and elevated devcontainer Compose stacks inject variables from
+`.devcontainer/.env` into the development container. Those process variables
+take precedence over workspace environment files, including local overrides.
+Use command-scoped variables when temporarily targeting another database.
 
 The SQL Server admin scaffold uses the `master` database for readiness checks
 and reset/setup bootstrap steps, so `db:setup` can create `kravhantering`
@@ -69,6 +80,8 @@ Local/dev SQL Server connection strings are normally **derived in code** from:
 DB_HOST=...
 DB_PORT=...
 DB_NAME=...
+DB_USER=...
+DB_PASSWORD=...
 DB_READONLY_USER=...
 DB_READONLY_PASSWORD=...
 DB_ENCRYPT=...
@@ -131,10 +144,6 @@ runtime DataSource keeps SQL Server behavior explicit:
 - TypeORM transactions default to `READ COMMITTED` through the DataSource-level
   `isolationLevel`. DAL paths that need stronger ordering pass
   `SERIALIZABLE` explicitly at the transaction call site.
-- HSA verification quota consumption uses one `SERIALIZABLE` transaction and
-  transaction-owned `sp_getapplock` resources in actor, actor-target, then
-  target order. Keep the one-second lock timeout and SQL Server UTC fixed-window
-  clock when changing or testing this path.
 - Connection and request timeouts are explicit.
 - Connection pool sizing and idle/acquire timeouts are explicit.
 
@@ -142,11 +151,9 @@ The runtime does not set SQL Server `options.connectionIsolationLevel` for
 out-of-transaction reads. SQL Server and the `tedious` driver already default
 new connections to `READ COMMITTED`, and TypeORM documents that connection
 isolation settings may not be reliably preserved across pooled connection reuse.
-A local pooled-reuse smoke test confirmed the warning for this runtime: after a
-`SERIALIZABLE` transaction commits or rolls back, the reused session can remain
-at `SERIALIZABLE` even when `connectionIsolationLevel` is configured as
-`READ COMMITTED`. Treat `connectionIsolationLevel` as a new-connection default,
-not as a checkout reset.
+Treat `connectionIsolationLevel` as a new-connection default, not as a
+checkout reset; a reused session can retain a prior transaction's isolation
+level.
 
 Runtime pool defaults are conservative for a single app process:
 
@@ -169,19 +176,14 @@ Runtime pool defaults are conservative for a single app process:
 | `npm run db:wait` | Poll the configured SQL Server endpoint until it responds |
 | `npm run db:health` | Run a simple `SELECT 1` health probe |
 | `npm run db:browse` | Print a read-only VS Code SQLTools connection block |
-| `npm run db:setup` | Wait, reset, run TypeORM migrations, seed required + demo profiles, and configure the read-only login |
+| `npm run db:setup` | Wait, reset, bootstrap principals, migrate and reconcile permissions, seed required + demo profiles, and configure the read-only login |
 | `npm run db:migration-status` | Report expected, observed, pending, and unknown TypeORM migrations as JSON |
-| `npm run db:migrate` | Run TypeORM migrations only |
+| `npm run db:migrate` | Run TypeORM migrations and reconcile runtime permissions |
 | `npm run db:seed:required` | Apply only required system and lookup seed data |
 | `npm run db:seed:demo` | Reset non-required rows, then apply optional demo, smoke-test, guide, and integration seed data |
 | `npm run db:reset` | Drop and recreate the database |
 | `npm run test:sql-integration` | Reset a dedicated test database and run focused SQL Server invariant tests |
 <!-- markdownlint-enable MD013 -->
-
-Under the hood `scripts/db-sqlserver-admin.mjs` builds a TypeORM `DataSource`,
-applies the migrations in `typeorm/migrations/`, and seeds via the required
-profile in `typeorm/seed-required.mjs` or the demo-capable profile in
-`typeorm/seed.mjs`.
 
 Seed execution requires a DataSource that creates a transaction-owning
 QueryRunner, or a QueryRunner/EntityManager already bound to an active
@@ -189,8 +191,14 @@ transaction. Query-only executors without an active transaction are rejected
 before seeding so lookup locks remain held through the associated insert and
 lifecycle transitions.
 
-Use `npm run db:migrate` plus `npm run db:seed:required` for an empty
-production-like database. Add `npm run db:seed:demo` only when you need the
+`db:setup` drops and recreates the configured database. Use it only for
+disposable development data; use `db:migrate` to preserve existing data.
+
+For an empty production-like database, first run
+`node scripts/db-sqlserver-admin.mjs bootstrap` with bootstrap administrator
+credentials to create the database and principals if they do not exist.
+Then run `npm run db:migrate` plus `npm run db:seed:required`.
+Add `npm run db:seed:demo` only when you need the
 local development, integration-test, guide, or smoke-test fixtures. The demo
 profile is destructive: it clears non-required data before reseeding the
 current fixtures.
@@ -205,50 +213,32 @@ npm run db:up
 npm run test:sql-integration
 ```
 
-The suite derives its connection from `.env.sqlserver` and replaces the
-configured database name with `<DB_NAME>_sql_integration_tests`. It resets and
+The npm command loads `.env.sqlserver`; existing process variables take
+precedence. The suite replaces the resolved database name with
+`<database>_sql_integration_tests`. It resets and
 migrates only that dedicated database. Set
 `SQLSERVER_INTEGRATION_TESTS_URL` to provide an explicit test database URL, or
 `SQLSERVER_INTEGRATION_TESTS_DB_NAME` to override only the derived database
-name.
+name. Both overrides select a database that the suite will reset; use only
+a disposable test database.
+
+To run one contract, append its test file, for example:
+
+```bash
+npm run test:sql-integration -- \
+  tests/sql-integration/rfi-assessments.sqlserver.test.ts
+```
 
 The ordinary `npm test` command excludes `tests/sql-integration/`. The
 `Integration Tests` workflow runs the SQL suite as a separate required job
 against its own test database.
 
-Deviation decisions preserve their exact millisecond timestamp when written to
-`datetime2(3)` columns by binding an ISO timestamp string. The driver's inferred
-`DateTime` parameter type rounds JavaScript `Date` values and can move an
-approval into the future relative to an immediate applicability check. The SQL
-suite verifies that library and local approvals apply at the recorded instant.
-
-HSA verification quota scenarios start after fixture setup with at least
-15 seconds left in the SQL Server minute. Near a minute boundary, the test
-process waits until the next minute and rechecks SQL time before exercising the
-real concurrent clients. Waiting outside a query avoids SQL request timeouts.
-This keeps single-window admission assertions inside one quota window. A
-separate scenario verifies that exhausted earlier-window buckets permit
-admission in a new minute.
-
-Quota concurrency scenarios fill each bucket to one remaining admission, then
-race two application clients for that slot. Exactly one client must be admitted,
-and the other must receive the matching quota denial. This tests atomic
-admission without requiring a large request burst to complete inside the
-production one-second lock wait. A separate held-lock scenario verifies that
-coordination fails after that wait without retry.
-Concurrent first admissions also verify that each bucket is created once and
-both admissions are counted.
-
 ## Requirement List Performance Baseline
 
 The requirement list SQL path has a required SQL Server performance check for
-`listRequirements` and production-style cursor continuation. It uses the same
-parameterized SQL builder as production code and seeds a dedicated medium
-fixture of roughly 10,000 `PERF-*` requirements with two to four versions each.
-Deep scenarios obtain each next boundary from the preceding bounded page; they
-do not inject a separately resolved anchor tuple. First-page/deep-page
-comparison pairs are filtered to the dedicated `PERF-*` fixture so their
-relative cost is not distorted by unrelated demo or developer data.
+`listRequirements` and production-style cursor continuation. It seeds roughly
+10,000 `PERF-*` requirements with two to four versions each and compares
+first-page and deep-page queries within that fixture.
 
 Use the regular check when you want to verify that the current branch still
 fits the committed baseline:
@@ -294,19 +284,12 @@ remeasured.
 
 Run baseline updates against an isolated local or CI-like SQL Server Developer
 container, not a shared or production database. The script creates or refreshes
-the `PERF-*` fixture rows in the target database. The fixture is created
-outside `typeorm/seed.mjs` so normal seed identifiers and business examples
-stay stable. It uses dedicated `PERF-*` requirement areas and negative
-database IDs to avoid advancing normal SQL Server identity counters.
+the `PERF-*` fixture rows in the target database. Use a disposable database for
+the `db:setup` examples above: that command resets all existing data.
 
-For each scenario, the script:
-
-1. Builds the cursor-based list SQL from the same helper used by the DAL.
-2. Captures actual SQL Server execution plans with `STATISTICS XML`.
-3. Runs warm-up queries so cold connection/setup cost is not the baseline.
-4. Runs measured samples with `STATISTICS IO` enabled.
-5. Writes results and `.sqlplan` files under
-   `test-results/requirements-list-performance/`.
+The script captures actual execution plans and measures warm-cache samples.
+Results and `.sqlplan` files are written under
+`test-results/requirements-list-performance/`.
 
 The baseline file contains threshold counters:
 
@@ -344,7 +327,10 @@ stricter baseline so future regressions are caught.
 
 ### Requirements specification pagination baseline
 
-Run the mixed requirements specification campaign against the local SQL Server:
+Run the mixed requirements specification campaign against a migrated, seeded
+local SQL Server database. This command loads `.env.sqlserver` and creates and
+cleans up fixtures in the configured database; it does not derive a separate
+test database. Use a disposable target:
 
 ```bash
 npm run perf:specification-items
@@ -354,10 +340,7 @@ The blocking CI job runs the same command for pull requests and pushes to
 `main`. It creates isolated 70/30 and 20/80
 library/specification-local fixtures at 200 and 500 items. For every supported
 sort and direction it traverses the unchanged result twice and requires exact
-stable-reference order with no missing or duplicate rows. The candidate SQL is
-checked for matching bounded seek behavior while the existing unit SQL contract
-guards `TOP (limit + 1)`, page-bounded enrichment, and the absence of counts,
-anchor lookups, offsets, and unbounded list queries.
+stable-reference order with no missing or duplicate rows.
 
 The same run records one Requirement ID traversal for both mixes at 1,000
 items. Those 1,000-item results are diagnostic artifacts only: they have no
@@ -379,16 +362,16 @@ Replace a simple membership index with one measured covering index only when
 fresh 200/500 evidence exceeds the baseline and the captured plan identifies
 that lookup as the cause. Do not add one index per sort.
 
-### Adding a new migration
+## Adding a new migration
 
 Create a new file in `typeorm/migrations/` named `NNNN_short_description.mjs`
-(zero-padded, monotonically increasing). Both
-`lib/typeorm/sqlserver-config.ts` and `scripts/db-sqlserver-admin.mjs`
-auto-discover migration files in that directory. The numeric filename prefix
+(zero-padded, monotonically increasing). The admin CLI auto-discovers `.mjs`
+migration files in that directory. The numeric filename prefix
 keeps discovery deterministic and reviewable, while TypeORM uses the
-timestamp suffix in the migration `name` as the executable order. No manual
-import list to update; a guard test in
-`scripts/__tests__/db-sqlserver-admin.test.mjs` enforces this.
+timestamp suffix in the migration `name` as the executable order. There is no
+manual import list to update. Do not edit a released migration; add a new
+migration and update the corresponding entities and
+[canonical schema reference](../reference/database-schema.md).
 
 Existing dev or production databases that are already at an earlier migration
 will show pending migrations in `npm run db:migration-status` and pick up new
@@ -400,7 +383,7 @@ database to have reached the build metadata field
 
 ## Read-Only Browse Workflow
 
-The blessed VS Code-friendly path is:
+Use VS Code SQLTools with a read-only login:
 
 1. Install or enable:
    - `mtxr.sqltools`
@@ -442,54 +425,12 @@ Put new system or lookup rows that the app needs to boot in the required
 profile. Put examples, screenshots, privacy exercises, Playwright fixtures,
 dogfood Krav and other disposable data in the demo profile.
 
-### Shared Model Verification Persistence
-
-Completed model verifications use SQL Server across app instances. Migrate the
-worktree database and reconcile runtime permissions before testing handover.
-Clean setup seeds no verification attempts; only a completed server verification
-can create proof. Run the model-verification SQL integration tests for concurrent
-save/discard, rollback, process loss, admission expiry, capacity, and cleanup.
-The test database is disposable and distinct from the developer browse database.
-
-### Suggestion implementation migration
-
-Migration 0067 adds nullable implementation evidence to improvement suggestions.
-Run migrations before the application version that queries these fields.
-The implementing version FK uses NO ACTION because the feedback version already
-has a SET NULL path. Both draft deletion and version retention clear the new FK
-inside their transaction. Demo suggestion 1 links feedback row 1 to implementing
-row 2; seed execution records this evidence after its resolution transition.
-
-## RFI assessment persistence checks
-
-Migration `0068` introduces specification-owned assessment history and a list
-lock revision. Demo seeds include optional evidence, duplicate author names and
-an archived question protected solely by historical assessment references.
-The runtime permission manifest grants updates only to assessment author
-columns; business evidence is appended as a new record.
-
-Run the focused database contract with:
-
-```bash
-npm run test:sql-integration -- \
-  tests/sql-integration/rfi-assessments.sqlserver.test.ts \
-  tests/sql-integration/rfi-assessment-read.sqlserver.test.ts
-```
-
-The suite covers persistence, version adoption, stale confirmations, concurrent
-saves and coherent reads, rollback, privacy anonymization, archive export,
-historical retention references and cascading deletion.
-It uses the dedicated disposable SQL integration database, separate from the
-application database. Apply migrations and required runtime permission
-reconciliation before running the updated application.
-
 ## Verify Disposable Demo Reset
 
 Use only a disposable demo/test database and the migration identity. The
 explicitly confirmed demo clear removes non-required data, including seeded
-RFI suggestions that have entered review or been handled. Its transactional
-whole-table reset retains the RFI lifecycle trigger; ordinary application
-DELETE operations still reject those records. Required lookup data remains.
+RFI suggestions that have entered review or been handled. Required lookup
+data remains.
 
 For a manual CLI check, select the disposable database through the documented
 `DB_*` configuration, then:
@@ -501,8 +442,3 @@ For a manual CLI check, select the disposable database through the documented
    reported non-required table count and a successful exit.
 4. Run `npm run db:seed:demo` again and confirm that the current demo fixtures
    can be recreated.
-
-The same commands run through the opt-in demo-seed image entrypoint. The
-production `db-job` image rejects both demo seeding and demo clearing,
-including confirmed clearing. This check does not grant the application
-runtime identity administrative reset permissions.

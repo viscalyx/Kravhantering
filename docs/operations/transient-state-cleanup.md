@@ -5,16 +5,15 @@ traffic. Every supported production topology installs one generic systemd timer
 and one one-shot cleanup container. The timer runs every five minutes with a
 small randomized delay.
 
-The current cleanup registry includes expired shared model verification attempts,
-expired AI run coordination rows,
-time-limited AI forensic evidence, expired MCP import-validation sessions, and
-expired principal creation-rate buckets, and expired HSA verification quota
-rows. All use the same runner and timer.
-AI coordination rows expire at their original total deadline, or when a
-running lease is abandoned, and contain no model content. The forensic target
-records a metadata-only expiry event when a cleanup run detects a row that has
-already expired according to SQL Server time, then purges evidence 72 hours
-after manual stop or expiry.
+Cleanup covers expired export and report actor quota entries, shared model
+verification attempts, AI run coordination rows, time-limited AI forensic
+evidence, MCP import-validation sessions, principal creation-rate buckets and
+HSA verification quota rows. All use the same runner and timer. AI
+coordination rows expire at their original total deadline when not running, or
+when their running lease expires, and contain no model content. The forensic
+target records a metadata-only expiry event when a cleanup run detects a row
+that has already expired according to SQL Server time, then purges evidence 72
+hours after manual stop or expiry.
 
 ## Work Bounds and Safety
 
@@ -22,24 +21,27 @@ Configure these values in `/etc/kravhantering/cleanup.env`:
 
 - `TRANSIENT_CLEANUP_BATCH_SIZE` limits one SQL deletion and accepts `1` through
   `500`; the default is `100`.
-- `TRANSIENT_CLEANUP_WORK_LIMIT` limits deleted rows across all registered
-  targets in one run and accepts `1` through `100000`; the default is `1000`.
+- `TRANSIENT_CLEANUP_WORK_LIMIT` limits counted cleanup work across all
+  registered targets in one run and accepts `1` through `100000`; the default
+  is `1000`. This counts deleted rows, or completed capture windows when that
+  count is higher for a forensic-evidence batch.
 - `TRANSIENT_CLEANUP_BACKLOG_TARGET` stops a target when its expired-row count
   reaches the configured value and accepts `0` through `1000000`; the default
   is `0`.
 
-SQL Server UTC determines expiry. Each batch uses update locks, row locks and
-skip-locked selection so overlapping executions and multiple app nodes may run
-safely. A row is deleted at most once, another worker's progress is a successful
-no-op, and rows whose expiry is later than the database clock are not selected.
+SQL Server UTC determines expiry. Batches use update locks and skip-locked
+selection so overlapping executions and multiple app nodes may run safely. A
+row is deleted at most once, another worker's progress is a successful no-op,
+and rows whose expiry is later than the database clock are not selected.
 
 HSA verification quota rows expire at the end of their minute-aligned
 60-second window. They have no hard global row cap. For capacity planning, one
-authenticated actor can create at most one actor row, 50 actor-target rows, and
-50 target rows per minute: at most 101 new rows before overlap with other
-actors reduces the target-row count. Size the cleanup work limit above the
-expected authenticated actor volume multiplied by this worst-case bound, and
-monitor backlog rather than treating the bound as expected traffic.
+authenticated actor can create at most one actor row, 50 actor-target rows,
+and 50 target rows per minute: at most 101 new rows before overlap with other
+actors reduces the target-row count. Size the cleanup work limit for the rows
+that can accumulate between timer runs, allowing for the five-minute interval,
+scheduling delay, other cleanup targets and recovery after downtime. Monitor
+backlog rather than treating the per-minute bound as expected traffic.
 
 ## Release Contract and Prerequisites
 
@@ -53,24 +55,15 @@ Use an authenticated release archive that contains
 and manifest digest to successful cleanup evidence for the target schema and
 the selected rollback source schema. Normal release preparation automatically
 selects the preceding published release, including previews, using publication
-time. Drafts and the target release are excluded. A rerun of an already published
-target selects its predecessor rather than a later release. There is no source
-list or file per release to maintain in Git, and no PR or merge requires an
-update to the default.
+time. Drafts and the target release are excluded. A rerun of an already
+published target selects its predecessor rather than a later release. Retain
+the authenticated source archive with the generated `cleanup-source.json` and
+`cleanup-compatibility.json` recovery records.
 
-Release preparation downloads the selected archive and its attestation through
-public endpoints. It verifies the attestation against independently obtained
-trust roots and the expected repository, workflow, commit and release identity.
-Source preparation works without a GitHub token or cached login, including on
-fork PRs. The trusted release workflow retains its normal publication and signing
-permissions.
-
-The source database is built by that release's own image, verified against its
-image lock. The target image then runs cleanup against it. Source migrations and
-permission definitions are not reconstructed from the current checkout.
-Successful validation generates `cleanup-source.json` and
-`cleanup-compatibility.json` in the deployment bundle. Retain the authenticated
-source archive with these generated recovery records.
+Every scheduled run compares the live schema and cleanup table definitions
+with the released evidence before mutation. A source schema without a target's
+table must have a verified `not_applicable` result in the compatibility matrix.
+Partial schemas and missing evidence fail verification.
 
 ### Explicit Source Override
 
@@ -82,36 +75,18 @@ gh workflow run container-release.yml --ref main \
   -f cleanup_source_release=vSOURCE_VERSION
 ```
 
-Leave the input empty for the automatic previous-release default. For local
-release preparation, set `CLEANUP_SOURCE_RELEASE=vSOURCE_VERSION` when running
-the production smoke workflow. The override selects a candidate; it does not
-approve rollback. The selected published release must pass artifact, schema,
-cleanup and scheduled-rollback verification before packaging. A missing source
-or failed check stops release preparation; it does not fall back to another
-release or silently omit source verification.
+Leave the input empty for the automatic previous-release default. The override
+selects a candidate; it does not approve rollback. The selected published
+release must pass artifact, schema, cleanup and scheduled-rollback
+verification before packaging. A missing source or failed check stops release
+preparation; it does not fall back to another release or silently omit source
+verification.
 
 Use only the resulting authenticated release and its generated compatibility
 contract. Changing a release pointer or editing a lock on an installed host
 does not make that release eligible. The retained manager's `verify-transition`
 command still requires the exact source archive and image-lock identity recorded
 by successful verification.
-
-Release validation runs `bin/kravhantering-cleanup-evidence.sh` against disposable
-copies of the target schema and selected source schema. The command uses
-the verified cleanup image, runtime database identity, bounded cleanup runner
-and SQL Server UTC. Expired synthetic fixtures exercise every applicable deletion
-and forensic-update path; unexpired fixtures must remain. Its output contains
-aggregate target outcomes, the schema head and a digest of the cleanup table
-definitions (columns, constraints, indexes, foreign keys and triggers). Every
-scheduled run compares live definitions with this verified digest before mutation.
-Release packaging rejects missing schema evidence, failed targets,
-missing target results and image identity mismatches. The generated source lock
-and verification matrix travel inside the authenticated release archive.
-
-The compatibility matrix requires an outcome for every registered cleanup
-target, including export actor quota entries. For a source schema that does not
-contain a target's table, verified absence is recorded as `not_applicable`;
-the target result must still be present in the matrix.
 
 The same prerequisites apply to `app-node-tls`, `app-node-http` and
 `single-node`:
@@ -149,12 +124,6 @@ remove role grants during migrations; reapply this prerequisite explicitly:
 ```sql
 GRANT VIEW DEFINITION TO [kravhantering_runtime];
 ```
-
-The release smoke test also activates each authenticated source application's
-units and exact image against its isolated source database. With ingress stopped,
-it expires a fixture after `resume` and waits for the ordinary five-minute timer
-to delete it. No manual cleanup invocation or application request can satisfy
-that assertion.
 
 ## Installation and Explicit Image Update
 
@@ -212,6 +181,11 @@ contract or runner failure emits `runner_execution_failed`. Events do not
 contain stored tokens, hashes, destinations, payloads, validation or execution
 results, forensic evidence, identities or raw database errors. The schema
 verification command adds only a schema head and aggregate outcomes.
+
+Shared model verification attempts expire after 15 minutes. Cleanup skips
+rows locked by an admitted save transaction, even after expiry. Their backlog
+counts and stored-byte totals exclude locked rows during inspection; a later
+run observes rows restored by a rolled-back save transaction.
 
 A successful bounded run can leave a backlog. Check that the remaining count
 and oldest age decrease over successive schedules and that the next timer
@@ -314,20 +288,3 @@ This disables the timer, stops the one-shot service, removes the host units and
 retained manager generations, and reloads systemd. Shared images and application
 data remain under the normal host uninstall procedure. Remove the two protected
 cleanup configuration files and retained transport artifacts under site policy.
-
-## Shared Model Verification Attempts
-
-Completed model verifications have a 15-minute SQL UTC admission deadline.
-Cleanup deletes expired attempts in bounded batches and skips rows locked by an
-admitted save transaction, including after the deadline passes. Backlog counts
-and stored-byte totals exclude locked rows during that inspection. A later run
-observes rows restored by rollback. Telemetry includes only counts, sizes, ages,
-duration, and bounded outcomes; it contains no candidate fields or evidence.
-
-Apply the schema and reconcile runtime permissions before starting the new app.
-The runtime identity needs SELECT, INSERT, and DELETE on the new transient
-asset; cleanup needs SELECT and DELETE and its existing metadata visibility.
-A supported older schema without the table reports `not_applicable`; an
-inaccessible or partly installed target fails compatibility verification.
-Retain the release-independent cleanup deployment during app rollback and use
-the release's generated compatibility evidence. No new timer or secret is needed.

@@ -2,19 +2,18 @@
 
 Production application pages and API documentation use an enforcing CSP with
 `report-to csp` and `Reporting-Endpoints: csp="/api/security/csp-reports"`.
-The policy uses modern reporting only, avoiding the deprecated `report-uri`
-directive and its ZAP CSP notice (rule `10055-3`).
+The policy uses modern reporting only (`report-to`, without `report-uri`).
 The application is the internal collector. No external destination, subscription
 or separate service is needed. The bundled nginx serves the documentation with
-the same policy and a single value for each security header; application page
-nonces remain per request.
+the same reporting destination and a single value for each security header;
+application page nonces remain per request.
 
 The receiver accepts anonymous native browser POSTs with
 `application/reports+json` batches or `application/csp-report` envelopes. It ignores
 unsupported report types. Cookies may accompany browser delivery but are never
-used as report-author identity. No custom application header is required. Other
-REST operations retain their registry policies; see
-[ADR 0062](../adr/0062-anonym-native-csp-rapportering.md).
+used as report-author identity. No custom application header is required. See
+[ADR 0062](../adr/0062-anonym-native-csp-rapportering.md) for the anonymous
+reporting decision.
 
 ## Logging and privacy
 
@@ -25,7 +24,7 @@ means the collector accepted the report for logging; it does not describe whethe
 an attack succeeded. `actor.source` is always `anonymous`. Request metadata is
 fixed to `POST /api/security/csp-reports`, without a request ID.
 
-Only these diagnostic fields reach `recordSecurityEvent()`:
+Only these diagnostic fields appear under `detail` in each event:
 
 <!-- markdownlint-disable MD013 -->
 
@@ -42,8 +41,8 @@ Only these diagnostic fields reach `recordSecurityEvent()`:
 The top-level `ts` is server receipt time, never a browser timestamp. Surface
 classification uses the configured public OIDC redirect origin, as CSRF does,
 not the internal proxy address or untrusted Host/Origin headers: `/en`, `/sv`,
-their descendants
-and `/` are application pages; `/api-docs` and its descendants are documentation.
+their descendants and `/` are application pages; `/api-docs` and its descendants
+are documentation.
 It is diagnostic classification, not proof of the originating page. Raw URLs,
 paths, queries, fragments, referrers, policy text, nonces, samples, nested extras,
 cookies, credentials, identities, IPs and user agents are discarded before logging.
@@ -59,24 +58,22 @@ continue to apply, including overwriting the trusted client-IP header at the edg
 
 ## Admin control and upgrade
 
-Migration `0066_csp_violation_logging.mjs` adds
-`application_settings.is_csp_violation_logging_enabled` as a non-null SQL `bit`
-with default `1`, including existing installations. Both seed profiles initialize
-it to true and required seed preserves committed settings. Apply the normal
+Migration `0066_csp_violation_logging.mjs` enables CSP violation logging by
+default, including on existing installations. Apply the normal
 migration/required-seed release step before starting the updated application.
+Required seed preserves the saved logging setting.
 Deploy the matching nginx configuration with the application. No new environment
 variable, SQL permission or external service is required.
 
-In Admin Center > Settings > Security, `Log CSP violations` saves a Boolean
-immediately using the existing Admin authorization, CSRF and transactional action
-and privileged-security audit contracts. This switch only controls logging.
+An administrator can change `Log CSP violations` in
+Admin Center > Settings > Security. The switch saves immediately and only controls
+logging.
 Disabled collectors still bound and discard incoming reports with empty `204`
 responses. Browsers, queued reports and static documentation may continue sending;
 CSP enforcement remains active.
 
-After admission checks every receiver reads the setting without caching. A
-committed change therefore applies across instances without restart. A request
-whose settings read precedes the commit may finish with its earlier value.
+A saved change applies across instances without restart. A request already
+processing when the setting changes may finish with its earlier value.
 A settings-read failure returns empty `503` and drops the report; it never restores
 the enabled default. At most once per minute per process it emits the fixed
 warning `CSP report logging unavailable: settings read failed`, without an exception
@@ -108,48 +105,38 @@ held only for admission, cleared each window, and never included in CSP events.
 
 <!-- markdownlint-enable MD013 -->
 
-Ordinary inline/external violation envelopes are generally a few kilobytes;
-64 KiB permits a small batch with policy text, while the 20-entry cap prevents
-small reports bypassing event budgets. The event allowance supports three full
-batches per source and twelve per process per minute. Budgets are reserved before
-settings/SQL work, also for disabled logging, with no refund. Technical limits are
-not exposed as Admin controls.
+Accepted reports consume event budgets even when logging is disabled or a
+settings read fails. The limits are fixed and cannot be changed in Admin Center.
 
-Responses have no body and use registry-owned `no-store`: `204` accepted/discarded,
+Responses have no body and use `Cache-Control: no-store`: `204` accepted/discarded,
 `400` malformed or field/depth bounds, `413` byte/batch limit, `415` unsupported
-media, `408` body deadline, `429` rate/capacity/source limit, `503` settings unavailable.
+media, `408` body deadline, `429` rate/capacity/source limit,
+`503` settings unavailable.
 The collector does not promise retry or report delivery.
 
 ## Synthetic verification and browser compatibility
 
-Use the production-like Playwright AUTH-13 scenario with captured server stdout:
+Use the production-like Playwright AUTH-13 scenario in a test environment:
 `npm run test:integration:prodlike -- --chunk prodlike-runtime-contract`.
-For an already running server, set `CSP_REPORT_SERVER_LOG` to its captured stdout
-file. The test uses native reporting, attempts a nonce-free inline script on both
-surfaces, verifies that it never executes, and checks sanitized server JSON with
-logging enabled, disabled and re-enabled. ADMIN-30 covers switch persistence/help.
-Each round loads fresh documents before changing the switch, then triggers the
-violation in those already-loaded pages; Chromium suppressed repeated identical
-violations from the same document during local verification.
+It requires captured server stdout; for an already running server, set
+`CSP_REPORT_SERVER_LOG` to that stdout file. The scenario temporarily changes the
+logging switch and restores its original value. It verifies that a nonce-free
+inline script stays blocked on application and documentation pages, and that
+sanitized server events appear only while logging is enabled.
 
-Verified locally with Chromium 153.0.8010.12: native modern reports reached the
-collector from authenticated application pages and anonymous API documentation,
-with enforcement active in both toggle states. AUTH-13 creates an ephemeral HTTPS
-edge, pins its test certificate and grants background-sync permission; Chromium
-requires an HTTPS reporting destination. Headers and payloads pass through
-unchanged. The test edge uses a different port from the configured public origin,
-so its diagnostic surface is `unknown`; receiver tests independently verify
-application/documentation classification behind a production reverse proxy.
+AUTH-13 verifies native delivery with Chromium through an HTTPS test edge.
+Its edge uses a different port from the configured public origin, so those events
+have `surface: unknown`. For deployment verification, also check the reporting
+headers above through the public HTTPS endpoint on both application and
+`/api-docs` pages; see
+[API documentation edge verification](api-docs-edge-verification.md).
 
 Native delivery requires browser support for `report-to` and
 `Reporting-Endpoints`. Browsers without that support still enforce the CSP but
-do not send violation reports. The collector accepts legacy envelopes from
-already-loaded documents and normalizes them to the same event contract;
-focused tests cover that input format. Firefox and WebKit native delivery have
-not been verified here. The attempted Firefox run could not start within this
-workspace's browser sandbox. No delivery guarantee is claimed for any engine.
-Delivery is best effort; blocking enforcement does not depend on a report
-reaching the receiver.
+do not send violation reports. The collector also accepts legacy envelopes and
+normalizes them to the same event contract. Firefox and WebKit native delivery
+are outside the automated verification described here. Delivery is best effort;
+blocking enforcement does not depend on a report reaching the receiver.
 
 Native delivery semantics follow the
 [Reporting API](https://www.w3.org/TR/reporting-1/#delivery) and

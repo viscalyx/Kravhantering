@@ -1,10 +1,8 @@
 # Norm Library, Reference Data, and AI-Assisted Authoring
 
-<!-- cSpell:ignore FEFF -->
-
-Behavioral contracts for the norm library, reference data DALs, and AI
-requirement generation. These contracts are auditable by the spec-audit skill
-(scrutiny areas 13–14).
+For developers and reviewers changing reference-data, AI authoring, or import
+flows. Use these contracts to preserve stable identifiers, human review, and
+the privacy and safety boundaries around generated requirements.
 
 ## 1 — Norm Library
 
@@ -25,7 +23,9 @@ When `normReferenceId` is not provided (or empty after trim),
 
 If the derived ID already exists in the database, the resolver
 appends `-2`, `-3`, … up to `-999`. If all 998 suffixes are
-taken, it falls back to `-${Date.now()}`.
+taken, creation fails with a conflict whose reason is
+`norm_reference_id_generation_exhausted`. Supply a different explicit ID or
+change the source used to derive it before retrying.
 
 ### Listing and Lifecycle
 
@@ -37,83 +37,42 @@ offering every archived reference as a new choice.
 Archiving a norm reference hides it from new requirement links but keeps
 existing links visible. Reactivation makes it selectable again.
 
-### Linked Requirements
-
-`countLinkedRequirements()` counts distinct requirements per
-norm reference, with an optional `statuses` filter array.
-`getLinkedRequirements()` returns linked requirements with both `statusNameSv`
-and `statusNameEn` columns.
-
-### Ordering
-
-`listNormReferences()` orders by `normReferenceId` ascending.
-Active rows sort before archived rows when archived rows are included.
-`getLinkedRequirements()` orders by `requirements.uniqueId` ascending.
-
 ### Localization
 
 Norm references are **not localized**. External legal documents
-keep their source-language names. The schema uses plain `name`,
-`type`, `reference`, `issuer` columns without `_sv`/`_en`
-suffixes.
+keep their source-language names.
 
 ### Input Validation
 
 API routes validate norm-reference payloads before calling the DAL:
 unknown fields are rejected, DB-backed strings are capped, linked-status
 query arrays are bounded, and route IDs must be positive integers.
-When `normReferenceId` is provided and non-empty after trim, the DAL
-still uses it as-is; uniqueness remains enforced by the DB unique index.
+When `normReferenceId` is provided and non-empty after trim, creation uses the
+trimmed value; uniqueness remains enforced by the DB unique index.
 
 ## 2 — Requirement Area Ownership
 
 Requirement-area ownership is stored on the requirement area row as
-`owner_hsa_id`. The app displays that HSA-id wherever the owner is shown.
-Creation requires a valid HSA-id. Editing shows the current HSA-id as
-read-only and uses a dedicated owner-change action for replacement.
+`owner_hsa_id`. The stewardship list shows the owner's stored display name
+with the HSA-id, falling back to the HSA-id when no name is available.
+Creation and owner replacement require a valid HSA-id and matching person
+verification evidence. Editing shows the current HSA-id as read-only and uses
+a dedicated owner-change action for replacement.
 
-There is no `/owners` admin surface or owners REST resource, and no local
-person catalog lookup is performed in this flow.
+Verified person details supply the display name; the HSA-id remains the
+ownership identifier.
 
 ## 3 — Specification Lookups
 
-Sources: `lib/dal/specification-implementation-types.ts`,
-`lib/dal/specification-lifecycle-statuses.ts`,
-`lib/dal/specification-governance-object-types.ts`
+Specification implementation types and governance object types are
+informational taxonomy values. Specification lifecycle statuses belong to
+statuses and workflows because they determine specification workflow gates.
+Do not treat a lifecycle-status change as a purely cosmetic taxonomy edit.
 
-### Shared Pattern
-
-All three DALs follow the same structure:
-
-- Bilingual columns: `nameSv` and `nameEn`.
-- List ordering: `ORDER BY nameSv` ascending.
-- CRUD operations: `list`, `create`, `update`, `delete`.
-- All linked from `requirements_specifications` via foreign keys.
-
-### Validation
-
-<!-- markdownlint-disable MD013 -->
-
-| Layer | Create validation | Update validation |
-| --- | --- | --- |
-| API routes | Strict object schemas, unknown-field rejection, bounded bilingual names, and positive integer IDs | Strict object schemas, unknown-field rejection, bounded optional fields, and positive integer IDs |
-| `specification-lifecycle-statuses.ts` | Trims both `nameSv`/`nameEn`; throws if either is empty | Trims each provided field; throws if empty |
-| `specification-implementation-types.ts` | None | None |
-| `specification-governance-object-types.ts` | None | None |
-
-<!-- markdownlint-enable MD013 -->
-
-The API layer now provides the common request-shape guardrails for all
-three lookup groups. The remaining DAL variance is intentional:
-specification lifecycle statuses belong to statuses and workflows because
-they determine specification workflow gates, while implementation types and
-governance object types are informational taxonomy values.
-
-### Delete Return Values
-
-- `specification-lifecycle-statuses`: returns row count (number).
-- `specification-implementation-types`: returns `void`.
-- `specification-governance-object-types`: returns `void`.
+All three lookup groups have Swedish and English names. Their API routes
+reject unknown fields, enforce bounded names, and require positive integer
+IDs. Keep validation at the API boundary; internal DAL functions do not
+uniformly validate names.
 
 ## 4 — AI Requirement Generation
 
@@ -174,8 +133,9 @@ The route builds the import instruction, user prompt, response schema,
 destination, authorization request, and safety inputs. `AIIntegrationLayer`
 then resolves the exact active profile and verified model revision, coordinates
 the run budget and queue, applies the trust boundary, and invokes the exact
-registered adapter. Adapter deltas remain internal. The browser receives only
-a terminal sanitized error or a fully screened and schema-valid result.
+registered adapter. Adapter deltas remain internal. The browser receives a
+terminal sanitized error, a fully screened and schema-valid result, or
+safety-screened invalid output with validation issues for the repair flow.
 
 ### Prompt Contracts
 
@@ -220,11 +180,12 @@ administered from the Admin Center `AI security` section. There is no
 runtime fallback list in code; if the active rule set cannot be read from the
 database, AI-assisted authoring fails closed before provider work. Input
 screening runs after AI availability is confirmed and before adapter egress.
-The screen evaluates the user's need/context, repair `rawJson`, repair
-validation `errors`, and image MIME metadata. The trust boundary also validates
-each image signature and decoded dimensions, then re-encodes accepted images
-without source metadata. The safety screen blocks
-obvious instruction override, attempts to extract non-public prompt/backend
+The screen evaluates the user's need/context, repair `rawJson`, and repair
+validation `errors`. The trust boundary also screens the assembled instructions
+and text content, validates each image's type, signature and decoded
+dimensions, then re-encodes accepted images without source metadata. The safety
+screen blocks obvious instruction override, attempts to extract non-public
+prompt/backend
 material, encoded smuggling tied to override terms, secret extraction, and
 harmful-generation requests. Requests to inspect the AI request text that the
 app intentionally exposes in `Så byggs AI-anropet` / `How the AI request is
@@ -256,7 +217,7 @@ with an explicit 5–60-minute expiry. A different Privacy Officer must approve
 it before capture begins. During that window, only the blocked step's content
 parts are secret/direct-identifier redacted, byte- and item-bounded, and stored
 in the isolated SQL evidence table. SQL Server time stops capture at expiry;
-scheduled cleanup purges evidence 72 hours after stop or expiry.
+evidence becomes eligible for scheduled cleanup 72 hours after stop or expiry.
 
 If the control or evidence-store query fails, the AI request remains blocked,
 the metadata-only security event remains authoritative, and ordinary logs
@@ -269,8 +230,6 @@ and norm-reference data so the model can emit import JSON with stable IDs where
 possible. The model may propose missing norm references through
 `proposedNormReferences`; those proposals are previewed separately and only
 move forward when selected by the user.
-
-**ISO standards referenced:** 29148:2018, 25030:2019, 25010:2023.
 
 ### Validation and Repair
 
@@ -289,22 +248,20 @@ Sources: `lib/requirements/import-schema.ts`,
 Requirement import publishes a strict shared JSON Schema whose top-level
 `schemaVersion` is `requirement-import.v4`. The version applies to the whole
 import file, including requirement candidates and support data such as
-`proposedNormReferences` and `proposedNeedsReferences`. Version 4 replaces
-version 3 as the canonical schema; automated producers must emit v4. The same
-file format is used for kravbiblioteksimport and kravunderlagsimport;
+`proposedNormReferences` and `proposedNeedsReferences`. Automated producers
+must emit v4. The same file format is used for kravbiblioteksimport and
+kravunderlagsimport;
 destination context is selected in the UI/API outside the file. Unknown fields
 are rejected, including destination fields such as `areaId` and
 `specificationId`.
-In the schema artifact this is represented as `properties.schemaVersion`,
-because JSON Schema describes top-level object fields under `properties`; the
-actual import JSON still places `schemaVersion` at the root.
 
 The authenticated schema endpoint returns the schema with the current global
 row, proposal, nested-item, and JSON-depth limits. The fixed request transport
 ceiling is 10 MiB and import content is limited to 8 MiB of UTF-8 data. The
-authenticated import instruction endpoint returns Markdown containing the
-schema plus current taxonomy and norm references so an AI system can produce
-valid JSON without guessing reference data. When the caller passes a
+authenticated import instruction endpoint returns Markdown containing field
+selection rules and current taxonomy and norm references. Supply the separate
+JSON Schema alongside this instruction so an AI system has both the required
+data shape and current reference values. When the caller passes a
 kravunderlag destination, the instruction also includes that kravunderlag's
 existing `needsReferences` as `{id,text,description}` reference data. The schema
 and import instruction are shared for library imports and specification-local
@@ -405,8 +362,8 @@ the kravunderlag.
 
 ### Human-Facing Import Examples
 
-These examples are documentation samples for users. They are intentionally not
-included in the schema artifact or import instruction artifact. Both
+This minimal example is a documentation sample. It is not included in the
+schema artifact or import instruction artifact. Both
 kravbiblioteksimport and kravunderlagsimport use the same file format; the
 target kravområde or current kravunderlag is selected in the UI/API outside the
 JSON content.
@@ -424,64 +381,7 @@ Minimal valid import JSON:
 }
 ```
 
-Richer import JSON with optional metadata, proposed norm references and proposed
-needs references:
-
-```json
-{
-  "schemaVersion": "requirement-import.v4",
-  "proposedNormReferences": [
-    {
-      "key": "gdpr-article-32",
-      "name": "GDPR artikel 32",
-      "type": "Förordning",
-      "reference": "Artikel 32",
-      "issuer": "Europeiska unionen",
-      "normReferenceId": "GDPR-ART-32",
-      "uri": "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
-    }
-  ],
-  "proposedNeedsReferences": [
-    {
-      "key": "gdpr-need",
-      "text": "Personuppgiftsbehandling behöver tekniskt skydd",
-      "description": "Stödjer införande av GDPR artikel 32."
-    }
-  ],
-  "requirements": [
-    {
-      "description": "Systemet ska skydda personuppgifter mot obehörig åtkomst.",
-      "acceptanceCriteria": "Åtkomst kräver autentisering och behörighet.",
-      "categoryName": "Verksamhetskrav",
-      "typeName": "Icke-funktionellt",
-      "qualityCharacteristicName": "Interoperabilitet",
-      "priorityLevelCode": "P4",
-      "requirementPackageNames": ["Integration med andra system"],
-      "normReferenceIds": ["SFS 2018:218"],
-      "proposedNormReferenceKeys": ["gdpr-article-32"],
-      "needsReferenceKey": "gdpr-need",
-      "verifiable": true,
-      "verificationMethod": "Verifieras med behörighetstest."
-    },
-    {
-      "description": "Systemet ska kunna exportera kravlistor i CSV-format.",
-      "categoryId": 1,
-      "typeId": 1,
-      "qualityCharacteristicId": 2,
-      "requirementPackageIds": [3],
-      "verifiable": false
-    }
-  ]
-}
-```
-
-The examples show both name-based and numeric reference-data fields. Numeric IDs
-are used when valid. Names are accepted only when they map uniquely to active
-reference data, and `qualityCharacteristicId` or `qualityCharacteristicName`
-must belong to the selected type. Optional unresolved metadata is shown as a
-warning in the import review and is omitted if the user continues. Proposed
-norm references include the fields needed by the normreferens form: `key`,
-`name`, `type`, `reference`, `issuer`, optional `normReferenceId`, optional
-`uri` and optional `version`. Proposed needs references include `key`, `text`
-and optional `description`; rows connect to them through `needsReferenceKey`
-until the import review resolves the proposal to a concrete `needsReferenceId`.
+For optional fields and reference-data values, fetch the authenticated schema
+and destination-specific import instruction described above. Numeric IDs and
+names depend on the current installation; copying them from a static example
+can select the wrong classification or produce unresolved metadata.

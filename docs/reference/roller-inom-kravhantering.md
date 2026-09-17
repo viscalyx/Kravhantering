@@ -2,11 +2,10 @@
 
 ## Inledning
 
-Denna rollista beskriver de roller och uppdrag som en användare kan
-tilldelas i den nuvarande autentiserings- och behörighetsmodellen.
-Modellen utgår från en OIDC-kompatibel identitetsleverantör för
-autentisering. Keycloak används i lokal utveckling och prodlike-miljöer,
-medan produktionsleverantör beslutas per miljö.
+Rollistan hjälper verksamhetsansvariga och administratörer att fördela
+uppdrag och användare att förstå sitt ansvar och sina befogenheter.
+Kompetenserna beskriver stöd för bemanning; de är inte tekniska
+behörighetskrav.
 
 Behörighetsstyrningen är uppdragsbaserad RBAC. Globala IdP-roller används
 för tvärgående ansvar som granskning, administration och dataskydd.
@@ -31,9 +30,9 @@ på att användaren är autentiserad och har ett verifierat HSA-id.
 **Ansvar:**
 Den autentiserade användaren ansvarar för att använda systemet enligt
 gällande verksamhetsregler, läsa publicerat material i rätt sammanhang
-och lämna förbättringsförslag när brister eller förbättringsbehov
-identifieras. Användaren ska inte ändra, godkänna, besluta eller
-administrera material utan särskild tilldelning.
+och uppmärksamma ansvarig på brister eller förbättringsbehov. Användaren
+ska inte ändra, godkänna, besluta eller administrera material utan
+särskild tilldelning.
 
 Autentisering ger inte generell läsåtkomst till alla kravunderlag. En
 användare utan `Admin` eller `Reviewer` ser bara de kravunderlag där
@@ -43,7 +42,7 @@ personen är kravunderlagsansvarig eller kravunderlagsmedförfattare.
 
 - Grundläggande förståelse för kravhanteringens syfte och struktur.
 - Förmåga att tolka publicerade krav.
-- Kännedom om verksamhetens processer för avvikelser och
+- Kännedom om verksamhetens processer för avsteg och
   förbättringsförslag.
 - Förmåga att beskriva förbättringsbehov sakligt och spårbart.
 - Grundläggande digital kompetens och vana att arbeta i verksamhetssystem.
@@ -53,8 +52,9 @@ personen är kravunderlagsansvarig eller kravunderlagsmedförfattare.
 - Läsa publicerade krav och publik taxonomi.
 - Söka i kravbiblioteket.
 - Ta del av rapporter som bygger på publicerat kravinnehåll.
-- Skapa och ändra förbättringsförslag för publicerade krav.
-- Följa status på egna eller relevanta förbättringsförslag.
+- Läsa förbättringsförslag för publicerade krav. Att skapa eller ändra
+  förslag kräver författarbehörighet i kravområdet eller `Admin`.
+- Skapa ett kravunderlag med sig själv som kravunderlagsansvarig.
 - Exportera egna personuppgifter via självservice när HSA-id:t är
   verifierat.
 
@@ -135,7 +135,7 @@ metadata, byta ägare eller hantera kravområdets medförfattare.
 - Hantera RFI-frågeförslag inom tilldelat kravområde.
 - Skicka krav från Utkast till Granskning.
 - Initiera arkiveringsgranskning när kravet bör tas ur bruk.
-- Återställa arkiverade krav till nytt utkast när det är motiverat.
+- Återskapa arkiverade kravversioner som nytt utkast när det är motiverat.
 - Bidra med underlag till hantering av förbättringsförslag.
 - Delta i kvalitetssäkring före formell granskning.
 - Uppdatera kravtexter efter återkoppling från granskare eller verksamhet.
@@ -191,8 +191,8 @@ livscykel och metadata.
 **Syfte med rollen/uppdraget:**
 Att ge en eller flera personer ett dokumenterat stöd- och
 medförfattarskap för ett kravpaket utan att flytta huvudansvaret från
-kravpaketsansvarig. Uppdraget är en applikationsägd HSA-id-tilldelning
-som ingår i dataskyddsflöden och behörighetsöversyn.
+kravpaketsansvarig. Uppdraget registreras i applikationen och knyts till
+personens HSA-id.
 
 **Ansvar:**
 Medförfattaren för kravpaket ansvarar för att bidra med sakkunskap om
@@ -218,8 +218,6 @@ medförfattare, arkivera, återaktivera eller ta bort kravpaketet.
 - Delta i genomgångar av paketets användning.
 - Stödja kravpaketsansvarig inför ändringar i paketmetadata.
 - Läsa kravpaketets metadata och medförfattarlista.
-- Förekomma som kravansvarstilldelning i dataskyddsexport och
-  behörighetsöversyn.
 
 ## Roll/Uppdrag: Kravunderlagsansvarig
 
@@ -231,7 +229,7 @@ förvaltningsfas.
 
 **Ansvar:**
 Den kravunderlagsansvarige ansvarar för kravunderlagets sammansättning,
-underlagslokala krav, RFI-frågelista, avvikelser och tilldelade
+underlagslokala krav, RFI-frågelista, avsteg och tilldelade
 medförfattare. Uppdraget omfattar både praktisk hantering av underlagets
 innehåll och samordning av ändringar så att underlaget fortsätter stödja sitt
 avsedda användningsområde.
@@ -242,11 +240,15 @@ avsedda användningsområde.
 - Erfarenhet av kravsammanställning, projektgenomförande eller
   förvaltning.
 - Förmåga att bedöma konsekvenser av att lägga till eller ta bort krav.
-- Kännedom om avvikelsehantering.
+- Kännedom om avstegshantering.
 - Förmåga att prioritera och samordna arbete med medförfattare.
 - Förståelse för skillnaden mellan bibliotekskrav och underlagslokala
   krav.
 - God kommunikativ och skriftlig förmåga.
+
+Behörigheten gäller inom kravunderlagets och avtalens ändringsregler.
+När avtal finns kräver ändringar av kravens innehåll och sammansättning
+ett redigerbart avtalsutkast.
 
 **Exempel på arbetsuppgifter:**
 
@@ -255,7 +257,7 @@ avsedda användningsområde.
 - Ändra RFI-frågelistans omfattning, låsa eller låsa upp listan och ange
   RFI-relevans.
 - Hantera kravunderlagets medförfattare.
-- Skapa, redigera och följa upp avvikelser kopplade till underlaget.
+- Skapa, redigera och följa upp avsteg kopplade till underlaget.
 - Samordna ändringar med berörda kravområden.
 - Säkerställa att kravunderlaget är aktuellt inför användning eller
   förvaltning.
@@ -275,7 +277,7 @@ huvudansvaret för underlaget flyttas.
 Kravunderlagsmedförfattaren ansvarar för att bidra till ett korrekt och
 uppdaterat kravunderlag inom ramen för tilldelat uppdrag. Arbetet ska ske
 i samverkan med kravunderlagsansvarig och följa samma krav på
-spårbarhet, kvalitet och korrekt avvikelsehantering.
+spårbarhet, kvalitet och korrekt avstegshantering.
 
 Kravunderlagsmedförfattaren kan ändra kravunderlagets innehåll, men får
 inte delegera behörighet vidare, byta kravunderlagsansvarig eller hantera
@@ -288,7 +290,7 @@ det mottagande kravområdet.
 - Kunskap om kravunderlagets sakområde.
 - Erfarenhet av kravarbete, projektarbete eller systemförvaltning.
 - Förmåga att hantera ändringar strukturerat.
-- Grundläggande förståelse för avvikelsehantering.
+- Grundläggande förståelse för avstegshantering.
 - Förmåga att samverka med kravunderlagsansvarig och andra berörda
   roller.
 - God skriftlig förmåga på svenska.
@@ -300,14 +302,14 @@ det mottagande kravområdet.
 - Ändra RFI-frågelistans omfattning, låsning och relevans inom tilldelat
   kravunderlag.
 - Lägga till eller ta bort krav enligt tilldelad behörighet.
-- Skapa och redigera avvikelser kopplade till kravunderlaget.
+- Skapa och redigera avsteg kopplade till kravunderlaget.
 - Delta i genomgångar av kravunderlagets aktualitet och kvalitet.
 - Förbereda underlag för beslut av kravunderlagsansvarig eller granskare.
 
 ## Roll/Uppdrag: Granskare
 
 **Syfte med rollen/uppdraget:**
-Att säkerställa kvalificerad granskning av krav, avvikelsebeslut och
+Att säkerställa kvalificerad granskning av krav, avstegsbeslut och
 granskningsflöden. Granskaren motsvarar det tekniska rollvärdet
 `Reviewer` och är en global roll som inte är knuten till ett enskilt
 kravområde eller kravunderlag.
@@ -315,12 +317,11 @@ kravområde eller kravunderlag.
 **Ansvar:**
 Granskaren ansvarar för att bedöma om krav och beslut håller tillräcklig
 kvalitet för publicering eller formellt beslut. Rollen ska tillämpa
-verksamhetens rutiner för opartiskhet och separation of duties.
+verksamhetens rutiner för opartiskhet och åtskillnad mellan författande och beslut.
 
-Nuvarande systempolicy tillåter att en `Reviewer` fattar beslut även när
-samma persons HSA-id visar att personen själv har skapat underlaget,
-avsteget eller förslaget. Sådana egna beslut ska hanteras med särskild
-varsamhet och loggas som högriskhändelser.
+Systemet kräver `Reviewer` för granskningsbeslut om krav och avsteg,
+men hindrar inte att samma person också är författare. Organisationens
+rutiner måste därför säkerställa den opartiskhet som arbetet kräver.
 
 **Kompetenser och erfarenheter:**
 
@@ -330,7 +331,7 @@ varsamhet och loggas som högriskhändelser.
   efterlevnadsperspektiv.
 - Kunskap inom relevanta specialistområden, exempelvis IT-säkerhet,
   infrastruktur eller utveckling.
-- Förståelse för opartisk granskning och separation of duties.
+- Förståelse för opartisk granskning och åtskillnad mellan författande och beslut.
 - Förmåga att ge tydlig och konstruktiv återkoppling.
 - God kännedom om organisationens kravprocess.
 - Hög integritet och förmåga att fatta välgrundade beslut.
@@ -339,9 +340,9 @@ varsamhet och loggas som högriskhändelser.
 
 - Granska krav som skickats från Utkast till Granskning.
 - Publicera krav som uppfyller granskningskraven.
-- Avvisa krav till Utkast med motivering när de behöver omarbetas.
+- Återremittera krav till Utkast med motivering när de behöver omarbetas.
 - Godkänna eller avbryta arkiveringsgranskning.
-- Fatta granskningsbeslut om avvikelser där rollen har mandat.
+- Fatta granskningsbeslut om avsteg där rollen har mandat.
 - Läsa kravunderlag och deras RFI-frågelistor brett för granskningsarbete.
 - Bidra med specialistbedömningar inom arkitektur- och kravfrågor.
 
@@ -488,12 +489,10 @@ behörighetssammanhang.
 ## Roll/Uppdrag: Teknisk MCP-konsument
 
 **Syfte med rollen/uppdraget:**
-Att ge en godkänd teknisk klient, exempelvis en MCP-konsument,
-kontrollerad åtkomst till API-baserade funktioner. Uppdraget är inte en
-personroll. Klienten autentiseras med Bearer-token och måste bära ett
-giltigt `employeeHsaId` i realformat. Det HSA-id:t kan vara personbundet
-eller syntetiskt beroende på godkänd integrationsmodell och tilldelade
-uppdrag.
+Att ge en godkänd teknisk klient kontrollerad åtkomst till systemets
+funktioner inom tilldelade uppdrag. Detta är inte en personroll eller en
+extra behörighetsnivå. Klientens verifierade HSA-id kopplas till de
+uppdrag som integrationen behöver.
 
 **Ansvar:**
 Den tekniska MCP-konsumenten ska endast användas för avsedda
@@ -504,29 +503,12 @@ syfte. Provisionering av externa MCP-klienter granskas i det system där
 klientåtkomsten tilldelas och kan refereras som extern evidens i
 behörighetsöversynen.
 
-**Kompetenser och erfarenheter:**
-
-- Erfarenhet av säkra systemintegrationer och API-användning.
-- Förståelse för OAuth 2.0 Client Credentials och tokenbaserad åtkomst.
-- Kunskap om principen om minsta behörighet.
-- Förmåga att hantera klienthemligheter och tekniska identiteter säkert.
-- Förståelse för kravhanteringssystemets behörighetsmodell.
-- Förmåga att övervaka och felsöka integrationsflöden.
-
-**Exempel på arbetsuppgifter:**
-
-- Anropa godkända MCP-funktioner med giltig Bearer-token.
-- Utföra automatiserade läs- eller skrivoperationer inom tilldelat
-  uppdrag.
-- Verifiera att klientens `employeeHsaId` matchar avsedd tilldelning.
-- Rotera och skydda klientuppgifter enligt fastställd rutin.
-- Felsöka token- och behörighetsfel i integrationsflöden.
-- Säkerställa att integrationen inte använder bredare behörighet än
-  nödvändigt.
+Teknisk konfiguration och identitetskrav beskrivs i
+[integrationsanvisningen för identitetsleverantörer](../integrations/oidc-identity-provider-integration.md).
 
 ## Roller och uppdrag som uttryckligen inte ska användas som IdP-roller
 
-Följande tidigare eller tänkbara benämningar ska inte införas som globala
+Följande benämningar ska inte införas som globala
 IdP-roller i den nuvarande modellen:
 
 - **Författare / Author**: författarbehörighet styrs genom uppdrag som

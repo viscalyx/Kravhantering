@@ -61,7 +61,9 @@ Preview releases are signed by the workflow run on `refs/heads/main`; their
 later-created preview tag is signed release metadata, not the certificate
 source ref.
 
-Set the expected values from the release notes:
+Run the examples in Bash with GitHub CLI, `jq`, and `sha256sum` available.
+Download the archive and its `.sha256` file from the selected release into the
+same directory, then set the expected values from the release notes:
 
 ```bash
 VERSION=1.2.3
@@ -78,8 +80,15 @@ PREDICATE_TYPE="https://github.com/viscalyx/Kravhantering/attestations/deploymen
 ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
 ```
 
-For required connected verification, GitHub CLI retrieves the attestation
-associated with the archive digest:
+For both connected and disconnected verification, check the downloaded archive
+before continuing:
+
+```bash
+sha256sum -c "${ARCHIVE}.sha256"
+```
+
+Stop if the checksum check fails. For connected verification, GitHub CLI
+retrieves the attestation associated with the archive digest:
 
 <!-- markdownlint-disable MD013 -->
 ```bash
@@ -181,16 +190,16 @@ jq -e \
 ```
 <!-- markdownlint-enable MD013 -->
 
-This procedure uses only the approved GitHub CLI executable, the archive, its
-bundle, and trusted roots. It does not query GitHub or GHCR.
+Do not extract the archive if either verification command fails. Attestation
+verification uses the local bundle and approved trusted roots without querying
+GitHub or GHCR.
 
 ## Verify Published Image Attestations
 
 Published release assets include the complete per-image Grype JSON reports,
 `grype-db-status.json` and `vulnerability-policy-decision.json`. The decision
-binds each report and SBOM hash to the same candidate manifest digest that the
-workflow verifies first through a non-promoted remote staging identity and then
-after final GHCR tag promotion. A successful release has no unexcepted fixable
+binds each report and SBOM hash to the published candidate manifest digest.
+A successful release has no unexcepted fixable
 High or Critical finding and no invalid, expired or stale committed exception.
 
 Verify the published app image with the manifest digest reference from the
@@ -204,12 +213,6 @@ gh attestation verify \
   --signer-workflow <owner>/<repo>/.github/workflows/container-release.yml
 ```
 
-Release/demo support also publishes the HSA person lookup Adapter, directory
-mock, and one-shot mTLS provisioner with separate provenance and SPDX
-attestations. Verify their exact manifest references with the same command
-before mirroring or disconnected export. These images are not dependencies of
-the supported production topology; production deployments leave the HSA URL
-unset or supply site-owned strict material for an approved external facade.
 <!-- markdownlint-enable MD013 -->
 
 Use the corresponding `db-job` manifest digest reference from the release notes
@@ -223,15 +226,11 @@ published release tag. A stable tag is supported and monitored. A preview tag
 is monitored for early visibility but is not supported. The issue title is not
 its identity; the automation label and versioned marker are authoritative.
 
-Only already-public Debian, GitHub npm, or reviewed UBI 10 RPM advisory facts
-that pass the closed authority classification appear in these issues. RPM
-observations require matching Red Hat 10 package and version evidence and a
-canonical Red Hat CVE source; validated RHSA fix advisories can supply errata
-links. See the
+Public issues include only advisory facts that pass the
 [public classification contract](../development/trusted-container-publishing.md#trusted-input-and-public-classification).
-Use private vulnerability reporting for a newly discovered or sensitive
-vulnerability. Do not place confidential scanner observations in the public
-issue.
+They are not a complete inventory of scanner findings. Use private
+vulnerability reporting for a newly discovered or sensitive vulnerability.
+Do not place confidential scanner observations in the public issue.
 
 Interpret the lifecycle as follows:
 
@@ -251,12 +250,6 @@ Interpret the lifecycle as follows:
   A clean last-known state does not establish current safety after monitoring
   ends.
 
-The workflow validates the complete automation-owned tracker before selecting
-release assets. If tracker state is ambiguous, malformed, or incomplete, or a
-selected release intersects a trusted `monitoring-ended` identity, the run
-stops before attestation and Grype scanning. Treat that failure as a tracker
-integrity incident; do not remove lifecycle markers to force a rescan.
-
 Material changes appear in immutable reconciliation journal comments before
 the body changes. Added, Changed, and Removed sections describe changes in
 trusted public facts; removal does not by itself claim a fix. Large current
@@ -264,17 +257,10 @@ state and journals use linked continuation parts. Follow the body-linked active
 bank in order. Minimized inactive banks are retained recovery structure, not
 current state. Human comments remain separate analysis.
 
-Each root journal links the canonical workflow run and names a restricted
-artifact retained for 30 days. The public link provides provenance and
-lifecycle context only. Access to the artifact follows repository permissions,
-and its unfiltered SBOM, Grype, classification, policy, tracker, and error
-evidence must not be copied into the public issue.
-
-A failed run uses ordinary GitHub Actions status and notifications. Inspect the
-restricted artifact and the final step outcomes. The next daily run rereads the
-complete state and is the automatic recovery path; manually dispatch the same
-workflow for an earlier full retry. Do not target one release or issue, edit
-automation markers, or create a publication-triggered workaround.
+Each root journal links the workflow run that produced it. Check that run's
+status when judging how current the published state is: a failed scan does not
+establish that an image is safe. Report failed monitoring to the release
+maintainers; do not edit automation-owned lifecycle markers.
 
 ## Verify Runtime Image IDs
 
@@ -290,18 +276,6 @@ requires pull-time digest pinning.
 Production topologies use `container-stack.lock.json`. The test-only
 `single-node-demo` topology uses both `container-stack.lock.json` and
 `container-test-support.lock.json`.
-
-PR and release smoke validation installs the same production archive on Ubuntu
-24.04 and captures the generated systemd units, live containment and network
-inspection, database lifecycle, and restart/reinstall/removal evidence. This is
-an archive-parity gate, not a replacement for RHEL qualification of SELinux,
-firewalld, the supported RHEL Podman build, or persistence over a host reboot.
-Its CI-only HSA overlay drives the authenticated production App route and
-records the App-generated correlation identifier across App, Kong, Adapter,
-and exactly one mock handling event. It also records role-specific read-only
-mounts, file modes and ownership, listener reachability, the loopback-only Kong
-Admin API, CA-and-leaf rotation metadata, stale-material rejection, finalization,
-and injected-failure rollback for all three trust domains.
 
 Third-party upstream tags can move after release. Production sites should
 prefer release-specific internal mirror tags and treat the lock file as the

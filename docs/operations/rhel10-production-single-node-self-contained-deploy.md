@@ -46,23 +46,6 @@ To uninstall a first install of this topology, use
 >directory and images on the disconnected host, and tells you where to resume
 >these regular deployment steps.
 
-## Session cookie cutover
-
-Secure builds (`prod` and `local-prod`) automatically add `__Host-` to
-`AUTH_SESSION_COOKIE_NAME` unless that exact prefix is already present.
-Unset, blank, or explicit `kravhantering_session` values resolve to
-`__Host-kravhantering_session`; custom names follow the same rule. The
-login-state name appends `_login` to the effective session name. Both cookies
-remain host-only, with `Secure`, `HttpOnly`, `SameSite=Lax`, and `Path=/`.
-
-A changed effective name requires fresh login; an interrupted login must
-restart from the error page. Already-prefixed deployments keep their name.
-Legacy cookies expire naturally under the existing lifetimes and are never
-accepted or refreshed by the new application. Renaming does not revoke them:
-older instances can still accept them during a mixed-version rollout or
-rollback. Coordinate the cutover across instances and drain older instances
-together. See [cookie-name migration](../security-privacy/auth-how-it-works.md#cookie-name-migration).
-
 ## Choose the Identity Provider Profile
 
 Record exactly one choice in `/etc/kravhantering/release.env`; the template
@@ -162,10 +145,6 @@ contract with the external provider owner instead.
 | `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH`, `HSA_PERSON_LOOKUP_CLIENT_KEY_PATH` | Mandatory client identity when lookup is enabled | Blank | Set both to absolute paths on deployment-owned read-only mounts. The certificate must be valid only for this client role. |
 | `HSA_PERSON_LOOKUP_CA_PATH`, `HSA_PERSON_LOOKUP_TLS_SERVER_NAME` | Mandatory private trust root and exact server identity when lookup is enabled | Blank | Set both. The CA file must contain the single current private CA and the server name must match the approved DNS identity. |
 | `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL`, `HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL`, `HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`, `HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`, `HSA_PERSON_LOOKUP_OAUTH_SCOPE`, `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` | Optional OAuth2 client credentials values in `app.env` | Blank | Set client id, client secret and either token URL or issuer URL when the approved external integration platform requires OAuth2. Add scope or audience only when the token endpoint requires them. |
-| `KONG_IMAGE_REF` | `KONG_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose a tag-style ref from `container-hsa-integration-support.lock.json` when using the demo overlay. |
-| `HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` | `HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose the release tag for the project-owned HSA lookup adapter image when using the demo overlay. |
-| `HSA_MTLS_PROVISIONER_IMAGE_REF` | `HSA_MTLS_PROVISIONER_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose the release tag for the one-shot strict-PKI provisioner image. The provisioner exits after writing isolated bundles and never joins the supported production topology. |
-| `HSA_DIRECTORY_MOCK_IMAGE_REF` | `HSA_DIRECTORY_MOCK_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose the release tag for the project-owned HSA mock image when using the demo overlay. |
 | `DEMO_SEED_IMAGE_REF` | One-shot shell variable, not `release.env` | No production default | Test and development only; choose the optional `kravhantering-demo-seed` release tag or internal mirror only when running destructive demo seed in a disposable database. |
 | `KC_HOSTNAME` | `KC_HOSTNAME` in `keycloak.env`; bundled profiles only | `https://<APP_HOST>/auth` | Verify after choosing `APP_HOST`; plan only if Keycloak is deliberately exposed at another public URL. |
 | `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Verify from the actual Quadlet network. It can change when the internal network is recreated or assigned another subnet. |
@@ -362,13 +341,10 @@ migration plan.
 
 #### SQL Server Volume Sizing
 
-For initial planning, a Requirements Library with 10,000 requirements and one
-or two requirement versions per requirement should normally stay well below
-1 GiB for application database rows and indexes when descriptions, acceptance
-criteria and verification methods are ordinary short text. Size the filesystem
-for SQL Server operations, not only for that logical row estimate: the volume
-also holds database files, transaction logs, indexes, system databases and
-`tempdb`.
+Size the filesystem for SQL Server operations as well as application data.
+The volume holds database files, transaction logs, indexes, system databases
+and `tempdb`. Validate capacity against representative site data and expected
+growth rather than requirement counts alone.
 
 Use 10 GiB as a practical floor for the SQL Server Podman volume on a
 production host. Prefer 20-50 GiB when the site expects long version history,
@@ -518,6 +494,12 @@ sudo install -o root -g kravhantering -m 0640 \
 sudo install -o root -g kravhantering -m 0640 \
   /opt/kravhantering/current/env/sqlserver.env.template \
   /etc/kravhantering/sqlserver.env
+```
+
+For `bundled` or `hardened-bundled` only, also copy the identity templates.
+Skip this block for `external`:
+
+```bash
 sudo install -o root -g kravhantering -m 0640 \
   /opt/kravhantering/current/env/keycloak.env.template \
   /etc/kravhantering/keycloak.env
@@ -537,8 +519,9 @@ Quadlet helper.
 ## Image References
 
 Set image references in `/etc/kravhantering/release.env` to the site's
-approved runtime refs. Use tag-style `image:tag` values by default. Prefer
-release-specific internal mirror tags for third-party images.
+approved runtime refs. Record the chosen `IDENTITY_PROVIDER_MODE` in that
+file before pulling or verifying images. Use tag-style `image:tag` values by
+default. Prefer release-specific internal mirror tags for third-party images.
 
 Choose exactly one image-reference method before running commands in this
 section:
@@ -566,7 +549,7 @@ loads and verifies the disconnected image bundle:
 
 ```bash
 TOPOLOGY=single-node
-# Test/demo only: set TOPOLOGY=single-node-demo.
+# For an imported demo bundle, use TOPOLOGY=single-node-demo.
 OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
 MANIFEST="$OFFLINE_ROOT/offline-manifest.json"
@@ -594,15 +577,6 @@ update_ref DB_JOB_IMAGE_REF "$(target_ref db-job)"
 update_ref NGINX_IMAGE_REF "$(target_ref nginx)"
 update_ref SQLSERVER_IMAGE_REF "$(target_ref sqlserver)"
 update_ref KEYCLOAK_IMAGE_REF "$(target_ref keycloak)"
-if [ "$TOPOLOGY" = "single-node-demo" ]; then
-  update_ref KONG_IMAGE_REF "$(target_ref kong)"
-  update_ref HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF \
-    "$(target_ref hsa-person-lookup-adapter)"
-  update_ref HSA_MTLS_PROVISIONER_IMAGE_REF \
-    "$(target_ref hsa-mtls-provisioner)"
-  update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
-    "$(target_ref hsa-directory-mock)"
-fi
 ```
 
 ### Connected Staging Public Upstream Refs
@@ -701,7 +675,9 @@ podman pull "$APP_RUNTIME_IMAGE_REF"
 podman pull "$DB_JOB_IMAGE_REF"
 podman pull "$NGINX_IMAGE_REF"
 podman pull "$SQLSERVER_IMAGE_REF"
-podman pull "$KEYCLOAK_IMAGE_REF"
+if [ "$IDENTITY_PROVIDER_MODE" != external ]; then
+  podman pull "$KEYCLOAK_IMAGE_REF"
+fi
 
 bin/kravhantering-images.sh --topology single-node \
   --lock-file container-stack.lock.json \
@@ -718,89 +694,9 @@ pulling from a registry:
 sudo -iu kravhantering
 cd /opt/kravhantering/current
 TOPOLOGY=single-node
-# Test/demo only: set TOPOLOGY=single-node-demo.
-
-SUPPORT_LOCK_ARGS=()
-if [ "$TOPOLOGY" = "single-node-demo" ]; then
-  SUPPORT_LOCK_ARGS=(
-    --hsa-integration-lock-file container-hsa-integration-support.lock.json
-    --test-lock-file container-test-support.lock.json
-  )
-fi
 
 bin/kravhantering-images.sh --topology "$TOPOLOGY" \
   --lock-file container-stack.lock.json \
-  "${SUPPORT_LOCK_ARGS[@]}" \
-  --env-file /etc/kravhantering/release.env \
-  verify
-
-exit
-```
-
-### Optional Test Support Image Refs
-
-Use this only for a disposable `single-node-demo` release-test or demo
-environment. Do not use these refs in production.
-
-If you used [Disconnected Imported Refs](#disconnected-imported-refs) with
-`TOPOLOGY=single-node-demo`, skip this section. The import and disconnected
-verification already set and verify the support image refs from
-`offline-manifest.json`.
-
-Set Kong, adapter, and strict-PKI provisioner refs from
-`container-hsa-integration-support.lock.json`, and set the HSA directory mock
-ref from `container-test-support.lock.json` after the five production refs are
-selected:
-
-```bash
-update_ref() {
-  sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
-}
-
-HSA_LOCK_FILE=/opt/kravhantering/current/container-hsa-integration-support.lock.json
-TEST_LOCK_FILE=/opt/kravhantering/current/container-test-support.lock.json
-support_service_image() {
-  jq -r --arg name "$2" \
-    '.services[] | select(.name == $name) | .image' "$1"
-}
-support_service_tag() {
-  jq -r --arg name "$2" \
-    '.services[] | select(.name == $name) | .tag' "$1"
-}
-support_service_ref() {
-  printf '%s:%s\n' \
-    "$(support_service_image "$1" "$2")" \
-    "$(support_service_tag "$1" "$2")"
-}
-
-update_ref KONG_IMAGE_REF \
-  "$(support_service_ref "$HSA_LOCK_FILE" kong)"
-update_ref HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF \
-  "$(support_service_ref "$HSA_LOCK_FILE" hsa-person-lookup-adapter)"
-update_ref HSA_MTLS_PROVISIONER_IMAGE_REF \
-  "$(support_service_ref "$HSA_LOCK_FILE" hsa-mtls-provisioner)"
-update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
-  "$(support_service_ref "$TEST_LOCK_FILE" hsa-directory-mock)"
-```
-
-Then pull and verify both lock files together:
-
-```bash
-sudo -iu kravhantering
-cd /opt/kravhantering/current
-set -a
-. /etc/kravhantering/release.env
-set +a
-
-podman pull "$KONG_IMAGE_REF"
-podman pull "$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF"
-podman pull "$HSA_MTLS_PROVISIONER_IMAGE_REF"
-podman pull "$HSA_DIRECTORY_MOCK_IMAGE_REF"
-
-bin/kravhantering-images.sh --topology single-node-demo \
-  --lock-file container-stack.lock.json \
-  --hsa-integration-lock-file container-hsa-integration-support.lock.json \
-  --test-lock-file container-test-support.lock.json \
   --env-file /etc/kravhantering/release.env \
   verify
 
@@ -875,11 +771,8 @@ PUBLIC_HOSTNAME=kravhantering.example.internal
 The single-node application maps `PUBLIC_HOSTNAME` to Podman's host gateway.
 Its server-side OIDC requests therefore traverse the same published host port
 as browser traffic before nginx forwards the `/auth` route to Keycloak. This
-preserves the browser-facing issuer without asking the unprivileged nginx
-process to bind container port 443. Podman 4.9 does not expose Quadlet's newer
-`AddHost` key, so this narrowly scoped host mapping uses
-`PodmanArgs=--add-host`; the helper's generator preflight rejects hosts where
-that compatibility form is unavailable.
+preserves the browser-facing issuer. The helper validates host support for
+this mapping before installing units.
 
 Set `NGINX_RESOLVER` and, when Keycloak is bundled,
 `NGINX_IDENTITY_RESOLVER` to the Podman DNS resolvers
@@ -1174,14 +1067,6 @@ The exact application path `/auth/error` remains handled by the app runtime so
 failed OIDC callbacks can show the Kravhantering error page even though the
 rest of `/auth/` is proxied to Keycloak.
 
-The only values that normally need site-specific changes are:
-
-```env
-KC_HOSTNAME=https://kravhantering.example.internal/auth
-KEYCLOAK_ADMIN=<keycloak-admin-user>
-KEYCLOAK_ADMIN_PASSWORD=<keycloak-admin-password>
-```
-
 ### `/etc/kravhantering/keycloak/realm-kravhantering-production.json`
 
 This section applies only to `bundled` and `hardened-bundled`. The external
@@ -1231,8 +1116,8 @@ only administers Keycloak. The application user must have a real
       "credentials": [
         {
           "type": "password",
-          "value": "devpass",
-          "temporary": false
+          "value": "<unique-one-time-password>",
+          "temporary": true
         }
       ],
       "realmRoles": ["Reviewer", "Admin", "PrivacyOfficer"]
@@ -1244,7 +1129,8 @@ only administers Keycloak. The application user must have a real
 Use a one-time password from the deployment secret store and replace it through
 normal identity administration after first sign-in. Sites may also skip the
 `users` block and create application users through the Keycloak admin console
-at `../auth/admin/` after startup.
+through the profile's approved management access after startup. For
+`hardened-bundled`, use the management-only hostname in Appendix C.
 
 The realm must keep emitting realm roles as a multivalued `roles` claim and
 the user `hsaId` attribute as `employeeHsaId`.
@@ -1508,7 +1394,7 @@ sudo install -o root -g kravhantering -m 0640 sqlserver-server.key \
 | `/etc/kravhantering/tls/privkey.pem` | Private key for the server certificate. nginx uses it to prove that this node owns the certificate. Keep it restricted; it must not be copied into app containers, logs or support bundles. |
 | `/etc/kravhantering/tls/ca.crt` | Public CA bundle that Node.js clients trust through `NODE_EXTRA_CA_CERTS`. It lets `app-runtime` verify Keycloak through nginx and lets app/database-job clients verify SQL Server. |
 | `/etc/kravhantering/sqlserver-tls/server.crt` | SQL Server leaf certificate and any required intermediate chain. Its trusted identity is `DNS:sqlserver`. |
-| `/etc/kravhantering/sqlserver-tls/server.key` | SQL Server private key. Keep it restricted to root and the `kravhantering` group; never include it in evidence or backups. |
+| `/etc/kravhantering/sqlserver-tls/server.key` | SQL Server private key. Keep it restricted to root and the `kravhantering` group; include it only in the approved secret backup, never general evidence. |
 <!-- markdownlint-enable MD013 -->
 
 `fullchain.pem` and `privkey.pem` are mounted by nginx. SQL Server reads its
@@ -1556,6 +1442,12 @@ exit
 ```
 
 ## Start the Single-Node Stack
+
+Before installing units, configure the monitoring allow-list using
+[Readiness Probe Boundary](./readiness-probe-boundary.md). The helper requires
+`/etc/kravhantering/nginx-readiness-probes.conf` for every identity profile.
+Run readiness probes from an allowed source. Keep normal user traffic blocked
+until the verification and cleanup installation gates below pass.
 
 The single-node topology uses the direct-ingress boundary in
 [Access Logging and Client IP Trust](access-log-and-client-ip-trust.md). Its
@@ -1752,11 +1644,6 @@ app client secret in `app.env` and the realm JSON. A failure names the field or
 client without printing the supplied secret. Do not start any affected service
 after a failed preflight.
 
-The production `db-job` image still contains only migrations and required seed
-code. Demo seed files are not included in the production deployment bundle; use
-the separate optional image only for this explicit disposable-environment
-command.
-
 The production deployment bundle does not include the CI-only Quadlet smoke
 overlay. Run test-support services only through the separate CI smoke workflow;
 they are not part of the RHEL production topology.
@@ -1843,6 +1730,11 @@ systemctl --user stop kravhantering-single-node.target
 
 exit
 ```
+
+Before opening normal user traffic, complete
+[Scheduled Transient-State Cleanup](#scheduled-transient-state-cleanup) and,
+for `hardened-bundled`, the administrator and access checks in Appendix C.
+Keep ingress restricted to deployment operators until these gates pass.
 
 Check readiness:
 
@@ -2009,13 +1901,6 @@ application, request a replacement `DNS:sqlserver` certificate from the
 approved CA, install it, and repeat the verification sequence. The SQL Server
 data volume does not contain the bind-mounted certificate files; database
 restore alone does not recover them.
-
-The production smoke workflow exercises issuance, renewal, rotation, and
-recovery. It rotates to a newly issued `DNS:sqlserver` leaf, installs a leaf
-with the wrong DNS identity, requires a certificate identity error, restores
-the saved certificate and key, and proves verified database and application
-connections recover. Its lifecycle and certificate evidence files record each
-successful transition without recording private key material.
 
 ## Upgrade And Rollback
 
@@ -2695,6 +2580,12 @@ provisioning inputs. They are not acceptable steady-state credentials.
    identity and record the failed result. Search the configuration and secret
    inventory for reusable bootstrap credentials; the result must be empty.
 
+The current Quadlet helper still requires both bootstrap values during bundled
+`render`, `install`, and `verify-host`. After credential retirement, these
+commands fail preflight. Resolve that helper limitation before planning an
+upgrade or reinstall; do not restore the retired credentials to bypass it.
+Restarting an already installed service does not run that preflight.
+
 Keycloak documents startup and recovery administrators as temporary accounts
 that must be removed after permanent access exists. Follow
 [Bootstrapping and recovering an admin account](https://www.keycloak.org/server/bootstrap-admin-recovery)
@@ -2754,8 +2645,7 @@ Finally verify all intended client flows through user-facing application
 access: discovery, JWKS/signing keys, authorization and PKCE callback, login
 continuations and resources, token exchange, user-info, logout, authentication
 error handling, application sign-in and application sign-out. `/api/ready`
-must remain ready. The production smoke performs the public denial, upstream
-selection, mTLS management console/API and browser login/logout checks.
+must remain ready.
 
 ### Upgrade, Rollback, Backup and Recovery
 
@@ -2818,16 +2708,9 @@ do not attempt an in-place repair without preserving recoverable evidence.
 
 ## Scheduled Transient-State Cleanup
 
-The single-node topology installs the same bounded cleanup timer as both
-app-node topologies. Follow
-[Release-Independent Transient-State Cleanup](transient-state-cleanup.md) for activation,
-monitoring, manual retry and troubleshooting.
-
-## Independent Cleanup Installation Gate
-
 Install the host cleanup service with its separate image configuration and
 verified release compatibility contract before opening normal traffic. Follow
 [Release-Independent Transient-State Cleanup](transient-state-cleanup.md)
 for the runtime identity, topology network, TLS, first successful run and active
-schedule requirements. Application target activation alone does not install or
-start this host service.
+schedule requirements, monitoring and troubleshooting. Application target
+activation alone does not install or start this host service.

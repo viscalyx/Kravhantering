@@ -2,9 +2,9 @@
 
 ## Purpose
 
-This guide explains how the in-project MCP server is structured, how it maps to
-the shared requirements service, and how to extend it without fragmenting the
-tool surface.
+This guide is for contributors changing the MCP transport, tools, resources,
+or shared requirements service. It explains where to implement changes, which
+contracts to preserve, and how to verify them.
 
 For end-user setup and client examples, see
 [mcp-server-user-guide.md](./mcp-server-user-guide.md).
@@ -29,12 +29,11 @@ For admin-managed default column settings, see
 ## File Map
 
 - `app/api/mcp/route.ts`
-  Server entrypoint that builds the DB handle via
-  `getRequestSqlServerDataSource()` and forwards the request into the MCP
-  transport handler.
+  Checks whether MCP is enabled and its configuration is valid, then passes
+  the request and database factory to the transport handler.
 - `lib/mcp/http.ts`
-  Creates a fresh `WebStandardStreamableHTTPServerTransport` for each request
-  and connects the server instance.
+  Verifies the Bearer token before acquiring the database, checks request
+  size, and connects a fresh server and transport for each request.
 - `lib/mcp/server.ts`
   Registers the seventeen tools, the JSON resource, and the HTML UI resource.
 - `lib/dal/ui-settings.ts`
@@ -43,8 +42,11 @@ For admin-managed default column settings, see
   Provide static UI labels for the app, CSV export, and MCP human-readable
   output.
 - `lib/requirements/service.ts`
-  Shared application service used by both MCP and REST routes. Holds lookup,
-  detail, mutation, transition, logging, and auth hook logic.
+  Shared application service used by both MCP and REST routes. Composes the
+  `service-*` workflows for requirements, specifications, suggestions, and
+  reference management.
+- `lib/requirements/import-service.ts`
+  Import validation, session ownership, admission budgets, and execution.
 - `lib/requirements/errors.ts`
   Typed domain errors and error-code-to-HTTP-status mapping.
 - `lib/requirements/logging.ts`
@@ -64,8 +66,10 @@ For admin-managed default column settings, see
 
 ## Request Flow
 
-1. `app/api/mcp/route.ts` receives the HTTP request.
-2. `lib/mcp/http.ts` creates a logger, service, MCP server, and fresh transport.
+1. `app/api/mcp/route.ts` checks enablement and authentication configuration.
+2. `lib/mcp/http.ts` verifies the Bearer token, acquires the database, loads
+   transport settings, and enforces the POST payload limit. It then creates
+   the service, MCP server, and fresh transport.
 3. `lib/mcp/server.ts` validates tool input with Zod and delegates to the
    shared service.
 4. `lib/requirements/service.ts` enforces authorization hooks, logs the
@@ -135,7 +139,6 @@ schema is the mandatory contract for generated import JSON.
 - **Inputs:** none
 - **Output:** the JSON Schema object directly in `structuredContent`
 - **Text content:** short status text that points to `structuredContent`
-- **Grouping:** import contracts
 
 ### `requirements_get_import_instruction`
 
@@ -153,7 +156,6 @@ or replace the JSON Schema.
 - **Output:** Markdown in `structuredContent.importInstruction`
 - **Text content:** short status text that points to
   `structuredContent.importInstruction`
-- **Grouping:** import contracts
 
 The returned requirement-package reference data is shared with REST and
 built-in AI-assisted authoring. Keep it limited to stable ID, package name, and
@@ -161,8 +163,6 @@ purpose and scope; never add package-lead names, HSA IDs, email addresses, or
 other structured person identifiers. The MCP registry intentionally contains
 no server-hosted AI generation tool. External MCP-client provider egress is
 client-owned and is not protected by the app's AI request privacy minimum.
-Provider and model admission allowlisting remains tracked by
-[the separate allowlisting work](https://github.com/viscalyx/Kravhantering/issues/194).
 
 ### `requirements_manage_norm_reference`
 
@@ -429,7 +429,6 @@ Exactly one identifier must be provided.
   optional), `locale` (`en` | `sv`), `responseFormat` (`json` | `markdown`)
 - **Output:** list of suggestions with content, lifecycle state, resolution,
   and audit timestamps
-- **Grouping:** improvement suggestions
 
 ### `requirements_manage_improvement_suggestion`
 
@@ -443,7 +442,17 @@ Creates, edits, deletes, transitions, or resolves an improvement suggestion.
   `resolutionMotivation`, `resolvedBy`, `implementingRequirementVersionId`,
   `locale`, `responseFormat`
 - **Output:** confirmation message and updated suggestion data
-- **Grouping:** improvement suggestions
+
+### Suggestion implementation contract
+
+The suggestion service owns `attach_implementation` and optional
+`implementingRequirementVersionId` on `resolve`. Both mutations validate
+requirement ownership and commit evidence with the Action log atomically.
+Lists authorize the implementing version independently before projecting its
+identity and current status. The REST detail route uses the same projection.
+A recorded timestamp with a null version means unavailable evidence; no
+version-number fallback is permitted. Keep the MCP schemas, REST contract,
+tests, and report template aligned.
 
 ## Resource Design
 
@@ -471,8 +480,8 @@ does not support MCP Apps.
 
 ## Shared Service Responsibilities
 
-`lib/requirements/service.ts` is the business boundary. Add behavior here
-before adding transport-specific logic.
+`lib/requirements/service.ts` is the shared business boundary. Add behavior
+through its workflows before adding transport-specific logic.
 
 It owns:
 
@@ -536,21 +545,6 @@ settings fail closed without cached or default substitution. Admission failures
 create no session, and execution failures roll back without a receipt or rows.
 SQL lock timeouts and deadlock victims also fail closed; callers can retry.
 
-The design choices for issue #995 are:
-
-- **Lazy database reads (selected):** remove the unconditional HTTP read and
-  resolve only where import functionality needs the budget. Transactional
-  rechecks close the race between validation work and session admission.
-- **Cache with local and cross-node invalidation:** local refresh is
-  insufficient. Reliable invalidation would require every process to
-  acknowledge a reduction before PATCH success, or a database version check
-  at admission. The latter still reads the database; the former adds a
-  distributed coordination dependency without a useful benefit here.
-- **Bounded staleness:** a positive TTL alone can accept rows above a newly
-  lowered ceiling. It is safe only with an authoritative admission check or
-  a cached lower bound guaranteed never to exceed any future setting. An
-  ordinary cached value has no such guarantee, so enforcement uses no TTL.
-
 `requirements.manage_import.budget_resolution` logs operation, phase,
 request ID, `source: database`, outcome and read duration. Successful reads
 include
@@ -560,11 +554,6 @@ and the affected operation. These events contain no payload, token, raw
 settings-read error or principal data. Correlate by request ID and the log
 collector's process/node labels. Repeated failures indicate database/settings
 health; stale events indicate a concurrent administrator change.
-
-Focused HTTP, service and DAL tests cover discovery independence, both limit
-reductions, independent consumers with stale metadata, admission rechecks,
-execution rejection and read failures. The SQL integration quota suite checks
-transactional admission and concurrent admin updates against SQL Server.
 
 ## Lifecycle Normalization
 
@@ -612,9 +601,12 @@ Supported codes:
 
 - `not_found`
 - `validation`
+- `invalid_cursor`
 - `conflict`
 - `unauthorized`
 - `forbidden`
+- `service_unavailable`
+- `import_capacity_busy`
 - `internal`
 
 Rules:
@@ -623,10 +615,11 @@ Rules:
   failures.
 - MCP tool handlers should catch and return tool-level failures with
   `isError: true`.
-- Validation, conflict, authorization, and not-found domain errors may expose
-  their user-facing message.
-- Unexpected errors and `internal` domain errors must return only
-  `Error: An internal error occurred`.
+- Keep public messages restricted to `READABLE_MCP_ERROR_CODES` in
+  `lib/mcp/server.ts`. Cursor errors explain how to restart pagination;
+  `import_capacity_busy` includes the five-second retry delay.
+- Unexpected errors, `internal`, and `service_unavailable` domain errors return
+  only `Error: An internal error occurred`.
 - Authorization denial evidence is required and fail-closed. If its action-log
   write fails, keep the protected work blocked, emit the redacted
   `auth.authorization.denied.audit_failed` security event, and throw an
@@ -712,7 +705,10 @@ If a tool needs extra arguments:
 1. Extend the Zod schema in `lib/mcp/server.ts`.
 2. Update the corresponding `to*Input(...)` adapter.
 3. Extend the shared service input type.
-4. Update tests and documentation.
+4. Update the tool description, field descriptions, and output schema so
+   clients can discover prerequisites and exact fields to copy between calls.
+5. Update `tests/unit/mcp-http.test.ts` and both MCP guides. When adding,
+   renaming, or removing a tool, update both guides' tool inventories.
 
 Prefer expanding an existing tool when the behavior is closely related. For
 example, lookups were intentionally folded into `requirements_query_catalog`
@@ -786,34 +782,19 @@ for the full setup.
 - Start the DB service with `npm run db:up` and prepare it with
   `npm run db:setup`.
 - Start the app with `npm run dev`.
-- The MCP endpoint will be available at `http://localhost:3000/api/mcp`.
+- Configure the optional MCP service client and obtain a short-lived access
+  token using the
+  [authentication developer workflow](../development/auth-developer-workflow.md#optional-mcp-service-token-endpoint).
+  A non-empty `MCP_CLIENT_ID` and valid MCP authentication configuration are
+  required; otherwise the endpoint is disabled (`404`) or rejects requests.
+- Connect to `http://localhost:3000/api/mcp` with
+  `Authorization: Bearer <access-token>`. A browser login cookie does not
+  authenticate MCP calls.
 - Because the server is inside the app, local debugging usually means watching:
   - the Next.js dev server output
   - Visual Studio Code MCP output
   - browser or chat traces from the MCP client
 
-## Deployment Notes
-
-- The server is meant to be deployed with the web app in the same Next.js
-  container runtime.
-- The current repository targets a dev-first workflow now and an
-  OpenShift-compatible container deployment later.
-- The current implementation is stateless and creates a fresh transport per
-  request.
-- Public deployments must keep `/api/mcp` behind HTTPS and the configured IdP
-  Bearer-token validation.
-
 ## Related Docs
 
 - [mcp-server-user-guide.md](./mcp-server-user-guide.md)
-
-### Suggestion implementation contract
-
-The suggestion service owns `attach_implementation` and optional
-`implementingRequirementVersionId` on `resolve`. Both mutations validate
-requirement ownership and commit evidence with the Action log atomically.
-Lists authorize the implementing version independently before projecting its
-identity and current status. The REST detail route uses the same projection.
-A recorded timestamp with a null version means unavailable evidence; no
-version-number fallback is permitted. Keep the MCP schemas, REST contract,
-SQL tests, browser case COL-04a, and report template aligned.

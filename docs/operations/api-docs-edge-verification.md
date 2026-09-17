@@ -24,8 +24,9 @@ fails deployment or upgrade verification.
 
 ## Run the Verification
 
-The procedure requires Bash, `awk`, `curl` and `mktemp`. Set
-`API_DOCS_ORIGIN` to the final public HTTPS origin and run the block:
+The procedure requires Bash 4 or newer, `awk`, `curl` and `mktemp`. Set
+`API_DOCS_ORIGIN` to the final public HTTPS origin without a trailing slash,
+then run the block in Bash:
 
 ```bash
 set -euo pipefail
@@ -109,8 +110,7 @@ check_api_docs_response \
   /api-docs/edge-verification-not-found 404 not-found
 
 redirect_location="$(
-  awk 'BEGIN { IGNORECASE=1 }
-       $1 == "location:" {
+  awk 'tolower($1) == "location:" {
          sub(/^[^:]*:[[:space:]]*/, "")
          sub(/\r$/, "")
          print

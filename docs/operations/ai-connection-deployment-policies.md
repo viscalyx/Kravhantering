@@ -50,11 +50,9 @@ via Admin Center lägga till en ny AI-tjänst eller tillåta en ny typ av
 databehandling. Det kan jämföras med att administratören väljer en dörr, medan
 driften bestämmer vilka dörrar som över huvud taget får låsas upp.
 
-Det är separationen som är viktig, inte just en `.env`-fil. Den inbyggda
-lösningen använder miljövariabler, men en annan driftkontrollerad och
-skrivskyddad konfigurationskälla kan också användas. Om en regel saknas
-blockeras AI-anropet. En vanlig databastabell som applikationen själv kan ändra
-ger däremot inte samma oberoende skydd.
+Den inbyggda lösningen läser dessa regler från miljövariabler. Begränsa
+behörigheten att ändra dem till driften. Om en regel saknas blockeras
+AI-anropet.
 
 ## Steg för steg: från beslut till aktiv körprofil
 
@@ -263,8 +261,9 @@ AI-anslutningen. Ange:
 - den autentiseringstyp som leverantören och organisationen har godkänt.
 
 Spara anslutningen. Registrera och godkänn sedan attesten från steg 8.
-Leverantörshemligheten registreras genom den separata, skrivskyddade
-hemlighetshanteringen i Admin Center och ska inte ligga i miljöfilen.
+Leverantörshemligheten registreras genom den separata hemlighetshanteringen
+i Admin Center. Den kan skrivas in men inte läsas tillbaka och ska inte ligga
+i miljöfilen.
 
 Resultat efter steget: Admin Center refererar till exakt de policyobjekt som
 driften har driftsatt.
@@ -515,10 +514,6 @@ administrationstransporten utför HTTPS-anrop. En driftsättning som verkligen
 behöver WebSocket måste därför ha en uttryckligen verifierad adapter- och
 transportimplementation; anta inte att ett sparat `wss`-värde räcker.
 
-Den tekniska auktoriteten för dessa regler är
-[AI-anslutningens tillitsgräns](../../lib/ai/connection-trust.ts) och
-[ADR 0052](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
-
 ## TLS-policy
 
 ### TLS-variabelns funktion
@@ -560,10 +555,6 @@ AI_CONNECTION_TLS_POLICIES_JSON={"internal_ca":"deployment_private_ca"}
 Använd privat CA endast när den driftsatta runtime-kompositionen uttryckligen
 har kompletterats med den godkända CA-kedjan och transporten. Det går inte att
 ladda upp CA-material eller stänga av certifikatverifiering i Admin Center.
-
-Den tekniska auktoriteten är
-[inläsningen av driftsättningspolicyn](../../lib/ai/admin-external.ts) och
-[TLS-kontraktet](../../lib/ai/connection-trust.ts).
 
 ## Datapolicy per anropstyp
 
@@ -611,10 +602,6 @@ Sätt därför `requireTrainingProhibited` till `true` och
 `maximumRetentionDays` till `0` för samtliga tre anropstyper. En attest som
 tillåter träning eller lagring över noll blockeras även om miljöpolicyn
 skulle ange svagare krav.
-
-Detta minimum fastställs i
-[ADR 0053](../adr/0053-integritetsminimum-for-ai-anrop.md) och verkställs i
-[datapolicykontrollen](../../lib/ai/connection-trust.ts).
 
 ### Komplett exempel för alla tre anropstyper
 
@@ -787,29 +774,15 @@ fälttabellerna och genomför den funktionella verifieringen nedan.
 
 ## Funktionell verifiering
 
-Genomför verifieringen i en säker test- eller stagingmiljö innan produktion.
+Genomför [steg 10–13](#steg-10-driftsätt-samma-värden-på-alla-appnoder) i en
+säker test- eller stagingmiljö innan produktion. Håll
+`AI_REQUIREMENT_GENERATION_DISABLED=1` under verifieringen.
 
-1. Håll `AI_REQUIREMENT_GENERATION_DISABLED=1`.
-2. Säkerställ att samma miljövariabler finns på varje appnod.
-3. Starta om appnoderna och kontrollera att app-runtime startar utan
-   konfigurationsfel.
-4. Öppna `Administrationscenter > Inställningar > AI`.
-5. Registrera eller redigera AI-anslutningen med exakt anslutningsadress,
-   egress-policynyckel och TLS-policynyckel.
-6. Registrera den fullständiga attesten och kontrollera att den är godkänd och
-   aktuell.
-7. Registrera leverantörshemligheten genom Admin Center. Lägg den aldrig i
-   någon av de tre JSON-variablerna.
-8. Kör den sammanhållna modellverifieringen och spara exakt avsedd
-   modellrevision.
-9. Aktivera anslutningen.
-10. Välj revisionen direkt på varje avsedd stabil körprofil.
-11. Kontrollera att profilens enda huvudstatus blir `Aktiv`, inte `Blockerad`,
-    `Pausad` eller `Ej konfigurerad`.
-12. Kontrollera brandväggs- eller proxylogg utan att logga prompt, bild,
-    modellsvar eller leverantörshemlighet.
-13. Genomför driftsättningens ordinarie bevis- och releasegrind innan den
-    globala AI-spärren släpps.
+Kontrollera även brandväggs- eller proxylogg så att destinationen motsvarar
+det granskade underlaget. Logga inte prompt, bild, modellsvar eller
+leverantörshemlighet. Den fullständiga
+[driftsättningsgrinden](./ai-connections.md#pre-deployment-gate) avgör vilka
+bevis som behövs innan spärren släpps.
 
 En godkänd JSON-syntax är inte ett godkänt säkerhetsbeslut. Det funktionella
 provet ersätter inte heller avtals-, dataskydds-, nätverks- eller
@@ -865,26 +838,11 @@ leverantörer som uppfyller nollagring och stöder de begärda parametrarna, sam
 att kontots inställningar tillåter dessa leverantörer. En katalogpost bevisar
 inte att den kombinationen är tillgänglig.
 
-Adaptern använder `max_completion_tokens` för tokengränsen i både verifiering
-och ordinarie körning. Det äldre `max_tokens` kan utesluta leverantörer som
-bara annonserar den aktuella parametern när strikt parameterstöd krävs.
-Uppdatera appen och verifiera igen om den använder den äldre parametern.
 Kraven på resonemang, nollagring och förbjuden datainsamling gäller även vid
 verifiering. Senare förmågor och körprofiler förblir oprövade tills den
 grundläggande modellåtkomsten fungerar.
 
 ### Övriga fel
-
-Om AI-analys verifieras men resonemangsaktivitet inte kan avgöras kommer
-resultaten från olika prov. Ett enkelt prov som bara begär ett färdigt
-JSON-objekt kan ge noll resonemangstoken även med hög resonemangsnivå.
-Resonemangsproven och körprofilernas kombinerade prov innehåller därför en
-fast räkneuppgift. Uppdatera appen om den använder de enklare proven och kör
-verifieringen igen med samma modell.
-
-Modellen måste lämna sitt beräknade resultat i JSON-fältet `answer`. Appen
-kontrollerar resultatet lokalt utan att skicka facit till leverantören.
-Ett korrekt resultat ersätter inte kravet på observerade resonemangsbevis.
 
 Koderna `reasoning_activity_not_observed` och
 `reasoning_control_not_observed` betyder att provet gav giltig JSON men saknade
@@ -960,15 +918,7 @@ ska utredas.
       verifierad och konfigurerad.
 - [ ] Den globala AI-spärren släpps endast efter godkänd driftsättningsgrind.
 
-## Teknisk auktoritet och vidare läsning
+## Vidare läsning
 
-Den här guiden förklarar den nuvarande implementationen. Följande primära
-källor är auktoritativa om kontraktet ändras:
-
-- [AI-anslutningens tillitsgräns och policytyper](../../lib/ai/connection-trust.ts)
-- [Inläsning av miljövariabler och TLS-komposition](../../lib/ai/admin-external.ts)
-- [Fasta anropstyper](../../lib/ai/run-contracts.ts)
-- [ADR 0051: AI-integrationslager med körprofiler och adaptrar](../adr/0051-ai-integrationslager-med-korprofiler-och-adaptrar.md)
-- [ADR 0052: Tillitsgräns och krypterade AI-leverantörshemligheter](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md)
-- [ADR 0053: Integritetsminimum för AI-anrop](../adr/0053-integritetsminimum-for-ai-anrop.md)
-- [AI Connections Operations](./ai-connections.md)
+[AI Connections Operations](./ai-connections.md) beskriver den fullständiga
+driftsättningsgrinden, hemlighetshantering, övervakning och återställning.

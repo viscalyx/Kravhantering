@@ -10,8 +10,10 @@ trusted proxy resolution, and readiness authorization are separate controls.
 
 ## Access-log contract
 
-The bundled Nginx logs the connection address, timestamp, method, normalized
-URI path, protocol, status, response size, user agent, and upstream address.
+The bundled Nginx logs the resolved client address, HTTP authentication user
+field, timestamp, method, normalized URI path, protocol, status, response size,
+user agent, and upstream address. Access records go to standard output and the
+Quadlet container journal.
 It does not log query strings, referrers, raw `Forwarded` or
 `X-Forwarded-*` values, or the private canonical client-address header.
 
@@ -37,7 +39,9 @@ Use `app-node-http` only behind a TLS-terminating load balancer or reverse
 proxy. Restrict the host bind and firewall to approved proxy networks. The
 topology fails before rendering unless `NGINX_TRUSTED_PROXY_CONFIG_FILE` names
 an existing readable file that is not a symbolic link and has at least one
-explicit CIDR.
+explicit CIDR. The file must be owned by root and must not be writable by
+group or other users. Its parent directories must not be writable by the
+service account.
 
 Create the file as root. Use one directive per trusted network:
 
@@ -69,7 +73,6 @@ trusted edge and selects the last address not covered by a configured trusted
 network. It replaces the forwarded chain and sends the result to the
 application as one `X-Kravhantering-Client-IP` value. The application ignores
 raw forwarding headers and rejects lists or malformed canonical values.
-Nginx also discards the raw RFC `Forwarded` header before proxying.
 
 ## Verification
 
@@ -86,9 +89,9 @@ a prepended address. A failed check blocks rollout.
 
 ## Existing sensitive access logs
 
-Access records created before this contract may contain OIDC callback
-parameters, other query data, referrer query data, or attacker-controlled
-forwarding values. Treat those records as sensitive security material:
+If retained access records contain OIDC callback parameters, other query data,
+referrer query data, or attacker-controlled forwarding values, treat those
+records as sensitive security material:
 
 1. Stop routine export and broad access to the affected log interval.
 2. Identify every journal, aggregate, backup, support bundle, and SIEM copy.

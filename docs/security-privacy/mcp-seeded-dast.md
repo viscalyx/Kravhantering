@@ -1,5 +1,8 @@
 # MCP Seeded HTTP Security Gate
 
+This guide is for developers running, diagnosing, or extending the MCP
+security gate in [Security MCP](../../.github/workflows/security-mcp.yml).
+
 The repo-owned MCP seeded HTTP gate runs against the same prodlike localhost
 stack as the REST API security workflow and exercises the real `/api/mcp`
 Streamable HTTP endpoint with a local Keycloak service-account Bearer token.
@@ -12,66 +15,48 @@ signal comes from a known request corpus and explicit assertions.
 
 Covered by this workflow:
 
-- Missing and invalid Bearer tokens return `401` with `WWW-Authenticate:
-  Bearer` and a JSON-RPC error body.
+- Missing and invalid Bearer tokens return `401` with
+  `WWW-Authenticate: Bearer`. The missing-token check also verifies a
+  JSON-RPC error body.
 - A valid local `kravhantering-mcp` token can connect to `/api/mcp`.
 - The server exposes exactly the documented MCP tool allowlist.
 - The seeded corpus exercises read, requirement mutation, transition,
-  specification add/remove, suggestion mutation, and AI-assisted authoring
-  surfaces.
+  specification add/remove, suggestion mutation, reference listing, and
+  import schema, instruction, destination, validation, and inspection surfaces.
 - Disposable test data is used for create, edit, stale edit, transition,
   archive, and suggestion checks.
-- OpenRouter env vars are unset for the scan; AI-assisted authoring must
-  return the sanitized MCP error instead of succeeding.
 
-Out of scope for this workflow:
-
-- HAR generation, production targets, production secrets, role-matrix DAST,
-  active scanning, ZAP API scans, new MCP tools, schema changes, UI changes,
-  RBAC rollout, and live OpenRouter provider calls.
-- Closing issue `#119`. This work creates more seeded MCP coverage for that
-  later work.
-
-Nuclei still owns the unauthenticated `/api/mcp` exposure check. The MCP
-unit/property tests remain the primary protocol and authorization seam
-contract.
-
-Persisted import-session security is verified below the seeded HTTP corpus:
-unit tests cover keyed principal normalization, same-public-response ownership
-failures, stable quota issue codes, diagnostic redaction and authorization
-inside the execute transaction; SQL integration tests race two concurrent
-creations independently against the principal, fixed-window, destination and
-reserved-storage boundaries. Migration tests require legacy-session deletion
-before both upgrade and rollback. Keep these seams when extending the corpus;
-never place bearer tokens or stored import content in security artifacts.
+The corpus does not establish full coverage of every operation on the tool
+allowlist. In particular, import execution, import-session ownership and quota
+races, and a full role matrix need separate tests. Nuclei owns the
+unauthenticated `/api/mcp` exposure check; MCP unit/property tests cover
+protocol and authorization contracts.
 
 ## OpenRouter Policy
 
-Security CI deliberately does not call live OpenRouter endpoints. OpenRouter is
-an external provider, and repo-owned security gates should not depend on its
-availability, paid account state, rate limits, or production-like secrets.
-
-The repository verifies its side of the contract instead:
-
-- Unit tests cover request construction, response parsing, timeout behavior,
-  and OpenRouter error handling with mocked network calls.
-- MCP unit and seeded HTTP tests cover the MCP tool boundary and sanitized error
-  behavior.
-- The seeded HTTP scan runs with OpenRouter env vars unset; AI-assisted
-  authoring must fail safely and must not leak provider keys, prompts, SQL
-  fragments, or stack traces.
+Security CI deliberately does not call live OpenRouter endpoints. The workflow
+clears `OPENROUTER_API_KEY` and `OPENROUTER_MGMT_API_KEY` for the app and scan.
+The current MCP corpus does not call an AI authoring tool or assert an
+AI-disabled error. Keep provider tests mocked rather than adding external
+provider dependencies or secrets to this gate.
 
 ## Local Run
 
-Start from a disposable SQL Server database and local Keycloak realm:
+Use the existing local SQL Server and Keycloak services with a disposable,
+migrated and seeded database. Follow the
+[SQL Server developer workflow](../development/sql-server-developer-workflow.md)
+for database configuration and the
+[authentication developer workflow](../development/auth-developer-workflow.md)
+for the committed local realm. The scan creates and changes data; do not target
+a database whose contents must be preserved. Do not overwrite an existing
+`.env.sqlserver` with CI settings or reset a shared development realm.
+
+Ensure the app's database connection points to that disposable database, then
+build and launch it from the repository root:
 
 ```bash
-cp .env.sqlserver.ci .env.sqlserver
-npm run db:up
-npm run db:setup
-npm run idp:up
 npm run build:local-prod
-npm run start:prodlike-pruned
+OPENROUTER_API_KEY= OPENROUTER_MGMT_API_KEY= npm run start:prodlike-pruned
 ```
 
 The launcher stages the standalone runtime assets and binds the server to
@@ -86,10 +71,14 @@ MCP_BEARER_TOKEN="$(MCP_CLIENT_ID=kravhantering-mcp \
 PLAYWRIGHT_BASE_URL=http://localhost:3001 \
 PLAYWRIGHT_SKIP_WEBSERVER=1 \
 PLAYWRIGHT_SKIP_AUTH_SETUP=1 \
-npm run test:integration:prodlike -- tests/integration/mcp/seeded-scan.spec.ts
+npm run test:integration:prodlike -- \
+  --config=playwright.security-mcp.config.ts \
+  tests/integration/mcp/seeded-scan.spec.ts
 ```
 
-The helper defaults match the committed dev realm:
+The local configuration below matches the committed dev realm. The token
+helper requires `MCP_CLIENT_ID` and `AUTH_MCP_REQUIRED_SCOPES`; the command
+above supplies them. The other values shown are helper defaults:
 
 ```text
 AUTH_OIDC_ISSUER_URL=http://localhost:8080/realms/kravhantering-dev
@@ -103,17 +92,17 @@ MCP_CLIENT_SECRET=dev-only-mcp-secret
 These are local development values only. Do not replace them with production
 client credentials.
 
-The committed dev and container-test realms emit local `Admin` and `Reviewer`
-roles as a JSON-array `roles` claim for the `kravhantering-mcp` service token.
+The committed dev realm emits local `Admin` and `Reviewer` roles as a JSON-array
+`roles` claim for the `kravhantering-mcp` service token.
 Those local-only roles let the corpus exercise requirement writes,
 specification add/remove, and reviewer transitions through the same production
 authorization checks without depending on assignment-specific seed rows.
 
 In GitHub Actions, the workflow sets
 `AUTH_OIDC_ISSUER_URL=http://127.0.0.1:8080/realms/kravhantering-dev` for this
-machine-to-machine scan and relies on `npm run idp:reset` to wait for both
-discovery and JWKS before starting the MCP corpus. Local browser-oriented
-prodlike runs can keep the default `localhost` issuer.
+machine-to-machine scan. Its stack action starts Keycloak with
+`npm run idp:reset` and waits for discovery and JWKS before starting the corpus.
+Local browser-oriented prodlike runs can keep the default `localhost` issuer.
 
 ## Artifacts
 
@@ -124,7 +113,9 @@ The workflow uploads:
 - `security-mcp-app-log` with the local prodlike app log.
 
 The scan and workflow must not write Bearer tokens, JWTs, client secrets,
-OpenRouter keys, SQL fragments, or stack traces to artifacts.
+OpenRouter keys, stored import content, SQL fragments, or stack traces to
+artifacts. Check the job outcome as well as `summary.md`: the separate import
+validation inspection test runs after the main corpus writes its summary.
 
 ## Failure Policy
 
@@ -132,16 +123,15 @@ The workflow fails after artifact upload when any of these happen:
 
 - Target is not exactly `http://localhost:3001`.
 - The MCP token cannot be acquired.
-- Missing or invalid Bearer token checks return 2xx.
-- The tool allowlist differs from the documented 17 tools.
+- Missing or invalid Bearer token checks fail their expected `401` response.
+- The tool allowlist differs from `expected-tools.json` (currently 17 tools).
 - A positive seeded call returns MCP `isError`, transport failure, or
   unexpected 5xx.
 - A mutation fails to preserve the expected safety behavior.
 - Output contains sensitive values or internal error details.
-- AI-assisted authoring succeeds while OpenRouter env vars are unset.
 
 Allowed expected negatives are limited to missing or invalid Bearer tokens,
-unknown tool, stale edit conflict, and sanitized AI-disabled error.
+unknown tool and stale edit conflict.
 
 ## Extending The Corpus
 
@@ -155,4 +145,4 @@ When adding a case:
 - Keep the scan target localhost-only.
 - Do not add production secrets or external service tokens.
 - Keep OpenRouter calls disabled in security scans. Add mocked unit coverage
-  for client or prompt changes instead of calling the live provider from CI.
+  for provider client or prompt changes.

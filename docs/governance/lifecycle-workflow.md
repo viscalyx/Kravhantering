@@ -1,9 +1,11 @@
 # Lifecycle Workflows
 
+This guide is for requirement authors, reviewers and specification owners
+who need to choose valid lifecycle actions and understand their effects.
+
 ## Requirement Version Lifecycle
 
-Requirement versions follow a controlled lifecycle
-enforced by `requirement_status_transitions`:
+Requirement versions follow a controlled lifecycle:
 
 ```mermaid
 stateDiagram-v2
@@ -14,27 +16,18 @@ stateDiagram-v2
     Published --> Review : Initiate archiving
     Review --> Archived : Approve archiving
     Review --> Published : Cancel archiving
-    Published --> Draft : New version created
-    Archived --> Draft : Restore
+    Published --> Archived : Replacement version published
     Archived --> [*]
 ```
 
-- **Draft:** Initial state. The requirement is being
-  authored or revised. Saving an edit requires the latest version's
-  `id` as `baseVersionId` and opaque `revisionToken` as
-  `baseRevisionToken`; stale draft saves are rejected instead of
-  overwriting newer content.
-- **Review:** The requirement is under review. This state
-  is used both for publishing review (Draft → Review) and
-  archiving review (Published → Review). The system
-  distinguishes the two contexts via the
-  `archive_initiated_at` flag on the version row.
-- **Published:** The requirement is approved and active.
-  `published_at` is set. When a new version is published,
-  the previously published version is automatically
-  archived with `archived_at` set to the same timestamp.
-- **Archived:** The requirement is retired or superseded.
-  `archived_at` is set.
+- **Draft:** Initial state. The requirement is being authored or revised.
+  Stale saves are rejected instead of overwriting another author's changes.
+- **Review:** The requirement is under review for either publication or
+  archiving. These contexts have different actions and labels; see
+  [UI status labels](#ui-status-labels).
+- **Published:** The requirement is approved and available for use. Publishing
+  a replacement automatically archives the previous Published version.
+- **Archived:** The requirement version is retired or superseded.
 
 When a published requirement needs changes, a **new
 version** is created in Draft status while the previous
@@ -59,18 +52,19 @@ Published requirements. Requirement-library package filtering is a
 search context instead: archived package-linked requirements can be
 shown there when the user includes Archived in the status filter.
 
-If an archived version is restored, it always starts at
-Draft regardless of the Published status it had prior to
-being archived, and must go through the full
-Review → Published cycle again.
+Restoring a previous version creates a **new Draft version** from its
+content and associations. The source version remains unchanged. The new
+version must go through the full Review → Published cycle. Creating a
+replacement or restoring a version is therefore not a status transition
+of the source version in the diagram above.
 
 ### Recovering Concurrent Edits
 
 When a save conflicts with another author's update, the editor keeps the
 starting content and unsaved form values. **Compare with latest** fetches
-current content through the authorized requirement-detail interface without
-replacing the form. The comparison shows starting, local and server values
-for changed fields, including taxonomy and association selections.
+current content without replacing the form. The comparison shows starting,
+local and server values for changed fields, including taxonomy and
+association selections.
 
 Independent changes carry into a proposed result. Competing changes require
 an explicit choice; identical changes do not. Norm-reference and
@@ -79,8 +73,8 @@ choice, not a union. Dependent type/quality-characteristic and
 verifiable/verification-method values stay together when changes compete.
 
 After resolving conflicts, review and edit the result in the ordinary form.
-Saving uses the version ID and revision token of the compared snapshot. If
-another update intervenes, compare again with the working result preserved.
+Saving checks that the compared version has not changed again. If another
+update intervenes, compare again with the working result preserved.
 Cancelling comparison and unsuccessful fetch/save attempts preserve local
 work. Leaving through the editor's actions, global navigation or browser history
 requires an explicit discard confirmation when there are unsaved changes.
@@ -93,31 +87,7 @@ open editor; it is not persisted across browser restarts.
 
 ### Deleting Drafts
 
-The latest Draft version can be deleted before it becomes an
-established business-history version. The delete-draft result is the
-same deletion ledger for REST and MCP: `deleted` is an ordered array
-with the `draftRequirementVersion` entry first, including its
-`requirementUniqueId` and numeric `versionNumber`. If no versions
-remain and the parent requirement row is deleted, the array includes a
-second `requirement` entry for the same `requirementUniqueId`.
-
-```json
-{
-  "deleted": [
-    {
-      "type": "draftRequirementVersion",
-      "requirementUniqueId": "BEH0024",
-      "versionNumber": 10
-    },
-    {
-      "type": "requirement",
-      "requirementUniqueId": "BEH0024"
-    }
-  ]
-}
-```
-
-When the parent requirement remains, the `requirement` item is omitted.
+Only the latest version can be deleted, and only while it is a Draft.
 
 Deleted draft version numbers may be reused by a later draft for the
 same requirement. If the deleted draft was the only version, the
@@ -128,99 +98,44 @@ requirement itself is deleted instead of being archived.
 Archiving a published requirement is a two-step review
 process — it cannot be archived directly:
 
-1. **Initiate archiving** (`initiateArchiving`) — moves
-   the published version from Published to Review and
-   sets `archive_initiated_at`. This is blocked if the
-   requirement already has a newer Draft or Review version.
-2. **Approve archiving** (`approveArchiving`) — moves the
-   version from Review to Archived, sets `archived_at`,
-   clears `archive_initiated_at`, and marks
-   `requirements.is_archived = true`. This operates **only
-   on the single version that has `archive_initiated_at`
-   set** (the formerly-published version). A newer Draft
-   or Review version that may exist for the same
-   requirement is never the target and can never be
-   archived through this flow.
-3. **Cancel archiving** (`cancelArchiving`) — returns the
-   version to Published, clears `archive_initiated_at`.
-   The original `published_at` is preserved. Like
-   `approveArchiving`, this targets only the version with
-   `archive_initiated_at` set; a newer Draft or Review
-   version is never affected.
+1. **Initiate archiving** — moves the Published version to archiving Review.
+   This is blocked if the requirement already has a newer Draft or Review
+   version.
+2. **Approve archiving** — archives the version under archiving review and
+   marks the requirement as archived.
 
-All three operations run inside a single `SERIALIZABLE`
-transaction with locked precondition reads and conditional
-writes, so concurrent archiving attempts on the same
-requirement are serialized: at most one succeeds and the
-others fail with a conflict error. SQL Server filtered
-unique indexes additionally enforce that a requirement can
-have at most one version with `archive_initiated_at` set and
-at most one Published version, so manual or legacy data
-cannot create ambiguous archiving or publishing targets.
-
-While a version is in archiving review (status = Review
-*and* `archive_initiated_at` is set), the UI surfaces a
-distinct status badge label —
-**"Arkiveringsgranskning" / "Archiving Review"** — to
-disambiguate it from publication review. The DB row is
-unchanged (`requirement_status_id` is still 2 and
-`requirement_statuses.name_sv` is still "Granskning"); the
-override is presentation-only and lives in
-[`lib/requirements/status-label.ts`](../../lib/requirements/status-label.ts).
-See [UI status labels](#ui-status-labels) below.
+Alternatively, **Cancel archiving** returns that version to Published and
+preserves its original publication date. Approval and cancellation affect
+only the version under archiving review, never a newer Draft or Review.
 
 See [version-lifecycle-dates.md](../reference/version-lifecycle-dates.md) for
 detailed timestamp rules.
 
 ## UI status labels
 
-The status badge in the requirements list, the version
-history sidebar, and other UI surfaces derives its label
-from an effective requirement status combined with
-`requirement_versions.archive_initiated_at` (relevant for
-Review only). For the requirements list view the effective
-requirement status is computed server-side by the list SQL builder in
-[`lib/dal/requirements-list-sql.mjs`](../../lib/dal/requirements-list-sql.mjs),
-using the shared status constants from
-[`lib/requirements/status-constants.mjs`](../../lib/requirements/status-constants.mjs).
-The query consolidates each requirement's
-`requirement_versions.requirement_status_id` rows into a
-single effective requirement status; for the version history sidebar each row's
-own `requirement_status_id` is used directly. In both cases
-the displayed row's `archive_initiated_at` is what
-distinguishes "Granskning" from "Arkiveringsgranskning":
+The requirements list shows an effective requirement status across its
+versions; version history shows each version's own status. A requirement
+can therefore have a Published version in use while a replacement is Draft
+or under publication review.
+
+The labels distinguish publication review from archiving review:
 
 <!-- markdownlint-disable MD013 -->
 
-| UI label (sv / en) | `requirement_status_id` | Extra predicate | DB `requirement_statuses.name_sv` / `name_en` |
-| --- | --- | --- | --- |
-| Utkast / Draft | 1 (`STATUS_DRAFT`) | — | Utkast / Draft |
-| Granskning / Review | 2 (`STATUS_REVIEW`) | `archive_initiated_at IS NULL` | Granskning / Review |
-| Arkiveringsgranskning / Archiving Review | 2 (`STATUS_REVIEW`) | `archive_initiated_at IS NOT NULL` | Granskning / Review (UI overrides label only) |
-| Publicerad / Published | 3 (`STATUS_PUBLISHED`) | — | Publicerad / Published |
-| Arkiverad / Archived | 4 (`STATUS_ARCHIVED`) | — | Arkiverad / Archived |
+| Swedish | English | Meaning |
+| --- | --- | --- |
+| Utkast | Draft | Content is being authored or revised. |
+| Granskning | Review | Publication review; publish or return to Draft. |
+| Arkiveringsgranskning | Archiving Review | Archiving review; approve or cancel archiving. |
+| Publicerad | Published | Approved and available for use. |
+| Arkiverad | Archived | Retired or superseded version. |
 
 <!-- markdownlint-enable MD013 -->
 
-"Arkiveringsgranskning" is a **presentation-only override**:
-the DB row still stores `requirement_status_id = 2` and
-`requirement_statuses.name_sv = 'Granskning'`, and API/MCP
-responses still return `status: 2`,
-`statusNameSv: 'Granskning'`, plus the raw
-`archiveInitiatedAt` field. The override happens in
-[`lib/requirements/status-label.ts`](../../lib/requirements/status-label.ts)
-(consumed by `RequirementsTable` and `VersionHistory`) and is
-mirrored by the `isArchiving` prop on `StatusStepper`, which
-re-labels the middle chevron in the archiving variant
-(Publicerad → Granskning → Arkiverad) to
-"Arkiveringsgranskning" / "Archiving Review". The badge and
-chevron color stay yellow because the underlying status is
-still Review.
-
 ## Improvement Suggestion Lifecycle
 
-Improvement suggestions (change proposals, comments) linked to
-a requirement follow a separate lifecycle:
+Improvement suggestions linked to a library requirement follow a separate
+lifecycle:
 
 ```mermaid
 stateDiagram-v2
@@ -233,24 +148,29 @@ stateDiagram-v2
     Dismissed --> [*]
 ```
 
-- **Draft:** Initial state. The suggestion can be edited or
-  deleted. `review_requested_at` is null.
-- **Review Requested:** Submitted for assessment.
-  `review_requested_at` is set. Can be reverted to draft.
+- **Draft:** Initial state. The suggestion can be edited or deleted.
+- **Review Requested:** Submitted for assessment. Can be reverted to Draft.
 - **Resolved:** The suggestion has been addressed.
-  `resolution` = 1, `resolved_at` and `resolved_by` are
-  set.
-- **Dismissed:** The suggestion was evaluated but not acted
-  on. `resolution` = 2, `resolved_at` and `resolved_by`
-  are set.
+- **Dismissed:** The suggestion was evaluated but not acted on.
+
+Resolved and Dismissed are terminal outcomes and require a resolution
+motivation. A resolved suggestion may link to the requirement version that
+implements it, either when resolving it or once afterwards. The version
+must belong to the same requirement; recording that evidence does not
+publish the version or reopen the suggestion.
 
 ## Deviation Lifecycle
 
-Deviations are linked to requirement applications
-(`requirements_specification_items`). They record a request to
-deviate from a requirement within a specific specification. A
-single requirement application can have multiple deviations over
-time.
+Deviations record a request to deviate from specific requirement content
+within a requirements specification. They can belong to a library
+requirement application or a specification-local requirement.
+A single item can have multiple deviations over time, but only one
+undecided request at a time, including drafts and renewal requests.
+
+With agreements, select the current or upcoming agreement containing the
+reviewed content. Historical content cannot receive new requests or
+review decisions. A confirmed upcoming agreement that replaces or removes
+current content also blocks new requests against that current content.
 
 ```mermaid
 stateDiagram-v2
@@ -259,22 +179,47 @@ stateDiagram-v2
     ReviewRequested --> Draft : Revert to draft
     ReviewRequested --> Approved : Approve
     ReviewRequested --> Rejected : Reject
+    Draft --> Cancelled : Cancel with reason
+    ReviewRequested --> Cancelled : Cancel with reason
     Approved --> [*]
     Rejected --> [*]
+    Cancelled --> [*]
 ```
 
-- **Draft:** Initial state. The deviation can be edited
-  or deleted. `is_review_requested` = 0, `decision` is
-  null.
-- **Review Requested:** Submitted for decision.
-  `is_review_requested` = 1. Can be reverted to draft.
+- **Draft:** Initial state. The deviation can be edited.
+- **Review Requested:** Submitted for decision. Can be reverted to Draft.
 - **Approved:** The deviation has been accepted.
-  `decision` = 1, `decided_at` and `decided_by` are set.
 - **Rejected:** The deviation has been denied.
-  `decision` = 2, `decided_at` and `decided_by` are set.
+- **Cancelled:** An undecided request is withdrawn with a reason.
+  Cancellation preserves the request's history; deletion is rejected even
+  for drafts.
 
-Approved and Rejected are terminal states — a decided
-deviation cannot be edited, deleted, or reopened.
+Approved, Rejected and Cancelled are terminal request outcomes. A recorded
+decision cannot be edited or reopened. Approval or rejection requires a
+decision motivation.
+
+### Approval Validity, Renewal and Ending
+
+An approval can include conditions and an optional last valid date.
+The date is inclusive in Stockholm time and cannot be
+before the decision day. An **applicable approved deviation** is an approval
+that has not expired, been superseded or ended for the reviewed content.
+The original approved decision remains historical evidence after its
+permission ends.
+
+To continue permission, create a renewal referring to the latest approval
+of the same content. The renewal follows Draft → Review Requested →
+Approved or Rejected. A new approval supersedes the previous approval in
+all agreements sharing that content; a pending or rejected renewal does
+not extend its validity. After an approval has been explicitly closed,
+create a new request instead of renewing the closed approval.
+
+An applicable approval may be explicitly closed with a reason after any
+pending renewal is cancelled. Replacing or removing approved content can
+require an authorized ending, including a planned ending when a successor
+agreement takes effect. Agreement ending can also end permission.
+Unchanged content can share an approval across agreements; approval does
+not transfer automatically to changed content.
 
 ### Deviation Effect on Usage Status
 
@@ -282,36 +227,36 @@ Approving a deviation does **not** automatically change
 the usage status. To mark the item as deviated,
 the user must manually set the usage status to
 "Deviated" (see below). This is only allowed when at
-least one approved deviation exists for the item.
+least one applicable approved deviation exists for the item.
 
 ## Usage Status
 
 When a requirement is included in a requirements specification
 it becomes a **requirement application** with a manually managed
-usage status. There is no enforced state machine — users can
-set any usage status at any time, with one exception.
+usage status. There is no required sequence between usage statuses.
+Authorized users can change status for current content; historical content
+and content belonging only to an upcoming agreement cannot receive usage
+follow-up. The Deviated status has an additional approval guard.
 
 <!-- markdownlint-disable MD013 -->
-| ID | Swedish | English | Color | Description |
-| -- | -------------- | -------------- | ------- | ------------------------------------------- |
-| 1 | Inkluderad | Included | #94a3b8 | Default. No work started. |
-| 2 | Pågående | In Progress | #f59e0b | Implementation underway. |
-| 3 | Implementerad | Implemented | #3b82f6 | Requirement implemented. |
-| 4 | Verifierad | Verified | #22c55e | Verified and tested. |
-| 5 | Avviken | Deviated | #ef4444 | Approved deviation exists. |
-| 6 | Ej tillämpbar | Not Applicable | #6b7280 | Not applicable in this context. |
+| Swedish | English | Description |
+| --- | --- | --- |
+| Inkluderad | Included | Default. No work started. |
+| Pågående | In Progress | Implementation underway. |
+| Implementerad | Implemented | Requirement implemented. |
+| Verifierad | Verified | Verified and tested. |
+| Avviken | Deviated | Requires an applicable approved deviation when selected. |
+| Ej tillämpbar | Not Applicable | Not applicable in this context. |
 <!-- markdownlint-enable MD013 -->
 
-- Every new requirement application starts with usage status **Included**
-  (1).
-- Status changes are recorded with a `status_updated_at`
-  timestamp.
+- Every new requirement application starts with usage status **Included**.
+- Status changes are timestamped.
 - The usage status is required for every requirement application. It can change
-  among real usage statuses but cannot be cleared to no status through
-  UI, API, DAL, or database workflows.
-- **Guard rule:** The **Deviated** (5) status can only be
-  set when the requirement application has at least one approved
-  deviation. The system rejects the update otherwise.
+  among these statuses but cannot be cleared.
+- **Guard rule:** The **Deviated** status can only be
+  set when the requirement application has an applicable approved
+  deviation. An expired, superseded or ended approval is insufficient.
+  The system rejects the update otherwise.
 - Creating or approving a deviation does **not**
   automatically update the usage status.
 
@@ -328,12 +273,11 @@ requirements specification:
    Draft → Review Requested → Approved or Rejected.
 4. If approved, the user may set the usage status
    to **Deviated**. The system validates that an approved
-   deviation exists before allowing this.
+   deviation remains applicable before allowing this.
 5. If rejected, the usage status remains
    unchanged and the user may register a new deviation.
 6. A requirement application can accumulate multiple deviations for
    historical tracking.
-7. Deviations are cascade-deleted when the requirement application
-   is removed from the specification.
-
----
+7. Removing an application preserves its deviation history. Cancel
+   undecided requests first, and handle applicable approvals through the
+   authorized ending workflow. Removal also requires usage status Included.

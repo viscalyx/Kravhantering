@@ -5,13 +5,12 @@
 <!-- cSpell:ignore UseKeychain HostName authorized_keys prodlike worktree -->
 <!-- cSpell:ignore ed25519 macos your-admin-user -->
 <!-- cSpell:ignore onepassword SSH_AUTH_SOCK ECONNREFUSED -->
-<!-- cSpell:ignore onepassword restorecon sshconfig libcrypto journalctl -->
+<!-- cSpell:ignore onepassword restorecon sshconfig journalctl -->
 
 This guide describes how to develop on the RHEL 10 server from VS Code
 Remote-SSH and run the app with `npm run dev`.
 
-It assumes the server has already been prepared using the prod-like Podman
-setup:
+It assumes a development server has already been prepared with Podman:
 
 - the dedicated `kravhantering` user exists and runs rootless Podman
 - Node.js 24 and npm are installed
@@ -69,8 +68,8 @@ ssh-add -l
 `ssh-add ~/.ssh/kravhantering_rhel10` with the 1Password agent; the
 private key should be generated in or imported into 1Password instead.
 
-The private key stays in 1Password. The `.pub` file is stored under
-`~/.ssh` only so it can be copied to the RHEL server.
+The private key stays in 1Password. The `.pub` file is used to install the
+key on RHEL and select it in your SSH configuration.
 
 ### Option B: file-based OpenSSH key
 
@@ -159,6 +158,8 @@ For the 1Password SSH agent workflow:
 Host krav-rhel
     HostName server.example.com
     User kravhantering
+    IdentityFile ~/.ssh/kravhantering_rhel10.pub
+    IdentitiesOnly yes
     ServerAliveInterval 30
 ```
 
@@ -194,24 +195,17 @@ chmod 600 ~/.ssh/config
 chmod 600 ~/.ssh/kravhantering_rhel10.pub
 ```
 
->[!NOTE]
->The public key file can be `600` or `644` in the 1Password workflow
->because it is only copied to the server. If you experiment with adding it
->as `IdentityFile`, some OpenSSH builds report
->`WARNING: UNPROTECTED PRIVATE KEY FILE!` when it is `644`, while other
->builds report `error in libcrypto: unsupported` because they try to parse
->the `.pub` file as a private key. Avoid `IdentityFile` for the 1Password
->host entry unless your SSH client explicitly supports that pattern.
-
 For the file-based OpenSSH workflow, also run:
 
 ```sh
 chmod 600 ~/.ssh/kravhantering_rhel10
 ```
 
-If the server rejects the login after trying too many keys, configure the
-1Password SSH agent to expose this host's key before other keys, or reduce
-the keys made available to the agent for this machine.
+The 1Password host entry selects the matching key from the agent using
+the public `IdentityFile` and `IdentitiesOnly yes`, preventing attempts
+with unrelated keys. See
+[1Password's host key selection guidance](https://www.1password.dev/ssh/agent/advanced#match-key-with-host)
+if your SSH client does not support public-key identity files.
 
 Test the connection from macOS:
 
@@ -297,6 +291,17 @@ touch .env.development.local
 Provider credentials do not belong in this file. Write them through Admin
 Center so the application stores encrypted provider-secret revisions.
 
+Configure database credentials for this server before running database
+commands. The application and database scripts load the development env
+files; they do not load `.env.sqlserver`, which supplies Compose settings.
+The defaults use separate runtime (`DB_USER` / `DB_PASSWORD`), migration
+(`DB_MIGRATION_USER` / `DB_MIGRATION_PASSWORD`), and bootstrap admin
+(`DB_BOOTSTRAP_ADMIN_USER` / `DB_BOOTSTRAP_ADMIN_PASSWORD`) credentials.
+Override them in `.env.development.local` when the server differs from the
+committed defaults. See the
+[SQL Server developer workflow](./sql-server-developer-workflow.md)
+for principal setup and connection settings.
+
 If you reuse the prod-like Keycloak instance behind the RHEL reverse
 proxy, override the issuer URL so it matches the issuer returned by
 Keycloak discovery:
@@ -316,8 +321,9 @@ Do not commit `.env.development.local`.
 
 ## Start SQL Server and Keycloak
 
-If the prod-like guide configured Quadlet user services for SQL Server
-and Keycloak, reuse those services:
+If the host has Quadlet user services for SQL Server and Keycloak, reuse
+those services. The names below are examples; substitute the installed
+development service names:
 
 ```sh
 systemctl --user status kravhantering-db.service
@@ -360,7 +366,9 @@ when you intentionally want to reset the database, run migrations, seed
 data, and recreate the read-only login. If this RHEL server is also used
 as a stable prod-like environment, remember that `npm run dev` can write
 to the same SQL Server database as the prod-like app. Use a separate
-database, volume, or checkout if you need to keep prod-like state intact.
+database and configure its connection settings, or a separate SQL Server
+instance with its own volume and port, to keep prod-like state intact.
+A separate checkout alone does not isolate database state.
 
 The npm scripts `db:up`, `db:down`, `idp:up`, and `idp:down` call
 `docker compose`. `idp:up` waits for Keycloak's OIDC discovery and JWKS
@@ -368,15 +376,17 @@ endpoints before returning. On this RHEL setup, prefer the direct
 `podman compose` commands above unless `podman-docker` is installed and
 intentionally provides the `docker` shim.
 
-## Stop the prod-like app before `npm run dev`
+## Keep the prod-like checkout separate
 
-The prod-like app service runs `npm run start:prodlike` on port `3001`.
+An app started with `npm run start:prodlike` runs on port `3001`.
 The dev server runs `npm run dev` on port `3000`.
 
-Even though the ports differ, avoid running both from the same checkout
-at the same time because they share the `.next` build output directory.
-If the prod-like app service is running from `~/Kravhantering`, stop it
-before starting the dev server:
+Next.js keeps dev output in `.next/dev`, while the prod-like runtime uses
+`.next/standalone`. A separate checkout is still useful when the prod-like
+app must stay available: dependency installs, builds, and `npm run clean`
+can alter files in the shared checkout. If your host has a prod-like
+service using `~/Kravhantering`, stop that service before such work. For
+example, if its installed name is `kravhantering-app.service`:
 
 ```sh
 systemctl --user stop kravhantering-app.service
@@ -467,37 +477,23 @@ sudo grep -n . /home/kravhantering/.ssh/authorized_keys
 Run the `sudo grep` command on the RHEL server from an admin session or
 console. The key type and base64 key body must match exactly.
 
-If SSH fails before authentication with
-`kex_exchange_identification: read: Connection reset by peer`, the
-connection reached port `22` but was reset before key authentication.
-That normally points at `sshd`, host firewall/security policy, connection
-limits, or a network device rather than the public key itself.
-
-From macOS, capture verbose client output and check whether the admin
-account fails the same way:
-
-```sh
-ssh -vvv krav-rhel
-ssh your-admin-user@server.example.com
-```
-
-On the RHEL server, use the admin account or console access to check
-`sshd` and the host firewall:
+If SSH fails with
+`kex_exchange_identification: read: Connection reset by peer`, collect
+`ssh -vvv krav-rhel` output and ask the host administrator to inspect the
+SSH service logs. From an admin session or console on RHEL:
 
 ```sh
 sudo systemctl status sshd --no-pager
 sudo journalctl -u sshd -n 100 --no-pager
-sudo ss -ltnp '( sport = :22 )'
-sudo firewall-cmd --list-all
 ```
 
-If the admin account also resets, focus on `sshd`, firewall, connection
-limits such as `MaxStartups`, or upstream network rules. If the admin
-account works but `kravhantering` resets, check `sshd_config` user
-allow/deny rules and the server-side SSH logs for that login attempt.
+A reset before key authentication needs investigation of the host or
+network; reinstalling the public key does not diagnose it.
 
-If the app fails with `ECONNREFUSED 127.0.0.1:8080`, Keycloak is not
-running on the remote server or port `8080` is not forwarded to macOS.
+If the remote app logs `ECONNREFUSED 127.0.0.1:8080`, check that Keycloak
+is running and reachable on the RHEL server. If the browser on macOS
+cannot open the login page at `localhost:8080`, check the VS Code port
+forward instead.
 
 If login fails with `redirect_uri_mismatch`, keep local port `3000` for
 the app and verify that `http://localhost:3000/api/auth/callback` is
@@ -506,10 +502,13 @@ registered on the Keycloak client. When using the
 
 If login fails with `discovered metadata issuer does not match the
 expected issuer`, compare `AUTH_OIDC_ISSUER_URL` with the `issuer` value
-returned by Keycloak discovery:
+returned by Keycloak discovery. Set the shell variable to the same value
+as your app configuration first; `.env.development.local` is not loaded
+automatically by the shell:
 
 ```sh
-curl -s \
+AUTH_OIDC_ISSUER_URL='http://localhost:8080/realms/kravhantering-dev'
+curl --fail --silent --show-error \
   "$AUTH_OIDC_ISSUER_URL/.well-known/openid-configuration" \
   | grep '"issuer"'
 ```
@@ -527,8 +526,11 @@ npm run db:wait
 npm run db:health
 ```
 
-Then verify that `.env.development.local` uses the same
-`MSSQL_SA_PASSWORD` as `.env.sqlserver`.
+Then verify the configured host, port, database, and runtime/migration
+credentials in `.env.development.local`. For database setup, the bootstrap
+admin password must match the SQL Server administrator password. Changing
+only `MSSQL_SA_PASSWORD` does not override the explicit `DB_*` credentials
+in `.env.development`.
 
 If a command says `docker: command not found`, use the `podman compose`
 commands in this guide, or install `podman-docker` intentionally as part

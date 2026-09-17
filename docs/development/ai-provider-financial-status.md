@@ -1,5 +1,8 @@
 # AI provider financial status
 
+Use this contract when implementing financial support in an AI adapter or
+maintaining its Admin Center integration.
+
 Financial administration is optional on `AiAdminConnectionAdapter.financial`.
 Existing adapters without it remain fully usable. This contract complements
 the adapter and secret boundaries in
@@ -28,6 +31,9 @@ limit is `unlimited`, and an unimplemented field is `unsupported`. None of
 these becomes zero. Free-form provider labels, identifiers, errors and raw
 responses must not enter this contract. The trusted secret boundary validates
 the normalized snapshot, scope and declared fields before returning it.
+Use decimal strings for available amounts and `null` for all other states;
+the exact schemas are in
+[`financial-contracts.ts`](../../lib/ai/financial-contracts.ts).
 
 The secret service supplies only the purpose declared for that operation.
 It decrypts inside the trusted provider call and exposes no plaintext-returning
@@ -62,19 +68,11 @@ completion request, provider key mutation or background polling is performed.
 ## Refresh and access
 
 Entering the settings page fetches each supported scope independently for
-each connection. Both collapsed and expanded connections show two compact
-total/remaining summaries before lifecycle and operational health, with a
-refresh button. The organization summary shows purchased account credits and
-the remaining balance, or a provider-reported organization limit and remaining
-allowance. The key summary shows its configured spending limit and remaining
-allowance for the same period. A tooltip explains that these totals are
-credits or limits; consumption remains in the details. Unlimited and missing
-values keep their explicit states. The entire connection row toggles its
-details, except the independent refresh button.
-Opening connection details initially shows only the
-financial section heading; its button expands the values and credential
-controls. Toggling either section reuses the same in-memory report. Manual
-refresh in either view updates both views without background polling.
+each connection. Summaries and details share the same in-memory report;
+opening details does not fetch again. Manual refresh updates both views
+without background polling. Keep purchased credits distinct from configured
+spending limits, and pair each limit with the remaining allowance for the
+same period. Unlimited and missing values keep their explicit states.
 Results distinguish missing credentials, invalid credentials,
 unsupported data and temporary errors. The successful-fetch timestamp is set
 only after a validated provider response. Values are provider-reported

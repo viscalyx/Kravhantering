@@ -2,9 +2,9 @@
 
 <!-- cSpell:words readlink resolv -->
 
-This guide describes how to upgrade and roll back the enterprise RHEL 10
+This guide is for operators upgrading and rolling back the enterprise RHEL 10
 production topology from released artifacts, with external SQL Server and an
-external IdP.
+external IdP. It also covers production credential rotation.
 
 For a first install, use
 [rhel10-production-deploy.md](./rhel10-production-deploy.md). For the
@@ -114,15 +114,21 @@ place.
    when a site explicitly requires pull-time digest pinning.
 
 2. Confirm a tested SQL Server backup or restore point.
-   Complete the DBA-approved restore procedure before the window begins and
-   record the backup or restore-point identifier. Do not continue unless the
+   Confirm that the DBA-approved restore procedure has been tested before the
+   window begins and record the backup or restore-point identifier. Do not
+   continue unless the
    restore point covers the database state before any target-release migration
-   runs.
+   runs. Retain the eligible previous release bundle, locked images and a
+   restricted backup of the current site configuration, including
+   `/etc/kravhantering/release.env`, for rollback.
 
 3. Drain or disable traffic to all app nodes.
    Use the site's load balancer, reverse proxy or firewall procedure so no new
-   browser traffic reaches the app nodes. Keep administrative access to the
-   hosts available for the remaining steps.
+   browser, API or MCP traffic reaches the app nodes. Keep administrative
+   access to the hosts available for the remaining steps. Pause scheduled and
+   in-flight cleanup as described in
+   [Release-Independent Transient-State Cleanup](transient-state-cleanup.md)
+   before any migration or restore.
 
 4. Stop `nginx` and `app-runtime` on every app node by stopping the current
    Quadlet target:
@@ -254,6 +260,10 @@ place.
    paths, rewrite only the registry host while keeping the locked tags:
 
    ```bash
+   update_ref() {
+     sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
+   }
+
    TARGET_IMAGE_REGISTRY=registry.example.internal
    LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
    service_image() {
@@ -323,7 +333,9 @@ place.
    Use the DBA-pre-provisioned `db-job.env` values. Do not run
    `db-job bootstrap` during a normal upgrade, and do not run `seed:demo` or
    the optional `kravhantering-demo-seed` image in production. Review the target
-   release's Operator Upgrade Notes before running `db-job migrate`.
+   release's Operator Upgrade Notes before running `db-job migrate`. Run the
+   commands in order and stop if any command fails; keep traffic drained and
+   use the rollback boundary below before starting any app node.
 
    The migration sequence applies the explicit runtime manifest and verifies
    the custom membership and grants. If a managed runtime user belongs to
@@ -341,6 +353,7 @@ place.
    set -a
    . /etc/kravhantering/release.env
    set +a
+   VERSION="$(basename "$(readlink -f /opt/kravhantering/current)")"
    EVIDENCE_DIR="/var/tmp/kravhantering-upgrade-${VERSION}-evidence"
    mkdir -p "$EVIDENCE_DIR"
 
@@ -509,10 +522,9 @@ place.
       https://kravhantering.example.internal/api/health
     ```
 
-    The Quadlet networks retain the established
-    `kravhantering-app-node_edge` and `kravhantering-app-node_egress` names.
-
-11. Re-enable traffic.
+11. Resume the retained cleanup manager using the
+    [cleanup handoff procedure](transient-state-cleanup.md). Require a
+    successful run and an active timer, then re-enable traffic.
     Put the app nodes back into the load balancer, reverse proxy or firewall
     rotation only after the readiness probes and read-only workflow succeed.
     Add the final bundle checksum, image refs, restore-point reference and
@@ -534,8 +546,8 @@ place.
 Set `AI_REQUIREMENT_GENERATION_DISABLED=1` in the restored app configuration
 before starting either release. Rollback may suspend an affected connection or
 profile, or select a still-usable verified model revision on the stable profile.
-The direct OpenRouter route does not exist. When a database restore is required,
-restore its matching external root-key versions before any AI verification and
+When a database restore is required, restore its matching external root-key
+versions before any AI verification and
 repeat the deployment evidence gate before releasing the guard.
 
 Choose the rollback boundary that matches the failed step:
@@ -550,8 +562,8 @@ release.
 - Before the current Quadlet target is stopped, no runtime migration has
   occurred. Leave the current release active and end the change window.
 - After the previous deployment is stopped but before database migration,
-  remove the new Quadlet units and start the eligible previous release without a
-  database restore.
+  install the eligible previous release's Quadlet topology and start it
+  without a database restore. Preserve the retained cleanup manager.
 - After any target-release database migration starts, restore the tested
   pre-upgrade database restore point before starting the eligible previous release.
   Do not run individual migration down paths. Restore schema, data,
@@ -559,7 +571,8 @@ release.
 
 For either rollback that follows a failed Quadlet start:
 
-1. Disable traffic and stop the new target on every app node.
+1. Disable traffic, pause scheduled and in-flight cleanup, and stop the new
+   target on every app node.
 
    ```bash
    sudo -iu kravhantering
@@ -600,7 +613,9 @@ For either rollback that follows a failed Quadlet start:
    exit
    ```
 
-6. Verify `/api/health`, `/api/ready` and sign-in before enabling traffic.
+6. Verify `/api/health`, `/api/ready` and sign-in. Resume the retained cleanup
+   manager and require a successful run and an active timer before enabling
+   traffic.
 
 Do not rely on app-only image rollback after schema migration unless the
 specific release notes explicitly say it is supported.
@@ -613,13 +628,10 @@ events before restoring traffic.
 
 ### MCP validation-session ownership migration
 
-The migration that adds principal ownership and atomic quotas is intentionally
-fail closed. Its upgrade deletes every existing
-`requirement_import_validation_sessions` row before adding the creator
-fingerprint and reservation columns; its rollback also deletes all sessions
-before removing them. Existing validation tokens cannot survive either
-direction. The migration also adds the short-lived creation-rate table and four
-`ai_settings` quota columns.
+If the target release applies the MCP validation-session ownership migration
+(`0056`), it invalidates all existing validation tokens. Tell MCP users to run
+`validate` again after the upgrade. Treat validation tokens as transient after
+a database restore as well.
 
 Keep all app nodes drained and stopped while the database job runs. Mixed old
 and new app versions are unsupported because the old version performs
@@ -712,7 +724,9 @@ must sign in again after the app runtime restarts.
      https://kravhantering.example.internal/api/ready
    ```
 
-   Then complete a browser login and logout against the public URL. If MCP
+   Then complete a browser login and logout against the public URL. When the
+   session-cookie password changes, tell MCP clients to revalidate their
+   import sessions. If MCP
    service-client credentials changed, obtain a new service token and call a
    read-only `/api/mcp/*` path with `Authorization: Bearer <jwt>`.
 

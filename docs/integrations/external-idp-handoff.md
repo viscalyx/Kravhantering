@@ -31,13 +31,15 @@ cutover to an environment with the external IdP.
 - **Issuer and discovery**: record the issuer URL and the matching OIDC
   discovery URL ending in `/.well-known/openid-configuration`.
 - **Web client**: register a confidential OIDC web client, normally
-  `kravhantering-app`, and record its `client_id` and `client_secret`.
+  `kravhantering-app`, with Authorization Code, PKCE `S256`, and token-endpoint
+  authentication `client_secret_post`. Record its `client_id` and
+  `client_secret`; allow the requested scopes (default `openid profile email`).
 - **Redirect URIs**: register
   `https://<app-host>/api/auth/callback` for every environment.
 - **Post-logout URIs**: register `https://<app-host>/` for every environment
   if the provider requires pre-registration.
 - **Required ID-token claims**: confirm `sub`, `given_name`, `family_name`,
-  and `employeeHsaId`.
+  and `employeeHsaId` as non-empty strings; verify the HSA-id format below.
 - **Display claims**: confirm optional `name`, `preferred_username`, `email`
   and `email_verified` claims when available.
 - **Roles claim**: emit the canonical application roles `Reviewer`, `Admin`
@@ -45,7 +47,8 @@ cutover to an environment with the external IdP.
 - **Role shape**: use a JSON array of exact strings, for example
   `"roles": ["Reviewer"]`.
 - **Initial app admin**: provision at least one real application user with a
-  real `employeeHsaId` and the launch roles required by the site.
+  valid `employeeHsaId`, both required name claims, and the `Admin` role.
+  Assign additional launch roles only as approved by the site.
 - **MFA and assurance**: record MFA requirements and whether the provider emits
   `acr` or `amr` claims.
 - **Token lifetimes**: record ID-token and access-token lifetimes plus the
@@ -83,8 +86,10 @@ Please confirm or provide the following information.
 2. **Browser web client**
 
    Please register a confidential web client, normally `kravhantering-app`,
-   for Authorization Code with PKCE. Provide the `client_id`,
-   `client_secret`, and any provider-specific setup notes.
+   for Authorization Code with PKCE `S256` and token-endpoint authentication
+   `client_secret_post`. Allow the configured scopes (default
+   `openid profile email`). Provide the `client_id`, `client_secret`, and any
+   provider-specific setup notes.
 
 3. **Redirect and logout URLs**
 
@@ -107,7 +112,11 @@ Please confirm or provide the following information.
 
    `employeeHsaId` is the person-stable identity key the application uses for
    assignment-based permissions. Please confirm the source catalog attribute
-   and that the value is stable for the same person over time.
+   and that the value is stable for the same person over time. All four claims
+   must be non-empty strings. The HSA-id must match
+   `^[A-Z]{2}\d{10}-[A-Za-z0-9]{1,18}$`: two uppercase country-code letters,
+   ten organisation-number digits, a hyphen, and 1–18 alphanumeric characters
+   (maximum 31 characters overall). Whitespace is not accepted.
 
 5. **Display claims**
 
@@ -137,14 +146,16 @@ Please confirm or provide the following information.
 7. **Initial application administrator**
 
    Please provision at least one real application user for launch. The user
-   must have a real `employeeHsaId` and the launch roles approved by the site.
-   This is separate from any IdP platform administrator account.
+   must have a valid `employeeHsaId`, `given_name`, `family_name`, and the
+   `Admin` role. Assign `Reviewer` or `PrivacyOfficer` only when those
+   additional duties are approved. This is separate from any IdP platform
+   administrator account.
 
 8. **MFA and assurance**
 
    Which MFA methods and assurance levels are required for this application?
-   Can the provider emit `acr` or `amr` claims so the application can inspect
-   authentication strength later if needed?
+   Enforce those requirements at the IdP: the application does not enforce
+   `acr` or `amr` assurance levels. Record any emitted assurance claims.
 
 9. **Token lifetime and clock skew**
 
@@ -167,8 +178,7 @@ Please confirm or provide the following information.
 
     After the claim mapping is complete, please provide redacted or test-user
     examples of an ID token and access token from a non-production
-    environment. We use these to verify local test configuration and parser
-    behavior against the provider payload shape.
+    environment so we can confirm the agreed claims and token format.
 
 13. **Optional MCP service-token client**
 
@@ -177,12 +187,15 @@ Please confirm or provide the following information.
     `grant_type=client_credentials`. The access token must be a signed JWT
     that the application can validate through the provider `jwks_uri`. It must
     use protected-header `typ: at+jwt`; match the configured issuer, audience,
-    and top-level `client_id`; include numeric `exp` and `iat`, non-empty `sub`,
-    and real-format `employeeHsaId`; and have a current age and declared
+    and top-level `client_id` (also `azp` when present); include numeric `exp`
+    and `iat`, non-empty `sub`, and real-format `employeeHsaId`; and have a
+    current age and declared
     lifetime no greater than `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` (for example,
-    `300` seconds). Emit `kravhantering:mcp` in the standard top-level
-    space-separated `scope` claim and canonical roles as a JSON array in the
-    agreed MCP role claim (default `roles`).
+    `300` seconds). Agree the required scopes with the application operator
+    (`AUTH_MCP_REQUIRED_SCOPES`, normally `kravhantering:mcp`) and emit them in
+    the standard top-level space-separated `scope` claim. Emit unique
+    canonical roles as a JSON array in the agreed MCP role claim
+    (default `roles`).
     Please confirm that the identity-platform or IdP administration owner will
     issue, rotate and revoke this client's credentials, and that each
     consuming MCP integration owner will store and update the client secret in
@@ -202,13 +215,16 @@ första driftsättning mot en extern IdP.
 - **Issuer och discovery**: dokumentera issuer-URL och motsvarande OIDC
   discovery-URL som slutar med `/.well-known/openid-configuration`.
 - **Webbklient**: registrera en konfidentiell OIDC-webbklient, normalt
-  `kravhantering-app`, och dokumentera `client_id` och `client_secret`.
+  `kravhantering-app`, med Authorization Code, PKCE `S256` och
+  token-endpoint-autentisering `client_secret_post`. Dokumentera `client_id`
+  och `client_secret`; tillåt begärda scopes (standard `openid profile email`).
 - **Redirect-URI:er**: registrera
   `https://<app-host>/api/auth/callback` för varje miljö.
 - **Post-logout-URI:er**: registrera `https://<app-host>/` för varje miljö om
   leverantören kräver registrering i förväg.
 - **Obligatoriska ID-token-claims**: bekräfta `sub`, `given_name`,
-  `family_name` och `employeeHsaId`.
+  `family_name` och `employeeHsaId` som icke-tomma strängar; kontrollera
+  HSA-id-formatet nedan.
 - **Claims för visning**: bekräfta valfria claims som `name`,
   `preferred_username`, `email` och `email_verified` när de finns.
 - **`roles`-claim**: emittera de kanoniska applikationsrollerna `Reviewer`,
@@ -216,8 +232,9 @@ första driftsättning mot en extern IdP.
 - **Rollformat**: använd en JSON-array av exakta strängar, till exempel
   `"roles": ["Reviewer"]`.
 - **Första applikationsadministratör**: skapa minst en riktig
-  applikationsanvändare med verkligt `employeeHsaId` och de startroller som
-  förvaltningen godkänner.
+  applikationsanvändare med giltigt `employeeHsaId`, båda obligatoriska
+  namnclaims och rollen `Admin`. Tilldela ytterligare startroller endast
+  efter förvaltningens godkännande.
 - **MFA och tillitsnivå**: dokumentera MFA-krav och om leverantören emitterar
   `acr` eller `amr`-claims.
 - **Livslängder för token**: dokumentera livslängd för ID-token och access-token
@@ -255,8 +272,10 @@ Bekräfta eller lämna följande information.
 2. **Webbklient**
 
    Registrera en konfidentiell webbklient, normalt `kravhantering-app`, för
-   Authorization Code med PKCE. Skicka `client_id`, `client_secret` och
-   eventuella leverantörsspecifika inställningar.
+   Authorization Code med PKCE `S256` och token-endpoint-autentisering
+   `client_secret_post`. Tillåt konfigurerade scopes (standard
+   `openid profile email`). Skicka `client_id`, `client_secret` och eventuella
+   leverantörsspecifika inställningar.
 
 3. **Redirect och logout**
 
@@ -279,7 +298,11 @@ Bekräfta eller lämna följande information.
 
    `employeeHsaId` är den personstabila identitetsnyckel som applikationen
    använder för tilldelningsstyrda behörigheter. Bekräfta källattribut i
-   katalogen och att värdet är stabilt över tid för samma person.
+   katalogen och att värdet är stabilt över tid för samma person. Alla fyra
+   claims måste vara icke-tomma strängar. HSA-id måste matcha
+   `^[A-Z]{2}\d{10}-[A-Za-z0-9]{1,18}$`: två versala landskodsbokstäver,
+   tio siffror för organisationsnummer, ett bindestreck och 1–18 alfanumeriska
+   tecken (högst 31 tecken totalt). Blanksteg accepteras inte.
 
 5. **Claims för visning**
 
@@ -308,14 +331,16 @@ Bekräfta eller lämna följande information.
 7. **Första applikationsadministratör**
 
    Skapa minst en riktig applikationsanvändare inför lansering. Användaren
-   måste ha ett verkligt `employeeHsaId` och de startroller som förvaltningen
-   godkänner. Detta är separat från IdP-plattformens administratörskonton.
+   måste ha ett giltigt `employeeHsaId`, `given_name`, `family_name` och rollen
+   `Admin`. Tilldela `Reviewer` eller `PrivacyOfficer` endast när de ytterligare
+   uppgifterna är godkända. Detta är separat från IdP-plattformens
+   administratörskonton.
 
 8. **MFA och tillitsnivå**
 
-   Vilka MFA-metoder och tillitsnivåer ska gälla för applikationen? Kan
-   leverantören emittera `acr` eller `amr`-claims så att applikationen senare
-   kan läsa autentiseringens styrka vid behov?
+   Vilka MFA-metoder och tillitsnivåer ska gälla för applikationen? Kraven måste
+   upprätthållas hos IdP: applikationen kontrollerar inte tillitsnivåer i
+   `acr` eller `amr`. Dokumentera eventuella claims för tillitsnivå.
 
 9. **Livslängd för token och klockskillnad**
 
@@ -338,9 +363,7 @@ Bekräfta eller lämna följande information.
 
     När mappningen av claims är klar vill vi få avidentifierade eller
     testanvändarbaserade exempel på en ID-token och en access-token från en
-    icke-produktionsmiljö. Vi använder dem för att verifiera lokal
-    testkonfiguration och parserns beteende mot formatet på leverantörens
-    payload.
+    icke-produktionsmiljö för att bekräfta överenskomna claims och tokenformat.
 
 13. **Valfri MCP-klient för service-token**
 
@@ -349,12 +372,15 @@ Bekräfta eller lämna följande information.
     `grant_type=client_credentials`. Access-token måste vara en signerad JWT
     som applikationen kan validera via leverantörens `jwks_uri`. Den måste
     använda det skyddade huvudet `typ: at+jwt`, matcha konfigurerad issuer,
-    audience och claimen `client_id` på toppnivå, innehålla numeriska `exp` och
-    `iat`, icke-tomt `sub` och verkligt `employeeHsaId` samt ha en aktuell ålder
+    audience och claimen `client_id` på toppnivå (även `azp` om den finns),
+    innehålla numeriska `exp` och `iat`, icke-tomt `sub` och verkligt
+    `employeeHsaId` samt ha en aktuell ålder
     och deklarerad livslängd som inte överstiger
-    `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` (exempelvis `300` sekunder). Emittera
-    `kravhantering:mcp` i den vanliga blankstegsseparerade claimen på toppnivå
-    `scope` och kanoniska roller som en JSON-array i överenskommen MCP-rollclaim
+    `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` (exempelvis `300` sekunder). Kom överens
+    med driftansvarig om obligatoriska scopes (`AUTH_MCP_REQUIRED_SCOPES`,
+    normalt `kravhantering:mcp`) och emittera dem i den vanliga
+    blankstegsseparerade claimen `scope` på toppnivå. Emittera unika kanoniska
+    roller som en JSON-array i överenskommen MCP-rollclaim
     (standard `roles`).
     Bekräfta att ägaren för identitetsplattformen eller IdP-administrationen
     utfärdar, roterar och spärrar klientens credentials, och att varje

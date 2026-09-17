@@ -12,10 +12,21 @@ needs elevated container permissions such as `SYS_ADMIN` and
 `seccomp=unconfined`. The elevated configuration lives at
 [.devcontainer/elevated/devcontainer.json](../../.devcontainer/elevated/devcontainer.json).
 
-Before rebuilding either devcontainer profile, copy:
+Before the first rebuild, run this from the repository root if
+`.devcontainer/.env` does not exist:
 
 ```bash
 cp .devcontainer/.env.example .devcontainer/.env
+```
+
+Review the local database settings in that file. Keep it on subsequent
+rebuilds so your settings are preserved. For the elevated profile, also copy
+the configured file to `.devcontainer/elevated/.env` and keep both copies in
+sync: the services read the parent file, while Compose resolves variables such
+as `MSSQL_SA_PASSWORD` from the elevated project directory.
+
+```bash
+cp .devcontainer/.env .devcontainer/elevated/.env
 ```
 
 ## GitHub Token Forwarding
@@ -31,7 +42,9 @@ launches VS Code:
 
 GitHub Copilot CLI checks `COPILOT_GITHUB_TOKEN` before `GH_TOKEN`, so the
 classic token is never selected for Copilot authentication when both variables
-are available. Keep both values in the workstation's secure credential store;
+are available. See the
+[Copilot CLI authentication guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli)
+for token setup. Keep both values in the workstation's secure credential store;
 do not put them in the repository, `.devcontainer/.env`, or a shell profile.
 
 Processes running as `vscode` inside the container, including workspace tasks
@@ -43,85 +56,29 @@ After adding or rotating either variable, rebuild or reopen the devcontainer so
 the VS Code remote extension host and its child processes receive the current
 values.
 
-Provider credentials are not forwarded through `remoteEnv` or read from local
-environment variables. Write them through Admin Center so the application
-stores encrypted provider-secret revisions.
-
-Both devcontainer profiles provision the ignored, external AI provider-secret
-root keyring at `.local/ai-provider-secret-keyring.json` during container
-creation, before dependency installation. The helper uses the explicit ESM
-keyring parser shared with application and maintenance code and needs only
-Node.js. The helper is idempotent: rebuilding or reopening a container never
-prints or overwrites an existing keyring. It validates the owner, private file
-and directory modes, readability, and keyring format before accepting it. The
-Azure development host bootstrap performs the same step on its persistent
-workspace data disk. See
-[AI Connections Operations](../operations/ai-connections.md#external-root-keyring)
-for the file contract and rotation boundary.
-
 ## Codex CLI
 
-The devcontainer base image uses the exact semantic version tag recorded in
-`containers/devcontainer-base/image.lock.json`. Its digest remains verification
-evidence in the lock and is intentionally not appended to the Dockerfile
-reference. The scheduled dependency-drift flow reports both newer supported
-tags and digest changes under the current tag.
-
-The locally built HSA support images share their Dockerfiles with release
-builds. Their Node base references therefore retain the same tag and digest in
-development and release builds.
-
-Both profiles activate the same strict HSA topology. A one-shot provisioner
-selects role-specific bundles before mock, Adapter, Kong, and App start in that
-order. The services use HTTPS and mandatory mTLS on all three legs, mount only
-their own bundle read-only, and expose health endpoints on loopback. Use the
-authenticated capability route or the HSA verification control to check the
-path; do not add plaintext listeners, shared certificate volumes, generated
-runtime certificates, or TLS bypass variables.
-
-Persistent certificate material renews automatically inside the 30-day
-threshold. The post-start reconciliation is a fast no-op for an ordinary
-reused generation. For a promotion it authenticates the complete chain before
-finalization. A failed promotion rolls back and deletes the failed generation,
-restarts mock, Adapter, and Kong in server-first order, and authenticates the
-restored generation before development continues.
-
-Both devcontainer profiles expose the Codex CLI system-wide from OpenAI's
-current standalone release. The managed package root remains under
-`/home/vscode/.codex`, where Codex can start and update its shared app-server
-daemon. The build resolves the release metadata, requires the upstream SHA-256
-digest for `install.sh`, and verifies the downloaded file before execution. A
-missing or mismatched digest fails the devcontainer build. Rebuild the
-devcontainer after changing branches or pulling this setup, then verify the
-installation inside the container:
+Both devcontainer profiles install the Codex CLI for the `vscode` user.
+After changes to the container tooling, rebuild the devcontainer and verify
+the installation inside it:
 
 ```bash
 codex --version
 codex app-server daemon version
 ```
 
-The command is available to the `vscode` user in both profiles. Codex keeps
-configuration, authentication, sessions, skills, and plugins under
+Codex keeps configuration, authentication, sessions, skills, and plugins under
 `/home/vscode/.codex`. On every creation or rebuild, both profiles merge
 `.devcontainer/codex-config.toml` into `config.toml` with the trust and
 permission settings required inside the devcontainer. The merge preserves
-unrelated personal settings and migrates obsolete managed profiles. Shared
-project defaults, including the model, MCP servers, status line, and terminal
-title, live in `.codex/config.toml` and apply in every trusted development
-environment.
+unrelated personal settings. Shared project defaults, including the model,
+MCP servers, status line, and terminal title, live in `.codex/config.toml` and
+apply in every trusted development environment.
 
 Every container start runs `codex app-server daemon start` before the other
-post-start reconciliation. The command is idempotent and waits until the local
-control socket is ready. New Codex CLI sessions therefore connect to the shared
-background server immediately, and `/agents` works without restarting Codex.
-If the daemon cannot start, the devcontainer post-start command fails visibly
-instead of leaving a partially initialized Codex environment.
-
-The image also resolves the current dotenv-linter release and verifies the
-matching GitHub release-asset digest before installing it. Neither installer
-stores a routine tool version in the repository. CI builds the complete
-observable `development` image stage and runs both `codex --version` and
-`dotenv-linter --version` whenever the Dockerfile or either installer changes.
+startup hooks. If the daemon cannot start, the startup command fails before
+database setup. Check the Dev Containers startup log and retry the command
+inside the container after correcting the cause.
 
 ## Local HTTPS Development
 
@@ -138,30 +95,42 @@ mkcert \
 
 The repository's `.gitignore` already excludes `certificates` and `*.pem`.
 
-Start the HTTPS development server inside the container:
+The HTTPS server uses `https://localhost:4443`. The committed Keycloak client
+and app settings use HTTP on port 3000, so authenticated HTTPS development
+also requires adding these values to the local `kravhantering-app` client:
+
+- Valid redirect URI: `https://localhost:4443/api/auth/callback`.
+- Web origin: `https://localhost:4443`.
+- Valid post-logout redirect URI: `https://localhost:4443/`.
+
+Keep the existing HTTP values for normal development. See the
+[auth developer workflow](./auth-developer-workflow.md) for local Keycloak
+access. Start the HTTPS server with matching command-scoped app settings:
 
 ```bash
+AUTH_OIDC_REDIRECT_URI=https://localhost:4443/api/auth/callback \
+AUTH_OIDC_POST_LOGOUT_REDIRECT_URI=https://localhost:4443/ \
+NEXT_PUBLIC_SITE_URL=https://localhost:4443 \
 npm run dev:https
 ```
 
-This workflow is container-local and requires no host-side steps for the common
-devcontainer setup. If your browser still warns about the certificate, export
-and import the container's CA root (`certificates/rootCA.pem`) into the host or
-browser trust store. If you prefer not to trust the local CA, use
-`npm run dev` over HTTP instead.
+Generating certificates inside the container does not make the host browser
+trust them. Export the public CA certificate from the directory printed by
+`mkcert -CAROOT`, then import it into the host or browser trust store:
+
+```bash
+cp "$(mkcert -CAROOT)/rootCA.pem" certificates/rootCA.pem
+```
+
+Copy only `rootCA.pem`; keep the CA private key inside the container. See the
+[mkcert documentation](https://github.com/FiloSottile/mkcert#installing-the-ca-on-other-systems)
+for importing the CA on another system. If you prefer not to trust the local
+CA, use `npm run dev` over HTTP instead.
 
 ## Stale `.next/` Cache After Route Changes
 
-Turbopack's dev manifest is built from `.next/dev/` on first start. If you add,
-move, or rename a route folder under `app/` while the dev server is off, or
-while it still has a cache from an earlier `next build`, sibling routes may 404
-even though the `page.tsx` exists on disk.
-
-Symptoms:
-
-- `/sv/requirements/IDN0001` returns 200 but `/sv/requirements/IDN0001/4`
-  or `/sv/requirements/IDN0001/edit` returns 404.
-- Touching the affected `page.tsx` makes it work.
+If routes return unexpected 404 responses after adding, moving, or renaming
+route folders under `app/`, cached build output may be stale.
 
 Fix: start the dev server with a clean cache.
 
@@ -177,11 +146,30 @@ incremental compile cache.
 
 ## Supporting Services
 
-The default devcontainer starts the local SQL Server and Keycloak services for
-normal development. For detailed database and auth workflows, use:
+Both devcontainer profiles start the local SQL Server and Keycloak services.
+Every container start also runs `npm run db:setup`, which resets the local
+database, applies migrations, and seeds required and demo data. Local database
+edits are lost on restart; export anything you need to retain before restarting
+or rebuilding. If automatic setup fails, the startup hook retries once, then
+logs a warning; a running container alone does not confirm that database setup
+succeeded. Inspect the database logs, correct the cause, and rerun
+`npm run db:setup`. For detailed database and auth workflows, use:
 
 - [SQL Server Developer Workflow](./sql-server-developer-workflow.md)
 - [Auth developer workflow](./auth-developer-workflow.md)
+
+Both profiles also start the HSA mock, Adapter, and Kong with mTLS between
+services. Startup checks renew certificates when needed. For verification and
+troubleshooting, use the
+[HSA integration guide](../integrations/hsa-person-lookup-integration.md).
+
+AI provider credentials are configured through Admin Center, which stores
+encrypted provider-secret revisions. Both profiles provision the ignored root
+keyring at `.local/ai-provider-secret-keyring.json` during container creation
+and preserve an existing valid keyring. Do not replace that file to resolve a
+startup validation error: existing secrets depend on it. See
+[AI Connections Operations](../operations/ai-connections.md#external-root-keyring)
+for validation and rotation guidance.
 
 ## Codex Network Sandbox
 
@@ -194,8 +182,6 @@ opening the rest of the user-level Codex state. It also enables network access
 to the local Compose service names used by development checks, including `db`,
 `idp`, `kong`, the HSA mock, and loopback.
 
-This is required because the default Codex `workspace-write` sandbox blocks
-network access. Without the devcontainer profile, Codex commands cannot resolve
-`db` or open TCP sockets to SQL Server, even though the same command works from
-a normal devcontainer terminal. Reload or restart Codex after changing the
-user config so the new permission profile is loaded.
+If Codex cannot reach `db` while the same database command works in a normal
+devcontainer terminal, check that this permission profile is loaded. Reload or
+restart Codex after changing the user config.

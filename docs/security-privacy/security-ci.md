@@ -1,16 +1,15 @@
 # Security CI
 
+This guide helps contributors and security maintainers diagnose CI security
+failures, review scan evidence, and tune scanner policy.
+
 The integration and container PR responsibilities are defined in
 [CI integration ownership](../development/ci-integration-ownership.md).
-Security MCP exclusively owns the seeded MCP scan. Each project candidate has
-an independent build and vulnerability-policy result; core assembly consumes
-only successful app-runtime and db-job artifacts. Complete trusted-release
-policy evaluation and operational qualification remain required before
-publishing.
-
-Continuous-integration security checks specific to this repository. The
-canonical scanner choice and rationale, plus instructions for tuning,
-extending, and replicating the scan locally.
+[Shared CI selection](../development/ci-selection.md) determines which
+security owners run for a change. A successful reporting check can represent
+an intentional exclusion; inspect its selection summary before assuming a
+scanner ran. Trusted-release policy evaluation and operational qualification
+remain required before publishing.
 
 ## SSDLC (Secure Software Development Life Cycle) gate workflow
 
@@ -19,9 +18,9 @@ Workflow file:
 
 Each pull request to `main` runs the repository-owned SSDLC gate before merge,
 including forked pull requests when repository settings allow fork workflows.
-The gate skips pull requests authored by `dependabot[bot]` whose title starts
-with `build(deps):`. The gate uses `pull_request_target`, explicitly limits
-`GITHUB_TOKEN` to read permissions, and checks out the base commit instead of
+The gate skips pull requests authored by `dependabot[bot]`. It uses
+`pull_request_target`, explicitly limits `GITHUB_TOKEN` to read permissions,
+and checks out the base commit instead of
 the pull request commit. That keeps the gate script and workflow logic trusted
 while still reading the pull request body and changed file list from the GitHub
 API.
@@ -64,36 +63,22 @@ fetch the specific data through the GitHub API without executing it.
 Workflow file:
 [.github/workflows/security-repository.yml](../../.github/workflows/security-repository.yml).
 
-Each pull request to `main`, push to `main`, weekly scheduled run, and manual
-dispatch runs the repository-owned supply-chain gate. The workflow uses the
+The repository-owned supply-chain workflow receives pull requests to `main`,
+pushes to `main`, weekly scheduled runs, and manual dispatches. Shared CI
+selection determines whether its scan job runs. The workflow uses the
 normal `pull_request` event, never `pull_request_target`, and does not receive
 production secrets or custom secret values.
 
 ### GitHub-owned controls
 
-CodeQL and GitHub Secret Protection are repository or organization controls,
-not repo-owned workflow steps in this phase.
-
-- CodeQL default setup is already enabled in GitHub for pull requests and
-  `main`.
-- GitHub secret scanning and push protection are already enabled in GitHub.
-- Gitleaks is intentionally skipped for now to avoid duplicate
-  secret-scanning noise. Reconsider it only if future evidence shows GitHub
-  custom patterns cannot cover repo-specific secret formats.
-
-Trivy secret scanning is also disabled in this workflow. GitHub Secret
-Protection owns the secret-detection surface.
-
-Shell test harnesses and the production-smoke debug command lookup pass fixed
-shell programs through standard input. Dynamic paths stay in positional
-arguments and are quoted when the shell uses them. Security-sensitive parsers
-use sequential scanning or unambiguous regular-expression alternatives to
-avoid excessive backtracking. Generated-output HTML error responses select
-predefined messages and escape HTML characters before rendering.
+CodeQL and GitHub Secret Protection are configured in GitHub repository or
+organization settings. Their status cannot be inferred from this workflow;
+repository administrators should verify those settings when auditing coverage.
+The repository workflow runs neither Gitleaks nor Trivy secret scanning.
 
 ### Repository workflow steps
 
-1. Checks out the PR, installs the exact npm version declared by root
+1. Checks out the event source, installs the exact npm version declared by root
    `package.json`, and installs dependencies with `npm ci`, using the Node
    version pinned in [.nvmrc](../../.nvmrc).
 2. Runs `npm audit --audit-level=high`.
@@ -107,23 +92,21 @@ predefined messages and escape HTML characters before rendering.
 
 ### Trivy pinning and safety
 
-The workflow pins the Trivy action to the immutable peeled commit for
-`aquasecurity/trivy-action` `v0.36.0`:
+Keep the Trivy action pinned to a full commit SHA and the binary pinned to an
+explicit version in the workflow. Do not replace either pin with `latest`.
+Review scanner updates separately and cite the upstream release or advisory
+that motivates the change.
 
-```text
-aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-```
-
-It also pins the Trivy binary with `version: v0.70.0`. Do not replace either
-pin with `latest`. Bumps should land in their own PR, use patched releases, and
-cite the upstream release or advisory that motivated the change.
-
-There is no `.trivyignore` file initially. If an ignore becomes unavoidable,
-add the smallest possible exception with an issue link and an expiry rationale.
+The config scan reads [.trivyignore.yaml](../../.trivyignore.yaml). Its scoped
+root-user exceptions cover the disposable systemd debug host and the one-shot
+HSA certificate provisioner. If another exception becomes unavoidable, limit
+it to the affected rule and paths and explain the operational requirement,
+issue reference, and review or expiry condition.
 
 ### Repository failure policy
 
-- `npm audit` fails the workflow only for high or critical audit findings.
+- `npm audit` blocks on high or critical audit findings. Audit execution
+  failures also fail the job.
 - Trivy filesystem scanning fails on `HIGH` or `CRITICAL` vulnerability
   findings.
 - Trivy config scanning fails on `HIGH` or `CRITICAL` configuration findings.
@@ -131,18 +114,6 @@ add the smallest possible exception with an issue link and an expiry rationale.
   break the job.
 - GitHub-managed CodeQL and secret scanning keep their existing repository
   policies outside this workflow.
-
-### Related DAST issues
-
-Issue `#106` (Nuclei alongside OWASP ZAP) and issue `#119` (deeper ZAP
-scanning) are DAST expansion work. They are intentionally not part of the
-repository and supply-chain gate.
-
-The pull-request DAST workflow implements `#106` by adding Nuclei beside ZAP
-against the same localhost prodlike app. Issue `#119` adds deeper ZAP coverage
-through API, role-matrix, and isolated full active scan workflows. The existing
-OpenAPI/Schemathesis contract remains authoritative; the ZAP API scan consumes
-a filtered read-only contract derived from that static source.
 
 ## Container vulnerability workflows
 
@@ -162,121 +133,50 @@ published stable release and monitored preview release selected by
 the trusted release workflow's digest-bound SPDX attestations before scanning;
 it never rebuilds the published images.
 
-Before release selection, the monitor reads and validates every
-automation-owned tracker issue and records its trusted terminal identities. A
-selected tag that intersects that terminal boundary fails before attestation
-or Grype execution. Ambiguous, malformed, or incomplete tracker state also
-blocks scanning, so a disappeared newer release cannot make an older terminal
-identity eligible again.
+Public tracking uses one automation-owned security issue per image role and
+release tag. Findings that cannot be safely classified for public disclosure
+remain private; do not copy unfiltered scan evidence into public issues.
+An identity marked `monitoring-ended` is no longer scanned. Its last recorded
+state is not evidence of a fix or of current safety.
 
-Public tracking has one automation-owned `security` issue per exact image role
-and published release tag. Only closed, version-guarded Debian, GitHub npm,
-and reviewed UBI 10 RPM authority classifications enter the issue. Its body
-and verified continuation bank contain the complete current public state;
-immutable journals record material changes. A clean monitored identity closes
-as completed and can reopen on recurrence. An identity that leaves the
-forward-only window receives
-`monitoring-ended`, preserves its last trusted state, and is never rescanned.
-Last-known affected content is not proof of a fix, and last-known clean content
-is not proof of current safety.
-
-Oversized bodies and journals use bounded, hash-verified continuation parts and
-never truncate an observation. Retry resumes staged or committed work in safe
-order. The daily run is the automatic recovery path; manual dispatch performs
-the same full reconciliation as an earlier retry. No publication or targeted
-trigger exists.
-
-Findings without authoritative public advisory links use draft private
-repository security advisories only when private reporting and the narrow
-step-scoped advisory token are available, with no public fallback. Public
-issues cannot reveal confidential identifiers, package facts, URLs, counts, or
-existence. The normal token has exactly attestation, content, and package read
-plus issue write access.
-
-UBI RPM observations require matching package/version evidence from the pinned
-Grype exact RPM matcher, the `redhat:distro:redhat:10` namespace and matching
-Red Hat 10 distro search, reviewed RPM names and epoch/version/release syntax,
-and an exact canonical Red Hat CVE data source. Validated RHSA fix-advisory
-identities may supply canonical Red Hat errata links. Arbitrary scanner URLs,
-unreviewed namespaces, and mismatched evidence remain confidential; their
-content, existence, and count cannot alter public output. The
-[reviewed RPM reporting contract](../development/trusted-container-publishing.md#trusted-input-and-public-classification)
-describes the evidence boundary. Confidential classification does not bypass
-the full Grype release gate or change exception policy, schedules, supported
-release windows, or issue/advisory lifecycle.
-
-Restricted selection, attestation, SBOM, scanner database, unfiltered scan,
-classification, policy, reconciliation-plan, tracker, and error evidence is
-uploaded on success or failure for 30 days. Public journal roots identify only
-the workflow run, artifact name, and retention period. Final failure occurs
-after the upload attempt, and ordinary GitHub failed-run notifications remain
-the alert. See
+Restricted scan and reconciliation evidence is retained for 30 days. Inspect
+the failed run and its artifacts before retrying; daily runs and manual
+dispatch perform the same full reconciliation. See
 [Trusted Container Publishing](../development/trusted-container-publishing.md#continuous-published-release-scanning)
-for the support, tracking, permission and evidence-retention contracts.
+for support windows, exception handling, permissions, disclosure rules, and
+monitor recovery guidance.
 
 ## Pull-request DAST workflow
 
 Workflow file:
 [.github/workflows/security-dast.yml](../../.github/workflows/security-dast.yml).
 
-Each pull request to `main` runs the existing authenticated **OWASP ZAP
-baseline** passive scan and a **Nuclei** template scan against a fresh,
-ephemeral copy of the application running on the GitHub Actions runner. Both
+When shared CI selection selects web DAST for a pull request to `main`, the
+workflow runs an authenticated **OWASP ZAP baseline** passive scan and a
+**Nuclei** template scan against a fresh, ephemeral copy of the application
+running on the GitHub Actions runner. Both
 scanners target only `http://localhost:3001`; the workflow fails before Nuclei
 runs if the configured target is not local.
 
 ### What the workflow does
 
-1. Checks out the PR, installs the exact npm version declared by root
-   `package.json`, and installs dependencies with `npm ci`, using the Node
-   version pinned in [.nvmrc](../../.nvmrc).
-2. Brings up the same disposable stack the integration tests use:
-   - SQL Server via `npm run db:up && npm run db:setup`.
-   - A local Keycloak realm via `npm run idp:up`, which waits for OIDC
-     discovery and JWKS before returning.
-3. Builds the production bundle with `npm run build:local-prod`, stages its
-   public and generated static assets, and starts the generated standalone
-   server on `127.0.0.1:3001` with
-   [.env.prodlike](../../.env.prodlike) loaded.
-4. Polls the new [`GET /api/health`](../../app/api/health/route.ts)
-   endpoint until the app is ready. The DAST gate treats the endpoint as
-   healthy only when it returns HTTP `200` with JSON `{ "status": "ok" }`;
-   any other status or payload keeps the retry loop running and is printed on
-   terminal failure.
-5. Runs [scripts/security/get-session-cookie.mjs](../../scripts/security/get-session-cookie.mjs)
-   to drive a real OIDC login as the realm test user `ada.admin` and
-   obtain the iron-session cookie. The flow mirrors
-   [tests/integration/global-setup.ts](../../tests/integration/global-setup.ts).
-   Before printing the cookie, the helper validates the final stdout line
-   against a strict CI-safe `name=value` contract. Names may contain only ASCII
-   letters, digits, `_`, and `-`; values may contain only ASCII letters,
-   digits, `.`, `_`, `~`, `*`, `+`, `/`, `=`, and `-`. A mismatch exits
-   non-zero before printing the cookie, so scanner setup fails before ZAP,
-   Nuclei, or Schemathesis can run with a malformed or truncated session
-   header.
-   Each helper fetch has a `15000` ms timeout by default. Set
-   `DAST_FETCH_TIMEOUT_MS` to a positive integer number of milliseconds when
-   a workflow needs a different bound; every redirect hop and the final
-   `/api/auth/me` verification receives its own fresh timeout signal.
-6. Runs the [`zaproxy/action-baseline`](https://github.com/zaproxy/action-baseline)
-   action against `http://localhost:3001/sv` with the captured cookie
-   injected as a `Cookie` header on every request via ZAP's `replacer`
-   add-on. The workflow passes `-j --ajax-spider` so updates to the action's
-   mutable `stable` container image cannot switch the modern crawler from the
-   AJAX Spider to the Client Spider.
-7. Installs Nuclei with <!-- cSpell:ignore nuclei projectdiscovery -->
-   [`projectdiscovery/nuclei-action@v3`](https://github.com/projectdiscovery/nuclei-action),
-   pins the Nuclei binary to `v3.8.0`, downloads the ProjectDiscovery
-   community templates with `nuclei -update-templates -ni`, and runs
-   repo-owned unauthenticated boundary templates from
-   [.github/nuclei/templates/unauth](../../.github/nuclei/templates/unauth).
-8. Runs an authenticated Nuclei pass with the same masked session cookie used
-   by ZAP against the installed community templates under
-   `${HOME}/nuclei-templates`. Nuclei output omits raw request/response data
-   and redacts `Cookie` and `Authorization` values.
-9. Uploads the ZAP HTML / Markdown / JSON reports (created by the action
-   itself), the Nuclei JSONL / SARIF / Markdown / log output, and the
-   application log as workflow artifacts.
+1. Installs the pinned Node/npm toolchain and dependencies, then starts a
+   disposable SQL Server, Keycloak, and production Next.js stack through
+   [.github/actions/prodlike-stack](../../.github/actions/prodlike-stack/action.yml).
+   Readiness requires `/api/health` to return HTTP `200` and JSON with
+   `status: "ok"`.
+2. Uses [get-session-cookie.mjs](../../scripts/security/get-session-cookie.mjs)
+   to log in as `ada.admin`. Cookie validation failure stops scanner setup.
+   Each helper fetch defaults to a 15-second timeout; use a positive
+   `DAST_FETCH_TIMEOUT_MS` override if a workflow needs a different bound.
+3. Runs ZAP against `http://localhost:3001/sv` with that session cookie, the
+   AJAX spider, and a 10-minute scan cap. Preserve `-j --ajax-spider` so the
+   scanner image's default crawler cannot change the selected spider.
+4. Installs the pinned Nuclei binary and community templates, runs
+   [unauthenticated boundary templates](../../.github/nuclei/templates/unauth),
+   then scans with community templates using the same authenticated cookie.
+5. Uploads ZAP and Nuclei reports and the application log, evaluates the
+   outcomes, and cleans up the stack even after failure.
 
 ### Scanner responsibility split
 
@@ -285,26 +185,11 @@ runs if the configured target is not local.
 - **Nuclei:** known CVE/template checks, exposures, misconfigurations, exposed
   panels, technology checks, and accidentally exposed files.
 
-The workflow extends
-[.github/workflows/security-dast.yml](../../.github/workflows/security-dast.yml).
-Do not add a second PR-time web DAST workflow unless the scan shape changes
-enough to require a separate lifecycle.
-
 ### Why ZAP baseline (passive) was chosen
 
-- **Safe for PRs.** Passive scanning never sends crafted exploit
-  payloads, only observes traffic generated by the spider. Active
-  scanning (`zap-full-scan`) issues SQL injection, XSS, and
-  command-injection probes that can mutate state, blow up the database,
-  or fire e-mails when a feature is misconfigured. That risk is not
-  worth taking on every PR against a developer's branch.
-- **Fast enough for per-PR runs.** A baseline + AJAX spider with a
-  10-minute cap fits inside the existing integration-test budget.
-- **Already containerized.** The official action runs its scanner image without
-  a client-side install on the runner and emits consistent report artifacts.
-- **Tunable per-rule.** ZAP exposes per-rule IGNORE/WARN/FAIL via a
-  `rules.<scenario>.tsv` file checked into the repo, so policy decisions
-  live next to the workflow and can be code-reviewed.
+The PR web scan observes crawl traffic without active exploit payloads. Its
+10-minute cap and per-rule policy suit routine PR checks. Full active scanning
+uses a separate manual workflow because it can mutate application state.
 
 ### Failure policy
 
@@ -323,20 +208,15 @@ workflow therefore relies on per-rule actions in
   would only fail on rules marked `FAIL`, which would require
   enumerating every ZAP rule we care about.
 
-If the first scan reports an unexpected alert that turns out to be a
-local-CI artefact, suppress it via `rules.prodlike.tsv` and document
-why in the comment column.
-
-Rule files are named `rules.<scenario>.tsv` so future scan scenarios
-(for example a nightly full scan against a staging deployment) can
-ship their own policy file alongside without disturbing the PR
-baseline.
+Keep each scan scenario's policy in its own `rules.<scenario>.tsv` file so
+tuning another workflow does not weaken the PR baseline.
 
 Nuclei uses a different failure policy:
 
 - Medium findings are reported in artifacts and SARIF but do not fail the PR.
 - High or critical findings fail the workflow after artifacts are uploaded.
-- Empty or absent Nuclei result files mean no findings and do not fail.
+- Empty or absent Nuclei result files do not themselves fail the job;
+  inspect execution outcomes before treating missing output as a clean scan.
 - Scanner execution errors fail the workflow.
 - SARIF upload runs only for same-repository pull requests and only when the
   SARIF file exists, so fork PRs do not fail because of read-only permissions.
@@ -355,18 +235,18 @@ using the documented format:
 <ruleId>\t<action>\t<comment>
 ```
 
-`action` is one of `IGNORE`, `WARN`, `FAIL`. **Always include a
-comment** explaining why the rule was changed; reviewers will block the
-PR otherwise. ZAP rule IDs and descriptions are listed at
+`action` is one of `IGNORE`, `WARN`, `FAIL`, `INFO`, or `PASS`. **Always
+include a comment** explaining why the rule was changed. ZAP rule IDs and
+descriptions are listed at
 <https://www.zaproxy.org/docs/alerts/>.
 
-If the very first scan reports unexpected Medium/High alerts that turn
-out to be local-CI artefacts (e.g. test-only cookies missing
-`Secure`), open a follow-up PR that:
-
-1. Adds the rule ID to `rules.prodlike.tsv` with `IGNORE` and a clear
-   comment.
-2. Mentions in `docs/security-privacy/security-ci.md` why the suppression is safe.
+Suppress an alert only after confirming it is a local-CI artefact. Record the
+reason and any issue reference in the rule file, and re-evaluate suppressions
+whenever the target changes. Current policy suppresses localhost transport and
+header checks and noisy bundle/comment findings. Intentional `no-store`
+responses and modern-app detection are informational. A passing baseline does
+not establish that the suppressed production controls work; those need their
+integration and deployment verification coverage.
 
 ### Tuning Nuclei
 
@@ -384,22 +264,17 @@ tags, including fuzzing, brute force, denial of service, default-login
 attempts, OAST/interactsh, file upload, destructive checks, and headless
 browser templates.
 
-There are no Nuclei suppressions initially. If community template noise needs
-tuning, prefer the smallest tag/template exclusion that keeps the PR scan safe,
-and document the reason here with an issue link.
+If community template noise needs tuning, use the smallest tag/template
+exclusion that keeps the PR scan safe and document its rationale and issue
+reference alongside the workflow configuration.
 
 ### Reading reports
 
-The **Evaluate DAST scan outcomes** step prints blocking ZAP alerts before
-failing and adds them to the job summary. Each entry includes the rule ID,
-risk, configured action, instance count, up to three affected URLs, detailed
-notices, and remediation. Both `WARN` and `FAIL` block the job even for
-low-risk alerts; `INFO`, `IGNORE`, and `PASS` entries are excluded. Output is
-limited to 50 alerts and 1,000 characters per text field. URL credentials,
-query strings, fragments, and raw request/response evidence are omitted.
-If the report cannot be read, or ZAP fails without blocking alerts, the
-diagnostics point to the scanner step for execution errors. Diagnostic
-reporting does not change the scan failure policy.
+Start with **Evaluate DAST scan outcomes** and the job summary. Blocking ZAP
+alerts include rule IDs, configured actions, affected URLs, and remediation.
+`WARN` and `FAIL` block even for low-risk alerts. If ZAP fails without blocking
+alerts or its report cannot be read, inspect the scanner step for execution
+errors. Summaries are bounded; use artifacts for the full findings.
 
 After the workflow finishes, download the **`zap_scan`** artifact from
 the workflow run summary. It contains:
@@ -418,38 +293,28 @@ SARIF, Markdown exports, stdout/stderr logs, and the local target file used by
 the scan. The SARIF files are also uploaded to GitHub code scanning for
 same-repository PRs when they exist.
 
-The workflow also prints a bounded DAST summary to the job log and GitHub step
-summary: the ZAP outcome, template-update, unauthenticated-scan, and
-authenticated-scan outcomes, the last 200 lines of each Nuclei stdout/stderr
-log, and parsed medium/high/critical finding counts. When findings exist, the
-first entries are listed in the log and step summary; the full JSONL and
-Markdown output remains in the artifact.
+The job log also includes Nuclei execution outcomes, log tails, and finding
+counts. Check execution errors before interpreting empty result files as a
+clean scan.
 
 ## Deeper ZAP Workflows
 
-Issue `#119` adds three ZAP workflows without replacing the PR web DAST gate.
-All targets remain localhost-only and all ZAP actions disable built-in issue
-writing. Scheduled findings fail the workflow and are triaged from artifacts;
-automatic issue creation is intentionally deferred until baselines are stable.
+These workflows complement the PR web DAST gate. All targets remain
+localhost-only and all ZAP actions disable built-in issue writing. Scheduled
+findings fail the workflow and are triaged from artifacts.
 
 <!-- markdownlint-disable MD013 -->
 | Workflow | Trigger | Auth users | Active? | Time budget | Main artifacts |
 | --- | --- | --- | --- | --- | --- |
-| [`security-dast-api.yml`](../../.github/workflows/security-dast-api.yml) | PR path filter + manual | `ada.admin` | ZAP API active mode against read-only OpenAPI operations | 30 min job / 10 min ZAP | `zap-api-scan`, `zap-api-openapi`, app log |
+| [`security-dast-api.yml`](../../.github/workflows/security-dast-api.yml) | PR shared selection + manual | `ada.admin` | ZAP API active mode against read-only OpenAPI operations | 30 min job / 10 min ZAP | `zap-api-scan`, `zap-api-openapi`, app log |
 | [`security-dast-roles.yml`](../../.github/workflows/security-dast-roles.yml) | Nightly 03:00 UTC + manual role input | Canonical local role users | No; ZAP baseline only | 30 min per role | one ZAP artifact and app log per user |
 | [`security-dast-full.yml`](../../.github/workflows/security-dast-full.yml) | Manual only while rules are triaged | `full.scan` plus unauthenticated pass | Yes; ZAP full active scan | 120 min job | authenticated/unauthenticated ZAP reports, app log, SQL Server backup |
 <!-- markdownlint-enable MD013 -->
 
-The shared local actions under
-[.github/actions](../../.github/actions) own prodlike stack setup, browser
-session-cookie acquisition, and cleanup. Keep external `uses:` references
-pinned in workflow files; local action references stay unpinned by design.
-
-The full-scan workflow generates a temporary Keycloak import under
-`test-results/security-dast-full/keycloak`, starts the app against
-`kravhantering-full-scan`, and sets `AI_REQUIREMENT_GENERATION_DISABLED=1` so
-REST and MCP AI-assisted authoring return the normal sanitized provider
-unavailable response before any OpenRouter catalog or chat call.
+Use the [ZAP API guide](./security-dast-api.md) for the filtered read-only
+contract and tuning, and the [full-scan runbook](./security-dast-full.md) for
+isolation, execution, and scheduling requirements. The full scan uses its own
+Keycloak realm and disables AI generation and OpenRouter credentials.
 
 ## REST API Schema And Schemathesis Workflow
 
@@ -490,166 +355,33 @@ seeded-corpus and workflow details do not drift between files.
 
 ## Shared prodlike app cleanup
 
-<!-- cSpell:ignore setsid pgid -->
-The DAST, REST API Schemathesis, MCP seeded, ZAP API, role-matrix, and full
-active scan workflows use
-[scripts/security/prodlike-app.sh](../../scripts/security/prodlike-app.sh) to
-start the prodlike Next.js server under `setsid` so the npm wrapper and
-standalone Node process share a dedicated process group. Each
-shared cleanup action reads the workflow-local `app.pgid`, sends `TERM` to the
-process group, waits up to 10 seconds, then sends `KILL` if any process
-remains. The same cleanup action also tears down the local IdP and SQL Server
-services with workflow-specific overrides where the full scan uses a temporary
-realm import.
-
-The marker is a process-group ID, not a single child PID. Do not switch these
-workflows back to `app.pid` unless the startup and cleanup model changes.
-
-## Static security headers
-
-Static (per-response, non-nonce) security headers are set in the
-`headers()` block of [next.config.ts](../../next.config.ts). The baseline
-applies to every route. Application pages receive their per-request nonce CSP
-from [proxy.ts](../../proxy.ts), while `/api-docs/:path*` receives a separate
-static CSP from `next.config.ts`.
-
-The API documentation CSP permits only same-origin scripts, styles, fonts,
-connections and specification loading, plus `data:` images required by Swagger
-icons. It denies inline scripts, inline styles, inline attributes, dynamic
-evaluation, framing, objects, forms and base-URL changes. The generated Swagger
-UI uses `BaseLayout` with external initializer and override stylesheet files so
-it can render under this policy.
-
-For files served by an external edge, the application configuration remains
-the header contract and the edge owns the final response headers. The bundled
-nginx configuration applies the same CSP and baseline from
-`api-docs-security-headers.conf` to every response below `/api-docs/`, including
-redirects and errors. Alternative load balancers, reverse proxies and CDNs
-must emit equivalent single values rather than append duplicates. Missing,
-duplicate or conflicting values fail deployment verification.
-
-Supported browsers are current, vendor-supported releases with the
-Navigation API. The minimum versions for this API are:
-
-| Browser                | Minimum version |
-| ---------------------- | --------------- |
-| Chrome                 | 102             |
-| Edge                   | 102             |
-| Firefox                | 147             |
-| Safari (macOS and iOS) | 26.2            |
-
-Embedded WebViews must also provide the Navigation API. These are API
-compatibility minimums, not recommendations to use outdated browser releases.
-See the [Navigation API compatibility data](https://developer.mozilla.org/en-US/docs/Web/API/Navigation#browser_compatibility).
-The requirement editor uses this API for history-navigation confirmation and
-requires it; no legacy history fallback is provided.
-
-IE and pre-CSP2 browser engines are unsupported, so CSP `frame-ancestors` is
-the primary clickjacking control for page responses.
-`X-Frame-Options` remains as a static fallback because the proxy matcher
-intentionally skips reviewed framework resources, metadata routes, and public
-assets, while static headers still apply to those responses. Other paths,
-including dynamic paths containing dots, remain inside the proxy boundary.
-
-> **Filename note.** This app keeps the entry gate in `proxy.ts`.
-> On `next@16.2.9`, the proxy runs as Node.js middleware and records the
-> matcher under `/_middleware` in
-> `.next/server/functions-config-manifest.json`. For this convention,
-> `.next/server/middleware-manifest.json` can be empty; do not use that
-> file alone as the registration check.
-
-Current static headers and rationale:
-
-- `X-Frame-Options: DENY` — static clickjacking fallback for responses that
-  do not pass through the proxy and therefore do not receive the nonce-based
-  CSP header.
-- `X-Content-Type-Options: nosniff` — disable MIME sniffing.
-- `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`
-  — applied in production; the prodlike CI runner serves over plain
-  HTTP and ZAP rules `10035` and `10106` are suppressed accordingly.
-- `Referrer-Policy: strict-origin-when-cross-origin` — minimal
-  referrer leakage on outbound navigation.
-- `Cross-Origin-Opener-Policy: same-origin` — isolates the top-level
-  browsing context (resolves ZAP `90004`, issue #112). The app does
-  not open cross-origin popups; OIDC sign-in is a top-level redirect.
-- `Cross-Origin-Resource-Policy: same-origin` — blocks no-cors
-  cross-origin embedding of our resources. The app does not expose
-  embeddable assets to other origins.
-- `Cross-Origin-Embedder-Policy: credentialless` — required to silence
-  ZAP rule `90004`, which checks for the COEP header by name. The
-  `credentialless` value satisfies the rule without forcing every
-  embedded resource to advertise CORP (as `require-corp` would). All
-  current sources are same-origin, so the credential-stripping behaviour
-  for any future cross-origin no-cors load has no effect on the app
-  today, and we still avoid opting into full cross-origin isolation
-  (no `SharedArrayBuffer`, no high-resolution timers needed).
-- `Permissions-Policy: …=()` — denies every powerful browser feature
-  the app does not use.
-
-Focused prodlike authentication coverage verifies the direct Next.js
-documentation responses, rendered HSA person lookup specification and absence
-of CSP console violations. Release smoke verifies the real nginx-served
-redirect, HTML, JavaScript, YAML and 404 paths, exact single-value headers,
-rendered specification and absence of CSP console violations.
-
-The stable required context is
-`Container PR Smoke / HSA mTLS topology required`. Its transport jobs build
-the provisioner and exact App transport contract from the tested commit and
-reuse the mock and Adapter archives from the candidate-policy jobs. Docker
-archive conversion preserves the candidate image identity, which is checked
-after loading. The jobs run independently of production assembly and retain
-the existing pull-request trigger scope. Trusted release owns the production
-App image and authenticated responsibility-person route through Quadlet.
-The transport jobs reject unauthenticated clients, cross-leg
-credentials, and a same-CA leaf with the wrong stable identity on App-to-Kong,
-Kong-to-Adapter, and Adapter-to-HSA. Same-domain wrong server leaves are
-installed one runtime bundle at a time and rejected by the corresponding
-deployed client; the full topology is restored and authenticated after every
-case. Runtime services remain active through mount and process inspection. The
-rotation matrix stops clients before servers, restarts servers before clients,
-compares the CA and both leaves, rejects stale material, verifies authenticated
-capability, and proves rollback restores the selected generation. Semantic
-running-container isolation, listener, protocol, correlation, and exactly-once
-checks fail closed; test-only probe credentials are not mounted into
-participant containers.
+The DAST, REST API, MCP, ZAP API, role-matrix, and full-scan workflows share
+[stack setup](../../.github/actions/prodlike-stack/action.yml) and
+[cleanup](../../.github/actions/prodlike-cleanup/action.yml). Keep cleanup under
+`if: always()` when extending a workflow. It stops the whole application
+process group and tears down the workflow's SQL Server and Keycloak services.
+Run these destructive setup/cleanup actions only in disposable environments;
+use the dedicated scan guides for local runs with existing development services.
 
 ## Out of scope (for the PR workflow)
 
 - **Active scanning** (`zap-full-scan`, fuzzers, payload mutation).
   These remain out of the PR web workflow. The full active scan has a separate
-  manual workflow with isolated database and Keycloak state.
+  manual workflow with disposable database state and a separate Keycloak realm.
 - **Authenticated coverage of every role in PRs.** Only the `Admin` realm user
   is scanned by the PR web DAST workflow. Broader role coverage runs in the
   scheduled role-matrix workflow.
-- **Infrastructure / host scanning.** Out of scope. If host or
-  container vulnerability scanning is required, use a dedicated tool
-  (e.g. Trivy, Grype) in a separate workflow rather than ZAP.
+- **Infrastructure / host scanning.** The web DAST workflow does not scan
+  hosts or container images. Container vulnerability gates run separately.
 - **External services.** No production endpoints, no third-party
   hosts, no externally controlled URLs are ever scanned. The target is
   always `http://localhost:3001`. Live OpenRouter calls are intentionally
   outside security CI; mocked tests cover this repository's client contract.
 
-## Enabling full-scan scheduling later
+## Scanner maintenance
 
-Keep [`security-dast-full.yml`](../../.github/workflows/security-dast-full.yml)
-manual until at least three manual runs have been triaged. Then update the
-workflow with the weekly Sunday `04:00 UTC` schedule, tighten
-[.github/zap/rules.full.tsv](../../.github/zap/rules.full.tsv) where alerts are
-actionable, and document every suppression with an issue or rationale.
-
-## Assumptions made
-
-- The CI runner is single-tenant and disposable, so localhost-only
-  transport headers do not need to be hardened.
-- The Keycloak realm shipped under
-  [dev/keycloak/realm-kravhantering-dev.json](../../dev/keycloak/realm-kravhantering-dev.json)
-  is the only IdP target for PR scans; production credentials are
-  never required.
-- Secure scans use `__Host-kravhantering_session`. The cookie acquisition
-  script applies the same prefix to unprefixed `AUTH_SESSION_COOKIE_NAME`
-  overrides as the prodlike application; already-prefixed names are preserved.
-- ZAP actions are pinned to peeled release commits:
-  `action-baseline` `v0.15.0`,
-  `action-api-scan` `v0.10.0`, and
-  `action-full-scan` `v0.13.0`. Bumps should land in their own PR and re-run
-  the affected scans to compare report deltas.
+Keep external action references pinned to full commit SHAs and binary versions
+explicit in the workflows. Review updates separately and rerun affected scans
+to compare report changes. Local composite-action references remain unpinned.
+The disposable runner and local Keycloak realm are the security boundary for
+these scans; production credentials are never needed.
