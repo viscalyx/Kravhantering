@@ -4100,7 +4100,7 @@ export default function KravunderlagDetailClient({
                                 )
                               }
                               title={
-                                selectionActionLimitWarning ??
+                                selectedRemovalReason ??
                                 t('removeSelected', {
                                   count: leftSelectedItemRefs.size,
                                 })

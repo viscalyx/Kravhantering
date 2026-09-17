@@ -31,6 +31,10 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       expect(remove).toHaveAccessibleDescription(
         'agreement.removalSelectionRequiresIncluded',
       )
+      expect(remove).toHaveAttribute(
+        'title',
+        'agreement.removalSelectionRequiresIncluded',
+      )
       fireEvent.click(remove)
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
       expect(context.requirementRowCheckbox('items', 'LOCAL')).toBeChecked()

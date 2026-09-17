@@ -2134,7 +2134,9 @@ utan skrivbehörighet samt ett bekräftat avtal.
 **Förväntat resultat:** Endast Inkluderad tillåter borttagning för båda typerna.
 Ett blandat urval spärrar hela åtgärden; inget krav hoppas tyst över.
 Förklaringen anger det faktiska hindret, visas vid fokus och hovring och kan
-läsas utan klick. Enter på spärrad åtgärd gör ingen ändring. Servern kontrollerar
+läsas utan klick. Knappens titel för markerade krav anger samma hinder; när
+borttagning tillåts visar titeln åtgärden och antalet markerade krav på valt språk.
+Enter på spärrad åtgärd gör ingen ändring. Servern kontrollerar
 aktuellt tillstånd; ett avvisat anrop ändrar varken innehåll, medlemskap eller
 avstegshistorik. Behörighet, avtalslåsning och avstegsbeslut gäller även med
 Inkluderad. Borttagningen kvarstår efter omladdning; bibliotekskravet finns
