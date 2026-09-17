@@ -975,7 +975,7 @@ export async function recordDecision(
       data.decisionMotivation.trim(),
       data.decidedBy.trim(),
       data.decidedByHsaId,
-      now,
+      now.toISOString(),
       deviationId,
       data.decision === DEVIATION_APPROVED
         ? data.conditions?.trim() || null
@@ -1217,7 +1217,7 @@ export async function recordSpecificationLocalDecision(
       data.decisionMotivation.trim(),
       data.decidedBy.trim(),
       data.decidedByHsaId,
-      now,
+      now.toISOString(),
       deviationId,
       data.decision === DEVIATION_APPROVED
         ? data.conditions?.trim() || null

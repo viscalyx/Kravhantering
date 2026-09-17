@@ -216,6 +216,12 @@ The ordinary `npm test` command excludes `tests/sql-integration/`. The
 `Integration Tests` workflow runs the SQL suite as a separate required job
 against its own test database.
 
+Deviation decisions preserve their exact millisecond timestamp when written to
+`datetime2(3)` columns by binding an ISO timestamp string. The driver's inferred
+`DateTime` parameter type rounds JavaScript `Date` values and can move an
+approval into the future relative to an immediate applicability check. The SQL
+suite verifies that library and local approvals apply at the recorded instant.
+
 HSA verification quota scenarios start after fixture setup with at least
 15 seconds left in the SQL Server minute. Near a minute boundary, the test
 process waits until the next minute and rechecks SQL time before exercising the

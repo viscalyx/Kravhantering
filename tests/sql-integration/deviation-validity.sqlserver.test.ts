@@ -28,6 +28,7 @@ import {
 import { collectCompleteSpecificationOutputData } from '@/lib/reports/data/specification-output'
 import { createSpecificationCsvFormatter } from '@/lib/reports/specification-csv'
 import { querySpecificationItemPage } from '@/lib/requirements/specification-item-page'
+import { applicableDeviationSql } from '@/lib/specifications/agreement-deviation-state'
 import { createSpecificationAgreementWorkflow } from '@/lib/specifications/agreements'
 import { requireTestValue } from '@/tests/helpers/require-test-value'
 import { DeviationValidity1789516800000 } from '@/typeorm/migrations/0070_deviation_validity.mjs'
@@ -103,6 +104,37 @@ describe('deviation approval terms', () => {
       itemRef: `${kind === 'local' ? 'local' : 'lib'}:${itemId}`,
     }
   }
+
+  it.each(['library', 'local'] as const)(
+    'makes a %s approval applicable at its exact recorded millisecond',
+    async kind => {
+      const db = database()
+      const specification = await createSpecificationFixture(
+        db,
+        `PRECISE-APPROVAL-${kind}`,
+      )
+      const decidedAt = new Date('2026-01-01T12:00:00.002Z')
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(decidedAt)
+      const approved = await approvedItem(kind, specification.id)
+      vi.useRealTimers()
+
+      const cases =
+        kind === 'local'
+          ? 'specification_local_requirement_deviations'
+          : 'deviations'
+      const rows = await db.query<
+        Array<{ decidedAt: Date; applicable: number }>
+      >(
+        `SELECT decided_at AS decidedAt,
+          CASE WHEN ${applicableDeviationSql(kind, 'CAST(@1 AS datetime2(3))')}
+            THEN 1 ELSE 0 END AS applicable
+         FROM ${cases} deviation WHERE deviation.id = @0`,
+        [approved.deviationId, decidedAt.toISOString()],
+      )
+      expect(rows).toEqual([{ decidedAt, applicable: 1 }])
+    },
+  )
 
   it.each(['library', 'local'] as const)(
     'ends only applicable %s approvals and preserves expired historical linkage',
