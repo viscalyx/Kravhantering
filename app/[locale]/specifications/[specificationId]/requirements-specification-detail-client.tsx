@@ -3199,7 +3199,7 @@ export default function KravunderlagDetailClient({
                       aria-expanded={showEditSpecificationForm}
                       aria-haspopup="dialog"
                       aria-label={t('editSpecification')}
-                      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-white/80 text-secondary-700 shadow-sm transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:bg-secondary-900/70 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-white/80 text-secondary-700 shadow-sm transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:bg-secondary-900/70 dark:text-secondary-200 dark:hover:bg-secondary-800"
                       {...devMarker({
                         context: 'requirements specification detail',
                         name: 'detail action',
