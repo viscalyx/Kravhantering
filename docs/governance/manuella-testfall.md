@@ -2168,27 +2168,77 @@ tillstånd. Fönsterändring bevarar vald layout och aktiv tabb.
 
 ### SPEC-31: kom ihåg senaste kravunderlagets layout
 
-**Steg:** Öppna underlag A med krav utan sparad layout. Välj endast höger
+**Steg:** Öppna underlag A med krav utan sparad layout. Öppna båda panelerna
+och ändra deras bredder. Välj endast höger
 panel och ladda om. Besök kravunderlagslistan och återvänd till A. Öppna ett
 tomt underlag B och återvänd därefter till A. Prova även med blockerad
 webbläsarlagring och med en ogiltig sparad layout.
 
 **Förväntat resultat:** A börjar med endast vänster panel. Omladdning och
 återbesök via listan återställer det manuella valet. B börjar med båda
-panelerna. Återkomsten från B använder A:s grundlayout. Otillgänglig eller
+panelerna. Återkomsten från B använder A:s grundlayout och lika panelbredder.
+Omladdning och återbesök via listan bevarar även vald breddfördelning.
+Otillgänglig eller
 ogiltig lagring hindrar inte hopfällning och öppning. Bibliotekskrav och
 kravunderlagslokala krav räknas båda som innehåll.
 
 ### SPEC-32: bevara panelens arbete under sidbesöket
 
 **Steg:** Öppna Kravbibliotek, markera ett krav och ange ett krav-ID-filter.
-Scrolla i listan. Fäll ihop panelen, ändra fönsterbredd åt båda hållen och
+Scrolla i listan och dra avdelaren för att ändra panelbredderna. Fäll ihop
+panelen, ändra fönsterbredd åt båda hållen och
 öppna panelen igen. Prova också sortering, expanderade rader och pågående
 inmatning på en sekundär tabb. Sök efter något som inte ger träffar.
 
 **Förväntat resultat:** Markeringar, filter, sortering, expanderade rader,
 inmatning och scrollposition finns kvar. Inga krav läggs till eller tas bort
 och ingen redigering sparas av hopfällningen. Nollträffar ändrar inte layout.
+
+### SPEC-33: ändra panelbredder med pekare
+
+**Steg:** Öppna båda panelerna i ett kravunderlag på en bred skärm. Dra
+avdelaren mellan panelerna åt båda hållen. Dubbelklicka på avdelaren.
+
+**Förväntat resultat:** Panelerna ändrar bredd under dragningen och behåller
+sitt innehåll. Dubbelklick återställer lika breda paneler.
+
+### SPEC-34: ändra och bevara panelbredder med tangentbord
+
+**Steg:** Öppna båda panelerna och fokusera avdelaren med Tab. Använd
+vänster- och högerpil, även tillsammans med Shift. Ladda om, byt tabb,
+fäll ihop och öppna en panel och ändra fönsterbredd. Tryck Enter på avdelaren.
+
+**Förväntat resultat:** Piltangenterna ändrar bredd, med större steg med
+Shift. Valet bevaras vid omladdning, tabbbyte och hopfällning. Smala fönster
+visar staplade paneler utan avdelare; breda fönster återställer valt läge.
+Enter återställer lika breda paneler. Piltangenter fäller inte ihop paneler.
+
+### SPEC-35: förhandsvisa och avbryt hopfällning vid dragning
+
+**Steg:** Öppna båda panelerna och ändra deras bredder. Dra en panel så smal
+att uppmaningen att fortsätta dra visas. Fortsätt tills panelen tonas ned.
+Dra tillbaka och prova Escape. Dra sedan tills panelen tonas ned igen och
+släpp. Öppna panelen med tangentbord. Upprepa för den andra panelen.
+
+**Förväntat resultat:** Panelen förblir öppen tills pekaren släpps i läget
+för hopfällning. Texten förklarar vad fortsatt dragning eller släpp gör.
+Återdragning avbryter förhandsvisningen och Escape återställer bredderna
+från dragningens start. Efter hopfällning har öppningsknappen fokus. När
+panelen öppnas återkommer bredderna från före dragningen.
+
+### SPEC-36: bevara breddval vid avbrutna gester och fönsterändringar
+
+**Steg:** Ändra panelernas bredder och gör fönstret smalare och sedan bredare.
+Starta en dragning och gör fönstret så smalt att panelerna staplas. Prova
+även dragning med touch eller penna på en bred skärm och avbryt en gest.
+Gör därefter en fullständig dragning med samma inmatningssätt.
+
+**Förväntat resultat:** Smalare fönster begränsar bredderna utan att skriva
+över valet eller fälla ihop paneler. Mer utrymme återställer valet.
+Avbrutna dragningar återställer föregående bredder. Om stapling döljer den
+fokuserade avdelaren flyttas fokus till vänster panels hopfällningsknapp.
+Slutförda gester med
+touch och penna ändrar bredderna på samma sätt som med mus.
 
 ## Avsteg
 

@@ -323,6 +323,15 @@ function okJson(body: unknown) {
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
+vi.stubGlobal(
+  'matchMedia',
+  vi.fn((query: string) => ({
+    matches: true,
+    media: query,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  })),
+)
 const intersectionObserverCallbacks = new Map<
   Element,
   IntersectionObserverCallback

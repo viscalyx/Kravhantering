@@ -5,6 +5,81 @@ import { expectApiResponseOk } from '../api-response-assertions'
 
 const storageKey = 'specification-panel-layout-v1'
 
+test('SPEC-33: resizes both panels live without changing their gap or table columns', async ({
+  page,
+}) => {
+  await openSpecification(page, 8, 'en')
+  await page
+    .getByRole('button', { name: 'Expand Requirements Library', exact: true })
+    .click()
+  const divider = page.getByRole('separator', {
+    name: 'Resize specification panels',
+  })
+  await expect(divider).toBeVisible()
+  await expect(divider).toHaveAttribute(
+    'data-developer-mode-value',
+    'panel widths',
+  )
+  const left = page.locator('#specification-left-panel')
+  const right = page.locator('#specification-right-panel')
+  const before = requireTestValue(await left.boundingBox())
+  const beforeRight = requireTestValue(await right.boundingBox())
+  const handle = requireTestValue(await divider.boundingBox())
+  expect(handle.width).toBe(16)
+  const column = left.locator('[data-requirement-header-label="uniqueId"]')
+  const columnWidth = requireTestValue(await column.boundingBox()).width
+  await test.step('Drag and retain the new widths on reload', async () => {
+    await divider.hover()
+    await expect(divider).toHaveCSS('cursor', 'ew-resize')
+    await page.mouse.down()
+    await page.mouse.move(
+      handle.x + handle.width / 2 + 80,
+      handle.y + handle.height / 2,
+      { steps: 5 },
+    )
+    await expect
+      .poll(async () =>
+        Math.round(
+          requireTestValue(await left.boundingBox()).width - before.width,
+        ),
+      )
+      .toBe(80)
+    expect(
+      Math.round(
+        requireTestValue(await right.boundingBox()).width - beforeRight.width,
+      ),
+    ).toBe(-80)
+    const resizedLeft = requireTestValue(await left.boundingBox())
+    const resizedRight = requireTestValue(await right.boundingBox())
+    expect(resizedRight.x - resizedLeft.x - resizedLeft.width).toBe(16)
+    expect(requireTestValue(await column.boundingBox()).width).toBeCloseTo(
+      columnWidth,
+      0,
+    )
+    await page.mouse.up()
+    await expect(divider).toBeFocused()
+    await page.reload()
+    await expect
+      .poll(async () =>
+        Math.round(
+          requireTestValue(await left.boundingBox()).width - before.width,
+        ),
+      )
+      .toBe(80)
+  })
+  await test.step('Reset to equal widths', async () => {
+    await divider.dblclick()
+    await expect
+      .poll(async () =>
+        Math.abs(
+          requireTestValue(await left.boundingBox()).width -
+            requireTestValue(await right.boundingBox()).width,
+        ),
+      )
+      .toBeLessThan(1)
+  })
+})
+
 async function openSpecification(page: Page, id = 8, locale = 'sv') {
   await page.goto(`/${locale}/specifications/${id}`)
   await expect
@@ -19,6 +94,316 @@ async function openSpecification(page: Page, id = 8, locale = 'sv') {
       }, storageKey),
     )
     .toBe(id)
+}
+
+test('SPEC-34: keyboard resizing survives reloads, tabs, collapse and responsive widths', async ({
+  page,
+}) => {
+  await openSpecification(page, 8, 'en')
+  await page
+    .getByRole('button', { name: 'Expand Requirements Library', exact: true })
+    .click()
+  const divider = page.getByRole('separator', {
+    name: 'Resize specification panels',
+  })
+  const left = page.locator('#specification-left-panel')
+  const width = async () => requireTestValue(await left.boundingBox()).width
+  const initial = await width()
+  await test.step('Resize with arrow keys and expose the current ratio', async () => {
+    await divider.focus()
+    await divider.press('ArrowRight')
+    await expect.poll(async () => Math.round((await width()) - initial)).toBe(8)
+    await divider.press('Shift+ArrowRight')
+    await expect
+      .poll(async () => Math.round((await width()) - initial))
+      .toBe(40)
+    await expect(divider).toHaveAttribute(
+      'aria-valuetext',
+      /Left panel \d+%, right panel \d+%/,
+    )
+  })
+  await test.step('Preserve widths across reload, tabs, collapse and stacking', async () => {
+    await page.reload()
+    await expect
+      .poll(async () => Math.round((await width()) - initial))
+      .toBe(40)
+    await page.getByRole('tab', { name: 'Needs references' }).click()
+    await expect
+      .poll(async () => Math.round((await width()) - initial))
+      .toBe(40)
+    await page
+      .getByRole('button', {
+        name: 'Collapse Requirements Library',
+        exact: true,
+      })
+      .click()
+    await expect(divider).toBeHidden()
+    await page
+      .getByRole('button', { name: 'Expand Requirements Library', exact: true })
+      .click()
+    await expect
+      .poll(async () => Math.round((await width()) - initial))
+      .toBe(40)
+    await page.setViewportSize({ width: 375, height: 812 })
+    await expect(divider).toBeHidden()
+    await page.setViewportSize(DESKTOP_VIEWPORT)
+    await expect
+      .poll(async () => Math.round((await width()) - initial))
+      .toBe(40)
+  })
+  await test.step('Reset and stop keyboard resizing at both width limits', async () => {
+    await divider.press('Enter')
+    await expect.poll(async () => Math.round((await width()) - initial)).toBe(0)
+    for (let step = 0; step < 20; step++) await divider.press('Shift+ArrowLeft')
+    await expect.poll(async () => Math.round(await width())).toBe(400)
+    await expect(divider).toBeVisible()
+    await page.setViewportSize({ width: 1320, height: DESKTOP_VIEWPORT.height })
+    for (let step = 0; step < 30; step++)
+      await divider.press('Shift+ArrowRight')
+    expect(
+      Number(await divider.getAttribute('aria-valuenow')),
+    ).toBeLessThanOrEqual(Number(await divider.getAttribute('aria-valuemax')))
+  })
+})
+
+test('SPEC-36: clamps narrow workspaces without losing the preferred ratio and cancels interrupted drags', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1200 })
+  await openSpecification(page, 8, 'en')
+  await page
+    .getByRole('button', { name: 'Expand Requirements Library', exact: true })
+    .click()
+  const divider = page.getByRole('separator', {
+    name: 'Resize specification panels',
+  })
+  const left = page.locator('#specification-left-panel')
+  const handle = requireTestValue(await divider.boundingBox())
+  const before = requireTestValue(await left.boundingBox())
+  await test.step('Save a preferred panel width', async () => {
+    await divider.hover()
+    await page.mouse.down()
+    await page.mouse.move(
+      handle.x + 8 + 500 - before.width,
+      handle.y + handle.height / 2,
+      { steps: 5 },
+    )
+    await page.mouse.up()
+    await expect
+      .poll(async () =>
+        Math.round(requireTestValue(await left.boundingBox()).width),
+      )
+      .toBe(500)
+  })
+  const saved = await page.evaluate(() =>
+    localStorage.getItem('specification-panel-width-v1'),
+  )
+  await test.step('Clamp narrow workspaces without overwriting the preference', async () => {
+    await page.setViewportSize({ width: 1280, height: 1200 })
+    await expect
+      .poll(async () =>
+        Math.round(requireTestValue(await left.boundingBox()).width),
+      )
+      .toBe(400)
+    expect(
+      await page.evaluate(() =>
+        localStorage.getItem('specification-panel-width-v1'),
+      ),
+    ).toBe(saved)
+    await page.setViewportSize({ width: 1920, height: 1200 })
+    await expect
+      .poll(async () =>
+        Math.round(requireTestValue(await left.boundingBox()).width),
+      )
+      .toBe(500)
+  })
+  await test.step('Cancel a drag when the panels stack and keep focus visible', async () => {
+    await divider.hover()
+    await page.mouse.down()
+    await page.mouse.move(handle.x + 8, handle.y + handle.height / 2, {
+      steps: 5,
+    })
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.mouse.up()
+    await expect(divider).toBeHidden()
+    await expect(
+      page.getByRole('button', {
+        name: 'Collapse Requirements in specification',
+        exact: true,
+      }),
+    ).toBeFocused()
+    await page.setViewportSize({ width: 1920, height: 1200 })
+    await expect
+      .poll(async () =>
+        Math.round(requireTestValue(await left.boundingBox()).width),
+      )
+      .toBe(500)
+    expect(
+      await page.evaluate(() =>
+        localStorage.getItem('specification-panel-width-v1'),
+      ),
+    ).toBe(saved)
+  })
+})
+
+for (const pointer of ['touch', 'pen'] as const) {
+  test(`SPEC-36: supports ${pointer} resizing and cancels lost gestures`, async ({
+    page,
+  }) => {
+    await openSpecification(page, 8, 'en')
+    await page
+      .getByRole('button', { name: 'Expand Requirements Library', exact: true })
+      .click()
+    const divider = page.getByRole('separator', {
+      name: 'Resize specification panels',
+    })
+    const left = page.locator('#specification-left-panel')
+    const handle = requireTestValue(await divider.boundingBox())
+    const before = requireTestValue(await left.boundingBox()).width
+    const x = handle.x + 8
+    const y = handle.y + handle.height / 2
+    const session = await page.context().newCDPSession(page)
+    const send = async (phase: 'start' | 'move' | 'end', clientX: number) => {
+      if (pointer === 'touch') {
+        await session.send('Input.dispatchTouchEvent', {
+          type: (
+            { start: 'touchStart', move: 'touchMove', end: 'touchEnd' } as const
+          )[phase],
+          touchPoints: phase === 'end' ? [] : [{ x: clientX, y }],
+        })
+      } else {
+        await session.send('Input.dispatchMouseEvent', {
+          type: (
+            {
+              start: 'mousePressed',
+              move: 'mouseMoved',
+              end: 'mouseReleased',
+            } as const
+          )[phase],
+          x: clientX,
+          y,
+          button: 'left',
+          buttons: phase === 'end' ? 0 : 1,
+          clickCount: 1,
+          pointerType: 'pen',
+        })
+      }
+    }
+    await test.step('Cancel an interrupted gesture', async () => {
+      await send('start', x)
+      await send('move', x + 64)
+      await expect
+        .poll(async () =>
+          Math.round(requireTestValue(await left.boundingBox()).width - before),
+        )
+        .toBe(64)
+      if (pointer === 'touch')
+        await session.send('Input.dispatchTouchEvent', {
+          type: 'touchCancel',
+          touchPoints: [],
+        })
+      else {
+        // A blur interrupts a real pen gesture, without depending on Chromium's pointer IDs.
+        await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+        await send('end', x + 64)
+      }
+      await expect
+        .poll(async () => requireTestValue(await left.boundingBox()).width)
+        .toBeCloseTo(before, 0)
+    })
+    await test.step('Commit a completed gesture', async () => {
+      await send('start', x)
+      await send('move', x + 64)
+      await send('end', x + 64)
+      await expect
+        .poll(async () =>
+          Math.round(requireTestValue(await left.boundingBox()).width - before),
+        )
+        .toBe(64)
+    })
+    await session.detach()
+  })
+}
+
+for (const side of ['left', 'right'] as const) {
+  test(`SPEC-35: previews, cancels and commits dragging the ${side} panel closed`, async ({
+    page,
+  }) => {
+    await openSpecification(page, 8, 'en')
+    await page
+      .getByRole('button', { name: 'Expand Requirements Library', exact: true })
+      .click()
+    const divider = page.getByRole('separator', {
+      name: 'Resize specification panels',
+    })
+    await divider.press('Shift+ArrowRight')
+    const panel = page.locator(`#specification-${side}-panel`)
+    const left = page.locator('#specification-left-panel')
+    const before = requireTestValue(await left.boundingBox()).width
+    const panelBefore = requireTestValue(await panel.boundingBox()).width
+    const label =
+      side === 'left' ? 'Requirements in specification' : 'Requirements Library'
+    const direction = side === 'left' ? -1 : 1
+    const handle = requireTestValue(await divider.boundingBox())
+    const x = handle.x + handle.width / 2
+    const y = handle.y + handle.height / 2
+    const atMinimum = x + direction * (panelBefore - 400)
+
+    await test.step('Preview collapse, move back and cancel with Escape', async () => {
+      await divider.hover()
+      await page.mouse.down()
+      await page.mouse.move(atMinimum, y, { steps: 5 })
+      await expect(
+        page
+          .getByRole('status')
+          .filter({ hasText: `Continue dragging to collapse ${label}` }),
+      ).toBeVisible()
+      await expect
+        .poll(async () =>
+          Math.round(requireTestValue(await panel.boundingBox()).width),
+        )
+        .toBe(400)
+      await page.mouse.move(atMinimum + direction * 81, y, { steps: 5 })
+      await expect(
+        page
+          .getByRole('status')
+          .filter({ hasText: `Release to collapse ${label}` }),
+      ).toBeVisible()
+      await expect(panel).toHaveCSS('opacity', '0.45')
+      await expect(panel).toBeVisible()
+      await page.mouse.move(atMinimum - direction * 20, y, { steps: 3 })
+      await expect(panel).toHaveCSS('opacity', '1')
+      await expect
+        .poll(async () =>
+          Math.round(requireTestValue(await panel.boundingBox()).width),
+        )
+        .toBe(420)
+      await page.keyboard.press('Escape')
+      await page.mouse.up()
+      await expect
+        .poll(async () => requireTestValue(await left.boundingBox()).width)
+        .toBeCloseTo(before, 0)
+    })
+    await test.step('Collapse on release and restore the prior ratio on reopening', async () => {
+      await divider.hover()
+      await page.mouse.down()
+      await page.mouse.move(atMinimum + direction * 81, y, { steps: 5 })
+      await expect(panel).toHaveCSS('opacity', '0.45')
+      await page.mouse.up()
+      await expect(panel).toBeHidden()
+      await expect(divider).toBeHidden()
+      const reopen = page.getByRole('button', {
+        name: `Expand ${label}`,
+        exact: true,
+      })
+      await expect(reopen).toBeFocused()
+      await reopen.press('Enter')
+      await expect(panel).toHaveCSS('opacity', '1')
+      await expect
+        .poll(async () => requireTestValue(await left.boundingBox()).width)
+        .toBeCloseTo(before, 0)
+    })
+  })
 }
 
 for (const locale of ['sv', 'en'] as const) {
@@ -188,6 +573,12 @@ test('SPEC-31: keeps only the latest specification layout across reloads and oth
       openSpecification(page))
     await test.step('Restore a manual choice on reload', async () => {
       await page
+        .getByRole('button', { name: 'Öppna Kravbibliotek', exact: true })
+        .click()
+      await page
+        .getByRole('separator', { name: 'Ändra panelbredder' })
+        .press('Shift+ArrowRight')
+      await page
         .getByRole('button', {
           name: 'Fäll ihop Krav i underlaget',
           exact: true,
@@ -202,6 +593,9 @@ test('SPEC-31: keeps only the latest specification layout across reloads and oth
       ).toHaveAttribute('aria-expanded', 'false')
     })
     await test.step('Retain the choice when visiting another kind of page', async () => {
+      const widthPreference = await page.evaluate(() =>
+        localStorage.getItem('specification-panel-width-v1'),
+      )
       await page.goto('/sv/specifications')
       await test.step('Open specification and settle its initial layout', () =>
         openSpecification(page))
@@ -211,6 +605,11 @@ test('SPEC-31: keeps only the latest specification layout across reloads and oth
           exact: true,
         }),
       ).toHaveCount(1)
+      expect(
+        await page.evaluate(() =>
+          localStorage.getItem('specification-panel-width-v1'),
+        ),
+      ).toBe(widthPreference)
     })
     await test.step('Replace the saved choice when opening another specification', async () => {
       await test.step('Open specification and settle its initial layout', () =>
@@ -231,6 +630,12 @@ test('SPEC-31: keeps only the latest specification layout across reloads and oth
           ),
         )
         .toEqual({ specificationId: 8, layout: 'left' })
+      await page
+        .getByRole('button', { name: 'Öppna Kravbibliotek', exact: true })
+        .click()
+      await expect(
+        page.getByRole('separator', { name: 'Ändra panelbredder' }),
+      ).toHaveAttribute('aria-valuenow', '50')
     })
   } finally {
     await expectApiResponseOk(
@@ -280,6 +685,15 @@ test('SPEC-32: preserves selection, unsaved filters and scroll while hiding and 
     })
     const scrollTop = await library.evaluate(element => element.scrollTop)
     expect(scrollTop).toBeGreaterThan(0)
+    const divider = page.getByRole('separator', { name: 'Ändra panelbredder' })
+    const handle = requireTestValue(await divider.boundingBox())
+    await divider.hover()
+    await page.mouse.down()
+    await page.mouse.move(handle.x + 68, handle.y + handle.height / 2, {
+      steps: 5,
+    })
+    await page.mouse.up()
+    expect(await library.evaluate(element => element.scrollTop)).toBe(scrollTop)
     await page
       .getByRole('button', { name: 'Fäll ihop Kravbibliotek', exact: true })
       .click()
@@ -328,6 +742,11 @@ test('SPEC-31: unavailable browser storage still permits panel transitions', asy
     .getByRole('button', { name: 'Öppna Kravbibliotek', exact: true })
     .click()
   await expect(page.getByRole('button', { name: /^Fäll ihop / })).toHaveCount(2)
+  const divider = page.getByRole('separator', { name: 'Ändra panelbredder' })
+  await divider.press('Shift+ArrowRight')
+  expect(Number(await divider.getAttribute('aria-valuenow'))).toBeGreaterThan(
+    50,
+  )
 })
 
 test('SPEC-31: invalid saved layout falls back to the content default', async ({

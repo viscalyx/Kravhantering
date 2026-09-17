@@ -2987,7 +2987,7 @@ export default function KravunderlagDetailClient({
   const splitPanelHeaderClassName = `sticky ${specificationDetailStickyTopOffsetClassName} z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80`
   const specificationDetailPageShellClassName = `${specificationDetailPagePaddingClassName} xl:flex xl:h-[calc(100dvh-4rem)] xl:flex-col xl:overflow-hidden`
   const specificationDetailContainerClassName =
-    'container-custom max-w-none xl:flex xl:min-h-0 xl:flex-1 xl:flex-col'
+    'container-custom max-w-none xl:flex xl:min-h-0 xl:w-full xl:flex-1 xl:flex-col'
   const responsibleDisplayName = formatActorDisplayNameForLocale(
     spec.responsibleDisplayName,
     locale,

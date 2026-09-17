@@ -275,6 +275,21 @@ webbläsaren och används vid omladdning. Besöker du ett annat underlag ersätt
 minnet; när du återvänder används grundlayouten igen. Andra slags sidor raderar
 inte minnet. Layouten följer inte ditt konto till andra webbläsare eller enheter.
 
+När båda panelerna står bredvid varandra kan du dra linjen mellan dem för att
+ändra deras bredder. Valet sparas för det senast besökta kravunderlaget på
+samma sätt som panelernas öppna eller hopfällda läge. Byten av tabb påverkar
+inte bredderna. Dubbelklicka på linjen för att återställa lika breda paneler.
+
+När en panel blir smal visar linjen en uppmaning att fortsätta dra för att
+fälla ihop panelen. Dra vidare tills panelen tonas ned och släpp för att
+fälla ihop. Dra tillbaka för att avbryta hopfällningen, eller tryck Escape
+för att avbryta hela dragningen. När panelen öppnas igen återställs bredderna
+från före dragningen.
+
+Med tangentbord: fokusera linjen med Tab och använd vänster- eller högerpil.
+Håll Shift för större steg och tryck Enter för lika breda paneler.
+Piltangenterna fäller inte ihop paneler; använd panelknapparna för det.
+
 Ovanför båda kravlistorna finns samma kompakta kravpaketsfilter som i
 kravbiblioteket. I **Tillgängliga krav** kan du välja bland alla aktiva
 kravpaket, även om ett paket inte ger någon träff med de övriga filtren. I

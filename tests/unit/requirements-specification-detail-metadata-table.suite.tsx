@@ -424,7 +424,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
           name: 'specification.importLocalRequirements',
         }),
       ).toBeInTheDocument()
-      expect(screen.queryByRole('separator')).not.toBeInTheDocument()
+      expect(within(menu).queryByRole('separator')).not.toBeInTheDocument()
     })
 
     it('shows no empty-state actions to a read-only user', async () => {

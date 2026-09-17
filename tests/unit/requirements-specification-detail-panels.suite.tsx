@@ -7,6 +7,7 @@ export function registerPanelLayoutTests(context: SpecDetailWorkflowContext) {
     beforeEach(() => window.localStorage.clear())
     afterEach(() => vi.restoreAllMocks())
     const key = 'specification-panel-layout-v1'
+    const widthKey = 'specification-panel-width-v1'
     const left = 'specification.itemsInSpecification'
     const right = 'specification.libraryPanel'
     const toggle = (action: 'expand' | 'collapse', label: string) =>
@@ -15,6 +16,53 @@ export function registerPanelLayoutTests(context: SpecDetailWorkflowContext) {
       })
     const save = (layout: string, specificationId = 8) =>
       localStorage.setItem(key, JSON.stringify({ specificationId, layout }))
+
+    it.each([
+      [
+        'valid preference',
+        JSON.stringify({ specificationId: 8, leftRatio: 0.6 }),
+        0.6,
+      ],
+      [
+        'another specification',
+        JSON.stringify({ specificationId: 9, leftRatio: 0.6 }),
+        0.5,
+      ],
+      ['invalid JSON', '{invalid', 0.5],
+      ['missing ratio', JSON.stringify({ specificationId: 8 }), 0.5],
+      ['zero ratio', JSON.stringify({ specificationId: 8, leftRatio: 0 }), 0.5],
+      ['full width', JSON.stringify({ specificationId: 8, leftRatio: 1 }), 0.5],
+      [
+        'out of range',
+        JSON.stringify({ specificationId: 8, leftRatio: -2 }),
+        0.5,
+      ],
+      [
+        'string ratio',
+        JSON.stringify({ specificationId: 8, leftRatio: '0.6' }),
+        0.5,
+      ],
+    ])(
+      'normalizes the current specification width record: %s',
+      async (_name, value, expected) => {
+        localStorage.setItem(widthKey, value as string)
+        context.renderRequirementsSpecificationDetailClient()
+        await context.settleInitialEditorEffects()
+        expect(
+          screen.queryByRole('separator', {
+            name: 'specification.resizePanels',
+          }),
+        ).not.toBeInTheDocument()
+        fireEvent.click(toggle('expand', right))
+        expect(
+          screen.getByRole('separator', { name: 'specification.resizePanels' }),
+        ).toHaveAttribute('data-developer-mode-value', 'panel widths')
+        expect(JSON.parse(localStorage.getItem(widthKey) ?? 'null')).toEqual({
+          specificationId: 8,
+          leftRatio: expected,
+        })
+      },
+    )
 
     it('places the collapse control beside the tabs using navigation panel icons', async () => {
       save('both')

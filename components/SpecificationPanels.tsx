@@ -10,12 +10,14 @@ import { useTranslations } from 'next-intl'
 import {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
 } from 'react'
+import SpecificationPanelDivider from '@/components/SpecificationPanelDivider'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 type PanelLayout = 'both' | 'left' | 'right'
@@ -72,12 +74,34 @@ export default function SpecificationPanels({
   rightLabel,
   children,
 }: SpecificationPanelsProps) {
+  const workspaceRef = useRef<HTMLDivElement>(null)
+  const focusCollapsedPanel = useRef<'left' | 'right' | null>(null)
   // Capture the opening snapshot: filtering, refreshes and edits cannot choose
   // a new default during this visit. The caller keys this component by identity.
   const [opening] = useState({ specificationId, initialHasItems })
   const [layout, setLayout] = useState<PanelLayout>(
     initialHasItems ? 'left' : 'both',
   )
+  const collapseFromDivider = useCallback(
+    (side: 'left' | 'right') => {
+      const next = side === 'left' ? 'right' : 'left'
+      focusCollapsedPanel.current = side
+      setLayout(next)
+      saveLayout(opening.specificationId, next)
+    },
+    [opening.specificationId],
+  )
+
+  useLayoutEffect(() => {
+    const side = focusCollapsedPanel.current
+    if (!side) return
+    workspaceRef.current
+      ?.querySelector<HTMLButtonElement>(
+        `button[aria-controls="specification-${side}-panel"][aria-expanded="false"]`,
+      )
+      ?.focus({ preventScroll: true })
+    focusCollapsedPanel.current = null
+  })
 
   useEffect(() => {
     const restored = readLayout(opening.specificationId)
@@ -99,15 +123,16 @@ export default function SpecificationPanels({
   }, [opening])
 
   const columns = {
-    both: 'xl:grid-cols-2',
+    both: 'xl:grid-cols-[minmax(0,var(--specification-left-width,1fr))_minmax(0,1fr)]',
     left: 'xl:grid-cols-[minmax(0,1fr)_auto]',
     right: 'xl:grid-cols-[auto_minmax(0,1fr)]',
   }[layout]
 
   return (
     <div
-      className={`grid min-w-0 grid-cols-1 items-start gap-6 xl:-mx-8 xl:min-h-0 xl:flex-1 xl:grid-rows-[minmax(0,1fr)] xl:items-stretch xl:gap-4 xl:overflow-hidden ${columns}`}
+      className={`relative grid min-w-0 grid-cols-1 items-start gap-6 xl:-mx-8 xl:min-h-0 xl:flex-1 xl:grid-rows-[minmax(0,1fr)] xl:items-stretch xl:gap-4 xl:overflow-hidden ${columns}`}
       data-specification-detail-split-panel="true"
+      ref={workspaceRef}
       {...devMarker({
         name: 'split workspace',
         context: 'requirements specification detail',
@@ -134,6 +159,14 @@ export default function SpecificationPanels({
           {children[index]}
         </SpecificationPanel>
       ))}
+      <SpecificationPanelDivider
+        active={layout === 'both'}
+        leftLabel={leftLabel}
+        onCollapse={collapseFromDivider}
+        rightLabel={rightLabel}
+        specificationId={opening.specificationId}
+        workspaceRef={workspaceRef}
+      />
     </div>
   )
 }
