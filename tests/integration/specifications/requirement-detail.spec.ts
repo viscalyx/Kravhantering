@@ -215,10 +215,22 @@ async function gotoSpecificationDetail(
   id = specificationId,
 ): Promise<void> {
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    await page.goto(`/sv/specifications/${id}`, {
-      timeout: 45_000,
-      waitUntil: 'domcontentloaded',
-    })
+    // The server-rendered controls are visible before their handlers hydrate.
+    await Promise.all([
+      ...['items', 'available-requirements'].map(list =>
+        page.waitForResponse(response => {
+          const url = new URL(response.url())
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === `/api/requirements-specifications/${id}/${list}`
+          )
+        }),
+      ),
+      page.goto(`/sv/specifications/${id}`, {
+        timeout: 45_000,
+        waitUntil: 'domcontentloaded',
+      }),
+    ])
 
     try {
       await expect(
@@ -1853,6 +1865,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
         itemRef: `lib:${requirementId}`,
         kind: 'library',
         specificationItemId: requirementId,
+        specificationItemStatusId: 1,
         uniqueId: isHiddenItem
           ? 'PWT-LIMIT-HIDDEN'
           : `PWT-LIMIT-KEEP-${number}`,
@@ -2185,25 +2198,40 @@ test.describe('Requirements specification deterministic manual cases', () => {
         const response = await route.fetch()
         const data = (await response.json()) as {
           items?: Array<{
+            hasApprovedDeviation: boolean
+            hasPendingDeviation: boolean
             itemRef: string
             kind: string
             needsReference: string | null
+            specificationItemStatusId: number
             uniqueId: string
           }>
         }
         const refs = new URL(route.request().url()).searchParams.getAll('refs')
-        const items = (data.items ?? []).filter(
-          item => !editSourceRemoved || item.itemRef !== 'lib:920001',
-        )
+        const items = (data.items ?? [])
+          .filter(item => !editSourceRemoved || item.itemRef !== 'lib:920001')
+          .map(item =>
+            item.itemRef === 'lib:920001'
+              ? {
+                  ...item,
+                  hasApprovedDeviation: false,
+                  hasPendingDeviation: false,
+                }
+              : item,
+          )
         if (
           reportRequirementAdded &&
           refs.includes(reportRequirementItem.itemRef) &&
           !items.some(item => item.itemRef === reportRequirementItem.itemRef)
         ) {
           items.push({
+            hasApprovedDeviation: reportRequirementItem.hasApprovedDeviation,
+            hasPendingDeviation: reportRequirementItem.hasPendingDeviation,
             itemRef: reportRequirementItem.itemRef,
             kind: 'library',
             needsReference: reportRequirementItem.needsReference,
+            specificationItemStatusId:
+              reportRequirementItem.specificationItemStatusId,
             uniqueId: reportRequirementItem.uniqueId,
           })
         }
