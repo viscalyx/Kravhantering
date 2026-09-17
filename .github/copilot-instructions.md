@@ -30,7 +30,6 @@
 
 ## General Rules
 
-- After changes, update relevant `docs/**/*.md` when behavior or workflows change.
 - When user-facing functionality, workflows, roles/permissions, visible UI,
   reports, privacy/export, lifecycle, or admin behavior changes, add or update
   matching automated tests and manual cases. For Playwright coverage, follow
@@ -39,6 +38,16 @@
   in the final response.
 - Follow `docs/development/sql-server-developer-workflow.md` for database setup, migrations, seeding, and developer browse workflow expectations.
 - Developer Mode is a desktop-only developer tool. Its overlay, chips, badge, and toast do **not** need to follow WCAG touch-target sizes, mobile responsiveness, or accessibility guidelines. Keep chips compact so they don't obscure the underlying UI.
+
+## Documentation
+
+- For affected documentation under `docs/**/*.md`, identify the intended
+  readers and what they need to know or do.
+- Create or update guidance when it is missing, inaccurate, or insufficient
+  for those readers. Leave accurate, sufficient guidance unchanged.
+- Match content and technical detail to the audience: developers,
+  application users, operators, or other readers. Include information only
+  when it helps them complete tasks, make decisions, or avoid mistakes.
 
 ## Database Schema Changes
 
