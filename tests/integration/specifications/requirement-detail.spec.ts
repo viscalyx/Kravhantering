@@ -1068,9 +1068,18 @@ for (const viewport of viewports) {
         const areaHeader = leftPanel.locator(
           '[data-requirement-header-label="area"]',
         )
+        const usageStatusHeader = leftPanel.locator(
+          '[data-requirement-header-label="specificationItemStatus"]',
+        )
 
         await expect(leftPanel).toHaveCount(1)
         await expect(areaHeader).toHaveCount(1)
+        await expect(usageStatusHeader).toHaveCount(1)
+        await expect(
+          page.locator(
+            '[data-specification-detail-list-panel="available"] [data-requirement-header-label="specificationItemStatus"]',
+          ),
+        ).toHaveCount(0)
 
         const popover = await openColumnPicker(page, leftPanel)
         const areaCheckbox = popover.locator(
@@ -1079,11 +1088,18 @@ for (const viewport of viewports) {
         await expect(areaCheckbox).toBeChecked({ timeout: 30_000 })
         await areaCheckbox.uncheck()
         await expect(areaHeader).toHaveCount(0)
+        const usageStatusCheckbox = popover.locator(
+          '[data-column-picker-option="specificationItemStatus"] input[type="checkbox"]',
+        )
+        await expect(usageStatusCheckbox).toBeChecked()
+        await usageStatusCheckbox.uncheck()
+        await expect(usageStatusHeader).toHaveCount(0)
 
         await popover
           .getByRole('button', { name: 'Återställ standardvy' })
           .click()
         await expect(areaHeader).toHaveCount(1)
+        await expect(usageStatusHeader).toHaveCount(1)
       })
 
       test('SPEC-12: answers requirement-selection questions and updates progress', async ({

@@ -1739,9 +1739,13 @@ skickar filter- och sorteringsläget, inte en lista med kravtillämpningsreferen
 
 ### SPEC-11: återställ kolumnvyer för kravunderlag
 
-**Steg:** Ändra kolumner i kravunderlagslistan och återställ.
+**Steg:** Öppna ett kravunderlag utan sparade kolumnval. Kontrollera att
+Användningsstatus visas i `Krav i underlaget`. Dölj Kravområde och
+Användningsstatus via Kolumner och välj sedan Återställ standardvy.
 
-**Förväntat resultat:** Standardkolumner visas igen.
+**Förväntat resultat:** Krav-ID, Beskrivning, Kravområde, Behovsreferens och
+Användningsstatus visas som standard och efter återställning i
+`Krav i underlaget`. Kravbibliotekets standardkolumner är oförändrade.
 
 ### SPEC-12: svara på kravurvalsfrågor
 

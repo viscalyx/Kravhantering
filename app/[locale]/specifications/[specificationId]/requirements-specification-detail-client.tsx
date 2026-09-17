@@ -202,6 +202,7 @@ const DEFAULT_LEFT_COLS: RequirementColumnId[] = [
   'description',
   'area',
   'needsReference',
+  'specificationItemStatus',
 ]
 const DEFAULT_RIGHT_COLS: RequirementColumnId[] = [
   'uniqueId',

@@ -553,6 +553,11 @@ state across reloads.
 
 ## Admin Defaults vs Personal Overrides
 
+`Krav i underlaget` defaults to requirement ID, description, requirement
+area, needs reference and usage status. This applies on first use and when
+resetting its column view. Saved personal column choices still take
+precedence. The available-requirements list retains its separate defaults.
+
 - Admin settings define the organization-wide baseline for:
   - column order
   - default visible columns
