@@ -3181,7 +3181,7 @@ export default function KravunderlagDetailClient({
             >
               <div className="min-w-0">
                 <div
-                  className="flex items-start gap-3"
+                  className="flex items-center gap-3"
                   data-specification-detail-title-row="true"
                 >
                   <h1
