@@ -1,0 +1,111 @@
+name: Attest with bounded retries
+description: Retry attestation creation and require verified action success.
+inputs:
+  subject-name:
+    description: Name of the container image to attest.
+    required: false
+    default: ''
+  subject-digest:
+    description: Immutable digest of the container image.
+    required: false
+    default: ''
+  subject-path:
+    description: Path to the deployment archive to attest.
+    required: false
+    default: ''
+  sbom-path:
+    description: Path to the SBOM for an SBOM attestation.
+    required: false
+    default: ''
+  predicate-type:
+    description: Predicate type for a custom attestation.
+    required: false
+    default: ''
+  predicate-path:
+    description: Path to the custom attestation predicate.
+    required: false
+    default: ''
+outputs:
+  bundle-path:
+    description: Bundle from the successful attempt.
+    value: ${{ steps.result.outputs['bundle-path'] }}
+  attestation-id:
+    description: Attestation ID from the successful attempt.
+    value: ${{ steps.result.outputs['attestation-id'] }}
+  attestation-url:
+    description: Attestation URL from the successful attempt.
+    value: ${{ steps.result.outputs['attestation-url'] }}
+runs:
+  using: composite
+  steps:
+    - name: Attestation attempt 1
+      id: first
+      continue-on-error: true
+      uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+      with:
+        subject-name: ${{ inputs['subject-name'] }}
+        subject-digest: ${{ inputs['subject-digest'] }}
+        subject-path: ${{ inputs['subject-path'] }}
+        sbom-path: ${{ inputs['sbom-path'] }}
+        predicate-type: ${{ inputs['predicate-type'] }}
+        predicate-path: ${{ inputs['predicate-path'] }}
+        push-to-registry: false
+
+    - name: Wait before attempt 2
+      if: ${{ !cancelled() && steps.first.outcome == 'failure' }}
+      shell: bash
+      run: sleep 10
+
+    - name: Attestation attempt 2
+      id: second
+      if: ${{ !cancelled() && steps.first.outcome == 'failure' }}
+      continue-on-error: true
+      uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+      with:
+        subject-name: ${{ inputs['subject-name'] }}
+        subject-digest: ${{ inputs['subject-digest'] }}
+        subject-path: ${{ inputs['subject-path'] }}
+        sbom-path: ${{ inputs['sbom-path'] }}
+        predicate-type: ${{ inputs['predicate-type'] }}
+        predicate-path: ${{ inputs['predicate-path'] }}
+        push-to-registry: false
+
+    - name: Wait before attempt 3
+      if: ${{ !cancelled() && steps.second.outcome == 'failure' }}
+      shell: bash
+      run: sleep 30
+
+    - name: Attestation attempt 3
+      id: third
+      if: ${{ !cancelled() && steps.second.outcome == 'failure' }}
+      continue-on-error: true
+      uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+      with:
+        subject-name: ${{ inputs['subject-name'] }}
+        subject-digest: ${{ inputs['subject-digest'] }}
+        subject-path: ${{ inputs['subject-path'] }}
+        sbom-path: ${{ inputs['sbom-path'] }}
+        predicate-type: ${{ inputs['predicate-type'] }}
+        predicate-path: ${{ inputs['predicate-path'] }}
+        push-to-registry: false
+
+    - name: Require successful attestation
+      id: result
+      if: ${{ !cancelled() }}
+      shell: bash
+      env:
+        SUCCEEDED: ${{ steps.first.outcome == 'success' || steps.second.outcome == 'success' || steps.third.outcome == 'success' }}
+        BUNDLE_PATH: ${{ steps.first.outcome == 'success' && steps.first.outputs['bundle-path'] || steps.second.outcome == 'success' && steps.second.outputs['bundle-path'] || steps.third.outcome == 'success' && steps.third.outputs['bundle-path'] || '' }}
+        ATTESTATION_ID: ${{ steps.first.outcome == 'success' && steps.first.outputs['attestation-id'] || steps.second.outcome == 'success' && steps.second.outputs['attestation-id'] || steps.third.outcome == 'success' && steps.third.outputs['attestation-id'] || '' }}
+        ATTESTATION_URL: ${{ steps.first.outcome == 'success' && steps.first.outputs['attestation-url'] || steps.second.outcome == 'success' && steps.second.outputs['attestation-url'] || steps.third.outcome == 'success' && steps.third.outputs['attestation-url'] || '' }}
+      run: |
+        set -euo pipefail
+        if [[ "$SUCCEEDED" != true ]] || [[ ! -s "$BUNDLE_PATH" ]]; then
+          echo "::error::Attestation did not succeed with a bundle after at most three attempts."
+          exit 1
+        fi
+        {
+          printf 'bundle-path=%s\n' "$BUNDLE_PATH"
+          printf 'attestation-id=%s\n' "$ATTESTATION_ID"
+          printf 'attestation-url=%s\n' "$ATTESTATION_URL"
+        } >> "$GITHUB_OUTPUT"

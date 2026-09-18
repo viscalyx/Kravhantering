@@ -117,6 +117,16 @@ treating digest-derived attestation tags as the newest installable package
 version while keeping the Buildx metadata shape stable enough to record both
 `manifestDigest` and `imageId`.
 
+Attestation creation uses up to three attempts, with 10- and 30-second waits,
+to tolerate temporary identity-token or signing-service failures. Retries keep
+the same subject and predicate inputs and stop on cancellation. The workflow
+requires a successful attempt and its bundle, then performs the existing
+independent attestation verification before release publication. Exhausted
+retries fail the release; completed image promotion can remain visible while
+the GitHub Release is unpublished. Inspect the failed attempt logs and delivery
+summary before recovery. Rerunning an existing tag uses that tag's workflow
+revision, so changes merged later into main do not change its retry behavior.
+
 After creating each production deployment archive, the workflow creates a
 separate file attestation with the Kravhantering-owned
 `attestations/deployment-release/v1` predicate. The signed predicate records
