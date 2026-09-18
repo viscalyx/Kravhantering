@@ -14,6 +14,17 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { startCspReportingEdge } from '../helpers/csp-reporting-edge'
 
+function edgeStatus(origin: string, path: string, ca: Buffer) {
+  return new Promise<number | undefined>((resolve, reject) => {
+    const outgoing = request(origin, { path, ca, agent: false }, incoming => {
+      incoming.resume()
+      incoming.on('end', () => resolve(incoming.statusCode))
+    })
+    outgoing.on('error', reject)
+    outgoing.end()
+  })
+}
+
 describe('CSP reporting edge forwarding', () => {
   let directory: string
   let cert: Buffer
@@ -52,6 +63,58 @@ describe('CSP reporting edge forwarding', () => {
   afterAll(async () => {
     globalAgent.options.ca = originalCa
     await rm(directory, { recursive: true, force: true })
+  })
+
+  it('rejects request targets that could override the upstream authority', async () => {
+    const received: string[] = []
+    const upstream = createHttpServer((incoming, outgoing) => {
+      received.push(incoming.url ?? '')
+      outgoing.writeHead(204)
+      outgoing.end()
+    })
+    await new Promise<void>(resolve => upstream.listen(0, '127.0.0.1', resolve))
+    const address = upstream.address()
+    if (!address || typeof address === 'string')
+      throw new Error('Missing upstream address')
+    const edge = await startCspReportingEdge(`http://localhost:${address.port}`)
+    try {
+      for (const target of [
+        `http://127.0.0.1:${address.port}/unexpected`,
+        `https://127.0.0.1:${address.port}/unexpected`,
+        `//127.0.0.1:${address.port}/unexpected`,
+        `/\\127.0.0.1:${address.port}/unexpected`,
+        '*',
+      ]) {
+        expect(await edgeStatus(edge.origin, target, edge.certificate)).toBe(
+          400,
+        )
+      }
+      expect(received).toEqual([])
+      // URL-shaped query values and encoded paths remain untouched local paths.
+      const path =
+        '/assets/a%2Fb?next=https://example.com/path&value=%23fragment'
+      expect(await edgeStatus(edge.origin, path, edge.certificate)).toBe(204)
+      expect(received).toEqual([path])
+      expect(edge.deliveries).toEqual([])
+    } finally {
+      await edge.close()
+      upstream.closeAllConnections()
+      await new Promise<void>((resolve, reject) =>
+        upstream.close(error => (error ? reject(error) : resolve())),
+      )
+    }
+  })
+
+  it('rejects an edge certificate that the client does not trust', async () => {
+    const edge = await startCspReportingEdge('http://localhost:1')
+    try {
+      await expect(edgeStatus(edge.origin, '/', cert)).rejects.toMatchObject({
+        code: 'DEPTH_ZERO_SELF_SIGNED_CERT',
+      })
+      expect(edge.deliveries).toEqual([])
+    } finally {
+      await edge.close()
+    }
   })
 
   it.each(['http', 'https'])(
@@ -101,8 +164,8 @@ describe('CSP reporting edge forwarding', () => {
             {
               method: 'POST',
               headers: { 'content-type': 'application/reports+json' },
-              // Only the client-facing, ephemeral test edge uses a self-signed certificate.
-              rejectUnauthorized: false,
+              ca: edge.certificate,
+              agent: false,
             },
             incoming => {
               let body = ''

@@ -125,6 +125,41 @@ describe('committed operator-note lifecycle', () => {
       fs.rmSync(dir, { recursive: true, force: true })
     }
   })
+  it.each([
+    '<!-- hidden -->',
+    '<!<!-- hidden -->-- hidden -->',
+    '<!<!<!-- hidden -->-- hidden -->-- hidden -->',
+  ])(
+    'does not count reconstructed comments as operator guidance: %s',
+    comment => {
+      expect(meaningfulUnreleasedChange(empty, `${empty}\n${comment}`)).toBe(
+        false,
+      )
+      expect(
+        meaningfulUnreleasedChange(
+          source,
+          `${source.replace(history, '')}\n${comment}${history}`,
+        ),
+      ).toBe(false)
+      expect(
+        meaningfulUnreleasedChange(empty, `${empty}\n${comment}\nBack up SQL.`),
+      ).toBe(true)
+    },
+  )
+  it.each([
+    ['Back up SQL.', '**Back up SQL.**'],
+    ['Back up SQL.', '- Back up SQL.'],
+    ['https://example.com', '[https://example.com](https://example.com)'],
+    ['Guide https://example.com', '[Guide](https://example.com)'],
+    ['https://example.com', '<https://example.com>'],
+  ])(
+    'ignores formatting-only guidance changes from %s to %s',
+    (before, after) => {
+      expect(
+        meaningfulUnreleasedChange(`${empty}\n${before}`, `${empty}\n${after}`),
+      ).toBe(false)
+    },
+  )
 })
 
 it('preserves a new main entry inserted between two tagged entries', () => {

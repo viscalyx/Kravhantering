@@ -9,6 +9,7 @@ import { join } from 'node:path'
 /** Test-only TLS edge: forwards untouched native payloads and records only receipt status. */
 export async function startCspReportingEdge(upstream: string): Promise<{
   origin: string
+  certificate: Buffer
   certificateFingerprint: string
   deliveries: { status: number; media: string; customHeader: boolean }[]
   close: () => Promise<void>
@@ -42,12 +43,25 @@ export async function startCspReportingEdge(upstream: string): Promise<{
   )
   const deliveries: { status: number; media: string; customHeader: boolean }[] =
     []
+  const certificate = await readFile(cert)
   const server = createServer(
-    { key: await readFile(key), cert: await readFile(cert) },
+    { key: await readFile(key), cert: certificate },
     (incoming, outgoing) => {
+      const path = incoming.url ?? '/'
+      if (
+        !path.startsWith('/') ||
+        path.startsWith('//') ||
+        path.includes('\\')
+      ) {
+        outgoing.writeHead(400)
+        outgoing.end()
+        return
+      }
       const forwarded = upstreamRequest(
-        new URL(incoming.url ?? '/', upstreamUrl),
+        upstreamUrl,
         {
+          // The request may select a path, but never the configured upstream authority.
+          path,
           method: incoming.method,
           headers: incoming.headers,
         },
@@ -78,9 +92,10 @@ export async function startCspReportingEdge(upstream: string): Promise<{
     throw new Error('Missing test TLS edge address')
   return {
     origin: `https://localhost:${address.port}`,
+    certificate,
     certificateFingerprint: createHash('sha256')
       .update(
-        new X509Certificate(await readFile(cert)).publicKey.export({
+        new X509Certificate(certificate).publicKey.export({
           type: 'spki',
           format: 'der',
         }),

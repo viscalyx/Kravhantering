@@ -67,9 +67,14 @@ export function parseOperatorUpgradeNotes(
 }
 
 export function meaningfulUnreleasedChange(baseNotes, headNotes) {
-  const normalize = value =>
-    value
-      .replace(/<!--[\s\S]*?-->/gu, '')
+  const normalize = value => {
+    // Removing a comment can join its neighbors into another comment.
+    let previous
+    do {
+      previous = value
+      value = value.replace(/<!--[\s\S]*?-->/gu, '')
+    } while (value !== previous)
+    return value
       .replace(/^\s*(?:[-+*]|\d+[.)])\s+/gmu, '')
       .replace(/\[([^\]]+)\]\(([^)]+)\)/gu, (_match, label, url) =>
         label === url ? url : `${label} ${url}`,
@@ -78,6 +83,7 @@ export function meaningfulUnreleasedChange(baseNotes, headNotes) {
       .replace(/[*_#>`~]/gu, '')
       .replace(/\s+/gu, ' ')
       .trim()
+  }
   const before = normalize(parseOperatorUpgradeNotes(baseNotes).unreleased)
   const after = normalize(parseOperatorUpgradeNotes(headNotes).unreleased)
   // New wording is required: whitespace and removal alone cannot assert an addition/correction.
