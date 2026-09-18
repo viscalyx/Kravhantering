@@ -28,7 +28,7 @@ function fixture() {
       async tag => `sha256:${tag.split('/kravhantering-')[1].split(':')[0]}`,
     ),
     tag: vi.fn(async () => state.tag),
-    release: vi.fn(async () => state.release),
+    release: vi.fn(async () => state.release && { ...state.release }),
     assets: vi.fn(async () => state.assets),
     assetDigest: vi.fn(async asset => asset.digest),
     createTag: vi.fn(async () => {
@@ -43,6 +43,7 @@ function fixture() {
         prerelease: plan.prerelease,
         draft: true,
       }
+      return { ...state.release }
     }),
     publishRelease: vi.fn(async () => {
       expect(state.assets).toHaveLength(input.assets.length)
@@ -73,7 +74,10 @@ function fixture() {
 describe('GitHub release and asset publication', () => {
   it('publishes complete committed notes and assets then preserves a matching complete release', async () => {
     const f = fixture()
-    const result = await publishGitHubRelease(f.input, f.options)
+    const result = await publishGitHubRelease(f.input, {
+      ...f.options,
+      sleep: undefined,
+    })
     expect(result.releasePage).toBe('published')
     expect(result.assets).toHaveLength(24)
     expect(result.environmentDeployment).toBe('not observed')
@@ -181,8 +185,10 @@ describe('GitHub release and asset publication', () => {
   })
 })
 
-it('publishes through the GitHub and registry adapters with annotated tags and downloaded asset verification', async () => {
+it('publishes by the created ID while tag and list discovery cannot see the release', async () => {
   const f = fixture()
+  let hideDiscovery = true
+  let missingIdReads = 1
   f.input.assets[0].digest =
     'sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824'
   const execFileSync = vi.fn((command, args) => {
@@ -195,7 +201,7 @@ it('publishes through the GitHub and registry adapters with annotated tags and d
       args.find(arg => arg.startsWith(`${name}=`))?.slice(name.length + 1)
     if (args.includes('POST')) {
       if (endpoint.endsWith('/git/refs')) f.state.tag = f.input.plan.commitSha
-      else if (endpoint.endsWith('/releases'))
+      else if (endpoint.endsWith('/releases')) {
         f.state.release = {
           id: 1,
           name: field('name'),
@@ -204,7 +210,8 @@ it('publishes through the GitHub and registry adapters with annotated tags and d
           prerelease: field('prerelease') === 'true',
           draft: field('draft') === 'true',
         }
-      else {
+        return JSON.stringify(f.state.release)
+      } else {
         const asset = f.input.assets.find(item => item.file === args.at(-1))
         f.state.assets.push({
           ...asset,
@@ -223,14 +230,22 @@ it('publishes through the GitHub and registry adapters with annotated tags and d
       f.state.release.draft = false
       return '{}'
     }
+    if (endpoint.endsWith('/releases/1')) {
+      if (missingIdReads-- > 0)
+        throw Object.assign(new Error('not found'), { stderr: 'HTTP 404' })
+      return JSON.stringify(f.state.release)
+    }
     if (endpoint.includes('/releases?'))
-      return JSON.stringify([[f.state.release].filter(Boolean)])
+      return JSON.stringify([
+        hideDiscovery ? [] : [f.state.release].filter(Boolean),
+      ])
     if (endpoint.includes('/git/ref/tags/') && f.state.tag)
       return JSON.stringify({ object: { type: 'tag', sha: 'annotated' } })
     if (endpoint.includes('/git/tags/'))
       return JSON.stringify({ object: { type: 'commit', sha: f.state.tag } })
     if (
       endpoint.includes('/releases/tags/') &&
+      !hideDiscovery &&
       f.state.release &&
       !f.state.release.draft
     )
@@ -244,8 +259,12 @@ it('publishes through the GitHub and registry adapters with annotated tags and d
   const result = await publishGitHubRelease(f.input, {
     evidence: f.evidence,
     execFileSync,
+    sleep: f.options.sleep,
   })
   expect(result.assets).toHaveLength(24)
+  expect(result.releasePage).toBe('published')
+  expect(f.options.sleep.mock.calls).toEqual([[1000]])
+  hideDiscovery = false
   expect(
     (
       await publishGitHubRelease(f.input, {
@@ -254,6 +273,137 @@ it('publishes through the GitHub and registry adapters with annotated tags and d
       })
     ).releasePage,
   ).toBe('preserved')
+})
+
+it('waits for a created release to become readable by ID without repeating creation', async () => {
+  const f = fixture()
+  f.remote.release
+    .mockResolvedValueOnce(undefined) // Initial discovery.
+    .mockResolvedValueOnce(undefined) // First read of the created ID.
+    .mockResolvedValueOnce(undefined)
+  expect((await publishGitHubRelease(f.input, f.options)).releasePage).toBe(
+    'published',
+  )
+  expect(f.remote.createRelease).toHaveBeenCalledTimes(1)
+  expect(f.remote.release.mock.calls.slice(1).every(([id]) => id === 1)).toBe(
+    true,
+  )
+  expect(f.options.sleep.mock.calls).toEqual([[1000], [2000]])
+})
+
+it('stops after bounded reads when the created ID remains unavailable', async () => {
+  const f = fixture()
+  f.remote.release.mockResolvedValue(undefined)
+  await expect(publishGitHubRelease(f.input, f.options)).rejects.toThrow(
+    'release ID 1',
+  )
+  expect(f.remote.createRelease).toHaveBeenCalledTimes(1)
+  expect(f.remote.release).toHaveBeenCalledTimes(4)
+  expect(f.options.sleep.mock.calls).toEqual([[1000], [2000]])
+  expect(f.remote.uploadAsset).not.toHaveBeenCalled()
+})
+
+it('discovers a delayed draft after a lost creation response without duplicating it', async () => {
+  const f = fixture()
+  const create = f.remote.createRelease.getMockImplementation()
+  f.remote.createRelease.mockImplementation(async notes => {
+    await create(notes)
+    throw new Error('POST response lost')
+  })
+  f.remote.release
+    .mockResolvedValueOnce(undefined)
+    .mockResolvedValueOnce(undefined)
+  expect((await publishGitHubRelease(f.input, f.options)).releasePage).toBe(
+    'published',
+  )
+  expect(f.remote.createRelease).toHaveBeenCalledTimes(1)
+  expect(f.options.sleep.mock.calls).toEqual([[1000]])
+})
+
+it('retains both errors when a lost creation response cannot be inspected', async () => {
+  const f = fixture()
+  f.remote.createRelease.mockRejectedValue(new Error('POST response lost'))
+  f.remote.release
+    .mockResolvedValueOnce(undefined)
+    .mockRejectedValue(new Error('GET HTTP 403'))
+  await expect(publishGitHubRelease(f.input, f.options)).rejects.toThrow(
+    /POST response lost.*GET HTTP 403/,
+  )
+  expect(f.remote.createRelease).toHaveBeenCalledTimes(1)
+  expect(f.remote.uploadAsset).not.toHaveBeenCalled()
+})
+
+it('waits for publication visibility without repeating the publish request', async () => {
+  const f = fixture()
+  const publish = f.remote.publishRelease.getMockImplementation()
+  f.remote.publishRelease.mockImplementation(async id => {
+    const draft = { ...f.state.release }
+    await publish(id)
+    f.remote.release
+      .mockResolvedValueOnce(draft)
+      .mockResolvedValueOnce(undefined)
+  })
+  expect((await publishGitHubRelease(f.input, f.options)).releasePage).toBe(
+    'published',
+  )
+  expect(f.remote.publishRelease).toHaveBeenCalledTimes(1)
+  expect(f.options.sleep.mock.calls).toEqual([[1000], [2000]])
+})
+
+it.each(['missing', 'conflicting'])(
+  'reports uncertain publication when the successful write cannot be verified: %s',
+  async state => {
+    const f = fixture()
+    const publish = f.remote.publishRelease.getMockImplementation()
+    f.remote.publishRelease.mockImplementation(async id => {
+      await publish(id)
+      f.remote.release.mockResolvedValue(
+        state === 'missing' ? undefined : { ...f.state.release, id: 99 },
+      )
+    })
+    await expect(publishGitHubRelease(f.input, f.options)).rejects.toThrow(
+      'Release publication uncertain',
+    )
+    expect(f.remote.publishRelease).toHaveBeenCalledTimes(1)
+    expect(f.state.assets).toHaveLength(24)
+  },
+)
+
+it.each([
+  ['id', undefined],
+  ['id', 0],
+  ['body', undefined],
+  ['draft', undefined],
+])(
+  'rejects a malformed creation response before uploading: %s',
+  async (field, value) => {
+    const f = fixture()
+    const create = f.remote.createRelease.getMockImplementation()
+    f.remote.createRelease.mockImplementation(async notes => ({
+      ...(await create(notes)),
+      [field]: value,
+    }))
+    await expect(publishGitHubRelease(f.input, f.options)).rejects.toThrow(
+      'Conflicting release page',
+    )
+    expect(f.remote.uploadAsset).not.toHaveBeenCalled()
+  },
+)
+
+it('keeps completed assets private if the release disappears before publication', async () => {
+  const f = fixture()
+  f.remote.release.mockImplementation(async () =>
+    f.state.assets.length === 24
+      ? undefined
+      : f.state.release && { ...f.state.release },
+  )
+  await expect(publishGitHubRelease(f.input, f.options)).rejects.toThrow(
+    'Release identity changed',
+  )
+  expect(f.state.assets).toHaveLength(24)
+  expect(f.state.release.draft).toBe(true)
+  expect(f.remote.publishRelease).not.toHaveBeenCalled()
+  expect(f.options.sleep.mock.calls).toEqual([[1000], [2000]])
 })
 
 it('stops uncertain writes when subsequent inspection cannot establish completion', async () => {

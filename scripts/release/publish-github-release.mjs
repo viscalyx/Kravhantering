@@ -141,7 +141,10 @@ export async function publishGitHubRelease(input, options = {}) {
     const verifyRelease = release => {
       if (
         release &&
-        (release.body !== notes ||
+        (!Number.isSafeInteger(release.id) ||
+          release.id <= 0 ||
+          typeof release.draft !== 'boolean' ||
+          release.body !== notes ||
           release.name !== plan.releaseTagName ||
           release.prerelease !== plan.prerelease ||
           release.tag_name !== plan.releaseTagName)
@@ -149,6 +152,17 @@ export async function publishGitHubRelease(input, options = {}) {
         throw new Error(
           `Conflicting release page ${plan.releaseTagName}; preserve it and reconcile manually.`,
         )
+    }
+    const observeRelease = async (id, published = false) => {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const observed = await remote.release(id)
+        verifyRelease(observed)
+        if (observed && id !== undefined && observed.id !== id)
+          throw new Error('Release identity changed before publication.')
+        if (attempt === 3 || (observed && (!published || !observed.draft)))
+          return observed
+        await (options.sleep ?? setTimeout)(attempt * 1000)
+      }
     }
     let tag = await remote.tag()
     verifyTag(tag)
@@ -188,20 +202,31 @@ export async function publishGitHubRelease(input, options = {}) {
       if (!tag) throw new Error('Created tag could not be verified.')
     }
     if (!release) {
+      let created
       try {
-        await remote.createRelease(notes)
+        created = await remote.createRelease(notes)
       } catch (error) {
-        release = await remote.release()
-        if (!release)
+        try {
+          created = await observeRelease()
+          if (!created) throw new Error('Release page could not be found.')
+        } catch (inspectionError) {
           throw new Error(
-            `Release page write uncertain: ${error.message}. Inspect remote state before a manual rerun.`,
+            `Release page write uncertain: ${error.message}. ${inspectionError.message} Inspect remote state before a manual rerun.`,
           )
+        }
       }
-      release = await remote.release()
-      verifyRelease(release)
+      verifyRelease(created)
+      if (!created)
+        throw new Error(
+          'Created release page could not be verified: response missing.',
+        )
+      progress.releasePage = created.draft ? 'draft' : 'preserved'
+      // Retain the write's identity: draft discovery by tag/list can lag creation.
+      release = await observeRelease(created.id)
       if (!release)
-        throw new Error('Created release page could not be verified.')
-      progress.releasePage = release.draft ? 'draft' : 'preserved'
+        throw new Error(
+          `Created release page could not be verified: release ID ${created.id}.`,
+        )
     }
     const delivered = progress.assets
     for (const asset of assets) {
@@ -232,9 +257,8 @@ export async function publishGitHubRelease(input, options = {}) {
       verifyTag(finalTag)
       if (!finalTag)
         throw new Error('Release remains a draft: source tag is missing.')
-      const finalRelease = await remote.release()
-      verifyRelease(finalRelease)
-      if (!finalRelease || finalRelease.id !== release.id)
+      const finalRelease = await observeRelease(release.id)
+      if (!finalRelease)
         throw new Error('Release identity changed before publication.')
       let publishError
       progress.releasePage = 'uncertain'
@@ -245,11 +269,9 @@ export async function publishGitHubRelease(input, options = {}) {
       }
       let published
       try {
-        published = await remote.release()
-        verifyRelease(published)
-        if (published?.id === release.id && published.draft)
-          progress.releasePage = 'draft'
-        if (!published || published.id !== release.id || published.draft)
+        published = await observeRelease(release.id, true)
+        if (published?.draft) progress.releasePage = 'draft'
+        if (!published || published.draft)
           throw new Error('Published release could not be verified.')
       } catch (error) {
         throw new Error(
@@ -296,7 +318,8 @@ export function githubPublicationClient(plan, options = {}) {
     async tag() {
       return readPublishedTag(plan, options)
     },
-    async release() {
+    async release(id) {
+      if (id !== undefined) return optional(`${prefix}/releases/${id}`)
       const published = optional(
         `${prefix}/releases/tags/${plan.releaseTagName}`,
       )
@@ -354,24 +377,26 @@ export function githubPublicationClient(plan, options = {}) {
       ])
     },
     async createRelease(notes) {
-      call([
-        'api',
-        '-X',
-        'POST',
-        `${prefix}/releases`,
-        '-f',
-        `tag_name=${plan.releaseTagName}`,
-        '-f',
-        `name=${plan.releaseTagName}`,
-        '-f',
-        `body=${notes}`,
-        '-F',
-        `prerelease=${plan.prerelease}`,
-        '-F',
-        'draft=true',
-        '-f',
-        'make_latest=false',
-      ])
+      return JSON.parse(
+        call([
+          'api',
+          '-X',
+          'POST',
+          `${prefix}/releases`,
+          '-f',
+          `tag_name=${plan.releaseTagName}`,
+          '-f',
+          `name=${plan.releaseTagName}`,
+          '-f',
+          `body=${notes}`,
+          '-F',
+          `prerelease=${plan.prerelease}`,
+          '-F',
+          'draft=true',
+          '-f',
+          'make_latest=false',
+        ]),
+      )
     },
     async publishRelease(id) {
       call([

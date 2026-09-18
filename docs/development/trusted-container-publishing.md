@@ -486,6 +486,14 @@ The stable latest-release designation is applied only at publication. Image
 publication and source tags are separate stages and can be visible while the
 release remains a draft.
 
+The publisher retains the release ID returned by creation and uses that ID
+for subsequent release checks, including after publication. It does not depend
+on tag or list discovery seeing a newly created draft. Missing reads and reads
+that still show a draft after publication have at most three attempts, with
+one- and two-second delays. A lost creation response uses bounded discovery
+reads; it never automatically repeats creation. Conflicting release content
+or identity stops publication immediately.
+
 Missing stages can be completed only when existing tags, pages, images and
 assets are consistent. Matching drafts can resume; already published releases
 retain their visibility while missing assets are completed. An unfinished
@@ -495,9 +503,13 @@ delays. Completed assets are never replaced automatically. Upload errors remain
 in failure diagnostics even when subsequent verification also fails. Conflicts
 and unverifiable state stop writes and leave a new release unpublished.
 
-After an uncertain response, inspect remote state before recovery. Use GitHub's
-native failed-job rerun for the original source; a rebuild can produce different
-bytes and require manual reconciliation. Successful earlier stages are retained.
+After an uncertain response, inspect remote state before recovery. A failed-job
+rerun rebuilds candidates; it does not resume only the failed publication step.
+Once versioned images exist, rebuilt bytes can conflict with their immutable
+tags even for the same source commit. Do not move those tags or overwrite
+successful assets. Recovery of that version requires the original artifacts
+and verified publication evidence. Otherwise, merge the fix and publish a new
+version. A new preview does not complete an earlier draft automatically.
 
 The workflow/ref concurrency groups and pending-run replacement remain in
 force. An ineligible event can replace a pending eligible run. Publication is
