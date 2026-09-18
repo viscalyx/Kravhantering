@@ -1,3 +1,15 @@
+import { deploymentArchiveName } from './deployment-provenance.mjs'
+
+function hasCleanupSourceAssets(release) {
+  const archive = deploymentArchiveName(release.tagName.slice(1))
+  return [archive, `${archive}.sigstore.json`].every(name =>
+    release.assets?.some(
+      asset =>
+        asset.name === name && asset.state === 'uploaded' && asset.size > 0,
+    ),
+  )
+}
+
 export function selectCleanupSourceRelease(releases, targetTag, override) {
   const target = releases.find(
     release =>
@@ -10,17 +22,24 @@ export function selectCleanupSourceRelease(releases, targetTag, override) {
     release =>
       !release.isDraft &&
       release.tagName !== targetTag &&
-      Number.isFinite(Date.parse(release.publishedAt)),
+      Number.isFinite(Date.parse(release.publishedAt)) &&
+      /^v[0-9][a-zA-Z0-9.+-]*$/.test(release.tagName),
   )
   const selected = override
     ? candidates.find(release => release.tagName === override)
     : candidates
-        .filter(release => Date.parse(release.publishedAt) < cutoff)
+        .filter(
+          release =>
+            Date.parse(release.publishedAt) < cutoff &&
+            hasCleanupSourceAssets(release),
+        )
         .sort(
           (a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt),
         )[0]
-  if (!selected || !/^v[0-9][a-zA-Z0-9.+-]*$/.test(selected.tagName))
-    throw new Error('A published cleanup source release is required')
+  if (!selected || !hasCleanupSourceAssets(selected))
+    throw new Error(
+      'A published cleanup source release with an uploaded deployment archive and provenance bundle is required',
+    )
   return selected
 }
 

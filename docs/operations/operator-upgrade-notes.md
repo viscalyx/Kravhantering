@@ -13,6 +13,15 @@ changes.
 
 ## Unreleased
 
+### Cleanup rollback source selection
+
+Before rollout, check which rollback source the release compatibility evidence
+covers. Automatic selection skips releases that do not have a complete
+deployment archive and provenance bundle, so the selected source can be older
+than the most recent release page. Retain that source archive with the recovery
+records. An explicitly selected source must have both artifacts and pass all
+verification checks before it can be used for rollback.
+
 ### OpenSSL security update
 
 Deploy the complete new release images to receive the OpenSSL security fix for

@@ -71,6 +71,7 @@ export function prepareCleanupSource(args, dependencies = {}) {
       isDraft: release.draft,
       isPrerelease: release.prerelease,
       publishedAt: release.published_at,
+      assets: release.assets,
     })),
     targetTag,
     sourceTag,

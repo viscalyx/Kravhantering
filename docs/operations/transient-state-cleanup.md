@@ -54,9 +54,12 @@ Use an authenticated release archive that contains
 `cleanup-compatibility.json`. This contract binds the exact cleanup image ID
 and manifest digest to successful cleanup evidence for the target schema and
 the selected rollback source schema. Normal release preparation automatically
-selects the preceding published release, including previews, using publication
-time. Drafts and the target release are excluded. A rerun of an already
-published target selects its predecessor rather than a later release. Retain
+selects the preceding published release with an uploaded, non-empty deployment
+archive and provenance bundle, including previews, using publication time.
+Drafts, incomplete asset uploads and the target release are excluded. Asset
+availability only makes a release eligible for selection; provenance and
+compatibility checks must still pass. A rerun of an already published target
+selects its eligible predecessor rather than a later release. Retain
 the authenticated source archive with the generated `cleanup-source.json` and
 `cleanup-compatibility.json` recovery records.
 
@@ -75,7 +78,8 @@ gh workflow run container-release.yml --ref main \
   -f cleanup_source_release=vSOURCE_VERSION
 ```
 
-Leave the input empty for the automatic previous-release default. The override
+Leave the input empty for the automatic previous eligible release. An explicit
+source without the required uploaded assets fails selection. The override
 selects a candidate; it does not approve rollback. The selected published
 release must pass artifact, schema, cleanup and scheduled-rollback
 verification before packaging. A missing source or failed check stops release

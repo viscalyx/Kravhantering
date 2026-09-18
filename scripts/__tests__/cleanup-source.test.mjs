@@ -11,6 +11,15 @@ import {
 } from '../release/cleanup-source.mjs'
 import { prepareCleanupSource } from '../release/prepare-cleanup-source.mjs'
 
+function sourceAssets(tagName) {
+  const archive = `kravhantering-production-deploy-${tagName.slice(1)}.tar.gz`
+  return [archive, `${archive}.sigstore.json`].map(name => ({
+    name,
+    state: 'uploaded',
+    size: 123,
+  }))
+}
+
 const releases = [
   { tagName: 'v1.0.0', publishedAt: '2026-08-01T00:00:00Z', isDraft: false },
   {
@@ -20,7 +29,7 @@ const releases = [
   },
   { tagName: 'v1.0.1', publishedAt: '2026-08-02T00:00:00Z', isDraft: false },
   { tagName: 'v1.2.0', publishedAt: '2026-08-04T00:00:00Z', isDraft: true },
-]
+].map(release => ({ ...release, assets: sourceAssets(release.tagName) }))
 
 describe('cleanup source release selection', () => {
   it('reports the preparation failure cause and exits unsuccessfully', () => {
@@ -55,6 +64,54 @@ describe('cleanup source release selection', () => {
     expect(
       selectCleanupSourceRelease(releases, 'v1.1.0-preview.1').tagName,
     ).toBe('v1.0.1')
+  })
+
+  it.each([
+    ['missing asset metadata', undefined],
+    ['no assets', []],
+    [
+      'lock only',
+      [{ name: 'container-stack.lock.json', state: 'uploaded', size: 123 }],
+    ],
+    ['missing provenance', sourceAssets('v1.1.0-preview.1').slice(0, 1)],
+    ['missing archive', sourceAssets('v1.1.0-preview.1').slice(1)],
+    [
+      'unfinished upload',
+      sourceAssets('v1.1.0-preview.1').map(asset => ({
+        ...asset,
+        state: 'starter',
+      })),
+    ],
+    [
+      'empty upload',
+      sourceAssets('v1.1.0-preview.1').map(asset => ({ ...asset, size: 0 })),
+    ],
+    ['wrong version', sourceAssets('v1.0.0')],
+  ])(
+    'skips a release with %s but rejects an explicit selection',
+    (_reason, assets) => {
+      const partial = releases.map(release =>
+        release.tagName === 'v1.1.0-preview.1'
+          ? { ...release, assets }
+          : release,
+      )
+      expect(selectCleanupSourceRelease(partial, 'v2.0.0').tagName).toBe(
+        'v1.0.1',
+      )
+      expect(() =>
+        selectCleanupSourceRelease(partial, 'v2.0.0', 'v1.1.0-preview.1'),
+      ).toThrow('uploaded deployment archive and provenance bundle')
+    },
+  )
+
+  it('retains the publication cutoff when the target has incomplete assets', () => {
+    const partial = releases.map(release =>
+      release.tagName === 'v1.0.1' ? { ...release, assets: [] } : release,
+    )
+    expect(selectCleanupSourceRelease(partial, 'v1.0.1').tagName).toBe('v1.0.0')
+    expect(() => selectCleanupSourceRelease([partial[2]], 'v2.0.0')).toThrow(
+      'uploaded deployment archive and provenance bundle',
+    )
   })
 })
 
@@ -174,9 +231,14 @@ afterEach(() => {
 })
 
 describe('cleanup source preparation', () => {
-  it.each([false, true])(
-    'publishes a generated source lock only after successful provenance verification (rejected=%s)',
-    rejected => {
+  it.each([
+    { rejected: false, explicit: false },
+    { rejected: true, explicit: false },
+    { rejected: false, explicit: true },
+    { rejected: true, explicit: true },
+  ])(
+    'publishes a source lock only after provenance verification (rejected=$rejected, explicit=$explicit)',
+    ({ rejected, explicit }) => {
       const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cleanup-source-'))
       roots.push(root)
       const digest = 'a'.repeat(64)
@@ -208,6 +270,7 @@ describe('cleanup source preparation', () => {
                 tag_name: release.tagName,
                 published_at: release.publishedAt,
                 draft: release.isDraft,
+                assets: release.tagName === 'v1.0.0' ? release.assets : [],
               })),
             )
           if (url.includes('/commits/'))
@@ -253,10 +316,13 @@ describe('cleanup source preparation', () => {
         return ''
       }
       const invoke = () =>
-        prepareCleanupSource(['owner/repo', 'v2.0.0', root, 'v1.0.0'], {
-          run,
-          verify,
-        })
+        prepareCleanupSource(
+          ['owner/repo', 'v2.0.0', root, ...(explicit ? ['v1.0.0'] : [])],
+          {
+            run,
+            verify,
+          },
+        )
       if (rejected) {
         expect(invoke).toThrow('untrusted archive')
         expect(commands.some(command => command.command === 'tar')).toBe(false)
@@ -277,7 +343,10 @@ describe('cleanup source preparation', () => {
               'utf8',
             ),
           ),
-        ).toMatchObject({ policy: 'explicit', tag: 'v1.0.0' })
+        ).toMatchObject({
+          policy: explicit ? 'explicit' : 'previous-published',
+          tag: 'v1.0.0',
+        })
         expect(verify).toHaveBeenCalledWith(
           expect.objectContaining({
             repository: 'owner/repo',
