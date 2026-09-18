@@ -67,21 +67,21 @@ function writeLockFile(dir) {
       service(
         'nginx',
         'registry.example/nginx',
-        '1.31.5-alpine',
+        '1.31.6-alpine',
         'sha256:nginx-manifest',
         'sha256:nginx-image',
       ),
       service(
         'sqlserver',
         'registry.example/sqlserver',
-        '2025-CU8-ubuntu-24.04',
+        '2025-CU9-ubuntu-24.04',
         'sha256:sql-manifest',
         'sha256:sql-image',
       ),
       service(
         'keycloak',
         'registry.example/keycloak',
-        '26.7.3-0',
+        '26.7.4-0',
         'sha256:keycloak-manifest',
         'sha256:keycloak-image',
       ),
@@ -147,10 +147,10 @@ function writeEnvFile(dir, overrides = {}) {
       'registry.example/hsa-person-lookup-adapter:1.2.3',
     HSA_MTLS_PROVISIONER_IMAGE_REF:
       'registry.example/hsa-mtls-provisioner:1.2.3',
-    KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:26.7.3-0',
+    KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:26.7.4-0',
     KONG_IMAGE_REF: 'registry.example/kong:3.15.0.0-20260702-ubuntu',
-    NGINX_IMAGE_REF: 'registry.example/nginx:1.31.5-alpine',
-    SQLSERVER_IMAGE_REF: 'registry.example/sqlserver:2025-CU8-ubuntu-24.04',
+    NGINX_IMAGE_REF: 'registry.example/nginx:1.31.6-alpine',
+    SQLSERVER_IMAGE_REF: 'registry.example/sqlserver:2025-CU9-ubuntu-24.04',
     ...overrides,
   }
   const envPath = path.join(dir, 'release.env')
@@ -402,7 +402,7 @@ describe('production image helper', () => {
       'nginx image ID sha256:wrong-nginx does not match locked sha256:nginx-image',
     )
     expect(result.stderr).toContain(
-      'pull the locked manifest registry.example/nginx:1.31.5-alpine@sha256:nginx-manifest',
+      'pull the locked manifest registry.example/nginx:1.31.6-alpine@sha256:nginx-manifest',
     )
     expect(result.stderr).toContain('set NGINX_IMAGE_REF to a site mirror tag')
   })

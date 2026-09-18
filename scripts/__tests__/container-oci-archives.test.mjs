@@ -57,19 +57,19 @@ function stackLock() {
       service(
         'nginx',
         'docker.io/library/nginx',
-        '1.31.5-alpine',
+        '1.31.6-alpine',
         'sha256:nginx',
       ),
       service(
         'sqlserver',
         'mcr.microsoft.com/mssql/server',
-        '2025-CU8-ubuntu-24.04',
+        '2025-CU9-ubuntu-24.04',
         'sha256:sqlserver',
       ),
       service(
         'keycloak',
         'quay.io/keycloak/keycloak',
-        '26.7.3-0',
+        '26.7.4-0',
         'sha256:keycloak',
       ),
     ],

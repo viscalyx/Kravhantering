@@ -133,10 +133,10 @@ jobs:
       APP_RUNTIME_OCI_ARCHIVE: tmp/candidates/app-runtime/app-runtime.oci.tar
       DB_JOB_IMAGE: localhost/kravhantering/db-job
       DB_JOB_OCI_ARCHIVE: tmp/candidates/db-job/db-job.oci.tar
-      KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.3-0
+      KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.4-0
       NEXT_PUBLIC_SITE_URL: https://kravhantering.test
-      NGINX_IMAGE_REF: docker.io/library/nginx:1.31.5-alpine
-      SQLSERVER_IMAGE_REF: mcr.microsoft.com/mssql/server:2025-CU8-ubuntu-24.04
+      NGINX_IMAGE_REF: docker.io/library/nginx:1.31.6-alpine
+      SQLSERVER_IMAGE_REF: mcr.microsoft.com/mssql/server:2025-CU9-ubuntu-24.04
       CI_RUNTIME_EVIDENCE_DIR: tmp/container-pr-artifacts/runtime-diagnostics
       CI_RUNTIME_RELATED_EVIDENCE_DIR: tmp/production-smoke-evidence
       PRODUCTION_SMOKE_SCOPE: core

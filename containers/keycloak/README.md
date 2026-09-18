@@ -75,11 +75,15 @@ any exposed environment.
 
 The normal update path is `.github/workflows/dependency-drift.yml`. It runs
 weekly from `main` and can also be started manually with `workflow_dispatch`.
-The updater opens or refreshes one PR per Keycloak major-version lane, updates
-`tag`, `manifestDigest` and `imageId` together, and keeps static Keycloak
-Compose and developer-documentation references aligned with the lock. Review
-the generated PR and let the normal PR workflows, including Container PR Smoke,
-validate the change before merging.
+The detector opens or refreshes one dependency-drift issue per
+Keycloak major-version lane.
+Resolve the issue with the
+[resolve-dependency-drift skill](../../.github/skills/resolve-dependency-drift/SKILL.md).
+Update `tag`, `manifestDigest` and `imageId` together, and keep
+static Keycloak Compose and developer-documentation references aligned
+with the lock.
+Let the normal pull request workflows, including Container PR Smoke, validate
+the change before merging.
 
 Use the manual path when selecting an exceptional tag, recovering a failed
 automation run, or changing registry or pinning policy:
@@ -91,10 +95,11 @@ automation run, or changing registry or pinning policy:
    `image.lock.json`.
 4. Run `npm run container:stack-lock:check` after generating a stack lock to
    verify that the stack lock copies this vendor entry exactly.
-5. Verify the updated image with the local release-smoke flow:
-   `npm run container:release-smoke:up`,
-   `npm run test:release-smoke`, and
-   `npm run container:release-smoke:down`.
+5. Run `npm run check` and the relevant image tests. Container PR Smoke
+   validates production assembly; use the
+   [local smoke diagnostic workflow](../../docs/development/production-smoke-debug.md)
+   when investigating a failed CI run. Keep development services undisturbed
+   when running isolated image probes.
 
 ## Update Rules
 

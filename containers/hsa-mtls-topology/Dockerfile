@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM registry.access.redhat.com/ubi10/nodejs-24:latest@sha256:5295d1fd8e46aebad1e9da107c62bc4a5cfe8bca5fd1175a7b0a523fa977866a AS builder
+FROM registry.access.redhat.com/ubi10/nodejs-24:latest@sha256:dfc3e9630807d07cf21af3251c42bc1c26816f80b8feff8f300a01f61b15b8c4 AS builder
 
 USER 0:0
 ENTRYPOINT []
