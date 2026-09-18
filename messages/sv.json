@@ -819,7 +819,7 @@
     "continueDraggingToCollapsePanel": "Fortsätt dra för att fälla ihop {panel}",
     "releaseToCollapsePanel": "Släpp för att fälla ihop {panel}",
     "panelWidthValue": "Vänster panel {left} %, höger panel {right} %",
-    "panelWithTab": "{panel} \u2013 {tab}",
+    "panelWithTab": "{panel} – {tab}",
     "leftPanelTabs": "Tabbar för detaljer i kravunderlag",
     "rightPanelTabs": "Tabbar i kravunderlagets högra panel",
     "newNeedsReference": "Ny behovsreferens",
@@ -4016,5 +4016,69 @@
     "renewalPendingError": "Avbryt den obeslutade förnyelsen innan godkännandet avslutas.",
     "renewalTargetError": "Godkännandet har ändrats. Uppdatera och välj det senaste godkännandet.",
     "closedApprovalError": "Godkännandet har avslutats. Uppdatera och begär ett nytt avsteg."
+  },
+  "prototype1349": {
+    "title": "Prototyp att utvärdera · #1349",
+    "notice": "Jämför layouter med samma data. Spara och Ny simuleras; omladdning rensar dina ändringar.",
+    "review": "Ändringar och checklista",
+    "longText": "Läs in lång text",
+    "reset": "Återställ prototyp",
+    "resetDone": "Prototypen är återställd.",
+    "variant": "Layoutvariant",
+    "previous": "Föregående variant",
+    "next": "Nästa variant",
+    "changes": "Ändringar i denna variant",
+    "checkTitle": "Så verifierar du",
+    "state": "Aktuellt prototyptillstånd",
+    "required": "Fält markerade med * är obligatoriska.",
+    "localOnly": "Endast förhandsvisning — ingenting skrivs till databasen.",
+    "saveDone": "Simulerad sparning. Mål: {destination}. Prototypen visas fortfarande; inga data har sparats.",
+    "cancelDone": "Simulerat avbrott. Prototypen ligger kvar så att du kan fortsätta jämföra.",
+    "sampleLoaded": "Lång exempeltext har lästs in i skrivfälten.",
+    "normName": "Namn på prototypens normreferens",
+    "addNorm": "Lägg till i minnet",
+    "normAdded": "Prototypens normreferens har lagts till och valts i minnet.",
+    "scope": "Jämför layouten, inte produktionsbeteendet. Sparning, navigering efter sparning, avbryt och skapande av normreferenser simuleras. Gemensamma fälthjälper och urvalskontroller är verkliga. Ingen layout är godkänd ännu.",
+    "sampleText": "Systemet ska bevara spårbarheten mellan varje krav och dess styrande normreferenser genom granskning, publicering och användning. En granskare ska kunna läsa långa normnamn, välja relevanta referenser och fortsätta redigera utan att förlora kravtexten.\n\nÄndringar ska vara begripliga för användare som arbetar med flera kravpaket, även paket med långa namn. Tangentbordsanvändare ska kunna nå alla kontroller och granska sina val.",
+    "sampleCriteria": "1. Normreferensens fullständiga namn går att läsa.\n2. Valda kravpaket och normreferenser förblir valda när layouten ändras.\n3. Skrivytorna rymmer ett fullständigt krav.\n4. Hjälp, navigering och sparmål är åtkomliga.",
+    "sampleMethod": "Granska vid 1440 × 900 och 1920 × 1080 i båda temana och navigationslägena. Använd Tab och mellanslag för urvalskontrollerna.",
+    "checks": {
+      "1": "Växla Nuläge → A → B → C. Adressen ändras och dina fältvärden finns kvar. Ladda om adressen för samma layout med tomma fält.",
+      "2": "Jämför EN 301 549, NIS2 och ISO/IEC 25010 vid 1920 × 1080. Räkna textrader och jämför listornas överkanter.",
+      "3": "Vid 1440 × 900: fäll ut navigationen och läs in lång text. Granska skrivutrymme, listrullning och hela avslutningen. Upprepa med ljust/mörkt tema.",
+      "4": "Välj kravområde, redigera text, välj kravpaket/normreferenser, öppna hjälp och växla Verifierbar. Kontrollera att funktionerna finns i alla varianter.",
+      "5": "Ändra sparmål med Tab/mellanslag och simulera Spara. Prova Ny och lägg till en normreferens. Granska tillståndet nedan; omladdning tar bort de lokala ändringarna.",
+      "6": "Använd ←/→ utanför fält för att växla layout. I textfält ska pilarna flytta markören. Kontrollera radbrytning och avsaknad av horisontell sidrullning vid 320 pixlar."
+    },
+    "variants": {
+      "baseline": {
+        "name": "Nuläge · befintlig layout",
+        "summary": "Lika breda associationskolumner och en separat rad för sparmål.",
+        "change1": "Befintlig gemensam fältlayout: två lika breda associationskolumner på 260 pixlar på bred desktop.",
+        "change2": "Normrubriken behåller den högre Ny-knappen, vilket placerar listan lägre än paketlistan.",
+        "change3": "Spara/Avbryt har en egen rad och sparmålet ligger under. Prototypens jämförelsekontroller omger formuläret."
+      },
+      "A": {
+        "name": "A · bredare normreferenser",
+        "summary": "Behåll skrivkolumnen och ge normreferenserna mer plats i sidopanelen.",
+        "change1": "Associationspanelen på 544 pixlar fördelas på 176 pixlar kravpaket, 16 pixlar mellanrum och 352 pixlar normreferenser på desktop.",
+        "change2": "Ny-knappen blir 24 pixlar hög och rubrikerna justeras. Skrivfältens höjd och bredd bevaras.",
+        "change3": "Sparmål och Spara/Avbryt delar en rad som kan brytas under informationen om obligatoriska fält."
+      },
+      "B": {
+        "name": "B · staplad sidopanel",
+        "summary": "Placera kravpaket ovanför normreferenser i en gemensam bred kolumn.",
+        "change1": "Ersätt två associationskolumner med en 384 pixlar bred sidopanel. Kravpaket ligger ovanför normreferenser.",
+        "change2": "Ge kravpaket ungefär 38 procent och normreferenser 62 procent av höjden; listorna rullas separat. Skrivkolumnen får mer utrymme.",
+        "change3": "Använd justerade rubriker, kompakt Ny-knapp och samma samlade avslutning som A. Jämför behovet av extra listrullning."
+      },
+      "C": {
+        "name": "C · skrivytan först",
+        "summary": "Ge skrivytan hela kortbredden och lägg associationerna under.",
+        "change1": "Flytta båda associationslistorna under alla skrivfält och klassificeringar.",
+        "change2": "Fördela kravpaket/normreferenser 1:2 i en 320 pixlar hög sektion; sidan blir längre.",
+        "change3": "Använd justerade rubriker och samlad avslutning. Jämför läsbarheten med behovet av mer sidrullning."
+      }
+    }
   }
 }

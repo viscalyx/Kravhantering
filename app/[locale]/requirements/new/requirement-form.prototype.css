@@ -1,0 +1,291 @@
+/* Throwaway #1349 layout experiments, scoped to the prototype wrapper. */
+.prototype-1349 {
+  padding-bottom: 8rem;
+}
+.prototype-1349:not([data-prototype-variant="baseline"])
+  .prototype-1349-fields
+  fieldset {
+  min-width: 0;
+}
+.prototype-1349-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  background: var(--color-primary-50);
+  border: 1px dashed var(--color-primary-400);
+  border-radius: 1rem;
+}
+.dark .prototype-1349-banner {
+  background: var(--color-secondary-900);
+}
+.prototype-1349-banner p {
+  margin-top: 0.25rem;
+}
+.prototype-1349-tools,
+.prototype-1349-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.prototype-1349-button {
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border: 1px solid var(--color-secondary-300);
+  border-radius: 0.75rem;
+}
+.dark .prototype-1349-button {
+  border-color: var(--color-secondary-600);
+}
+.prototype-1349 button:focus-visible,
+.prototype-1349 select:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 3px;
+}
+.prototype-1349 button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.prototype-1349-verdict {
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+.prototype-1349-footer {
+  padding-top: 1rem;
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--color-secondary-200);
+}
+.dark .prototype-1349-footer {
+  border-color: var(--color-secondary-700);
+}
+.prototype-1349-footer-baseline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.prototype-1349-required {
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-secondary-500);
+}
+.prototype-1349-action-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+.prototype-1349-destination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.875rem;
+}
+.prototype-1349-segments {
+  display: inline-flex;
+  overflow: hidden;
+  font-size: 0.75rem;
+  border: 1px solid var(--color-secondary-300);
+  border-radius: 0.5rem;
+}
+.prototype-1349-segments button {
+  min-height: 2.75rem;
+  padding: 0.375rem 0.75rem;
+}
+.prototype-1349-segments button[aria-pressed="true"] {
+  color: white;
+  background: var(--color-primary-600);
+}
+.prototype-1349-result {
+  margin-top: 1rem;
+  font-size: 0.75rem;
+}
+.prototype-1349-new {
+  min-width: 2.75rem;
+  padding-inline: 0.5rem;
+}
+.prototype-1349-review {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 60;
+  width: min(30rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 8rem);
+  padding: 1.25rem;
+  overflow: auto;
+  font-size: 0.875rem;
+  color: var(--color-secondary-900);
+  background: var(--color-white);
+  border: 1px solid var(--color-secondary-300);
+  border-radius: 1rem;
+  box-shadow: 0 12px 48px #0003;
+}
+.dark .prototype-1349-review {
+  color: var(--color-secondary-100);
+  background: var(--color-secondary-900);
+  border-color: var(--color-secondary-600);
+}
+.prototype-1349-review-title {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+.prototype-1349-review h2,
+.prototype-1349-review h3 {
+  font-weight: 600;
+}
+.prototype-1349-review h3 {
+  margin-block: 1rem 0.5rem;
+}
+.prototype-1349-review ul,
+.prototype-1349-review ol {
+  padding-left: 1.25rem;
+}
+.prototype-1349-review ul {
+  list-style: disc;
+}
+.prototype-1349-review ol {
+  list-style: decimal;
+}
+.prototype-1349-review li {
+  margin-block: 0.5rem;
+}
+.prototype-1349-review pre {
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.prototype-1349-local-norm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+.prototype-1349-local-norm input {
+  min-width: 0;
+  padding: 0.5rem;
+  border: 1px solid var(--color-secondary-400);
+  border-radius: 0.5rem;
+}
+.prototype-1349-switcher {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  z-index: 70;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  max-width: calc(100vw - 1rem);
+  padding: 0.5rem;
+  color: #fff;
+  background: #0f172a;
+  border: 1px solid #64748b;
+  border-radius: 999px;
+  box-shadow: 0 4px 24px #0004;
+  transform: translateX(-50%);
+}
+.prototype-1349-switcher button {
+  display: grid;
+  place-items: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border-radius: 50%;
+}
+.prototype-1349-switcher label {
+  min-width: 0;
+}
+.prototype-1349-switcher select {
+  width: 100%;
+  max-width: 18rem;
+  min-height: 2.75rem;
+  padding: 0.25rem;
+  font-size: 0.875rem;
+  color: #fff;
+  background: #0f172a;
+  border-radius: 0.5rem;
+}
+.prototype-1349-switcher :focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+/* A keeps the writing column and reallocates only the association panel. */
+@media (min-width: 1024px) {
+  .prototype-1349:not([data-prototype-variant="baseline"])
+    .prototype-1349-fields
+    > div
+    > div
+    > div:last-child
+    > fieldset
+    > div:first-child {
+    min-height: 1.5rem;
+  }
+  .prototype-1349[data-prototype-variant="A"]
+    .prototype-1349-fields
+    > div
+    > div
+    > div:last-child {
+    grid-template-columns: minmax(0, 11rem) minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  /* B trades vertical package space for a single wide reference rail. */
+  .prototype-1349[data-prototype-variant="B"]
+    .prototype-1349-fields
+    > div
+    > div {
+    grid-template-columns: minmax(0, 1fr) 24rem;
+  }
+  .prototype-1349[data-prototype-variant="B"]
+    .prototype-1349-fields
+    > div
+    > div
+    > div:last-child {
+    grid-template-rows: minmax(10rem, 0.38fr) minmax(0, 0.62fr);
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+
+  /* C gives writing the full card width and moves associations below. */
+  .prototype-1349[data-prototype-variant="C"]
+    .prototype-1349-fields
+    > div
+    > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .prototype-1349[data-prototype-variant="C"]
+    .prototype-1349-fields
+    > div
+    > div
+    > div:last-child {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    height: 20rem;
+    max-height: 20rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .prototype-1349-fields fieldset {
+    min-width: 0;
+  }
+  .prototype-1349-fields label {
+    overflow-wrap: anywhere;
+  }
+  .prototype-1349-fields
+    > div
+    > div
+    > div:last-child
+    > fieldset
+    > div:last-child {
+    max-height: 20rem;
+  }
+}

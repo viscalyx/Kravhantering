@@ -1,0 +1,1567 @@
+{
+  "errors": [],
+  "mutations": [],
+  "helpWorks": "true",
+  "measurements": [
+    {
+      "width": 1920,
+      "height": 1080,
+      "expanded": false,
+      "theme": "Ljust",
+      "variant": "baseline",
+      "packages": {
+        "x": 1067,
+        "y": 270,
+        "width": 260,
+        "height": 710
+      },
+      "norms": {
+        "x": 1351,
+        "y": 270,
+        "width": 260,
+        "height": 710
+      },
+      "listTopDifference": 20,
+      "description": {
+        "x": 381,
+        "y": 387,
+        "width": 662,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 381,
+        "y": 542,
+        "width": 662,
+        "height": 100
+      },
+      "footerDifference": 57,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 3
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 3
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 3
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "expanded": false,
+      "theme": "Ljust",
+      "variant": "A",
+      "packages": {
+        "x": 1067,
+        "y": 270,
+        "width": 176,
+        "height": 710
+      },
+      "norms": {
+        "x": 1259,
+        "y": 270,
+        "width": 352,
+        "height": 710
+      },
+      "listTopDifference": 0,
+      "description": {
+        "x": 381,
+        "y": 387,
+        "width": 662,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 381,
+        "y": 542,
+        "width": 662,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 2
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 2
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "expanded": false,
+      "theme": "Ljust",
+      "variant": "B",
+      "packages": {
+        "x": 1227,
+        "y": 270,
+        "width": 384,
+        "height": 262.1875
+      },
+      "norms": {
+        "x": 1227,
+        "y": 552.1875,
+        "width": 384,
+        "height": 427.8125
+      },
+      "listTopDifference": 282.1875,
+      "description": {
+        "x": 381,
+        "y": 387,
+        "width": 822,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 381,
+        "y": 542,
+        "width": 822,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 2
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 2
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "expanded": false,
+      "theme": "Ljust",
+      "variant": "C",
+      "packages": {
+        "x": 381,
+        "y": 1004,
+        "width": 402,
+        "height": 320
+      },
+      "norms": {
+        "x": 807,
+        "y": 1004,
+        "width": 804,
+        "height": 320
+      },
+      "listTopDifference": 0,
+      "description": {
+        "x": 381,
+        "y": 387,
+        "width": 1230,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 381,
+        "y": 542,
+        "width": 1230,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 1
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 1
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 1
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "expanded": false,
+      "theme": "Mörkt",
+      "variant": "baseline",
+      "packages": {
+        "x": 1067,
+        "y": 270,
+        "width": 260,
+        "height": 710
+      },
+      "norms": {
+        "x": 1351,
+        "y": 270,
+        "width": 260,
+        "height": 710
+      },
+      "listTopDifference": 20,
+      "description": {
+        "x": 381,
+        "y": 387,
+        "width": 662,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 381,
+        "y": 542,
+        "width": 662,
+        "height": 100
+      },
+      "footerDifference": 57,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 3
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 3
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 3
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "expanded": false,
+      "theme": "Mörkt",
+      "variant": "A",
+      "packages": {
+        "x": 1067,
+        "y": 270,
+        "width": 176,
+        "height": 710
+      },
+      "norms": {
+        "x": 1259,
+        "y": 270,
+        "width": 352,
+        "height": 710
+      },
+      "listTopDifference": 0,
+      "description": {
+        "x": 381,
+        "y": 387,
+        "width": 662,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 381,
+        "y": 542,
+        "width": 662,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 2
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 2
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "expanded": false,
+      "theme": "Mörkt",
+      "variant": "B",
+      "packages": {
+        "x": 1227,
+        "y": 270,
+        "width": 384,
+        "height": 262.1875
+      },
+      "norms": {
+        "x": 1227,
+        "y": 552.1875,
+        "width": 384,
+        "height": 427.8125
+      },
+      "listTopDifference": 282.1875,
+      "description": {
+        "x": 381,
+        "y": 387,
+        "width": 822,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 381,
+        "y": 542,
+        "width": 822,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 2
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 2
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "expanded": false,
+      "theme": "Mörkt",
+      "variant": "C",
+      "packages": {
+        "x": 381,
+        "y": 1004,
+        "width": 402,
+        "height": 320
+      },
+      "norms": {
+        "x": 807,
+        "y": 1004,
+        "width": 804,
+        "height": 320
+      },
+      "listTopDifference": 0,
+      "description": {
+        "x": 381,
+        "y": 387,
+        "width": 1230,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 381,
+        "y": 542,
+        "width": 1230,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 1
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 1
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 1
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "expanded": true,
+      "theme": "Ljust",
+      "variant": "baseline",
+      "packages": {
+        "x": 1163,
+        "y": 270,
+        "width": 260,
+        "height": 710
+      },
+      "norms": {
+        "x": 1447,
+        "y": 270,
+        "width": 260,
+        "height": 710
+      },
+      "listTopDifference": 20,
+      "description": {
+        "x": 477,
+        "y": 387,
+        "width": 662,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 477,
+        "y": 542,
+        "width": 662,
+        "height": 100
+      },
+      "footerDifference": 57,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 3
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 3
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 3
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "expanded": true,
+      "theme": "Ljust",
+      "variant": "A",
+      "packages": {
+        "x": 1163,
+        "y": 270,
+        "width": 176,
+        "height": 710
+      },
+      "norms": {
+        "x": 1355,
+        "y": 270,
+        "width": 352,
+        "height": 710
+      },
+      "listTopDifference": 0,
+      "description": {
+        "x": 477,
+        "y": 387,
+        "width": 662,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 477,
+        "y": 542,
+        "width": 662,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 2
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 2
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "expanded": true,
+      "theme": "Ljust",
+      "variant": "B",
+      "packages": {
+        "x": 1323,
+        "y": 270,
+        "width": 384,
+        "height": 262.1875
+      },
+      "norms": {
+        "x": 1323,
+        "y": 552.1875,
+        "width": 384,
+        "height": 427.8125
+      },
+      "listTopDifference": 282.1875,
+      "description": {
+        "x": 477,
+        "y": 387,
+        "width": 822,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 477,
+        "y": 542,
+        "width": 822,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 2
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 2
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "expanded": true,
+      "theme": "Ljust",
+      "variant": "C",
+      "packages": {
+        "x": 477,
+        "y": 1004,
+        "width": 402,
+        "height": 320
+      },
+      "norms": {
+        "x": 903,
+        "y": 1004,
+        "width": 804,
+        "height": 320
+      },
+      "listTopDifference": 0,
+      "description": {
+        "x": 477,
+        "y": 387,
+        "width": 1230,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 477,
+        "y": 542,
+        "width": 1230,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 1
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 1
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 1
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "expanded": true,
+      "theme": "Mörkt",
+      "variant": "baseline",
+      "packages": {
+        "x": 1163,
+        "y": 270,
+        "width": 260,
+        "height": 710
+      },
+      "norms": {
+        "x": 1447,
+        "y": 270,
+        "width": 260,
+        "height": 710
+      },
+      "listTopDifference": 20,
+      "description": {
+        "x": 477,
+        "y": 387,
+        "width": 662,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 477,
+        "y": 542,
+        "width": 662,
+        "height": 100
+      },
+      "footerDifference": 57,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 3
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 3
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 3
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "expanded": true,
+      "theme": "Mörkt",
+      "variant": "A",
+      "packages": {
+        "x": 1163,
+        "y": 270,
+        "width": 176,
+        "height": 710
+      },
+      "norms": {
+        "x": 1355,
+        "y": 270,
+        "width": 352,
+        "height": 710
+      },
+      "listTopDifference": 0,
+      "description": {
+        "x": 477,
+        "y": 387,
+        "width": 662,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 477,
+        "y": 542,
+        "width": 662,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 2
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 2
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "expanded": true,
+      "theme": "Mörkt",
+      "variant": "B",
+      "packages": {
+        "x": 1323,
+        "y": 270,
+        "width": 384,
+        "height": 262.1875
+      },
+      "norms": {
+        "x": 1323,
+        "y": 552.1875,
+        "width": 384,
+        "height": 427.8125
+      },
+      "listTopDifference": 282.1875,
+      "description": {
+        "x": 477,
+        "y": 387,
+        "width": 822,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 477,
+        "y": 542,
+        "width": 822,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 2
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 2
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "expanded": true,
+      "theme": "Mörkt",
+      "variant": "C",
+      "packages": {
+        "x": 477,
+        "y": 1004,
+        "width": 402,
+        "height": 320
+      },
+      "norms": {
+        "x": 903,
+        "y": 1004,
+        "width": 804,
+        "height": 320
+      },
+      "listTopDifference": 0,
+      "description": {
+        "x": 477,
+        "y": 387,
+        "width": 1230,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 477,
+        "y": 542,
+        "width": 1230,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 1
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 1
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 1
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "expanded": false,
+      "theme": "Ljust",
+      "variant": "baseline",
+      "packages": {
+        "x": 827,
+        "y": 270,
+        "width": 260,
+        "height": 710
+      },
+      "norms": {
+        "x": 1111,
+        "y": 270,
+        "width": 260,
+        "height": 710
+      },
+      "listTopDifference": 20,
+      "description": {
+        "x": 141,
+        "y": 387,
+        "width": 662,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 141,
+        "y": 542,
+        "width": 662,
+        "height": 100
+      },
+      "footerDifference": 57,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 3
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 3
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 3
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "expanded": false,
+      "theme": "Ljust",
+      "variant": "A",
+      "packages": {
+        "x": 827,
+        "y": 270,
+        "width": 176,
+        "height": 710
+      },
+      "norms": {
+        "x": 1019,
+        "y": 270,
+        "width": 352,
+        "height": 710
+      },
+      "listTopDifference": 0,
+      "description": {
+        "x": 141,
+        "y": 387,
+        "width": 662,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 141,
+        "y": 542,
+        "width": 662,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 2
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 2
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "expanded": false,
+      "theme": "Ljust",
+      "variant": "B",
+      "packages": {
+        "x": 987,
+        "y": 270,
+        "width": 384,
+        "height": 262.1875
+      },
+      "norms": {
+        "x": 987,
+        "y": 552.1875,
+        "width": 384,
+        "height": 427.8125
+      },
+      "listTopDifference": 282.1875,
+      "description": {
+        "x": 141,
+        "y": 387,
+        "width": 822,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 141,
+        "y": 542,
+        "width": 822,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 2
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 2
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "expanded": false,
+      "theme": "Ljust",
+      "variant": "C",
+      "packages": {
+        "x": 141,
+        "y": 1004,
+        "width": 402,
+        "height": 320
+      },
+      "norms": {
+        "x": 567,
+        "y": 1004,
+        "width": 804,
+        "height": 320
+      },
+      "listTopDifference": 0,
+      "description": {
+        "x": 141,
+        "y": 387,
+        "width": 1230,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 141,
+        "y": 542,
+        "width": 1230,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 1
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 1
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 1
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "expanded": false,
+      "theme": "Mörkt",
+      "variant": "baseline",
+      "packages": {
+        "x": 827,
+        "y": 270,
+        "width": 260,
+        "height": 710
+      },
+      "norms": {
+        "x": 1111,
+        "y": 270,
+        "width": 260,
+        "height": 710
+      },
+      "listTopDifference": 20,
+      "description": {
+        "x": 141,
+        "y": 387,
+        "width": 662,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 141,
+        "y": 542,
+        "width": 662,
+        "height": 100
+      },
+      "footerDifference": 57,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 3
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 3
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 3
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "expanded": false,
+      "theme": "Mörkt",
+      "variant": "A",
+      "packages": {
+        "x": 827,
+        "y": 270,
+        "width": 176,
+        "height": 710
+      },
+      "norms": {
+        "x": 1019,
+        "y": 270,
+        "width": 352,
+        "height": 710
+      },
+      "listTopDifference": 0,
+      "description": {
+        "x": 141,
+        "y": 387,
+        "width": 662,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 141,
+        "y": 542,
+        "width": 662,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 2
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 2
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "expanded": false,
+      "theme": "Mörkt",
+      "variant": "B",
+      "packages": {
+        "x": 987,
+        "y": 270,
+        "width": 384,
+        "height": 262.1875
+      },
+      "norms": {
+        "x": 987,
+        "y": 552.1875,
+        "width": 384,
+        "height": 427.8125
+      },
+      "listTopDifference": 282.1875,
+      "description": {
+        "x": 141,
+        "y": 387,
+        "width": 822,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 141,
+        "y": 542,
+        "width": 822,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 2
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 2
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "expanded": false,
+      "theme": "Mörkt",
+      "variant": "C",
+      "packages": {
+        "x": 141,
+        "y": 1004,
+        "width": 402,
+        "height": 320
+      },
+      "norms": {
+        "x": 567,
+        "y": 1004,
+        "width": 804,
+        "height": 320
+      },
+      "listTopDifference": 0,
+      "description": {
+        "x": 141,
+        "y": 387,
+        "width": 1230,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 141,
+        "y": 542,
+        "width": 1230,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 1
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 1
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 1
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "expanded": true,
+      "theme": "Ljust",
+      "variant": "baseline",
+      "packages": {
+        "x": 839,
+        "y": 270,
+        "width": 260,
+        "height": 710
+      },
+      "norms": {
+        "x": 1123,
+        "y": 270,
+        "width": 260,
+        "height": 710
+      },
+      "listTopDifference": 20,
+      "description": {
+        "x": 321,
+        "y": 387,
+        "width": 494,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 321,
+        "y": 542,
+        "width": 494,
+        "height": 100
+      },
+      "footerDifference": 57,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 3
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 3
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 3
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "expanded": true,
+      "theme": "Ljust",
+      "variant": "A",
+      "packages": {
+        "x": 839,
+        "y": 270,
+        "width": 176,
+        "height": 710
+      },
+      "norms": {
+        "x": 1031,
+        "y": 270,
+        "width": 352,
+        "height": 710
+      },
+      "listTopDifference": 0,
+      "description": {
+        "x": 321,
+        "y": 387,
+        "width": 494,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 321,
+        "y": 542,
+        "width": 494,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 2
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 2
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "expanded": true,
+      "theme": "Ljust",
+      "variant": "B",
+      "packages": {
+        "x": 999,
+        "y": 270,
+        "width": 384,
+        "height": 262.1875
+      },
+      "norms": {
+        "x": 999,
+        "y": 552.1875,
+        "width": 384,
+        "height": 427.8125
+      },
+      "listTopDifference": 282.1875,
+      "description": {
+        "x": 321,
+        "y": 387,
+        "width": 654,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 321,
+        "y": 542,
+        "width": 654,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 2
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 2
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "expanded": true,
+      "theme": "Ljust",
+      "variant": "C",
+      "packages": {
+        "x": 321,
+        "y": 1004,
+        "width": 346,
+        "height": 320
+      },
+      "norms": {
+        "x": 691,
+        "y": 1004,
+        "width": 692,
+        "height": 320
+      },
+      "listTopDifference": 0,
+      "description": {
+        "x": 321,
+        "y": 387,
+        "width": 1062,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 321,
+        "y": 542,
+        "width": 1062,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 1
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 1
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 1
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "expanded": true,
+      "theme": "Mörkt",
+      "variant": "baseline",
+      "packages": {
+        "x": 839,
+        "y": 270,
+        "width": 260,
+        "height": 710
+      },
+      "norms": {
+        "x": 1123,
+        "y": 270,
+        "width": 260,
+        "height": 710
+      },
+      "listTopDifference": 20,
+      "description": {
+        "x": 321,
+        "y": 387,
+        "width": 494,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 321,
+        "y": 542,
+        "width": 494,
+        "height": 100
+      },
+      "footerDifference": 57,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 3
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 3
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 3
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "expanded": true,
+      "theme": "Mörkt",
+      "variant": "A",
+      "packages": {
+        "x": 839,
+        "y": 270,
+        "width": 176,
+        "height": 710
+      },
+      "norms": {
+        "x": 1031,
+        "y": 270,
+        "width": 352,
+        "height": 710
+      },
+      "listTopDifference": 0,
+      "description": {
+        "x": 321,
+        "y": 387,
+        "width": 494,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 321,
+        "y": 542,
+        "width": 494,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 2
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 2
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "expanded": true,
+      "theme": "Mörkt",
+      "variant": "B",
+      "packages": {
+        "x": 999,
+        "y": 270,
+        "width": 384,
+        "height": 262.1875
+      },
+      "norms": {
+        "x": 999,
+        "y": 552.1875,
+        "width": 384,
+        "height": 427.8125
+      },
+      "listTopDifference": 282.1875,
+      "description": {
+        "x": 321,
+        "y": 387,
+        "width": 654,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 321,
+        "y": 542,
+        "width": 654,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 2
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 2
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "expanded": true,
+      "theme": "Mörkt",
+      "variant": "C",
+      "packages": {
+        "x": 321,
+        "y": 1004,
+        "width": 346,
+        "height": 320
+      },
+      "norms": {
+        "x": 691,
+        "y": 1004,
+        "width": 692,
+        "height": 320
+      },
+      "listTopDifference": 0,
+      "description": {
+        "x": 321,
+        "y": 387,
+        "width": 1062,
+        "height": 100
+      },
+      "acceptance": {
+        "x": 321,
+        "y": 542,
+        "width": 1062,
+        "height": 100
+      },
+      "footerDifference": 0,
+      "overflow": false,
+      "labels": [
+        {
+          "text": "EN 301 549 v3.2.1 Tillgänglighetskrav på IKT-produkter och IKT-tjänster",
+          "lines": 1
+        },
+        {
+          "text": "EU 2022/2555 NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå",
+          "lines": 1
+        },
+        {
+          "text": "ISO/IEC 25010:2023 Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)",
+          "lines": 1
+        }
+      ]
+    },
+    {
+      "variant": "baseline",
+      "mobile": true,
+      "width": 320,
+      "scroll": 320
+    },
+    {
+      "variant": "A",
+      "mobile": true,
+      "width": 320,
+      "scroll": 320
+    },
+    {
+      "variant": "B",
+      "mobile": true,
+      "width": 320,
+      "scroll": 320
+    },
+    {
+      "variant": "C",
+      "mobile": true,
+      "width": 320,
+      "scroll": 320
+    }
+  ]
+}

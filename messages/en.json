@@ -819,7 +819,7 @@
     "continueDraggingToCollapsePanel": "Continue dragging to collapse {panel}",
     "releaseToCollapsePanel": "Release to collapse {panel}",
     "panelWidthValue": "Left panel {left}%, right panel {right}%",
-    "panelWithTab": "{panel} \u2013 {tab}",
+    "panelWithTab": "{panel} – {tab}",
     "leftPanelTabs": "Specification detail tabs",
     "rightPanelTabs": "Right specification detail tabs",
     "newNeedsReference": "New needs reference",
@@ -4016,5 +4016,69 @@
     "renewalPendingError": "Cancel the undecided renewal before closing this approval.",
     "renewalTargetError": "The approval has changed. Refresh and select the latest approval.",
     "closedApprovalError": "The approval has been closed. Refresh and request a new deviation."
+  },
+  "prototype1349": {
+    "title": "Throwaway prototype · #1349",
+    "notice": "Compare layouts with the same data. Save and New are simulations; reload clears your edits.",
+    "review": "Changes & review checklist",
+    "longText": "Load long text",
+    "reset": "Reset preview",
+    "resetDone": "Preview reset.",
+    "variant": "Layout variant",
+    "previous": "Previous variant",
+    "next": "Next variant",
+    "changes": "Changes in this variant",
+    "checkTitle": "How to verify",
+    "state": "Live preview state",
+    "required": "Fields marked * are required.",
+    "localOnly": "Preview only — nothing is written to the database.",
+    "saveDone": "Simulated save. Destination: {destination}. Your preview remains open; no data was written.",
+    "cancelDone": "Simulated cancel. Your preview remains here so you can continue comparing.",
+    "sampleLoaded": "Long sample text loaded into the writing fields.",
+    "normName": "Preview norm-reference name",
+    "addNorm": "Add in memory",
+    "normAdded": "Preview norm added and selected in memory.",
+    "scope": "Compare the layout, not production behavior. Saving, navigation after save, cancellation and creating norms are simulated. Shared field help and selection controls are real. No layout has been approved yet.",
+    "sampleText": "The system shall retain traceability between each requirement and the governing norm references throughout review, publication and use. A reviewer shall be able to read long norm names, select the relevant references and continue editing without losing the requirement text.\n\nChanges shall remain understandable for users working with multiple requirement packages, including packages with long names. Keyboard users shall be able to reach all controls and review their selections.",
+    "sampleCriteria": "1. The complete norm-reference name can be read.\n2. Selected packages and references remain selected when changing the layout.\n3. The writing areas remain large enough for a complete requirement.\n4. Help, navigation and the save destination remain reachable.",
+    "sampleMethod": "Inspect at 1440 × 900 and 1920 × 1080 in both themes and navigation states. Use Tab and Space to operate the selection controls.",
+    "checks": {
+      "1": "Switch Baseline → A → B → C. The URL changes and your field values remain. Reload the URL to reopen the same layout with fresh form state.",
+      "2": "At 1920 × 1080, compare EN 301 549, NIS2 and ISO/IEC 25010. Count wrapped lines and compare the list top edges.",
+      "3": "At 1440 × 900, expand navigation and load long text. Check writing space, list scrolling and the entire footer. Repeat with light/dark themes.",
+      "4": "Choose an area, edit the text, select packages/norms, open help and toggle Verifiable. Confirm these controls are available in every variant.",
+      "5": "Change the save destination with Tab/Space; simulate Save. Try New and add a preview norm. Inspect the state below; reloading removes these local edits.",
+      "6": "Use ←/→ outside fields to cycle layouts. Inside a text field they must move the caret. At 320 px width, verify wrapping and no horizontal page overflow."
+    },
+    "variants": {
+      "baseline": {
+        "name": "Baseline · current layout",
+        "summary": "Equal association columns and a separate destination row.",
+        "change1": "Current shared field layout: equal 260 px association columns on wide desktop.",
+        "change2": "Norm heading keeps the taller New button, leaving the list lower than the package list.",
+        "change3": "Save/Cancel occupy their own row; the destination stays below. Preview-only controls are added around the form."
+      },
+      "A": {
+        "name": "A · wider norm references",
+        "summary": "Keep the writing column; give more of the sidebar to norm references.",
+        "change1": "The 544 px association panel becomes 176 px packages + 16 px gap + 352 px norms at desktop widths.",
+        "change2": "The New button becomes 24 px tall and headings align. Writing-field height and width are preserved.",
+        "change3": "Destination and Save/Cancel share one wrapping action row beneath the required-field hint."
+      },
+      "B": {
+        "name": "B · stacked reference rail",
+        "summary": "Stack packages over norms in a wider single-column rail.",
+        "change1": "Replace two association columns with one 384 px rail. Packages sit above norms.",
+        "change2": "Give packages roughly 38% and norms 62% of the rail height; both lists scroll independently. The writing column gains space.",
+        "change3": "Use aligned headings, a compact New button and the same unified footer as A. Compare the extra list scrolling."
+      },
+      "C": {
+        "name": "C · writing first",
+        "summary": "Give writing the full card width; put associations underneath.",
+        "change1": "Move both association lists below all writing and classification fields.",
+        "change2": "Use a 1:2 package-to-norm split in a 320 px tall association section; the page becomes taller.",
+        "change3": "Use aligned headings and the unified footer. Compare readability against the added page scrolling."
+      }
+    }
   }
 }
