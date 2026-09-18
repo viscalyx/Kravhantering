@@ -76,6 +76,14 @@ test('AUTHZ-04/AUTHZ-05/SPEC-24: co-authors prepare whole agreements and cancel 
         },
       })
       await expectOk(response, 'register first whole agreement')
+      // Saving a case refreshes package links. Compile that read-only dev route
+      // during setup so its first request does not consume the UI assertion wait.
+      await expectOk(
+        await page.request.get(
+          `/api/requirements-specifications/${fixture.specificationId}/requirement-packages?limit=50`,
+        ),
+        'load package links needed by the agreement refresh',
+      )
     })
     await test.step('The co-author explicitly cancels a pending case from the requirement row', async () => {
       await page.goto(url)
