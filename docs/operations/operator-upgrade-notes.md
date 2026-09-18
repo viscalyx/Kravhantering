@@ -13,6 +13,10 @@ changes.
 
 ## Unreleased
 
+
+
+## v0.8.1 - 2026-09-18
+
 ### OpenSSL security update
 
 Deploy the complete new release images to receive the OpenSSL security fix for
