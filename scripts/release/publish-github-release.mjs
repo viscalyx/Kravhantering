@@ -2,6 +2,7 @@ import childProcess from 'node:child_process'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
+import { setTimeout } from 'node:timers/promises'
 import { promotionEntries } from './promote-container-candidates.mjs'
 import {
   assertPublicationAllowed,
@@ -35,6 +36,44 @@ export function releaseAssetPaths(version) {
 }
 const digest = bytes =>
   `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`
+
+const unfinished = asset => asset.state === 'starter' && !asset.digest
+
+async function deliverAsset(remote, releaseId, asset, sleep) {
+  const errors = []
+  const fail = detail =>
+    new Error(
+      `Asset delivery incomplete or conflicting: ${asset.name}. ${[...errors, detail].join(' ')} Keep earlier stages and inspect remote state before a manual rerun.`,
+    )
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await remote.uploadAsset(releaseId, asset)
+    } catch (error) {
+      errors.push(`Upload attempt ${attempt}: ${error.message}`)
+    }
+    try {
+      const observed = (await remote.assets(releaseId)).filter(
+        candidate => candidate.name === asset.name,
+      )
+      if (observed.length > 1)
+        throw new Error('Ambiguous duplicate remote assets.')
+      const current = observed[0]
+      if (current?.state === 'uploaded') {
+        if ((await remote.assetDigest(current)) !== asset.digest)
+          throw new Error('Uploaded asset digest does not match; preserve it.')
+        return
+      }
+      if (current && !unfinished(current))
+        throw new Error('Unrecognized asset state; preserve it.')
+      if (attempt === 3)
+        throw new Error('Upload did not complete after 3 attempts.')
+      if (current) await remote.removeUnfinishedAsset(current)
+    } catch (error) {
+      throw fail(`Verification/recovery: ${error.message}`)
+    }
+    await sleep(attempt * 1000)
+  }
+}
 
 /** Preserve matching remote content; fill only verified missing stages under the same identity. */
 export async function publishGitHubRelease(input, options = {}) {
@@ -105,7 +144,7 @@ export async function publishGitHubRelease(input, options = {}) {
         (release.body !== notes ||
           release.name !== plan.releaseTagName ||
           release.prerelease !== plan.prerelease ||
-          release.draft)
+          release.tag_name !== plan.releaseTagName)
       )
         throw new Error(
           `Conflicting release page ${plan.releaseTagName}; preserve it and reconcile manually.`,
@@ -117,13 +156,18 @@ export async function publishGitHubRelease(input, options = {}) {
     if (release && !tag)
       throw new Error('Existing release has an unverifiable tag.')
     verifyRelease(release)
-    if (release) progress.releasePage = 'preserved'
+    if (release) progress.releasePage = release.draft ? 'draft' : 'preserved'
     const existing = release ? await remote.assets(release.id) : []
     if (new Set(existing.map(asset => asset.name)).size !== existing.length)
       throw new Error('Ambiguous duplicate remote assets.')
     for (const asset of assets) {
       const prior = existing.find(candidate => candidate.name === asset.name)
-      if (prior && (await remote.assetDigest(prior)) !== asset.digest)
+      if (
+        prior &&
+        !unfinished(prior) &&
+        (prior.state !== 'uploaded' ||
+          (await remote.assetDigest(prior)) !== asset.digest)
+      )
         throw new Error(
           `Conflicting or unverifiable asset: ${asset.name}. Preserve successful publication.`,
         )
@@ -157,31 +201,62 @@ export async function publishGitHubRelease(input, options = {}) {
       verifyRelease(release)
       if (!release)
         throw new Error('Created release page could not be verified.')
-      progress.releasePage = 'published'
+      progress.releasePage = release.draft ? 'draft' : 'preserved'
     }
     const delivered = progress.assets
     for (const asset of assets) {
-      if (existing.some(candidate => candidate.name === asset.name)) {
+      const prior = existing.find(candidate => candidate.name === asset.name)
+      if (prior && !unfinished(prior)) {
         delivered.push({ name: asset.name, outcome: 'preserved' })
         continue
       }
-      let writeError
-      try {
-        await remote.uploadAsset(release.id, asset)
-      } catch (error) {
-        writeError = error
-      }
-      const observed = (await remote.assets(release.id)).filter(
-        candidate => candidate.name === asset.name,
-      )
-      if (
-        observed.length !== 1 ||
-        (await remote.assetDigest(observed[0])) !== asset.digest
-      )
-        throw new Error(
-          `Asset delivery incomplete or conflicting: ${asset.name}${writeError ? ` (${writeError.message})` : ''}. Keep earlier stages and inspect remote state before a manual rerun.`,
-        )
+      if (prior) await remote.removeUnfinishedAsset(prior)
+      await deliverAsset(remote, release.id, asset, options.sleep ?? setTimeout)
       delivered.push({ name: asset.name, outcome: 'published' })
+    }
+    if (release.draft) {
+      // Recheck the complete inventory and source identity before public visibility.
+      const finalAssets = await remote.assets(release.id)
+      for (const asset of assets) {
+        const observed = finalAssets.filter(item => item.name === asset.name)
+        if (
+          observed.length !== 1 ||
+          observed[0].state !== 'uploaded' ||
+          (await remote.assetDigest(observed[0])) !== asset.digest
+        )
+          throw new Error(
+            `Release remains a draft: required asset is unverified: ${asset.name}.`,
+          )
+      }
+      const finalTag = await remote.tag()
+      verifyTag(finalTag)
+      if (!finalTag)
+        throw new Error('Release remains a draft: source tag is missing.')
+      const finalRelease = await remote.release()
+      verifyRelease(finalRelease)
+      if (!finalRelease || finalRelease.id !== release.id)
+        throw new Error('Release identity changed before publication.')
+      let publishError
+      progress.releasePage = 'uncertain'
+      try {
+        await remote.publishRelease(release.id)
+      } catch (error) {
+        publishError = error
+      }
+      let published
+      try {
+        published = await remote.release()
+        verifyRelease(published)
+        if (published?.id === release.id && published.draft)
+          progress.releasePage = 'draft'
+        if (!published || published.id !== release.id || published.draft)
+          throw new Error('Published release could not be verified.')
+      } catch (error) {
+        throw new Error(
+          `Release publication uncertain: ${publishError ? `${publishError.message}. ` : ''}${error.message}`,
+        )
+      }
+      progress.releasePage = 'published'
     }
     return progress
   } catch (error) {
@@ -222,7 +297,23 @@ export function githubPublicationClient(plan, options = {}) {
       return readPublishedTag(plan, options)
     },
     async release() {
-      return optional(`${prefix}/releases/tags/${plan.releaseTagName}`)
+      const published = optional(
+        `${prefix}/releases/tags/${plan.releaseTagName}`,
+      )
+      if (published) return published
+      // The tag endpoint documents published releases; list with write access to resume drafts.
+      const matching = JSON.parse(
+        call([
+          'api',
+          '--paginate',
+          '--slurp',
+          `${prefix}/releases?per_page=100`,
+        ]),
+      )
+        .flat()
+        .filter(release => release.tag_name === plan.releaseTagName)
+      if (matching.length > 1) throw new Error('Ambiguous duplicate releases.')
+      return matching[0]
     },
     async assets(id) {
       return JSON.parse(
@@ -276,9 +367,31 @@ export function githubPublicationClient(plan, options = {}) {
         `body=${notes}`,
         '-F',
         `prerelease=${plan.prerelease}`,
+        '-F',
+        'draft=true',
+        '-f',
+        'make_latest=false',
+      ])
+    },
+    async publishRelease(id) {
+      call([
+        'api',
+        '-X',
+        'PATCH',
+        `${prefix}/releases/${id}`,
+        '-F',
+        'draft=false',
         '-f',
         `make_latest=${!plan.prerelease}`,
       ])
+    },
+    async removeUnfinishedAsset(asset) {
+      const current = json(`${prefix}/releases/assets/${asset.id}`)
+      if (current.name !== asset.name || !unfinished(current))
+        throw new Error(
+          `Refusing to delete changed or completed asset: ${asset.name}.`,
+        )
+      call(['api', '-X', 'DELETE', `${prefix}/releases/assets/${asset.id}`])
     },
     async uploadAsset(id, asset) {
       call([

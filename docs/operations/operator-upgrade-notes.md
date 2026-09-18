@@ -13,6 +13,14 @@ changes.
 
 ## Unreleased
 
+### Release publication and recovery
+
+Use the published release and its verified deployment archive for rollout.
+A new release remains a draft until all required files are verified. Published
+images or a source tag alone do not mean that the release is ready to deploy.
+If delivery fails, inspect the release status and retained files before retrying
+the original source. Keep completed files; conflicts require manual review.
+
 ### Cleanup rollback source selection
 
 Before rollout, check which rollback source the release compatibility evidence

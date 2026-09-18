@@ -451,7 +451,9 @@ sequenceDiagram
     CI->>CI: Run fresh applicable validation
     CI->>CI: Validate exact committed notes and publication evidence
     CI->>Registry: Preserve matching images or publish missing images
-    CI->>GitHub: Complete release page and required assets
+    CI->>GitHub: Create or resume a draft release
+    CI->>GitHub: Upload and verify all required assets
+    CI->>GitHub: Publish the verified draft
     Note over CI,GitHub: Complete Unreleased page; full history in archive
     opt Stable tag
         CI->>PR: Open archive PR for tagged notes only
@@ -468,8 +470,21 @@ have no alternate branch or historical-source selector.
 
 Both publishers inspect successful validation in the same trusted workflow
 run, verify source and content identities, and preserve matching remote
-content. Missing stages can be completed only when existing tags, pages,
-images and assets are consistent. Conflicts and unverifiable state stop writes.
+content. New release pages remain drafts until all required assets have verified
+content digests and the source tag and release identity pass a final check.
+The stable latest-release designation is applied only at publication. Image
+publication and source tags are separate stages and can be visible while the
+release remains a draft.
+
+Missing stages can be completed only when existing tags, pages, images and
+assets are consistent. Matching drafts can resume; already published releases
+retain their visibility while missing assets are completed. An unfinished
+GitHub asset in `starter` state with no digest is rechecked and removed before
+retry. Each asset upload has at most three attempts, with one- and two-second
+delays. Completed assets are never replaced automatically. Upload errors remain
+in failure diagnostics even when subsequent verification also fails. Conflicts
+and unverifiable state stop writes and leave a new release unpublished.
+
 After an uncertain response, inspect remote state before recovery. Use GitHub's
 native failed-job rerun for the original source; a rebuild can produce different
 bytes and require manual reconciliation. Successful earlier stages are retained.
