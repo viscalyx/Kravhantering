@@ -13,23 +13,6 @@ changes.
 
 ## Unreleased
 
-### Release publication and recovery
-
-Use the published release and its verified deployment archive for rollout.
-A new release remains a draft until all required files are verified. Published
-images or a source tag alone do not mean that the release is ready to deploy.
-If delivery fails, inspect the release status and retained files before retrying
-the original source. Keep completed files; conflicts require manual review.
-
-### Cleanup rollback source selection
-
-Before rollout, check which rollback source the release compatibility evidence
-covers. Automatic selection skips releases that do not have a complete
-deployment archive and provenance bundle, so the selected source can be older
-than the most recent release page. Retain that source archive with the recovery
-records. An explicitly selected source must have both artifacts and pass all
-verification checks before it can be used for rollback.
-
 ### OpenSSL security update
 
 Deploy the complete new release images to receive the OpenSSL security fix for
