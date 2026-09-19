@@ -9,7 +9,7 @@ option, including the simplified reference. A final layout is not selected.
 
 ## Open the running prototype
 
-[Open option A](http://localhost:3001/sv/specifications?variant=A).
+[Open combined prototype D](http://localhost:3001/sv/specifications?variant=D).
 Sign in with the usual development account if prompted. The prototype uses
 the existing Keycloak client registered for port 3001.
 
@@ -44,6 +44,7 @@ port as 3001, since that is the registered login callback.
 | `variant=A` | Compact table | Allocates space to names by stacking classifications; individual classification labels are less prominent. |
 | `variant=B` | Two-level rows | Gives names a broad first line and metadata explicit labels below; rows are taller. |
 | `variant=C` | Two-column card grid | Separates individual specifications clearly; comparing many items takes more scrolling. |
+| `variant=D` | Combined view selector | Switches between the reference table, B and C inside one prototype, preserving data and search. |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -67,13 +68,37 @@ tillstånd** for the current variant, data source, filter, sort order,
 viewport, visible row IDs and last preview action. Prototype controls are
 clearly labeled and have Developer Mode markers.
 
+## Prototype D: one page, three views
+
+[Open D](http://localhost:3001/sv/specifications?variant=D). Three icon buttons
+appear immediately to the right of **Kravunderlag**:
+
+- Table icon: the simplified reference table.
+- Two-row icon: the two-level rows from B.
+- Grid icon: the cards from C.
+
+These controls change the view inside D. The outer prototype selection and
+`variant=D` URL stay the same. The selected icon has a border, check mark and
+pressed state; hover text names each view. Search, selected data source and
+ascending name order stay intact while switching. D opens in table view after
+a full reload; the view selection is in memory for this throwaway prototype.
+
+Tab focuses the selected icon. Left/Right move between the three views;
+Home/End select the first/last view. Those keys stay within D when this control
+has focus, while the floating bottom bar still selects the overall prototype.
+
+To verify the combination: filter by Upphandling, switch through all three
+icons, and confirm the same three example names appear in the same order.
+Repeat with live data. Check that the address still contains `variant=D`.
+
 ## Every change and how to verify it
 
 <!-- markdownlint-disable MD013 -->
 
 | Change | Where | How to verify | Expected observation |
 | --- | --- | --- | --- |
-| Ascending name order | All | Compare names in 0/A/B/C, then filter and switch to live data. | Names follow ascending locale-aware order; Swedish Å, Ä and Ö follow Z. |
+| Combined view selector | D | Click the three icons beside the title, then try Left/Right and Home/End. | The view changes between reference, B and C while D, the filter, data source and name order stay selected. |
+| Ascending name order | All | Compare names in 0/A/B/C and each view in D, then filter and switch to live data. | Names follow ascending locale-aware order; Swedish Å, Ä and Ö follow Z. |
 | Focused list contents | All | Inspect row content in every option, including the reference. | Each specification shows name, responsibility, classifications and permitted actions. |
 | More space for names | A | Compare 0 and A at 1440 × 900 with navigation expanded. Read the long information-exchange example. | Names receive the remaining table width; classifications occupy one column instead of three. |
 | Alternative information hierarchy | B | Read the long information-exchange example and its second line. | Name, responsible person and actions lead; labeled classifications appear below. |
@@ -99,7 +124,8 @@ clearly labeled and have Developer Mode markers.
 
 ## Suggested ten-minute review
 
-1. Open A with the example data at 1440 × 900 and expand navigation.
+1. Open D with the example data at 1440 × 900 and expand navigation.
+   Try its three title icons before comparing the separate options below.
 2. Switch between 0 and A; compare name width, identifier wrapping and actions.
 3. Read the longest name and person name. Check alphabetical name order.
 4. Compare B and C. Decide whether explicit labels or card separation justify
@@ -126,7 +152,7 @@ Observed on 2026-09-19: 32 desktop combinations (four layouts, two sizes,
 two navigation states and two themes) plus four mobile layouts at 375 pixels
 have no page-level horizontal overflow. The browser reports no uncaught errors
 and sends no mutation requests during prototype interactions. Live data loads
-115 authorized specifications in this environment. Filtering, clearing, empty
+26 authorized specifications in this verification run. Filtering, clearing, empty
 results, keyboard switching, ascending name order, action previews,
 English identity fallbacks and URL reload behavior are exercised.
 
@@ -140,6 +166,12 @@ pixel-identical to the current production list. The original
 page remains available without the variant parameter for an exact comparison
 using live data.
 
+[D verification results](./verification-D.json) cover its three internal views
+at both desktop sizes, navigation states and themes, plus mobile layouts.
+They also cover icon placement, selected state, keyboard focus, preserved
+filter/data and keeping the outer prototype set to D. The gallery includes
+nine D captures in addition to the twelve separate-option captures.
+
 ## Code and scope
 
 <!-- markdownlint-disable MD013 -->
@@ -147,7 +179,7 @@ using live data.
 | File | Purpose |
 | --- | --- |
 | `page.tsx` | Gates the rendering branch by development mode and query parameter; retains existing loading and authorization. |
-| `prototype-1350.tsx` | Baseline, three layouts, example/live selection and local interactions. |
+| `prototype-1350.tsx` | Reference, A/B/C layouts, combined D selector and local interactions. |
 | `prototype-1350.module.css` | Isolated layout and theme styles. |
 | `prototype-1350.data.ts` | Seven in-memory examples covering names, responsibility and permissions. |
 | `prototype-1350.start.mjs` | Starts a separate server using existing environment and login configuration. |

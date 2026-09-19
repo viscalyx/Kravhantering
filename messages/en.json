@@ -4087,6 +4087,10 @@
       "C": {
         "name": "Card grid",
         "description": "Two cards per row on desktop. Each specification has a title, owner block and labeled metadata. Easier to inspect one item; harder to compare a long list."
+      },
+      "D": {
+        "name": "Choose view",
+        "description": "Switch between the reference table, two-level rows and cards using the icons beside Requirements specifications. Data, search and name order are preserved."
       }
     },
     "checks": {
@@ -4117,7 +4121,17 @@
       "sorting": {
         "title": "Ascending name order",
         "verify": "Every layout sorts specification names using the selected language. Compare name order across layouts and data sources; filtering keeps that order."
+      },
+      "viewSwitching": {
+        "title": "Switch views in D",
+        "verify": "Click the icons to the right of the title: table, two-level rows and cards. Also try Tab and arrow keys. Search and name order remain; the selected icon has a check mark."
       }
+    },
+    "viewSwitcher": "Specification view",
+    "views": {
+      "baseline": "Table view",
+      "B": "Two-level rows",
+      "C": "Card view"
     }
   }
 }

@@ -471,3 +471,44 @@
   font-weight: 500;
   overflow-wrap: normal;
 }
+
+.titleGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.viewSwitcher {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.viewButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--muted);
+  border: 1px solid transparent;
+}
+.viewButton:hover {
+  color: var(--link);
+  background: var(--soft);
+}
+.viewSelected {
+  color: var(--link);
+  background: var(--soft);
+  border-color: var(--link);
+}
+.viewCheck {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  background: var(--soft);
+  border-radius: 2px;
+}

@@ -1461,7 +1461,7 @@
       "bodyOverflow": false
     }
   ],
-  "liveRows": 115,
+  "liveRows": 26,
   "errors": [],
   "writes": [],
   "interactions": "filter, clear, empty, arrows, input caret, ascending name order in all variants and live data, all row actions and create preview, identifier keyboard focus, reload, live data, English fallback checked"

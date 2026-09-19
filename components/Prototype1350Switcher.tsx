@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl'
 import { useCallback, useEffect } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
 
-export const prototype1350Variants = ['baseline', 'A', 'B', 'C'] as const
+export const prototype1350Variants = ['baseline', 'A', 'B', 'C', 'D'] as const
 export type Prototype1350Variant = (typeof prototype1350Variants)[number]
 
 export default function Prototype1350Switcher({
@@ -30,7 +30,12 @@ export default function Prototype1350Switcher({
   const cycle = useCallback(
     (direction: number) => {
       const index = prototype1350Variants.indexOf(current)
-      select(prototype1350Variants[(index + direction + 4) % 4])
+      select(
+        prototype1350Variants[
+          (index + direction + prototype1350Variants.length) %
+            prototype1350Variants.length
+        ],
+      )
     },
     [current, select],
   )
@@ -42,7 +47,7 @@ export default function Prototype1350Switcher({
         event.ctrlKey ||
         event.metaKey ||
         target.closest(
-          'input, textarea, select, [contenteditable], [role="slider"], [role="combobox"], [data-prototype-hsa]',
+          'input, textarea, select, [contenteditable], [role="slider"], [role="combobox"], [data-prototype-hsa], [data-prototype-view-switcher]',
         )
       )
         return

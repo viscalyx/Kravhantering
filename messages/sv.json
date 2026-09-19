@@ -4087,6 +4087,10 @@
       "C": {
         "name": "Kortvy",
         "description": "Två kort per rad på desktop. Varje kravunderlag får rubrik, ansvarsblock och metadata med etiketter. Lättare att läsa ett underlag, svårare att jämföra en lång lista."
+      },
+      "D": {
+        "name": "Välj vy",
+        "description": "Växla mellan referensens tabell, tvånivårader och kort med ikonerna bredvid Kravunderlag. Samma data, sökning och namnordning följer med."
       }
     },
     "checks": {
@@ -4117,7 +4121,17 @@
       "sorting": {
         "title": "Stigande namnordning",
         "verify": "Alla vyer sorteras efter kravunderlagets namn enligt valt språk. Jämför namnordningen mellan vyer och datakällor; filtrering ska behålla sorteringen."
+      },
+      "viewSwitching": {
+        "title": "Växla vy i D",
+        "verify": "Klicka ikonerna till höger om Kravunderlag: tabell, tvånivårader och kort. Prova även Tab och piltangenter. Sökning och namnordning behålls, och vald ikon har en bock."
       }
+    },
+    "viewSwitcher": "Visning av kravunderlag",
+    "views": {
+      "baseline": "Tabellvy",
+      "B": "Tvånivårader",
+      "C": "Kortvy"
     }
   }
 }

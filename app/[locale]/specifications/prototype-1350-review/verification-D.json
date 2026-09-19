@@ -1,0 +1,574 @@
+{
+  "results": [
+    {
+      "layout": "baseline",
+      "width": 1440,
+      "expanded": false,
+      "theme": "light",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "baseline",
+      "width": 1440,
+      "expanded": false,
+      "theme": "dark",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "baseline",
+      "width": 1440,
+      "expanded": true,
+      "theme": "light",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "baseline",
+      "width": 1440,
+      "expanded": true,
+      "theme": "dark",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "baseline",
+      "width": 1920,
+      "expanded": false,
+      "theme": "light",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "baseline",
+      "width": 1920,
+      "expanded": false,
+      "theme": "dark",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "baseline",
+      "width": 1920,
+      "expanded": true,
+      "theme": "light",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "baseline",
+      "width": 1920,
+      "expanded": true,
+      "theme": "dark",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "B",
+      "width": 1440,
+      "expanded": false,
+      "theme": "light",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "B",
+      "width": 1440,
+      "expanded": false,
+      "theme": "dark",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "B",
+      "width": 1440,
+      "expanded": true,
+      "theme": "light",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "B",
+      "width": 1440,
+      "expanded": true,
+      "theme": "dark",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "B",
+      "width": 1920,
+      "expanded": false,
+      "theme": "light",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "B",
+      "width": 1920,
+      "expanded": false,
+      "theme": "dark",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "B",
+      "width": 1920,
+      "expanded": true,
+      "theme": "light",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "B",
+      "width": 1920,
+      "expanded": true,
+      "theme": "dark",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "C",
+      "width": 1440,
+      "expanded": false,
+      "theme": "light",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "C",
+      "width": 1440,
+      "expanded": false,
+      "theme": "dark",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "C",
+      "width": 1440,
+      "expanded": true,
+      "theme": "light",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "C",
+      "width": 1440,
+      "expanded": true,
+      "theme": "dark",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "C",
+      "width": 1920,
+      "expanded": false,
+      "theme": "light",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "C",
+      "width": 1920,
+      "expanded": false,
+      "theme": "dark",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "C",
+      "width": 1920,
+      "expanded": true,
+      "theme": "light",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "C",
+      "width": 1920,
+      "expanded": true,
+      "theme": "dark",
+      "bodyOverflow": false,
+      "iconsRightOfTitle": true,
+      "aligned": true,
+      "buttons": [
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        },
+        {
+          "width": 36,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "layout": "baseline",
+      "width": 375,
+      "bodyOverflow": false
+    },
+    {
+      "layout": "B",
+      "width": 375,
+      "bodyOverflow": false
+    },
+    {
+      "layout": "C",
+      "width": 375,
+      "bodyOverflow": false
+    }
+  ],
+  "errors": [],
+  "writes": [],
+  "interactions": "D stays selected while its three views switch; mouse, keyboard, focus, filter, sort, live data, outer switcher wrap and English labels verified"
+}

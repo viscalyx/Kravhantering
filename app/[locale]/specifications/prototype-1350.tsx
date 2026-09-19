@@ -1,8 +1,20 @@
 'use client'
 
-// Throwaway question: which of three list layouts makes names and responsibility
-// easiest to scan? Existing /specifications route, ?variant=baseline|A|B|C.
-import { Info, Pencil, Plus, Search, Trash2, UsersRound, X } from 'lucide-react'
+// Throwaway question: which layout and view controls make names and responsibility
+// easiest to scan? Existing /specifications route, ?variant=baseline|A|B|C|D.
+import {
+  Check,
+  Info,
+  LayoutGrid,
+  Pencil,
+  Plus,
+  Rows2,
+  Search,
+  Table2,
+  Trash2,
+  UsersRound,
+  X,
+} from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
@@ -23,6 +35,9 @@ import {
   type PrototypeSpecification as Specification,
 } from './prototype-1350.data'
 import styles from './prototype-1350.module.css'
+
+const selectableLayouts = ['baseline', 'B', 'C'] as const
+type SelectableLayout = (typeof selectableLayouts)[number]
 
 type LayoutProps = {
   rows: Specification[]
@@ -177,6 +192,9 @@ export default function Prototype1350({
   )
     ? (rawVariant as Prototype1350Variant)
     : 'A'
+  const [selectedLayout, setSelectedLayout] =
+    useState<SelectableLayout>('baseline')
+  const layout = variant === 'D' ? selectedLayout : variant
   const [source, setSource] = useState('examples')
   const [search, setSearch] = useState('')
   const [lastAction, setLastAction] = useState('')
@@ -301,6 +319,7 @@ export default function Prototype1350({
   return (
     <div
       className={`section-padding ${styles.prototype}`}
+      data-prototype-layout={layout}
       data-prototype-variant={variant}
       {...devMarker({
         context: 'prototype 1350',
@@ -338,6 +357,7 @@ export default function Prototype1350({
                 {JSON.stringify(
                   {
                     variant,
+                    layout,
                     source,
                     search,
                     sort: 'name ascending',
@@ -357,6 +377,7 @@ export default function Prototype1350({
               {[
                 'names',
                 'sorting',
+                ...(variant === 'D' ? ['viewSwitching'] : []),
                 'identity',
                 'classification',
                 'actions',
@@ -380,7 +401,77 @@ export default function Prototype1350({
             variant === 'baseline' ? styles.baselineToolbar : styles.toolbar
           }
         >
-          <h1>{tn('specifications')}</h1>
+          {variant === 'D' ? (
+            <div className={styles.titleGroup}>
+              <h1>{tn('specifications')}</h1>
+              <fieldset
+                aria-label={t('viewSwitcher')}
+                className={styles.viewSwitcher}
+                data-prototype-view-switcher
+                {...devMarker({
+                  context: 'prototype 1350',
+                  name: 'view switcher',
+                  value: selectedLayout,
+                })}
+                onKeyDown={event => {
+                  if (
+                    !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(
+                      event.key,
+                    )
+                  )
+                    return
+                  event.preventDefault()
+                  const index = selectableLayouts.indexOf(selectedLayout)
+                  const next =
+                    event.key === 'Home'
+                      ? 'baseline'
+                      : event.key === 'End'
+                        ? 'C'
+                        : selectableLayouts[
+                            (index + (event.key === 'ArrowLeft' ? 2 : 1)) % 3
+                          ]
+                  setSelectedLayout(next)
+                  event.currentTarget
+                    .querySelector<HTMLButtonElement>(`[data-layout="${next}"]`)
+                    ?.focus()
+                }}
+              >
+                {selectableLayouts.map(key => {
+                  const Icon =
+                    key === 'baseline'
+                      ? Table2
+                      : key === 'B'
+                        ? Rows2
+                        : LayoutGrid
+                  const selected = selectedLayout === key
+                  return (
+                    <button
+                      aria-label={t(`views.${key}`)}
+                      aria-pressed={selected}
+                      className={`${styles.viewButton} ${selected ? styles.viewSelected : ''}`}
+                      data-layout={key}
+                      key={key}
+                      onClick={() => setSelectedLayout(key)}
+                      tabIndex={selected ? 0 : -1}
+                      title={t(`views.${key}`)}
+                      type="button"
+                    >
+                      <Icon aria-hidden="true" size={18} />
+                      {selected && (
+                        <Check
+                          aria-hidden="true"
+                          className={styles.viewCheck}
+                          size={10}
+                        />
+                      )}
+                    </button>
+                  )
+                })}
+              </fieldset>
+            </div>
+          ) : (
+            <h1>{tn('specifications')}</h1>
+          )}
           <div className={styles.searchGroup}>
             <label htmlFor="prototype-name-filter">{ts('filterByName')}</label>
             <div className={styles.searchRow}>
@@ -416,11 +507,11 @@ export default function Prototype1350({
           </div>
         </div>
         <div className={styles.surface} ref={surface}>
-          {variant === 'baseline' ? (
+          {layout === 'baseline' ? (
             <Baseline {...rowTools} />
-          ) : variant === 'A' ? (
+          ) : layout === 'A' ? (
             <VariantA {...rowTools} />
-          ) : variant === 'B' ? (
+          ) : layout === 'B' ? (
             <VariantB {...rowTools} />
           ) : (
             <VariantC {...rowTools} />

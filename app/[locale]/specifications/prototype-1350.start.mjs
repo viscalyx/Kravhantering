@@ -19,7 +19,7 @@ for (const key of [
   process.env[key] = profile[key]
 }
 console.log(
-  '\n#1350 throwaway prototype: http://localhost:3001/sv/specifications?variant=A',
+  '\n#1350 throwaway prototype: http://localhost:3001/sv/specifications?variant=D',
 )
 console.log(
   'Uses the existing Keycloak client for port 3001. Sign in normally. Ctrl+C stops only this server.\n',
