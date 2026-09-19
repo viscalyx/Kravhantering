@@ -4069,7 +4069,7 @@
     "nameC": "Shared shelf",
     "description0": "Current layout, unchanged. Compare this with A, B and C using the same data and window size.",
     "descriptionA": "Compact pill tabs and actions above a separate package-filter band. Smaller footer and bottom gap.",
-    "descriptionB": "Tabs get a full-width line. Package filters share the next line with actions. Smaller footer and bottom gap.",
+    "descriptionB": "Tabs get a full-width line, with vertical dividers between the three left-panel tabs. Package filters share the next line with actions. Smaller footer and bottom gap.",
     "descriptionC": "Both tab groups move to a shared shelf above the panels. Each panel combines package filters and actions. Smaller footer and bottom gap.",
     "readOnly": "Throwaway preview. Application writes are blocked. Filters, scrolling, tabs and resizing remain interactive.",
     "help": "Left/right arrows switch variants. H hides or restores these controls for an unobstructed view. Inspector values are live CSS pixels.",

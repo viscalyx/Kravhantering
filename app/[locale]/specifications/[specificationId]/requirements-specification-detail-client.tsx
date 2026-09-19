@@ -3076,6 +3076,14 @@ export default function KravunderlagDetailClient({
       {!shelf && <SpecificationPanelToggle />}
       <div
         aria-label={t('leftPanelTabs')}
+        {...devMarker({
+          name: 'tab group',
+          context: 'requirements specification detail',
+          value:
+            prototypeVariant === 'B'
+              ? 'left panel tabs with vertical dividers'
+              : 'left panel tabs',
+        })}
         className={`${splitPanelTabsClassName} ${shelf ? '' : 'prototype-panel-tabs'}`}
         role="tablist"
       >

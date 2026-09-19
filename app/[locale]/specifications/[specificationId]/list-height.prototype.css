@@ -178,6 +178,29 @@
   html.dark[data-height-prototype="B"] [role="tab"][aria-selected="true"] {
     color: #c7d2fe;
   }
+  /* Decorative dividers between the three left-panel tabs in B. */
+  html[data-height-prototype="B"] #specification-left-panel [role="tab"] {
+    position: relative;
+  }
+  html[data-height-prototype="B"]
+    #specification-left-panel
+    [role="tab"]
+    + [role="tab"]::before {
+    position: absolute;
+    top: 20%;
+    bottom: 20%;
+    left: -2px;
+    width: 1px;
+    pointer-events: none;
+    content: "";
+    background: #cbd5e1;
+  }
+  html.dark[data-height-prototype="B"]
+    #specification-left-panel
+    [role="tab"]
+    + [role="tab"]::before {
+    background: #475569;
+  }
   /* C: a separate shared tab shelf; each list starts with filter/actions. */
   html[data-height-prototype="C"] .prototype-tab-shelf {
     display: grid;

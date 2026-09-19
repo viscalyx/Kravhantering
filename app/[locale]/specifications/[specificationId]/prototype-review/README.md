@@ -48,7 +48,8 @@ already-registered Keycloak client for port 3001. It does not seed or migrate.
 - **A: Compact stack.** Keep the original ordering: tabs and actions, package
   filters, then table headings. Reduce padding and button heights.
 - **B: Full-width tabs.** Give tabs an entire line with an underline for the
-  active tab. Put package filters and actions together on the next line.
+  active tab. Vertical dividers separate the three left-panel tabs. Put
+  package filters and actions together on the next line.
 - **C: Shared shelf.** Move both tab groups above the panels. Combine filters
   and actions inside each panel. The shelf follows the panel widths.
 
@@ -88,6 +89,7 @@ page overflow falls from 21px to zero at both desktop sizes.
 | --- | --- | --- |
 | A: compact pill tabs | Switch 0 → A at 1440 × 900; inspect the top of each panel. | Same tab names and actions; shorter header. Compare label truncation with expanded navigation. |
 | B: full-width tab strip | Switch to B; select each tab. | Tabs occupy their own row; active tab has an underline. Filters and actions share the next row. |
+| B: vertical tab dividers | Inspect the left panel in B in both themes. | Two short vertical lines separate Krav i underlaget, Behovsreferenser and RFI-frågelista; tab sizes and list height stay the same. |
 | C: shared tab shelf | Switch to C; select tabs and drag the panel divider. | Tab groups sit above the panels and follow their widths; collapsed panel's shelf group is hidden. |
 | C: flat surfaces | Inspect C in both themes after switching variants. | Backdrop blur is disabled in C to keep Chromium from obscuring adjacent content during grid changes. |
 | Smaller actions | Compare 0 with A/B/C; open column and more-action menus. | Header buttons are 30px high; actions remain reachable. Package controls keep their existing sizes. |
