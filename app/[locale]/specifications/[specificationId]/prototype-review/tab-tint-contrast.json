@@ -1,0 +1,132 @@
+[
+  {
+    "theme": "light",
+    "tab": "Krav i underlaget",
+    "foreground": "rgb(67, 56, 202)",
+    "background": "rgb(238, 242, 255)",
+    "border": "2px",
+    "bounds": {
+      "height": 33
+    },
+    "countOpacity": null,
+    "contrast": 7.067745388921498,
+    "countContrast": null
+  },
+  {
+    "theme": "light",
+    "tab": "Behovsreferenser",
+    "foreground": "rgb(67, 56, 202)",
+    "background": "rgb(238, 242, 255)",
+    "border": "2px",
+    "bounds": {
+      "height": 33
+    },
+    "countOpacity": "0.8",
+    "contrast": 7.067745388921498,
+    "countContrast": 4.597167460518029
+  },
+  {
+    "theme": "light",
+    "tab": "RFI-frågelista",
+    "foreground": "rgb(67, 56, 202)",
+    "background": "rgb(238, 242, 255)",
+    "border": "2px",
+    "bounds": {
+      "height": 33
+    },
+    "countOpacity": null,
+    "contrast": 7.067745388921498,
+    "countContrast": null
+  },
+  {
+    "theme": "light",
+    "tab": "Tillgängliga krav",
+    "foreground": "rgb(67, 56, 202)",
+    "background": "rgb(238, 242, 255)",
+    "border": "2px",
+    "bounds": {
+      "height": 33
+    },
+    "countOpacity": null,
+    "contrast": 7.067745388921498,
+    "countContrast": null
+  },
+  {
+    "theme": "light",
+    "tab": "Kravurvalsfrågor",
+    "foreground": "rgb(67, 56, 202)",
+    "background": "rgb(238, 242, 255)",
+    "border": "2px",
+    "bounds": {
+      "height": 33
+    },
+    "countOpacity": null,
+    "contrast": 7.067745388921498,
+    "countContrast": null
+  },
+  {
+    "theme": "dark",
+    "tab": "Krav i underlaget",
+    "foreground": "rgb(199, 210, 254)",
+    "background": "rgb(30, 27, 75)",
+    "border": "2px",
+    "bounds": {
+      "height": 33
+    },
+    "countOpacity": null,
+    "contrast": 10.717461860660363,
+    "countContrast": null
+  },
+  {
+    "theme": "dark",
+    "tab": "Behovsreferenser",
+    "foreground": "rgb(199, 210, 254)",
+    "background": "rgb(30, 27, 75)",
+    "border": "2px",
+    "bounds": {
+      "height": 33
+    },
+    "countOpacity": "0.8",
+    "contrast": 10.717461860660363,
+    "countContrast": 7.3286927691160715
+  },
+  {
+    "theme": "dark",
+    "tab": "RFI-frågelista",
+    "foreground": "rgb(199, 210, 254)",
+    "background": "rgb(30, 27, 75)",
+    "border": "2px",
+    "bounds": {
+      "height": 33
+    },
+    "countOpacity": null,
+    "contrast": 10.717461860660363,
+    "countContrast": null
+  },
+  {
+    "theme": "dark",
+    "tab": "Tillgängliga krav",
+    "foreground": "rgb(199, 210, 254)",
+    "background": "rgb(30, 27, 75)",
+    "border": "2px",
+    "bounds": {
+      "height": 33
+    },
+    "countOpacity": null,
+    "contrast": 10.717461860660363,
+    "countContrast": null
+  },
+  {
+    "theme": "dark",
+    "tab": "Kravurvalsfrågor",
+    "foreground": "rgb(199, 210, 254)",
+    "background": "rgb(30, 27, 75)",
+    "border": "2px",
+    "bounds": {
+      "height": 33
+    },
+    "countOpacity": null,
+    "contrast": 10.717461860660363,
+    "countContrast": null
+  }
+]

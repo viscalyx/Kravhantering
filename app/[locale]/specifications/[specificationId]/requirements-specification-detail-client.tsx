@@ -3091,7 +3091,7 @@ export default function KravunderlagDetailClient({
           context: 'requirements specification detail',
           value:
             prototypeVariant === 'B'
-              ? 'stable left panel tabs with vertical dividers'
+              ? 'stable left panel tabs with dividers and tinted selection'
               : 'left panel tabs',
         })}
         className={`${splitPanelTabsClassName} ${shelf ? '' : 'prototype-panel-tabs'}`}
@@ -3138,7 +3138,7 @@ export default function KravunderlagDetailClient({
         context: 'requirements specification detail',
         value:
           prototypeVariant === 'B'
-            ? 'stable right panel tabs with vertical divider'
+            ? 'stable right panel tabs with divider and tinted selection'
             : 'right panel',
       })}
     >

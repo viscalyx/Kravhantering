@@ -47,8 +47,9 @@ already-registered Keycloak client for port 3001. It does not seed or migrate.
 - **0: Baseline.** Existing layout, with both panels open for comparison.
 - **A: Compact stack.** Keep the original ordering: tabs and actions, package
   filters, then table headings. Reduce padding and button heights.
-- **B: Full-width tabs.** Give tabs an entire line with an underline for the
-  active tab. Vertical dividers separate the tabs in both panels. Put
+- **B: Full-width tabs.** Give tabs an entire line with an underline and a
+  subtle indigo background for the active tab. Vertical dividers separate
+  the tabs in both panels. Put
   package filters and actions together on the next line.
 - **C: Shared shelf.** Move both tab groups above the panels. Combine filters
   and actions inside each panel. The shelf follows the panel widths.
@@ -94,6 +95,7 @@ page overflow falls from 21px to zero at both desktop sizes.
 | B: RFI controls | Select RFI-frågelista and toggle the included-only filter; inspect CSV/PDF links and the lock switch. | The filter still changes state; exports and locking are grouped below the tabs. Group and question actions stay with their content. |
 | B: RFI mode text | Select RFI-frågelista, expand navigation and resize the panel. | Mode and explanation sit left of the actions; the row stays 37px high. Long explanations truncate with the full text in a tooltip. |
 | B: vertical tab dividers | Inspect both panels in B in both themes. | Two lines separate the three left tabs; one line separates Tillgängliga krav and Kravurvalsfrågor. |
+| B: tinted selected tab | Select each of the five tabs in both themes. | Only the selected tab in each panel has a subtle indigo background. Underline, dividers, dimensions and position remain unchanged. |
 | B: stable right tabs | Switch Tillgängliga krav → Kravurvalsfrågor → Tillgängliga krav. | Both tabs keep exactly the same position and size. |
 | C: shared tab shelf | Switch to C; select tabs and drag the panel divider. | Tab groups sit above the panels and follow their widths; collapsed panel's shelf group is hidden. |
 | C: flat surfaces | Inspect C in both themes after switching variants. | Backdrop blur is disabled in C to keep Chromium from obscuring adjacent content during grid changes. |
@@ -179,6 +181,17 @@ both desktop sizes, both navigation states, both themes, and switching back.
 
 - [Selection questions, light](images/1440-B-selection-questions-light.png)
 - [Selection questions, dark](images/1440-B-selection-questions-dark.png)
+
+## Selected-tab background in B
+
+The selected tab has a subtle indigo fill in both panels. The underline
+remains, and inactive tabs retain their transparent background. Geometry
+is unchanged. Light mode uses `#4338ca` text on `#eef2ff`; dark mode uses
+`#c7d2fe` text on `#1e1b4b`.
+
+[Computed color evidence](tab-tint-contrast.json) covers all five tabs in
+both themes: text contrast is 7.07:1 in light mode and 10.72:1 in dark mode.
+The needs-reference count also remains above 4.5:1 with its existing opacity.
 
 ## Source inventory
 
