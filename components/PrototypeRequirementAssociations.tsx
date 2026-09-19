@@ -41,6 +41,7 @@ export default function PrototypeRequirementAssociations({
   const isPackage = kind === 'packages'
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<number[]>([])
+  const [selectedOnOpen, setSelectedOnOpen] = useState<number[]>([])
   const [query, setQuery] = useState('')
   const [help, setHelp] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -59,11 +60,29 @@ export default function PrototypeRequirementAssociations({
       }))
   const visible = items.filter(
     item =>
-      (!item.isArchived || ids.includes(item.id)) &&
+      (!item.isArchived ||
+        ids.includes(item.id) ||
+        (table && selectedOnOpen.includes(item.id))) &&
       `${item.name} ${item.reference} ${item.purpose}`
         .toLocaleLowerCase()
         .includes(modal ? query.toLocaleLowerCase() : ''),
   )
+  const groups = [
+    ...(selectedOnOpen.length > 0
+      ? [
+          {
+            key: 'previous',
+            label: t('selectedOnOpen'),
+            items: visible.filter(item => selectedOnOpen.includes(item.id)),
+          },
+        ]
+      : []),
+    {
+      key: 'other',
+      label: t('otherOptions'),
+      items: visible.filter(item => !selectedOnOpen.includes(item.id)),
+    },
+  ]
   const title = tr(isPackage ? 'requirementPackage' : 'normReferences')
   const close = () => setOpen(false)
   const toggle = (id: number, checked: boolean) => {
@@ -121,41 +140,64 @@ export default function PrototypeRequirementAssociations({
               </th>
             </tr>
           </thead>
-          <tbody>
-            {visible.map(item => (
-              <tr key={item.id}>
-                <td>{checkbox(item)}</td>
-                <td>
-                  <label
-                    className={
-                      isPackage
-                        ? undefined
-                        : 'font-mono text-xs text-secondary-500 dark:text-secondary-400'
-                    }
-                    htmlFor={`prototype-${kind}-${item.id}-checkbox`}
-                  >
-                    {isPackage ? item.name : item.reference}
-                    {isPackage && item.isArchived ? ` (${t('archived')})` : ''}
-                  </label>
-                </td>
-                <td>
-                  {isPackage ? (
-                    <p
-                      className="prototype-1349-table-purpose"
-                      id={`prototype-${kind}-modal-${item.id}-purpose`}
-                    >
-                      {item.purpose || t('missingPurpose')}
-                    </p>
-                  ) : (
-                    <label htmlFor={`prototype-${kind}-${item.id}-checkbox`}>
-                      {item.name}
-                      {item.isArchived ? ` (${t('archived')})` : ''}
-                    </label>
-                  )}
+          {groups.map(group => (
+            <tbody
+              aria-labelledby={`prototype-${kind}-${group.key}-heading`}
+              key={group.key}
+              {...devMarker({
+                name: 'prototype selection group',
+                value: `${kind} ${group.key}`,
+              })}
+            >
+              <tr>
+                <td className="prototype-1349-group-heading" colSpan={3}>
+                  <h3 id={`prototype-${kind}-${group.key}-heading`}>
+                    {group.label}
+                  </h3>
                 </td>
               </tr>
-            ))}
-          </tbody>
+              {group.items.map(item => (
+                <tr key={item.id}>
+                  <td>{checkbox(item)}</td>
+                  <td>
+                    <label
+                      className={
+                        isPackage
+                          ? undefined
+                          : 'font-mono text-xs text-secondary-500 dark:text-secondary-400'
+                      }
+                      htmlFor={`prototype-${kind}-${item.id}-checkbox`}
+                    >
+                      {isPackage ? item.name : item.reference}
+                      {isPackage && item.isArchived
+                        ? ` (${t('archived')})`
+                        : ''}
+                    </label>
+                  </td>
+                  <td>
+                    {isPackage ? (
+                      <p
+                        className="prototype-1349-table-purpose"
+                        id={`prototype-${kind}-modal-${item.id}-purpose`}
+                      >
+                        {item.purpose || t('missingPurpose')}
+                      </p>
+                    ) : (
+                      <label htmlFor={`prototype-${kind}-${item.id}-checkbox`}>
+                        {item.name}
+                        {item.isArchived ? ` (${t('archived')})` : ''}
+                      </label>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {group.items.length === 0 && (
+                <tr>
+                  <td colSpan={3}>{t('noMatches')}</td>
+                </tr>
+              )}
+            </tbody>
+          ))}
         </table>
       ) : (
         visible.map(item => (
@@ -186,7 +228,7 @@ export default function PrototypeRequirementAssociations({
           </div>
         ))
       )}
-      {visible.length === 0 && <p>{t('noMatches')}</p>}
+      {!table && visible.length === 0 && <p>{t('noMatches')}</p>}
       {ids.length >= ARRAY_INPUT_MAX_ITEMS && (
         <p role="status">
           {tr('associationSelectionLimit', { limit: ARRAY_INPUT_MAX_ITEMS })}
@@ -227,13 +269,22 @@ export default function PrototypeRequirementAssociations({
             disabled={disabled}
             onClick={() => {
               setDraft([...selected])
+              setSelectedOnOpen([...selected])
               setQuery('')
               setOpen(true)
             }}
             ref={triggerRef}
             type="button"
           >
-            {t(isPackage ? 'addPackages' : 'addNorms')}
+            {t(
+              table
+                ? isPackage
+                  ? 'choosePackages'
+                  : 'selectNorm'
+                : isPackage
+                  ? 'addPackages'
+                  : 'addNorms',
+            )}
           </button>
           <p className="prototype-1349-selection-count" role="status">
             {t('selectedCount', { count: selected.length })}

@@ -84,6 +84,17 @@ Screenshots in the [review guide](README.md) preserve two desktop scenarios
 for each alternative, plus the review panel with live state. The
 [Swedish guide](GRANSKNING.md) also links modal and selected-badge screenshots.
 
+## Confirmed E.2 grouping behavior
+
+Both dialogs group items by the applied selection at opening. Checking or
+unchecking an item leaves its group and row order unchanged. Search filters
+both groups. One scroll area keeps the column headings visible. The upper
+group is omitted when nothing was selected at opening. Select applies the
+draft; reopening rebuilds the groups. Cancel discards the draft.
+
+The user confirmed these decisions during the grilling discussion.
+See [group inspection](group-inspection.json) and the Swedish review guide.
+
 ## Limits
 
 This is not a complete accessibility audit or production regression suite.

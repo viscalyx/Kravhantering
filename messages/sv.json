@@ -4100,7 +4100,7 @@
         "summary": "Välj paket och normreferenser i tabeller med kryssrutor och två vänsterjusterade textkolumner.",
         "change1": "Normreferenser visar referens-ID och namn i separata kolumner. ID behåller den grå tonen.",
         "change2": "Kravpaket visar namn och syfte i separata kolumner. Kryssrutorna ligger längst till vänster.",
-        "change3": "Markeringar är preliminära tills du trycker Välj. Avbryt, stäng eller Escape lämnar formulärets tidigare val orörda. Valda objekt visas som kompakta märken som kan tas bort. Öppna dialogen igen för att ändra urvalet."
+        "change3": "Tidigare val visas överst. Raderna behåller sin grupp när du markerar eller avmarkerar. Sökningen filtrerar båda grupperna. Välj tillämpar ändringarna; grupperna räknas om när dialogen öppnas igen."
       }
     },
     "purposeGuidance": "Välj endast kravpaket vars syfte och avgränsning omfattar kravet. Syftet visas vid varje paket som stöd för din bedömning.",
@@ -4123,6 +4123,9 @@
     "tablePackageName": "Kravpaket",
     "tableReferenceId": "Referens-ID",
     "tablePurpose": "Syfte",
-    "tableNormName": "Namn"
+    "tableNormName": "Namn",
+    "selectedOnOpen": "Redan valda",
+    "otherOptions": "Ej valda",
+    "selectNorm": "Välj normreferens"
   }
 }

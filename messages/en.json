@@ -4100,7 +4100,7 @@
         "summary": "Choose packages and norm references in tables with checkboxes and two left-aligned text columns.",
         "change1": "Norm references show reference ID and name in separate columns. IDs retain their gray color.",
         "change2": "Packages show name and purpose in separate columns. Checkboxes sit at the far left.",
-        "change3": "Changes remain draft until Select. Cancel, close or Escape leave the form selections unchanged. Selected items appear as compact removable badges. Reopen the dialog to change the selection."
+        "change3": "Previous selections appear first. Rows keep their group when checked or unchecked. Search filters both groups. Select applies changes; groups update when you reopen the dialog."
       }
     },
     "purposeGuidance": "Select only packages whose purpose and scope cover the requirement. Each package shows its purpose to support your judgment.",
@@ -4123,6 +4123,9 @@
     "tablePackageName": "Requirement package",
     "tableReferenceId": "Reference ID",
     "tablePurpose": "Purpose",
-    "tableNormName": "Name"
+    "tableNormName": "Name",
+    "selectedOnOpen": "Already selected",
+    "otherOptions": "Not selected",
+    "selectNorm": "Choose norm reference"
   }
 }

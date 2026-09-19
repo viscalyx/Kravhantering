@@ -105,6 +105,19 @@ med syfte och avgränsning i en tooltip.
 Kolumnrubrikerna ligger kvar överst när tabellens innehåll rullas.
 Vägledningen om paketens syfte visas under dialogtiteln, före sökfältet,
 och ligger också kvar när tabellen rullas.
+Knapparna i E.2 heter **Välj kravpaket** och **Välj normreferens**.
+Dialogen har två grupper: **Redan valda** och
+**Ej valda**. Grupperna bestäms när dialogen öppnas. En ny
+markering ligger kvar i den nedre gruppen. Ett avmarkerat tidigare val
+ligger kvar i den övre gruppen och kan markeras igen. Raderna flyttas inte
+när kryssrutorna ändras.
+
+Sökning filtrerar båda grupperna utan att ändra deras innehåll eller val.
+Grupperna rullas tillsammans under de fasta kolumnrubrikerna. Om inget
+var valt när dialogen öppnades visas bara den nedre gruppen.
+**Välj** tillämpar urvalet. Nästa öppning grupperar efter det nya urvalet.
+**Avbryt**, Escape och stängningsknappen kasserar ändringarna som tidigare.
+
 Den gamla länken med `?variant=E` öppnar E.1.
 
 1. Öppna båda dialogerna i E.2 och kontrollera kolumnerna.
@@ -117,7 +130,17 @@ Den gamla länken med `?variant=E` öppnar E.1.
    bakgrund så att raderna inte syns genom dem.
 8. Välj paket och normreferenser. Kontrollera märkenas text och hovra över
    dem i ungefär en sekund för att läsa respektive tooltip.
+9. Öppna dialogen med ett tidigare val. Avmarkera det och markera ett annat
+   objekt längre ned. Båda ska behålla sina platser tills dialogen stängs.
+10. Sök efter ett objekt i vardera gruppen. Rensa sökningen och kontrollera
+    att markeringarna finns kvar. Prova först Avbryt och sedan Välj.
+11. Öppna igen efter Välj. Det nya urvalet ska visas överst. Avmarkera allt,
+    tryck Välj och öppna igen; den övre gruppen ska nu vara dold.
 
+- [Kravpaket med fasta grupper](screenshots/E2-packages-groups.png)
+- [Normreferenser med fasta grupper](screenshots/E2-norms-groups.png)
+- [Grupper vid 320 pixlar i mörkt tema](screenshots/E2-packages-groups-320-dark.png)
+- [Kontroll av grupper och val](group-inspection.json)
 - [E.2:s paketdialog](screenshots/E2-packages-modal.png)
 - [E.2:s normreferensdialog](screenshots/E2-norms-modal.png)
 - [E.2:s paketdialog i mörkt tema](screenshots/E2-packages-dark.png)

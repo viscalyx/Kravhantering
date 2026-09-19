@@ -533,3 +533,12 @@ body:has([aria-modal="true"]) .prototype-1349-review {
   line-height: 1.5;
   white-space: pre-wrap;
 }
+
+.prototype-1349-picker-table .prototype-1349-group-heading {
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--color-secondary-100);
+}
+.dark .prototype-1349-picker-table .prototype-1349-group-heading {
+  background: var(--color-secondary-800);
+}
