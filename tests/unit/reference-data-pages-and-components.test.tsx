@@ -356,6 +356,13 @@ describe('package-purpose tooltip', () => {
     fireEvent.resize(window)
     fireEvent.scroll(window)
     fireEvent.mouseLeave(trigger)
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Full purpose')
+    await act(async () => vi.advanceTimersByTime(100))
+    fireEvent.mouseEnter(screen.getByRole('tooltip'))
+    await act(async () => vi.advanceTimersByTime(1000))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Full purpose')
+    fireEvent.mouseLeave(screen.getByRole('tooltip'))
+    await act(async () => vi.advanceTimersByTime(150))
     expect(screen.queryByRole('tooltip')).toBeNull()
   })
 

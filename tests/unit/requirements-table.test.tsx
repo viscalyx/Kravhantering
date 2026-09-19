@@ -4218,6 +4218,7 @@ describe('RequirementsTable', () => {
       fireEvent.mouseEnter(
         screen.getByRole('button', { name: 'Tom avgränsning' }),
       )
+      act(() => vi.advanceTimersByTime(1000))
 
       expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
     } finally {
@@ -4577,6 +4578,8 @@ describe('RequirementsTable', () => {
       act(() => vi.advanceTimersByTime(1))
       expect(screen.getByRole('tooltip')).toHaveTextContent('Name only')
       fireEvent.mouseLeave(selected)
+      act(() => vi.advanceTimersByTime(150))
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
 
       const trigger = within(band).getByRole('button', {
         name: 'requirementPackageFilterButtonActive',
