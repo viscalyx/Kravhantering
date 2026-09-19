@@ -590,8 +590,28 @@ describe('Requirement edit recovery', () => {
 
   it('requires a choice between competing association sets instead of silently combining them', async () => {
     const user = await openEditor()
+    await user.click(
+      screen.getByRole('button', {
+        name: messages.requirementAssociations.chooseNorms,
+      }),
+    )
     await user.click(screen.getByRole('checkbox', { name: /NR-1 Norm 1/ }))
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: messages.requirementAssociations.applySelection,
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: messages.requirementAssociations.choosePackages,
+      }),
+    )
     await user.click(screen.getByRole('checkbox', { name: 'Package 1' }))
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: messages.requirementAssociations.applySelection,
+      }),
+    )
     server = detail({
       revisionToken: latestToken,
       versionNormReferences: [
@@ -669,8 +689,12 @@ describe('Requirement edit recovery', () => {
     expect(apply).toBeEnabled()
     await user.click(apply)
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
-    expect(screen.getByRole('checkbox', { name: 'Package 1' })).toBeChecked()
-    expect(screen.getByRole('checkbox', { name: 'Package 2' })).toBeChecked()
+    expect(
+      screen.getByRole('button', { name: 'Package 1' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Package 2' }),
+    ).toBeInTheDocument()
   })
 
   it('resolves verifiable and its competing verification method together', async () => {

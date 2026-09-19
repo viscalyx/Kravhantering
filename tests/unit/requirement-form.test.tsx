@@ -15,7 +15,8 @@ const confirmDiscardChangesMock = vi.hoisted(() => vi.fn())
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
   useTranslations: (ns?: string) => {
-    const t = (key: string) => (ns ? `${ns}.${key}` : key)
+    const t = (key: string, values?: { name?: string }) =>
+      `${ns ? `${ns}.${key}` : key}${values?.name ? `: ${values.name}` : ''}`
     t.rich = (key: string) => (ns ? `${ns}.${key}` : key)
     return t
   },
@@ -43,20 +44,6 @@ function deferred<T>() {
     resolve = res
   })
   return { promise, resolve }
-}
-
-function rectWithHeight(height: number): DOMRect {
-  return {
-    bottom: height,
-    height,
-    left: 0,
-    right: 0,
-    toJSON: () => ({}),
-    top: 0,
-    width: 0,
-    x: 0,
-    y: 0,
-  } as DOMRect
 }
 
 const fetchMock = vi.fn()
@@ -100,6 +87,30 @@ const sampleRequirementPackages = [{ id: 1, name: 'Package Alpha' }]
 const sampleNormReferences = [
   { id: 1, name: 'Norm Alpha', normReferenceId: 'NR-1' },
 ]
+
+async function openPicker(kind: 'Packages' | 'Norms') {
+  const trigger = await screen.findByRole('button', {
+    name: `requirementAssociations.choose${kind}`,
+  })
+  await waitFor(() => expect(trigger).toBeEnabled())
+  fireEvent.click(trigger)
+  await waitFor(() => expect(screen.getByRole('searchbox')).toHaveFocus())
+  return screen.getByRole('dialog')
+}
+function applyPicker() {
+  fireEvent.click(
+    within(screen.getByRole('dialog')).getByRole('button', {
+      name: 'requirementAssociations.applySelection',
+    }),
+  )
+}
+async function removeAssociation(name: string) {
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `requirementAssociations.removeSelection: ${name}`,
+    }),
+  )
+}
 
 describe('RequirementForm', () => {
   afterEach(cleanup)
@@ -260,10 +271,7 @@ describe('RequirementForm', () => {
       />,
     )
 
-    const packageOne = await screen.findByRole('checkbox', {
-      name: 'Package 1',
-    })
-    const normOne = screen.getByRole('checkbox', { name: 'NR-1 Norm 1' })
+    await screen.findByText('Package 1')
     const save = screen.getByRole('button', { name: /common\.save/i })
 
     expect(save).toBeDisabled()
@@ -273,13 +281,13 @@ describe('RequirementForm', () => {
     )
     expect(screen.queryByText('referenceData.saveBlocked')).toBeNull()
 
-    fireEvent.click(packageOne)
+    await removeAssociation('Package 1')
     expect(save).toHaveAttribute(
       'aria-describedby',
       'normReferences-selection-limit',
     )
 
-    fireEvent.click(normOne)
+    await removeAssociation('Norm 1')
     expect(save).toHaveAttribute('aria-describedby')
     const saveHintId = save.getAttribute('aria-describedby')
     expect(saveHintId).not.toBeNull()
@@ -338,25 +346,31 @@ describe('RequirementForm', () => {
       />,
     )
 
-    const selectedArchived = await screen.findByRole('checkbox', {
-      name: /Selected archived package/,
-    })
-    const selectedArchivedNorm = screen.getByRole('checkbox', {
-      name: /Selected archived norm/,
-    })
-    expect(selectedArchived).toBeChecked()
-    expect(selectedArchived).toBeEnabled()
-    expect(selectedArchivedNorm).toBeChecked()
-    expect(selectedArchivedNorm).toBeEnabled()
+    await openPicker('Packages')
     expect(
-      screen.queryByRole('checkbox', { name: /Other archived package/ }),
+      screen.getByRole('checkbox', { name: 'Selected archived package' }),
+    ).toBeChecked()
+    expect(
+      screen.queryByRole('checkbox', { name: 'Other archived package' }),
     ).not.toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Selected archived package' }),
+    )
+    expect(
+      screen.getByRole('checkbox', { name: 'Selected archived package' }),
+    ).toBeEnabled()
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Selected archived package' }),
+    )
+    applyPicker()
+    await openPicker('Norms')
+    expect(
+      screen.getByRole('checkbox', { name: 'NR-7 Selected archived norm' }),
+    ).toBeChecked()
     expect(
       screen.queryByRole('checkbox', { name: /Other archived norm/ }),
     ).not.toBeInTheDocument()
-    expect(screen.getAllByText('requirementPackage.archived')).toHaveLength(1)
-    expect(screen.getAllByText('normReference.archived')).toHaveLength(1)
-
+    applyPicker()
     const packageCallsBeforeRemoval = fetchMock.mock.calls.filter(([url]) =>
       String(url).includes('/api/requirement-packages'),
     ).length
@@ -364,8 +378,9 @@ describe('RequirementForm', () => {
       String(url).includes('/api/norm-references'),
     ).length
 
-    fireEvent.click(selectedArchived)
-    fireEvent.click(selectedArchivedNorm)
+    await removeAssociation('Selected archived package')
+    await removeAssociation('Selected archived norm')
+    await openPicker('Packages')
 
     await waitFor(() => {
       expect(
@@ -428,10 +443,7 @@ describe('RequirementForm', () => {
       />,
     )
 
-    const packageTwo = await screen.findByRole('checkbox', {
-      name: 'Package Two',
-    })
-    const normTwo = screen.getByRole('checkbox', { name: /Norm Two/ })
+    await screen.findByText('Package One')
     const packageCallsBeforeEdits = fetchMock.mock.calls.filter(([url]) =>
       String(url).includes('/api/requirement-packages'),
     )
@@ -439,21 +451,21 @@ describe('RequirementForm', () => {
       String(url).includes('/api/norm-references'),
     )
 
-    fireEvent.click(packageTwo)
-    fireEvent.click(normTwo)
-    fireEvent.click(
-      screen.getByRole('checkbox', {
-        name: 'Package One',
-      }),
-    )
+    await openPicker('Packages')
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Package Two' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Package One' }))
+    applyPicker()
+    await openPicker('Norms')
+    fireEvent.click(screen.getByRole('checkbox', { name: /Norm Two/ }))
     fireEvent.click(screen.getByRole('checkbox', { name: /Norm One/ }))
+    applyPicker()
     fireEvent.change(
       screen.getByRole('combobox', { name: /requirement\.type/ }),
       { target: { value: '1' } },
     )
 
-    await screen.findByRole('checkbox', { name: 'Package Two' })
-    expect(screen.getByRole('checkbox', { name: /Norm Two/ })).toBeChecked()
+    expect(await screen.findByText('Package Two')).toBeInTheDocument()
+    expect(screen.getByText('NR-2')).toBeInTheDocument()
     expect(
       fetchMock.mock.calls.filter(([url]) =>
         String(url).includes('/api/requirement-packages'),
@@ -521,7 +533,7 @@ describe('RequirementForm', () => {
       />,
     )
 
-    await screen.findByRole('checkbox', { name: /Old archived package/ })
+    await screen.findByText(/Old archived package/)
 
     rerender(
       <RequirementForm
@@ -533,12 +545,8 @@ describe('RequirementForm', () => {
       />,
     )
 
-    expect(
-      await screen.findByRole('checkbox', { name: /New archived package/ }),
-    ).toBeChecked()
-    expect(
-      screen.getByRole('checkbox', { name: /New archived norm/ }),
-    ).toBeChecked()
+    expect(await screen.findByText(/New archived package/)).toBeInTheDocument()
+    expect(screen.getByText(/NR-8/)).toBeInTheDocument()
     expect(
       screen.getByRole('textbox', { name: /requirement\.description/ }),
     ).toHaveValue('Version two')
@@ -552,83 +560,76 @@ describe('RequirementForm', () => {
     )
   })
 
-  it('prevents a 201st association independently while selected values remain removable', async () => {
-    const packages = Array.from({ length: 201 }, (_value, index) => ({
-      id: index + 1,
-      name: `Package ${index + 1}`,
-    }))
-    const norms = Array.from({ length: 201 }, (_value, index) => ({
-      id: index + 1,
-      name: `Norm ${index + 1}`,
-      normReferenceId: `NR-${index + 1}`,
-    }))
-    const selectedIds = Array.from(
-      { length: 200 },
-      (_value, index) => index + 1,
-    )
-    const successfulFetch = fetchMock.getMockImplementation() as (
-      url: string,
-      options?: RequestInit,
-    ) => Promise<ReturnType<typeof okJson>>
-    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
-      if (url.includes('/api/requirement-packages')) {
-        return Promise.resolve(okJson({ requirementPackages: packages }))
-      }
-      if (url.includes('/api/norm-references')) {
-        return Promise.resolve(okJson({ normReferences: norms }))
-      }
-      return successfulFetch(url, options)
-    })
-
-    render(
-      <RequirementForm
-        initialData={{ areaId: '1', description: 'At the limit' }}
-        initialNormReferenceIds={selectedIds}
-        initialRequirementPackageIds={selectedIds}
-        mode="edit"
-        requirementId={1}
-      />,
-    )
-
-    const package201 = await screen.findByRole('checkbox', {
-      name: 'Package 201',
-    })
-    const norm201 = screen.getByRole('checkbox', {
-      name: 'NR-201 Norm 201',
-    })
-    const packageOne = screen.getByRole('checkbox', { name: 'Package 1' })
-    const normOne = screen.getByRole('checkbox', { name: 'NR-1 Norm 1' })
-    const createNormReference = screen.getByRole('button', {
-      name: /common\.create/i,
-    })
-
-    expect(package201).toBeDisabled()
-    expect(norm201).toBeDisabled()
-    expect(packageOne).toBeEnabled()
-    expect(normOne).toBeEnabled()
-    expect(createNormReference).toBeDisabled()
-    const limitStatuses = screen
-      .getAllByRole('status')
-      .filter(status =>
-        status.textContent?.includes('requirement.associationSelectionLimit'),
+  it.each(['Packages', 'Norms'] as const)(
+    'prevents a 201st %s selection while applied values remain removable',
+    async kind => {
+      const packages = Array.from({ length: 201 }, (_value, index) => ({
+        id: index + 1,
+        name: `Package ${index + 1}`,
+      }))
+      const norms = Array.from({ length: 201 }, (_value, index) => ({
+        id: index + 1,
+        name: `Norm ${index + 1}`,
+        normReferenceId: `NR-${index + 1}`,
+      }))
+      const selectedIds = Array.from(
+        { length: 200 },
+        (_value, index) => index + 1,
       )
-    expect(limitStatuses).toHaveLength(2)
-    expect(limitStatuses[0]).toHaveAttribute(
-      'data-developer-mode-name',
-      'selection limit',
-    )
+      const successfulFetch = fetchMock.getMockImplementation() as (
+        url: string,
+        options?: RequestInit,
+      ) => Promise<ReturnType<typeof okJson>>
+      fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+        if (url.includes('/api/requirement-packages')) {
+          return Promise.resolve(okJson({ requirementPackages: packages }))
+        }
+        if (url.includes('/api/norm-references')) {
+          return Promise.resolve(okJson({ normReferences: norms }))
+        }
+        return successfulFetch(url, options)
+      })
 
-    fireEvent.click(packageOne)
-    expect(package201).toBeEnabled()
-    expect(norm201).toBeDisabled()
+      render(
+        <RequirementForm
+          initialData={{ areaId: '1', description: 'At the limit' }}
+          initialNormReferenceIds={kind === 'Norms' ? selectedIds : []}
+          initialRequirementPackageIds={kind === 'Packages' ? selectedIds : []}
+          mode="edit"
+          requirementId={1}
+        />,
+      )
 
-    fireEvent.click(normOne)
-    expect(norm201).toBeEnabled()
-    expect(createNormReference).toBeEnabled()
-    expect(
-      screen.queryByText('requirement.associationSelectionLimit'),
-    ).not.toBeInTheDocument()
-  }, 10_000)
+      const dialog = within(await openPicker(kind))
+      const first = dialog.getByRole('checkbox', {
+        name: kind === 'Packages' ? 'Package 1' : 'NR-1 Norm 1',
+        hidden: true,
+      })
+      const extra = dialog.getByRole('checkbox', {
+        name: kind === 'Packages' ? 'Package 201' : 'NR-201 Norm 201',
+        hidden: true,
+      })
+      const create = dialog.getByRole('button', {
+        name: `requirementAssociations.create${kind === 'Packages' ? 'Package' : 'Norm'}`,
+        hidden: true,
+      })
+      expect(extra).toBeDisabled()
+      expect(create).toBeDisabled()
+      fireEvent.click(first)
+      expect(extra).toBeEnabled()
+      expect(create).toBeEnabled()
+      fireEvent.click(
+        dialog.getByRole('button', {
+          name: 'requirementAssociations.applySelection',
+          hidden: true,
+        }),
+      )
+      expect(
+        screen.queryByText('requirement.associationSelectionLimit'),
+      ).not.toBeInTheDocument()
+    },
+    10_000,
+  )
 
   it('confirms before cancelling a dirty create form', async () => {
     confirmDiscardChangesMock
@@ -685,115 +686,43 @@ describe('RequirementForm', () => {
     })
   })
 
-  it('opens and closes the norm reference modal and restores trigger focus', async () => {
+  it('restores nested dialog focus and preserves the parent search on cancel', async () => {
     render(<RequirementForm mode="create" />)
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirement-areas',
-        expect.objectContaining({ signal: expect.any(AbortSignal) }),
-      )
+    await openPicker('Norms')
+    fireEvent.change(screen.getByRole('searchbox'), {
+      target: { value: 'Alpha' },
     })
-
-    const createNormReference = screen.getByRole('button', {
-      name: /common\.create/i,
+    const create = screen.getByRole('button', {
+      name: 'requirementAssociations.createNorm',
     })
-    createNormReference.focus()
-    fireEvent.click(createNormReference)
-
-    const dialog = await screen.findByRole('dialog', {
-      name: /requirement\.addNewNormReference/i,
-    })
-    expect(dialog).toHaveClass('max-w-4xl')
-    expect(dialog).toHaveTextContent('requirement.newNormReferenceWarning')
-    const nameInput = within(dialog).getByRole('textbox', {
-      name: /^normReference\.name/,
-    })
-    expect(nameInput.closest('div')?.parentElement).toHaveClass(
-      'grid',
-      'grid-cols-1',
-      'lg:grid-cols-2',
+    fireEvent.click(create)
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toHaveAccessibleName('requirementAssociations.createNorm')
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    await waitFor(() =>
+      expect(screen.getByRole('dialog')).toHaveAccessibleName(
+        'requirementAssociations.chooseNorms',
+      ),
     )
-    expect(
-      Array.from(dialog.querySelectorAll('input')).map(input => input.id),
-    ).toEqual([
-      'modal-nr-name',
-      'modal-nr-type',
-      'modal-nr-reference',
-      'modal-nr-version',
-      'modal-nr-issuer',
-      'modal-nr-uri',
-      'modal-nr-id',
-    ])
-    expect(dialog.querySelector('#modal-nr-id')?.closest('div')).toHaveClass(
-      'lg:col-span-2',
-    )
-
-    fireEvent.click(within(dialog).getByText('common.cancel'))
-
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('dialog', {
-          name: /requirement\.addNewNormReference/i,
-        }),
-      ).not.toBeInTheDocument()
-    })
-    expect(createNormReference).toHaveFocus()
+    expect(screen.getByRole('searchbox')).toHaveValue('Alpha')
+    expect(create).toHaveFocus()
   })
 
-  it('stretches norm references beside requirement packages through the sidebar form height', async () => {
-    const rectSpy = vi
-      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
-      .mockImplementation(function getBoundingClientRect(this: HTMLElement) {
-        return rectWithHeight(this.classList.contains('space-y-5') ? 640 : 0)
-      })
-
-    try {
-      render(<RequirementForm mode="create" />)
-
-      const requirementPackage = await screen.findByText('Package Alpha')
-      const normReference = await screen.findByText('NR-1')
-
-      const requirementPackageFieldset = requirementPackage.closest('fieldset')
-      const normReferenceFieldset = normReference.closest('fieldset')
-      expect(requirementPackageFieldset).toBeInTheDocument()
-      expect(normReferenceFieldset).toBeInTheDocument()
-
-      const sidebarGrid = requirementPackageFieldset?.parentElement
-      const mainFields = sidebarGrid?.previousElementSibling
-      expect(sidebarGrid).toBe(normReferenceFieldset?.parentElement)
-      expect(sidebarGrid?.parentElement).toHaveClass('items-stretch')
-      expect(mainFields).toHaveClass('self-start')
-      expect(sidebarGrid).toHaveClass('sm:grid-cols-2')
-      expect(sidebarGrid).toHaveClass('lg:w-full')
-      expect(sidebarGrid).toHaveClass('lg:h-(--requirement-association-height)')
-      expect(sidebarGrid).toHaveClass(
-        'lg:max-h-(--requirement-association-height)',
-      )
-      expect(sidebarGrid).toHaveClass('lg:overflow-hidden')
-
-      await waitFor(() => {
-        expect(
-          sidebarGrid?.style.getPropertyValue(
-            '--requirement-association-height',
-          ),
-        ).toBe('640px')
-      })
-
-      const requirementPackageList =
-        requirementPackageFieldset?.querySelector('.flex-1')
-      const normReferenceList = normReferenceFieldset?.querySelector('.flex-1')
-
-      expect(requirementPackageFieldset).toHaveClass('flex')
-      expect(normReferenceFieldset).toHaveClass('flex')
-      expect(requirementPackageList).toHaveClass('min-h-0')
-      expect(normReferenceList).toHaveClass('min-h-0')
-      expect(requirementPackageList).toHaveClass('overflow-y-auto')
-      expect(normReferenceList).toHaveClass('overflow-y-auto')
-      expect(requirementPackageList).not.toHaveClass('h-56')
-      expect(normReferenceList).not.toHaveClass('h-56')
-    } finally {
-      rectSpy.mockRestore()
+  it('marks writing, classification, selection and the unified action row for Developer Mode', async () => {
+    const { container } = render(<RequirementForm mode="create" />)
+    await openPicker('Norms')
+    expect(screen.getByRole('table')).toHaveAttribute(
+      'data-developer-mode-name',
+      'association table',
+    )
+    for (const name of [
+      'requirement writing fields',
+      'requirement classification fields',
+      'requirement form actions',
+    ]) {
+      expect(
+        container.querySelector(`[data-developer-mode-name="${name}"]`),
+      ).toBeInTheDocument()
     }
   })
 
@@ -1490,8 +1419,11 @@ describe('RequirementForm', () => {
       return baseFetch(url, options)
     })
     render(<RequirementForm mode="create" />)
+    await openPicker('Norms')
     fireEvent.click(
-      await screen.findByRole('button', { name: /common\.create/i }),
+      screen.getByRole('button', {
+        name: 'requirementAssociations.createNorm',
+      }),
     )
     const dialog = await screen.findByRole('dialog')
     fireEvent.change(within(dialog).getByLabelText(/^normReference\.name/), {
@@ -1513,7 +1445,21 @@ describe('RequirementForm', () => {
       name: 'NR-99 Created norm',
     })
     expect(created).toBeChecked()
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'common.cancel',
+      }),
+    )
+    expect(screen.queryByText('NR-99')).not.toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'requirementAssociations.chooseNorms',
+      }),
+    )
+    expect(
+      screen.getByRole('checkbox', { name: 'NR-99 Created norm' }),
+    ).not.toBeChecked()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('keeps the norm modal open when creation fails', async () => {
@@ -1528,8 +1474,11 @@ describe('RequirementForm', () => {
       return baseFetch(url, options)
     })
     render(<RequirementForm mode="create" />)
+    await openPicker('Norms')
     fireEvent.click(
-      await screen.findByRole('button', { name: /common\.create/i }),
+      screen.getByRole('button', {
+        name: 'requirementAssociations.createNorm',
+      }),
     )
     const dialog = await screen.findByRole('dialog')
     fireEvent.change(within(dialog).getByLabelText(/^normReference\.name/), {
@@ -1549,6 +1498,133 @@ describe('RequirementForm', () => {
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
       'Duplicate norm',
+    )
+  })
+  it('creates packages with actor details, preserves hidden drafts and applies the new membership', async () => {
+    const baseFetch = fetchMock.getMockImplementation()
+    assert(baseFetch)
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if (url === '/api/auth/me')
+        return Promise.resolve(
+          okJson({
+            authenticated: true,
+            name: 'no-user',
+            hsaId: 'SE123',
+            email: 'actor@example.test',
+          }),
+        )
+      if (url === '/api/requirement-packages' && options?.method === 'POST')
+        return Promise.resolve(
+          okJson({
+            id: 99,
+            name: 'Created package',
+            purposeAndScope: 'Specific purpose',
+          }),
+        )
+      return baseFetch(url, options)
+    })
+    render(<RequirementForm mode="create" />)
+    await openPicker('Packages')
+    fireEvent.change(screen.getByRole('searchbox'), {
+      target: { value: 'hidden by search' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'requirementAssociations.createPackage',
+      }),
+    )
+    const dialog = screen.getByRole('dialog')
+    expect(await within(dialog).findByText('Anonymous')).toBeInTheDocument()
+    expect(within(dialog).getByText('SE123')).toBeInTheDocument()
+    fireEvent.change(
+      within(dialog).getByLabelText(/^requirementPackage.name/),
+      { target: { value: ' Created package ' } },
+    )
+    fireEvent.change(
+      within(dialog).getByLabelText(/^requirementPackage.purposeAndScope/),
+      { target: { value: ' Specific purpose ' } },
+    )
+    fireEvent.click(within(dialog).getByRole('button', { name: 'common.save' }))
+    await waitFor(() =>
+      expect(screen.getByRole('dialog')).toHaveAccessibleName(
+        'requirementAssociations.choosePackages',
+      ),
+    )
+    expect(screen.getByRole('searchbox')).toHaveValue('hidden by search')
+    expect(
+      screen.getByText(
+        'requirementAssociations.hiddenCreatedPackage: Created package',
+      ),
+    ).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: '' } })
+    expect(
+      within(
+        screen.getByRole('rowgroup', {
+          name: 'requirementAssociations.selectedOnOpen',
+        }),
+      ).getByRole('checkbox', { name: 'Created package' }),
+    ).toBeChecked()
+    applyPicker()
+    expect(screen.getByText('Created package')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/requirement-packages',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Created package',
+          purposeAndScope: 'Specific purpose',
+        }),
+      }),
+    )
+    await removeAssociation('Created package')
+    await openPicker('Packages')
+    expect(
+      screen.getByRole('checkbox', { name: 'Created package' }),
+    ).not.toBeChecked()
+  })
+
+  it('keeps an unsaved creation draft after a rejected discard and retries transport failures', async () => {
+    const baseFetch = fetchMock.getMockImplementation()
+    assert(baseFetch)
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if (url === '/api/norm-references' && options?.method === 'POST')
+        return Promise.reject(new Error('offline'))
+      return baseFetch(url, options)
+    })
+    render(<RequirementForm mode="create" />)
+    await openPicker('Norms')
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'requirementAssociations.createNorm',
+      }),
+    )
+    const dialog = screen.getByRole('dialog')
+    for (const field of ['name', 'type', 'reference', 'issuer'])
+      fireEvent.change(
+        within(dialog).getByLabelText(new RegExp(`^normReference.${field}`)),
+        { target: { value: field } },
+      )
+    confirmDiscardChangesMock.mockResolvedValueOnce(false)
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'common.cancel' }),
+    )
+    await waitFor(() => expect(confirmDiscardChangesMock).toHaveBeenCalled())
+    expect(screen.getByRole('dialog')).toHaveAccessibleName(
+      'requirementAssociations.createNorm',
+    )
+    fireEvent.click(within(dialog).getByRole('button', { name: 'common.save' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'common.error',
+    )
+    expect(
+      within(dialog).getByRole('button', { name: 'common.save' }),
+    ).toBeEnabled()
+    confirmDiscardChangesMock.mockResolvedValueOnce(true)
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    await waitFor(() =>
+      expect(screen.getByRole('dialog')).toHaveAccessibleName(
+        'requirementAssociations.chooseNorms',
+      ),
     )
   })
 })

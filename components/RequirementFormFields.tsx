@@ -2,26 +2,20 @@
 
 import { CircleAlert, ListChecks } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import {
-  type CSSProperties,
-  type ReactNode,
-  type Ref,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { type ReactNode, type Ref, useMemo, useRef, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import FieldHelpButton from '@/components/FieldHelpButton'
 import FormModal from '@/components/FormModal'
 import QualityCharacteristicSelectOptions from '@/components/QualityCharacteristicSelectOptions'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
+import RequirementAssociationPicker from '@/components/RequirementAssociationPicker'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import StatusBadge from '@/components/StatusBadge'
 import type {
   NormReferenceOption,
   ReferenceDataCatalog,
   ReferenceDataReadiness,
+  RequirementPackageOption,
   TaxonomyOption,
   TaxonomyOptions,
 } from '@/hooks/useTaxonomyOptions'
@@ -53,9 +47,11 @@ export interface RequirementFormFieldsProps {
   idPrefix?: string
   /** Layout for requirementPackages/norm-references: 'sidebar' renders in right column, 'bottom' renders below */
   layout?: 'sidebar' | 'bottom'
-  /** Extra actions rendered after norm reference list (e.g. "Create" button) */
-  normReferenceActions?: ReactNode
   onChange: (values: RequirementFormFieldValues) => void
+  /** Enable creation and add the persisted norm reference to the catalog. */
+  onNormReferenceCreated?: (item: NormReferenceOption) => void
+  /** Enable creation and add the persisted package to the catalog. */
+  onRequirementPackageCreated?: (item: RequirementPackageOption) => void
   referenceDataReadiness: ReferenceDataReadiness
   referenceDataStatusId: string
   /** Hide area for contexts where requirements are not owned by a requirement area */
@@ -77,19 +73,15 @@ const selectClassName =
 const textareaClassName =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 min-h-25'
 
-const associationFieldsetClassName = 'm-0 flex min-h-0 flex-col border-0 p-0'
-
-const associationListClassName =
-  'min-h-0 flex-1 space-y-1.5 overflow-y-auto rounded-xl border bg-white p-3 pr-1 dark:bg-secondary-800/50'
-
 export default function RequirementFormFields({
   additionalNormReferences,
   areaRequired = true,
   extraFieldsAfterPriorityLevel,
   idPrefix = '',
   layout = 'sidebar',
-  normReferenceActions,
   onChange,
+  onNormReferenceCreated,
+  onRequirementPackageCreated,
   referenceDataReadiness,
   referenceDataStatusId,
   showArea = true,
@@ -132,55 +124,7 @@ export default function RequirementFormFields({
 
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [showPriorityScale, setShowPriorityScale] = useState(false)
-  const mainFieldsRef = useRef<HTMLDivElement>(null)
   const priorityScaleButtonRef = useRef<HTMLButtonElement>(null)
-  const [associationPanelHeight, setAssociationPanelHeight] = useState<
-    number | null
-  >(null)
-
-  useEffect(() => {
-    if (layout !== 'sidebar') {
-      setAssociationPanelHeight(null)
-      return
-    }
-
-    const mainFieldsNode = mainFieldsRef.current
-    if (!mainFieldsNode) return
-
-    let animationFrame: number | null = null
-    const updatePanelHeight = () => {
-      const nextHeight = Math.ceil(
-        mainFieldsNode.getBoundingClientRect().height,
-      )
-      if (nextHeight <= 0) return
-      setAssociationPanelHeight(current =>
-        current === nextHeight ? current : nextHeight,
-      )
-    }
-    const schedulePanelHeightUpdate = () => {
-      if (animationFrame !== null) {
-        window.cancelAnimationFrame(animationFrame)
-      }
-      animationFrame = window.requestAnimationFrame(updatePanelHeight)
-    }
-
-    schedulePanelHeightUpdate()
-
-    const resizeObserver =
-      typeof ResizeObserver === 'undefined'
-        ? null
-        : new ResizeObserver(schedulePanelHeightUpdate)
-    resizeObserver?.observe(mainFieldsNode)
-    window.addEventListener('resize', schedulePanelHeightUpdate)
-
-    return () => {
-      if (animationFrame !== null) {
-        window.cancelAnimationFrame(animationFrame)
-      }
-      resizeObserver?.disconnect()
-      window.removeEventListener('resize', schedulePanelHeightUpdate)
-    }
-  }, [layout])
 
   const allNormReferences = useMemo(() => {
     if (!additionalNormReferences?.length) return normReferences
@@ -243,18 +187,6 @@ export default function RequirementFormFields({
       ) : null}
     </span>
   )
-
-  const associationSidebarStyle = associationPanelHeight
-    ? ({
-        '--requirement-association-height': `${associationPanelHeight}px`,
-      } as CSSProperties)
-    : undefined
-  const associationGridClassName = showRequirementPackages
-    ? 'lg:grid-cols-[minmax(0,1fr)_minmax(32rem,34rem)]'
-    : 'lg:grid-cols-[minmax(0,1fr)_minmax(20rem,22rem)]'
-  const associationSidebarClassName = showRequirementPackages
-    ? 'grid min-h-0 gap-6 sm:grid-cols-2 lg:h-(--requirement-association-height) lg:max-h-(--requirement-association-height) lg:w-full lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden'
-    : 'grid min-h-0 gap-6 lg:h-(--requirement-association-height) lg:max-h-(--requirement-association-height) lg:w-full lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden'
 
   const handleChange = (
     key: keyof RequirementFormFieldValues,
@@ -325,84 +257,8 @@ export default function RequirementFormFields({
       ].join('\n')
     : null
 
-  const mainFields = (
+  const classificationFields = (
     <>
-      {showArea ? (
-        <div>
-          <div className="flex items-center gap-1.5 mb-1">
-            <label className="text-sm font-medium" htmlFor={fid('areaId')}>
-              {t('area')}
-              {areaRequired ? <RequiredFieldMarker /> : null}
-            </label>
-            {helpButton(fid('areaId'), t('area'))}
-          </div>
-          {helpPanel(
-            areaRequired ? 'areaHelp' : 'areaHelpOptional',
-            fid('areaId'),
-          )}
-          <select
-            aria-describedby={
-              catalogIsBlocked('areas') ? referenceDataStatusId : undefined
-            }
-            className={selectClassName}
-            disabled={catalogIsBlocked('areas')}
-            id={fid('areaId')}
-            onChange={e => handleChange('areaId', e.target.value)}
-            required={areaRequired}
-            value={values.areaId}
-          >
-            <option value="">{t('area')}...</option>
-            {areas.map(a => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-          {values.areaId && (
-            <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-              {t('area')} — {t('areaOwner')}: {selectedAreaOwnerName ?? '—'}
-            </p>
-          )}
-        </div>
-      ) : null}
-
-      <div>
-        <div className="flex items-center gap-1.5 mb-1">
-          <label className="text-sm font-medium" htmlFor={fid('description')}>
-            {t('description')}
-            <RequiredFieldMarker />
-          </label>
-          {helpButton(fid('description'), t('description'))}
-        </div>
-        {helpPanel('descriptionHelp', fid('description'))}
-        <textarea
-          className={textareaClassName}
-          id={fid('description')}
-          onChange={e => handleChange('description', e.target.value)}
-          required
-          value={values.description}
-        />
-      </div>
-
-      <div>
-        <div className="flex items-center gap-1.5 mb-1">
-          <label
-            className="text-sm font-medium"
-            htmlFor={fid('acceptanceCriteria')}
-          >
-            {t('acceptanceCriteria')}
-          </label>
-          {helpButton(fid('acceptanceCriteria'), t('acceptanceCriteria'))}
-        </div>
-        {helpPanel('acceptanceCriteriaHelp', fid('acceptanceCriteria'))}
-        <textarea
-          className={textareaClassName}
-          id={fid('acceptanceCriteria')}
-          onChange={e => handleChange('acceptanceCriteria', e.target.value)}
-          value={values.acceptanceCriteria}
-        />
-      </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <div className="flex items-center gap-1.5 mb-1">
@@ -596,6 +452,88 @@ export default function RequirementFormFields({
         </div>
         {extraFieldsAfterPriorityLevel}
       </div>
+    </>
+  )
+
+  const mainFields = (
+    <>
+      {showArea ? (
+        <div>
+          <div className="flex items-center gap-1.5 mb-1">
+            <label className="text-sm font-medium" htmlFor={fid('areaId')}>
+              {t('area')}
+              {areaRequired ? <RequiredFieldMarker /> : null}
+            </label>
+            {helpButton(fid('areaId'), t('area'))}
+          </div>
+          {helpPanel(
+            areaRequired ? 'areaHelp' : 'areaHelpOptional',
+            fid('areaId'),
+          )}
+          <select
+            aria-describedby={
+              catalogIsBlocked('areas') ? referenceDataStatusId : undefined
+            }
+            className={selectClassName}
+            disabled={catalogIsBlocked('areas')}
+            id={fid('areaId')}
+            onChange={e => handleChange('areaId', e.target.value)}
+            required={areaRequired}
+            value={values.areaId}
+          >
+            <option value="">{t('area')}...</option>
+            {areas.map(a => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+          {values.areaId && (
+            <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+              {t('area')} — {t('areaOwner')}: {selectedAreaOwnerName ?? '—'}
+            </p>
+          )}
+        </div>
+      ) : null}
+
+      <div>
+        <div className="flex items-center gap-1.5 mb-1">
+          <label className="text-sm font-medium" htmlFor={fid('description')}>
+            {t('description')}
+            <RequiredFieldMarker />
+          </label>
+          {helpButton(fid('description'), t('description'))}
+        </div>
+        {helpPanel('descriptionHelp', fid('description'))}
+        <textarea
+          className={textareaClassName}
+          id={fid('description')}
+          onChange={e => handleChange('description', e.target.value)}
+          required
+          value={values.description}
+        />
+      </div>
+
+      <div>
+        <div className="flex items-center gap-1.5 mb-1">
+          <label
+            className="text-sm font-medium"
+            htmlFor={fid('acceptanceCriteria')}
+          >
+            {t('acceptanceCriteria')}
+          </label>
+          {helpButton(fid('acceptanceCriteria'), t('acceptanceCriteria'))}
+        </div>
+        {helpPanel('acceptanceCriteriaHelp', fid('acceptanceCriteria'))}
+        <textarea
+          className={textareaClassName}
+          id={fid('acceptanceCriteria')}
+          onChange={e => handleChange('acceptanceCriteria', e.target.value)}
+          value={values.acceptanceCriteria}
+        />
+      </div>
+
+      {layout === 'bottom' && classificationFields}
 
       <div className="flex items-center gap-2 text-sm">
         <label className="flex items-center gap-2">
@@ -636,139 +574,6 @@ export default function RequirementFormFields({
     </>
   )
 
-  const requirementPackagesFieldset = showRequirementPackages &&
-    requirementPackages.length > 0 && (
-      <fieldset className={associationFieldsetClassName}>
-        <div className="flex items-center gap-1.5 mb-1">
-          <legend className="text-sm font-medium contents">
-            {t('requirementPackage')}
-          </legend>
-          {helpButton(fid('requirementPackage'), t('requirementPackage'))}
-        </div>
-        {helpPanel('requirementPackageHelp', fid('requirementPackage'))}
-        {associationLimitStatus(
-          requirementPackageLimitStatusId,
-          requirementPackageLimitReached,
-          'requirements packages',
-        )}
-        <div className={associationListClassName}>
-          {visibleRequirementPackages.map(s => {
-            const isSelected = values.requirementPackageIds.includes(s.id)
-            const isDisabled =
-              catalogIsBlocked('requirementPackages') ||
-              (requirementPackageLimitReached && !isSelected)
-            return (
-              <RequirementPackagePurposeTooltip
-                key={s.id}
-                maxWidth={320}
-                purposeAndScope={s.purposeAndScope}
-                wrapperClassName="flex min-w-0"
-              >
-                <label
-                  className={`flex min-w-0 items-center gap-2 text-sm ${
-                    isDisabled
-                      ? 'cursor-not-allowed opacity-60'
-                      : 'cursor-pointer'
-                  }`}
-                >
-                  <input
-                    aria-describedby={
-                      catalogIsBlocked('requirementPackages')
-                        ? referenceDataStatusId
-                        : requirementPackageLimitReached
-                          ? requirementPackageLimitStatusId
-                          : undefined
-                    }
-                    checked={isSelected}
-                    className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-                    disabled={isDisabled}
-                    onChange={e => {
-                      const checked = e.target.checked
-                      onChange({
-                        ...values,
-                        requirementPackageIds: checked
-                          ? [...values.requirementPackageIds, s.id]
-                          : values.requirementPackageIds.filter(
-                              id => id !== s.id,
-                            ),
-                      })
-                    }}
-                    type="checkbox"
-                  />
-                  <span className="min-w-0 wrap-break-word">
-                    {s.name}
-                    {s.isArchived ? (
-                      <span className="ml-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
-                        {tRequirementPackage('archived')}
-                      </span>
-                    ) : null}
-                  </span>
-                </label>
-              </RequirementPackagePurposeTooltip>
-            )
-          })}
-        </div>
-      </fieldset>
-    )
-
-  const normReferencesFieldset = (
-    <fieldset className={associationFieldsetClassName}>
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-1.5">
-          <legend className="text-sm font-medium contents">
-            {t('normReferences')}
-          </legend>
-          {helpButton(fid('normReferences'), t('normReferences'))}
-        </div>
-        {normReferenceActions}
-      </div>
-      {helpPanel('normReferencesHelp', fid('normReferences'))}
-      {associationLimitStatus(
-        normReferenceLimitStatusId,
-        normReferenceLimitReached,
-        'norm references',
-      )}
-      <div className={associationListClassName}>
-        {visibleNormReferences.map(nr => {
-          const isSelected = values.normReferenceIds.includes(nr.id)
-          const isDisabled = normReferenceLimitReached && !isSelected
-          return (
-            <label
-              className={`flex items-center gap-2 text-sm ${
-                isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
-              }`}
-              key={nr.id}
-            >
-              <input
-                aria-describedby={
-                  catalogIsBlocked('normReferences')
-                    ? referenceDataStatusId
-                    : normReferenceLimitReached
-                      ? normReferenceLimitStatusId
-                      : undefined
-                }
-                checked={isSelected}
-                className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-                disabled={catalogIsBlocked('normReferences') || isDisabled}
-                onChange={e => {
-                  const checked = e.target.checked
-                  onChange({
-                    ...values,
-                    normReferenceIds: checked
-                      ? [...values.normReferenceIds, nr.id]
-                      : values.normReferenceIds.filter(id => id !== nr.id),
-                  })
-                }}
-                type="checkbox"
-              />
-              {renderNormReferenceLabel(nr)}
-            </label>
-          )
-        })}
-      </div>
-    </fieldset>
-  )
-
   if (layout === 'bottom') {
     return (
       <div className="space-y-5">
@@ -778,7 +583,7 @@ export default function RequirementFormFields({
             showRequirementPackages ? 'lg:grid-cols-2' : ''
           }`}
         >
-          {requirementPackagesFieldset && (
+          {showRequirementPackages && requirementPackages.length > 0 && (
             <fieldset className="rounded-2xl border p-4">
               <legend className="px-1 text-sm font-medium">
                 <span className="inline-flex items-center gap-1.5">
@@ -921,20 +726,59 @@ export default function RequirementFormFields({
   }
 
   return (
-    <div className="space-y-5">
+    <div
+      className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-2"
+      {...devMarker({
+        name: 'requirement form columns',
+        value: 'writing and classification',
+      })}
+    >
       <div
-        className={`grid grid-cols-1 items-stretch gap-6 ${associationGridClassName}`}
+        className="min-w-0 space-y-5"
+        {...devMarker({ name: 'requirement writing fields' })}
       >
-        <div className="self-start space-y-5" ref={mainFieldsRef}>
-          {mainFields}
-        </div>
+        {mainFields}
+      </div>
+      <div className="min-w-0 space-y-5">
         <div
-          className={associationSidebarClassName}
-          style={associationSidebarStyle}
+          className="min-w-0 space-y-5"
+          {...devMarker({
+            name: 'requirement classification fields',
+            value: 'right column',
+          })}
         >
-          {requirementPackagesFieldset}
-          {normReferencesFieldset}
+          {classificationFields}
         </div>
+        {showRequirementPackages && (
+          <RequirementAssociationPicker
+            disabled={catalogIsBlocked('requirementPackages')}
+            idPrefix={fid('requirementPackage')}
+            items={requirementPackages}
+            kind="packages"
+            onChange={ids =>
+              onChange({ ...values, requirementPackageIds: ids })
+            }
+            onCreated={onRequirementPackageCreated}
+            selected={values.requirementPackageIds}
+            statusId={referenceDataStatusId}
+          />
+        )}
+        <RequirementAssociationPicker
+          disabled={catalogIsBlocked('normReferences')}
+          idPrefix={fid('normReferences')}
+          items={allNormReferences}
+          kind="norms"
+          onChange={ids => onChange({ ...values, normReferenceIds: ids })}
+          onCreated={
+            onNormReferenceCreated
+              ? item => {
+                  if ('normReferenceId' in item) onNormReferenceCreated(item)
+                }
+              : undefined
+          }
+          selected={values.normReferenceIds}
+          statusId={referenceDataStatusId}
+        />
       </div>
     </div>
   )

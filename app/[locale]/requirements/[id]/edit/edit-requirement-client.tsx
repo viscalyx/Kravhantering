@@ -12,6 +12,11 @@ const EDIT_REQUIREMENT_HELP: HelpContent = {
   sections: [
     {
       kind: 'text',
+      headingKey: 'editRequirement.associations.heading',
+      bodyKey: 'editRequirement.associations.body',
+    },
+    {
+      kind: 'text',
       bodyKey: 'editRequirement.versioning.body',
       headingKey: 'editRequirement.versioning.heading',
     },

@@ -1,13 +1,11 @@
 'use client'
 
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { AlertTriangle, ExternalLink, Plus, RotateCcw } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { AlertTriangle, ExternalLink, RotateCcw } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FormActionRow from '@/components/FormActionRow'
-import NormReferenceModal from '@/components/NormReferenceModal'
 import ReferenceDataStatus, {
   ReferenceDataSaveHint,
 } from '@/components/ReferenceDataStatus'
@@ -22,7 +20,10 @@ import {
   type RequirementEditSnapshot,
 } from '@/components/requirement-edit-reconciliation'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
-import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
+import {
+  type RequirementPackageOption,
+  useTaxonomyOptions,
+} from '@/hooks/useTaxonomyOptions'
 import { useUnsavedRequirementEdit } from '@/hooks/useUnsavedRequirementEdit'
 import { useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -61,15 +62,6 @@ interface LatestEditConflictSummary {
   versionNumber: number | null
 }
 
-interface NormReferenceOption {
-  id: number
-  issuer: string
-  name: string
-  normReferenceId: string
-  reference: string
-  type: string
-}
-
 const EMPTY_FORM: RequirementFormFieldValues = {
   acceptanceCriteria: '',
   areaId: '',
@@ -82,16 +74,6 @@ const EMPTY_FORM: RequirementFormFieldValues = {
   requirementPackageIds: [],
   typeId: '',
   verificationMethod: '',
-}
-
-const EMPTY_NORM_REFERENCE_FORM = {
-  issuer: '',
-  name: '',
-  normReferenceId: '',
-  reference: '',
-  type: '',
-  uri: '',
-  version: '',
 }
 
 const REQUIREMENT_DIRTY_SNAPSHOT_OPTIONS = {
@@ -185,18 +167,6 @@ function createInitialRequirementSignature(
   )
 }
 
-function toNormReferencePayload(form: typeof EMPTY_NORM_REFERENCE_FORM) {
-  return {
-    issuer: form.issuer,
-    name: form.name,
-    normReferenceId: form.normReferenceId || undefined,
-    reference: form.reference,
-    type: form.type,
-    uri: form.uri || null,
-    version: form.version || null,
-  }
-}
-
 export default function RequirementForm({
   baseRevisionToken,
   baseVersionId,
@@ -216,10 +186,9 @@ export default function RequirementForm({
 
   const formRef = useRef<HTMLFormElement>(null)
   const recoveryReturnFocusRef = useRef<HTMLElement | null>(null)
-  const [showCreateNormRef, setShowCreateNormRef] = useState(false)
-  const [normRefForm, setNormRefForm] = useState(EMPTY_NORM_REFERENCE_FORM)
-  const [normRefSubmitting, setNormRefSubmitting] = useState(false)
-  const [normRefError, setNormRefError] = useState<string | null>(null)
+  const [createdPackages, setCreatedPackages] = useState<
+    RequirementPackageOption[]
+  >([])
   const [createdNormRefs, setCreatedNormRefs] = useState<
     { id: number; name: string; normReferenceId: string }[]
   >([])
@@ -300,6 +269,18 @@ export default function RequirementForm({
       variant: 'library',
     },
   )
+  const formTaxonomyOptions = {
+    ...taxonomyOptions,
+    requirementPackages: [
+      ...taxonomyOptions.requirementPackages,
+      ...createdPackages.filter(
+        item =>
+          !taxonomyOptions.requirementPackages.some(
+            existing => existing.id === item.id,
+          ),
+      ),
+    ],
+  }
   const referenceDataStatusId = useId()
   const referenceDataSaveHintId = useId()
 
@@ -352,9 +333,6 @@ export default function RequirementForm({
     ]
       .filter(Boolean)
       .join(' ') || undefined
-  const normRefFormDirty =
-    createDirtySnapshot(toNormReferencePayload(normRefForm)) !==
-    createDirtySnapshot(toNormReferencePayload(EMPTY_NORM_REFERENCE_FORM))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -523,29 +501,6 @@ export default function RequirementForm({
     }
   }
 
-  const normReferenceCreateButton = (
-    <button
-      aria-describedby={
-        form.normReferenceIds.length >= ARRAY_INPUT_MAX_ITEMS
-          ? 'normReferences-selection-limit'
-          : taxonomyOptions.readiness.canSave
-            ? undefined
-            : referenceDataStatusId
-      }
-      className="inline-flex items-center gap-1 text-sm text-primary-700 dark:text-primary-300 hover:underline min-h-11 min-w-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
-      disabled={
-        isRefreshing ||
-        !taxonomyOptions.readiness.canSave ||
-        form.normReferenceIds.length >= ARRAY_INPUT_MAX_ITEMS
-      }
-      onClick={() => setShowCreateNormRef(true)}
-      type="button"
-    >
-      <Plus aria-hidden="true" className="h-3.5 w-3.5" />
-      {tc('create')}
-    </button>
-  )
-
   return (
     <motion.form
       onSubmit={handleSubmit}
@@ -564,77 +519,19 @@ export default function RequirementForm({
         <RequirementFormFields
           additionalNormReferences={createdNormRefs}
           layout="sidebar"
-          normReferenceActions={normReferenceCreateButton}
           onChange={handleFieldsChange}
+          onNormReferenceCreated={item =>
+            setCreatedNormRefs(current => [...current, item])
+          }
+          onRequirementPackageCreated={item =>
+            setCreatedPackages(current => [...current, item])
+          }
           referenceDataReadiness={taxonomyOptions.readiness}
           referenceDataStatusId={referenceDataStatusId}
-          taxonomyOptions={taxonomyOptions}
+          taxonomyOptions={formTaxonomyOptions}
           values={form}
         />
       </fieldset>
-
-      {typeof document !== 'undefined' &&
-        createPortal(
-          <AnimatePresence initial={false}>
-            {showCreateNormRef ? (
-              <NormReferenceModal
-                key="create-norm-reference-modal"
-                normRefError={normRefError}
-                normRefForm={normRefForm}
-                normRefFormDirty={normRefFormDirty}
-                normRefSubmitting={normRefSubmitting}
-                onCancel={() => {
-                  setShowCreateNormRef(false)
-                  setNormRefError(null)
-                }}
-                onSave={async () => {
-                  setNormRefSubmitting(true)
-                  setNormRefError(null)
-                  try {
-                    const res = await apiFetch('/api/norm-references', {
-                      body: JSON.stringify(toNormReferencePayload(normRefForm)),
-                      headers: { 'Content-Type': 'application/json' },
-                      method: 'POST',
-                    })
-                    if (!res.ok) {
-                      const data = (await res.json().catch(() => null)) as {
-                        error?: string
-                      } | null
-                      setNormRefError(data?.error ?? tc('error'))
-                    } else {
-                      const created = (await res.json()) as NormReferenceOption
-                      setCreatedNormRefs(prev => [
-                        ...prev,
-                        {
-                          id: created.id,
-                          name: created.name,
-                          normReferenceId: created.normReferenceId,
-                        },
-                      ])
-                      setForm(prev => ({
-                        ...prev,
-                        normReferenceIds:
-                          prev.normReferenceIds.length < ARRAY_INPUT_MAX_ITEMS
-                            ? [...prev.normReferenceIds, created.id]
-                            : prev.normReferenceIds,
-                      }))
-                      setNormRefForm(EMPTY_NORM_REFERENCE_FORM)
-                      setShowCreateNormRef(false)
-                    }
-                  } catch {
-                    setNormRefError(tc('error'))
-                  } finally {
-                    setNormRefSubmitting(false)
-                  }
-                }}
-                onSetField={(field, value) =>
-                  setNormRefForm(prev => ({ ...prev, [field]: value }))
-                }
-              />
-            ) : null}
-          </AnimatePresence>,
-          document.body,
-        )}
 
       {comparison && (
         <RequirementEditReconciliation
@@ -659,7 +556,7 @@ export default function RequirementForm({
           returnFocusRef={recoveryReturnFocusRef}
           server={comparison.values}
           starting={startingForm}
-          taxonomyOptions={taxonomyOptions}
+          taxonomyOptions={formTaxonomyOptions}
         />
       )}
 
@@ -743,8 +640,15 @@ export default function RequirementForm({
         </p>
       )}
 
-      <div className="flex flex-col gap-3 pt-4 mt-5 border-t">
+      <div
+        className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4"
+        {...devMarker({
+          name: 'requirement form actions',
+          value: 'save and destination',
+        })}
+      >
         <FormActionRow
+          className="flex-1"
           hint={
             !associationSelectionsValid ? null : taxonomyOptions.readiness
                 .canSave ? undefined : (
@@ -784,7 +688,7 @@ export default function RequirementForm({
             {tc('cancel')}
           </button>
         </FormActionRow>
-        <div className="flex items-center gap-2 text-sm text-secondary-600 dark:text-secondary-400">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-secondary-600 dark:text-secondary-400">
           <span>{t('afterSave')}</span>
           <div className="inline-flex rounded-lg border overflow-hidden text-xs font-medium">
             <button

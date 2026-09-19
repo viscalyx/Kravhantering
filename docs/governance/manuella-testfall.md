@@ -1224,6 +1224,40 @@ läggas till igen, och varje associationsfält stoppar ett 201:a val utan att
 låsa val som behöver tas bort. Efter utloggningen visar flik A den befintliga
 dialogen för utgången session och skickar sedan användaren till inloggningen.
 
+### LIFE-01B: välj och skapa kravpaket och normreferenser i kravformuläret
+
+**Steg:** Öppna ett nytt krav. Använd `Välj` vid Kravpaket och Normreferenser.
+Markera objekt, sök och avbryt. Öppna igen och kontrollera att det tidigare
+urvalet gäller. Tillämpa med `Välj` och öppna igen. Avmarkera en tidigare vald
+rad; raden ska stanna i `Redan valda` tills dialogen stängs.
+
+Skapa ett nytt paket med namn och syfte samt en normreferens med obligatoriska
+fält från respektive väljdialog. Kontrollera ansvarssammanfattningen för
+paketet. Avbryt först den översta dialogen och kontrollera fokus och sökning.
+Spara därefter ett nytt objekt medan sökningen döljer det. Läs notisen, rensa
+sökningen och kontrollera att objektet är markerat sist i `Redan valda`.
+Avbryt väljdialogen, öppna igen och välj det nya objektet. Spara kravet med
+`Detaljsida`, öppna redigering och kontrollera sparade val. Ändra kravtexten
+och spara med `Listvy`.
+
+**Förväntat resultat:** Endast `Välj` tillämpar urvalet. Sökning bevarar
+markeringar och rader byter inte grupp medan dialogen är öppen. Nya objekt
+sparas direkt och finns kvar även när urvalet avbryts. Avbryt och Escape
+återför fokus till rätt öppningsknapp. Kravets sparmål och associationer
+bevaras vid redigering.
+
+### LIFE-01C: använd kravformulärets väljare med tangentbord
+
+**Steg:** Öppna ett nytt krav, nå båda väljknapparna med Tab och öppna dem med
+Enter. Navigera genom sökning, kryssrutor och knappar. Läs paketens syften och
+normreferensernas fullständiga namn. Tillämpa val och läs märkets tooltip med
+mus och tangentbord. Stäng dialogerna med Escape. Upprepa på mobil, med
+utfälld och infälld navigation samt i ljust och mörkt tema.
+
+**Förväntat resultat:** Fält, hjälp och avslutande kontroller går att nå.
+Tab stannar i dialogen och fokus återgår till väljknappen efter stängning.
+Långa namn och listor går att läsa och rulla. Märken kan tas bort separat.
+
 ### LIFE-02: validera obligatoriska fält vid skapande
 
 **Steg:** Kontrollera att ett helt oförändrat formulär inte kan skickas. Gör

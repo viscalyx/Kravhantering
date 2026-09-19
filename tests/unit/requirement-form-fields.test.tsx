@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementFormFields, {
   type RequirementFormFieldValues,
@@ -89,6 +89,51 @@ describe('RequirementFormFields', () => {
     localeState.locale = 'en'
   })
 
+  it('stages searchable association choices until the user applies them', () => {
+    const onChange = vi.fn()
+    render(
+      <RequirementFormFields
+        onChange={onChange}
+        referenceDataReadiness={readiness}
+        referenceDataStatusId="reference-status"
+        taxonomyOptions={taxonomyOptions}
+        values={values}
+      />,
+    )
+    const trigger = screen.getByRole('button', {
+      name: 'requirementAssociations.choosePackages',
+    })
+    fireEvent.click(trigger)
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(
+      within(dialog).getByRole('checkbox', { name: 'Available package' }),
+    )
+    fireEvent.change(within(dialog).getByRole('searchbox'), {
+      target: { value: 'Purpose' },
+    })
+    expect(
+      within(dialog).getByRole('checkbox', { name: 'Available package' }),
+    ).toBeChecked()
+    expect(onChange).not.toHaveBeenCalled()
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'common.cancel' }),
+    )
+    fireEvent.click(trigger)
+    expect(
+      screen.getByRole('checkbox', { name: 'Available package' }),
+    ).not.toBeChecked()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Available package' }))
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'requirementAssociations.applySelection',
+      }),
+    )
+    expect(onChange).toHaveBeenCalledWith({
+      ...values,
+      requirementPackageIds: [8, 9],
+    })
+  })
+
   it('reports edits from every core field in the bottom layout', () => {
     const onChange = vi.fn()
     render(
@@ -100,7 +145,6 @@ describe('RequirementFormFields', () => {
         extraFieldsAfterPriorityLevel={<div>Extra field</div>}
         idPrefix="core"
         layout="bottom"
-        normReferenceActions={<button type="button">Create norm</button>}
         onChange={onChange}
         referenceDataReadiness={readiness}
         referenceDataStatusId="reference-status"

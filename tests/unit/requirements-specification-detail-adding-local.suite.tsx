@@ -539,14 +539,16 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
         within(dialog).queryByText('requirement.requirementPackage'),
       ).toBeNull()
 
-      const normReferenceFieldset = within(dialog)
-        .getByText('requirement.normReferences')
-        .closest('fieldset')
-      const sidebarGrid = normReferenceFieldset?.parentElement
-      expect(sidebarGrid).toHaveClass('lg:w-full')
-      expect(sidebarGrid?.parentElement).toHaveClass(
-        'lg:grid-cols-[minmax(0,1fr)_minmax(20rem,22rem)]',
-      )
+      const chooser = within(dialog).getByRole('button', {
+        name: 'requirementAssociations.chooseNorms',
+      })
+      fireEvent.click(chooser)
+      const picker = screen.getByRole('dialog')
+      expect(picker).toHaveAccessibleName('requirementAssociations.chooseNorms')
+      expect(dialog).toHaveAttribute('aria-hidden', 'true')
+      fireEvent.keyDown(picker, { key: 'Escape' })
+      expect(screen.getByRole('dialog')).toBe(dialog)
+      expect(chooser).toHaveFocus()
     })
 
     it('creates a specification-local requirement and refreshes the application list', async () => {

@@ -8,6 +8,11 @@ const NEW_REQUIREMENT_HELP: HelpContent = {
   sections: [
     {
       kind: 'text',
+      headingKey: 'newRequirement.associations.heading',
+      bodyKey: 'newRequirement.associations.body',
+    },
+    {
+      kind: 'text',
       bodyKey: 'newRequirement.form.body',
       headingKey: 'newRequirement.form.heading',
     },

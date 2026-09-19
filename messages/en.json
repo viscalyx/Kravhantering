@@ -819,7 +819,7 @@
     "continueDraggingToCollapsePanel": "Continue dragging to collapse {panel}",
     "releaseToCollapsePanel": "Release to collapse {panel}",
     "panelWidthValue": "Left panel {left}%, right panel {right}%",
-    "panelWithTab": "{panel} \u2013 {tab}",
+    "panelWithTab": "{panel} – {tab}",
     "leftPanelTabs": "Specification detail tabs",
     "rightPanelTabs": "Right specification detail tabs",
     "newNeedsReference": "New needs reference",
@@ -3149,6 +3149,10 @@
       "referenceData": {
         "heading": "Reference data",
         "body": "The form opens immediately while reference data loads. You can start writing requirement text, but Save and affected choices remain unavailable until every required catalog has loaded. Try again after a failure without losing your edits."
+      },
+      "associations": {
+        "heading": "Packages and norm references",
+        "body": "Classification is on the right. Use Select to choose packages and norm references; Cancel discards the dialog selection. Objects created from the picker are saved immediately, even if the selection is cancelled."
       }
     },
     "requirementDetail": {
@@ -3183,6 +3187,10 @@
       "reconciliation": {
         "heading": "Concurrent edits",
         "body": "If another author saves first, compare the starting content, your edits and the latest saved content. Independent changes are retained together; choose which value to keep for competing changes, then review and edit the result in the form before saving. Selection order does not matter. A new intervening update requires another comparison. Cancelling the comparison or a failed request keeps your work. If Review, Archived status or permissions prevent editing, copy your unsaved work. Leaving the editor, changing language, or using browser Back requires confirmation when work would be lost. Reloading or closing the tab uses the browser’s confirmation."
+      },
+      "associations": {
+        "heading": "Packages and norm references",
+        "body": "Classification is on the right. Use Select to choose packages and norm references; Cancel discards the dialog selection. Objects created from the picker are saved immediately, even if the selection is cancelled."
       }
     },
     "versionDetail": {
@@ -4016,5 +4024,31 @@
     "renewalPendingError": "Cancel the undecided renewal before closing this approval.",
     "renewalTargetError": "The approval has changed. Refresh and select the latest approval.",
     "closedApprovalError": "The approval has been closed. Refresh and request a new deviation."
+  },
+  "requirementAssociations": {
+    "choosePackages": "Choose requirement packages",
+    "chooseNorms": "Choose norm references",
+    "applySelection": "Select",
+    "missingPurpose": "Purpose not specified",
+    "archived": "Archived",
+    "removeSelection": "Remove {name}",
+    "noSelection": "Nothing selected yet.",
+    "purposeGuidance": "Select only packages whose purpose and scope cover the requirement. Each package shows its purpose to support your judgment.",
+    "searchAssociations": "Search the list",
+    "tableSelect": "Select",
+    "tablePackageName": "Requirement package",
+    "tableReferenceId": "Reference ID",
+    "tablePurpose": "Purpose",
+    "tableNormName": "Name",
+    "selectedOnOpen": "Already selected",
+    "otherOptions": "Not selected",
+    "noMatches": "No matches.",
+    "draftCount": "{count} marked in the dialog",
+    "createPackage": "New requirement package",
+    "createNorm": "New norm reference",
+    "hiddenCreatedPackage": "The search hides the new requirement package “{name}”. It is still checked.",
+    "hiddenCreatedNorm": "The search hides the new norm reference “{name}”. It is still checked.",
+    "creationPersistence": "The new object is saved immediately. Cancel in the selection dialog only discards the selection.",
+    "searchHelp": "Search by name, reference ID or package purpose. Selections are kept when you filter the list."
   }
 }

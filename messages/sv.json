@@ -819,7 +819,7 @@
     "continueDraggingToCollapsePanel": "Fortsätt dra för att fälla ihop {panel}",
     "releaseToCollapsePanel": "Släpp för att fälla ihop {panel}",
     "panelWidthValue": "Vänster panel {left} %, höger panel {right} %",
-    "panelWithTab": "{panel} \u2013 {tab}",
+    "panelWithTab": "{panel} – {tab}",
     "leftPanelTabs": "Tabbar för detaljer i kravunderlag",
     "rightPanelTabs": "Tabbar i kravunderlagets högra panel",
     "newNeedsReference": "Ny behovsreferens",
@@ -3149,6 +3149,10 @@
       "referenceData": {
         "heading": "Referensdata",
         "body": "Formuläret öppnas direkt medan referensdata läses in. Du kan börja skriva kravtext, men Spara och berörda val är inte tillgängliga förrän alla obligatoriska kataloger har lästs in. Försök igen efter ett fel utan att dina ändringar försvinner."
+      },
+      "associations": {
+        "heading": "Kravpaket och normreferenser",
+        "body": "Klassificering finns till höger. Använd Välj för kravpaket och normreferenser; Avbryt kasserar dialogens urval. Objekt som skapas från väljaren sparas direkt, även om urvalet avbryts."
       }
     },
     "requirementDetail": {
@@ -3183,6 +3187,10 @@
       "reconciliation": {
         "heading": "Samtidig redigering",
         "body": "Om en annan författare sparar först kan du jämföra ursprungligt innehåll, dina ändringar och senast sparat innehåll. Oberoende ändringar behålls tillsammans. Välj vilket värde som ska behållas vid motstridiga ändringar och kontrollera och redigera sedan resultatet i formuläret innan du sparar. Ordningen mellan val saknar betydelse. Om någon sparar igen krävs en ny jämförelse. Avbruten jämförelse eller misslyckade anrop bevarar ditt arbete. Om Granskning, Arkiverad eller behörigheter hindrar redigering kan du kopiera ditt osparade arbete. Att lämna redigeringen, byta språk eller gå bakåt i webbläsaren kräver bekräftelse om arbete skulle gå förlorat. Omladdning eller stängning av fliken använder webbläsarens bekräftelse."
+      },
+      "associations": {
+        "heading": "Kravpaket och normreferenser",
+        "body": "Klassificering finns till höger. Använd Välj för kravpaket och normreferenser; Avbryt kasserar dialogens urval. Objekt som skapas från väljaren sparas direkt, även om urvalet avbryts."
       }
     },
     "versionDetail": {
@@ -4016,5 +4024,31 @@
     "renewalPendingError": "Avbryt den obeslutade förnyelsen innan godkännandet avslutas.",
     "renewalTargetError": "Godkännandet har ändrats. Uppdatera och välj det senaste godkännandet.",
     "closedApprovalError": "Godkännandet har avslutats. Uppdatera och begär ett nytt avsteg."
+  },
+  "requirementAssociations": {
+    "choosePackages": "Välj kravpaket",
+    "chooseNorms": "Välj normreferenser",
+    "applySelection": "Välj",
+    "missingPurpose": "Syfte saknas",
+    "archived": "Arkiverad",
+    "removeSelection": "Ta bort {name}",
+    "noSelection": "Inga val ännu.",
+    "purposeGuidance": "Välj endast kravpaket vars syfte och avgränsning omfattar kravet. Syftet visas vid varje paket som stöd för din bedömning.",
+    "searchAssociations": "Sök i listan",
+    "tableSelect": "Välj",
+    "tablePackageName": "Kravpaket",
+    "tableReferenceId": "Referens-ID",
+    "tablePurpose": "Syfte",
+    "tableNormName": "Namn",
+    "selectedOnOpen": "Redan valda",
+    "otherOptions": "Ej valda",
+    "noMatches": "Inga träffar.",
+    "draftCount": "{count} markerade i dialogen",
+    "createPackage": "Nytt kravpaket",
+    "createNorm": "Ny normreferens",
+    "hiddenCreatedPackage": "Sökningen döljer det nya kravpaketet ”{name}”. Det är fortfarande markerat.",
+    "hiddenCreatedNorm": "Sökningen döljer den nya normreferensen ”{name}”. Den är fortfarande markerad.",
+    "creationPersistence": "Det nya objektet sparas direkt. Avbryt i väljdialogen kasserar endast urvalet.",
+    "searchHelp": "Sök på namn, referens-ID eller paketets syfte. Markeringar behålls när du filtrerar listan."
   }
 }
