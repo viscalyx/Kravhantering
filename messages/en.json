@@ -4063,9 +4063,6 @@
     "classifications": "Classifications",
     "actions": "Actions",
     "open": "Open specification",
-    "openRequirements": "Open requirements",
-    "expandAreas": "Expand requirement areas",
-    "collapseAreas": "Collapse requirement areas",
     "preview": "Preview only: {action} — {name}. No data was changed.",
     "noWrites": "Prototype actions only update this message. No create, edit, delete or assignment changes are saved.",
     "switcher": "Prototype variants",
@@ -4076,16 +4073,16 @@
     "empty": "No matching specifications.",
     "variants": {
       "baseline": {
-        "name": "Baseline",
-        "description": "Presentation reference: eight columns, a separate search row and 44 px actions. Recreated with safe preview controls; compare every option with exactly the same data."
+        "name": "Reference",
+        "description": "Simplified reference: six columns, a separate search row and 44 px actions. The same information as the other prototypes, with safe preview controls."
       },
       "A": {
         "name": "Compact table",
-        "description": "Prioritize names. A stable owner column, three classifications stacked in one column, right-aligned counts and compact action slots. Best candidate for scanning many rows."
+        "description": "Prioritize names. A stable owner column, three classifications stacked in one column and compact action slots. Best candidate for scanning many rows."
       },
       "B": {
         "name": "Two-level rows",
-        "description": "Names and responsibility lead each row. Labeled classifications and expandable areas occupy a second line. More breathing room, fewer rows per screen."
+        "description": "Names and responsibility lead each row. Labeled classifications occupy a second line. More breathing room, fewer rows per screen."
       },
       "C": {
         "name": "Card grid",
@@ -4095,7 +4092,7 @@
     "checks": {
       "names": {
         "title": "Name priority",
-        "verify": "Compare 0 and A at 1440 and 1920 px. Read the long fourth example and compare wrapping. B puts metadata below; C splits the workspace into cards."
+        "verify": "Compare 0 and A at 1440 and 1920 px. Read the long example beginning Shared information and compare wrapping. B puts metadata below; C splits the workspace into cards."
       },
       "identity": {
         "title": "Two-level responsibility",
@@ -4105,17 +4102,9 @@
         "title": "All classifications",
         "verify": "A stacks the three values under one heading; B and C show their individual labels. Compare all three values with the baseline."
       },
-      "count": {
-        "title": "Stable counts",
-        "verify": "Compare 0, 3, 128 and 1200. A right-aligns tabular digits; B and C add a count label. Click a count to show its local preview."
-      },
       "actions": {
         "title": "Compact action slots",
         "verify": "Hover or Tab to 28 px actions. The Anonymous row has no actions; other rows reserve unused slots. Click edit/delete: only the preview message changes."
-      },
-      "areas": {
-        "title": "Expandable requirement areas",
-        "verify": "Expand and collapse the fourth example with click and Enter. Compare the same expanded data across variants; no area is removed."
       },
       "header": {
         "title": "Heading and search",
@@ -4124,6 +4113,10 @@
       "responsive": {
         "title": "Viewport, navigation and theme",
         "verify": "Use 1440×900 and 1920×1080. Collapse/expand the real navigation and switch theme there. Check scrolling, focus and dark text contrast; also inspect 375 px width."
+      },
+      "sorting": {
+        "title": "Ascending name order",
+        "verify": "Every layout sorts specification names using the selected language. Compare name order across layouts and data sources; filtering keeps that order."
       }
     }
   }

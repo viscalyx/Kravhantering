@@ -1,7 +1,14 @@
 // Throwaway, in-memory examples; never seeded into the database.
 import type { Specification } from '@/lib/specifications/preload-types'
 
-export function prototype1350Examples(locale: string): Specification[] {
+export type PrototypeSpecification = Omit<
+  Specification,
+  'itemCount' | 'requirementAreas'
+>
+
+export function prototype1350Examples(
+  locale: string,
+): PrototypeSpecification[] {
   const sv = locale === 'sv'
   const names = sv
     ? [
@@ -40,30 +47,12 @@ export function prototype1350Examples(locale: string): Specification[] {
     'anonym',
     'marias',
   ]
-  const areaNames = sv
-    ? [
-        'Integration',
-        'Säkerhet',
-        'Tillgänglighet',
-        'Prestanda',
-        'Lagring',
-        'Informationshantering',
-      ]
-    : [
-        'Integration',
-        'Security',
-        'Accessibility',
-        'Performance',
-        'Storage',
-        'Information management',
-      ]
   return names.map((name, i) => ({
     id: -(i + 1),
     name,
     specificationCode: `EX${i + 1}`,
     responsibleDisplayName: people[i],
     responsibleHsaId: `SE5560000001-${ids[i]}`,
-    itemCount: [6, 7, 3, 128, 0, 42, 1200][i],
     businessNeedsReference: null,
     governanceObjectType: {
       id: 1,
@@ -79,9 +68,7 @@ export function prototype1350Examples(locale: string): Specification[] {
     specificationGovernanceObjectTypeId: 1,
     specificationImplementationTypeId: 1,
     specificationLifecycleStatusId: 1,
-    requirementAreas: areaNames
-      .slice(0, [1, 3, 1, 6, 0, 2, 4][i])
-      .map((area, j) => ({ id: j + 1, name: area })),
+
     permissions: {
       canEditContent: i !== 5,
       canManageAssignments: i < 4,

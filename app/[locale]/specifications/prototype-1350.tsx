@@ -2,17 +2,7 @@
 
 // Throwaway question: which of three list layouts makes names and responsibility
 // easiest to scan? Existing /specifications route, ?variant=baseline|A|B|C.
-import {
-  ChevronDown,
-  ChevronUp,
-  Info,
-  Pencil,
-  Plus,
-  Search,
-  Trash2,
-  UsersRound,
-  X,
-} from 'lucide-react'
+import { Info, Pencil, Plus, Search, Trash2, UsersRound, X } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
@@ -26,10 +16,12 @@ import { devMarker } from '@/lib/developer-mode-markers'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import type {
   RequirementsSpecificationsInitialData,
-  Specification,
   SpecificationTaxonomyItem,
 } from '@/lib/specifications/preload-types'
-import { prototype1350Examples } from './prototype-1350.data'
+import {
+  prototype1350Examples,
+  type PrototypeSpecification as Specification,
+} from './prototype-1350.data'
 import styles from './prototype-1350.module.css'
 
 type LayoutProps = {
@@ -38,8 +30,6 @@ type LayoutProps = {
   name: (row: Specification) => ReactNode
   owner: (row: Specification) => ReactNode
   classifications: (row: Specification) => ReactNode
-  areas: (row: Specification) => ReactNode
-  count: (row: Specification) => ReactNode
   actions: (row: Specification) => ReactNode
   taxonomy: (value: SpecificationTaxonomyItem | null) => string
 }
@@ -52,20 +42,11 @@ export function VariantA(p: LayoutProps) {
           <col />
           <col className={styles.ownerColumn} />
           <col className={styles.classificationColumn} />
-          <col className={styles.countColumn} />
-          <col className={styles.areasColumn} />
           <col className={styles.actionsColumn} />
         </colgroup>
         <thead>
           <tr>
-            {[
-              'name',
-              'responsible',
-              'classifications',
-              'itemCount',
-              'requirementAreas',
-              'actions',
-            ].map(key => (
+            {['name', 'responsible', 'classifications', 'actions'].map(key => (
               <th key={key}>{p.label(key)}</th>
             ))}
           </tr>
@@ -76,8 +57,6 @@ export function VariantA(p: LayoutProps) {
               <td>{p.name(row)}</td>
               <td>{p.owner(row)}</td>
               <td>{p.classifications(row)}</td>
-              <td className={styles.number}>{p.count(row)}</td>
-              <td>{p.areas(row)}</td>
               <td>{p.actions(row)}</td>
             </tr>
           ))}
@@ -99,15 +78,10 @@ export function VariantB(p: LayoutProps) {
           <div className={styles.recordMain}>
             <div>{p.name(row)}</div>
             <div>{p.owner(row)}</div>
-            <div className={styles.countBlock}>
-              {p.count(row)}
-              <span>{p.label('itemCount')}</span>
-            </div>
             <div>{p.actions(row)}</div>
           </div>
           <div className={styles.recordMeta}>
             <div>{p.classifications(row)}</div>
-            <div>{p.areas(row)}</div>
           </div>
         </article>
       ))}
@@ -124,22 +98,13 @@ export function VariantC(p: LayoutProps) {
           data-prototype-row={row.id}
           key={row.id}
         >
-          <div className={styles.cardTitle}>
-            {p.name(row)}
-            <div className={styles.countBlock}>
-              {p.count(row)}
-              <span>{p.label('itemCount')}</span>
-            </div>
-          </div>
+          <div className={styles.cardTitle}>{p.name(row)}</div>
           <div className={styles.cardOwner}>
             <span className={styles.caption}>{p.label('responsible')}</span>
             {p.owner(row)}
           </div>
           {p.classifications(row)}
-          <div className={styles.cardFooter}>
-            {p.areas(row)}
-            {p.actions(row)}
-          </div>
+          <div className={styles.cardFooter}>{p.actions(row)}</div>
         </article>
       ))}
     </div>
@@ -156,8 +121,6 @@ function Baseline(p: LayoutProps) {
           <col />
           <col />
           <col />
-          <col />
-          <col style={{ width: 224 }} />
           <col style={{ width: 176 }} />
         </colgroup>
         <thead>
@@ -168,8 +131,6 @@ function Baseline(p: LayoutProps) {
               'governanceObjectType',
               'implementationType',
               'lifecycleStatus',
-              'itemCount',
-              'requirementAreas',
               'actions',
             ].map(key => (
               <th key={key}>
@@ -190,8 +151,6 @@ function Baseline(p: LayoutProps) {
               <td>{p.taxonomy(row.governanceObjectType)}</td>
               <td>{p.taxonomy(row.implementationType)}</td>
               <td>{p.taxonomy(row.lifecycleStatus)}</td>
-              <td>{p.count(row)}</td>
-              <td>{p.areas(row)}</td>
               <td>{p.actions(row)}</td>
             </tr>
           ))}
@@ -220,7 +179,6 @@ export default function Prototype1350({
     : 'A'
   const [source, setSource] = useState('examples')
   const [search, setSearch] = useState('')
-  const [expanded, setExpanded] = useState<number[]>([])
   const [lastAction, setLastAction] = useState('')
   const [viewport, setViewport] = useState({ width: 0, height: 0 })
   const [helpOpen, setHelpOpen] = useState(false)
@@ -236,11 +194,15 @@ export default function Prototype1350({
     source === 'live'
       ? initialData.specifications
       : prototype1350Examples(locale)
-  const rows = allRows.filter(row =>
-    row.name
-      .toLocaleLowerCase(locale)
-      .includes(search.toLocaleLowerCase(locale)),
-  )
+  const rows = allRows
+    .filter(row =>
+      row.name
+        .toLocaleLowerCase(locale)
+        .includes(search.toLocaleLowerCase(locale)),
+    )
+    .sort((left, right) =>
+      left.name.localeCompare(right.name, locale, { sensitivity: 'base' }),
+    )
   const taxonomy = (value: SpecificationTaxonomyItem | null) =>
     value ? (locale === 'sv' ? value.nameSv : value.nameEn) : '—'
   const action = (kind: string, row?: Specification) =>
@@ -300,61 +262,6 @@ export default function Prototype1350({
         ))}
       </dl>
     ),
-    areas: row => {
-      const open = expanded.includes(row.id)
-      return (
-        <div className={styles.areaGroup}>
-          <div
-            className={`${styles.pills} ${open ? styles.expanded : ''}`}
-            id={`prototype-areas-${row.id}`}
-          >
-            {row.requirementAreas.length ? (
-              row.requirementAreas.map(area => (
-                <span className={styles.pill} key={area.id}>
-                  {area.name}
-                </span>
-              ))
-            ) : (
-              <span>—</span>
-            )}
-          </div>
-          {row.requirementAreas.length > 1 && (
-            <button
-              aria-controls={`prototype-areas-${row.id}`}
-              aria-expanded={open}
-              aria-label={t(open ? 'collapseAreas' : 'expandAreas')}
-              className={styles.iconButton}
-              onClick={() =>
-                setExpanded(
-                  open
-                    ? expanded.filter(id => id !== row.id)
-                    : [...expanded, row.id],
-                )
-              }
-              type="button"
-            >
-              {open ? (
-                <ChevronUp aria-hidden="true" size={14} />
-              ) : (
-                <ChevronDown aria-hidden="true" size={14} />
-              )}
-            </button>
-          )}
-        </div>
-      )
-    },
-    count: row =>
-      row.itemCount ? (
-        <button
-          className={styles.count}
-          onClick={() => action(t('openRequirements'), row)}
-          type="button"
-        >
-          {row.itemCount}
-        </button>
-      ) : (
-        <span className={styles.count}>0</span>
-      ),
     actions: row => (
       <div className={styles.actions}>
         {(
@@ -414,7 +321,6 @@ export default function Prototype1350({
               <select
                 onChange={event => {
                   setSource(event.target.value)
-                  setExpanded([])
                 }}
                 value={source}
               >
@@ -434,7 +340,7 @@ export default function Prototype1350({
                     variant,
                     source,
                     search,
-                    expandedAreaRows: expanded,
+                    sort: 'name ascending',
                     visibleIds: rows.map(row => row.id),
                     viewport,
                     lastAction,
@@ -450,11 +356,10 @@ export default function Prototype1350({
             <ol>
               {[
                 'names',
+                'sorting',
                 'identity',
                 'classification',
-                'count',
                 'actions',
-                'areas',
                 'header',
                 'responsive',
               ].map(key => (

@@ -4063,9 +4063,6 @@
     "classifications": "Klassningar",
     "actions": "Åtgärder",
     "open": "Öppna kravunderlag",
-    "openRequirements": "Öppna krav",
-    "expandAreas": "Expandera kravområden",
-    "collapseAreas": "Fäll ihop kravområden",
     "preview": "Endast förhandsvisning: {action} — {name}. Inga data ändrades.",
     "noWrites": "Prototypens åtgärder uppdaterar bara detta meddelande. Skapande, redigering, borttagning och ansvarstilldelningar sparas inte.",
     "switcher": "Prototypalternativ",
@@ -4076,16 +4073,16 @@
     "empty": "Inga matchande kravunderlag.",
     "variants": {
       "baseline": {
-        "name": "Nuläge",
-        "description": "Presentationsreferens: åtta kolumner, separat sökrad och åtgärder på 44 px. Återskapad med säkra förhandsvisningar; jämför alternativen med exakt samma data."
+        "name": "Referens",
+        "description": "Förenklad referens: sex kolumner, separat sökrad och åtgärder på 44 px. Samma urval av information som övriga prototyper, med säkra förhandsvisningar."
       },
       "A": {
         "name": "Kompakt tabell",
-        "description": "Prioritera namn. Stabil ansvarskolumn, tre klassningar staplade i en kolumn, högerställda antal och kompakta åtgärder. Förstahandskandidat för att skanna många rader."
+        "description": "Prioritera namn. Stabil ansvarskolumn, tre klassningar staplade i en kolumn och kompakta åtgärder. Förstahandskandidat för att skanna många rader."
       },
       "B": {
         "name": "Tvånivårader",
-        "description": "Namn och ansvar leder varje rad. Klassningar med etiketter och expanderbara kravområden ligger på en andra rad. Mer luft, färre rader per skärm."
+        "description": "Namn och ansvar leder varje rad. Klassningar med etiketter ligger på en andra rad. Mer luft, färre rader per skärm."
       },
       "C": {
         "name": "Kortvy",
@@ -4095,7 +4092,7 @@
     "checks": {
       "names": {
         "title": "Namnets utrymme",
-        "verify": "Jämför 0 och A vid 1440 och 1920 px. Läs det långa fjärde exemplet och jämför radbrytning. B placerar metadata under; C delar arbetsytan i kort."
+        "verify": "Jämför 0 och A vid 1440 och 1920 px. Läs det långa exemplet som börjar med Gemensamt informationsutbyte och jämför radbrytning. B placerar metadata under; C delar arbetsytan i kort."
       },
       "identity": {
         "title": "Ansvar på två nivåer",
@@ -4105,17 +4102,9 @@
         "title": "Alla klassningar",
         "verify": "A staplar tre värden under en rubrik; B och C visar egna etiketter. Jämför alla tre värden med nuläget."
       },
-      "count": {
-        "title": "Stabila antal",
-        "verify": "Jämför 0, 3, 128 och 1200. A högerställer siffror med fast bredd; B och C visar antalets etikett. Klicka ett antal för lokal förhandsvisning."
-      },
       "actions": {
         "title": "Kompakta åtgärder",
         "verify": "Peka eller tabba till åtgärder på 28 px. Anonym-raden saknar åtgärder; övriga rader reserverar tomma platser. Redigera/radera ändrar bara förhandsvisningen."
-      },
-      "areas": {
-        "title": "Expanderbara kravområden",
-        "verify": "Expandera och fäll ihop fjärde exemplet med klick och Enter. Jämför samma expanderade data mellan alternativen; inga kravområden tas bort."
       },
       "header": {
         "title": "Rubrik och sökning",
@@ -4124,6 +4113,10 @@
       "responsive": {
         "title": "Fönster, navigation och tema",
         "verify": "Använd 1440×900 och 1920×1080. Fäll in/ut riktig navigation och byt tema där. Kontrollera rullning, fokus och mörkt tema; prova också 375 px bredd."
+      },
+      "sorting": {
+        "title": "Stigande namnordning",
+        "verify": "Alla vyer sorteras efter kravunderlagets namn enligt valt språk. Jämför namnordningen mellan vyer och datakällor; filtrering ska behålla sorteringen."
       }
     }
   }
