@@ -253,7 +253,9 @@ export default function PrototypeRequirementAssociations({
                       iconName={isPackage ? 'Package' : 'BookOpen'}
                       label={
                         item.reference
-                          ? `${item.reference} ${item.name}`
+                          ? table
+                            ? item.reference
+                            : `${item.reference} ${item.name}`
                           : item.name
                       }
                     />
@@ -268,10 +270,14 @@ export default function PrototypeRequirementAssociations({
                     </button>
                   </span>
                 )
-                return isPackage ? (
+                return isPackage || table ? (
                   <RequirementPackagePurposeTooltip
                     key={item.id}
-                    purposeAndScope={item.purpose || t('missingPurpose')}
+                    purposeAndScope={
+                      isPackage
+                        ? item.purpose || t('missingPurpose')
+                        : item.name
+                    }
                     wrapperClassName="inline-flex min-w-0"
                   >
                     {badge}

@@ -98,7 +98,10 @@ E.1 behåller listorna. E.2 använder en tabell i respektive dialog:
 
 De två textkolumnerna är vänsterjusterade. Referens-ID har samma grå ton
 som tidigare, och paketens syfte visas med mindre text utan upprepad rubrik.
-Urval, sökning, Välj, Avbryt och märken fungerar på samma sätt i båda varianter.
+Urval, sökning, Välj och Avbryt fungerar på samma sätt i båda varianter.
+I E.2 visar normreferensens märke endast referens-ID. Hovra över märket
+för att läsa namnet i en tooltip. Kravpaketets märke visar paketnamnet,
+med syfte och avgränsning i en tooltip.
 Kolumnrubrikerna ligger kvar överst när tabellens innehåll rullas.
 Vägledningen om paketens syfte visas under dialogtiteln, före sökfältet,
 och ligger också kvar när tabellen rullas.
@@ -112,6 +115,8 @@ Den gamla länken med `?variant=E` öppnar E.1.
 6. Granska tabellerna i ljust och mörkt tema samt vid 320 pixlars bredd.
 7. Rulla ned i båda tabellerna. Rubrikerna ska ligga kvar, med täckande
    bakgrund så att raderna inte syns genom dem.
+8. Välj paket och normreferenser. Kontrollera märkenas text och hovra över
+   dem i ungefär en sekund för att läsa respektive tooltip.
 
 - [E.2:s paketdialog](screenshots/E2-packages-modal.png)
 - [E.2:s normreferensdialog](screenshots/E2-norms-modal.png)
@@ -120,6 +125,9 @@ Den gamla länken med `?variant=E` öppnar E.1.
 - [E.2:s dialog vid 320 pixlar](screenshots/E2-modal-320.png)
 - [Rullad paketlista med fasta rubriker](screenshots/E2-packages-sticky.png)
 - [Rullade normreferenser med fasta rubriker](screenshots/E2-norms-sticky.png)
+- [Normreferensens märke med tooltip](screenshots/E2-norm-badge-tooltip.png)
+- [Kravpaketets märke med tooltip](screenshots/E2-package-badge-tooltip.png)
+- [Kontroll av märken och tooltips](badge-tooltip-inspection.json)
 - [Kontroll av fasta rubriker](sticky-header-inspection.json)
 - [Kontroller för E.2](table-modal-inspection.json)
 
