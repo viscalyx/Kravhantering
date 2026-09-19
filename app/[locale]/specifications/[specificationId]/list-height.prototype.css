@@ -254,6 +254,105 @@
   }
 }
 
+@media (min-width: 1280px) {
+  /* Match B's table tab row in the needs-reference, RFI and empty views.
+     Contextual actions get their own row, so they cannot recenter the tabs. */
+  html[data-height-prototype="B"]
+    #specification-left-panel
+    .prototype-panel-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    align-items: stretch;
+    padding: 0;
+    border-bottom: 0;
+  }
+  html[data-height-prototype="B"]
+    #specification-left-panel
+    .prototype-panel-header
+    > :first-child {
+    padding: 3px 8px;
+    border-bottom: 1px solid #94a3b840;
+  }
+  html[data-height-prototype="B"]
+    #specification-left-panel
+    .prototype-panel-header
+    > .prototype-tab-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 37px;
+    padding: 3px 8px;
+    border-bottom: 1px solid #94a3b840;
+  }
+  html[data-height-prototype="B"] .prototype-tab-actions > div {
+    gap: 4px;
+  }
+  html[data-height-prototype="B"]
+    .prototype-tab-actions
+    .prototype-rfi-toolbar {
+    flex-wrap: nowrap;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+  }
+  html[data-height-prototype="B"] .prototype-tab-actions .prototype-rfi-mode {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+  }
+  html[data-height-prototype="B"] .prototype-tab-actions .prototype-rfi-mode p {
+    font-size: 12px;
+    line-height: 16px;
+    white-space: nowrap;
+  }
+  html[data-height-prototype="B"]
+    .prototype-tab-actions
+    .prototype-rfi-mode
+    p:first-child {
+    flex-shrink: 0;
+  }
+  html[data-height-prototype="B"]
+    .prototype-tab-actions
+    .prototype-rfi-mode
+    p:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  html[data-height-prototype="B"]
+    .prototype-tab-actions
+    .prototype-rfi-toolbar
+    > :last-child {
+    flex-shrink: 0;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  html[data-height-prototype="B"] .prototype-tab-actions a,
+  html[data-height-prototype="B"] .prototype-tab-actions button {
+    min-width: 30px;
+    height: 30px;
+    min-height: 30px;
+  }
+  html[data-height-prototype="B"] .prototype-tab-actions a,
+  html[data-height-prototype="B"]
+    .prototype-tab-actions
+    button:not([role="switch"]) {
+    width: 30px;
+    padding: 0;
+  }
+  html[data-height-prototype="B"]
+    #specification-left-panel
+    .prototype-panel-header
+    button:not([role="tab"]) {
+    min-width: 30px;
+    height: 30px;
+    min-height: 30px;
+  }
+}
+
 /* C's detached shelf uses flat surfaces: avoid Chromium backdrop compositing
    obscuring the header when switching between the two grid arrangements. */
 html[data-height-prototype="C"] * {

@@ -89,6 +89,10 @@ page overflow falls from 21px to zero at both desktop sizes.
 | --- | --- | --- |
 | A: compact pill tabs | Switch 0 → A at 1440 × 900; inspect the top of each panel. | Same tab names and actions; shorter header. Compare label truncation with expanded navigation. |
 | B: full-width tab strip | Switch to B; select each tab. | Tabs occupy their own row; active tab has an underline. Filters and actions share the next row. |
+| B: stable tab placement | Switch between Krav i underlaget, Behovsreferenser and RFI-frågelista repeatedly. | Every tab keeps the same x/y position, width and height, including when the view has a New action. |
+| B: shared action-row layout | Switch through all three left-panel tabs. | Each action row starts at the same height and is 37px tall; icon actions are 30 × 30px. Ny belongs to Behovsreferenser; filter, CSV/PDF and lock belong to RFI. |
+| B: RFI controls | Select RFI-frågelista and toggle the included-only filter; inspect CSV/PDF links and the lock switch. | The filter still changes state; exports and locking are grouped below the tabs. Group and question actions stay with their content. |
+| B: RFI mode text | Select RFI-frågelista, expand navigation and resize the panel. | Mode and explanation sit left of the actions; the row stays 37px high. Long explanations truncate with the full text in a tooltip. |
 | B: vertical tab dividers | Inspect the left panel in B in both themes. | Two short vertical lines separate Krav i underlaget, Behovsreferenser and RFI-frågelista; tab sizes and list height stay the same. |
 | C: shared tab shelf | Switch to C; select tabs and drag the panel divider. | Tab groups sit above the panels and follow their widths; collapsed panel's shelf group is hidden. |
 | C: flat surfaces | Inspect C in both themes after switching variants. | Backdrop blur is disabled in C to keep Chromium from obscuring adjacent content during grid changes. |
@@ -135,10 +139,39 @@ page overflow falls from 21px to zero at both desktop sizes.
   proportions and metadata redesign belong to #1352. C is exploratory,
   not a recommendation to change panel workflows.
 
+## Stable tabs in B
+
+The three left-panel tabs now share the same padding and alignment in every
+view. All three views have a 37px action row below the tabs, with 30px-high
+controls and 30 × 30px icon buttons. Behovsreferenser places Ny there.
+RFI places its included-only filter, CSV/PDF exports and lock switch there.
+The mode and explanation sit on one line to their left; long explanations
+truncate with an ellipsis and retain the full text as a tooltip.
+Group/question actions remain in the content.
+The row keeps its height while RFI loads or when no create action is available.
+The original vertical offsets were 166.5px, 175px and
+171.5px at 1440 × 900. All three now start at 166.5px in that same state.
+
+[Tab geometry evidence](tab-stability.json) covers both desktop sizes, both
+themes and both navigation states, including switching back to the list.
+Each tab preserves its complete rectangle throughout the switches. The rows
+also preserve their top position and height, and the RFI filter still toggles.
+Opening New, export destinations, sticky RFI actions, desktop/mobile
+relocation, and fallback placement in 0/A/C pass browser smoke checks.
+The compact action layout applies to desktop B; other variants and narrow
+viewports retain the existing placement.
+
+- [Needs references, light](images/1440-B-needs-references-light.png)
+- [Needs references, dark](images/1440-B-needs-references-dark.png)
+- [RFI list, light](images/1440-B-rfi-light.png)
+- [RFI list, dark](images/1440-B-rfi-dark.png)
+
 ## Source inventory
 
 - `requirements-specification-detail-client.tsx`: mounts the switcher and
   C shelf on the existing specification route; retains data loading.
+- `specification-rfi-list-panel.tsx`: moves tab-wide RFI controls into B's
+  action row on desktop, retaining the existing fallback elsewhere.
 - `list-height.prototype.css`: gated desktop layouts and review styling.
 - `PrototypeLayoutSwitcher.tsx`: URL controls, keyboard controls, live state
   inspection, and shelf alignment.

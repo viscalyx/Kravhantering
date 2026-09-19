@@ -536,6 +536,16 @@ export default function KravunderlagDetailClient({
   const confirmDiscardChanges = useDiscardChangesConfirmation()
   const searchParams = useSearchParams()
   const prototypeVariant = useHeightPrototypeVariant()
+  const [prototypeRfiActionsHost, setPrototypeRfiActionsHost] =
+    useState<HTMLDivElement | null>(null)
+  const [prototypeDesktop, setPrototypeDesktop] = useState(false)
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 1280px)')
+    const sync = () => setPrototypeDesktop(media.matches)
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [])
   const shouldReduceMotion = useReducedMotion()
   const libraryDetailCache = useMemo(createLibraryRequirementDetailCache, [])
   const localDetailCache = useMemo(
@@ -2990,7 +3000,7 @@ export default function KravunderlagDetailClient({
   const specificationDetailStickyTopOffsetClassName = 'top-0'
   const specificationDetailPagePaddingClassName =
     'px-4 pb-8 pt-6 sm:px-6 sm:pb-10 sm:pt-7 lg:px-8 lg:pt-8'
-  const splitPanelHeaderClassName = `sticky ${specificationDetailStickyTopOffsetClassName} z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80`
+  const splitPanelHeaderClassName = `prototype-panel-header sticky ${specificationDetailStickyTopOffsetClassName} z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80`
   const specificationDetailPageShellClassName = `${specificationDetailPagePaddingClassName} xl:flex xl:h-[calc(100dvh-4rem)] xl:flex-col xl:overflow-hidden`
   const specificationDetailContainerClassName =
     'container-custom max-w-none xl:flex xl:min-h-0 xl:w-full xl:flex-1 xl:flex-col'
@@ -3081,7 +3091,7 @@ export default function KravunderlagDetailClient({
           context: 'requirements specification detail',
           value:
             prototypeVariant === 'B'
-              ? 'left panel tabs with vertical dividers'
+              ? 'stable left panel tabs with vertical dividers'
               : 'left panel tabs',
         })}
         className={`${splitPanelTabsClassName} ${shelf ? '' : 'prototype-panel-tabs'}`}
@@ -3368,26 +3378,34 @@ export default function KravunderlagDetailClient({
                 >
                   <div className={splitPanelHeaderClassName}>
                     {renderLeftPanelTabs()}
-                    {canManageNeedsReferences ? (
-                      <button
-                        aria-label={t('newNeedsReference')}
-                        className={leftPanelActionPillClassName}
-                        {...devMarker({
-                          context: 'requirements specification detail',
-                          name: 'table action',
-                          priority: 350,
-                          value: 'create needs reference',
-                        })}
-                        onClick={openNeedsReferenceForm}
-                        title={t('newNeedsReference')}
-                        type="button"
-                      >
-                        <Plus aria-hidden="true" className="h-4 w-4" />
-                        <span className="sr-only">
-                          {t('newNeedsReference')}
-                        </span>
-                      </button>
-                    ) : null}
+                    <div
+                      className="prototype-tab-actions contents"
+                      {...devMarker({
+                        name: 'tab action row',
+                        value: 'needs references',
+                      })}
+                    >
+                      {canManageNeedsReferences ? (
+                        <button
+                          aria-label={t('newNeedsReference')}
+                          className={leftPanelActionPillClassName}
+                          {...devMarker({
+                            context: 'requirements specification detail',
+                            name: 'table action',
+                            priority: 350,
+                            value: 'create needs reference',
+                          })}
+                          onClick={openNeedsReferenceForm}
+                          title={t('newNeedsReference')}
+                          type="button"
+                        >
+                          <Plus aria-hidden="true" className="h-4 w-4" />
+                          <span className="sr-only">
+                            {t('newNeedsReference')}
+                          </span>
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                   {needsReferenceError ? (
                     <p
@@ -3643,9 +3661,24 @@ export default function KravunderlagDetailClient({
                 >
                   <div className={splitPanelHeaderClassName}>
                     {renderLeftPanelTabs()}
+                    {prototypeVariant === 'B' && (
+                      <div
+                        className="prototype-tab-actions hidden"
+                        ref={setPrototypeRfiActionsHost}
+                        {...devMarker({
+                          name: 'tab action row',
+                          value: 'RFI list',
+                        })}
+                      />
+                    )}
                   </div>
                   <SpecificationRfiListPanel
                     canEdit={canEditContent}
+                    prototypeActionsHost={
+                      prototypeVariant === 'B' && prototypeDesktop
+                        ? prototypeRfiActionsHost
+                        : null
+                    }
                     specificationId={specificationId}
                   />
                 </div>
@@ -3660,7 +3693,9 @@ export default function KravunderlagDetailClient({
                 >
                   <div className={splitPanelHeaderClassName}>
                     {renderLeftPanelTabs()}
-                    {renderEmptySpecificationActions()}
+                    <div className="prototype-tab-actions contents">
+                      {renderEmptySpecificationActions()}
+                    </div>
                   </div>
                   <div className="p-8 text-center text-sm text-secondary-500 dark:text-secondary-400">
                     {t('noItems')}

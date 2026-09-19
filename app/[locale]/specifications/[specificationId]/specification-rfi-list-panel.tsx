@@ -18,6 +18,7 @@ import {
   useMemo,
   useState,
 } from 'react'
+import { createPortal } from 'react-dom'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FormModal from '@/components/FormModal'
@@ -75,6 +76,7 @@ interface RfiSuggestion {
 
 interface Props {
   canEdit: boolean
+  prototypeActionsHost?: HTMLDivElement | null
   specificationId: number
 }
 
@@ -156,6 +158,7 @@ function areaScopeState(items: RfiListItem[]) {
 }
 
 export default function SpecificationRfiListPanel({
+  prototypeActionsHost,
   canEdit,
   specificationId,
 }: Props) {
@@ -521,75 +524,92 @@ export default function SpecificationRfiListPanel({
     ? targetContextText(viewSuggestionsTarget)
     : ''
 
+  const tabActions = (
+    <div className="flex flex-wrap items-center gap-4">
+      <button
+        aria-label={viewFilterSwitchLabel}
+        aria-pressed={showIncludedOnly}
+        className={viewFilterButtonClassName}
+        onClick={() => setShowIncludedOnly(current => !current)}
+        title={viewFilterSwitchLabel}
+        type="button"
+        {...devMarker({
+          name: 'rfi list action',
+          value: 'included-only filter',
+        })}
+      >
+        <ListFilter aria-hidden="true" className="h-4 w-4" />
+      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <a
+          aria-label="CSV"
+          className={exportPillClassName}
+          href={`/api/requirements-specifications/${encodedSpecificationId}/rfi-list/export?format=csv&locale=${locale}`}
+          title="CSV"
+        >
+          <Download aria-hidden="true" className="h-4 w-4" />
+          <span className="sr-only">CSV</span>
+        </a>
+        <a
+          aria-label="PDF"
+          className={exportPillClassName}
+          href={`/api/requirements-specifications/${encodedSpecificationId}/rfi-list/export?format=pdf&locale=${locale}`}
+          title="PDF"
+        >
+          <Printer aria-hidden="true" className="h-4 w-4" />
+          <span className="sr-only">PDF</span>
+        </a>
+        {canEdit ? (
+          <button
+            aria-checked={list.isLocked}
+            aria-label={t('lockedToggleAria')}
+            className={lockSwitchButtonClassName}
+            disabled={saving}
+            onClick={() => void mutateList(list.isLocked ? 'unlock' : 'lock')}
+            role="switch"
+            title={lockStateActionTitle}
+            type="button"
+          >
+            <span>{t('lockedToggleLabel')}</span>
+            <span className={lockSwitchTrackClassName}>
+              <span className={lockSwitchThumbClassName} />
+            </span>
+          </button>
+        ) : null}
+      </div>
+    </div>
+  )
+
+  const modeDescription =
+    list.isLocked && list.lockedAt
+      ? t('lockedAt', { date: list.lockedAt })
+      : t('dynamicHint')
+  const tabHeader = (
+    <div className="prototype-rfi-toolbar flex flex-wrap items-center justify-between gap-3">
+      <div
+        className="prototype-rfi-mode"
+        title={modeDescription}
+        {...devMarker({
+          name: 'RFI list mode',
+          value: 'mode and dynamic list description',
+        })}
+      >
+        <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+          {list.isLocked ? t('lockedMode') : t('prepareMode')}
+        </p>
+        <p className="text-xs text-secondary-500 dark:text-secondary-400">
+          {modeDescription}
+        </p>
+      </div>
+      {tabActions}
+    </div>
+  )
+
   return (
     <div className="space-y-4 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
-            {list.isLocked ? t('lockedMode') : t('prepareMode')}
-          </p>
-          <p className="text-xs text-secondary-500 dark:text-secondary-400">
-            {list.isLocked && list.lockedAt
-              ? t('lockedAt', { date: list.lockedAt })
-              : t('dynamicHint')}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-4">
-          <button
-            aria-label={viewFilterSwitchLabel}
-            aria-pressed={showIncludedOnly}
-            className={viewFilterButtonClassName}
-            onClick={() => setShowIncludedOnly(current => !current)}
-            title={viewFilterSwitchLabel}
-            type="button"
-            {...devMarker({
-              name: 'rfi list action',
-              value: 'included-only filter',
-            })}
-          >
-            <ListFilter aria-hidden="true" className="h-4 w-4" />
-          </button>
-          <div className="flex flex-wrap items-center gap-2">
-            <a
-              aria-label="CSV"
-              className={exportPillClassName}
-              href={`/api/requirements-specifications/${encodedSpecificationId}/rfi-list/export?format=csv&locale=${locale}`}
-              title="CSV"
-            >
-              <Download aria-hidden="true" className="h-4 w-4" />
-              <span className="sr-only">CSV</span>
-            </a>
-            <a
-              aria-label="PDF"
-              className={exportPillClassName}
-              href={`/api/requirements-specifications/${encodedSpecificationId}/rfi-list/export?format=pdf&locale=${locale}`}
-              title="PDF"
-            >
-              <Printer aria-hidden="true" className="h-4 w-4" />
-              <span className="sr-only">PDF</span>
-            </a>
-            {canEdit ? (
-              <button
-                aria-checked={list.isLocked}
-                aria-label={t('lockedToggleAria')}
-                className={lockSwitchButtonClassName}
-                disabled={saving}
-                onClick={() =>
-                  void mutateList(list.isLocked ? 'unlock' : 'lock')
-                }
-                role="switch"
-                title={lockStateActionTitle}
-                type="button"
-              >
-                <span>{t('lockedToggleLabel')}</span>
-                <span className={lockSwitchTrackClassName}>
-                  <span className={lockSwitchThumbClassName} />
-                </span>
-              </button>
-            ) : null}
-          </div>
-        </div>
-      </div>
+      {prototypeActionsHost
+        ? createPortal(tabHeader, prototypeActionsHost)
+        : tabHeader}
 
       {error ? (
         <p
