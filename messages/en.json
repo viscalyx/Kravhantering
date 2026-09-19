@@ -4050,5 +4050,81 @@
     "hiddenCreatedNorm": "The search hides the new norm reference “{name}”. It is still checked.",
     "creationPersistence": "The new object is saved immediately. Cancel in the selection dialog only discards the selection.",
     "searchHelp": "Search by name, reference ID or package purpose. Selections are kept when you filter the list."
+  },
+  "prototype1350": {
+    "throwaway": "THROWAWAY PROTOTYPE",
+    "data": "Data",
+    "examples": "Representative examples",
+    "live": "Live data (read only)",
+    "visibleRows": "{count} rows",
+    "state": "Inspect state",
+    "reviewGuide": "Changes and review checklist",
+    "tradeoff": "No design decision is accepted yet. A favors density; B favors explicit labels; C favors individual reading. Choose a layout or combine specific parts after review.",
+    "classifications": "Classifications",
+    "actions": "Actions",
+    "open": "Open specification",
+    "openRequirements": "Open requirements",
+    "expandAreas": "Expand requirement areas",
+    "collapseAreas": "Collapse requirement areas",
+    "preview": "Preview only: {action} — {name}. No data was changed.",
+    "noWrites": "Prototype actions only update this message. No create, edit, delete or assignment changes are saved.",
+    "switcher": "Prototype variants",
+    "previous": "Previous variant",
+    "next": "Next variant",
+    "filterHelp": "Help with filtering",
+    "filterHelpText": "Filter the currently selected data by specification name. The same filter is kept when switching variants.",
+    "empty": "No matching specifications.",
+    "variants": {
+      "baseline": {
+        "name": "Baseline",
+        "description": "Presentation reference: eight columns, a separate search row and 44 px actions. Recreated with safe preview controls; compare every option with exactly the same data."
+      },
+      "A": {
+        "name": "Compact table",
+        "description": "Prioritize names. A stable owner column, three classifications stacked in one column, right-aligned counts and compact action slots. Best candidate for scanning many rows."
+      },
+      "B": {
+        "name": "Two-level rows",
+        "description": "Names and responsibility lead each row. Labeled classifications and expandable areas occupy a second line. More breathing room, fewer rows per screen."
+      },
+      "C": {
+        "name": "Card grid",
+        "description": "Two cards per row on desktop. Each specification has a title, owner block and labeled metadata. Easier to inspect one item; harder to compare a long list."
+      }
+    },
+    "checks": {
+      "names": {
+        "title": "Name priority",
+        "verify": "Compare 0 and A at 1440 and 1920 px. Read the long fourth example and compare wrapping. B puts metadata below; C splits the workspace into cards."
+      },
+      "identity": {
+        "title": "Two-level responsibility",
+        "verify": "Check the long personal name, long HSA-id, missing display name and Anonymous example. HSA-id stays visible; exceptionally long values scroll inside their cell."
+      },
+      "classification": {
+        "title": "All classifications",
+        "verify": "A stacks the three values under one heading; B and C show their individual labels. Compare all three values with the baseline."
+      },
+      "count": {
+        "title": "Stable counts",
+        "verify": "Compare 0, 3, 128 and 1200. A right-aligns tabular digits; B and C add a count label. Click a count to show its local preview."
+      },
+      "actions": {
+        "title": "Compact action slots",
+        "verify": "Hover or Tab to 28 px actions. The Anonymous row has no actions; other rows reserve unused slots. Click edit/delete: only the preview message changes."
+      },
+      "areas": {
+        "title": "Expandable requirement areas",
+        "verify": "Expand and collapse the fourth example with click and Enter. Compare the same expanded data across variants; no area is removed."
+      },
+      "header": {
+        "title": "Heading and search",
+        "verify": "A/B/C align title and search on one row. Filter by API, clear the search and try an unmatched name. Arrow keys inside search must move the caret."
+      },
+      "responsive": {
+        "title": "Viewport, navigation and theme",
+        "verify": "Use 1440×900 and 1920×1080. Collapse/expand the real navigation and switch theme there. Check scrolling, focus and dark text contrast; also inspect 375 px width."
+      }
+    }
   }
 }

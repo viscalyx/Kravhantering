@@ -4050,5 +4050,81 @@
     "hiddenCreatedNorm": "Sökningen döljer den nya normreferensen ”{name}”. Den är fortfarande markerad.",
     "creationPersistence": "Det nya objektet sparas direkt. Avbryt i väljdialogen kasserar endast urvalet.",
     "searchHelp": "Sök på namn, referens-ID eller paketets syfte. Markeringar behålls när du filtrerar listan."
+  },
+  "prototype1350": {
+    "throwaway": "TILLFÄLLIG PROTOTYP",
+    "data": "Data",
+    "examples": "Representativa exempel",
+    "live": "Verkliga data (läsning)",
+    "visibleRows": "{count} rader",
+    "state": "Visa tillstånd",
+    "reviewGuide": "Ändringar och granskningslista",
+    "tradeoff": "Inget designbeslut är godkänt ännu. A prioriterar täthet; B tydliga etiketter; C läsning av ett underlag. Välj en vy eller kombinera delar efter granskning.",
+    "classifications": "Klassningar",
+    "actions": "Åtgärder",
+    "open": "Öppna kravunderlag",
+    "openRequirements": "Öppna krav",
+    "expandAreas": "Expandera kravområden",
+    "collapseAreas": "Fäll ihop kravområden",
+    "preview": "Endast förhandsvisning: {action} — {name}. Inga data ändrades.",
+    "noWrites": "Prototypens åtgärder uppdaterar bara detta meddelande. Skapande, redigering, borttagning och ansvarstilldelningar sparas inte.",
+    "switcher": "Prototypalternativ",
+    "previous": "Föregående alternativ",
+    "next": "Nästa alternativ",
+    "filterHelp": "Hjälp med filtrering",
+    "filterHelpText": "Filtrera valda data på kravunderlagets namn. Samma filter behålls när du byter alternativ.",
+    "empty": "Inga matchande kravunderlag.",
+    "variants": {
+      "baseline": {
+        "name": "Nuläge",
+        "description": "Presentationsreferens: åtta kolumner, separat sökrad och åtgärder på 44 px. Återskapad med säkra förhandsvisningar; jämför alternativen med exakt samma data."
+      },
+      "A": {
+        "name": "Kompakt tabell",
+        "description": "Prioritera namn. Stabil ansvarskolumn, tre klassningar staplade i en kolumn, högerställda antal och kompakta åtgärder. Förstahandskandidat för att skanna många rader."
+      },
+      "B": {
+        "name": "Tvånivårader",
+        "description": "Namn och ansvar leder varje rad. Klassningar med etiketter och expanderbara kravområden ligger på en andra rad. Mer luft, färre rader per skärm."
+      },
+      "C": {
+        "name": "Kortvy",
+        "description": "Två kort per rad på desktop. Varje kravunderlag får rubrik, ansvarsblock och metadata med etiketter. Lättare att läsa ett underlag, svårare att jämföra en lång lista."
+      }
+    },
+    "checks": {
+      "names": {
+        "title": "Namnets utrymme",
+        "verify": "Jämför 0 och A vid 1440 och 1920 px. Läs det långa fjärde exemplet och jämför radbrytning. B placerar metadata under; C delar arbetsytan i kort."
+      },
+      "identity": {
+        "title": "Ansvar på två nivåer",
+        "verify": "Kontrollera långt personnamn, långt HSA-id, saknat visningsnamn och Anonym. HSA-id är synligt; extra långa värden rullas inne i cellen."
+      },
+      "classification": {
+        "title": "Alla klassningar",
+        "verify": "A staplar tre värden under en rubrik; B och C visar egna etiketter. Jämför alla tre värden med nuläget."
+      },
+      "count": {
+        "title": "Stabila antal",
+        "verify": "Jämför 0, 3, 128 och 1200. A högerställer siffror med fast bredd; B och C visar antalets etikett. Klicka ett antal för lokal förhandsvisning."
+      },
+      "actions": {
+        "title": "Kompakta åtgärder",
+        "verify": "Peka eller tabba till åtgärder på 28 px. Anonym-raden saknar åtgärder; övriga rader reserverar tomma platser. Redigera/radera ändrar bara förhandsvisningen."
+      },
+      "areas": {
+        "title": "Expanderbara kravområden",
+        "verify": "Expandera och fäll ihop fjärde exemplet med klick och Enter. Jämför samma expanderade data mellan alternativen; inga kravområden tas bort."
+      },
+      "header": {
+        "title": "Rubrik och sökning",
+        "verify": "A/B/C placerar rubrik och sökning på samma rad. Sök på API, rensa och sök ett namn utan träff. Piltangenter i sökfältet ska flytta markören."
+      },
+      "responsive": {
+        "title": "Fönster, navigation och tema",
+        "verify": "Använd 1440×900 och 1920×1080. Fäll in/ut riktig navigation och byt tema där. Kontrollera rullning, fokus och mörkt tema; prova också 375 px bredd."
+      }
+    }
   }
 }
