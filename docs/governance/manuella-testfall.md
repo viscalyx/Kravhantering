@@ -1540,11 +1540,20 @@ historikposter.
 Öppna den hopfällda panelen **Kravbibliotek** när ett testfall använder båda
 panelerna i kravunderlagets detaljvy.
 
-### SPEC-01: lista, filtrera och rensa kravunderlag
+### SPEC-01: välj listvy, filtrera och rensa kravunderlag
 
-**Steg:** Öppna `/sv/specifications`, filtrera på `AUTHZ`, rensa filtret.
+**Steg:** Öppna `/sv/specifications`. Växla mellan Tabellvy, Tvåradersvy och
+Kortvy med knapparna bredvid rubriken och med tangentbordets piltangenter,
+Home och End. Filtrera på ett namn, byt vy, prova ett namn utan träffar och
+rensa sökningen i varje vy. Öppna sökfältets hjälp. Öppna ett underlag via
+namnet och prova tillåtna redigerings- och medförfattaråtgärder. Ladda om sidan.
 
-**Förväntat resultat:** Listan begränsas och återställs.
+**Förväntat resultat:** Vald vy framgår även med hjälpmedel. Sökningen bevaras
+vid vybyte. Alla vyer visar samma underlag i stigande namnordning enligt valt
+språk, med kravunderlagskod, ansvarigs namn och HSA-id samt klassningar.
+Långa HSA-id kan läsas med tangentbord. Endast tillåtna åtgärder erbjuds.
+Sökningen begränsar listan, visar ett meddelande utan träffar och återställer
+listan vid rensning. Hjälpen förklarar sökningen. Omladdning öppnar tabellvyn.
 
 ### SPEC-02: skapa nytt kravunderlag
 

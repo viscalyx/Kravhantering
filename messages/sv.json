@@ -965,7 +965,16 @@
       "procurement": "Anbuds-CSV",
       "full": "Full CSV-export"
     },
-    "downloadProfileReportPdf": "{report}"
+    "downloadProfileReportPdf": "{report}",
+    "viewSwitcher": "Listvy",
+    "views": {
+      "table": "Tabellvy",
+      "rows": "Tvåradersvy",
+      "cards": "Kortvy"
+    },
+    "actions": "Åtgärder",
+    "filterHelp": "Hjälp: filtrera på namn",
+    "filterHelpText": "Skriv hela eller delar av kravunderlagets namn. Sökningen gäller alla tre vyer."
   },
   "deviation": {
     "title": "Avsteg",

@@ -227,16 +227,20 @@ och generera granskningsrapporter direkt från underlaget.
 
 ### Kravunderlagslista
 
-Listan visar underlagens namn, ID, kravunderlagets livscykelstatus och
-genomförandeform. Klicka på ett underlag för att se dess detaljer.
+Listan visar kravunderlagets namn och kod, ansvarigs namn och HSA-id samt
+klassningar. Klicka på namnet för att öppna underlaget och arbeta med dess
+krav. Underlagen sorteras i stigande namnordning enligt valt språk.
 
-![Kravunderlagslista](images/021-kravunderlagslista.png)
+Knapparna **Tabellvy**, **Tvåradersvy** och **Kortvy** bredvid rubriken väljer
+hur listan visas. Använd piltangenterna när vyvalet har fokus, eller Home och
+End för första respektive sista vyn. Sidan öppnar tabellvyn efter omladdning.
+Tillåtna åtgärder visas vid varje underlag; i kortvyn ligger de bredvid namnet.
 
 ### Sökning bland kravunderlag
 
-Filtrera kravunderlag genom att skriva i sökrutan. Listan uppdateras i realtid.
-
-![Sökning bland kravunderlag](images/022-kravunderlagslista-sok.png)
+Filtrera kravunderlag genom att skriva hela eller delar av namnet i sökrutan.
+Sökningen följer med när du byter vy. Använd **Rensa sökning** för att visa
+hela listan igen. Frågetecknet i sökfältet öppnar hjälp om sökningen.
 
 ### Skapa nytt kravunderlag
 

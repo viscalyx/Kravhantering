@@ -1,8 +1,12 @@
 import { expect, type Locator, test } from '@playwright/test'
+import { upsertRequirementResponsibilityPerson } from '@/lib/dal/requirement-responsibility-people'
 import { escapeRegExp } from '@/tests/helpers/common'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { expectApiResponseOk } from '../api-response-assertions'
-import { seedAuthorizationResponsibilityPeople } from '../authorization/authorization-test-helpers'
+import {
+  seedAuthorizationResponsibilityPeople,
+  withPlaywrightSqlServerDataSource,
+} from '../authorization/authorization-test-helpers'
 
 const viewports = [{ ...DESKTOP_VIEWPORT, name: 'desktop' }]
 
@@ -85,12 +89,6 @@ for (const viewport of viewports) {
         name: 'Nytt kravunderlag',
       })
       await expect(createButton).toBeVisible()
-      const areaPill = page
-        .locator('[data-specification-requirement-area-pill="true"]')
-        .first()
-      await expect(areaPill).toBeVisible()
-      await expect(areaPill).toHaveJSProperty('tagName', 'SPAN')
-      await expect(areaPill).toHaveClass(/text-\[11px\]/)
       const editAction = page.getByRole('button', { name: 'Redigera' }).first()
       const deleteAction = page.getByRole('button', { name: 'Ta bort' }).first()
       await expect(editAction).toBeVisible()
@@ -102,26 +100,19 @@ for (const viewport of viewports) {
 
       if (viewport.name === 'desktop') {
         const tableSurface = page.getByRole('table')
-        const requirementAreasHeader = page.getByRole('columnheader', {
-          name: 'Kravområden',
-        })
 
         await expect(tableSurface).toHaveCount(1)
 
         await expect(async () => {
           const buttonBox = await createButton.boundingBox()
           const deleteActionBox = await deleteAction.boundingBox()
-          const requirementAreasHeaderBox =
-            await requirementAreasHeader.boundingBox()
           const tableBox = await tableSurface.boundingBox()
           const viewportSize = page.viewportSize()
 
           expect(buttonBox).not.toBeNull()
           expect(deleteActionBox).not.toBeNull()
-          expect(requirementAreasHeaderBox).not.toBeNull()
           expect(tableBox).not.toBeNull()
           expect(viewportSize).not.toBeNull()
-          expect(requirementAreasHeaderBox?.width ?? 0).toBeLessThanOrEqual(260)
           expect(
             (deleteActionBox?.x ?? 0) + (deleteActionBox?.width ?? 0),
           ).toBeLessThanOrEqual(
@@ -335,65 +326,6 @@ for (const viewport of viewports) {
         await expect(editDialog).toBeHidden()
       })
 
-      const hasMultiAreaSpecification = await page.evaluate(() =>
-        Array.from(
-          document.querySelectorAll(
-            '[data-specification-requirement-area-pills="true"]',
-          ),
-        ).some(
-          group =>
-            group.querySelectorAll(
-              '[data-specification-requirement-area-pill="true"]',
-            ).length > 1,
-        ),
-      )
-      expect(hasMultiAreaSpecification).toBe(true)
-
-      await page.evaluate(() => {
-        const descriptor = Object.getOwnPropertyDescriptor(
-          HTMLElement.prototype,
-          'scrollHeight',
-        )
-
-        Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
-          configurable: true,
-          get() {
-            const element = this as HTMLElement
-            if (
-              element.dataset.specificationRequirementAreaPillList === 'true'
-            ) {
-              return 48
-            }
-
-            return descriptor?.get?.call(this) ?? 0
-          },
-        })
-
-        window.dispatchEvent(new Event('resize'))
-      })
-
-      const areaToggle = page
-        .locator('[data-specification-requirement-area-pill-toggle="true"]')
-        .first()
-      const areaList = areaToggle.locator(
-        'xpath=../*[@data-specification-requirement-area-pill-list="true"]',
-      )
-      await expect(areaToggle).toBeVisible()
-      await expect(areaToggle).toHaveAttribute('aria-expanded', 'false')
-      await expect(areaList).toHaveClass(/max-h-6/)
-      const areaToggleBox = await areaToggle.boundingBox()
-      expect(areaToggleBox).not.toBeNull()
-      expect(areaToggleBox?.height ?? 0).toBeGreaterThanOrEqual(44)
-      expect(areaToggleBox?.width ?? 0).toBeGreaterThanOrEqual(44)
-
-      await areaToggle.click()
-      await expect(areaToggle).toHaveAttribute('aria-expanded', 'true')
-      await expect(areaList).not.toHaveClass(/max-h-6/)
-
-      await areaToggle.click()
-      await expect(areaToggle).toHaveAttribute('aria-expanded', 'false')
-      await expect(areaList).toHaveClass(/max-h-6/)
-
       await nameFilter.fill('e-tjänst')
 
       await expect(
@@ -544,4 +476,295 @@ test.describe('Requirements specifications destructive manual cases', () => {
       })
     })
   })
+})
+
+for (const width of [320, 768, 1440, 1920]) {
+  test(`SPEC-01: list views preserve search and readable geometry at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: width === 1920 ? 1080 : 900 })
+    await page.goto('/sv/specifications')
+    const nameFilter = page.getByRole('textbox', { name: 'Filtrera på namn' })
+    const viewLabels = ['Tabellvy', 'Tvåradersvy', 'Kortvy']
+    for (const dark of [false, true]) {
+      for (const expanded of width < 1024 ? [false] : [false, true]) {
+        await test.step(`${dark ? 'dark' : 'light'}, navigation ${expanded ? 'expanded' : 'collapsed'}`, async () => {
+          await page.evaluate(
+            ({ dark, expanded }) => {
+              localStorage.setItem('theme', dark ? 'dark' : 'light')
+              localStorage.setItem(
+                'requirements.navigationRail.expanded.v1',
+                expanded ? 'expanded' : 'collapsed',
+              )
+            },
+            { dark, expanded },
+          )
+          await page.reload()
+          const switcher = page.getByRole('group', {
+            name: 'Listvy',
+            exact: true,
+          })
+          await expect(switcher).toHaveAttribute(
+            'data-developer-mode-name',
+            'view switcher',
+          )
+          await expect(
+            page.getByRole('button', { name: 'Tabellvy', exact: true }),
+          ).toHaveAttribute('aria-pressed', 'true')
+          const names = await page.locator('table tbody a').allTextContents()
+          expect(names.length).toBeGreaterThan(0)
+          expect(names).toEqual(
+            [...names].sort((a, b) =>
+              a.localeCompare(b, 'sv', { sensitivity: 'base' }),
+            ),
+          )
+          for (const [index, label] of viewLabels.entries()) {
+            const selected = page.getByRole('button', {
+              name: label,
+              exact: true,
+            })
+            await selected.click()
+            await expect(selected).toHaveAttribute('aria-pressed', 'true')
+            const surface =
+              index === 0
+                ? page.getByRole('table')
+                : page.locator('article').first().locator('..')
+            await expect(surface.getByRole('link')).toHaveText(names)
+            if (index === 0) {
+              await expect(surface.getByRole('columnheader')).toHaveText([
+                'Namn',
+                'Kravunderlagsansvarig',
+                'Styrningsobjektstyp',
+                'Genomförandeform',
+                'Kravunderlagets livscykelstatus',
+                'Åtgärder',
+              ])
+            }
+            await nameFilter.fill('e-tjänst')
+            await expect(
+              surface.getByRole('link', {
+                name: 'Upphandling av e-tjänstplattform',
+                exact: true,
+              }),
+            ).toHaveCount(1)
+            await nameFilter.focus()
+            const searchSurface = nameFilter.locator('..')
+            await expect(searchSurface).toHaveAttribute(
+              'data-developer-mode-name',
+              'search field',
+            )
+            await expect
+              .poll(() =>
+                searchSurface.evaluate(el => getComputedStyle(el).boxShadow),
+              )
+              .not.toBe('none')
+            await expect(async () => {
+              expect(
+                await page.evaluate(
+                  () =>
+                    document.documentElement.scrollWidth <= window.innerWidth,
+                ),
+              ).toBe(true)
+              const boxes = await surface
+                .getByRole('button')
+                .evaluateAll(elements =>
+                  elements.map(el => ({
+                    width: el.getBoundingClientRect().width,
+                    height: el.getBoundingClientRect().height,
+                  })),
+                )
+              for (const box of boxes) {
+                expect(box.width).toBeGreaterThanOrEqual(24)
+                expect(box.height).toBeGreaterThanOrEqual(24)
+              }
+            }).toPass()
+            const identity = surface
+              .locator('[data-developer-mode-name="responsible identity"]')
+              .first()
+            await expect(identity).toContainText('SE5560000001-')
+            if (width >= 1440) {
+              const hsa = identity.locator('[tabindex="0"]')
+              expect(
+                await hsa.evaluate(el => el.scrollWidth <= el.clientWidth),
+              ).toBe(true)
+            }
+            if (index === 2) {
+              const card = page.getByRole('article').first()
+              const linkBox = await card.getByRole('link').boundingBox()
+              const actionBox = await card
+                .getByRole('button', { name: 'Redigera', exact: true })
+                .boundingBox()
+              if (!actionBox || !linkBox)
+                throw new Error('Missing card title or action geometry')
+              expect(actionBox.x).toBeGreaterThan(linkBox.x + linkBox.width)
+              expect(Math.abs(actionBox.y - linkBox.y)).toBeLessThan(6)
+            }
+            await page.screenshot({
+              path: testInfo.outputPath(
+                `${width}-${dark ? 'dark' : 'light'}-${expanded ? 'expanded' : 'collapsed'}-${index}.png`,
+              ),
+            })
+            await selected.focus()
+            await page.keyboard.press('ArrowRight')
+            await expect(
+              page.getByRole('button', {
+                name: viewLabels[(index + 1) % 3],
+                exact: true,
+              }),
+            ).toHaveAttribute('aria-pressed', 'true')
+            await expect(nameFilter).toHaveValue('e-tjänst')
+            await selected.click()
+            await nameFilter.fill('no-matching-specification-name-1350')
+            await expect(
+              page.getByRole('status').filter({ hasText: 'Inga resultat' }),
+            ).toHaveCount(1)
+            await page.getByRole('button', { name: 'Rensa sökning' }).click()
+            await expect(nameFilter).toHaveValue('')
+            await expect(surface.getByRole('link')).toHaveText(names)
+          }
+          await page
+            .getByRole('button', { name: 'Hjälp: filtrera på namn' })
+            .click()
+          await expect(nameFilter).toHaveAccessibleDescription(
+            'Skriv hela eller delar av kravunderlagets namn. Sökningen gäller alla tre vyer.',
+          )
+          await page
+            .getByRole('button', { name: 'Kortvy', exact: true })
+            .focus()
+          await page.keyboard.press('Home')
+          await expect(
+            page.getByRole('button', { name: 'Tabellvy', exact: true }),
+          ).toBeFocused()
+          await page.keyboard.press('End')
+          await expect(
+            page.getByRole('button', { name: 'Kortvy', exact: true }),
+          ).toBeFocused()
+        })
+      }
+    }
+  })
+}
+
+test('SPEC-01: long identities scroll with the keyboard and long names and codes remain readable in each view', async ({
+  page,
+  request,
+}) => {
+  const stamp = Date.now().toString()
+  const hsaId = `SE5560000001-${stamp.padStart(18, '0')}`
+  const name = `PWT-1350 Kravunderlag för upphandling av en gemensam informationsplattform med särskilda krav på informationssäkerhet ${stamp}`
+  const code = `PWT-1350-LONG-CODE-${stamp}`
+  const response = await request.post('/api/requirements-specifications', {
+    data: {
+      name,
+      specificationCode: code,
+      responsibleHsaId: 'SE5560000001-admin1',
+      specificationLifecycleStatusId: 1,
+    },
+  })
+  await expectApiResponseOk(
+    response,
+    'create isolated list readability fixture',
+  )
+  const { id } = (await response.json()) as { id: number }
+  try {
+    // Set up an isolated identity at the supported HSA-id length limit.
+    await withPlaywrightSqlServerDataSource(async db => {
+      await db.transaction(async manager => {
+        await upsertRequirementResponsibilityPerson(manager, {
+          hsaId,
+          givenName: 'Long',
+          middleName: null,
+          surname: 'Identifier',
+          email: 'long@example.test',
+        })
+        await manager.query(
+          'UPDATE requirements_specifications SET responsible_hsa_id = @0 WHERE id = @1',
+          [hsaId, id],
+        )
+      })
+    })
+    await page.setViewportSize({ width: 320, height: 900 })
+    await page.goto('/sv/specifications')
+    await page.getByRole('textbox', { name: 'Filtrera på namn' }).fill(stamp)
+    for (const view of ['Tabellvy', 'Tvåradersvy', 'Kortvy']) {
+      await test.step(`${view}: read the full identity with the keyboard`, async () => {
+        await page.getByRole('button', { name: view, exact: true }).click()
+        const nameLink = page.getByRole('link', { name, exact: true })
+        await expect(nameLink).toHaveCount(1)
+        const identifier = page.getByText(hsaId, { exact: true })
+        await expect(identifier).toHaveText(hsaId)
+        expect(
+          await identifier.evaluate(el => el.scrollWidth > el.clientWidth),
+        ).toBe(true)
+        await nameLink.focus()
+        for (let step = 0; step < 5; step++) {
+          await page.keyboard.press('Tab')
+          if (await identifier.evaluate(el => el === document.activeElement))
+            break
+        }
+        await expect(identifier).toBeFocused()
+        for (let step = 0; step < 12; step++)
+          await page.keyboard.press('ArrowRight')
+        await expect
+          .poll(() =>
+            identifier.evaluate(
+              el => el.scrollLeft + el.clientWidth >= el.scrollWidth - 1,
+            ),
+          )
+          .toBe(true)
+        const codeElement = page
+          .locator('[data-developer-mode-name="specification code"]')
+          .filter({ hasText: code })
+        await expect(codeElement).toContainText(code)
+        expect(
+          await codeElement.evaluate(el => el.scrollWidth <= el.clientWidth),
+        ).toBe(true)
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true)
+      })
+    }
+    await test.step('keep short names and their codes on the same row', async () => {
+      await page.setViewportSize(DESKTOP_VIEWPORT)
+      await page
+        .getByRole('button', { name: 'Tvåradersvy', exact: true })
+        .click()
+      await page
+        .getByRole('article', { name, exact: true })
+        .getByRole('button', { name: 'Redigera', exact: true })
+        .click()
+      const dialog = page.getByRole('dialog', { name: 'Redigera kravunderlag' })
+      await dialog
+        .getByRole('textbox', { name: 'Namn *', exact: true })
+        .fill(`PWT-1350 ${stamp}`)
+      await dialog.getByRole('button', { name: 'Spara', exact: true }).click()
+      await expect(dialog).toHaveCount(0)
+      const nameLink = page.getByRole('link', {
+        name: `PWT-1350 ${stamp}`,
+        exact: true,
+      })
+      const codeElement = page
+        .locator('[data-developer-mode-name="specification code"]')
+        .filter({ hasText: code })
+      const nameBox = await nameLink.boundingBox()
+      const codeBox = await codeElement.boundingBox()
+      if (!nameBox || !codeBox)
+        throw new Error('Missing specification name or code geometry')
+      expect(codeBox.x).toBeGreaterThan(nameBox.x + nameBox.width)
+      expect(Math.abs(codeBox.y - nameBox.y)).toBeLessThan(8)
+    })
+  } finally {
+    await expectApiResponseOk(
+      await request.delete(`/api/requirements-specifications/${id}`),
+      'delete isolated list readability fixture',
+    )
+    await withPlaywrightSqlServerDataSource(db =>
+      db.query(
+        'DELETE FROM requirement_responsibility_people WHERE hsa_id = @0',
+        [hsaId],
+      ),
+    )
+  }
 })

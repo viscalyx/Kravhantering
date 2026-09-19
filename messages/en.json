@@ -965,7 +965,16 @@
       "procurement": "Tender CSV",
       "full": "Full CSV export"
     },
-    "downloadProfileReportPdf": "{report}"
+    "downloadProfileReportPdf": "{report}",
+    "viewSwitcher": "List view",
+    "views": {
+      "table": "Table view",
+      "rows": "Two-row view",
+      "cards": "Card view"
+    },
+    "actions": "Actions",
+    "filterHelp": "Help: filter by name",
+    "filterHelpText": "Enter all or part of a specification name. The search applies to all three views."
   },
   "deviation": {
     "title": "Deviations",

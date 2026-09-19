@@ -11,9 +11,10 @@ import { StrictMode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const confirmMock = vi.fn()
+let activeLocale = 'en'
 
 vi.mock('next-intl', () => ({
-  useLocale: () => 'en',
+  useLocale: () => activeLocale,
   useTranslations: (ns?: string) => (key: string) =>
     ns ? `${ns}.${key}` : key,
 }))
@@ -57,33 +58,6 @@ function createDeferred<T>() {
   })
 
   return { promise, resolve }
-}
-
-function mockPillListScrollHeight(height: number) {
-  const descriptor = Object.getOwnPropertyDescriptor(
-    HTMLElement.prototype,
-    'scrollHeight',
-  )
-
-  Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
-    configurable: true,
-    get: function (this: HTMLElement) {
-      if (this.dataset.specificationRequirementAreaPillList === 'true') {
-        return height
-      }
-
-      return descriptor?.get?.call(this) ?? 0
-    },
-  })
-
-  return () => {
-    if (descriptor) {
-      Object.defineProperty(HTMLElement.prototype, 'scrollHeight', descriptor)
-      return
-    }
-
-    Reflect.deleteProperty(HTMLElement.prototype, 'scrollHeight')
-  }
 }
 
 let fetchMock: ReturnType<typeof vi.fn>
@@ -172,6 +146,7 @@ describe('RequirementsSpecificationsClient', () => {
   })
 
   beforeEach(() => {
+    activeLocale = 'en'
     vi.clearAllMocks()
     confirmMock.mockReset()
     fetchMock = vi.fn()
@@ -190,6 +165,194 @@ describe('RequirementsSpecificationsClient', () => {
       return Promise.resolve(okJson({}))
     })
   })
+
+  it.each([
+    ['en', ['Ängen', 'apple', 'Zebra']],
+    ['sv', ['apple', 'Zebra', 'Ängen']],
+  ])('sorts specification names using the %s locale', async (locale, names) => {
+    activeLocale = locale as string
+    render(
+      <RequirementsSpecificationsClient
+        initialData={{
+          errors: [],
+          governanceObjectTypes: [],
+          implementationTypes: [],
+          lifecycleStatuses: [],
+          specifications: ['Zebra', 'Ängen', 'apple'].map((name, index) => ({
+            ...sampleSpecifications[0],
+            id: index + 1,
+            name,
+          })),
+        }}
+      />,
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'specification.newSpecification' }),
+      ).toBeEnabled(),
+    )
+    expect(
+      within(screen.getByRole('table'))
+        .getAllByRole('link')
+        .map(link => link.textContent),
+    ).toEqual(names)
+  })
+
+  it('switches list views with shared search, identity, classifications and permitted actions', async () => {
+    render(<RequirementsSpecificationsClient />)
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'specification.newSpecification' }),
+      ).toBeEnabled(),
+    )
+    const filter = screen.getByRole('textbox', {
+      name: 'specification.filterByName',
+    })
+    fireEvent.change(filter, { target: { value: 'Kravunderlag' } })
+    for (const view of ['rows', 'cards', 'table']) {
+      const button = screen.getByRole('button', {
+        name: `specification.views.${view}`,
+      })
+      fireEvent.click(button)
+      expect(button).toHaveAttribute('aria-pressed', 'true')
+      expect(filter).toHaveValue('Kravunderlag')
+      expect(
+        screen.getByRole('link', { name: 'Kravunderlag sv' }),
+      ).toHaveAttribute('href', '/specifications/1')
+      expect(screen.getByText('KRAVUNDERLAG-SV')).toBeInTheDocument()
+      expect(screen.getByText('Ada Admin')).toBeInTheDocument()
+      expect(screen.getByText('SE5560000001-ada1')).toBeInTheDocument()
+      expect(screen.getByText('Delivery area')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'specification.manageCoAuthors' }),
+      ).toBeEnabled()
+      fireEvent.click(screen.getByRole('button', { name: 'common.edit' }))
+      expect(
+        screen.getByRole('textbox', { name: /specification.name/ }),
+      ).toHaveValue('Kravunderlag sv')
+      fireEvent.click(screen.getByRole('button', { name: 'common.cancel' }))
+      fireEvent.change(filter, { target: { value: 'no matching name' } })
+      expect(await screen.findByText('common.noResults')).toBeInTheDocument()
+      fireEvent.click(
+        screen.getByRole('button', { name: 'common.clearSearch' }),
+      )
+      expect(filter).toHaveValue('')
+      fireEvent.change(filter, { target: { value: 'Kravunderlag' } })
+    }
+  })
+
+  it('supports keyboard view selection and marks each list surface for Developer Mode', async () => {
+    const { container } = render(<RequirementsSpecificationsClient />)
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'specification.newSpecification' }),
+      ).toBeEnabled(),
+    )
+    const switcher = screen.getByRole('group', {
+      name: 'specification.viewSwitcher',
+    })
+    expect(switcher).toHaveAttribute(
+      'data-developer-mode-name',
+      'view switcher',
+    )
+    for (const [key, view, marker] of [
+      ['ArrowRight', 'rows', 'two-row list'],
+      ['End', 'cards', 'card grid'],
+      ['ArrowRight', 'table', 'crud table'],
+      ['ArrowLeft', 'cards', 'card grid'],
+      ['Home', 'table', 'crud table'],
+    ]) {
+      fireEvent.keyDown(switcher, { key })
+      const selected = screen.getByRole('button', {
+        name: `specification.views.${view}`,
+      })
+      expect(selected).toHaveAttribute('aria-pressed', 'true')
+      expect(selected).toHaveFocus()
+      expect(
+        container.querySelector(`[data-developer-mode-name="${marker}"]`),
+      ).toBeInTheDocument()
+      expect(
+        container.querySelector(
+          '[data-developer-mode-name="specification code"]',
+        ),
+      ).toHaveTextContent('KRAVUNDERLAG-SV')
+    }
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.filterHelp' }),
+    )
+    expect(screen.getByText('specification.filterHelpText')).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: 'specification.filterByName' }),
+    ).toHaveAccessibleDescription('specification.filterHelpText')
+  })
+
+  it.each(['table', 'rows', 'cards'])(
+    'preserves identity privacy and read-only permissions in %s view',
+    async view => {
+      render(
+        <RequirementsSpecificationsClient
+          initialData={{
+            errors: [],
+            governanceObjectTypes: [],
+            implementationTypes: [],
+            lifecycleStatuses: [],
+            specifications: [
+              {
+                ...sampleSpecifications[0],
+                responsibleDisplayName: 'no-user',
+                permissions: {
+                  canEditContent: false,
+                  canManageAssignments: false,
+                  canReviewDecisions: false,
+                  canUseAi: false,
+                },
+              },
+              {
+                ...sampleSpecifications[0],
+                id: 2,
+                name: 'Second specification',
+                responsibleDisplayName: null,
+                responsibleHsaId:
+                  'SE5560000001-very-long-identifier-accessible-with-keyboard',
+                permissions: {
+                  canEditContent: false,
+                  canManageAssignments: false,
+                  canReviewDecisions: false,
+                  canUseAi: false,
+                },
+              },
+            ],
+          }}
+        />,
+      )
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', {
+            name: 'specification.newSpecification',
+          }),
+        ).toBeEnabled(),
+      )
+      fireEvent.click(
+        screen.getByRole('button', { name: `specification.views.${view}` }),
+      )
+      expect(screen.getByText('Anonymous')).toBeInTheDocument()
+      expect(screen.queryByText('no-user')).not.toBeInTheDocument()
+      expect(
+        screen.getByText(
+          'SE5560000001-very-long-identifier-accessible-with-keyboard',
+        ),
+      ).toHaveAttribute('tabindex', '0')
+      expect(
+        screen.queryByRole('button', { name: 'common.edit' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.delete' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'specification.manageCoAuthors' }),
+      ).not.toBeInTheDocument()
+    },
+  )
 
   it('renders heading', async () => {
     render(<RequirementsSpecificationsClient />)
@@ -448,10 +611,9 @@ describe('RequirementsSpecificationsClient', () => {
 
     expect(await screen.findByText('Kravunderlag sv')).toBeInTheDocument()
     expect(screen.getAllByText('—')).toHaveLength(4)
-    expect(screen.getByRole('link', { name: '3' })).toHaveAttribute(
-      'href',
-      '/specifications/1',
-    )
+    expect(
+      screen.getByRole('link', { name: 'Kravunderlag sv' }),
+    ).toHaveAttribute('href', '/specifications/1')
     expect(
       screen.queryByRole('button', { name: /specification\.manageCoAuthors/i }),
     ).toBeNull()
@@ -656,116 +818,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     const emptyState = await screen.findByText('specification.emptyState')
     expect(emptyState).toBeInTheDocument()
-    expect(emptyState.closest('td')).toHaveAttribute('colspan', '8')
-  })
-
-  it('renders requirement-area badges as compact static pills', async () => {
-    mockApi((url: string) => {
-      if (url === '/api/requirements-specifications')
-        return Promise.resolve(
-          okJson({
-            specifications: [
-              {
-                ...sampleSpecifications[0],
-                requirementAreas: [{ id: 9, name: 'Identity' }],
-              },
-            ],
-          }),
-        )
-      if (url === '/api/specification-governance-object-types')
-        return Promise.resolve(
-          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
-        )
-      if (url === '/api/specification-implementation-types')
-        return Promise.resolve(okJson({ types: sampleTypes }))
-      if (url === '/api/specification-lifecycle-statuses')
-        return Promise.resolve(okJson({ statuses: sampleStatuses }))
-      return Promise.resolve(okJson({}))
-    })
-
-    render(<RequirementsSpecificationsClient />)
-
-    const areaBadge = await screen.findByText('Identity')
-    expect(areaBadge.tagName).toBe('SPAN')
-    expect(areaBadge.closest('a')).toBeNull()
-    expect(areaBadge.className).toContain('text-[11px]')
-    expect(areaBadge.className).toContain('h-6')
-    expect(areaBadge.className).not.toContain('min-h')
-    expect(areaBadge.className).not.toContain('focus-visible:ring')
-  })
-
-  it('collapses overflowing requirement-area pills and expands them on demand', async () => {
-    const restoreScrollHeight = mockPillListScrollHeight(56)
-
-    try {
-      mockApi((url: string) => {
-        if (url === '/api/requirements-specifications')
-          return Promise.resolve(
-            okJson({
-              specifications: [
-                {
-                  ...sampleSpecifications[0],
-                  requirementAreas: [
-                    { id: 9, name: 'Identity' },
-                    { id: 10, name: 'Integration' },
-                    { id: 11, name: 'Security' },
-                  ],
-                },
-              ],
-            }),
-          )
-        if (url === '/api/specification-governance-object-types')
-          return Promise.resolve(
-            okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
-          )
-        if (url === '/api/specification-implementation-types')
-          return Promise.resolve(okJson({ types: sampleTypes }))
-        if (url === '/api/specification-lifecycle-statuses')
-          return Promise.resolve(okJson({ statuses: sampleStatuses }))
-        return Promise.resolve(okJson({}))
-      })
-
-      render(<RequirementsSpecificationsClient />)
-
-      const list = await waitFor(() => {
-        const node = document.querySelector(
-          '[data-specification-requirement-area-pill-list="true"]',
-        )
-        expect(node).not.toBeNull()
-        return node as HTMLElement
-      })
-      const group = list.closest(
-        '[data-specification-requirement-area-pills="true"]',
-      )
-      const expandButton = await screen.findByRole('button', {
-        name: 'common.showMore',
-      })
-
-      expect(group?.className).toContain('items-center')
-      expect(expandButton).toHaveAttribute('aria-expanded', 'false')
-      expect(expandButton.className).toContain('min-h-11')
-      expect(expandButton.className).toContain('min-w-11')
-      expect(list.className).toContain('max-h-6')
-      expect(list.className).toContain('overflow-hidden')
-
-      fireEvent.click(expandButton)
-
-      const collapseButton = screen.getByRole('button', {
-        name: 'common.showLess',
-      })
-      expect(collapseButton).toHaveAttribute('aria-expanded', 'true')
-      expect(group?.className).toContain('items-start')
-      expect(list.className).not.toContain('max-h-6')
-      expect(list.className).not.toContain('overflow-hidden')
-
-      fireEvent.click(collapseButton)
-      expect(
-        screen.getByRole('button', { name: 'common.showMore' }),
-      ).toHaveAttribute('aria-expanded', 'false')
-      expect(list.className).toContain('max-h-6')
-    } finally {
-      restoreScrollHeight()
-    }
+    expect(emptyState.closest('td')).toHaveAttribute('colspan', '6')
   })
 
   it('renders specification row actions as compact icon buttons', async () => {
@@ -793,23 +846,23 @@ describe('RequirementsSpecificationsClient', () => {
     expect(manageCoAuthorsButton).toHaveAccessibleName(
       'specification.manageCoAuthors',
     )
-    expect(manageCoAuthorsButton.className).toContain('h-11')
-    expect(manageCoAuthorsButton.className).toContain('w-11')
+    expect(manageCoAuthorsButton.className).toContain('h-7')
+    expect(manageCoAuthorsButton.className).toContain('w-7')
     expect(manageCoAuthorsButton.querySelector('svg')).not.toBeNull()
 
     expect(editButton).toHaveAttribute('title', 'common.edit')
     expect(editButton.closest('td')?.className).toContain('align-top')
     expect(editButton.textContent?.trim()).toBe('')
     expect(editButton).toHaveAccessibleName('common.edit')
-    expect(editButton.className).toContain('h-11')
-    expect(editButton.className).toContain('w-11')
+    expect(editButton.className).toContain('h-7')
+    expect(editButton.className).toContain('w-7')
     expect(editButton.querySelector('svg')).not.toBeNull()
 
     expect(deleteButton).toHaveAttribute('title', 'common.delete')
     expect(deleteButton.textContent?.trim()).toBe('')
     expect(deleteButton).toHaveAccessibleName('common.delete')
-    expect(deleteButton.className).toContain('h-11')
-    expect(deleteButton.className).toContain('w-11')
+    expect(deleteButton.className).toContain('h-7')
+    expect(deleteButton.className).toContain('w-7')
     expect(deleteButton.querySelector('svg')).not.toBeNull()
   })
 

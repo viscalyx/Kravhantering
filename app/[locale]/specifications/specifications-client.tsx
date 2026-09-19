@@ -1,23 +1,20 @@
 'use client'
 
 import {
-  ChevronDown,
-  ChevronUp,
+  Check,
+  CircleHelp,
+  LayoutGrid,
   Pencil,
   Plus,
+  Rows2,
   Search,
+  Table2,
   Trash2,
   UsersRound,
   X,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import {
-  useCallback,
-  useDeferredValue,
-  useEffect,
-  useRef,
-  useState,
-} from 'react'
+import { useDeferredValue, useEffect, useRef, useState } from 'react'
 import CoAuthorsManagementModal from '@/components/CoAuthorsManagementModal'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FloatingActionRail from '@/components/FloatingActionRail'
@@ -54,7 +51,8 @@ const REQUIREMENT_SPECIFICATIONS_HELP: HelpContent = {
   titleKey: 'requirementsSpecifications.title',
 }
 
-const REQUIREMENT_AREA_PILL_ROW_HEIGHT = 24
+const listViews = ['table', 'rows', 'cards'] as const
+type ListView = (typeof listViews)[number]
 const SPECIFICATIONS_LOADING_INDICATOR_DELAY_MS = 1000
 const EMPTY_INITIAL_DATA: RequirementsSpecificationsInitialData = {
   collectionPermissions: { canCreateSpecification: true },
@@ -104,113 +102,6 @@ function readCurrentUser(
   }
 }
 
-function RequirementAreaPills({
-  areas,
-}: {
-  areas: Specification['requirementAreas']
-}) {
-  const tc = useTranslations('common')
-  const [expanded, setExpanded] = useState(false)
-  const [canExpand, setCanExpand] = useState(false)
-  const listRef = useRef<HTMLDivElement>(null)
-
-  const updateCanExpand = useCallback(() => {
-    const list = listRef.current
-    if (!list) {
-      return
-    }
-
-    const nextCanExpand =
-      list.scrollHeight > REQUIREMENT_AREA_PILL_ROW_HEIGHT + 1
-    setCanExpand(nextCanExpand)
-    if (!nextCanExpand) {
-      setExpanded(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    const list = listRef.current
-    if (!list) {
-      return
-    }
-
-    updateCanExpand()
-    const frame = window.requestAnimationFrame(updateCanExpand)
-
-    const handleResize = () => updateCanExpand()
-    window.addEventListener('resize', handleResize)
-
-    const resizeObserver =
-      typeof ResizeObserver === 'undefined'
-        ? null
-        : new ResizeObserver(updateCanExpand)
-    resizeObserver?.observe(list)
-
-    return () => {
-      window.cancelAnimationFrame(frame)
-      window.removeEventListener('resize', handleResize)
-      resizeObserver?.disconnect()
-    }
-  }, [updateCanExpand])
-
-  const toggleLabel = expanded ? tc('showLess') : tc('showMore')
-
-  return (
-    <div
-      className={`flex gap-1 ${expanded ? 'items-start' : 'items-center'}`}
-      data-specification-requirement-area-pills="true"
-    >
-      <div
-        className={`flex min-w-0 flex-1 flex-wrap gap-1 ${expanded ? '' : 'max-h-6 overflow-hidden'}`}
-        data-specification-requirement-area-pill-list="true"
-        ref={listRef}
-      >
-        {areas.map(area => (
-          <span
-            className="inline-flex h-6 items-center whitespace-nowrap rounded-full border border-primary-200/80 bg-primary-50/80 px-2 text-[11px] font-medium text-primary-700 dark:border-primary-800/60 dark:bg-primary-950/30 dark:text-primary-300"
-            data-specification-requirement-area-pill="true"
-            key={area.id}
-          >
-            {area.name}
-          </span>
-        ))}
-      </div>
-      {canExpand ? (
-        <button
-          aria-expanded={expanded}
-          aria-label={toggleLabel}
-          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:text-primary-300 dark:hover:bg-primary-950/30"
-          data-specification-requirement-area-pill-toggle="true"
-          {...devMarker({
-            context: 'specifications',
-            name: 'table action',
-            value: expanded
-              ? 'collapse requirement areas'
-              : 'expand requirement areas',
-          })}
-          onClick={() => setExpanded(value => !value)}
-          title={toggleLabel}
-          type="button"
-        >
-          {expanded ? (
-            <ChevronUp
-              aria-hidden="true"
-              className="h-3.5 w-3.5"
-              focusable={false}
-            />
-          ) : (
-            <ChevronDown
-              aria-hidden="true"
-              className="h-3.5 w-3.5"
-              focusable={false}
-            />
-          )}
-        </button>
-      ) : null}
-    </div>
-  )
-}
-
 export default function RequirementsSpecificationsClient({
   initialData,
 }: {
@@ -257,7 +148,7 @@ export default function RequirementsSpecificationsClient({
     item ? (locale === 'sv' ? item.nameSv : item.nameEn) : '—'
   const getResponsibleDisplayName = (spec: Specification) =>
     formatActorDisplayNameForLocale(spec.responsibleDisplayName, locale) ?? null
-  const specificationTableColumnCount = 8
+  const specificationTableColumnCount = 6
 
   const governanceObjectTypesResource = useAsyncResource<
     SpecificationTaxonomyItem[]
@@ -393,6 +284,8 @@ export default function RequirementsSpecificationsClient({
   const [editSpec, setEditSpec] = useState<Specification | null>(null)
   const [coAuthorsSpec, setCoAuthorsSpec] = useState<Specification | null>(null)
   const [nameFilter, setNameFilter] = useState('')
+  const [view, setView] = useState<ListView>('table')
+  const [filterHelpOpen, setFilterHelpOpen] = useState(false)
   const [currentUser, setCurrentUser] =
     useState<SpecificationFormModalCurrentUser | null>(null)
   const [currentUserLoading, setCurrentUserLoading] = useState(true)
@@ -402,9 +295,13 @@ export default function RequirementsSpecificationsClient({
     .trim()
     .toLocaleLowerCase(locale)
   const hasActiveNameFilter = nameFilter.trim().length > 0
-  const filteredSpecifications = specifications.filter(spec =>
-    getName(spec).toLocaleLowerCase(locale).includes(normalizedNameFilter),
-  )
+  const filteredSpecifications = specifications
+    .filter(spec =>
+      getName(spec).toLocaleLowerCase(locale).includes(normalizedNameFilter),
+    )
+    .sort((left, right) =>
+      left.name.localeCompare(right.name, locale, { sensitivity: 'base' }),
+    )
 
   useEffect(() => {
     const controller = new AbortController()
@@ -564,6 +461,157 @@ export default function RequirementsSpecificationsClient({
         : null)
   const showSpecifications = !loading && !showSpinner
 
+  const renderName = (spec: Specification) => (
+    <div
+      className={
+        view === 'rows'
+          ? 'flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1'
+          : 'min-w-0'
+      }
+    >
+      <Link
+        className="min-w-0 wrap-anywhere font-medium text-primary-700 hover:underline focus-visible:outline-2 focus-visible:outline-primary-500 dark:text-primary-300"
+        href={`/specifications/${spec.id}`}
+      >
+        {getName(spec)}
+      </Link>
+      {spec.specificationCode && (
+        <div
+          className="mt-0.5 max-w-full wrap-anywhere font-mono text-xs text-secondary-600 dark:text-secondary-400"
+          {...devMarker({
+            context: 'specifications',
+            name: 'specification code',
+          })}
+        >
+          <span className="sr-only">{t('specificationCode')}: </span>
+          {spec.specificationCode}
+        </div>
+      )}
+    </div>
+  )
+  const renderResponsible = (spec: Specification) => (
+    <div
+      className="min-w-0"
+      {...devMarker({
+        context: 'specifications',
+        name: 'responsible identity',
+      })}
+    >
+      {getResponsibleDisplayName(spec) && (
+        <div className="wrap-anywhere font-medium text-secondary-800 dark:text-secondary-100">
+          {getResponsibleDisplayName(spec)}
+        </div>
+      )}
+      {spec.responsibleHsaId ? (
+        <div
+          className="mt-0.5 overflow-x-auto whitespace-nowrap rounded font-mono text-xs text-secondary-600 focus-visible:outline-2 focus-visible:outline-primary-500 dark:text-secondary-400"
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: Enables keyboard scrolling of long HSA identifiers.
+          tabIndex={0}
+          title={spec.responsibleHsaId}
+        >
+          {spec.responsibleHsaId}
+        </div>
+      ) : !getResponsibleDisplayName(spec) ? (
+        '—'
+      ) : null}
+    </div>
+  )
+  const renderClassifications = (spec: Specification) => (
+    <dl
+      className={
+        view === 'cards'
+          ? 'grid gap-3 text-xs sm:grid-cols-3'
+          : 'flex flex-wrap gap-x-6 gap-y-2 text-xs'
+      }
+    >
+      {(
+        [
+          ['governanceObjectType', spec.governanceObjectType],
+          ['implementationType', spec.implementationType],
+          ['lifecycleStatus', spec.lifecycleStatus],
+        ] as const
+      ).map(([key, value]) => (
+        <div className="min-w-0 wrap-anywhere" key={key}>
+          <dt className="text-secondary-600 dark:text-secondary-400">
+            {t(key)}
+          </dt>
+          <dd className="mt-1 text-secondary-900 dark:text-secondary-100">
+            {getTaxonomyName(value)}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  )
+  const renderActions = (spec: Specification) => (
+    <div className="flex shrink-0 justify-end gap-1">
+      {spec.permissions?.canManageAssignments ? (
+        <button
+          aria-label={t('manageCoAuthors')}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-secondary-700 transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-secondary-300 dark:hover:bg-secondary-800/70"
+          {...devMarker({
+            context: 'specifications',
+            name: 'table action',
+            value: 'manage co-authors',
+          })}
+          onClick={() => handleManageCoAuthors(spec)}
+          title={t('manageCoAuthors')}
+          type="button"
+        >
+          <UsersRound
+            aria-hidden="true"
+            className="h-4 w-4"
+            focusable={false}
+          />
+        </button>
+      ) : (
+        <span aria-hidden="true" className="h-7 w-7" />
+      )}
+      {(spec.permissions?.canEditContent ?? true) ? (
+        <button
+          aria-label={tc('edit')}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-primary-300 dark:hover:bg-primary-950/30"
+          {...devMarker({
+            context: 'specifications',
+            name: 'table action',
+            value: 'edit',
+          })}
+          onClick={() => handleEdit(spec)}
+          title={tc('edit')}
+          type="button"
+        >
+          <Pencil aria-hidden="true" className="h-4 w-4" focusable={false} />
+        </button>
+      ) : (
+        <span aria-hidden="true" className="h-7 w-7" />
+      )}
+      {(spec.permissions?.canEditContent ?? true) ? (
+        <button
+          aria-label={tc('delete')}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-red-400 dark:hover:bg-red-950/30"
+          {...devMarker({
+            context: 'specifications',
+            name: 'table action',
+            value: 'delete',
+          })}
+          onClick={e => handleDelete(spec, e.currentTarget as HTMLElement)}
+          title={tc('delete')}
+          type="button"
+        >
+          <Trash2 aria-hidden="true" className="h-4 w-4" focusable={false} />
+        </button>
+      ) : (
+        <span aria-hidden="true" className="h-7 w-7" />
+      )}
+    </div>
+  )
+  const listMessage =
+    fetchError ||
+    (specifications.length === 0
+      ? t('emptyState')
+      : filteredSpecifications.length === 0
+        ? tc('noResults')
+        : null)
+
   return (
     <div className="section-padding">
       <ListWorkspace context="specifications" ref={contentRef} reserveActions>
@@ -583,10 +631,148 @@ export default function RequirementsSpecificationsClient({
             },
           ]}
         />
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
-            {tn('specifications')}
-          </h1>
+        <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
+              {tn('specifications')}
+            </h1>
+            <fieldset
+              aria-label={t('viewSwitcher')}
+              className="flex gap-1 rounded-xl border border-secondary-200 bg-white p-1 dark:border-secondary-700 dark:bg-secondary-900"
+              {...devMarker({
+                context: 'specifications',
+                name: 'view switcher',
+                value: view,
+              })}
+              onKeyDown={event => {
+                if (
+                  !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(
+                    event.key,
+                  )
+                )
+                  return
+                event.preventDefault()
+                const index = listViews.indexOf(view)
+                const next =
+                  event.key === 'Home'
+                    ? 'table'
+                    : event.key === 'End'
+                      ? 'cards'
+                      : listViews[
+                          (index + (event.key === 'ArrowLeft' ? 2 : 1)) % 3
+                        ]
+                setView(next)
+                event.currentTarget
+                  .querySelector<HTMLButtonElement>(
+                    `[data-list-view="${next}"]`,
+                  )
+                  ?.focus()
+              }}
+            >
+              {listViews.map(key => {
+                const Icon =
+                  key === 'table' ? Table2 : key === 'rows' ? Rows2 : LayoutGrid
+                return (
+                  <button
+                    aria-label={t(`views.${key}`)}
+                    aria-pressed={view === key}
+                    className={`relative inline-flex h-9 w-9 items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-primary-500 ${view === key ? 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200' : 'text-secondary-600 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800'}`}
+                    data-list-view={key}
+                    key={key}
+                    onClick={() => setView(key)}
+                    tabIndex={view === key ? 0 : -1}
+                    title={t(`views.${key}`)}
+                    type="button"
+                  >
+                    <Icon aria-hidden="true" className="h-4 w-4" />
+                    {view === key && (
+                      <Check
+                        aria-hidden="true"
+                        className="absolute right-0.5 bottom-0.5 h-2.5 w-2.5"
+                      />
+                    )}
+                  </button>
+                )
+              })}
+            </fieldset>
+          </div>
+          <div className="w-full xl:max-w-xl">
+            {showSpecifications && specifications.length > 0 && (
+              <div className="w-full">
+                <label
+                  className="mb-1.5 block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                  htmlFor="specification-name-filter"
+                >
+                  {t('filterByName')}
+                </label>
+                <div
+                  className="flex items-center gap-2 rounded-xl border border-secondary-200 bg-white px-3 focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50"
+                  {...devMarker({
+                    context: 'specifications',
+                    name: 'search field',
+                    value: 'name filter',
+                  })}
+                >
+                  <Search
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-secondary-500 dark:text-secondary-400"
+                  />
+                  <input
+                    autoComplete="off"
+                    className="min-h-11 min-w-0 flex-1 bg-transparent py-2 text-sm text-secondary-900 outline-none placeholder:text-secondary-500 dark:text-secondary-100 dark:placeholder:text-secondary-400"
+                    {...devMarker({
+                      context: 'specifications',
+                      name: 'text field',
+                      priority: 330,
+                      value: 'name filter',
+                    })}
+                    aria-describedby={
+                      filterHelpOpen ? 'specification-filter-help' : undefined
+                    }
+                    id="specification-name-filter"
+                    onChange={e => setNameFilter(e.target.value)}
+                    placeholder={t('filterByNamePlaceholder')}
+                    type="text"
+                    value={nameFilter}
+                  />
+                  <button
+                    aria-controls="specification-filter-help"
+                    aria-expanded={filterHelpOpen}
+                    aria-label={t('filterHelp')}
+                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-secondary-600 hover:bg-secondary-100 focus-visible:outline-2 focus-visible:outline-primary-500 dark:text-secondary-300 dark:hover:bg-secondary-700"
+                    onClick={() => setFilterHelpOpen(value => !value)}
+                    type="button"
+                  >
+                    <CircleHelp aria-hidden="true" className="h-4 w-4" />
+                  </button>
+                  {hasActiveNameFilter && (
+                    <button
+                      aria-label={tc('clearSearch')}
+                      onClick={() => setNameFilter('')}
+                      title={tc('clearSearch')}
+                      type="button"
+                      {...devMarker({
+                        context: 'specifications',
+                        name: 'button',
+                        value: 'clear name filter',
+                      })}
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-secondary-600 hover:bg-secondary-100 focus-visible:outline-2 focus-visible:outline-primary-500 dark:text-secondary-300 dark:hover:bg-secondary-700"
+                    >
+                      <X aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                {filterHelpOpen && (
+                  <p
+                    className="mt-2 text-sm text-secondary-600 dark:text-secondary-400"
+                    id="specification-filter-help"
+                  >
+                    {t('filterHelpText')}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {loadWarning ? (
@@ -655,55 +841,6 @@ export default function RequirementsSpecificationsClient({
           />
         ) : null}
 
-        <div className="mb-4">
-          {showSpecifications && specifications.length > 0 && (
-            <div className="w-full max-w-lg">
-              <label
-                className="mb-1.5 block text-sm font-medium text-secondary-700 dark:text-secondary-300"
-                htmlFor="specification-name-filter"
-              >
-                {t('filterByName')}
-              </label>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <div className="relative flex-1">
-                  <Search
-                    aria-hidden="true"
-                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
-                  />
-                  <input
-                    autoComplete="off"
-                    className="min-h-11 w-full rounded-xl border border-secondary-200 bg-white py-2.5 pr-3 pl-10 text-sm text-secondary-900 transition-all duration-200 placeholder:text-secondary-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100 dark:placeholder:text-secondary-500"
-                    {...devMarker({
-                      context: 'specifications',
-                      name: 'text field',
-                      priority: 330,
-                      value: 'name filter',
-                    })}
-                    id="specification-name-filter"
-                    onChange={e => setNameFilter(e.target.value)}
-                    placeholder={t('filterByNamePlaceholder')}
-                    type="text"
-                    value={nameFilter}
-                  />
-                </div>
-                {hasActiveNameFilter && (
-                  <button
-                    className="min-h-11 min-w-11 text-center rounded-xl border border-secondary-200 px-4 py-2.5 text-sm text-secondary-700 transition-all duration-200 hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800/60"
-                    onClick={() => setNameFilter('')}
-                    type="button"
-                  >
-                    <X
-                      aria-hidden="true"
-                      className="mr-1.5 inline-block h-4 w-4 align-middle"
-                    />
-                    {tc('clearSearch')}
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
         {showSpinner && (
           <div
             aria-live="polite"
@@ -725,216 +862,143 @@ export default function RequirementsSpecificationsClient({
         )}
         {showSpecifications && (
           <div
-            className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden"
+            ref={tableAnchorRef}
             {...devMarker({
               context: 'specifications',
-              name: 'crud table',
+              name:
+                view === 'table'
+                  ? 'crud table'
+                  : view === 'rows'
+                    ? 'two-row list'
+                    : 'card grid',
               priority: 340,
             })}
-            ref={tableAnchorRef}
           >
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <colgroup>
-                  <col />
-                  <col />
-                  <col />
-                  <col />
-                  <col />
-                  <col />
-                  <col className="w-56" />
-                  <col className="w-44" />
-                </colgroup>
-                <thead>
-                  <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
-                    <th className="py-3 px-4 font-medium">{t('name')}</th>
-                    <th className="py-3 px-4 font-medium">
-                      {t('responsible')}
-                    </th>
-                    <th className="py-3 px-4 font-medium">
-                      {t('governanceObjectType')}
-                    </th>
-                    <th className="py-3 px-4 font-medium">
-                      {t('implementationType')}
-                    </th>
-                    <th className="py-3 px-4 font-medium">
-                      {t('lifecycleStatus')}
-                    </th>
-                    <th className="py-3 px-4 font-medium">{t('itemCount')}</th>
-                    <th className="w-56 py-3 px-4 font-medium">
-                      {t('requirementAreas')}
-                    </th>
-                    <th className="w-44 py-3 pr-4 pl-2" />
-                  </tr>
-                </thead>
-                <tbody>
+            {view === 'table' ? (
+              <div className="relative overflow-x-auto rounded-2xl border border-secondary-200 bg-white/80 shadow-sm dark:border-secondary-700 dark:bg-secondary-900/60">
+                <table className="w-full min-w-225 table-fixed text-sm">
+                  <colgroup>
+                    <col />
+                    <col className="w-60" />
+                    <col className="w-36" />
+                    <col className="w-36" />
+                    <col className="w-36" />
+                    <col className="w-28" />
+                  </colgroup>
+                  <thead>
+                    <tr className="border-b border-secondary-200 bg-secondary-50/80 text-left text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800/30 dark:text-secondary-300">
+                      {[
+                        'name',
+                        'responsible',
+                        'governanceObjectType',
+                        'implementationType',
+                        'lifecycleStatus',
+                      ].map(key => (
+                        <th
+                          className="px-3 py-3 text-xs font-medium wrap-anywhere"
+                          key={key}
+                          scope="col"
+                        >
+                          {t(key)}
+                        </th>
+                      ))}
+                      <th scope="col">
+                        <span className="sr-only">{t('actions')}</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSpecifications.map(spec => (
+                      <tr
+                        className="border-b border-secondary-200 transition-colors hover:bg-primary-50/40 dark:border-secondary-700 dark:hover:bg-primary-950/20"
+                        key={spec.id}
+                      >
+                        <td className="px-4 py-3">{renderName(spec)}</td>
+                        <td className="px-4 py-3">{renderResponsible(spec)}</td>
+                        <td className="px-3 py-3 wrap-anywhere text-secondary-600 dark:text-secondary-400">
+                          {getTaxonomyName(spec.governanceObjectType)}
+                        </td>
+                        <td className="px-3 py-3 wrap-anywhere text-secondary-600 dark:text-secondary-400">
+                          {getTaxonomyName(spec.implementationType)}
+                        </td>
+                        <td className="px-3 py-3 wrap-anywhere text-secondary-600 dark:text-secondary-400">
+                          {getTaxonomyName(spec.lifecycleStatus)}
+                        </td>
+                        <td className="px-2 py-3 align-top">
+                          {renderActions(spec)}
+                        </td>
+                      </tr>
+                    ))}
+                    {listMessage && (
+                      <tr>
+                        <td
+                          className="px-4 py-10 text-center text-secondary-600 dark:text-secondary-400"
+                          colSpan={specificationTableColumnCount}
+                        >
+                          <p role={fetchError ? 'alert' : 'status'}>
+                            {listMessage}
+                          </p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <>
+                <div
+                  className={
+                    view === 'cards'
+                      ? 'grid gap-4 xl:grid-cols-2'
+                      : 'overflow-hidden rounded-2xl border border-secondary-200 bg-white/80 dark:border-secondary-700 dark:bg-secondary-900/60'
+                  }
+                >
                   {filteredSpecifications.map(spec => (
-                    <tr
-                      className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
+                    <article
+                      aria-label={spec.name}
+                      className={
+                        view === 'cards'
+                          ? 'flex min-w-0 flex-col gap-4 rounded-2xl border border-secondary-200 bg-white/80 p-4 dark:border-secondary-700 dark:bg-secondary-900/60'
+                          : 'min-w-0 border-b border-secondary-200 p-4 last:border-b-0 dark:border-secondary-700'
+                      }
                       key={spec.id}
                     >
-                      <td className="py-3 px-4 font-medium">
-                        <Link
-                          className="text-primary-700 dark:text-primary-300 hover:underline"
-                          href={`/specifications/${spec.id}`}
-                        >
-                          {getName(spec)}
-                        </Link>
-                      </td>
-                      <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                        {getResponsibleDisplayName(spec) ||
-                        spec.responsibleHsaId ? (
-                          <div className="min-w-36">
-                            {getResponsibleDisplayName(spec) ? (
-                              <div className="font-medium text-secondary-800 dark:text-secondary-100">
-                                {getResponsibleDisplayName(spec)}
-                              </div>
-                            ) : null}
-                            <div className="mt-0.5 font-mono text-xs text-secondary-500 dark:text-secondary-400">
-                              {spec.responsibleHsaId}
-                            </div>
+                      {view === 'cards' ? (
+                        <>
+                          <div className="flex items-start justify-between gap-3">
+                            {renderName(spec)}
+                            {renderActions(spec)}
                           </div>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                        {getTaxonomyName(spec.governanceObjectType)}
-                      </td>
-                      <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                        {getTaxonomyName(spec.implementationType)}
-                      </td>
-                      <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                        {getTaxonomyName(spec.lifecycleStatus)}
-                      </td>
-                      <td className="py-3 px-4">
-                        {spec.itemCount > 0 ? (
-                          <Link
-                            className="text-primary-700 dark:text-primary-300 hover:underline font-medium"
-                            href={`/specifications/${spec.id}`}
-                          >
-                            {spec.itemCount}
-                          </Link>
-                        ) : (
-                          <span className="text-secondary-400">0</span>
-                        )}
-                      </td>
-                      <td className="w-56 max-w-56 py-3 px-4">
-                        <RequirementAreaPills
-                          areas={spec.requirementAreas}
-                          key={spec.requirementAreas
-                            .map(area => `${area.id}:${area.name}`)
-                            .join('|')}
-                        />
-                      </td>
-                      <td className="w-44 py-3 pr-4 pl-2 align-top">
-                        <div className="flex justify-end gap-1">
-                          {spec.permissions?.canManageAssignments ? (
-                            <button
-                              aria-label={t('manageCoAuthors')}
-                              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-secondary-700 transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-secondary-300 dark:hover:bg-secondary-800/70"
-                              {...devMarker({
-                                context: 'specifications',
-                                name: 'table action',
-                                value: 'manage co-authors',
-                              })}
-                              onClick={() => handleManageCoAuthors(spec)}
-                              title={t('manageCoAuthors')}
-                              type="button"
-                            >
-                              <UsersRound
-                                aria-hidden="true"
-                                className="h-4 w-4"
-                                focusable={false}
-                              />
-                            </button>
-                          ) : null}
-                          {(spec.permissions?.canEditContent ?? true) ? (
-                            <button
-                              aria-label={tc('edit')}
-                              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-primary-300 dark:hover:bg-primary-950/30"
-                              {...devMarker({
-                                context: 'specifications',
-                                name: 'table action',
-                                value: 'edit',
-                              })}
-                              onClick={() => handleEdit(spec)}
-                              title={tc('edit')}
-                              type="button"
-                            >
-                              <Pencil
-                                aria-hidden="true"
-                                className="h-4 w-4"
-                                focusable={false}
-                              />
-                            </button>
-                          ) : null}
-                          {(spec.permissions?.canEditContent ?? true) ? (
-                            <button
-                              aria-label={tc('delete')}
-                              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-red-400 dark:hover:bg-red-950/30"
-                              {...devMarker({
-                                context: 'specifications',
-                                name: 'table action',
-                                value: 'delete',
-                              })}
-                              onClick={e =>
-                                handleDelete(
-                                  spec,
-                                  e.currentTarget as HTMLElement,
-                                )
-                              }
-                              title={tc('delete')}
-                              type="button"
-                            >
-                              <Trash2
-                                aria-hidden="true"
-                                className="h-4 w-4"
-                                focusable={false}
-                              />
-                            </button>
-                          ) : null}
+                          <div className="min-w-0 border-l-2 border-secondary-200 pl-3 dark:border-secondary-700">
+                            <p className="mb-1 text-xs text-secondary-600 dark:text-secondary-400">
+                              {t('responsible')}
+                            </p>
+                            {renderResponsible(spec)}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 md:grid-cols-[minmax(0,1fr)_15rem_auto]">
+                          <div className="col-span-2 min-w-0 md:col-span-1">
+                            {renderName(spec)}
+                          </div>
+                          {renderResponsible(spec)}
+                          {renderActions(spec)}
                         </div>
-                      </td>
-                    </tr>
+                      )}
+                      {renderClassifications(spec)}
+                    </article>
                   ))}
-                  {fetchError ? (
-                    <tr>
-                      <td
-                        className="px-4 py-10 text-center"
-                        colSpan={specificationTableColumnCount}
-                      >
-                        <p
-                          className="text-sm text-red-600 dark:text-red-400"
-                          role="alert"
-                        >
-                          {fetchError}
-                        </p>
-                      </td>
-                    </tr>
-                  ) : specifications.length === 0 ? (
-                    <tr>
-                      <td
-                        className="px-4 py-10 text-center text-secondary-500 dark:text-secondary-400"
-                        colSpan={specificationTableColumnCount}
-                      >
-                        {t('emptyState')}
-                      </td>
-                    </tr>
-                  ) : specifications.length > 0 &&
-                    filteredSpecifications.length === 0 ? (
-                    <tr>
-                      <td
-                        className="px-4 py-10 text-center text-secondary-500 dark:text-secondary-400"
-                        colSpan={specificationTableColumnCount}
-                      >
-                        {tc('noResults')}
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
+                </div>
+                {listMessage && (
+                  <p
+                    className="px-4 py-10 text-center text-secondary-600 dark:text-secondary-400"
+                    role={fetchError ? 'alert' : 'status'}
+                  >
+                    {listMessage}
+                  </p>
+                )}
+              </>
+            )}
           </div>
         )}
       </ListWorkspace>
