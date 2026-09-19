@@ -584,9 +584,11 @@ for (const width of [320, 768, 1440, 1920]) {
             await expect(identity).toContainText('SE5560000001-')
             if (width >= 1440) {
               const hsa = identity.locator('[tabindex="0"]')
-              expect(
-                await hsa.evaluate(el => el.scrollWidth <= el.clientWidth),
-              ).toBe(true)
+              await expect
+                .poll(() =>
+                  hsa.evaluate(el => el.scrollWidth <= el.clientWidth),
+                )
+                .toBe(true)
             }
             if (index === 2) {
               const card = page.getByRole('article').first()
@@ -693,9 +695,11 @@ test('SPEC-01: long identities scroll with the keyboard and long names and codes
         await expect(nameLink).toHaveCount(1)
         const identifier = page.getByText(hsaId, { exact: true })
         await expect(identifier).toHaveText(hsaId)
-        expect(
-          await identifier.evaluate(el => el.scrollWidth > el.clientWidth),
-        ).toBe(true)
+        await expect
+          .poll(() =>
+            identifier.evaluate(el => el.scrollWidth > el.clientWidth),
+          )
+          .toBe(true)
         await nameLink.focus()
         for (let step = 0; step < 5; step++) {
           await page.keyboard.press('Tab')
@@ -716,9 +720,11 @@ test('SPEC-01: long identities scroll with the keyboard and long names and codes
           .locator('[data-developer-mode-name="specification code"]')
           .filter({ hasText: code })
         await expect(codeElement).toContainText(code)
-        expect(
-          await codeElement.evaluate(el => el.scrollWidth <= el.clientWidth),
-        ).toBe(true)
+        await expect
+          .poll(() =>
+            codeElement.evaluate(el => el.scrollWidth <= el.clientWidth),
+          )
+          .toBe(true)
         expect(
           await page.evaluate(
             () => document.documentElement.scrollWidth <= innerWidth,
