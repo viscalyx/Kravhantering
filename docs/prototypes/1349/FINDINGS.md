@@ -137,3 +137,31 @@ The prototype uses scoped CSS against the current shared component structure.
 Rewrite the chosen design as maintainable production code with the required
 regression coverage. Do not merge the prototype controls or experiments into
 production.
+
+## E.3 creation from the picker
+
+Confirmed decisions: creation opens over the picker. The picker remains mounted
+with its search, draft checks and scroll position. New items append to the end
+of Already selected, checked, without moving existing rows. Search is retained;
+an amber notice names newly created checked items hidden by it. The notice has
+no action; the search input already provides a clear control.
+
+Select commits the draft. Cancelling the picker discards selection changes but
+keeps new items available until reset/reload. Ordinary checkbox changes still
+use frozen groups. Only creation appends to the upper group during a session.
+
+The norm dialog reuses `NormReferenceFormFields`. Package creation mirrors the
+existing fields and responsibility summary with shared label/help components.
+The child uses `FormModal`; the underlying picker becomes inert until it closes.
+All creation callbacks are local. Norm ID generation and duplicate checks use
+the loaded catalog only; production validation and persistence are out of scope.
+
+See [creation browser results](E3-creation-inspection.json) and the
+[manual walkthrough](GRANSKNING.md#e3-skapa-från-väljdialogen).
+
+Validation: 55 creation checks and 32 existing picker checks passed in Chromium.
+These cover parent scroll/draft preservation, focus restoration and Tab trapping,
+append order, search notices, cancel/apply, local duplicate IDs, reset, English
+labels, and 320/1440-pixel layouts in both themes. The main creation run recorded
+no browser/translation errors and no API mutations. TypeScript, Biome, Tailwind,
+target-size policy, Markdown and documentation spelling checks passed.

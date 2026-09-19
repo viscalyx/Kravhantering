@@ -4038,7 +4038,7 @@
     "normName": "Namn på prototypens normreferens",
     "addNorm": "Lägg till i minnet",
     "normAdded": "Prototypens normreferens har lagts till och valts i minnet.",
-    "scope": "Jämför layout och urval. Paketens syfte visas som stöd för användarens bedömning, utan extra bekräftelse eller automatisk matchning. Sparning och navigering simuleras. E.1, E.2 och E.3 väljer befintliga normreferenser; Ny i övriga varianter skapar endast i minnet. Ingen slutlig layout är godkänd ännu.",
+    "scope": "Jämför layout och urval. Paketens syfte visas utan extra bekräftelse. E.3 kan skapa kravpaket och normreferenser i minnet från väljdialogen. Ingen slutlig layout är godkänd ännu.",
     "sampleText": "Systemet ska bevara spårbarheten mellan varje krav och dess styrande normreferenser genom granskning, publicering och användning. En granskare ska kunna läsa långa normnamn, välja relevanta referenser och fortsätta redigera utan att förlora kravtexten.\n\nÄndringar ska vara begripliga för användare som arbetar med flera kravpaket, även paket med långa namn. Tangentbordsanvändare ska kunna nå alla kontroller och granska sina val.",
     "sampleCriteria": "1. Normreferensens fullständiga namn går att läsa.\n2. Valda kravpaket och normreferenser förblir valda när layouten ändras.\n3. Skrivytorna rymmer ett fullständigt krav.\n4. Hjälp, navigering och sparmål är åtkomliga.",
     "sampleMethod": "Granska vid 1440 × 900 och 1920 × 1080 i båda temana och navigationslägena. Använd Tab och mellanslag för urvalskontrollerna.",
@@ -4047,7 +4047,7 @@
       "2": "Jämför EN 301 549, NIS2 och ISO/IEC 25010 vid 1920 × 1080. Räkna textrader och jämför listornas överkanter.",
       "3": "Vid 1440 × 900: fäll ut navigationen och läs in lång text. Granska skrivutrymme, listrullning och hela avslutningen. Upprepa med ljust/mörkt tema.",
       "4": "Välj kravområde, redigera text, välj kravpaket/normreferenser, öppna hjälp och växla Verifierbar. Kontrollera att funktionerna finns i alla varianter.",
-      "5": "Ändra sparmål med Tab/mellanslag och simulera Spara. I Nuläge–D kan Ny skapa en normreferens i minnet; E.1, E.2 och E.3 väljer befintliga normreferenser. Omladdning rensar lokala ändringar.",
+      "5": "I E.3: skapa ett kravpaket och en normreferens från väljdialogen. Kontrollera Redan valda, bibehållen sökning och Avbryt/Välj. Omladdning rensar lokala ändringar.",
       "6": "Använd ←/→ utanför fält för att växla layout. I textfält ska pilarna flytta markören. Kontrollera radbrytning och avsaknad av horisontell sidrullning vid 320 pixlar.",
       "7": "Läs paketets syfte före val i varje variant. Kontrollera att det visas utan hovring eller extra bekräftelse, och att saknat syfte märks tydligt.",
       "8": "I E.1/E.2/E.3: markera flera objekt i dialogen. Prova först Avbryt, sedan Välj. Endast Välj ska ändra formuläret. Kontrollera märken, borttagning, återöppning och Escape."
@@ -4107,7 +4107,7 @@
         "summary": "Kategori, typ, kvalitetsegenskap och prioritet ligger överst i högerkolumnen. Välj paket och normreferenser med kompakta knappar på rubrikraden.",
         "change1": "Knapparna flyttas till rubrikraden och visar en pennikon med texten Välj. Den separata knappraden tas bort.",
         "change2": "Kategori och typ delar en rad. Kvalitetsegenskap och sedan Prioritet ligger under, ovanför kravpaket och normreferenser. Ingen siffra visas på pennikonen.",
-        "change3": "Samma tabeller, fasta grupper, sökning och tooltips som E.2. Välj tillämpar urvalet; Avbryt kasserar ändringarna."
+        "change3": "Skapa nya objekt i en dialog ovanpå väljlistan. De läggs sist i Redan valda och markeras. Sökningen behålls; en gul notis namnger nya objekt som döljs."
       }
     },
     "purposeGuidance": "Välj endast kravpaket vars syfte och avgränsning omfattar kravet. Syftet visas vid varje paket som stöd för din bedömning.",
@@ -4133,6 +4133,12 @@
     "tableNormName": "Namn",
     "selectedOnOpen": "Redan valda",
     "otherOptions": "Ej valda",
+    "createPackage": "Nytt kravpaket",
+    "createNorm": "Ny normreferens",
+    "hiddenCreatedPackage": "Sökningen döljer det nya kravpaketet ”{name}”. Det är fortfarande markerat.",
+    "hiddenCreatedNorm": "Sökningen döljer den nya normreferensen ”{name}”. Den är fortfarande markerad.",
+    "duplicateNormId": "Detta normreferens-ID finns redan. Ange ett annat ID.",
+    "creationSession": "Skapas endast i prototypens minne. Välj tillämpar urvalet; Avbryt i väljdialogen behåller objektet men kasserar urvalet.",
     "selectNorm": "Välj normreferens"
   }
 }

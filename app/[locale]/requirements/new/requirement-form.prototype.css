@@ -581,3 +581,21 @@ body:has([aria-modal="true"]) .prototype-1349-review {
   grid-template-rows: auto;
   grid-template-columns: minmax(0, 1fr);
 }
+
+/* E.3 creation stays next to search without squeezing a narrow viewport. */
+.prototype-1349-picker-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 0.75rem;
+}
+.prototype-1349-picker-toolbar > div {
+  flex-basis: 15rem;
+}
+.prototype-1349-picker-toolbar input[type="search"] {
+  margin-bottom: 0;
+}
+.prototype-1349-picker-toolbar > button {
+  min-height: 2.5rem;
+}

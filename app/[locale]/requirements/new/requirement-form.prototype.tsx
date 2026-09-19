@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useCallback, useState } from 'react'
 import FormActionRow from '@/components/FormActionRow'
+import type { PrototypeAssociationDraft } from '@/components/PrototypeAssociationCreateModal'
 import PrototypeRequirementAssociations from '@/components/PrototypeRequirementAssociations'
 import PrototypeVariantSwitcher from '@/components/PrototypeVariantSwitcher'
 import ReferenceDataStatus from '@/components/ReferenceDataStatus'
@@ -55,7 +56,47 @@ export default function RequirementFormPrototype() {
   const [extraNorms, setExtraNorms] = useState<
     { id: number; name: string; normReferenceId: string }[]
   >([])
+  const [extraPackages, setExtraPackages] = useState<
+    (PrototypeAssociationDraft & { id: number })[]
+  >([])
   const taxonomy = useTaxonomyOptions(values.typeId)
+  const createNorm = (item: PrototypeAssociationDraft) => {
+    const id = -extraNorms.length - 1
+    const existing = [...taxonomy.normReferences, ...extraNorms].map(norm =>
+      norm.normReferenceId.toLocaleLowerCase(),
+    )
+    const natural = item.reference.match(
+      /^([A-ZÅÄÖ]{2,10})\s*(\d{4})[:\-/](\d+)/i,
+    )
+    const slug = item.name
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 20)
+      .replace(/-+$/, '')
+    const base = natural
+      ? `${natural[1].toUpperCase()}-${natural[2]}-${natural[3]}`
+      : slug.length >= 2
+        ? slug
+        : `PROTOTYPE-${-id}`
+    let normReferenceId = item.normReferenceId || base
+    for (
+      let suffix = 2;
+      !item.normReferenceId &&
+      existing.includes(normReferenceId.toLocaleLowerCase());
+      suffix++
+    )
+      normReferenceId = `${base}-${suffix}`
+    setExtraNorms(current => [...current, { ...item, id, normReferenceId }])
+    return id
+  }
+  const createPackage = (item: PrototypeAssociationDraft) => {
+    const id = -extraPackages.length - 1
+    setExtraPackages(current => [...current, { ...item, id }])
+    return id
+  }
   const variants = KEYS.map(key => ({
     key,
     name: t(`variants.${key.replace('.', '')}.name`),
@@ -73,6 +114,7 @@ export default function RequirementFormPrototype() {
     setValues(EMPTY)
     setDestination('inline')
     setExtraNorms([])
+    setExtraPackages([])
     setNewNorm(false)
     setNormName('')
     setAction(t('resetDone'))
@@ -229,6 +271,7 @@ export default function RequirementFormPrototype() {
                           normReferenceIds: ids,
                         }))
                       }
+                      onCreate={createNorm}
                       packages={[]}
                       selected={values.normReferenceIds}
                       table={tableVariant}
@@ -248,7 +291,11 @@ export default function RequirementFormPrototype() {
                         requirementPackageIds: ids,
                       }))
                     }
-                    packages={taxonomy.requirementPackages}
+                    onCreate={createPackage}
+                    packages={[
+                      ...taxonomy.requirementPackages,
+                      ...extraPackages,
+                    ]}
                     selected={values.requirementPackageIds}
                     table={tableVariant}
                   />
@@ -353,6 +400,7 @@ export default function RequirementFormPrototype() {
                   destination,
                   values,
                   extraNorms,
+                  extraPackages,
                   lastAction: action,
                 },
                 null,

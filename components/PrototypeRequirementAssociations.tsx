@@ -1,10 +1,13 @@
 'use client'
 
-import { Pencil } from 'lucide-react'
+import { Info, Pencil, Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import FieldHelpButton from '@/components/FieldHelpButton'
 import FormModal from '@/components/FormModal'
+import PrototypeAssociationCreateModal, {
+  type PrototypeAssociationDraft,
+} from '@/components/PrototypeAssociationCreateModal'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import StatusBadge from '@/components/StatusBadge'
 import type {
@@ -21,6 +24,7 @@ interface Props {
   modal?: boolean
   norms: NormReferenceOption[]
   onChange: (ids: number[]) => void
+  onCreate?: (item: PrototypeAssociationDraft) => number
   packages: RequirementPackageOption[]
   selected: number[]
   table?: boolean
@@ -37,6 +41,7 @@ export default function PrototypeRequirementAssociations({
   selected,
   disabled = false,
   onChange,
+  onCreate,
 }: Props) {
   const t = useTranslations('prototype1349')
   const tr = useTranslations('requirement')
@@ -46,9 +51,27 @@ export default function PrototypeRequirementAssociations({
   const [draft, setDraft] = useState<number[]>([])
   const [selectedOnOpen, setSelectedOnOpen] = useState<number[]>([])
   const [query, setQuery] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [createdThisOpen, setCreatedThisOpen] = useState<number[]>([])
+  const createRef = useRef<HTMLButtonElement>(null)
+  const pickerRef = useRef<HTMLDivElement>(null)
   const [help, setHelp] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+  // Keep the parent dialog visible, but only expose the top dialog to input/AT.
+  useLayoutEffect(() => {
+    if (!creating) return
+    const dialog = pickerRef.current?.closest<HTMLElement>('[role="dialog"]')
+    if (!dialog) return
+    dialog.inert = true
+    dialog.setAttribute('aria-hidden', 'true')
+    dialog.setAttribute('aria-modal', 'false')
+    return () => {
+      dialog.inert = false
+      dialog.removeAttribute('aria-hidden')
+      dialog.setAttribute('aria-modal', 'true')
+    }
+  }, [creating])
   const ids = modal ? draft : selected
   const items = isPackage
     ? packages.map(item => ({
@@ -70,20 +93,32 @@ export default function PrototypeRequirementAssociations({
         .toLocaleLowerCase()
         .includes(modal ? query.toLocaleLowerCase() : ''),
   )
+  const hiddenCreated = items.filter(
+    item =>
+      createdThisOpen.includes(item.id) &&
+      draft.includes(item.id) &&
+      !visible.some(row => row.id === item.id),
+  )
+  const upperIds = [...selectedOnOpen, ...createdThisOpen]
   const groups = [
-    ...(selectedOnOpen.length > 0
+    ...(upperIds.length > 0
       ? [
           {
             key: 'previous',
             label: t('selectedOnOpen'),
-            items: visible.filter(item => selectedOnOpen.includes(item.id)),
+            items: [
+              ...visible.filter(item => selectedOnOpen.includes(item.id)),
+              ...createdThisOpen.flatMap(id =>
+                visible.filter(item => item.id === id),
+              ),
+            ],
           },
         ]
       : []),
     {
       key: 'other',
       label: t('otherOptions'),
-      items: visible.filter(item => !selectedOnOpen.includes(item.id)),
+      items: visible.filter(item => !upperIds.includes(item.id)),
     },
   ]
   const title = tr(isPackage ? 'requirementPackage' : 'normReferences')
@@ -262,6 +297,7 @@ export default function PrototypeRequirementAssociations({
         setDraft([...selected])
         setSelectedOnOpen([...selected])
         setQuery('')
+        setCreatedThisOpen([])
         setOpen(true)
       }}
       ref={triggerRef}
@@ -373,6 +409,7 @@ export default function PrototypeRequirementAssociations({
         <div className="prototype-1349-association-list">{choices}</div>
       )}
       <FormModal
+        closeDisabled={creating}
         developerModeValue={`prototype ${kind} picker`}
         initialFocusRef={searchRef}
         maxWidthClassName="max-w-3xl"
@@ -384,6 +421,7 @@ export default function PrototypeRequirementAssociations({
       >
         <div
           className="prototype-1349-picker"
+          ref={pickerRef}
           {...devMarker({ name: 'prototype modal draft', value: kind })}
         >
           {isPackage && table && (
@@ -391,16 +429,62 @@ export default function PrototypeRequirementAssociations({
               {t('purposeGuidance')}
             </p>
           )}
-          <label htmlFor={`prototype-${kind}-search`}>
-            {t('searchAssociations')}
-          </label>
-          <input
-            id={`prototype-${kind}-search`}
-            onChange={event => setQuery(event.target.value)}
-            ref={searchRef}
-            type="search"
-            value={query}
-          />
+          <div className="prototype-1349-picker-toolbar">
+            <div className="min-w-0 flex-1">
+              <label htmlFor={`prototype-${kind}-search`}>
+                {t('searchAssociations')}
+              </label>
+              <input
+                id={`prototype-${kind}-search`}
+                onChange={event => setQuery(event.target.value)}
+                ref={searchRef}
+                type="search"
+                value={query}
+              />
+            </div>
+            {compact && onCreate && (
+              <button
+                className="prototype-1349-button inline-flex items-center justify-center gap-1.5"
+                disabled={draft.length >= ARRAY_INPUT_MAX_ITEMS}
+                onClick={() => setCreating(true)}
+                ref={createRef}
+                type="button"
+                {...devMarker({
+                  name: 'prototype create association trigger',
+                  value: kind,
+                })}
+              >
+                <Plus aria-hidden="true" className="h-4 w-4" />
+                {t(isPackage ? 'createPackage' : 'createNorm')}
+              </button>
+            )}
+          </div>
+          {hiddenCreated.length > 0 && (
+            <div
+              className="mb-3 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+              role="status"
+              {...devMarker({
+                name: 'prototype hidden created items notice',
+                value: kind,
+              })}
+            >
+              <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="min-w-0 space-y-1 wrap-break-word">
+                {hiddenCreated.map(item => (
+                  <p key={item.id}>
+                    {t(
+                      isPackage ? 'hiddenCreatedPackage' : 'hiddenCreatedNorm',
+                      {
+                        name: item.reference
+                          ? `${item.reference} — ${item.name}`
+                          : item.name,
+                      },
+                    )}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="prototype-1349-picker-list">{choices}</div>
           <div className="prototype-1349-picker-footer">
             <p role="status">{t('draftCount', { count: draft.length })}</p>
@@ -424,6 +508,20 @@ export default function PrototypeRequirementAssociations({
           </div>
         </div>
       </FormModal>
+      {creating && onCreate && (
+        <PrototypeAssociationCreateModal
+          kind={kind}
+          normIds={norms.map(item => item.normReferenceId)}
+          onClose={() => setCreating(false)}
+          onCreate={item => {
+            const id = onCreate(item)
+            setDraft(current => [...current, id])
+            setCreatedThisOpen(current => [...current, id])
+            setCreating(false)
+          }}
+          returnFocusRef={createRef}
+        />
+      )}
     </fieldset>
   )
 }

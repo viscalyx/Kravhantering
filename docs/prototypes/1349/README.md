@@ -118,7 +118,8 @@ outer browser window. Repeat with navigation expanded and both themes.
 Reference catalogs are read from the existing app database. **Save, Cancel,
 New and navigation after saving are simulations**, not proof of production
 behavior. Existing field help and selection interactions use the real shared
-component. The prototype does not write requirements or norm references.
+component. The prototype does not write requirements, packages or norm references.
+E.3 can create packages and norm references locally from its pickers.
 
 ## Files and boundaries
 
@@ -129,6 +130,7 @@ component. The prototype does not write requirements or norm references.
 | `app/[locale]/requirements/new/requirement-form.prototype.tsx` | In-memory form, comparisons, review panel and simulated actions. |
 | `app/[locale]/requirements/new/requirement-form.prototype.css` | Scoped layout alternatives and prototype controls. |
 | `components/PrototypeRequirementAssociations.tsx` | Purpose display, ordinary package checkboxes, draft/apply modals and badge summaries. |
+| `components/PrototypeAssociationCreateModal.tsx` | E.3 creation dialog over the picker, using shared form fields and local callbacks. |
 | `components/RequirementFormFields.tsx` | Optional prototype-only rendering slots; defaults retain existing behavior. |
 | `components/PrototypeVariantSwitcher.tsx` | URL-driven picker and guarded arrow-key navigation. |
 | `messages/en.json`, `messages/sv.json` | Prototype labels, sample text and review instructions. |

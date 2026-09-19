@@ -209,6 +209,47 @@ pixlar per yta. Detta är urvalsytornas höjd; skrivfälten behåller sin höjd.
 Om en redan öppen utvecklingssida visar `MISSING_MESSAGE` för E.3 efter
 uppdateringen, ladda om hela sidan för att läsa in de nya översättningarna.
 
+## E.3: skapa från väljdialogen
+
+Öppna [E.3](http://localhost:3001/sv/requirements/new?variant=E.3).
+Både kravpaket och normreferenser har nu en knapp bredvid sökfältet:
+**+ Nytt kravpaket** respektive **+ Ny normreferens**. På smala skärmar
+bryts knappen till nästa rad.
+
+1. Öppna en väljdialog och markera ett befintligt objekt. Rulla i listan.
+   Öppna sedan den nya dialogen. Den visas ovanpå väljdialogen.
+2. Avbryt eller tryck Escape. Sökning, markeringar och rullposition ska vara
+   kvar. Fokus återgår till knappen som öppnade den nya dialogen.
+3. Öppna igen och fyll i obligatoriska fält. Kravpaket har namn och syfte
+   samt samma information om ansvarig som den vanliga skapandedialogen.
+   Normreferenser återanvänder de vanliga fälten med hjälpknappar.
+4. Tryck Spara. Objektet ska vara ibockat sist i **Redan valda**. Befintliga
+   rader behåller sina platser. Skapa ett till för att kontrollera ordningen.
+5. Sök efter något som inte matchar de nya objekten. En gul notis ska
+   namnge de nya markerade objekt som sökningen döljer. Söktexten behålls
+   även när du skapar fler objekt. Notisen har ingen egen åtgärd.
+6. Rensa med sökfältets X. De nya objekten visas igen och notisen försvinner.
+7. Tryck Avbryt i väljdialogen och öppna igen. Det gamla urvalet är kvar;
+   de nya objekten finns kvar under **Ej valda**, utan markering.
+8. Markera ett nytt objekt och tryck Välj. Märket visas nu i kravformuläret.
+   Vid nästa öppning ligger det under **Redan valda**.
+9. Upprepa för båda objekttyperna, på svenska och engelska, med tangentbord
+   och i ljust/mörkt tema. Tab ska stanna i den översta dialogen.
+10. Återställ prototypen eller ladda om. Nya objekt och urval rensas.
+
+Allt skapande sker i minnet. Avbryt i väljdialogen kasserar urvalsändringar,
+men behåller redan skapade objekt tills prototypen återställs eller laddas om.
+Tomt normreferens-ID genereras lokalt från referens eller namn, med ett
+prototyp-ID som reserv. Dubbletter kontrolleras mot den inlästa listan.
+Detta provar interaktionen, inte verklig lagring eller full servervalidering.
+
+- [Ny paketdialog](screenshots/E3-create-packages-1440-light.png)
+- [Ny normreferensdialog](screenshots/E3-create-norms-1440-light.png)
+- [Paketdialog på mobil i mörkt tema](screenshots/E3-create-packages-320-dark.png)
+- [Nya paket sist i Redan valda](screenshots/E3-create-packages-selected.png)
+- [Notis för dolda normreferenser](screenshots/E3-create-norms-hidden.png)
+- [Resultat från skapandeflödet](E3-creation-inspection.json)
+
 ## Ändringslista och kontrollpunkter
 
 <!-- markdownlint-disable MD013 -->
