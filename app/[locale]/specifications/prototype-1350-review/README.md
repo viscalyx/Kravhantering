@@ -5,18 +5,31 @@ responsibility easiest to scan. The agreed prototype scope shows names,
 responsibility, classifications and
 actions, sorted by specification name in ascending locale-aware order.
 Requirement areas, requirements and requirement counts are omitted in every
-option, including the simplified reference. A final layout is not selected.
+option, including the simplified reference.
 
-## Open the running prototype
+Prototype D is the approved design for issue #1350. It combines the reference
+table, two-level rows from B and cards from C through three icons beside the
+title. The accepted details include specification codes in all three views,
+responsive inline codes in two-level rows, top-right card actions and a focus
+outline around the complete search control. Production implementation remains
+tracked by the issue; this branch preserves the visual reference.
+
+## Recreate and open the prototype
 
 [Open combined prototype D](http://localhost:3001/sv/specifications?variant=D).
 Sign in with the usual development account if prompted. The prototype uses
 the existing Keycloak client registered for port 3001.
 
-To start it again, run:
+After local cleanup, recreate the worktree from the upstream branch:
 
 ```sh
+cd /workspace
+git fetch origin prototype/issue-1350
+git worktree add --detach \
+  /mnt/krav-azure-dev-data/.worktrees/issue-1350-prototype \
+  origin/prototype/issue-1350
 cd /mnt/krav-azure-dev-data/.worktrees/issue-1350-prototype
+npm ci
 npm run prototype:1350
 ```
 
@@ -24,7 +37,7 @@ Port 3001 must be free. Stop this process with Ctrl+C. The main checkout and
 its port 3000 server are separate. SQL Server and Keycloak are reused without
 resetting, reseeding, or changing their configuration. Local environment
 settings are read from the primary checkout; its environment files are not
-modified. Dependencies are already installed in this worktree.
+modified. Install dependencies in the recreated worktree before starting.
 
 For a fresh checkout elsewhere, install the repository dependencies and follow
 its existing development service setup first. The launcher uses the tracked
