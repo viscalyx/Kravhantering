@@ -4097,7 +4097,6 @@
       }
     },
     "purposeGuidance": "Välj endast kravpaket vars syfte och avgränsning omfattar kravet. Syftet visas vid varje paket som stöd för din bedömning.",
-    "purposeLabel": "Syfte och avgränsning",
     "missingPurpose": "Syfte saknas",
     "normGuidance": "Välj de normreferenser som kravet härleds från eller måste uppfylla.",
     "addPackages": "Lägg till kravpaket",

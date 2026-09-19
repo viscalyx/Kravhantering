@@ -4097,7 +4097,6 @@
       }
     },
     "purposeGuidance": "Select only packages whose purpose and scope cover the requirement. Each package shows its purpose to support your judgment.",
-    "purposeLabel": "Purpose and scope",
     "missingPurpose": "Purpose not specified",
     "normGuidance": "Select the norm references from which the requirement is derived or which it must satisfy.",
     "addPackages": "Add requirement packages",

@@ -365,11 +365,6 @@
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
-.prototype-1349-purpose-label {
-  display: block;
-  margin-bottom: 0.125rem;
-  font-weight: 600;
-}
 .prototype-1349-picker input[type="search"] {
   width: 100%;
   padding: 0.625rem 0.75rem;

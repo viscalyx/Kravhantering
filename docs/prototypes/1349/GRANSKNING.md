@@ -41,7 +41,8 @@ på 662 pixlar och urvalsrutor på 260 pixlar.
 
 ## Paketens syfte i samtliga varianter
 
-**Syfte och avgränsning** visas direkt under varje paketnamn vid urvalet.
+Paketets syfte visas direkt under namnet, utan en upprepad rubrik.
+Texten är mindre än paketnamnet: 12 respektive 14 pixlar.
 I Nuläge–D visas det i formulärets paketlista; i E visas det i dialogen.
 Det behövs ingen hovring för att läsa syftet innan man väljer.
 

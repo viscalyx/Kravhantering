@@ -108,9 +108,6 @@ export default function PrototypeRequirementAssociations({
               className="prototype-1349-purpose"
               id={`prototype-${kind}-${modal ? 'modal' : 'inline'}-${item.id}-purpose`}
             >
-              <span className="prototype-1349-purpose-label">
-                {t('purposeLabel')}
-              </span>
               <p>{item.purpose || t('missingPurpose')}</p>
             </div>
           )}
