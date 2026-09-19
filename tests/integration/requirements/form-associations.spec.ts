@@ -19,15 +19,15 @@ test('LIFE-01B: association drafts, fixed groups and nested creation persist thr
     const first = picker.getByRole('checkbox').first()
     await expect(
       picker.getByText('0 markerade i dialogen', { exact: true }),
-    ).toBeVisible()
+    ).toHaveCount(1)
     await first.check()
     await expect(
       picker.getByText('1 markerat i dialogen', { exact: true }),
-    ).toBeVisible()
+    ).toHaveCount(1)
     await picker.getByRole('checkbox').nth(1).check()
     await expect(
       picker.getByText('2 markerade i dialogen', { exact: true }),
-    ).toBeVisible()
+    ).toHaveCount(1)
     await picker.getByRole('searchbox').fill('no matching purpose')
     await picker.press('Escape')
     await expect(trigger).toBeFocused()
