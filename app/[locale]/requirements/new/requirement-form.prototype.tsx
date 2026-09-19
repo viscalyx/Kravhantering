@@ -1,6 +1,6 @@
 'use client'
 
-// Throwaway: baseline geometry + five alternatives on /requirements/new?variant=.
+// Throwaway: baseline geometry + six alternatives on /requirements/new?variant=.
 // Question: compare field widths, purpose visibility and inline/modal selection.
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -16,7 +16,7 @@ import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 import { devMarker } from '@/lib/developer-mode-markers'
 import './requirement-form.prototype.css'
 
-const KEYS = ['baseline', 'A', 'B', 'C', 'D', 'E'] as const
+const KEYS = ['baseline', 'A', 'B', 'C', 'D', 'E.1', 'E.2'] as const
 type Variant = (typeof KEYS)[number]
 const EMPTY: RequirementFormFieldValues = {
   acceptanceCriteria: '',
@@ -38,10 +38,13 @@ export default function RequirementFormPrototype() {
   const tc = useTranslations('common')
   const router = useRouter()
   const params = useSearchParams()
-  const requested = params.get('variant')
+  const requested =
+    params.get('variant') === 'E' ? 'E.1' : params.get('variant')
   const variant: Variant = KEYS.includes(requested as Variant)
     ? (requested as Variant)
     : 'A'
+  const modalVariant = variant === 'E.1' || variant === 'E.2'
+  const variantMessageKey = variant.replace('.', '')
   const [values, setValues] = useState<RequirementFormFieldValues>(EMPTY)
   const [destination, setDestination] = useState<'inline' | 'page'>('inline')
   const [action, setAction] = useState('')
@@ -52,7 +55,10 @@ export default function RequirementFormPrototype() {
     { id: number; name: string; normReferenceId: string }[]
   >([])
   const taxonomy = useTaxonomyOptions(values.typeId)
-  const variants = KEYS.map(key => ({ key, name: t(`variants.${key}.name`) }))
+  const variants = KEYS.map(key => ({
+    key,
+    name: t(`variants.${key.replace('.', '')}.name`),
+  }))
   const changeVariant = useCallback(
     (key: string) => {
       const query = new URLSearchParams(params.toString())
@@ -165,8 +171,8 @@ export default function RequirementFormPrototype() {
           {tr('newRequirement')}
         </h1>
         <p aria-live="polite" className="prototype-1349-verdict">
-          <strong>{t(`variants.${variant}.name`)}</strong> —{' '}
-          {t(`variants.${variant}.summary`)}
+          <strong>{t(`variants.${variantMessageKey}.name`)}</strong> —{' '}
+          {t(`variants.${variantMessageKey}.summary`)}
         </p>
         <div className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-6">
           <ReferenceDataStatus
@@ -208,7 +214,7 @@ export default function RequirementFormPrototype() {
                 }
                 onChange={setValues}
                 prototypeNormFieldset={
-                  variant === 'E' ? (
+                  modalVariant ? (
                     <PrototypeRequirementAssociations
                       disabled={!taxonomy.readiness.canSave}
                       kind="norms"
@@ -222,6 +228,7 @@ export default function RequirementFormPrototype() {
                       }
                       packages={[]}
                       selected={values.normReferenceIds}
+                      table={variant === 'E.2'}
                     />
                   ) : undefined
                 }
@@ -229,7 +236,7 @@ export default function RequirementFormPrototype() {
                   <PrototypeRequirementAssociations
                     disabled={!taxonomy.readiness.canSave}
                     kind="packages"
-                    modal={variant === 'E'}
+                    modal={modalVariant}
                     norms={[]}
                     onChange={ids =>
                       setValues(current => ({
@@ -239,6 +246,7 @@ export default function RequirementFormPrototype() {
                     }
                     packages={taxonomy.requirementPackages}
                     selected={values.requirementPackageIds}
+                    table={variant === 'E.2'}
                   />
                 }
                 referenceDataReadiness={taxonomy.readiness}
@@ -323,7 +331,7 @@ export default function RequirementFormPrototype() {
             <p>{t('purposeGuidance')}</p>
             <ul>
               {[1, 2, 3].map(n => (
-                <li key={n}>{t(`variants.${variant}.change${n}`)}</li>
+                <li key={n}>{t(`variants.${variantMessageKey}.change${n}`)}</li>
               ))}
             </ul>
             <h3>{t('checkTitle')}</h3>

@@ -1,4 +1,4 @@
-# Granska prototyp D, E och paketens syfte
+# Granska prototyp D, E.1, E.2 och paketens syfte
 
 <!-- markdownlint-configure-file {"MD060": {"style": "compact"}} -->
 
@@ -6,10 +6,11 @@ Prototypen finns i samma separata worktree och körs på port 3001.
 Den vanliga utvecklingsappen på port 3000 påverkas inte.
 
 - [Öppna D: lika breda urvalsrutor](http://localhost:3001/sv/requirements/new?variant=D)
-- [Öppna E: välj i dialog](http://localhost:3001/sv/requirements/new?variant=E)
+- [Öppna E.1: välj i lista](http://localhost:3001/sv/requirements/new?variant=E.1)
+- [Öppna E.2: välj i tabell](http://localhost:3001/sv/requirements/new?variant=E.2)
 
 Logga in med utvecklingskontot om det behövs. Använd väljaren längst ned för
-att växla mellan Nuläge, A, B, C, D och E. Via **Ändringar och checklista**
+att växla mellan Nuläge, A, B, C, D, E.1 och E.2. Via **Ändringar och checklista**
 visas beskrivningen av vald variant och formulärets aktuella tillstånd.
 
 Starta prototypen om den inte redan körs:
@@ -43,7 +44,7 @@ på 662 pixlar och urvalsrutor på 260 pixlar.
 
 Paketets syfte visas direkt under namnet, utan en upprepad rubrik.
 Texten är mindre än paketnamnet: 12 respektive 14 pixlar.
-I Nuläge–D visas det i formulärets paketlista; i E visas det i dialogen.
+I Nuläge–D visas det i formulärets paketlista; i E.1/E.2 visas det i dialogen.
 Det behövs ingen hovring för att läsa syftet innan man väljer.
 
 Enligt önskemålet används vanliga kryssrutor, **utan särskild bekräftelse**.
@@ -60,7 +61,7 @@ och mer rullning i listan, särskilt i A:s smala paketkolumn.
 Nuläge behåller den ursprungliga geometrin men får samma synliga syfte som
 övriga varianter. De äldre skärmbilderna finns kvar i föregående commit.
 
-## E: välj först, visa sedan endast valda objekt
+## E.1 och E.2: välj först, visa sedan endast valda objekt
 
 1. Klicka **Lägg till kravpaket**. En modal dialog visar paketnamn och syfte.
 2. Markera två paket. Prova sökningen: den söker även i paketens syfte.
@@ -85,8 +86,34 @@ till formuläret. Sökning och stängning ändrar inte det redan tillämpade
 urvalet. Variantväljaren döljs medan en modal är öppen och dess kortkommandon
 är avstängda, så att de inte stör dialogen.
 
-E väljer befintliga normreferenser. Övriga varianters **Ny** simulerar
-skapande i minnet; E inför inget nytt skapandeflöde i urvalsdialogen.
+E.1 och E.2 väljer befintliga normreferenser. Övriga varianters **Ny** simulerar
+skapande i minnet; dialogerna inför inget nytt skapandeflöde i urvalsdialogen.
+
+## E.2: tabeller i båda dialogerna
+
+E.1 behåller listorna. E.2 använder en tabell i respektive dialog:
+
+- Normreferenser: kryssruta, **Referens-ID**, **Namn**.
+- Kravpaket: kryssruta, **Kravpaket**, **Syfte**.
+
+De två textkolumnerna är vänsterjusterade. Referens-ID har samma grå ton
+som tidigare, och paketens syfte visas med mindre text utan upprepad rubrik.
+Urval, sökning, Välj, Avbryt och märken fungerar på samma sätt i båda varianter.
+Den gamla länken med `?variant=E` öppnar E.1.
+
+1. Öppna båda dialogerna i E.2 och kontrollera kolumnerna.
+2. Klicka på ett paketnamn eller en normreferens för att markera raden.
+3. Sök, markera fler objekt och tryck **Välj**. Kontrollera märkena.
+4. Växla till E.1 och öppna dialogen. Samma objekt ska vara markerade i listan.
+5. Prova **Avbryt**, Escape och återöppning med båda varianterna.
+6. Granska tabellerna i ljust och mörkt tema samt vid 320 pixlars bredd.
+
+- [E.2:s paketdialog](screenshots/E2-packages-modal.png)
+- [E.2:s normreferensdialog](screenshots/E2-norms-modal.png)
+- [E.2:s paketdialog i mörkt tema](screenshots/E2-packages-dark.png)
+- [E.2:s normreferenser i mörkt tema](screenshots/E2-norms-dark.png)
+- [E.2:s dialog vid 320 pixlar](screenshots/E2-modal-320.png)
+- [Kontroller för E.2](table-modal-inspection.json)
 
 ## Ändringslista och kontrollpunkter
 

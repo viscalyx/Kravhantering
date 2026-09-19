@@ -466,13 +466,13 @@ body:has([aria-modal="true"]) .prototype-1349-review {
     > div:last-child {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .prototype-1349[data-prototype-variant="E"]
+  .prototype-1349[data-prototype-variant^="E."]
     .prototype-1349-fields
     > div
     > div {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .prototype-1349[data-prototype-variant="E"]
+  .prototype-1349[data-prototype-variant^="E."]
     .prototype-1349-fields
     > div
     > div
@@ -484,4 +484,43 @@ body:has([aria-modal="true"]) .prototype-1349-review {
     max-height: none;
     overflow: visible;
   }
+}
+
+/* E.2: selection gutter and two left-aligned data columns. */
+.prototype-1349-picker-table {
+  width: 100%;
+  font-size: 0.875rem;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.prototype-1349-picker-table th,
+.prototype-1349-picker-table td {
+  padding: 0.75rem 0.5rem;
+  vertical-align: top;
+  text-align: left;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--color-secondary-200);
+}
+.prototype-1349-picker-table th {
+  font-weight: 500;
+}
+.dark .prototype-1349-picker-table th,
+.dark .prototype-1349-picker-table td {
+  border-color: var(--color-secondary-700);
+}
+.prototype-1349-picker-table .prototype-1349-table-check {
+  width: 2.5rem;
+}
+.prototype-1349-picker-table .prototype-1349-table-primary {
+  width: 38%;
+}
+.prototype-1349-picker-table label {
+  display: block;
+  min-height: 1.5rem;
+  cursor: pointer;
+}
+.prototype-1349-table-purpose {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
 }

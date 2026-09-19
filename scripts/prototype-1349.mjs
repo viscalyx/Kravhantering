@@ -77,7 +77,7 @@ console.log(
   '\nPrototype #1349: http://localhost:3001/sv/requirements/new?variant=A',
 )
 console.log(
-  'Baseline: ?variant=baseline | A: wider norms | B: stacked rail | C: associations below | D: equal panels | E: modal selection',
+  'Baseline: ?variant=baseline | A: wider norms | B: stacked rail | C: associations below | D: equal panels | E.1: modal lists | E.2: modal tables',
 )
 console.log(
   'Sign in normally. Prototype Save/New only change memory. Ctrl+C stops this server.\n',

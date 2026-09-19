@@ -21,12 +21,14 @@ interface Props {
   onChange: (ids: number[]) => void
   packages: RequirementPackageOption[]
   selected: number[]
+  table?: boolean
 }
 
 /** Throwaway #1349: visible purpose and an optional draft/apply modal picker. */
 export default function PrototypeRequirementAssociations({
   kind,
   modal = false,
+  table = false,
   packages,
   norms,
   selected,
@@ -69,6 +71,25 @@ export default function PrototypeRequirementAssociations({
     if (modal) setDraft(next)
     else onChange(next)
   }
+  const checkbox = (item: (typeof items)[number]) => (
+    <input
+      aria-describedby={
+        isPackage
+          ? `prototype-${kind}-${modal ? 'modal' : 'inline'}-${item.id}-purpose`
+          : undefined
+      }
+      aria-label={`${item.reference ? `${item.reference} ` : ''}${item.name}`}
+      checked={ids.includes(item.id)}
+      disabled={
+        disabled ||
+        (!ids.includes(item.id) &&
+          (Boolean(item.isArchived) || ids.length >= ARRAY_INPUT_MAX_ITEMS))
+      }
+      id={`prototype-${kind}-${item.id}-checkbox`}
+      onChange={event => toggle(item.id, event.target.checked)}
+      type="checkbox"
+    />
+  )
   const choices = (
     <>
       {isPackage && (
@@ -76,45 +97,95 @@ export default function PrototypeRequirementAssociations({
           {t('purposeGuidance')}
         </p>
       )}
-      {visible.map(item => (
-        <div className="prototype-1349-choice" key={item.id}>
-          <label className="prototype-1349-choice-name">
-            <input
-              aria-describedby={
-                isPackage
-                  ? `prototype-${kind}-${modal ? 'modal' : 'inline'}-${item.id}-purpose`
-                  : undefined
-              }
-              checked={ids.includes(item.id)}
-              disabled={
-                disabled ||
-                (!ids.includes(item.id) &&
-                  (Boolean(item.isArchived) ||
-                    ids.length >= ARRAY_INPUT_MAX_ITEMS))
-              }
-              onChange={event => toggle(item.id, event.target.checked)}
-              type="checkbox"
-            />
-            <span>
-              {item.reference && (
-                <span className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
-                  {item.reference}{' '}
-                </span>
-              )}
-              {item.name}
-              {item.isArchived ? ` (${t('archived')})` : ''}
-            </span>
-          </label>
-          {isPackage && (
-            <div
-              className="prototype-1349-purpose"
-              id={`prototype-${kind}-${modal ? 'modal' : 'inline'}-${item.id}-purpose`}
+      {table ? (
+        <table
+          aria-label={title}
+          className="prototype-1349-picker-table"
+          {...devMarker({ name: 'prototype association table', value: kind })}
+        >
+          <colgroup>
+            <col className="prototype-1349-table-check" />
+            <col className="prototype-1349-table-primary" />
+            <col />
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">
+                <span className="sr-only">{t('tableSelect')}</span>
+              </th>
+              <th scope="col">
+                {t(isPackage ? 'tablePackageName' : 'tableReferenceId')}
+              </th>
+              <th scope="col">
+                {t(isPackage ? 'tablePurpose' : 'tableNormName')}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map(item => (
+              <tr key={item.id}>
+                <td>{checkbox(item)}</td>
+                <td>
+                  <label
+                    className={
+                      isPackage
+                        ? undefined
+                        : 'font-mono text-xs text-secondary-500 dark:text-secondary-400'
+                    }
+                    htmlFor={`prototype-${kind}-${item.id}-checkbox`}
+                  >
+                    {isPackage ? item.name : item.reference}
+                    {isPackage && item.isArchived ? ` (${t('archived')})` : ''}
+                  </label>
+                </td>
+                <td>
+                  {isPackage ? (
+                    <p
+                      className="prototype-1349-table-purpose"
+                      id={`prototype-${kind}-modal-${item.id}-purpose`}
+                    >
+                      {item.purpose || t('missingPurpose')}
+                    </p>
+                  ) : (
+                    <label htmlFor={`prototype-${kind}-${item.id}-checkbox`}>
+                      {item.name}
+                      {item.isArchived ? ` (${t('archived')})` : ''}
+                    </label>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        visible.map(item => (
+          <div className="prototype-1349-choice" key={item.id}>
+            <label
+              className="prototype-1349-choice-name"
+              htmlFor={`prototype-${kind}-${item.id}-checkbox`}
             >
-              <p>{item.purpose || t('missingPurpose')}</p>
-            </div>
-          )}
-        </div>
-      ))}
+              {checkbox(item)}
+              <span>
+                {item.reference && (
+                  <span className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
+                    {item.reference}{' '}
+                  </span>
+                )}
+                {item.name}
+                {item.isArchived ? ` (${t('archived')})` : ''}
+              </span>
+            </label>
+            {isPackage && (
+              <div
+                className="prototype-1349-purpose"
+                id={`prototype-${kind}-${modal ? 'modal' : 'inline'}-${item.id}-purpose`}
+              >
+                <p>{item.purpose || t('missingPurpose')}</p>
+              </div>
+            )}
+          </div>
+        ))
+      )}
       {visible.length === 0 && <p>{t('noMatches')}</p>}
       {ids.length >= ARRAY_INPUT_MAX_ITEMS && (
         <p role="status">

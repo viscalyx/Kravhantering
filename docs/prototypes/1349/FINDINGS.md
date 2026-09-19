@@ -22,7 +22,7 @@ At 1920 × 1080, collapsed navigation, light theme, using the same data:
 | B | 384 | 384 | 822 | 2 | 0 |
 | C | 402 | 804 | 1230 | 1 | 0 |
 | D | 390 | 390 | 402 | 2 | 0 |
-| E | 603 | 603 | 603 | Dialog | 0 |
+| E.1/E.2 | 603 | 603 | 603 | Dialog | 0 |
 <!-- markdownlint-enable MD013 -->
 
 Widths and offsets are CSS pixels. All writing fields in this table remain
@@ -30,7 +30,7 @@ Widths and offsets are CSS pixels. All writing fields in this table remain
 (EN 301 549, NIS2 and ISO/IEC 25010, including ID and name) has the listed
 line count. It is not a claim about every possible norm name.
 
-Baseline keeps its original geometry but also shows package purpose. E widths
+Baseline keeps its original geometry but also shows package purpose. E.1/E.2 widths
 refer to the stacked summary panels; full lists appear in separate dialogs.
 
 - **A:** norm width increases and the writing column stays unchanged.
@@ -43,7 +43,7 @@ refer to the stacked summary panels; full lists appear in separate dialogs.
   a gap, making the page substantially taller.
 - **D:** the writing column is narrower, giving equal space to both lists.
   Purpose is easier to scan than in A; writing wraps earlier.
-- **E:** the form shows only selected badges. Searchable dialogs provide more
+- **E.1/E.2:** the form shows only selected badges. Searchable dialogs provide more
   room for purpose and names, at the cost of an extra step to change selection.
 
 ## Browser inspection
@@ -51,9 +51,9 @@ refer to the stacked summary panels; full lists appear in separate dialogs.
 Local Chromium, authenticated development administrator, existing reference
 catalogs, Swedish locale. No requirement or norm-reference data is written.
 
-- 48 desktop combinations: six variants × two viewport sizes
+- 56 desktop combinations: seven variants × two viewport sizes
   (1440 × 900 and 1920 × 1080) × two themes × two navigation states.
-- All six variants also inspected at 320-pixel viewport width with long text
+- All seven variants also inspected at 320-pixel viewport width with long text
   and selected associations. No horizontal page overflow in those checks.
 - Long sample text, area selection, package/norm selection and Verifiable
   remain usable. The shared description help opens and closes.
@@ -66,15 +66,19 @@ catalogs, Swedish locale. No requirement or norm-reference data is written.
 - The English prototype route renders its localized controls.
 - No browser page errors and no API mutation requests occur during these
   exercised interactions.
-- 24 additional E checks cover draft/apply/cancel, search with hidden choices,
+- 24 E.1 checks cover draft/apply/cancel, search with hidden choices,
   reopening, chip removal, keyboard focus, Escape/close, cross-variant state,
   missing-purpose behavior, English labels and selected-badge wrapping.
+- 42 E.2 checks include the same modal behavior plus separate left-aligned
+  columns, preserved E.1 selections, the legacy E URL alias, and table width
+  at 320/1440/1920 pixels in both themes. Reference IDs retain their gray color.
 - Purpose is visible at selection time in every variant. A missing purpose
   is labeled without blocking selection or adding a confirmation step.
 - TypeScript type checking, focused Biome checking, Tailwind class checking
   and the target-size guard pass.
 
-See [modal checks](modal-inspection.json) and
+See [E.1 modal checks](modal-inspection.json),
+[E.2 table checks](table-modal-inspection.json) and
 [raw measurements](measurements.json) for geometry in each combination.
 Screenshots in the [review guide](README.md) preserve two desktop scenarios
 for each alternative, plus the review panel with live state. The
