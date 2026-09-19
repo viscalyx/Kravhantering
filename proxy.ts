@@ -436,6 +436,21 @@ function applyPageHeaders(
 
 export default async function proxy(request: NextRequest) {
   const ids = resolveRequestCorrelationIds(request.headers)
+  // THROWAWAY #1351: display real data, reject application mutations.
+  if (
+    process.env.PROTOTYPE_1351 === 'true' &&
+    process.env.NODE_ENV !== 'production' &&
+    !['GET', 'HEAD', 'OPTIONS'].includes(request.method) &&
+    !request.nextUrl.pathname.startsWith('/api/auth/')
+  ) {
+    return NextResponse.json(
+      {
+        error: 'Prototype #1351 is read-only; application writes are disabled.',
+      },
+      { status: 403 },
+    )
+  }
+
   const deferTrailingSlashUntilAfterSecurity =
     isApiPath(request.nextUrl.pathname) && isMutatingMethod(request.method)
 

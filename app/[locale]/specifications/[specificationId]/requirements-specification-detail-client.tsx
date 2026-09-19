@@ -1,5 +1,7 @@
 'use client'
 
+import './list-height.prototype.css'
+
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   AlertTriangle,
@@ -52,6 +54,9 @@ import LazyAiRequirementGenerator from '@/components/LazyAiRequirementGenerator'
 import LazyRequirementsImportDialog, {
   type InitialRequirementsImport,
 } from '@/components/LazyRequirementsImportDialog'
+import PrototypeLayoutSwitcher, {
+  useHeightPrototypeVariant,
+} from '@/components/PrototypeLayoutSwitcher'
 import RequirementRemovalButton from '@/components/RequirementRemovalButton'
 import RequirementsTable, {
   type FloatingActionItem,
@@ -530,6 +535,7 @@ export default function KravunderlagDetailClient({
   const { confirm } = useConfirmModal()
   const confirmDiscardChanges = useDiscardChangesConfirmation()
   const searchParams = useSearchParams()
+  const prototypeVariant = useHeightPrototypeVariant()
   const shouldReduceMotion = useReducedMotion()
   const libraryDetailCache = useMemo(createLibraryRequirementDetailCache, [])
   const localDetailCache = useMemo(
@@ -3058,7 +3064,7 @@ export default function KravunderlagDetailClient({
       </div>
     )
   }
-  const renderLeftPanelTabs = () => (
+  const renderLeftPanelTabs = (shelf = false) => (
     <div
       className="flex min-w-0 max-w-full flex-1 items-center gap-2"
       {...devMarker({
@@ -3067,10 +3073,10 @@ export default function KravunderlagDetailClient({
         value: 'left panel',
       })}
     >
-      <SpecificationPanelToggle />
+      {!shelf && <SpecificationPanelToggle />}
       <div
         aria-label={t('leftPanelTabs')}
-        className={splitPanelTabsClassName}
+        className={`${splitPanelTabsClassName} ${shelf ? '' : 'prototype-panel-tabs'}`}
         role="tablist"
       >
         <button
@@ -3106,7 +3112,7 @@ export default function KravunderlagDetailClient({
       </div>
     </div>
   )
-  const renderRightPanelTabs = () => (
+  const renderRightPanelTabs = (shelf = false) => (
     <div
       className="flex min-w-0 max-w-full flex-1 items-center gap-2"
       {...devMarker({
@@ -3115,17 +3121,21 @@ export default function KravunderlagDetailClient({
         value: 'right panel',
       })}
     >
-      <SpecificationPanelToggle />
+      {!shelf && <SpecificationPanelToggle />}
       <div
         aria-label={t('rightPanelTabs')}
-        className={splitPanelTabsClassName}
+        className={`${splitPanelTabsClassName} ${shelf ? '' : 'prototype-panel-tabs'}`}
         role="tablist"
       >
         <button
           aria-controls="right-panel-available"
           aria-selected={rightPanelTab === 'available'}
           className={splitPanelTabClassName(rightPanelTab === 'available')}
-          id="right-panel-tab-available"
+          id={
+            shelf
+              ? 'prototype-shelf-tab-available'
+              : 'right-panel-tab-available'
+          }
           onClick={() => setRightPanelTab('available')}
           role="tab"
           type="button"
@@ -3136,7 +3146,11 @@ export default function KravunderlagDetailClient({
           aria-controls="right-panel-questions"
           aria-selected={rightPanelTab === 'questions'}
           className={splitPanelTabClassName(rightPanelTab === 'questions')}
-          id="right-panel-tab-questions"
+          id={
+            shelf
+              ? 'prototype-shelf-tab-questions'
+              : 'right-panel-tab-questions'
+          }
           onClick={() => setRightPanelTab('questions')}
           role="tab"
           type="button"
@@ -3153,6 +3167,9 @@ export default function KravunderlagDetailClient({
 
   return (
     <>
+      {prototypeVariant && (
+        <PrototypeLayoutSwitcher variant={prototypeVariant} />
+      )}
       <div
         className={specificationDetailPageShellClassName}
         data-specification-detail-page-shell="true"
@@ -3291,6 +3308,18 @@ export default function KravunderlagDetailClient({
           </div>
 
           {/* Split panel */}
+          {prototypeVariant === 'C' && (
+            <div
+              className="prototype-tab-shelf"
+              {...devMarker({
+                name: 'prototype tab shelf',
+                value: 'shared panel navigation',
+              })}
+            >
+              {renderLeftPanelTabs(true)}
+              {renderRightPanelTabs(true)}
+            </div>
+          )}
           <SpecificationPanels
             initialHasItems={
               initialData.errors.some(

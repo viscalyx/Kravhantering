@@ -1,0 +1,1225 @@
+{
+  "captured": "2026-09-19",
+  "baseCommit": "d39bb52d",
+  "fixture": "sv/specifications/8, ada.admin, existing demo data",
+  "results": [
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "collapsed",
+      "theme": "light",
+      "variant": "C",
+      "file": "1440-collapsed-light-C.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 210.5,
+          "bottom": 851,
+          "chrome": 84,
+          "firstRow": 295.5,
+          "listHeight": 555.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 11
+        },
+        {
+          "name": "available",
+          "top": 210.5,
+          "bottom": 851,
+          "chrome": 84,
+          "firstRow": 295.5,
+          "listHeight": 555.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 12
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "collapsed",
+      "theme": "dark",
+      "variant": "C",
+      "file": "1440-collapsed-dark-C.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 210.5,
+          "bottom": 851,
+          "chrome": 84,
+          "firstRow": 295.5,
+          "listHeight": 555.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 11
+        },
+        {
+          "name": "available",
+          "top": 210.5,
+          "bottom": 851,
+          "chrome": 84,
+          "firstRow": 295.5,
+          "listHeight": 555.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 12
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "expanded",
+      "theme": "light",
+      "variant": "C",
+      "file": "1440-expanded-light-C.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 227,
+          "bottom": 851,
+          "chrome": 84,
+          "firstRow": 312,
+          "listHeight": 539,
+          "textSize": "14px",
+          "fullyVisibleRows": 11
+        },
+        {
+          "name": "available",
+          "top": 227,
+          "bottom": 851,
+          "chrome": 86,
+          "firstRow": 314,
+          "listHeight": 537,
+          "textSize": "14px",
+          "fullyVisibleRows": 11
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "expanded",
+      "theme": "dark",
+      "variant": "C",
+      "file": "1440-expanded-dark-C.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 227,
+          "bottom": 851,
+          "chrome": 84,
+          "firstRow": 312,
+          "listHeight": 539,
+          "textSize": "14px",
+          "fullyVisibleRows": 11
+        },
+        {
+          "name": "available",
+          "top": 227,
+          "bottom": 851,
+          "chrome": 86,
+          "firstRow": 314,
+          "listHeight": 537,
+          "textSize": "14px",
+          "fullyVisibleRows": 11
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "collapsed",
+      "theme": "light",
+      "variant": "C",
+      "file": "1920-collapsed-light-C.png",
+      "scrollChecks": [
+        "content fits",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 190.5,
+          "bottom": 1031,
+          "chrome": 84,
+          "firstRow": 275.5,
+          "listHeight": 755.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 14
+        },
+        {
+          "name": "available",
+          "top": 190.5,
+          "bottom": 1031,
+          "chrome": 84,
+          "firstRow": 275.5,
+          "listHeight": 755.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 16
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "collapsed",
+      "theme": "dark",
+      "variant": "C",
+      "file": "1920-collapsed-dark-C.png",
+      "scrollChecks": [
+        "content fits",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 190.5,
+          "bottom": 1031,
+          "chrome": 84,
+          "firstRow": 275.5,
+          "listHeight": 755.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 14
+        },
+        {
+          "name": "available",
+          "top": 190.5,
+          "bottom": 1031,
+          "chrome": 84,
+          "firstRow": 275.5,
+          "listHeight": 755.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 16
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "expanded",
+      "theme": "light",
+      "variant": "C",
+      "file": "1920-expanded-light-C.png",
+      "scrollChecks": [
+        "content fits",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 190.5,
+          "bottom": 1031,
+          "chrome": 84,
+          "firstRow": 275.5,
+          "listHeight": 755.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 14
+        },
+        {
+          "name": "available",
+          "top": 190.5,
+          "bottom": 1031,
+          "chrome": 84,
+          "firstRow": 275.5,
+          "listHeight": 755.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 16
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "expanded",
+      "theme": "dark",
+      "variant": "C",
+      "file": "1920-expanded-dark-C.png",
+      "scrollChecks": [
+        "content fits",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 190.5,
+          "bottom": 1031,
+          "chrome": 84,
+          "firstRow": 275.5,
+          "listHeight": 755.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 14
+        },
+        {
+          "name": "available",
+          "top": 190.5,
+          "bottom": 1031,
+          "chrome": 84,
+          "firstRow": 275.5,
+          "listHeight": 755.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 16
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "collapsed",
+      "theme": "light",
+      "variant": "0",
+      "file": "1440-collapsed-light-0.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 85,
+      "pageOverflow": 21,
+      "panels": [
+        {
+          "name": "items",
+          "top": 160.5,
+          "bottom": 796,
+          "chrome": 157,
+          "firstRow": 318.5,
+          "listHeight": 477.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 10
+        },
+        {
+          "name": "available",
+          "top": 160.5,
+          "bottom": 796,
+          "chrome": 157,
+          "firstRow": 318.5,
+          "listHeight": 477.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 10
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "collapsed",
+      "theme": "light",
+      "variant": "A",
+      "file": "1440-collapsed-light-A.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 160.5,
+          "bottom": 851,
+          "chrome": 123,
+          "firstRow": 284.5,
+          "listHeight": 566.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 11
+        },
+        {
+          "name": "available",
+          "top": 160.5,
+          "bottom": 851,
+          "chrome": 123,
+          "firstRow": 284.5,
+          "listHeight": 566.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 12
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "collapsed",
+      "theme": "light",
+      "variant": "B",
+      "file": "1440-collapsed-light-B.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 160.5,
+          "bottom": 851,
+          "chrome": 126,
+          "firstRow": 287.5,
+          "listHeight": 563.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 11
+        },
+        {
+          "name": "available",
+          "top": 160.5,
+          "bottom": 851,
+          "chrome": 126,
+          "firstRow": 287.5,
+          "listHeight": 563.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 12
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "collapsed",
+      "theme": "dark",
+      "variant": "0",
+      "file": "1440-collapsed-dark-0.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 85,
+      "pageOverflow": 21,
+      "panels": [
+        {
+          "name": "items",
+          "top": 160.5,
+          "bottom": 796,
+          "chrome": 157,
+          "firstRow": 318.5,
+          "listHeight": 477.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 10
+        },
+        {
+          "name": "available",
+          "top": 160.5,
+          "bottom": 796,
+          "chrome": 157,
+          "firstRow": 318.5,
+          "listHeight": 477.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 10
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "collapsed",
+      "theme": "dark",
+      "variant": "A",
+      "file": "1440-collapsed-dark-A.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 160.5,
+          "bottom": 851,
+          "chrome": 123,
+          "firstRow": 284.5,
+          "listHeight": 566.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 11
+        },
+        {
+          "name": "available",
+          "top": 160.5,
+          "bottom": 851,
+          "chrome": 123,
+          "firstRow": 284.5,
+          "listHeight": 566.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 12
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "collapsed",
+      "theme": "dark",
+      "variant": "B",
+      "file": "1440-collapsed-dark-B.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 160.5,
+          "bottom": 851,
+          "chrome": 126,
+          "firstRow": 287.5,
+          "listHeight": 563.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 11
+        },
+        {
+          "name": "available",
+          "top": 160.5,
+          "bottom": 851,
+          "chrome": 126,
+          "firstRow": 287.5,
+          "listHeight": 563.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 12
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "expanded",
+      "theme": "light",
+      "variant": "0",
+      "file": "1440-expanded-light-0.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 85,
+      "pageOverflow": 21,
+      "panels": [
+        {
+          "name": "items",
+          "top": 177,
+          "bottom": 796,
+          "chrome": 157,
+          "firstRow": 335,
+          "listHeight": 461,
+          "textSize": "14px",
+          "fullyVisibleRows": 9
+        },
+        {
+          "name": "available",
+          "top": 177,
+          "bottom": 796,
+          "chrome": 157,
+          "firstRow": 335,
+          "listHeight": 461,
+          "textSize": "14px",
+          "fullyVisibleRows": 10
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "expanded",
+      "theme": "light",
+      "variant": "A",
+      "file": "1440-expanded-light-A.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 177,
+          "bottom": 851,
+          "chrome": 123,
+          "firstRow": 301,
+          "listHeight": 550,
+          "textSize": "14px",
+          "fullyVisibleRows": 11
+        },
+        {
+          "name": "available",
+          "top": 177,
+          "bottom": 851,
+          "chrome": 123,
+          "firstRow": 301,
+          "listHeight": 550,
+          "textSize": "14px",
+          "fullyVisibleRows": 12
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "expanded",
+      "theme": "light",
+      "variant": "B",
+      "file": "1440-expanded-light-B.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 177,
+          "bottom": 851,
+          "chrome": 126,
+          "firstRow": 304,
+          "listHeight": 547,
+          "textSize": "14px",
+          "fullyVisibleRows": 11
+        },
+        {
+          "name": "available",
+          "top": 177,
+          "bottom": 851,
+          "chrome": 126,
+          "firstRow": 304,
+          "listHeight": 547,
+          "textSize": "14px",
+          "fullyVisibleRows": 12
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "expanded",
+      "theme": "dark",
+      "variant": "0",
+      "file": "1440-expanded-dark-0.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 85,
+      "pageOverflow": 21,
+      "panels": [
+        {
+          "name": "items",
+          "top": 177,
+          "bottom": 796,
+          "chrome": 157,
+          "firstRow": 335,
+          "listHeight": 461,
+          "textSize": "14px",
+          "fullyVisibleRows": 9
+        },
+        {
+          "name": "available",
+          "top": 177,
+          "bottom": 796,
+          "chrome": 157,
+          "firstRow": 335,
+          "listHeight": 461,
+          "textSize": "14px",
+          "fullyVisibleRows": 10
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "expanded",
+      "theme": "dark",
+      "variant": "A",
+      "file": "1440-expanded-dark-A.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 177,
+          "bottom": 851,
+          "chrome": 123,
+          "firstRow": 301,
+          "listHeight": 550,
+          "textSize": "14px",
+          "fullyVisibleRows": 11
+        },
+        {
+          "name": "available",
+          "top": 177,
+          "bottom": 851,
+          "chrome": 123,
+          "firstRow": 301,
+          "listHeight": 550,
+          "textSize": "14px",
+          "fullyVisibleRows": 12
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "expanded",
+      "theme": "dark",
+      "variant": "B",
+      "file": "1440-expanded-dark-B.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 177,
+          "bottom": 851,
+          "chrome": 126,
+          "firstRow": 304,
+          "listHeight": 547,
+          "textSize": "14px",
+          "fullyVisibleRows": 11
+        },
+        {
+          "name": "available",
+          "top": 177,
+          "bottom": 851,
+          "chrome": 126,
+          "firstRow": 304,
+          "listHeight": 547,
+          "textSize": "14px",
+          "fullyVisibleRows": 12
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "collapsed",
+      "theme": "light",
+      "variant": "0",
+      "file": "1920-collapsed-light-0.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 85,
+      "pageOverflow": 21,
+      "panels": [
+        {
+          "name": "items",
+          "top": 140.5,
+          "bottom": 976,
+          "chrome": 157,
+          "firstRow": 298.5,
+          "listHeight": 677.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 13
+        },
+        {
+          "name": "available",
+          "top": 140.5,
+          "bottom": 976,
+          "chrome": 157,
+          "firstRow": 298.5,
+          "listHeight": 677.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 15
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "collapsed",
+      "theme": "light",
+      "variant": "A",
+      "file": "1920-collapsed-light-A.png",
+      "scrollChecks": [
+        "content fits",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 140.5,
+          "bottom": 1031,
+          "chrome": 123,
+          "firstRow": 264.5,
+          "listHeight": 766.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 14
+        },
+        {
+          "name": "available",
+          "top": 140.5,
+          "bottom": 1031,
+          "chrome": 123,
+          "firstRow": 264.5,
+          "listHeight": 766.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 17
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "collapsed",
+      "theme": "light",
+      "variant": "B",
+      "file": "1920-collapsed-light-B.png",
+      "scrollChecks": [
+        "content fits",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 140.5,
+          "bottom": 1031,
+          "chrome": 126,
+          "firstRow": 267.5,
+          "listHeight": 763.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 14
+        },
+        {
+          "name": "available",
+          "top": 140.5,
+          "bottom": 1031,
+          "chrome": 126,
+          "firstRow": 267.5,
+          "listHeight": 763.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 16
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "collapsed",
+      "theme": "dark",
+      "variant": "0",
+      "file": "1920-collapsed-dark-0.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 85,
+      "pageOverflow": 21,
+      "panels": [
+        {
+          "name": "items",
+          "top": 140.5,
+          "bottom": 976,
+          "chrome": 157,
+          "firstRow": 298.5,
+          "listHeight": 677.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 13
+        },
+        {
+          "name": "available",
+          "top": 140.5,
+          "bottom": 976,
+          "chrome": 157,
+          "firstRow": 298.5,
+          "listHeight": 677.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 15
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "collapsed",
+      "theme": "dark",
+      "variant": "A",
+      "file": "1920-collapsed-dark-A.png",
+      "scrollChecks": [
+        "content fits",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 140.5,
+          "bottom": 1031,
+          "chrome": 123,
+          "firstRow": 264.5,
+          "listHeight": 766.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 14
+        },
+        {
+          "name": "available",
+          "top": 140.5,
+          "bottom": 1031,
+          "chrome": 123,
+          "firstRow": 264.5,
+          "listHeight": 766.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 17
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "collapsed",
+      "theme": "dark",
+      "variant": "B",
+      "file": "1920-collapsed-dark-B.png",
+      "scrollChecks": [
+        "content fits",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 140.5,
+          "bottom": 1031,
+          "chrome": 126,
+          "firstRow": 267.5,
+          "listHeight": 763.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 14
+        },
+        {
+          "name": "available",
+          "top": 140.5,
+          "bottom": 1031,
+          "chrome": 126,
+          "firstRow": 267.5,
+          "listHeight": 763.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 16
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "expanded",
+      "theme": "light",
+      "variant": "0",
+      "file": "1920-expanded-light-0.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 85,
+      "pageOverflow": 21,
+      "panels": [
+        {
+          "name": "items",
+          "top": 140.5,
+          "bottom": 976,
+          "chrome": 157,
+          "firstRow": 298.5,
+          "listHeight": 677.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 13
+        },
+        {
+          "name": "available",
+          "top": 140.5,
+          "bottom": 976,
+          "chrome": 157,
+          "firstRow": 298.5,
+          "listHeight": 677.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 15
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "expanded",
+      "theme": "light",
+      "variant": "A",
+      "file": "1920-expanded-light-A.png",
+      "scrollChecks": [
+        "content fits",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 140.5,
+          "bottom": 1031,
+          "chrome": 123,
+          "firstRow": 264.5,
+          "listHeight": 766.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 14
+        },
+        {
+          "name": "available",
+          "top": 140.5,
+          "bottom": 1031,
+          "chrome": 123,
+          "firstRow": 264.5,
+          "listHeight": 766.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 17
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "expanded",
+      "theme": "light",
+      "variant": "B",
+      "file": "1920-expanded-light-B.png",
+      "scrollChecks": [
+        "content fits",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 140.5,
+          "bottom": 1031,
+          "chrome": 126,
+          "firstRow": 267.5,
+          "listHeight": 763.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 14
+        },
+        {
+          "name": "available",
+          "top": 140.5,
+          "bottom": 1031,
+          "chrome": 126,
+          "firstRow": 267.5,
+          "listHeight": 763.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 16
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "expanded",
+      "theme": "dark",
+      "variant": "0",
+      "file": "1920-expanded-dark-0.png",
+      "scrollChecks": [
+        "independent + sticky",
+        "independent + sticky"
+      ],
+      "footerHeight": 85,
+      "pageOverflow": 21,
+      "panels": [
+        {
+          "name": "items",
+          "top": 140.5,
+          "bottom": 976,
+          "chrome": 157,
+          "firstRow": 298.5,
+          "listHeight": 677.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 13
+        },
+        {
+          "name": "available",
+          "top": 140.5,
+          "bottom": 976,
+          "chrome": 157,
+          "firstRow": 298.5,
+          "listHeight": 677.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 15
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "expanded",
+      "theme": "dark",
+      "variant": "A",
+      "file": "1920-expanded-dark-A.png",
+      "scrollChecks": [
+        "content fits",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 140.5,
+          "bottom": 1031,
+          "chrome": 123,
+          "firstRow": 264.5,
+          "listHeight": 766.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 14
+        },
+        {
+          "name": "available",
+          "top": 140.5,
+          "bottom": 1031,
+          "chrome": 123,
+          "firstRow": 264.5,
+          "listHeight": 766.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 17
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "expanded",
+      "theme": "dark",
+      "variant": "B",
+      "file": "1920-expanded-dark-B.png",
+      "scrollChecks": [
+        "content fits",
+        "independent + sticky"
+      ],
+      "footerHeight": 41,
+      "pageOverflow": 0,
+      "panels": [
+        {
+          "name": "items",
+          "top": 140.5,
+          "bottom": 1031,
+          "chrome": 126,
+          "firstRow": 267.5,
+          "listHeight": 763.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 14
+        },
+        {
+          "name": "available",
+          "top": 140.5,
+          "bottom": 1031,
+          "chrome": 126,
+          "firstRow": 267.5,
+          "listHeight": 763.5,
+          "textSize": "14px",
+          "fullyVisibleRows": 16
+        }
+      ]
+    }
+  ],
+  "pageErrors": [],
+  "writeGuard": 403
+}

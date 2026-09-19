@@ -4059,5 +4059,23 @@
     "hiddenCreatedNorm": "Sökningen döljer den nya normreferensen ”{name}”. Den är fortfarande markerad.",
     "creationPersistence": "Det nya objektet sparas direkt. Avbryt i väljdialogen kasserar endast urvalet.",
     "searchHelp": "Sök på namn, referens-ID eller paketets syfte. Markeringar behålls när du filtrerar listan."
+  },
+  "heightPrototype": {
+    "question": "Vilken layout ger kravlistorna mer plats?",
+    "tag": "PROTOTYPE #1351",
+    "name0": "Nuläge",
+    "nameA": "Kompakt stapel",
+    "nameB": "Fullbreda flikar",
+    "nameC": "Gemensam flikrad",
+    "description0": "Nuvarande layout utan ändringar. Jämför med A, B och C med samma data och fönsterstorlek.",
+    "descriptionA": "Kompakta flikar och åtgärder ovanför ett separat kravpaketsband. Mindre sidfot och avstånd nedtill.",
+    "descriptionB": "Flikarna får en egen fullbred rad. Kravpaketsfilter och åtgärder delar nästa rad. Mindre sidfot och avstånd nedtill.",
+    "descriptionC": "Båda flikgrupperna flyttas till en gemensam rad ovanför panelerna. Varje panel samlar kravpaketsfilter och åtgärder. Mindre sidfot och avstånd nedtill.",
+    "readOnly": "Tillfällig prototyp. Skrivningar är blockerade. Filter, rullning, flikar och storleksändring fungerar.",
+    "help": "Vänster/höger pil byter variant. H döljer eller visar kontrollerna för fri granskning. Inspektören visar aktuella CSS-pixlar.",
+    "previous": "Föregående variant",
+    "next": "Nästa variant",
+    "inspect": "Inspektera",
+    "hide": "Dölj · H"
   }
 }

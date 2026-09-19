@@ -1,0 +1,239 @@
+/* THROWAWAY #1351: three different control arrangements on the real page. */
+.prototype-review {
+  position: fixed;
+  bottom: 8px;
+  left: 50%;
+  z-index: 90;
+  max-width: calc(100vw - 24px);
+  font: 13px / 1.4 system-ui;
+  color: #fff;
+  transform: translateX(-50%);
+}
+.prototype-bar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 6px;
+  white-space: nowrap;
+  background: #181b35;
+  border: 1px solid #a5b4fc;
+  border-radius: 14px;
+  box-shadow: 0 4px 22px #0005;
+}
+.prototype-bar button {
+  min-width: 30px;
+  min-height: 30px;
+  padding: 4px 9px;
+  border-radius: 8px;
+}
+.prototype-bar button:hover,
+.prototype-bar button[aria-pressed="true"] {
+  background: #4f46e5;
+}
+.prototype-bar button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+.prototype-tag {
+  padding: 0 8px;
+  font-weight: 700;
+  color: #c7d2fe;
+}
+.prototype-inspector {
+  max-width: 680px;
+  max-height: 70vh;
+  padding: 16px;
+  margin-inline: auto;
+  margin-bottom: 8px;
+  overflow: auto;
+  background: #181b35;
+  border: 1px solid #a5b4fc;
+  border-radius: 14px;
+}
+.prototype-inspector h2 {
+  font-size: 17px;
+  font-weight: 700;
+}
+.prototype-inspector p {
+  margin: 8px 0;
+}
+.prototype-inspector pre {
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.prototype-tab-shelf {
+  display: none;
+}
+@media (max-width: 1000px) {
+  .prototype-bar {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+}
+@media (min-width: 1280px) {
+  html:where([data-height-prototype]:not([data-height-prototype="0"])) footer {
+    padding-block: 10px;
+  }
+  html:where([data-height-prototype]:not([data-height-prototype="0"]))
+    [data-specification-detail-page-shell] {
+    height: calc(100dvh - 41px);
+    padding-bottom: 8px;
+  }
+  html:where([data-height-prototype]:not([data-height-prototype="0"]))
+    [data-specification-detail-page-shell]
+    [role="tablist"] {
+    gap: 2px;
+    padding: 2px;
+    box-shadow: none;
+  }
+  html:where([data-height-prototype]:not([data-height-prototype="0"]))
+    [data-specification-detail-page-shell]
+    [role="tab"] {
+    min-height: 30px;
+    padding: 3px 10px;
+  }
+  html:where([data-height-prototype]:not([data-height-prototype="0"]))
+    [data-requirements-sticky-top-bar] {
+    gap: 6px;
+    padding: 4px 8px;
+  }
+  html:where([data-height-prototype]:not([data-height-prototype="0"]))
+    [data-sticky-table-chrome]
+    > fieldset {
+    padding: 4px 10px;
+  }
+  html:where([data-height-prototype]:not([data-height-prototype="0"]))
+    [data-requirements-sticky-top-bar]
+    button:not([role="tab"]) {
+    min-width: 30px;
+    height: 30px;
+    min-height: 30px;
+  }
+  html:where([data-height-prototype]:not([data-height-prototype="0"]))
+    [data-requirements-sticky-top-bar]
+    [data-floating-action-item],
+  html:where([data-height-prototype]:not([data-height-prototype="0"]))
+    [data-requirements-sticky-top-bar]
+    [data-column-picker-trigger] {
+    width: 30px;
+    padding: 0;
+  }
+  html:where([data-height-prototype]:not([data-height-prototype="0"]))
+    [data-requirements-sticky-top-bar]
+    [data-floating-action-rail] {
+    gap: 4px;
+  }
+  /* A: existing stacked structure, compact pill tabs, compact actions. */
+  html[data-height-prototype="A"] [role="tab"] {
+    padding-inline: 8px;
+  }
+  /* B: a full-width tab strip, with filters and actions sharing the row below. */
+  html[data-height-prototype="B"] [data-sticky-table-chrome] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  html[data-height-prototype="B"] [data-requirements-sticky-top-bar] {
+    display: contents;
+  }
+  html[data-height-prototype="B"]
+    [data-requirements-sticky-top-bar]
+    > :first-child {
+    grid-row: 1;
+    grid-column: 1 / -1;
+    padding: 3px 8px;
+    border-bottom: 1px solid #94a3b840;
+  }
+  html[data-height-prototype="B"]
+    [data-requirements-sticky-top-bar]
+    > :last-child {
+    grid-row: 2;
+    grid-column: 2;
+    padding: 3px 8px;
+    border-bottom: 1px solid #94a3b840;
+  }
+  html[data-height-prototype="B"] [data-sticky-table-chrome] > fieldset {
+    grid-row: 2;
+    grid-column: 1;
+  }
+  html[data-height-prototype="B"]
+    [data-sticky-table-chrome]
+    > div:has(> [data-sticky-table-header]) {
+    grid-row: 3;
+    grid-column: 1 / -1;
+  }
+  html[data-height-prototype="B"] [role="tablist"] {
+    background: transparent;
+    border-radius: 0;
+  }
+  html[data-height-prototype="B"] [role="tab"] {
+    background: transparent;
+    border-color: transparent;
+    border-radius: 4px;
+    box-shadow: none;
+  }
+  html[data-height-prototype="B"] [role="tab"][aria-selected="true"] {
+    color: #4f46e5;
+    border-bottom: 2px solid #6366f1;
+  }
+  html.dark[data-height-prototype="B"] [role="tab"][aria-selected="true"] {
+    color: #c7d2fe;
+  }
+  /* C: a separate shared tab shelf; each list starts with filter/actions. */
+  html[data-height-prototype="C"] .prototype-tab-shelf {
+    display: grid;
+    flex-shrink: 0;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    margin: 0 -24px 6px;
+  }
+  html[data-height-prototype="C"] .prototype-tab-shelf > div {
+    padding: 3px 8px;
+    border-bottom: 2px solid #6366f1;
+  }
+  html[data-height-prototype="C"] .prototype-panel-tabs {
+    display: none;
+  }
+  html[data-height-prototype="C"] [data-sticky-table-chrome] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  html[data-height-prototype="C"] [data-requirements-sticky-top-bar] {
+    display: contents;
+  }
+  html[data-height-prototype="C"]
+    [data-requirements-sticky-top-bar]
+    > :first-child {
+    z-index: 1;
+    grid-row: 1;
+    grid-column: 1;
+    align-self: center;
+    width: 34px;
+    padding-left: 4px;
+  }
+  html[data-height-prototype="C"]
+    [data-requirements-sticky-top-bar]
+    > :last-child {
+    grid-row: 1;
+    grid-column: 2;
+    padding: 4px;
+    border-bottom: 1px solid #94a3b840;
+  }
+  html[data-height-prototype="C"] [data-sticky-table-chrome] > fieldset {
+    grid-row: 1;
+    grid-column: 1;
+    margin-left: 36px;
+  }
+  html[data-height-prototype="C"]
+    [data-sticky-table-chrome]
+    > div:has(> [data-sticky-table-header]) {
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
+}
+
+/* C's detached shelf uses flat surfaces: avoid Chromium backdrop compositing
+   obscuring the header when switching between the two grid arrangements. */
+html[data-height-prototype="C"] * {
+  /* biome-ignore lint/complexity/noImportantStyles: throwaway C must override all backdrop utilities to avoid a reproduced Chromium compositing defect. */
+  backdrop-filter: none !important;
+}
