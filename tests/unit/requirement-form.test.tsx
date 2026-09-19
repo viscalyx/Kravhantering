@@ -1605,10 +1605,11 @@ describe('RequirementForm', () => {
         { target: { value: field } },
       )
     confirmDiscardChangesMock.mockResolvedValueOnce(false)
-    fireEvent.click(
-      within(dialog).getByRole('button', { name: 'common.cancel' }),
+    const cancel = within(dialog).getByRole('button', { name: 'common.cancel' })
+    fireEvent.click(cancel)
+    await waitFor(() =>
+      expect(confirmDiscardChangesMock).toHaveBeenCalledWith(cancel),
     )
-    await waitFor(() => expect(confirmDiscardChangesMock).toHaveBeenCalled())
     expect(screen.getByRole('dialog')).toHaveAccessibleName(
       'requirementAssociations.createNorm',
     )

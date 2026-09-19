@@ -4043,7 +4043,7 @@
     "selectedOnOpen": "Already selected",
     "otherOptions": "Not selected",
     "noMatches": "No matches.",
-    "draftCount": "{count} marked in the dialog",
+    "draftCount": "{count, plural, one {# marked in the dialog} other {# marked in the dialog}}",
     "createPackage": "New requirement package",
     "createNorm": "New norm reference",
     "hiddenCreatedPackage": "The search hides the new requirement package “{name}”. It is still checked.",

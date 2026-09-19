@@ -71,11 +71,11 @@ export default function RequirementAssociationCreateModal({
     uri: '',
     version: '',
   })
-  const close = async () => {
+  const close = async (anchorEl?: HTMLElement) => {
     if (submitting) return
     if (
       Object.values(form).some(value => value.trim()) &&
-      !(await confirmDiscard())
+      !(await confirmDiscard(anchorEl))
     )
       return
     onClose()
@@ -280,7 +280,7 @@ export default function RequirementAssociationCreateModal({
           <div className="flex flex-wrap justify-end gap-3">
             <button
               className="min-h-6 min-w-6 rounded-lg border px-3 py-2 text-sm hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-secondary-800"
-              onClick={() => void close()}
+              onClick={event => void close(event.currentTarget)}
               type="button"
             >
               {tc('cancel')}

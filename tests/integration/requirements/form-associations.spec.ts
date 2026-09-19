@@ -17,7 +17,17 @@ test('LIFE-01B: association drafts, fixed groups and nested creation persist thr
     await trigger.click()
     const picker = page.getByRole('dialog')
     const first = picker.getByRole('checkbox').first()
+    await expect(
+      picker.getByText('0 markerade i dialogen', { exact: true }),
+    ).toBeVisible()
     await first.check()
+    await expect(
+      picker.getByText('1 markerat i dialogen', { exact: true }),
+    ).toBeVisible()
+    await picker.getByRole('checkbox').nth(1).check()
+    await expect(
+      picker.getByText('2 markerade i dialogen', { exact: true }),
+    ).toBeVisible()
     await picker.getByRole('searchbox').fill('no matching purpose')
     await picker.press('Escape')
     await expect(trigger).toBeFocused()
@@ -56,6 +66,34 @@ test('LIFE-01B: association drafts, fixed groups and nested creation persist thr
         await child
           .locator(`[id="association-create-${kind}-name"]`)
           .fill(kind === 'packages' ? packageName : normName)
+        const cancel = child.getByRole('button', {
+          name: 'Avbryt',
+          exact: true,
+        })
+        await cancel.click()
+        const confirmation = page.getByRole('alertdialog')
+        await expect(confirmation).toBeVisible()
+        await expect(confirmation).toHaveCSS('opacity', '1')
+        const anchorBox = await cancel.boundingBox()
+        const confirmationBox = await confirmation.boundingBox()
+        expect(anchorBox).not.toBeNull()
+        expect(confirmationBox).not.toBeNull()
+        if (anchorBox && confirmationBox) {
+          expect(
+            Math.min(
+              Math.abs(confirmationBox.y - anchorBox.y - anchorBox.height),
+              Math.abs(
+                anchorBox.y - confirmationBox.y - confirmationBox.height,
+              ),
+            ),
+          ).toBeLessThanOrEqual(9)
+        }
+        await confirmation
+          .getByRole('button', { name: 'Avbryt', exact: true })
+          .click()
+        await expect(
+          child.locator(`[id="association-create-${kind}-name"]`),
+        ).toHaveValue(kind === 'packages' ? packageName : normName)
         if (kind === 'packages') {
           await child
             .locator('#association-create-packages-purpose')

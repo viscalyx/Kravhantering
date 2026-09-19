@@ -4043,7 +4043,7 @@
     "selectedOnOpen": "Redan valda",
     "otherOptions": "Ej valda",
     "noMatches": "Inga träffar.",
-    "draftCount": "{count} markerade i dialogen",
+    "draftCount": "{count, plural, one {# markerat i dialogen} other {# markerade i dialogen}}",
     "createPackage": "Nytt kravpaket",
     "createNorm": "Ny normreferens",
     "hiddenCreatedPackage": "Sökningen döljer det nya kravpaketet ”{name}”. Det är fortfarande markerat.",

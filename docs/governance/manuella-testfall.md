@@ -1230,10 +1230,13 @@ dialogen för utgången session och skickar sedan användaren till inloggningen.
 Markera objekt, sök och avbryt. Öppna igen och kontrollera att det tidigare
 urvalet gäller. Tillämpa med `Välj` och öppna igen. Avmarkera en tidigare vald
 rad; raden ska stanna i `Redan valda` tills dialogen stängs.
+Kontrollera räknarens text med noll, ett och två markerade objekt.
 
 Skapa ett nytt paket med namn och syfte samt en normreferens med obligatoriska
 fält från respektive väljdialog. Kontrollera ansvarssammanfattningen för
 paketet. Avbryt först den översta dialogen och kontrollera fokus och sökning.
+Skriv ett namn, välj Avbryt och neka kasseringen. Kontrollera att namnet finns
+kvar i dialogen.
 Spara därefter ett nytt objekt medan sökningen döljer det. Läs notisen, rensa
 sökningen och kontrollera att objektet är markerat sist i `Redan valda`.
 Avbryt väljdialogen, öppna igen och välj det nya objektet. Spara kravet med

@@ -473,6 +473,66 @@ describe('Requirement edit recovery', () => {
     },
   )
 
+  it('copies the name of a package created during the current edit', async () => {
+    const baseFetch = fetchMock.getMockImplementation()
+    fetchMock.mockImplementation(async (input: string, init?: RequestInit) => {
+      if (input === '/api/requirement-packages' && init?.method === 'POST')
+        return response(
+          { id: 99, name: 'Created package', purposeAndScope: 'Scope' },
+          201,
+        )
+      return baseFetch?.(input, init)
+    })
+    const user = await openEditor()
+    await user.click(
+      screen.getByRole('button', { name: 'Choose requirement packages' }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'New requirement package' }),
+    )
+    const creation = within(screen.getByRole('dialog'))
+    await user.type(creation.getByLabelText(/^Name/), 'Created package')
+    await user.type(creation.getByLabelText(/^Purpose/), 'Scope')
+    await user.click(creation.getByRole('button', { name: 'Save' }))
+    await screen.findByRole('checkbox', { name: 'Created package' })
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Select',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue()
+    await user.click(
+      await screen.findByRole('button', { name: 'Copy unsaved work' }),
+    )
+    expect(copy).toHaveBeenCalledWith(
+      expect.stringContaining('Created package (#99)'),
+    )
+  })
+
+  it.each(['en', 'sv'] as const)(
+    'renders the selection count for zero, one and multiple items in %s',
+    async locale => {
+      const user = await openEditor(locale)
+      const localized = locale === 'sv' ? svMessages : messages
+      await user.click(
+        screen.getByRole('button', {
+          name: localized.requirementAssociations.choosePackages,
+        }),
+      )
+      const picker = within(screen.getByRole('dialog'))
+      const countText = (count: number) =>
+        locale === 'sv'
+          ? `${count} ${count === 1 ? 'markerat' : 'markerade'} i dialogen`
+          : `${count} marked in the dialog`
+      expect(picker.getByText(countText(0))).toBeInTheDocument()
+      await user.click(picker.getByRole('checkbox', { name: 'Package 1' }))
+      expect(picker.getByText(countText(1))).toBeInTheDocument()
+      await user.click(picker.getByRole('checkbox', { name: 'Package 2' }))
+      expect(picker.getByText(countText(2))).toBeInTheDocument()
+    },
+  )
+
   it.each(['en', 'sv'] as const)(
     'copies readable selections with %s labels',
     async locale => {

@@ -480,7 +480,7 @@ export default function RequirementForm({
             form,
             field as keyof RequirementFormFieldValues,
             {
-              ...taxonomyOptions,
+              ...formTaxonomyOptions,
               normReferences: [
                 ...taxonomyOptions.normReferences,
                 ...createdNormRefs,
