@@ -77,6 +77,9 @@ Nuläge behåller den ursprungliga geometrin men får samma synliga syfte som
 9. Växla till D. Samma val ska visas i kryssrutorna. En tidigare modalsökning
    får inte filtrera bort paket i D:s lista.
 
+Normreferensens ID har samma grå ton som i övriga varianter, i både ljust
+och mörkt tema. Namnet behåller sin vanliga textfärg.
+
 Dialogens markeringar är ett tillfälligt utkast; endast **Välj** för över dem
 till formuläret. Sökning och stängning ändrar inte det redan tillämpade
 urvalet. Variantväljaren döljs medan en modal är öppen och dess kortkommandon

@@ -97,7 +97,9 @@ export default function PrototypeRequirementAssociations({
             />
             <span>
               {item.reference && (
-                <span className="font-mono text-xs">{item.reference} </span>
+                <span className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
+                  {item.reference}{' '}
+                </span>
               )}
               {item.name}
               {item.isArchived ? ` (${t('archived')})` : ''}
