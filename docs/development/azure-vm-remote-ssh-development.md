@@ -764,8 +764,10 @@ storage-report
 ```
 
 The report shows filesystem, directory, Docker, Podman, and Git worktree use.
-Directory sizing includes `/mnt/krav-azure-dev-data/.worktrees`, and registered
-worktrees are reported by their actual paths. Missing worktrees receive a
+Directory sizing includes `/mnt/krav-azure-dev-data/.worktrees` and the redirected
+user temporary directory `/var/tmp/krav-vscode`, backed by
+`/mnt/krav-azure-dev-data/home/vscode/tmp`. Registered worktrees are reported by
+their actual paths. Missing worktrees receive a
 suggestion to review `git worktree prune --dry-run`. If a worktree cannot be
 fully measured, its size is shown as unknown and the report continues through
 the cleanup suggestions. The report classifies worktrees

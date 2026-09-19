@@ -60,6 +60,7 @@ directory_sizes() {
     /var/lib/containerd
     /var/lib/docker
     /tmp
+    /var/tmp/krav-vscode
     /home/vscode/.vscode-server
     /home/vscode/.codex
     /home/vscode/.cache
