@@ -1,0 +1,213 @@
+{
+  "checks": [
+    {
+      "dark": false,
+      "width": 1440,
+      "kind": "packages",
+      "scroll": 300,
+      "headers": [
+        {
+          "top": 270,
+          "listTop": 270,
+          "bg": "rgb(255, 255, 255)",
+          "aboveRows": true
+        },
+        {
+          "top": 270,
+          "listTop": 270,
+          "bg": "rgb(255, 255, 255)",
+          "aboveRows": true
+        },
+        {
+          "top": 270,
+          "listTop": 270,
+          "bg": "rgb(255, 255, 255)",
+          "aboveRows": true
+        }
+      ]
+    },
+    {
+      "dark": false,
+      "width": 1440,
+      "kind": "norms",
+      "scroll": 300,
+      "headers": [
+        {
+          "top": 255,
+          "listTop": 255,
+          "bg": "rgb(255, 255, 255)",
+          "aboveRows": true
+        },
+        {
+          "top": 255,
+          "listTop": 255,
+          "bg": "rgb(255, 255, 255)",
+          "aboveRows": true
+        },
+        {
+          "top": 255,
+          "listTop": 255,
+          "bg": "rgb(255, 255, 255)",
+          "aboveRows": true
+        }
+      ]
+    },
+    {
+      "dark": false,
+      "width": 320,
+      "kind": "packages",
+      "scroll": 300,
+      "headers": [
+        {
+          "top": 288,
+          "listTop": 288,
+          "bg": "rgb(255, 255, 255)",
+          "aboveRows": true
+        },
+        {
+          "top": 288,
+          "listTop": 288,
+          "bg": "rgb(255, 255, 255)",
+          "aboveRows": true
+        },
+        {
+          "top": 288,
+          "listTop": 288,
+          "bg": "rgb(255, 255, 255)",
+          "aboveRows": true
+        }
+      ]
+    },
+    {
+      "dark": false,
+      "width": 320,
+      "kind": "norms",
+      "scroll": 300,
+      "headers": [
+        {
+          "top": 255,
+          "listTop": 255,
+          "bg": "rgb(255, 255, 255)",
+          "aboveRows": true
+        },
+        {
+          "top": 255,
+          "listTop": 255,
+          "bg": "rgb(255, 255, 255)",
+          "aboveRows": true
+        },
+        {
+          "top": 255,
+          "listTop": 255,
+          "bg": "rgb(255, 255, 255)",
+          "aboveRows": true
+        }
+      ]
+    },
+    {
+      "dark": true,
+      "width": 1440,
+      "kind": "packages",
+      "scroll": 300,
+      "headers": [
+        {
+          "top": 270,
+          "listTop": 270,
+          "bg": "rgb(15, 23, 42)",
+          "aboveRows": true
+        },
+        {
+          "top": 270,
+          "listTop": 270,
+          "bg": "rgb(15, 23, 42)",
+          "aboveRows": true
+        },
+        {
+          "top": 270,
+          "listTop": 270,
+          "bg": "rgb(15, 23, 42)",
+          "aboveRows": true
+        }
+      ]
+    },
+    {
+      "dark": true,
+      "width": 1440,
+      "kind": "norms",
+      "scroll": 300,
+      "headers": [
+        {
+          "top": 255,
+          "listTop": 255,
+          "bg": "rgb(15, 23, 42)",
+          "aboveRows": true
+        },
+        {
+          "top": 255,
+          "listTop": 255,
+          "bg": "rgb(15, 23, 42)",
+          "aboveRows": true
+        },
+        {
+          "top": 255,
+          "listTop": 255,
+          "bg": "rgb(15, 23, 42)",
+          "aboveRows": true
+        }
+      ]
+    },
+    {
+      "dark": true,
+      "width": 320,
+      "kind": "packages",
+      "scroll": 300,
+      "headers": [
+        {
+          "top": 288,
+          "listTop": 288,
+          "bg": "rgb(15, 23, 42)",
+          "aboveRows": true
+        },
+        {
+          "top": 288,
+          "listTop": 288,
+          "bg": "rgb(15, 23, 42)",
+          "aboveRows": true
+        },
+        {
+          "top": 288,
+          "listTop": 288,
+          "bg": "rgb(15, 23, 42)",
+          "aboveRows": true
+        }
+      ]
+    },
+    {
+      "dark": true,
+      "width": 320,
+      "kind": "norms",
+      "scroll": 300,
+      "headers": [
+        {
+          "top": 255,
+          "listTop": 255,
+          "bg": "rgb(15, 23, 42)",
+          "aboveRows": true
+        },
+        {
+          "top": 255,
+          "listTop": 255,
+          "bg": "rgb(15, 23, 42)",
+          "aboveRows": true
+        },
+        {
+          "top": 255,
+          "listTop": 255,
+          "bg": "rgb(15, 23, 42)",
+          "aboveRows": true
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

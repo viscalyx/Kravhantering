@@ -99,6 +99,9 @@ E.1 behåller listorna. E.2 använder en tabell i respektive dialog:
 De två textkolumnerna är vänsterjusterade. Referens-ID har samma grå ton
 som tidigare, och paketens syfte visas med mindre text utan upprepad rubrik.
 Urval, sökning, Välj, Avbryt och märken fungerar på samma sätt i båda varianter.
+Kolumnrubrikerna ligger kvar överst när tabellens innehåll rullas.
+Vägledningen om paketens syfte visas under dialogtiteln, före sökfältet,
+och ligger också kvar när tabellen rullas.
 Den gamla länken med `?variant=E` öppnar E.1.
 
 1. Öppna båda dialogerna i E.2 och kontrollera kolumnerna.
@@ -107,12 +110,17 @@ Den gamla länken med `?variant=E` öppnar E.1.
 4. Växla till E.1 och öppna dialogen. Samma objekt ska vara markerade i listan.
 5. Prova **Avbryt**, Escape och återöppning med båda varianterna.
 6. Granska tabellerna i ljust och mörkt tema samt vid 320 pixlars bredd.
+7. Rulla ned i båda tabellerna. Rubrikerna ska ligga kvar, med täckande
+   bakgrund så att raderna inte syns genom dem.
 
 - [E.2:s paketdialog](screenshots/E2-packages-modal.png)
 - [E.2:s normreferensdialog](screenshots/E2-norms-modal.png)
 - [E.2:s paketdialog i mörkt tema](screenshots/E2-packages-dark.png)
 - [E.2:s normreferenser i mörkt tema](screenshots/E2-norms-dark.png)
 - [E.2:s dialog vid 320 pixlar](screenshots/E2-modal-320.png)
+- [Rullad paketlista med fasta rubriker](screenshots/E2-packages-sticky.png)
+- [Rullade normreferenser med fasta rubriker](screenshots/E2-norms-sticky.png)
+- [Kontroll av fasta rubriker](sticky-header-inspection.json)
 - [Kontroller för E.2](table-modal-inspection.json)
 
 ## Ändringslista och kontrollpunkter

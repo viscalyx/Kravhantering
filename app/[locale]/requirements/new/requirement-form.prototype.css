@@ -502,7 +502,16 @@ body:has([aria-modal="true"]) .prototype-1349-review {
   border-bottom: 1px solid var(--color-secondary-200);
 }
 .prototype-1349-picker-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   font-weight: 500;
+  background: white;
+  box-shadow: 0 1px 0 var(--color-secondary-200);
+}
+.dark .prototype-1349-picker-table th {
+  background: var(--color-secondary-900);
+  box-shadow: 0 1px 0 var(--color-secondary-700);
 }
 .dark .prototype-1349-picker-table th,
 .dark .prototype-1349-picker-table td {

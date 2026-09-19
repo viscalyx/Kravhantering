@@ -92,7 +92,7 @@ export default function PrototypeRequirementAssociations({
   )
   const choices = (
     <>
-      {isPackage && (
+      {isPackage && !table && (
         <p className="prototype-1349-purpose-guidance">
           {t('purposeGuidance')}
         </p>
@@ -304,6 +304,11 @@ export default function PrototypeRequirementAssociations({
           className="prototype-1349-picker"
           {...devMarker({ name: 'prototype modal draft', value: kind })}
         >
+          {isPackage && table && (
+            <p className="prototype-1349-purpose-guidance">
+              {t('purposeGuidance')}
+            </p>
+          )}
           <label htmlFor={`prototype-${kind}-search`}>
             {t('searchAssociations')}
           </label>
