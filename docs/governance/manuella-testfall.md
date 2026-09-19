@@ -1593,9 +1593,12 @@ panel. Scrolla även Avtal och versionshistorik på dator och kontrollera att
 kravlistorna behåller sina scrollpositioner. Öppna ett tillgängligt krav i den
 delade vyn. Läs kravtext,
 acceptanskriterium och verifieringsmetod och öppna områdesinformationen med
-mellanslag. Stäng med Escape.
+mellanslag. Stäng med Escape. Använd även kravpaketsfilter, kolumnval och
+markeringsåtgärder medan respektive lista är rullad.
 
 **Förväntat resultat:** Panelerna påverkar inte varandras scrollposition.
+Flikar, filter och tabellhuvuden är fortsatt tillgängliga när listorna rullas.
+Sidfotens upphovsrättstext går att läsa.
 Kravets tre texter går att läsa i ordningen kravtext, acceptanskriterium och
 verifieringsmetod, före metadata. Områdesinformationen visar beskrivning och
 ägare; Escape återför fokus till infoikonen.
@@ -1605,7 +1608,9 @@ verifieringsmetod, före metadata. Områdesinformationen visar beskrivning och
 **Steg:** Lägg till ett krav och kontrollera att det syns. Kontrollera att
 underlagets kravlista har individuella markeringsrutor men ingen Markera alla.
 Kontrollera att båda kravlistorna använder det kompakta kravpaketsbandet och
-att vänster och höger paketval är oberoende. Höger väljare ska visa hela den
+att vänster och höger paketval är oberoende. Välj flera paket och minska
+fönsterbredden. Paketvalen går fortfarande att läsa och ta bort, och övriga
+knappar i knappraden går att använda. Höger väljare ska visa hela den
 aktiva katalogen, även paket utan tillgängliga träffar. Vänster väljare ska
 bara visa aktiva paket med aktuellt medlemskap för bibliotekskrav någonstans i
 hela underlaget, även när kravet finns på en senare resultatsida. Kontrollera
@@ -2205,12 +2210,24 @@ den enda öppna vänsterpanelen. Upprepa åt
 andra hållet och öppna sedan båda. Prova Behovsreferenser, RFI-frågelista och
 Kravurvalsfrågor som aktiva tabbar. Fäll ihop och öppna varje panel. Ändra
 fönsterbredd medan en panel är hopfälld. Upprepa på engelska.
+Använd knappraden under Behovsreferenser för att öppna Ny behovsreferens.
+I RFI-frågelistan, tabba till lägesförklaringen och läs hela texten.
+Stäng förklaringen med Escape och fortsätt med Tab till filterknappen.
+Kontrollera att fokus på RFI-fliken behålls när listan laddas färdigt.
+Kontrollera även CSV, PDF och låsning i samma knapprad.
 
 **Förväntat resultat:** Minst en panel är alltid öppen. Öppningsknappen visar
 panelens grundnamn och eventuell aktiv sekundär tabb. RFI använder tillägget
 `RFI`. Rätt tabb återkommer vid öppning. Knapparna fungerar med Enter och
 blanksteg, fokus förblir synligt och hjälpmedel får öppet eller hopfällt
 tillstånd. Fönsterändring bevarar vald layout och aktiv tabb.
+Flikarnas åtgärder går att nå med tangentbord under flikarna.
+Hela RFI-läget och förklaringen visas vid tangentbordsfokus eller hovring,
+även när texten är för lång för raden. Texten förblir öppen när pekaren
+flyttas till förklaringen. Escape stänger förklaringen och behåller fokus.
+Även i låst läge med smal panel går texten att läsa och exportknapparna
+att använda utan att text och knappar täcker varandra.
+Åtgärder för grupper och enskilda rader finns kvar vid respektive innehåll.
 
 ### SPEC-31: kom ihåg senaste kravunderlagets layout
 

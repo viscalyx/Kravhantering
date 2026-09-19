@@ -53,6 +53,7 @@ import LazyRequirementsImportDialog, {
   type InitialRequirementsImport,
 } from '@/components/LazyRequirementsImportDialog'
 import RequirementRemovalButton from '@/components/RequirementRemovalButton'
+import RequirementsPanelHeader from '@/components/RequirementsPanelHeader'
 import RequirementsTable, {
   type FloatingActionItem,
   type FloatingActionMenuItem,
@@ -2983,9 +2984,9 @@ export default function KravunderlagDetailClient({
     'bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain'
   const specificationDetailStickyTopOffsetClassName = 'top-0'
   const specificationDetailPagePaddingClassName =
-    'px-4 pb-8 pt-6 sm:px-6 sm:pb-10 sm:pt-7 lg:px-8 lg:pt-8'
-  const splitPanelHeaderClassName = `sticky ${specificationDetailStickyTopOffsetClassName} z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80`
-  const specificationDetailPageShellClassName = `${specificationDetailPagePaddingClassName} xl:flex xl:h-[calc(100dvh-4rem)] xl:flex-col xl:overflow-hidden`
+    'px-4 pb-8 pt-6 sm:px-6 sm:pb-10 sm:pt-7 lg:px-8 lg:pt-8 xl:pb-2'
+  const splitPanelHeaderClassName = `sticky ${specificationDetailStickyTopOffsetClassName} z-20 rounded-t-2xl`
+  const specificationDetailPageShellClassName = `${specificationDetailPagePaddingClassName} xl:flex xl:h-[calc(100dvh-41px)] xl:flex-col xl:overflow-hidden`
   const specificationDetailContainerClassName =
     'container-custom max-w-none xl:flex xl:min-h-0 xl:w-full xl:flex-1 xl:flex-col'
   const responsibleDisplayName = formatActorDisplayNameForLocale(
@@ -3004,12 +3005,12 @@ export default function KravunderlagDetailClient({
     setNeedsReferenceFormBaseline(needsReferenceFormSignature(nextForm))
   }
   const splitPanelTabsClassName =
-    'inline-flex max-w-full shrink gap-1 overflow-x-auto rounded-full bg-secondary-100 p-1 shadow-inner dark:bg-secondary-950/80'
+    'inline-flex max-w-full min-w-0 gap-0.5 overflow-x-auto'
   const splitPanelTabClassName = (active: boolean) =>
-    `inline-flex min-h-11 min-w-0 items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 sm:px-6 sm:text-base ${
+    `relative inline-flex min-h-7.5 min-w-0 shrink-0 items-center gap-2 rounded border-b-2 px-2.5 py-0.75 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 sm:text-base ${
       active
-        ? 'border-white bg-white text-secondary-900 shadow-sm dark:border-primary-500 dark:bg-primary-600 dark:text-white'
-        : 'border-transparent text-secondary-700 hover:bg-white/70 hover:text-secondary-900 dark:text-secondary-300 dark:hover:bg-secondary-800/70 dark:hover:text-secondary-100'
+        ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-200'
+        : 'border-transparent text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800'
     }`
   const leftPanelActionPillClassName =
     'inline-flex h-11 w-11 items-center justify-center rounded-full border border-primary-600/80 bg-primary-700 text-white shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all hover:-translate-y-px hover:border-primary-700 hover:bg-primary-800 hover:shadow-[0_14px_36px_-20px_rgba(67,56,202,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-primary-500/80 dark:bg-primary-600 dark:hover:border-primary-400 dark:hover:bg-primary-700 dark:focus-visible:ring-offset-secondary-950'
@@ -3070,6 +3071,11 @@ export default function KravunderlagDetailClient({
       <SpecificationPanelToggle />
       <div
         aria-label={t('leftPanelTabs')}
+        {...devMarker({
+          name: 'tab group',
+          context: 'requirements specification detail',
+          value: 'left panel tabs',
+        })}
         className={splitPanelTabsClassName}
         role="tablist"
       >
@@ -3118,6 +3124,11 @@ export default function KravunderlagDetailClient({
       <SpecificationPanelToggle />
       <div
         aria-label={t('rightPanelTabs')}
+        {...devMarker({
+          name: 'tab group',
+          context: 'requirements specification detail',
+          value: 'right panel tabs',
+        })}
         className={splitPanelTabsClassName}
         role="tablist"
       >
@@ -3329,29 +3340,33 @@ export default function KravunderlagDetailClient({
                   className={desktopSplitPanelCardClassName}
                   data-specification-detail-list-panel="needs-references"
                 >
-                  <div className={splitPanelHeaderClassName}>
-                    {renderLeftPanelTabs()}
-                    {canManageNeedsReferences ? (
-                      <button
-                        aria-label={t('newNeedsReference')}
-                        className={leftPanelActionPillClassName}
-                        {...devMarker({
-                          context: 'requirements specification detail',
-                          name: 'table action',
-                          priority: 350,
-                          value: 'create needs reference',
-                        })}
-                        onClick={openNeedsReferenceForm}
-                        title={t('newNeedsReference')}
-                        type="button"
-                      >
-                        <Plus aria-hidden="true" className="h-4 w-4" />
-                        <span className="sr-only">
-                          {t('newNeedsReference')}
-                        </span>
-                      </button>
-                    ) : null}
-                  </div>
+                  <RequirementsPanelHeader
+                    actions={
+                      canManageNeedsReferences ? (
+                        <button
+                          aria-label={t('newNeedsReference')}
+                          className={leftPanelActionPillClassName}
+                          data-compact-panel-action="true"
+                          {...devMarker({
+                            context: 'requirements specification detail',
+                            name: 'table action',
+                            priority: 350,
+                            value: 'create needs reference',
+                          })}
+                          onClick={openNeedsReferenceForm}
+                          title={t('newNeedsReference')}
+                          type="button"
+                        >
+                          <Plus aria-hidden="true" className="h-4 w-4" />
+                          <span className="sr-only">
+                            {t('newNeedsReference')}
+                          </span>
+                        </button>
+                      ) : null
+                    }
+                    className={splitPanelHeaderClassName}
+                    title={renderLeftPanelTabs()}
+                  />
                   {needsReferenceError ? (
                     <p
                       className="m-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300"
@@ -3604,11 +3619,9 @@ export default function KravunderlagDetailClient({
                   className={desktopSplitPanelCardClassName}
                   data-specification-detail-list-panel="rfi"
                 >
-                  <div className={splitPanelHeaderClassName}>
-                    {renderLeftPanelTabs()}
-                  </div>
                   <SpecificationRfiListPanel
                     canEdit={canEditContent}
+                    header={renderLeftPanelTabs()}
                     specificationId={specificationId}
                   />
                 </div>
@@ -3621,10 +3634,11 @@ export default function KravunderlagDetailClient({
                   className={desktopSplitPanelCardClassName}
                   data-specification-detail-list-panel="items"
                 >
-                  <div className={splitPanelHeaderClassName}>
-                    {renderLeftPanelTabs()}
-                    {renderEmptySpecificationActions()}
-                  </div>
+                  <RequirementsPanelHeader
+                    actions={renderEmptySpecificationActions()}
+                    className={splitPanelHeaderClassName}
+                    title={renderLeftPanelTabs()}
+                  />
                   <div className="p-8 text-center text-sm text-secondary-500 dark:text-secondary-400">
                     {t('noItems')}
                   </div>
@@ -4064,6 +4078,7 @@ export default function KravunderlagDetailClient({
                               <button
                                 aria-label={t('assignNeedsReferenceAction')}
                                 className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-secondary-300 text-secondary-700 transition-colors hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                                data-compact-panel-action="true"
                                 disabled={
                                   selectionActionLimitExceeded ||
                                   bulkActionResolving ||
@@ -4089,6 +4104,7 @@ export default function KravunderlagDetailClient({
                               <button
                                 aria-label={t('clearNeedsReferenceAction')}
                                 className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-secondary-300 text-secondary-700 transition-colors hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                                data-compact-panel-action="true"
                                 disabled={
                                   selectionActionLimitExceeded ||
                                   bulkActionResolving ||
@@ -4182,6 +4198,7 @@ export default function KravunderlagDetailClient({
                         </>
                       ) : null
                     }
+                    stickyTitleLayout="above-actions"
                     stickyTopOffsetClassName={
                       specificationDetailStickyTopOffsetClassName
                     }
@@ -4410,6 +4427,7 @@ export default function KravunderlagDetailClient({
                           ) : null}
                         </div>
                       }
+                      stickyTitleLayout="above-actions"
                       stickyTopOffsetClassName={
                         specificationDetailStickyTopOffsetClassName
                       }
@@ -4419,9 +4437,10 @@ export default function KravunderlagDetailClient({
                   </>
                 ) : (
                   <>
-                    <div className={splitPanelHeaderClassName}>
-                      {renderRightPanelTabs()}
-                    </div>
+                    <RequirementsPanelHeader
+                      className={splitPanelHeaderClassName}
+                      title={renderRightPanelTabs()}
+                    />
                     <SpecificationRequirementSelectionPanel
                       onChanged={() => {
                         if (applyRequirementSelectionFilter) {

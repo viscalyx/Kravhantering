@@ -47,6 +47,7 @@ import { useResizeHandles } from '@/components/_requirements-table/useResizeHand
 import DeviationFollowup from '@/components/DeviationFollowup'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import RequirementsPackageFilter from '@/components/RequirementsPackageFilter'
+import RequirementsPanelHeader from '@/components/RequirementsPanelHeader'
 import StatusBadge from '@/components/StatusBadge'
 import { Link, useRouter } from '@/i18n/routing'
 import { getReadableTextColors, isStrictHexColor } from '@/lib/color-contrast'
@@ -145,6 +146,7 @@ export interface RequirementsTableProps {
   statusRow?: ReactNode
   stickyTitle?: ReactNode
   stickyTitleActions?: ReactNode
+  stickyTitleLayout?: 'inline' | 'above-actions'
   stickyTopOffsetClassName?: string
   types?: FilterOption[]
   visibleColumns?: RequirementColumnId[]
@@ -1545,6 +1547,7 @@ export default function RequirementsTable({
   sortState = DEFAULT_REQUIREMENT_SORT,
   stickyTopOffsetClassName = 'top-0',
   stickyTitle,
+  stickyTitleLayout = 'inline',
   stickyTitleActions,
   statusOptions = [],
   qualityCharacteristics = [],
@@ -3297,6 +3300,19 @@ export default function RequirementsTable({
     return <Fragment key={`resize-handle-${columnId}`}>{segmentNodes}</Fragment>
   }
 
+  const compactPackageFilter =
+    requirementPackageFilterPresentation === 'compact-band' && hasFilters ? (
+      <RequirementsPackageFilter
+        catalogStatus={requirementPackageCatalogStatus}
+        locale={locale}
+        onChange={requirementPackageIds =>
+          updateFilter({ requirementPackageIds })
+        }
+        requirementPackages={requirementPackages}
+        selectedIds={fv.requirementPackageIds ?? []}
+      />
+    ) : null
+
   return (
     <div className="relative scroll-mt-20" ref={tableRootRef}>
       {showSpinner && (
@@ -3315,30 +3331,34 @@ export default function RequirementsTable({
         className={stickyTableChromeClassName}
         data-sticky-table-chrome="true"
       >
-        {(stickyTitle || stickyTitleActions || inlineFloatingRail) && (
-          <div
-            className={stickyTopBarClassName}
-            data-requirements-sticky-top-bar="true"
-          >
-            <div className="min-w-0 flex-1">{stickyTitle}</div>
-            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:flex-nowrap sm:shrink-0">
-              {stickyTitleActions}
-              {inlineFloatingRail}
-            </div>
-          </div>
+        {stickyTitleLayout === 'above-actions' ? (
+          <RequirementsPanelHeader
+            actions={
+              <>
+                {stickyTitleActions}
+                {inlineFloatingRail}
+              </>
+            }
+            filter={compactPackageFilter}
+            title={stickyTitle}
+          />
+        ) : (
+          <>
+            {(stickyTitle || stickyTitleActions || inlineFloatingRail) && (
+              <div
+                className={stickyTopBarClassName}
+                data-requirements-sticky-top-bar="true"
+              >
+                <div className="min-w-0 flex-1">{stickyTitle}</div>
+                <div className="flex min-w-0 flex-wrap items-center gap-2 sm:flex-nowrap sm:shrink-0">
+                  {stickyTitleActions}
+                  {inlineFloatingRail}
+                </div>
+              </div>
+            )}
+            {compactPackageFilter}
+          </>
         )}
-        {requirementPackageFilterPresentation === 'compact-band' &&
-          hasFilters && (
-            <RequirementsPackageFilter
-              catalogStatus={requirementPackageCatalogStatus}
-              locale={locale}
-              onChange={requirementPackageIds =>
-                updateFilter({ requirementPackageIds })
-              }
-              requirementPackages={requirementPackages}
-              selectedIds={fv.requirementPackageIds ?? []}
-            />
-          )}
         {requirementPackageFilterPresentation === 'chips' &&
           requirementPackages.length > 0 &&
           hasFilters && (

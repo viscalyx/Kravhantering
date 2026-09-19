@@ -187,11 +187,6 @@ vi.mock(
   }),
 )
 
-vi.mock(
-  '@/app/[locale]/specifications/[specificationId]/specification-rfi-list-panel',
-  () => ({ default: () => <div>RFI list panel</div> }),
-)
-
 vi.mock('@/lib/reduced-motion', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/reduced-motion')>()
 
@@ -1160,6 +1155,21 @@ describe('RequirementsSpecificationDetailClient', () => {
         const method =
           init?.method ?? (typeof input === 'string' ? 'GET' : input.method)
 
+        if (url === specificationApiPath('/rfi-list')) {
+          return Promise.resolve(
+            okJson({
+              list: {
+                assessmentHistory: [],
+                isLocked: false,
+                items: [],
+                lockedAt: null,
+                lockedByDisplayName: null,
+                lockRevision: 0,
+                specificationId: 8,
+              },
+            }),
+          )
+        }
         if (/\/agreement(?:\?|$)/.test(url)) {
           return Promise.resolve(
             okJson({

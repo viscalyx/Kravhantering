@@ -1,0 +1,53 @@
+/* Keep compact sizing local to panel chrome; menus and row actions retain
+   their own target sizes. The toolbar can wrap when actions need more room. */
+.requirements-panel-header [role="tablist"] {
+  gap: 2px;
+  padding: 2px;
+}
+
+.requirements-panel-header [role="tab"] + [role="tab"]::before {
+  position: absolute;
+  top: 20%;
+  bottom: 20%;
+  left: -2px;
+  width: 1px;
+  pointer-events: none;
+  content: "";
+  background: var(--color-secondary-300);
+}
+
+.dark .requirements-panel-header [role="tab"] + [role="tab"]::before {
+  background: var(--color-secondary-600);
+}
+
+.requirements-panel-header [data-panel-toggle] {
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+}
+
+.requirements-panel-toolbar > div > fieldset {
+  padding: 3px 8px;
+  background: transparent;
+  border-bottom: 0;
+}
+
+.requirements-panel-actions button,
+.requirements-panel-actions a {
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding-block: 0;
+}
+
+.requirements-panel-actions [data-floating-action-item],
+.requirements-panel-actions [data-column-picker-trigger],
+.requirements-panel-actions [data-compact-panel-action] {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+}
+
+.requirements-panel-actions [data-floating-action-rail] {
+  gap: 4px;
+}

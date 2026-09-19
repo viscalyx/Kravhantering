@@ -219,6 +219,7 @@ function SpecificationPanel({
       aria-expanded={expanded}
       aria-label={controlLabel}
       className={`flex min-h-8 min-w-8 shrink-0 items-center justify-center gap-2 rounded-lg border border-secondary-300 bg-white px-2 py-1 text-sm text-secondary-800 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100 dark:hover:bg-secondary-800 ${expanded ? '' : 'w-full xl:h-full xl:w-10 xl:flex-col'}`}
+      data-panel-toggle="true"
       onClick={() => {
         restoreFocus.current = true
         onToggle()

@@ -13,6 +13,7 @@ import {
 import { useLocale, useTranslations } from 'next-intl'
 import {
   type MouseEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -21,6 +22,8 @@ import {
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FormModal from '@/components/FormModal'
+import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
+import RequirementsPanelHeader from '@/components/RequirementsPanelHeader'
 import RfiAssessmentEditor, {
   RfiAssessmentDetails,
 } from '@/components/rfi/RfiAssessmentEditor'
@@ -75,6 +78,7 @@ interface RfiSuggestion {
 
 interface Props {
   canEdit: boolean
+  header?: ReactNode
   specificationId: number
 }
 
@@ -157,6 +161,7 @@ function areaScopeState(items: RfiListItem[]) {
 
 export default function SpecificationRfiListPanel({
   canEdit,
+  header,
   specificationId,
 }: Props) {
   const t = useTranslations('specificationRfiList')
@@ -433,19 +438,19 @@ export default function SpecificationRfiListPanel({
           question: target.item.questionText,
         })
 
-  if (loading) {
+  if (loading || !list) {
     return (
-      <p className="p-6 text-sm text-secondary-600 dark:text-secondary-300">
-        {tc('loading')}
-      </p>
-    )
-  }
-
-  if (!list) {
-    return (
-      <p className="p-6 text-sm text-secondary-600 dark:text-secondary-300">
-        {t('empty')}
-      </p>
+      <div className="space-y-4 p-4">
+        {header && (
+          <RequirementsPanelHeader
+            className="sticky top-0 z-20 -mx-4 -mt-4 rounded-t-2xl"
+            title={header}
+          />
+        )}
+        <p className="p-6 text-sm text-secondary-600 dark:text-secondary-300">
+          {loading ? tc('loading') : t('empty')}
+        </p>
+      </div>
     )
   }
 
@@ -521,76 +526,104 @@ export default function SpecificationRfiListPanel({
     ? targetContextText(viewSuggestionsTarget)
     : ''
 
-  return (
-    <div className="space-y-4 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
-            {list.isLocked ? t('lockedMode') : t('prepareMode')}
-          </p>
-          <p className="text-xs text-secondary-500 dark:text-secondary-400">
-            {list.isLocked && list.lockedAt
-              ? t('lockedAt', { date: list.lockedAt })
-              : t('dynamicHint')}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-4">
+  const modeLabel = list.isLocked ? t('lockedMode') : t('prepareMode')
+  const modeHint =
+    list.isLocked && list.lockedAt
+      ? t('lockedAt', { date: list.lockedAt })
+      : t('dynamicHint')
+  const toolbar = (
+    <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 xl:flex-nowrap">
+      <div className="min-w-0 flex-1" role="status">
+        <RequirementPackagePurposeTooltip
+          purposeAndScope={`${modeLabel}\n${modeHint}`}
+          wrapperClassName="flex min-w-0"
+        >
           <button
-            aria-label={viewFilterSwitchLabel}
-            aria-pressed={showIncludedOnly}
-            className={viewFilterButtonClassName}
-            onClick={() => setShowIncludedOnly(current => !current)}
-            title={viewFilterSwitchLabel}
+            aria-label={`${modeLabel} ${modeHint}`}
+            className="flex min-w-0 items-center gap-2 rounded text-left text-xs text-secondary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 dark:text-secondary-300"
             type="button"
             {...devMarker({
-              name: 'rfi list action',
-              value: 'included-only filter',
+              name: 'rfi mode explanation',
+              value: 'full text on hover or keyboard focus',
             })}
           >
-            <ListFilter aria-hidden="true" className="h-4 w-4" />
+            <span className="min-w-0 truncate font-medium text-secondary-900 dark:text-secondary-100">
+              {modeLabel}
+            </span>
+            <span className="min-w-0 truncate">{modeHint}</span>
           </button>
-          <div className="flex flex-wrap items-center gap-2">
-            <a
-              aria-label="CSV"
-              className={exportPillClassName}
-              href={`/api/requirements-specifications/${encodedSpecificationId}/rfi-list/export?format=csv&locale=${locale}`}
-              title="CSV"
+        </RequirementPackagePurposeTooltip>
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-1">
+        <button
+          aria-label={viewFilterSwitchLabel}
+          aria-pressed={showIncludedOnly}
+          className={viewFilterButtonClassName}
+          data-compact-panel-action="true"
+          onClick={() => setShowIncludedOnly(current => !current)}
+          title={viewFilterSwitchLabel}
+          type="button"
+          {...devMarker({
+            name: 'rfi list action',
+            value: 'included-only filter',
+          })}
+        >
+          <ListFilter aria-hidden="true" className="h-4 w-4" />
+        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <a
+            aria-label="CSV"
+            className={exportPillClassName}
+            data-compact-panel-action="true"
+            href={`/api/requirements-specifications/${encodedSpecificationId}/rfi-list/export?format=csv&locale=${locale}`}
+            title="CSV"
+          >
+            <Download aria-hidden="true" className="h-4 w-4" />
+            <span className="sr-only">CSV</span>
+          </a>
+          <a
+            aria-label="PDF"
+            className={exportPillClassName}
+            data-compact-panel-action="true"
+            href={`/api/requirements-specifications/${encodedSpecificationId}/rfi-list/export?format=pdf&locale=${locale}`}
+            title="PDF"
+          >
+            <Printer aria-hidden="true" className="h-4 w-4" />
+            <span className="sr-only">PDF</span>
+          </a>
+          {canEdit ? (
+            <button
+              aria-checked={list.isLocked}
+              aria-label={t('lockedToggleAria')}
+              className={lockSwitchButtonClassName}
+              disabled={saving}
+              onClick={() => void mutateList(list.isLocked ? 'unlock' : 'lock')}
+              role="switch"
+              title={lockStateActionTitle}
+              type="button"
             >
-              <Download aria-hidden="true" className="h-4 w-4" />
-              <span className="sr-only">CSV</span>
-            </a>
-            <a
-              aria-label="PDF"
-              className={exportPillClassName}
-              href={`/api/requirements-specifications/${encodedSpecificationId}/rfi-list/export?format=pdf&locale=${locale}`}
-              title="PDF"
-            >
-              <Printer aria-hidden="true" className="h-4 w-4" />
-              <span className="sr-only">PDF</span>
-            </a>
-            {canEdit ? (
-              <button
-                aria-checked={list.isLocked}
-                aria-label={t('lockedToggleAria')}
-                className={lockSwitchButtonClassName}
-                disabled={saving}
-                onClick={() =>
-                  void mutateList(list.isLocked ? 'unlock' : 'lock')
-                }
-                role="switch"
-                title={lockStateActionTitle}
-                type="button"
-              >
-                <span>{t('lockedToggleLabel')}</span>
-                <span className={lockSwitchTrackClassName}>
-                  <span className={lockSwitchThumbClassName} />
-                </span>
-              </button>
-            ) : null}
-          </div>
+              <span>{t('lockedToggleLabel')}</span>
+              <span className={lockSwitchTrackClassName}>
+                <span className={lockSwitchThumbClassName} />
+              </span>
+            </button>
+          ) : null}
         </div>
       </div>
+    </div>
+  )
 
+  return (
+    <div className="space-y-4 p-4">
+      {header ? (
+        <RequirementsPanelHeader
+          actions={toolbar}
+          className="sticky top-0 z-20 -mx-4 -mt-4 rounded-t-2xl"
+          title={header}
+        />
+      ) : (
+        toolbar
+      )}
       {error ? (
         <p
           className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300"

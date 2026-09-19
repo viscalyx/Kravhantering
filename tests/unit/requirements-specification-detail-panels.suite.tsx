@@ -19,6 +19,30 @@ export function registerPanelLayoutTests(context: SpecDetailWorkflowContext) {
     const save = (layout: string, specificationId = 8) =>
       localStorage.setItem(key, JSON.stringify({ specificationId, layout }))
 
+    it('identifies panel tabs and their contextual actions in Developer Mode', async () => {
+      save('both')
+      context.renderRequirementsSpecificationDetailClient()
+      await context.settleInitialEditorEffects()
+      for (const side of ['left', 'right']) {
+        expect(
+          screen.getByRole('tablist', {
+            name: `specification.${side}PanelTabs`,
+          }),
+        ).toHaveAttribute('data-developer-mode-value', `${side} panel tabs`)
+      }
+      fireEvent.click(
+        screen.getByRole('tab', { name: /specification.needsReferences/ }),
+      )
+      const createReference = screen.getByRole('button', {
+        name: 'specification.newNeedsReference',
+      })
+      expect(
+        createReference.closest('[data-developer-mode-name="panel toolbar"]'),
+      ).toHaveAttribute('data-developer-mode-value', 'filters and tab actions')
+      fireEvent.click(createReference)
+      expect(screen.getByRole('dialog')).toBeVisible()
+    })
+
     it.each([
       [
         'valid preference',

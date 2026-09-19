@@ -5,6 +5,171 @@ import { expectApiResponseOk } from '../api-response-assertions'
 
 const storageKey = 'specification-panel-layout-v1'
 
+test('SPEC-30: reads the locked RFI mode without overlapping actions in a narrow panel', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.route(
+    '**/api/requirements-specifications/8/rfi-list',
+    async route => {
+      const response = await route.fetch()
+      const json = await response.json()
+      json.list.isLocked = true
+      json.list.lockedAt = '2026-09-19T12:00:00.000Z'
+      await route.fulfill({ json })
+    },
+  )
+  await openSpecification(page, 8, 'en')
+  await page
+    .getByRole('button', { name: 'Expand Requirements Library', exact: true })
+    .click()
+  const divider = page.getByRole('separator', {
+    name: 'Resize specification panels',
+  })
+  for (let step = 0; step < 20; step++) await divider.press('Shift+ArrowLeft')
+  await page.getByRole('tab', { name: 'RFI question list' }).click()
+  const explanation = page.getByRole('button', {
+    name: 'Locked for export and relevance assessment Locked 2026-09-19T12:00:00.000Z',
+    exact: true,
+  })
+  await expect(explanation).toBeVisible()
+  const toolbar = page.locator(
+    '#specification-left-panel [data-developer-mode-name="panel toolbar"]',
+  )
+  const mode = toolbar.getByText('Locked for export and relevance assessment', {
+    exact: true,
+  })
+  const filter = toolbar.getByRole('button', {
+    name: 'Show only RFI questions included in RFI',
+    exact: true,
+  })
+  const bounds = requireTestValue(await mode.boundingBox())
+  const actionBounds = requireTestValue(await filter.boundingBox())
+  expect(bounds.x + bounds.width).toBeLessThanOrEqual(actionBounds.x)
+  const explanationBounds = requireTestValue(await explanation.boundingBox())
+  expect(explanationBounds.x + explanationBounds.width).toBeLessThanOrEqual(
+    actionBounds.x,
+  )
+  expect(requireTestValue(await toolbar.boundingBox()).height).toBe(37)
+  await page.getByRole('tab', { name: 'RFI question list' }).press('Tab')
+  await expect(page.getByRole('tooltip')).toContainText(
+    'Locked for export and relevance assessment',
+  )
+  await expect(page.getByRole('tooltip')).toContainText(
+    '2026-09-19T12:00:00.000Z',
+  )
+})
+
+test('SPEC-30: reads the full RFI mode explanation with the keyboard', async ({
+  page,
+}) => {
+  let finishLoading = () => {}
+  const loading = new Promise<void>(resolve => {
+    finishLoading = resolve
+  })
+  await page.route(
+    '**/api/requirements-specifications/8/rfi-list',
+    async route => {
+      const response = await route.fetch()
+      await loading
+      await route.fulfill({ response })
+    },
+  )
+  await openSpecification(page)
+  await page.getByRole('tab', { name: 'RFI-frågelista' }).click()
+  const rfiTab = page.getByRole('tab', { name: 'RFI-frågelista' })
+  await rfiTab.focus()
+  finishLoading()
+  const explanation = page.getByRole('button', {
+    name: 'Förbered Listan följer aktiva RFI-frågor tills den låses.',
+    exact: true,
+  })
+  await expect(explanation).toBeVisible()
+  await expect(rfiTab).toBeFocused()
+  await page.getByRole('tab', { name: 'RFI-frågelista' }).press('Tab')
+  await expect(explanation).toBeFocused()
+  await expect(page.getByRole('tooltip')).toContainText(
+    'Listan följer aktiva RFI-frågor tills den låses.',
+  )
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('tooltip')).toBeHidden()
+  await expect(explanation).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(
+    page.getByRole('button', {
+      name: 'Visa endast de som ingår i RFI',
+      exact: true,
+    }),
+  ).toBeFocused()
+  await explanation.hover()
+  const tooltip = page.getByRole('tooltip')
+  await expect(tooltip).toBeVisible()
+  await tooltip.hover()
+  await expect(tooltip).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(tooltip).toBeHidden()
+})
+
+test('SPEC-06 SPEC-30: keeps multiple package selections and toolbar actions usable at narrow widths', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openSpecification(page)
+  await page
+    .getByRole('button', { name: 'Öppna Kravbibliotek', exact: true })
+    .click()
+  const library = page.locator(
+    '[data-specification-detail-list-panel="available"]',
+  )
+  const filter = library.getByRole('button', { name: /^Filtrera kravpaket/ })
+  await filter.click()
+  for (let index = 0; index < 3; index++) {
+    await page
+      .getByRole('button', { name: /^Lägg till .* i kravpaketsfiltret$/ })
+      .first()
+      .click()
+  }
+  await page.keyboard.press('Escape')
+  const selected = library.getByRole('button', {
+    name: /^Ta bort .* från kravpaketsfiltret$/,
+  })
+  await expect(selected).toHaveCount(3)
+  for (const width of [1440, 375, 320]) {
+    await page.setViewportSize({ width, height: 900 })
+    await library.scrollIntoViewIfNeeded()
+    const toolbar = library.locator(
+      '[data-developer-mode-name="panel toolbar"]',
+    )
+    const row = requireTestValue(await toolbar.boundingBox())
+    for (const button of await toolbar.getByRole('button').all()) {
+      const bounds = requireTestValue(await button.boundingBox())
+      expect(bounds.width).toBeGreaterThanOrEqual(24)
+      expect(bounds.height).toBeGreaterThanOrEqual(24)
+      expect(bounds.x).toBeGreaterThanOrEqual(row.x)
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(row.x + row.width + 1)
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(
+        row.y + row.height + 1,
+      )
+    }
+    const header = requireTestValue(
+      await library.locator('[data-sticky-table-header]').boundingBox(),
+    )
+    expect(header.y).toBeGreaterThanOrEqual(row.y + row.height)
+  }
+  await library
+    .getByRole('button', { name: 'Rensa alla kravpaket', exact: true })
+    .click()
+  await expect(library.getByText('Inget kravpaketsfilter aktivt')).toBeVisible()
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.getByRole('tab', { name: 'RFI-frågelista' }).click()
+  await expect(
+    page.getByRole('link', { name: 'CSV', exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('link', { name: 'PDF', exact: true }),
+  ).toBeVisible()
+})
+
 test('SPEC-33: resizes both panels live without changing their gap or table columns', async ({
   page,
 }) => {
@@ -861,3 +1026,147 @@ test('SPEC-32: keeps an expanded requirement and component-owned question input'
     await expect(search).toHaveValue('Panel')
   })
 })
+
+for (const width of [1440, 1920]) {
+  for (const expanded of [false, true]) {
+    for (const theme of ['light', 'dark'] as const) {
+      test(`SPEC-05 SPEC-30: compact headers and independent lists at ${width}, navigation ${expanded ? 'expanded' : 'collapsed'}, ${theme}`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({
+          width,
+          height: width === 1440 ? 900 : 1080,
+        })
+        await page.emulateMedia({ reducedMotion: 'reduce' })
+        await page.addInitScript(
+          theme => localStorage.setItem('theme', theme),
+          theme,
+        )
+        await openSpecification(page)
+        if (expanded) {
+          await page
+            .locator(
+              '[data-developer-mode-context="navigation"][data-developer-mode-value="expand rail"]',
+            )
+            .click()
+        }
+        await page
+          .getByRole('button', { name: 'Öppna Kravbibliotek', exact: true })
+          .click()
+        const left = page.locator(
+          '[data-specification-detail-list-panel="items"]',
+        )
+        const right = page.locator(
+          '[data-specification-detail-list-panel="available"]',
+        )
+        await expect(left.locator('tbody tr').first()).toBeVisible()
+        await expect(right.locator('tbody tr').first()).toBeVisible()
+        await expect(page.getByText('Arbetar…', { exact: true })).toBeHidden()
+        await expect(
+          page.getByText('Hämtar krav…', { exact: true }),
+        ).toBeHidden()
+        const bounds = async (locator: ReturnType<Page['locator']>) =>
+          requireTestValue(await locator.boundingBox())
+        const leftTabs = page.getByRole('tablist', {
+          name: 'Tabbar för detaljer i kravunderlag',
+        })
+        const rightTabs = page.getByRole('tablist', {
+          name: 'Tabbar i kravunderlagets högra panel',
+        })
+        const tabGeometry = async (tabs: ReturnType<Page['locator']>) =>
+          Promise.all((await tabs.getByRole('tab').all()).map(bounds))
+        const originalLeft = await tabGeometry(leftTabs)
+        const originalRight = await tabGeometry(rightTabs)
+        const expectSameTabs = async (
+          tabs: ReturnType<Page['locator']>,
+          original: typeof originalLeft,
+        ) => {
+          const actual = await tabGeometry(tabs)
+          expect(actual).toHaveLength(original.length)
+          for (const [index, rect] of actual.entries()) {
+            for (const dimension of ['x', 'y', 'width', 'height'] as const) {
+              expect(rect[dimension]).toBeCloseTo(original[index][dimension], 0)
+            }
+          }
+        }
+        await test.step('Give the lists space without page overflow or smaller row text', async () => {
+          const footer = await bounds(page.getByRole('contentinfo'))
+          expect(footer.height).toBe(41)
+          for (const panel of [left, right]) {
+            const panelBounds = await bounds(panel)
+            const firstRow = panel.locator('tbody tr').first()
+            const row = await bounds(firstRow)
+            expect(row.y - panelBounds.y).toBeLessThanOrEqual(130)
+            expect(footer.y - panelBounds.y - panelBounds.height).toBe(8)
+            await expect(firstRow).toHaveCSS('font-size', '14px')
+            await expect(
+              panel.locator('[data-developer-mode-name="panel toolbar"]'),
+            ).toBeVisible()
+          }
+          expect(
+            await page.evaluate(
+              () => document.documentElement.scrollHeight - innerHeight,
+            ),
+          ).toBe(0)
+          await page.screenshot({
+            path: test.info().outputPath('compact-lists.png'),
+            fullPage: true,
+          })
+        })
+        await test.step('Keep tabs in place when changing either panel view', async () => {
+          for (const label of [
+            'Behovsreferenser',
+            'RFI-frågelista',
+            'Krav i underlaget',
+          ]) {
+            await leftTabs.getByRole('tab', { name: label }).click()
+            await expectSameTabs(leftTabs, originalLeft)
+            const toolbar = page.locator(
+              '#specification-left-panel [data-developer-mode-name="panel toolbar"]',
+            )
+            if (label === 'RFI-frågelista') {
+              await expect(
+                toolbar.getByRole('link', { name: 'CSV', exact: true }),
+              ).toBeVisible()
+              await expect(
+                toolbar.getByRole('link', { name: 'PDF', exact: true }),
+              ).toBeVisible()
+              await expect(toolbar.getByRole('switch')).toBeVisible()
+            }
+            if (label === 'Behovsreferenser') {
+              await expect(
+                toolbar.getByRole('button', { name: 'Ny behovsreferens' }),
+              ).toBeVisible()
+            }
+            expect((await bounds(toolbar)).height).toBe(37)
+          }
+          for (const label of ['Kravurvalsfrågor', 'Tillgängliga krav']) {
+            await rightTabs.getByRole('tab', { name: label }).click()
+            await expectSameTabs(rightTabs, originalRight)
+          }
+        })
+        await test.step('Scroll each list while keeping its tabs, filter and table header fixed', async () => {
+          await left.getByRole('button', { name: /^BEH0001\b/ }).click()
+          for (const [panel, other] of [
+            [left, right],
+            [right, left],
+          ]) {
+            const chrome = panel.locator('[data-sticky-table-chrome]')
+            const before = await bounds(chrome)
+            const otherScroll = await other.evaluate(node => node.scrollTop)
+            await panel.hover()
+            await page.mouse.wheel(0, 450)
+            await expect
+              .poll(() => panel.evaluate(node => node.scrollTop))
+              .toBeGreaterThan(0)
+            expect((await bounds(chrome)).y).toBeCloseTo(before.y, 0)
+            expect(await other.evaluate(node => node.scrollTop)).toBe(
+              otherScroll,
+            )
+            expect(await page.evaluate(() => window.scrollY)).toBe(0)
+          }
+        })
+      })
+    }
+  }
+}

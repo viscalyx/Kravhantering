@@ -63,7 +63,6 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       expect(pageShell).toBeTruthy()
       expect(splitPanel).toBeTruthy()
       expect(titleRow).toBeTruthy()
-      expect(pageShell?.className).toContain('xl:h-[calc(100dvh-4rem)]')
       expect(splitPanel?.className).toContain('xl:-mx-6')
       expect(splitPanel?.className).toContain('xl:flex-1')
       expect(

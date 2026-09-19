@@ -69,7 +69,9 @@ export function registerNeedsReferenceTests(
       fireEvent.click(
         screen.getByRole('tab', { name: 'specification.rfiList' }),
       )
-      expect(screen.getByText('RFI list panel')).toBeInTheDocument()
+      expect(
+        await screen.findByText('specificationRfiList.prepareMode'),
+      ).toBeInTheDocument()
       fireEvent.click(
         screen.getByRole('tab', { name: 'specification.itemsInSpecification' }),
       )
@@ -168,7 +170,9 @@ export function registerNeedsReferenceTests(
       })
       const { unmount } = context.renderRequirementsSpecificationDetailClient()
 
-      expect(screen.getByText('RFI list panel')).toBeInTheDocument()
+      expect(
+        await screen.findByText('specificationRfiList.prepareMode'),
+      ).toBeInTheDocument()
       await waitFor(() => {
         const itemRequest = context.fetchMock.mock.calls.find(([url]) => {
           if (
