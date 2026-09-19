@@ -1,8 +1,19 @@
 # Issue 1351: list-height prototype
 
-This guide is for reviewing the layout and choosing a direction. This is
-throwaway code on `prototype/1351-list-height`, based on `d39bb52d`.
-No design has been approved or promoted to production.
+**Decision, 2026-09-19: B is approved as the design for issue #1351.**
+The maintainer selected B after reviewing the final tab and toolbar changes.
+This branch preserves the throwaway prototype, based on `d39bb52d`, and its
+verification evidence. Production implementation and acceptance remain open.
+
+The selected design includes stable tab positions in both panels, vertical
+dividers, tinted selected tabs, consistent compact action rows for the three
+left views, and the RFI mode explanation beside its actions. Keep the
+compact footer, reduced bottom spacing and independent scrolling from B.
+A, C and the baseline remain here as comparison evidence only.
+
+The local worktree and preview servers are retired after this capture.
+Use the committed gallery and images for review, or recreate the worktree
+from `origin/prototype/1351-list-height` to run the preview again.
 
 ## Open it
 
@@ -37,8 +48,8 @@ worktree, or Ctrl+C in the launch terminal. Existing
 SQL Server and Keycloak services stay running. Port 3000 is untouched.
 The launcher fails if port 3001 is occupied; it does not kill another server.
 
-Dependencies are installed in this worktree. A fresh checkout needs `npm ci`
-and the normal developer services. The launcher reads the primary checkout's
+A recreated worktree needs `npm ci` and the normal developer services.
+The launcher reads the primary checkout's
 local development environment without modifying its files, and uses the
 already-registered Keycloak client for port 3001. It does not seed or migrate.
 
@@ -54,11 +65,11 @@ already-registered Keycloak client for port 3001. It does not seed or migrate.
 - **C: Shared shelf.** Move both tab groups above the panels. Combine filters
   and actions inside each panel. The shelf follows the panel widths.
 
-**Provisional recommendation: B.** It gives the labels more horizontal room
-while returning almost as much list height as A. C explores a stronger
-separation between navigation and list controls, but uses more vertical
-space and can wrap its filter summary in narrower panels. Choose based on
-live inspection; these measurements do not establish user preference.
+**Selected: B.** It gives the labels more horizontal room while returning
+almost as much list height as A. The final refinements make navigation and
+actions consistent across views. Reimplement the selected layout with the
+project's production tests; do not ship the variant switcher, memory-storage
+shim, write guard, gallery server or discarded variants.
 
 ## Measured result
 
