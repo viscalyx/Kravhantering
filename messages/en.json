@@ -4112,7 +4112,7 @@
       },
       "header": {
         "title": "Heading and search",
-        "verify": "A/B/C align title and search on one row. Filter by API, clear the search and try an unmatched name. Arrow keys inside search must move the caret."
+        "verify": "A/B/C align title and search on one row. Filter by API, clear the search and try an unmatched name. Arrow keys inside search must move the caret. Click the search input: one continuous focus outline should surround the entire box."
       },
       "responsive": {
         "title": "Viewport, navigation and theme",

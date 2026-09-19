@@ -474,7 +474,14 @@ export default function Prototype1350({
           )}
           <div className={styles.searchGroup}>
             <label htmlFor="prototype-name-filter">{ts('filterByName')}</label>
-            <div className={styles.searchRow}>
+            <div
+              className={styles.searchRow}
+              {...devMarker({
+                context: 'prototype 1350',
+                name: 'search field',
+                value: 'name filter',
+              })}
+            >
               <Search aria-hidden="true" size={16} />
               <input
                 id="prototype-name-filter"

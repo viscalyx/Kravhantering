@@ -1,0 +1,28 @@
+{
+  "records": [
+    {
+      "theme": "light",
+      "inputWidth": 384.78125,
+      "containerWidth": 464.6875,
+      "inputOutline": "3px",
+      "inputOutlineStyle": "none",
+      "containerOutline": "2px",
+      "containerOutlineStyle": "solid",
+      "containerOutlineColor": "rgb(67, 56, 202)",
+      "focused": true
+    },
+    {
+      "theme": "dark",
+      "inputWidth": 384.78125,
+      "containerWidth": 464.6875,
+      "inputOutline": "3px",
+      "inputOutlineStyle": "none",
+      "containerOutline": "2px",
+      "containerOutlineStyle": "solid",
+      "containerOutlineColor": "rgb(165, 180, 252)",
+      "focused": true
+    }
+  ],
+  "errors": [],
+  "checks": "mouse focus, keyboard focus, help button focus, filtering and clearing in light/dark themes"
+}

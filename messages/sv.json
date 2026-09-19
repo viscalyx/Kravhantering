@@ -4112,7 +4112,7 @@
       },
       "header": {
         "title": "Rubrik och sökning",
-        "verify": "A/B/C placerar rubrik och sökning på samma rad. Sök på API, rensa och sök ett namn utan träff. Piltangenter i sökfältet ska flytta markören."
+        "verify": "A/B/C placerar rubrik och sökning på samma rad. Sök på API, rensa och sök ett namn utan träff. Piltangenter i sökfältet ska flytta markören. Klicka i sökfältet: hela rutan ska få en sammanhängande fokusram."
       },
       "responsive": {
         "title": "Fönster, navigation och tema",

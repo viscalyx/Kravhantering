@@ -111,6 +111,7 @@ Repeat with live data. Check that the address still contains `variant=D`.
 | Stable action slots | A/B/C | Compare rows with three, two and no actions. | Missing permissions leave reserved space; actions do not move into different slots. |
 | Heading/search alignment | A/B/C | Compare the top of 0 and A. | Title and search occupy one horizontal toolbar on desktop; they stack on narrow screens. |
 | Search, clear and empty state | All | Search API, clear, then search a nonexistent name. | One example, all seven examples, then a clear empty state. |
+| Search focus outline | All, including D | Click the search input, then use Tab and Shift+Tab in both themes. | One continuous outline surrounds the complete search box; help and clear buttons retain their own keyboard focus marks. |
 | Filter help | All | Activate the information button beside search. | Explanatory text appears without changing the filter. |
 | Real catalog option | All | Choose live data, filter by a known name and switch variants. | The same authorized catalog is shown in each layout. No example rows are written to the catalog. |
 | Safe previews | All | Click create, name, co-authors, edit and delete. | Only the local preview message changes; no database mutation request is sent. |
@@ -171,6 +172,12 @@ at both desktop sizes, navigation states and themes, plus mobile layouts.
 They also cover icon placement, selected state, keyboard focus, preserved
 filter/data and keeping the outer prototype set to D. The gallery includes
 nine D captures in addition to the twelve separate-option captures.
+
+[Search focus verification](./verification-focus.json) covers mouse and keyboard
+focus, the help button, filtering and clearing in light and dark themes.
+The focus outline surrounds the complete search control, including its icons.
+See the [light-theme focus capture](./captures/D-search-focus-light.png) and
+[dark-theme focus capture](./captures/D-search-focus-dark.png).
 
 ## Code and scope
 
