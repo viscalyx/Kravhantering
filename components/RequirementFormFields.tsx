@@ -56,6 +56,9 @@ export interface RequirementFormFieldsProps {
   /** Extra actions rendered after norm reference list (e.g. "Create" button) */
   normReferenceActions?: ReactNode
   onChange: (values: RequirementFormFieldValues) => void
+  prototypeNormFieldset?: ReactNode
+  /** Throwaway #1349 rendering slots; remove when implementing the chosen design. */
+  prototypePackageFieldset?: ReactNode
   referenceDataReadiness: ReferenceDataReadiness
   referenceDataStatusId: string
   /** Hide area for contexts where requirements are not owned by a requirement area */
@@ -89,6 +92,8 @@ export default function RequirementFormFields({
   idPrefix = '',
   layout = 'sidebar',
   normReferenceActions,
+  prototypePackageFieldset,
+  prototypeNormFieldset,
   onChange,
   referenceDataReadiness,
   referenceDataStatusId,
@@ -932,8 +937,8 @@ export default function RequirementFormFields({
           className={associationSidebarClassName}
           style={associationSidebarStyle}
         >
-          {requirementPackagesFieldset}
-          {normReferencesFieldset}
+          {prototypePackageFieldset ?? requirementPackagesFieldset}
+          {prototypeNormFieldset ?? normReferencesFieldset}
         </div>
       </div>
     </div>

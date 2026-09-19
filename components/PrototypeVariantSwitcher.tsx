@@ -28,6 +28,7 @@ export default function PrototypeVariantSwitcher({
     const onKeyDown = (event: KeyboardEvent) => {
       if (
         event.defaultPrevented ||
+        document.querySelector('[aria-modal="true"]') ||
         event.altKey ||
         event.ctrlKey ||
         event.metaKey ||

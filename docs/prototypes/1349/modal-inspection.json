@@ -1,0 +1,30 @@
+{
+  "checks": [
+    "E has no inline association checkboxes (only Verifiable)",
+    "Purpose visible without hover or acknowledgment",
+    "Normal package checkbox enabled",
+    "Keyboard focus stays in modal",
+    "Variant keyboard shortcut does not act behind modal",
+    "Cancel discards draft",
+    "Reopen after cancel has previous state",
+    "Search includes purpose text",
+    "Select applies all marked packages including filtered-out choices",
+    "Reopen preserves applied selection",
+    "Escape discards draft changes",
+    "Focus returns to package trigger",
+    "Close discards draft changes",
+    "Select applies norms as badges",
+    "Norm cancel preserves applied selections",
+    "Selected badges fit summary width",
+    "Badge removal updates selection",
+    "E selections survive switch to inline D",
+    "Modal search does not filter inline package list",
+    "Mobile modal has no horizontal overflow",
+    "Selected E form fits mobile width",
+    "Missing purpose is marked without adding a selection gate",
+    "No separate confirmation step",
+    "English modal labels render"
+  ],
+  "errors": [],
+  "mutations": []
+}

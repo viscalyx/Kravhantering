@@ -5,9 +5,10 @@
 Question: which layout improves norm-reference readability while keeping
 useful writing space?
 
-**Provisional recommendation: start the design discussion with A.** It fixes
-the two reported layout problems with the smallest structural change.
-This is a measured design option, not a user-approved implementation decision.
+**Confirmed interaction decision:** show package purpose directly with ordinary
+checkboxes and no separate acknowledgment. No visual variant is approved.
+D explores narrower writing with equal association panels; E moves selection
+into dialogs and presents selected items as badges in the form.
 
 ## Measured comparison
 
@@ -20,12 +21,17 @@ At 1920 × 1080, collapsed navigation, light theme, using the same data:
 | A | 176 | 352 | 662 | 2 | 0 |
 | B | 384 | 384 | 822 | 2 | 0 |
 | C | 402 | 804 | 1230 | 1 | 0 |
+| D | 390 | 390 | 402 | 2 | 0 |
+| E | 603 | 603 | 603 | Dialog | 0 |
 <!-- markdownlint-enable MD013 -->
 
 Widths and offsets are CSS pixels. All writing fields in this table remain
 100 pixels high. Each of the three representative full norm labels
 (EN 301 549, NIS2 and ISO/IEC 25010, including ID and name) has the listed
 line count. It is not a claim about every possible norm name.
+
+Baseline keeps its original geometry but also shows package purpose. E widths
+refer to the stacked summary panels; full lists appear in separate dialogs.
 
 - **A:** norm width increases and the writing column stays unchanged.
   The list-top offset decreases from 20 pixels to zero and the footer controls
@@ -35,15 +41,19 @@ line count. It is not a claim about every possible norm name.
 - **C:** the three norm labels fit on one line and writing spans the card.
   Moving associations below the fields adds a separate 320-pixel section plus
   a gap, making the page substantially taller.
+- **D:** the writing column is narrower, giving equal space to both lists.
+  Purpose is easier to scan than in A; writing wraps earlier.
+- **E:** the form shows only selected badges. Searchable dialogs provide more
+  room for purpose and names, at the cost of an extra step to change selection.
 
 ## Browser inspection
 
 Local Chromium, authenticated development administrator, existing reference
 catalogs, Swedish locale. No requirement or norm-reference data is written.
 
-- 32 desktop combinations: four variants × two viewport sizes
+- 48 desktop combinations: six variants × two viewport sizes
   (1440 × 900 and 1920 × 1080) × two themes × two navigation states.
-- All four variants also inspected at 320-pixel viewport width with long text
+- All six variants also inspected at 320-pixel viewport width with long text
   and selected associations. No horizontal page overflow in those checks.
 - Long sample text, area selection, package/norm selection and Verifiable
   remain usable. The shared description help opens and closes.
@@ -56,12 +66,19 @@ catalogs, Swedish locale. No requirement or norm-reference data is written.
 - The English prototype route renders its localized controls.
 - No browser page errors and no API mutation requests occur during these
   exercised interactions.
+- 24 additional E checks cover draft/apply/cancel, search with hidden choices,
+  reopening, chip removal, keyboard focus, Escape/close, cross-variant state,
+  missing-purpose behavior, English labels and selected-badge wrapping.
+- Purpose is visible at selection time in every variant. A missing purpose
+  is labeled without blocking selection or adding a confirmation step.
 - TypeScript type checking, focused Biome checking, Tailwind class checking
   and the target-size guard pass.
 
-See [raw measurements](measurements.json) for geometry in each combination.
+See [modal checks](modal-inspection.json) and
+[raw measurements](measurements.json) for geometry in each combination.
 Screenshots in the [review guide](README.md) preserve two desktop scenarios
-for each alternative, plus the review panel with live state.
+for each alternative, plus the review panel with live state. The
+[Swedish guide](GRANSKNING.md) also links modal and selected-badge screenshots.
 
 ## Limits
 

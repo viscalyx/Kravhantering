@@ -5,7 +5,9 @@
 This throwaway prototype asks: **which arrangement makes norm references easier
 to read while preserving useful writing space?** No variant is approved yet.
 Use the existing form, navigation, themes, field help and reference data to
-compare the current layout with three alternatives.
+compare the baseline geometry with five alternatives.
+
+For the D/E update, see the [Swedish review guide](GRANSKNING.md).
 
 ## Open it
 
@@ -39,6 +41,8 @@ the URLs below. Use Ctrl+C in its terminal to stop just that prototype.
 | A: wider norms | [Open](http://localhost:3001/sv/requirements/new?variant=A) | Is redistributing sidebar width enough? |
 | B: stacked rail | [Open](http://localhost:3001/sv/requirements/new?variant=B) | Is more list scrolling worth a wider writing column? |
 | C: writing first | [Open](http://localhost:3001/sv/requirements/new?variant=C) | Is extra page scrolling worth full-width writing? |
+| D: equal panels | [Open](http://localhost:3001/sv/requirements/new?variant=D) | Can narrower writing fields give both lists enough space? |
+| E: modal selection | [Open](http://localhost:3001/sv/requirements/new?variant=E) | Is a compact badge summary preferable to inline lists? |
 <!-- markdownlint-enable MD013 -->
 
 Replace `/sv/` with `/en/` for English. The floating bottom bar selects a
@@ -47,10 +51,11 @@ Arrows inside inputs, text areas, selects or editable content retain their
 normal editing behavior. The URL preserves the layout on reload; edited data
 is deliberately reset on reload. Switching variants keeps in-memory edits.
 
-Baseline reproduces the existing field layout and footer arrangement inside
-the prototype. The banner, variant description and simulation status add
-review space around it; this is not a pixel-identical full-page production
-capture. Use the same prototype frame for before/after comparisons.
+Baseline retains the existing column widths and footer arrangement. Like
+all other variants, it now shows package purpose directly; this is an
+intentional change from the original baseline. The banner, variant description
+and simulation status add review space around it; this is not a pixel-identical
+full-page production capture. Use the same prototype frame for before/after comparisons.
 
 ## A five-minute walkthrough
 
@@ -82,18 +87,23 @@ outer browser window. Repeat with navigation expanded and both themes.
 | Redistributed association width | A | Compare with Baseline at desktop size: packages 176 px, gap 16 px, norms 352 px; writing width stays the same. |
 | Vertically stacked associations | B | Packages appear above norms in a 384 px rail. Each list scrolls; the writing column is wider. |
 | Associations below writing | C | Writing spans the card; packages and norms appear underneath in a 1:2 split, in a 320 px section. |
-| Aligned list headings | A/B/C | Compare package and norm list tops in A/C. New is 24 px high; B has separate stacked headings. |
-| Unified footer | A/B/C | Destination and Save/Cancel share a row where space permits; at narrow widths they wrap without clipping. |
-| Writing surfaces preserved | All | Load long text; text and acceptance fields remain at least 100 px high. Toggle Verifiable and inspect its writing field. |
+| Aligned list headings | A/B/C/D | Compare package and norm list tops in A/C. New is 24 px high; B has separate stacked headings. |
+| Unified footer | A/B/C/D/E | Destination and Save/Cancel share a row where space permits; at narrow widths they wrap without clipping. |
+| Writing heights preserved | All | Load long text; text and acceptance fields remain at least 100 px high. Toggle Verifiable and inspect its writing field. |
+| Equal panel widths, narrower writing | D | At 1920 px compare 402 px writing and two 390 px selection panels; writing height stays 100 px. |
+| Visible purpose and scope | All | Read package purpose without hovering. Ordinary checkboxes stay; there is no additional confirmation or automatic matching. Missing purpose is labeled, not blocked. |
+| Transactional modal selection | E | Mark packages/norms, cancel, reopen, then Select. Only Select applies changes. Search must not lose hidden checked choices. |
+| Badge summary | E | Only selected items appear in the form as removable badges. Reopen the modal and inspect existing checks. |
+| Modal keyboard/focus | E | Escape cancels, Tab stays in the dialog, and closing returns focus to the trigger. Variant arrows must not act behind the modal. |
 | Responsive layout | All | Inspect 1440 × 900, 1920 × 1080 and 320 px width. Check wrapping, list scrolling and access to every footer control. |
 | Baseline comparison | Baseline | Confirm equal association columns, taller New button, offset norm-list top and separate destination row. |
 | Shareable layout URL | All | Select a variant and inspect `?variant=`. Reload; the layout stays but unsaved edits disappear. |
-| Floating switcher | All | Cycle both directions, including C → Baseline. Arrow keys in text fields must move the caret instead. |
+| Floating switcher | All | Cycle both directions, including E → Baseline. Arrow keys in text fields must move the caret instead. |
 | Long-text sample | Toolbar | Click Load long text. Requirement text, acceptance criteria and verification method fill; Verifiable becomes checked. |
 | Local state preserved while comparing | All | Select packages/norms, edit fields and switch variants. Inspect the state panel and selections. |
 | Simulated Save | Footer | Choose an area, enter requirement text and click Save. Read the simulation message; no navigation or database write occurs. |
 | Simulated Cancel | Footer | Click Cancel. The message explains that the preview remains for further comparison. |
-| Simulated norm creation | New | Enter a name, click Add in memory. The new norm appears selected. Reload and confirm it disappears. |
+| Simulated norm creation | New in Baseline–D | Enter a name, click Add in memory. The new norm appears selected. Reload and confirm it disappears. |
 | Destination keyboard access | Footer | Focus List view, Tab to Detail page, press Space. Inspect selected state and simulated Save's destination message. |
 | Reset control | Toolbar | Reset clears edited fields, associations, temporary norms and destination; it retains the selected layout. |
 | Change checklist and full state | Review panel | Switch variants with the panel open. Descriptions and state update. Close it to inspect the actual layout. |
@@ -116,14 +126,18 @@ component. The prototype does not write requirements or norm references.
 | `app/[locale]/requirements/new/page.tsx` | Development-only gate on the existing new-requirement route. |
 | `app/[locale]/requirements/new/requirement-form.prototype.tsx` | In-memory form, comparisons, review panel and simulated actions. |
 | `app/[locale]/requirements/new/requirement-form.prototype.css` | Scoped layout alternatives and prototype controls. |
+| `components/PrototypeRequirementAssociations.tsx` | Purpose display, ordinary package checkboxes, draft/apply modals and badge summaries. |
+| `components/RequirementFormFields.tsx` | Optional prototype-only rendering slots; defaults retain existing behavior. |
 | `components/PrototypeVariantSwitcher.tsx` | URL-driven picker and guarded arrow-key navigation. |
 | `messages/en.json`, `messages/sv.json` | Prototype labels, sample text and review instructions. |
 | `scripts/prototype-1349.mjs`, `package.json` | One-command launch with independent port/cookie and local dependency preparation. |
 | This directory | Review guide, screenshots, measurements and findings. |
 <!-- markdownlint-enable MD013 -->
 
-The shared `RequirementFormFields`, production `RequirementForm`, SQL schema,
-API mutations, auth policy and manual production test cases are unchanged.
+`RequirementFormFields` has two explicitly named throwaway rendering slots
+for prototype associations; its default rendering remains unchanged.
+Production `RequirementForm`, SQL schema, API mutations, auth policy and
+manual production test cases are unchanged.
 The scoped CSS intentionally depends on the current shared field structure:
 it is an experiment, not a proposed permanent component API.
 
@@ -140,6 +154,8 @@ in the live prototype.
 | A | [Screenshot](screenshots/A-1920-collapsed-light.png) | [Screenshot](screenshots/A-1440-expanded-dark.png) |
 | B | [Screenshot](screenshots/B-1920-collapsed-light.png) | [Screenshot](screenshots/B-1440-expanded-dark.png) |
 | C | [Screenshot](screenshots/C-1920-collapsed-light.png) | [Screenshot](screenshots/C-1440-expanded-dark.png) |
+| D | [Screenshot](screenshots/D-1920-collapsed-light.png) | [Screenshot](screenshots/D-1440-expanded-dark.png) |
+| E | [Screenshot](screenshots/E-1920-collapsed-light.png) | [Screenshot](screenshots/E-1440-expanded-dark.png) |
 <!-- markdownlint-enable MD013 -->
 
 Also see the [open review panel](screenshots/A-review-panel.png),
@@ -153,10 +169,11 @@ there is no new permanent test suite for this throwaway code.
 
 ## Decision to make
 
-Start by comparing A against Baseline: it addresses the issue with the fewest
-structural changes. B and C expose the tradeoffs of vertical grouping and
-reading order. Feedback can combine parts: for example, A's proportions and
-B's writing width. **No visual preference is recorded as approved.**
+Compare A and D for the tradeoff between writing width and package purpose
+readability. B and C explore grouping and reading order. E moves the complete
+selection task into dialogs and keeps the form compact.
+**No visual variant is approved.** The confirmed interaction preference is
+visible purpose with ordinary checkboxes and no separate acknowledgment.
 
 The prototype is preserved on `prototype/1349-requirement-form-layout`.
 After choosing an arrangement, implement that decision with production

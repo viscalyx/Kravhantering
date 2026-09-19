@@ -1,11 +1,12 @@
 'use client'
 
-// Throwaway: baseline + three structural alternatives on /requirements/new?variant=.
-// Question: which arrangement improves norm readability without shrinking writing space?
+// Throwaway: baseline geometry + five alternatives on /requirements/new?variant=.
+// Question: compare field widths, purpose visibility and inline/modal selection.
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useCallback, useState } from 'react'
 import FormActionRow from '@/components/FormActionRow'
+import PrototypeRequirementAssociations from '@/components/PrototypeRequirementAssociations'
 import PrototypeVariantSwitcher from '@/components/PrototypeVariantSwitcher'
 import ReferenceDataStatus from '@/components/ReferenceDataStatus'
 import RequirementFormFields, {
@@ -15,7 +16,7 @@ import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 import { devMarker } from '@/lib/developer-mode-markers'
 import './requirement-form.prototype.css'
 
-const KEYS = ['baseline', 'A', 'B', 'C'] as const
+const KEYS = ['baseline', 'A', 'B', 'C', 'D', 'E'] as const
 type Variant = (typeof KEYS)[number]
 const EMPTY: RequirementFormFieldValues = {
   acceptanceCriteria: '',
@@ -206,6 +207,40 @@ export default function RequirementFormPrototype() {
                   </button>
                 }
                 onChange={setValues}
+                prototypeNormFieldset={
+                  variant === 'E' ? (
+                    <PrototypeRequirementAssociations
+                      disabled={!taxonomy.readiness.canSave}
+                      kind="norms"
+                      modal
+                      norms={[...taxonomy.normReferences, ...extraNorms]}
+                      onChange={ids =>
+                        setValues(current => ({
+                          ...current,
+                          normReferenceIds: ids,
+                        }))
+                      }
+                      packages={[]}
+                      selected={values.normReferenceIds}
+                    />
+                  ) : undefined
+                }
+                prototypePackageFieldset={
+                  <PrototypeRequirementAssociations
+                    disabled={!taxonomy.readiness.canSave}
+                    kind="packages"
+                    modal={variant === 'E'}
+                    norms={[]}
+                    onChange={ids =>
+                      setValues(current => ({
+                        ...current,
+                        requirementPackageIds: ids,
+                      }))
+                    }
+                    packages={taxonomy.requirementPackages}
+                    selected={values.requirementPackageIds}
+                  />
+                }
                 referenceDataReadiness={taxonomy.readiness}
                 referenceDataStatusId="prototype-reference-data"
                 taxonomyOptions={taxonomy}
@@ -285,6 +320,7 @@ export default function RequirementFormPrototype() {
               </button>
             </div>
             <h3>{t('changes')}</h3>
+            <p>{t('purposeGuidance')}</p>
             <ul>
               {[1, 2, 3].map(n => (
                 <li key={n}>{t(`variants.${variant}.change${n}`)}</li>
@@ -292,7 +328,7 @@ export default function RequirementFormPrototype() {
             </ul>
             <h3>{t('checkTitle')}</h3>
             <ol>
-              {[1, 2, 3, 4, 5, 6].map(n => (
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
                 <li key={n}>{t(`checks.${n}`)}</li>
               ))}
             </ol>
