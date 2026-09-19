@@ -4108,7 +4108,7 @@
       },
       "actions": {
         "title": "Compact action slots",
-        "verify": "Hover or Tab to 28 px actions. The Anonymous row has no actions; other rows reserve unused slots. Click edit/delete: only the preview message changes."
+        "verify": "Hover or Tab to 28 px actions. The Anonymous row has no actions; other rows reserve unused slots. Click edit/delete: only the preview message changes. In cards, actions sit at the top right beside the name."
       },
       "header": {
         "title": "Heading and search",
@@ -4125,6 +4125,10 @@
       "viewSwitching": {
         "title": "Switch views in D",
         "verify": "Click the icons to the right of the title: table, two-level rows and cards. Also try Tab and arrow keys. Search and name order remain; the selected icon has a check mark."
+      },
+      "specificationCode": {
+        "title": "Specification code beside the name",
+        "verify": "In D, the code uses muted monospace text. In two-level rows it follows the name when space allows, wrapping underneath on narrower screens. In tables and cards it sits below the name. Switch views and resize to compare."
       }
     },
     "viewSwitcher": "Specification view",

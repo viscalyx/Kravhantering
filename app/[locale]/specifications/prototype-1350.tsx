@@ -113,13 +113,15 @@ export function VariantC(p: LayoutProps) {
           data-prototype-row={row.id}
           key={row.id}
         >
-          <div className={styles.cardTitle}>{p.name(row)}</div>
+          <div className={styles.cardTitle}>
+            {p.name(row)}
+            {p.actions(row)}
+          </div>
           <div className={styles.cardOwner}>
             <span className={styles.caption}>{p.label('responsible')}</span>
             {p.owner(row)}
           </div>
           {p.classifications(row)}
-          <div className={styles.cardFooter}>{p.actions(row)}</div>
         </article>
       ))}
     </div>
@@ -234,14 +236,32 @@ export default function Prototype1350({
     label,
     taxonomy,
     name: row => (
-      <button
-        className={styles.name}
-        data-prototype-name
-        onClick={() => action(t('open'), row)}
-        type="button"
+      <div
+        className={`${styles.nameBlock} ${layout === 'B' ? styles.nameInline : ''}`}
       >
-        {row.name}
-      </button>
+        <button
+          className={styles.name}
+          data-prototype-name
+          onClick={() => action(t('open'), row)}
+          type="button"
+        >
+          {row.name}
+        </button>
+        {variant === 'D' && row.specificationCode && (
+          <div
+            className="mt-1 font-mono text-xs font-medium text-secondary-600 dark:text-secondary-400"
+            data-prototype-code
+            {...devMarker({
+              context: 'prototype 1350',
+              name: 'specification code',
+              value: row.specificationCode,
+            })}
+          >
+            <span className="sr-only">{ts('specificationCode')}: </span>
+            {row.specificationCode}
+          </div>
+        )}
+      </div>
     ),
     owner: row => (
       <div className={styles.owner} data-prototype-owner>
@@ -377,7 +397,9 @@ export default function Prototype1350({
               {[
                 'names',
                 'sorting',
-                ...(variant === 'D' ? ['viewSwitching'] : []),
+                ...(variant === 'D'
+                  ? ['viewSwitching', 'specificationCode']
+                  : []),
                 'identity',
                 'classification',
                 'actions',

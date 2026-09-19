@@ -4108,7 +4108,7 @@
       },
       "actions": {
         "title": "Kompakta åtgärder",
-        "verify": "Peka eller tabba till åtgärder på 28 px. Anonym-raden saknar åtgärder; övriga rader reserverar tomma platser. Redigera/radera ändrar bara förhandsvisningen."
+        "verify": "Peka eller tabba till åtgärder på 28 px. Anonym-raden saknar åtgärder; övriga rader reserverar tomma platser. Redigera/radera ändrar bara förhandsvisningen. På kort ligger åtgärderna uppe till höger, bredvid namnet."
       },
       "header": {
         "title": "Rubrik och sökning",
@@ -4125,6 +4125,10 @@
       "viewSwitching": {
         "title": "Växla vy i D",
         "verify": "Klicka ikonerna till höger om Kravunderlag: tabell, tvånivårader och kort. Prova även Tab och piltangenter. Sökning och namnordning behålls, och vald ikon har en bock."
+      },
+      "specificationCode": {
+        "title": "Kravunderlagskod intill namnet",
+        "verify": "I D visas koden med grå text och fast teckenbredd. I tvånivårader ligger den efter namnet när den får plats och under när utrymmet minskar. I tabell och kort ligger den under namnet. Växla vy och ändra bredd för att jämföra."
       }
     },
     "viewSwitcher": "Visning av kravunderlag",

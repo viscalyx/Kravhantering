@@ -411,15 +411,6 @@
 .card .classifications dd {
   color: var(--ink);
 }
-.cardFooter {
-  display: flex;
-  gap: 16px;
-  align-items: start;
-  justify-content: flex-end;
-  padding-top: 12px;
-  margin-top: auto;
-  border-top: 1px solid var(--line);
-}
 .preview {
   padding: 12px;
   margin-top: 16px;
@@ -519,4 +510,27 @@
   bottom: 1px;
   background: var(--soft);
   border-radius: 2px;
+}
+
+.nameBlock {
+  flex: 1;
+  min-width: 0;
+}
+.nameBlock [data-prototype-code] {
+  overflow-wrap: anywhere;
+}
+.nameInline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+}
+.nameInline > * {
+  max-width: 100%;
+}
+.nameInline [data-prototype-code] {
+  margin-top: 0;
+}
+.cardTitle .actions {
+  flex-shrink: 0;
 }

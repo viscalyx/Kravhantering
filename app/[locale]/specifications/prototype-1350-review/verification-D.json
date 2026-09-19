@@ -21,7 +21,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": true,
+        "codeAfterName": false,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(71, 85, 105)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "baseline",
@@ -44,7 +52,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": true,
+        "codeAfterName": false,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(148, 163, 184)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "baseline",
@@ -67,7 +83,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": true,
+        "codeAfterName": false,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(71, 85, 105)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "baseline",
@@ -90,7 +114,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": true,
+        "codeAfterName": false,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(148, 163, 184)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "baseline",
@@ -113,7 +145,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": true,
+        "codeAfterName": false,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(71, 85, 105)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "baseline",
@@ -136,7 +176,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": true,
+        "codeAfterName": false,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(148, 163, 184)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "baseline",
@@ -159,7 +207,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": true,
+        "codeAfterName": false,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(71, 85, 105)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "baseline",
@@ -182,7 +238,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": true,
+        "codeAfterName": false,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(148, 163, 184)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "B",
@@ -205,7 +269,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": false,
+        "codeAfterName": true,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(71, 85, 105)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "B",
@@ -228,7 +300,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": false,
+        "codeAfterName": true,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(148, 163, 184)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "B",
@@ -251,7 +331,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": false,
+        "codeAfterName": true,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(71, 85, 105)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "B",
@@ -274,7 +362,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": false,
+        "codeAfterName": true,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(148, 163, 184)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "B",
@@ -297,7 +393,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": false,
+        "codeAfterName": true,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(71, 85, 105)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "B",
@@ -320,7 +424,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": false,
+        "codeAfterName": true,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(148, 163, 184)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "B",
@@ -343,7 +455,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": false,
+        "codeAfterName": true,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(71, 85, 105)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "B",
@@ -366,7 +486,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": false,
+        "codeAfterName": true,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(148, 163, 184)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "C",
@@ -389,7 +517,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": true,
+        "codeAfterName": false,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(71, 85, 105)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "C",
@@ -412,7 +548,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": true,
+        "codeAfterName": false,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(148, 163, 184)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "C",
@@ -435,7 +579,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": true,
+        "codeAfterName": false,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(71, 85, 105)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "C",
@@ -458,7 +610,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": true,
+        "codeAfterName": false,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(148, 163, 184)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "C",
@@ -481,7 +641,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": true,
+        "codeAfterName": false,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(71, 85, 105)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "C",
@@ -504,7 +672,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": true,
+        "codeAfterName": false,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(148, 163, 184)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "C",
@@ -527,7 +703,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": true,
+        "codeAfterName": false,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(71, 85, 105)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "C",
@@ -550,7 +734,15 @@
           "width": 36,
           "height": 36
         }
-      ]
+      ],
+      "identity": {
+        "codeBelowName": true,
+        "codeAfterName": false,
+        "codeFont": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "codeColor": "rgb(148, 163, 184)",
+        "actionRightOfName": true,
+        "actionAlignedWithTitle": true
+      }
     },
     {
       "layout": "baseline",
@@ -568,7 +760,249 @@
       "bodyOverflow": false
     }
   ],
+  "wrapping": [
+    {
+      "width": 1920,
+      "positions": [
+        {
+          "id": "-5",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-7",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-6",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-4",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-1",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-2",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-3",
+          "after": true,
+          "below": false
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "positions": [
+        {
+          "id": "-5",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-7",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-6",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-4",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-1",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-2",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-3",
+          "after": true,
+          "below": false
+        }
+      ]
+    },
+    {
+      "width": 1024,
+      "positions": [
+        {
+          "id": "-5",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-7",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-6",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-4",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-1",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-2",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-3",
+          "after": true,
+          "below": false
+        }
+      ]
+    },
+    {
+      "width": 768,
+      "positions": [
+        {
+          "id": "-5",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-7",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-6",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-4",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-1",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-2",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-3",
+          "after": false,
+          "below": true
+        }
+      ]
+    },
+    {
+      "width": 375,
+      "positions": [
+        {
+          "id": "-5",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-7",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-6",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-4",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-1",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-2",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-3",
+          "after": false,
+          "below": true
+        }
+      ]
+    },
+    {
+      "width": 320,
+      "positions": [
+        {
+          "id": "-5",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-7",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-6",
+          "after": true,
+          "below": false
+        },
+        {
+          "id": "-4",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-1",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-2",
+          "after": false,
+          "below": true
+        },
+        {
+          "id": "-3",
+          "after": false,
+          "below": true
+        }
+      ]
+    }
+  ],
   "errors": [],
   "writes": [],
-  "interactions": "D stays selected while its three views switch; mouse, keyboard, focus, filter, sort, live data, outer switcher wrap and English labels verified"
+  "interactions": "D stays selected while its three views switch; mouse, keyboard, focus, filter, sort, live data, outer switcher wrap, English labels, codes beside names with responsive wrapping in two-level rows and below names in table/cards, and top-right card actions verified"
 }

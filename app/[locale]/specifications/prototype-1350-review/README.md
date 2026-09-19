@@ -80,8 +80,12 @@ appear immediately to the right of **Kravunderlag**:
 These controls change the view inside D. The outer prototype selection and
 `variant=D` URL stay the same. The selected icon has a border, check mark and
 pressed state; hover text names each view. Search, selected data source and
-ascending name order stay intact while switching. D opens in table view after
-a full reload; the view selection is in memory for this throwaway prototype.
+ascending name order stay intact while switching. In each of D's three views,
+the specification code uses muted monospace text. In two-level rows, it follows
+the name on the same line when space allows and wraps below as space decreases.
+In tables and cards, it sits below the name. Cards place their existing actions
+at the top right beside the name and code. D opens in table view after a full
+reload; the view selection is in memory for this throwaway prototype.
 
 Tab focuses the selected icon. Left/Right move between the three views;
 Home/End select the first/last view. Those keys stay within D when this control
@@ -97,9 +101,11 @@ Repeat with live data. Check that the address still contains `variant=D`.
 
 | Change | Where | How to verify | Expected observation |
 | --- | --- | --- | --- |
+| Specification code | All three views in D | Switch views and resize the window, checking short and long names. | Codes use smaller, muted monospace text. Two-level rows place the code after the name if it fits, otherwise below. Tables and cards place it below. |
+| Card actions at the top | Cards in C and D | Inspect the top right of each card; Tab to the permitted actions and activate a preview. | Actions sit beside the name and code without overlap, with no separate action footer. |
 | Combined view selector | D | Click the three icons beside the title, then try Left/Right and Home/End. | The view changes between reference, B and C while D, the filter, data source and name order stay selected. |
 | Ascending name order | All | Compare names in 0/A/B/C and each view in D, then filter and switch to live data. | Names follow ascending locale-aware order; Swedish Å, Ä and Ö follow Z. |
-| Focused list contents | All | Inspect row content in every option, including the reference. | Each specification shows name, responsibility, classifications and permitted actions. |
+| Focused list contents | All | Inspect row content in every option, including the reference. | Each specification shows name, responsibility, classifications and permitted actions; D also shows its code beside or below the name. |
 | More space for names | A | Compare 0 and A at 1440 × 900 with navigation expanded. Read the long information-exchange example. | Names receive the remaining table width; classifications occupy one column instead of three. |
 | Alternative information hierarchy | B | Read the long information-exchange example and its second line. | Name, responsible person and actions lead; labeled classifications appear below. |
 | Alternative browsing layout | C | Compare at 1440 and 1920 pixels; then narrow to 375 pixels. | Two cards per row on desktop and one on mobile. The tradeoff is reduced list density. |
@@ -171,7 +177,11 @@ using live data.
 at both desktop sizes, navigation states and themes, plus mobile layouts.
 They also cover icon placement, selected state, keyboard focus, preserved
 filter/data and keeping the outer prototype set to D. The gallery includes
-nine D captures in addition to the twelve separate-option captures.
+nine D desktop captures in addition to the twelve separate-option captures.
+Code placement is checked across widths from 320 to 1920 pixels, including
+inline and wrapped positions in two-level rows. See the
+[narrow two-level view](./captures/D-B-375-dark.png). Card actions are checked
+for alignment beside the title.
 
 [Search focus verification](./verification-focus.json) covers mouse and keyboard
 focus, the help button, filtering and clearing in light and dark themes.
