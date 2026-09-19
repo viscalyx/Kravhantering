@@ -657,17 +657,42 @@ test('SPEC-32: preserves selection, unsaved filters and scroll while hiding and 
   const library = page.locator(
     '[data-specification-detail-list-panel="available"]',
   )
-  await test.step('Choose descending requirement-ID order', async () => {
-    await library
-      .getByRole('button', { name: 'Sortera efter Krav-ID', exact: true })
-      .click()
-    await expect(
-      library.locator('th[aria-sort="descending"]').first(),
-    ).toHaveCount(1)
-  })
+  const selectedRequirementId =
+    await test.step('Choose descending requirement-ID order', async () => {
+      const [response] = await Promise.all([
+        page.waitForResponse(response => {
+          const url = new URL(response.url())
+          return (
+            url.pathname.endsWith('/available-requirements') &&
+            url.searchParams.get('sortBy') === 'uniqueId' &&
+            url.searchParams.get('sortDirection') === 'desc'
+          )
+        }),
+        library
+          .getByRole('button', { name: 'Sortera efter Krav-ID', exact: true })
+          .click(),
+      ])
+      await expectApiResponseOk(response, 'sort available requirements')
+      const result: { requirements: { uniqueId: string }[] } =
+        await response.json()
+      const firstId = requireTestValue(result.requirements[0]).uniqueId
+      await expect(
+        library.locator('th[aria-sort="descending"]').first(),
+      ).toHaveCount(1)
+      await expect(
+        library.locator('tbody input[type="checkbox"]').first(),
+      ).toHaveAttribute('aria-label', `Markera ${firstId}`)
+      return firstId
+    })
   await test.step('Retain selected requirements, filter text and nonzero scroll through hiding', async () => {
-    const checkbox = library.locator('tbody input[type="checkbox"]').first()
+    const checkbox = library.getByRole('checkbox', {
+      name: `Markera ${selectedRequirementId}`,
+      exact: true,
+    })
     await checkbox.check()
+    await expect(
+      library.getByRole('button', { name: /Lägg till valda \(1\)/ }),
+    ).toHaveCount(1)
     const filter = library.getByRole('button', { name: /Filtrera.*Krav-ID/i })
     await filter.click()
     const input = page.getByRole('textbox', { name: 'Krav-ID', exact: true })

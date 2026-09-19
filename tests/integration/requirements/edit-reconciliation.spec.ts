@@ -109,6 +109,18 @@ async function compare(page: Page) {
   return page.getByRole('dialog', { name: 'Sammanjämka ändringar' })
 }
 
+async function selectAssociation(
+  page: Page,
+  pickerName: 'Välj normreferenser' | 'Välj kravpaket',
+  optionName: string,
+) {
+  await page.getByRole('button', { name: pickerName, exact: true }).click()
+  const picker = page.getByRole('dialog', { name: pickerName, exact: true })
+  await picker.getByRole('checkbox', { name: optionName, exact: true }).check()
+  await picker.getByRole('button', { name: 'Välj', exact: true }).click()
+  await expect(picker).toHaveCount(0)
+}
+
 test.describe('Requirement edit reconciliation', () => {
   test.use({ viewport: DESKTOP_VIEWPORT })
 
@@ -174,8 +186,8 @@ test.describe('Requirement edit reconciliation', () => {
     request,
   }) => {
     const { server, saved } = await openConcurrentEdit(page, request)
-    await page.getByRole('checkbox', { name: /NR-1 Norm 1/ }).check()
-    await page.getByRole('checkbox', { name: 'Paket 1' }).check()
+    await selectAssociation(page, 'Välj normreferenser', 'NR-1 Norm 1')
+    await selectAssociation(page, 'Välj kravpaket', 'Paket 1')
     server.versions[0].description = 'Den andra författarens kravtext'
     server.versions[0].versionNormReferences = [
       {
@@ -275,8 +287,8 @@ test.describe('Requirement edit reconciliation', () => {
     }) => {
       await context.grantPermissions(['clipboard-read', 'clipboard-write'])
       const { server, saved } = await openConcurrentEdit(page, request)
-      await page.getByRole('checkbox', { name: /NR-1 Norm 1/ }).check()
-      await page.getByRole('checkbox', { name: 'Paket 2', exact: true }).check()
+      await selectAssociation(page, 'Välj normreferenser', 'NR-1 Norm 1')
+      await selectAssociation(page, 'Välj kravpaket', 'Paket 2')
       server.versions[0].status =
         restriction === 'archived' ? 4 : restriction === 'review' ? 2 : 1
       server.permissions.canEdit = restriction !== 'permission'
