@@ -747,6 +747,8 @@ visar valda paket i lokaliserad alfabetisk ordning och behåller OR-logiken i
 frågan. Mus, beröring och tangentbord ger likvärdig åtkomst; fokus och
 annonseringar är förutsägbara. Tomma lägen, svenska och engelska texter,
 verktygstips, tillgänglighetsattribut och Developer Mode-markörer är korrekta.
+Filterknappens verktygstips täcker inte paket i den öppna väljaren, även när
+fokus flyttas tillbaka till filterknappen med Skift+Tabb före ett musklick.
 Det arkiverade kravet kan hittas via sin historiska kravpaketskoppling när
 arkiverad status väljs uttryckligen.
 

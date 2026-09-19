@@ -479,6 +479,9 @@ test.describe('Requirements library', () => {
       await chooser.getByRole('button').first().focus()
       await page.keyboard.press('Shift+Tab')
       await expect(trigger).toBeFocused()
+      await expect(
+        page.getByRole('tooltip').filter({ hasText: /^Filtrera kravpaket$/u }),
+      ).toHaveCount(0)
     })
 
     await test.step('mutate package selections and preserve focus', async () => {

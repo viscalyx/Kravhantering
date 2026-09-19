@@ -528,6 +528,7 @@ export default function RequirementsPackageFilter({
               {t('requirementPackages')}
             </span>
             <RequirementPackagePurposeTooltip
+              disabled={isOpen}
               purposeAndScope={
                 hasPackages
                   ? triggerLabel

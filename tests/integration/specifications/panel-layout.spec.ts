@@ -1096,12 +1096,21 @@ for (const width of [1440, 1920]) {
             const panelBounds = await bounds(panel)
             const firstRow = panel.locator('tbody tr').first()
             const row = await bounds(firstRow)
-            expect(row.y - panelBounds.y).toBeLessThanOrEqual(130)
+            const toolbar = panel.locator(
+              '[data-developer-mode-name="panel toolbar"]',
+            )
+            const toolbarBounds = await bounds(toolbar)
+            // The empty-filter message can wrap to three lines beside the
+            // selection filter in the narrow, expanded-navigation layout.
+            expect(toolbarBounds.height).toBeLessThanOrEqual(
+              width === 1440 && expanded ? 55 : 37,
+            )
+            expect(
+              row.y - panelBounds.y - toolbarBounds.height,
+            ).toBeLessThanOrEqual(93)
             expect(footer.y - panelBounds.y - panelBounds.height).toBe(8)
             await expect(firstRow).toHaveCSS('font-size', '14px')
-            await expect(
-              panel.locator('[data-developer-mode-name="panel toolbar"]'),
-            ).toBeVisible()
+            await expect(toolbar).toBeVisible()
           }
           expect(
             await page.evaluate(

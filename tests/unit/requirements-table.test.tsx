@@ -4545,6 +4545,43 @@ describe('RequirementsTable', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('keeps the chooser accessible when its trigger receives keyboard focus', () => {
+    vi.useFakeTimers()
+    try {
+      render(<ControlledCompactPackageFilter />)
+      const trigger = screen.getByRole('button', {
+        name: 'requirementPackageFilterButton',
+      })
+      vi.spyOn(trigger, 'matches').mockReturnValue(true)
+      act(() => trigger.focus())
+      expect(screen.getByRole('tooltip')).toHaveTextContent(
+        'requirementPackageFilterButton',
+      )
+
+      fireEvent.click(trigger)
+      expect(
+        screen.getByRole('group', { name: 'requirementPackageChooser' }),
+      ).toBeVisible()
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      fireEvent.blur(trigger)
+      fireEvent.focus(trigger)
+      fireEvent.mouseEnter(trigger)
+      act(() => vi.advanceTimersByTime(1000))
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+
+      fireEvent.keyDown(document, { key: 'Escape' })
+      fireEvent.mouseEnter(trigger)
+      act(() => vi.advanceTimersByTime(999))
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      act(() => vi.advanceTimersByTime(1))
+      expect(screen.getByRole('tooltip')).toHaveTextContent(
+        'requirementPackageFilterButton',
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('delays package tooltips on hover, opens them on focus, and exposes curated markers', () => {
     vi.useFakeTimers()
     try {

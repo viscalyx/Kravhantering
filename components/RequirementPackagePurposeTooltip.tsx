@@ -18,6 +18,7 @@ import { createPortal } from 'react-dom'
 
 interface ComponentProps {
   children: ReactNode
+  disabled?: boolean
   maxWidth?: number
   purposeAndScope?: string | null
   wrapperClassName?: string
@@ -60,6 +61,7 @@ function composeEventHandler<Event>(
 
 export default function RequirementPackagePurposeTooltip({
   children,
+  disabled = false,
   maxWidth = 360,
   purposeAndScope,
   wrapperClassName = 'inline-flex min-w-0 shrink-0',
@@ -72,7 +74,7 @@ export default function RequirementPackagePurposeTooltip({
   const [isOpen, setIsOpen] = useState(false)
   const [position, setPosition] = useState<TooltipPosition | null>(null)
   const [supportsPopover, setSupportsPopover] = useState(false)
-  const text = purposeAndScope?.trim()
+  const text = disabled ? undefined : purposeAndScope?.trim()
 
   const updatePosition = useCallback(() => {
     if (!rootRef.current || typeof window === 'undefined') return
@@ -142,6 +144,10 @@ export default function RequirementPackagePurposeTooltip({
     clearHoverCloseTimer()
     setIsOpen(false)
   }, [clearHoverCloseTimer, clearHoverOpenTimer])
+
+  useEffect(() => {
+    if (!text) closeTooltip()
+  }, [closeTooltip, text])
 
   const scheduleTooltipClose = useCallback(() => {
     clearHoverOpenTimer()
