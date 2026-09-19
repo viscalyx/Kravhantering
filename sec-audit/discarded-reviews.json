@@ -1,0 +1,6 @@
+[
+  {
+    "agent_id": "validate-07",
+    "reason": "Schema-semantic failure: intermediate sink and entrypoint trace kinds; result discarded without repair. Fresh independent reviewer assigned."
+  }
+]

@@ -1,0 +1,134 @@
+{
+  "validate-07": {
+    "phase": "3",
+    "fingerprint": "norm-reference-linked-requirements-nonpublic-projection"
+  },
+  "validate-14": {
+    "phase": "3",
+    "fingerprint": "specification-preload/authorization-error-partial-data-disclosure"
+  },
+  "validate-15": {
+    "phase": "3",
+    "fingerprint": "suggestion-original-version-description-nonpublic-projection"
+  },
+  "validate-00": {
+    "phase": "3",
+    "fingerprint": "ai-forensic-capture/purge-before-close-retained-evidence"
+  },
+  "validate-01": {
+    "phase": "3",
+    "fingerprint": "archiving/confirmation-candidate-keys/stale-child-content-deletion"
+  },
+  "validate-07-retry": {
+    "phase": "3",
+    "fingerprint": "norm-reference-linked-requirements-nonpublic-projection"
+  },
+  "validate-02": {
+    "phase": "3",
+    "fingerprint": "azure-bootstrap/predictable-staging-parent/root-helper-replacement"
+  },
+  "validate-03": {
+    "phase": "3",
+    "fingerprint": "container-monitor/private-advisory/description-marker-ownership"
+  },
+  "validate-04": {
+    "phase": "3",
+    "fingerprint": "container-monitor/untrusted-comment-markers/scan-preflight-block"
+  },
+  "validate-05": {
+    "phase": "3",
+    "fingerprint": "dev-keycloak/published-management/default-admin"
+  },
+  "validate-06": {
+    "phase": "3",
+    "fingerprint": "dev-login/cached-jar/unscoped-cookie-header"
+  },
+  "validate-08": {
+    "phase": "3",
+    "fingerprint": "reports/review-diff/quadratic-main-thread-lcs"
+  },
+  "validate-09": {
+    "phase": "3",
+    "fingerprint": "requirement-delete-draft-status-check-write-race"
+  },
+  "validate-10": {
+    "phase": "3",
+    "fingerprint": "requirement-transition-state-dependent-authority-race"
+  },
+  "validate-11": {
+    "phase": "3",
+    "fingerprint": "retention-parent-delete-bypasses-child-exception"
+  },
+  "validate-12": {
+    "phase": "3",
+    "fingerprint": "selection-visibility/recursive-condition-rows/duplicate-path-amplification"
+  },
+  "validate-13": {
+    "phase": "3",
+    "fingerprint": "specification-delete/cancelled-confirmed-agreement-history-loss"
+  },
+  "verify-00": {
+    "phase": "5",
+    "fingerprint": "ai-forensic-capture/purge-before-close-retained-evidence"
+  },
+  "verify-01": {
+    "phase": "5",
+    "fingerprint": "archiving/confirmation-candidate-keys/stale-child-content-deletion"
+  },
+  "verify-02": {
+    "phase": "5",
+    "fingerprint": "azure-bootstrap/predictable-staging-parent/root-helper-replacement"
+  },
+  "verify-03": {
+    "phase": "5",
+    "fingerprint": "container-monitor/private-advisory/description-marker-ownership"
+  },
+  "verify-04": {
+    "phase": "5",
+    "fingerprint": "container-monitor/untrusted-comment-markers/scan-preflight-block"
+  },
+  "verify-05": {
+    "phase": "5",
+    "fingerprint": "dev-keycloak/published-management/default-admin"
+  },
+  "verify-06": {
+    "phase": "5",
+    "fingerprint": "dev-login/cached-jar/unscoped-cookie-header"
+  },
+  "verify-07": {
+    "phase": "5",
+    "fingerprint": "norm-reference-linked-requirements-nonpublic-projection"
+  },
+  "verify-08": {
+    "phase": "5",
+    "fingerprint": "reports/review-diff/quadratic-main-thread-lcs"
+  },
+  "verify-09": {
+    "phase": "5",
+    "fingerprint": "requirement-delete-draft-status-check-write-race"
+  },
+  "verify-10": {
+    "phase": "5",
+    "fingerprint": "requirement-transition-state-dependent-authority-race"
+  },
+  "verify-11": {
+    "phase": "5",
+    "fingerprint": "retention-parent-delete-bypasses-child-exception"
+  },
+  "verify-12": {
+    "phase": "5",
+    "fingerprint": "selection-visibility/recursive-condition-rows/duplicate-path-amplification"
+  },
+  "verify-13": {
+    "phase": "5",
+    "fingerprint": "specification-delete/cancelled-confirmed-agreement-history-loss"
+  },
+  "verify-14": {
+    "phase": "5",
+    "fingerprint": "specification-preload/authorization-error-partial-data-disclosure"
+  },
+  "verify-15": {
+    "phase": "5",
+    "fingerprint": "suggestion-original-version-description-nonpublic-projection"
+  }
+}

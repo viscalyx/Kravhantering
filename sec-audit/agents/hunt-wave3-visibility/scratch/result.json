@@ -1,0 +1,55 @@
+{
+  "units": [
+    {
+      "coverage_id": "app%2Fapi%2Frequirement-selection-questions%2F%5Bid%5D%2Fvisibility%2Froute.ts%23question%20visibility%20changes::lib%2Fdal%2Frequirement-selection-questions.ts%23visibility%20graph%20to%20persisted%20specification%20answer%20history::lib%2Frequirements%2Fselection-visibility::ATTACK-CLASSES.md%23Business%20logic",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/requirement-selection-questions/[id]/visibility/route.ts",
+        "app/api/requirement-selection-questions/_authorization.ts",
+        "app/api/requirement-selection-questions/_schemas.ts",
+        "app/api/requirements-specifications/[id]/requirement-selection-answers/[questionId]/route.ts",
+        "lib/dal/requirement-selection-questions.ts",
+        "lib/requirement-selection-question-hierarchy.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/requirements/specification-requirement-selection-answer-mutations.ts",
+        "lib/requirements/service-specifications.ts",
+        "typeorm/migrations/0027_requirement_selection_question_visibility.mjs",
+        "docs/governance/beh\u00f6righeter.md",
+        "docs/adr/0022-synlighetsvillkor-for-kravurvalsfragor.md",
+        "tests/unit/requirement-selection-questions-dal.test.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave3-visibility",
+          "reviewed_paths": [
+            "app/api/requirement-selection-questions/[id]/visibility/route.ts",
+            "app/api/requirement-selection-questions/_authorization.ts",
+            "app/api/requirement-selection-questions/_schemas.ts",
+            "app/api/requirements-specifications/[id]/requirement-selection-answers/[questionId]/route.ts",
+            "lib/dal/requirement-selection-questions.ts",
+            "lib/requirement-selection-question-hierarchy.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "lib/requirements/specification-requirement-selection-answer-mutations.ts",
+            "lib/requirements/service-specifications.ts",
+            "typeorm/migrations/0027_requirement_selection_question_visibility.mjs",
+            "docs/governance/beh\u00f6righeter.md",
+            "docs/adr/0022-synlighetsvillkor-for-kravurvalsfragor.md",
+            "tests/unit/requirement-selection-questions-dal.test.ts"
+          ],
+          "invariant": "Only the owning area author/Admin may edit a question graph; accepted references preserve answer-parent binding, and graph-derived changes preserve saved evidence without granting specification or requirement access.",
+          "method": "source",
+          "result": "Visibility PUT:18-40 uses the area-author mutation policy; assignment-authorization.ts:580-625 resolves the stored owning area and :697-702 enforces it. Schemas:33-55 bound graph shape. DAL:1767-1918 normalizes duplicate edges, binds answers to parents and rejects snapshot-visible cycles; migration0027 adds foreign keys and uniqueness. DAL:2013-2083 transacts graph replacement with affected-descendant history marking; :1963-2008 limits updates to affected current answers and preserves rows/actor attribution. ADR0022 explicitly permits cross-area references and stewardship propagation, so absence of per-specification authorship on this path is intentional. DAL:1680-1740 recomputes visibility; :2300-2345 excludes hidden/inactive answers from filter effects. service-specifications.ts:342-401 separately authorizes specification reads and applies selection only as an explicit published-requirement filter. Per-specification answer workflow:65-115 authorizes the specification and transacts mutation/audit; DAL:2210-2273 requires confirmation before hidden-answer historical marking. Hierarchy display uses visited sets, not authorization. Tests:632-814 document cross-area descendant preservation; read only. Concurrent graph changes lack an explicit common lock, but no source-established security boundary failure survives independent authorization and visibility recomputation.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [],
+  "hardening": [
+    "DAL:1150-1184 and :1456-1492 mark only directly changed question/answer selections historical when deactivating or archiving; unlike visibility replacement, they do not run descendant-history propagation. ADR0022 requires newly hidden saved descendants to become historical. Current read/filter paths still recompute visibility and exclude hidden answers, so this is a lifecycle correctness issue rather than an established authorization bypass; review restoration semantics before changing it.",
+    "Graph validation at DAL:1866-1918 reads a snapshot before replacement, and history marking races with ordinary answer writes without an explicit shared graph/specification lock. An isolated concurrency regression would clarify cycle/history consistency. No runtime schedule, deadlock, or unauthorized result was observed because target execution is prohibited."
+  ],
+  "uncovered": []
+}

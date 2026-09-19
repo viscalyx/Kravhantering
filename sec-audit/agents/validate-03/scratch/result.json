@@ -1,0 +1,106 @@
+{
+  "decision": "needs_validation",
+  "record": {
+    "verdict": "needs_validation",
+    "fingerprint": "container-monitor/private-advisory/description-marker-ownership",
+    "title": "Private advisory updates trust a body marker instead of automation ownership",
+    "description": "The trusted main-branch container monitor chooses the first repository security advisory whose description contains a deterministic finding marker, then overwrites a draft or triage match using its dedicated advisory credential. A lower-trust private reporter could receive confidential scanner details if they can place that marker in a report returned to the monitor, the monitor can update it, and the reporter retains access. Source confirms the selection and payload path, but does not establish those hosted permissions or an attacker-knowable active confidential finding. No target code or provider call was executed.",
+    "claimed_root_cause": "syncPrivateAdvisories uses a matching description substring as the resource identity for a privileged update without checking automation ownership, author, or collaborators. Repository validation, a configured credential, enabled private reporting, and draft/triage state constrain the path but do not authenticate the advisory's ownership. Exploitability depends on whether GitHub exposes reporter-controlled records through this path with retained reporter visibility.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 1015,
+        "scope": "syncPrivateAdvisories",
+        "description": "The paginated repository security-advisories response supplies descriptions, states and GHSA IDs. Reporter control of a returned description is the unverified lower-trust entry condition."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 1036,
+        "scope": "syncPrivateAdvisories",
+        "description": "Array.find selects the first advisory with a description containing issueMarker(record.fingerprint); no creator, collaborator or trusted ownership check participates."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 1039,
+        "scope": "syncPrivateAdvisories",
+        "description": "renderPrivateAdvisory constructs a payload containing the confidential record's identifier, image, package, exception state, scan time, severity and affected releases, digests and versions."
+      },
+      {
+        "kind": "sink",
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 1047,
+        "scope": "syncPrivateAdvisories",
+        "description": "If the selected advisory is draft or triage, privateAdvisoryApi sends a PATCH with that payload to its GHSA ID using the dedicated token. Actual acceptance and reporter visibility are not source-established."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 540,
+        "description": "trackingFingerprint computes unkeyed SHA-256 over vulnerabilityId, image and package separated by NUL; it is deterministic for known inputs."
+      },
+      {
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 600,
+        "description": "The fingerprint's image input is the release image role, not the immutable digest. Whether a reporter knows the other inputs for an active confidential record is unresolved."
+      },
+      {
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 660,
+        "description": "issueMarker requires a 64-character lowercase hexadecimal fingerprint and wraps it in a predictable HTML comment; the format check does not authenticate the producer."
+      },
+      {
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 673,
+        "description": "renderPrivateAdvisory puts confidential scan details in the description and other advisory fields."
+      },
+      {
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 971,
+        "description": "privateAdvisoryApi serializes the payload to a temporary body file and runs gh api with GH_TOKEN set to the supplied dedicated token and command output captured or suppressed."
+      },
+      {
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 987,
+        "description": "Only records without advisory URLs enter private synchronization. Missing credentials or unavailable/disabled private reporting cause a skip; listing and mutation errors become sanitized failures."
+      },
+      {
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 1036,
+        "description": "The first matching description controls selection. Only draft/triage matches are updated; other matching states are skipped, and absence of any match causes creation."
+      },
+      {
+        "file": ".github/workflows/container-vulnerability-monitor.yml",
+        "line": 21,
+        "description": "The job is restricted to viscalyx/Kravhantering on main. The synchronization step receives the separate advisory secret at line 251; these controls constrain the trusted job but do not validate ownership of listed advisories."
+      },
+      {
+        "file": "scripts/__tests__/container-vulnerability-monitor.test.mjs",
+        "line": 1511,
+        "description": "The existing source test supplies a matching draft containing only description, GHSA ID and state and expects an update using the narrow token. It does not model reporter permissions and was not executed."
+      },
+      {
+        "file": "docs/development/trusted-container-publishing.md",
+        "line": 329,
+        "description": "Documentation classifies findings without authoritative public advisory URLs as confidential and specifies a narrow Repository security advisories write credential for private synchronization."
+      },
+      {
+        "file": "docs/operations/release-artifact-and-image-verification.md",
+        "line": 233,
+        "description": "Operator guidance prohibits placing confidential scanner observations in public issues."
+      }
+    ],
+    "blockers": [
+      "The required target-execution sandbox is unavailable: the supplied capability result reports bubblewrap namespace creation denied with No permissions to create new namespace. This independent review ran no target code, tests, network requests or provider calls; there is no observed runtime result.",
+      "Repository source cannot establish GitHub's decisive hosted controls: whether a lower-trust reporter can submit a marker-bearing description, whether this unfiltered listing returns that report to the configured credential in draft or triage state, whether the PATCH payload is accepted for it, and whether the reporter can read the overwritten fields afterward. No provider policy or deployment permissions were inspected.",
+      "No active confidential finding was inspected. The reporter must know or predict its exact vulnerability identifier, image role and package, and their report must be the first matching advisory in listing order. A prior match or non-updatable state can prevent the claimed update."
+    ],
+    "validation_plan": {
+      "local": "Only after the required OS-enforced isolation is available, use the exported synchronizeTracking interface with one synthetic confidential finding, a dummy token, publicMutationAllowed false, and a recording runCommand adapter that never launches gh. Keep temporary body files under the permitted scratch root. Supply enabled private reporting and a paginated synthetic reporter-authored advisory with the matching marker. Check the selected GHSA ID and dummy confidential fields in the requested PATCH separately for draft and triage. Compare a nonmatching marker, a matching published advisory, missing credentials and disabled reporting. Stop at the recorded dummy command and payload; this establishes only local selection, not hosted disclosure.",
+      "deployment": "An owner should inspect authoritative GitHub policy and existing non-sensitive configuration/metadata for the actual credential and repository. Establish reporter submission/body control, default listing inclusion and order, permitted draft/triage PATCH operations including this payload, and retained reporter access after an update. Separately determine whether marker inputs for the relevant confidential scanner class are knowable without the disclosed details. Do not create a report, mutate an advisory, expose real scan content or read credential values. If any decisive prerequisite fails, reject the disclosure claim for that deployment."
+    }
+  }
+}

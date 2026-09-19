@@ -1,0 +1,101 @@
+{
+  "decision": "needs_validation",
+  "record": {
+    "verdict": "needs_validation",
+    "fingerprint": "specification-delete/cancelled-confirmed-agreement-history-loss",
+    "title": "Ordinary specification deletion may erase preserved confirmed-agreement history",
+    "description": "Independent source review supports a narrow preservation discrepancy. An authenticated coauthor of a specification can invoke ordinary parent deletion after its responsible person legitimately cancels the first confirmed future agreement. Cancellation retains the confirmation, content and business history while clearing pending state; parent deletion checks only pending/current state and explicitly deletes agreement records. This could let a coauthor erase the responsible person's preserved business event and any correction history. Authentication, assignment checks, parent locking, due activation and transactional auditing remain effective controls, but do not implement a historical-confirmation guard. No target execution or deletion was performed. Whether documented preservation also constrains explicit whole-specification deletion remains decisive and unresolved.",
+    "claimed_root_cause": "The author-authorized parent deletion path treats a previously confirmed, subsequently cancelled agreement as deletable because neither is_pending nor is_current is set. Its dependent deletion does not distinguish this retained business event from disposable unconfirmed drafts.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/requirements-specifications/[id]/route.ts",
+        "line": 119,
+        "scope": "DELETE specification",
+        "description": "The secure mutation wrapper validates the identifier and authorizes canAuthorSpecification using the authenticated actor; an assigned coauthor can reach deleteSpecificationWithAudit. This is authorized parent access, not a cross-specification identifier bypass."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/requirements/specification-mutations.ts",
+        "line": 186,
+        "scope": "deleteSpecificationWithAudit",
+        "description": "Locks the specification snapshot and performs dependent deletion and the allowed-action audit in one transaction. Missing parents return not_found; an SQL or audit failure prevents a partial committed deletion."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/specifications/agreement-policy.ts",
+        "line": 48,
+        "scope": "assertSpecificationDeletionAllowed",
+        "description": "Locks the parent and materializes due agreements before rejecting any pending/current agreement. The query has no condition protecting confirmed historical agreements."
+      },
+      {
+        "kind": "sink",
+        "file": "lib/dal/requirements-specifications.ts",
+        "line": 1560,
+        "scope": "deleteSpecificationWithExecutor",
+        "description": "After the guard, explicitly deletes deviation endings, all agreement items and agreements, then parent contents and the specification. No agreement snapshot or archive-export requirement appears on this ordinary deletion path."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "docs/adr/0063-fullstandiga-avtal-i-kravunderlag.md",
+        "line": 28,
+        "description": "Exact correction values are business history that the length-limited action log cannot replace. Lines 34-44 reserve agreement decisions to the responsible person and preserve cancelled confirmed future agreements because confirmation is a business event. The ADR does not explicitly resolve whole-parent deletion."
+      },
+      {
+        "file": "docs/security-privacy/informationsmangder-kravhantering.md",
+        "line": 319,
+        "description": "Agreement content and history belong to the specification information asset and retention rule; mandatory archive export includes agreements and correction history. Cancelled confirmed future agreements retain their content and cases. This strengthens the preservation concern but does not expressly specify the ordinary parent-delete exception or prohibition."
+      },
+      {
+        "file": "lib/dal/requirements-specifications.ts",
+        "line": 1058,
+        "description": "canAuthorSpecification permits Admin, the matching responsible HSA identity, or a matching specification_co_authors assignment; absent identity is denied."
+      },
+      {
+        "file": "lib/specifications/agreements.ts",
+        "line": 709,
+        "description": "Agreement establishment, confirmation and cancellation are outside the enumerated content-author operations and therefore require authenticated isSpecificationResponsible, a narrower predicate than parent-deletion authorship."
+      },
+      {
+        "file": "lib/specifications/agreement-cancellation.ts",
+        "line": 117,
+        "description": "Cancellation requires a confirmed pending agreement, snapshots follow-up, and ultimately clears is_pending while recording cancellation metadata without removing confirmed_at or the agreement. For a first future agreement there is no current predecessor."
+      },
+      {
+        "file": "lib/specifications/agreement-activation.ts",
+        "line": 38,
+        "description": "Due activation selects only pending confirmed agreements. A cancelled agreement with is_pending cleared is not restored to a guarded state by the parent deletion guard's activation step."
+      },
+      {
+        "file": "typeorm/migrations/0069_specification_agreements.mjs",
+        "line": 120,
+        "description": "Parent and agreement-item foreign keys use NO ACTION while correction history cascades on agreement deletion. Explicit child-first deletion addresses the immediate parent constraint. Other historical references require fixture accounting; owning/origin references at lines 92-99 use SET NULL. No blanket historical-confirmation deletion prohibition is visible in these constraints."
+      },
+      {
+        "file": "lib/requirements/specification-mutations.ts",
+        "line": 195,
+        "description": "The retained action audit contains specification lifecycle status and target identity, not complete agreement content or exact correction snapshots; the deletion is not silent, but this audit cannot reconstruct the claimed protected data."
+      },
+      {
+        "file": "lib/archiving/retention.ts",
+        "line": 539,
+        "description": "The separate obsolete-specification retention operation uses similar dependent deletion with requiresExport=true and age, lifecycle, current/pending and exception selection. This is contextual calibration, not proof that every administrative retention condition applies to ordinary deletion."
+      },
+      {
+        "file": "tests/sql-integration/specification-agreements.sqlserver.test.ts",
+        "line": 2011,
+        "description": "The source test specifies that cancelling a first future agreement preserves frozen content and creates an independent editable working set. It does not test subsequent whole-specification deletion and was not executed during this review."
+      }
+    ],
+    "blockers": [
+      "Required OS-enforced execution isolation is unavailable: the audit capability probe reported No permissions to create new namespace. No target process, SQL fixture, deletion, foreign-key interaction or retained-history readback was executed.",
+      "The information owner must resolve whether the documented cancelled-confirmation preservation contract applies to explicitly authorized whole-specification deletion. If such deletion intentionally permits erasing this history without export, the security claim is not established.",
+      "A future isolated migrated SQL fixture must establish the minimum deletion outcome, including actual foreign keys and retained audit, for a specification with only its first cancelled confirmed agreement. This source review does not claim universal or observed deletion success."
+    ],
+    "validation_plan": {
+      "local": "Only after an approved isolated offline sandbox is available, use a disposable migrated SQL fixture with dummy responsible and separate coauthor identities and strict resource limits. Legitimately establish a first future agreement, record a correction if testing correction-history loss, cancel it as the responsible person, and verify retained confirmation/content. Invoke the ordinary DELETE route once as the assigned coauthor and inspect only that specification's agreement, correction and item rows plus the retained action audit. Include a separate pending/current agreement control that must reject deletion. Account for all actual foreign keys and stop after this bounded result; never use existing services or real records.",
+      "deployment": "Obtain an owner decision on explicit whole-specification deletion under ADR 0063 and the information-asset preservation rule. Reject the security claim if erasure is explicitly permitted. If preservation is required, confirm the deployed revision, schema constraints and runtime grants through read-only owner inspection; do not test deletion against deployed data."
+    }
+  }
+}

@@ -1,0 +1,460 @@
+{
+  "units": [
+    {
+      "coverage_id": "app%2Fapi%2Fprivacy%23exports%20and%20reports::lib%2Fprivacy%2Froute-helpers.ts%23derived%20data%20authority::lib%2Fprivacy::ATTACK-CLASSES.md%23Access%20control",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/privacy/route-helpers.ts",
+        "app/api/privacy/data-subject-export/route.ts",
+        "lib/access-review/service.ts",
+        "app/api/admin/audit-events/route.ts",
+        "app/api/requirements-specifications/[id]/exports/route.ts",
+        "lib/specifications/agreement-selection.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-outputs",
+          "reviewed_paths": [
+            "lib/privacy/route-helpers.ts",
+            "app/api/privacy/data-subject-export/route.ts",
+            "lib/access-review/service.ts",
+            "app/api/admin/audit-events/route.ts",
+            "app/api/requirements-specifications/[id]/exports/route.ts",
+            "lib/specifications/agreement-selection.ts"
+          ],
+          "invariant": "Derived-output reads retain the source object or explicit privacy/administrative authorization.",
+          "method": "source",
+          "result": "PrivacyOfficer requires a human actor (route-helpers.ts:19); data-subject export restricts another subject to that role. Access-review service:145,707 checks Admin/PrivacyOfficer before detail/export. Audit route:89 requires Admin. Specification CSV route:88 authorizes get_specification_items; agreement-selection.ts:29 constrains a supplied agreement to that specification. No role or object-scope bypass identified in these output paths.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fprivacy%23exports%20and%20reports::lib%2Fprivacy%2Froute-helpers.ts%23derived%20data%20authority::lib%2Fprivacy::ATTACK-CLASSES.md%23Feature%20abuse%20and%20data%20leakage",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/privacy/data-subject-export/route.ts",
+        "lib/privacy/data-subject-export.ts",
+        "lib/export-csv.ts",
+        "lib/generated-output/structured-runner.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-outputs",
+          "reviewed_paths": [
+            "app/api/privacy/data-subject-export/route.ts",
+            "lib/privacy/data-subject-export.ts",
+            "lib/export-csv.ts",
+            "lib/generated-output/structured-runner.ts"
+          ],
+          "invariant": "Export convenience must not expose session credentials, unrelated subject fields, or executable spreadsheet formulas.",
+          "method": "source",
+          "result": "Data-subject route projects self-session claims without tokens and requires privacy authority for another HSA-id. Collector:199 onward uses bound subject parameters and explicit field projections; action-log export:954 excludes details/IP, forensic export:1062 excludes evidence content. export-csv.ts:21 prefixes formula-leading fields and quotes delimiters. Structured output:58 enforces aggregate item admission and bounded serialization. No concrete feature-abuse disclosure established.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fprivacy%23exports%20and%20reports::lib%2Fprivacy%2Froute-helpers.ts%23derived%20data%20authority::lib%2Fprivacy::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/generated-output/spool.ts",
+        "lib/http/content-disposition.ts",
+        "lib/pdf/report-worker.ts",
+        "lib/pdf/report-worker-entry.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-outputs",
+          "reviewed_paths": [
+            "lib/generated-output/spool.ts",
+            "lib/http/content-disposition.ts",
+            "lib/pdf/report-worker.ts",
+            "lib/pdf/report-worker-entry.ts"
+          ],
+          "invariant": "Output names and renderer parameters must not become caller-chosen filesystem paths or uncontrolled resource references.",
+          "method": "source",
+          "result": "Spool:114 accepts only an operator-configured absolute base; :168 creates random private directories and a fixed output filename. Modes are checked at :356; output response verifies a regular file. Content-disposition.ts:18 sanitizes extension/fallback and caps header bytes. Worker entry:54 writes only the internally supplied spool path through a byte-limited pipeline. No request-controlled path or file-URL reader found in this path.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fprivacy%23exports%20and%20reports::lib%2Fprivacy%2Froute-helpers.ts%23derived%20data%20authority::lib%2Fprivacy::DATA-ISOLATION-AND-LIFECYCLE.md%23Analytics%2C%20logs%2C%20traces%2C%20and%20diagnostics%20as%20alternate%20readers",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/audit/action-audit.ts",
+        "app/api/admin/audit-events/route.ts",
+        "lib/privacy/data-subject-export.ts",
+        "lib/generated-output/operation.ts",
+        "docs/security-privacy/informationsmangder-kravhantering.md"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-outputs",
+          "reviewed_paths": [
+            "lib/audit/action-audit.ts",
+            "app/api/admin/audit-events/route.ts",
+            "lib/privacy/data-subject-export.ts",
+            "lib/generated-output/operation.ts",
+            "docs/security-privacy/informationsmangder-kravhantering.md"
+          ],
+          "invariant": "Logs and diagnostic exports must remain intentionally authorized alternate readers with bounded metadata.",
+          "method": "source",
+          "result": "Action-audit.ts:192 onward bounds detail keys/strings/arrays and removes content/secret/identity keys; :336 stores dedicated actor fields intentionally. Audit route:89 gates both JSON and CSV with Admin. Subject collector:954 exposes only the target actor projection. Generated-output operation records counters and correlation metadata, not payloads. Information-assets matrix:153-154 distinguishes SQL action records from externally governed security logs; external retention remains separately scoped below.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fprivacy%23exports%20and%20reports::lib%2Fprivacy%2Froute-helpers.ts%23derived%20data%20authority::lib%2Fprivacy::DATA-ISOLATION-AND-LIFECYCLE.md%23Export%20and%20backup%20scope%20expansion",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/privacy/data-subject-export.ts",
+        "app/api/requirements/export/route.ts",
+        "lib/requirements/list-query.ts",
+        "lib/reports/data/specification-output.ts",
+        "lib/specifications/agreement-selection.ts",
+        "lib/archiving/retention.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-outputs",
+          "reviewed_paths": [
+            "lib/privacy/data-subject-export.ts",
+            "app/api/requirements/export/route.ts",
+            "lib/requirements/list-query.ts",
+            "lib/reports/data/specification-output.ts",
+            "lib/specifications/agreement-selection.ts",
+            "lib/archiving/retention.ts"
+          ],
+          "invariant": "Bulk output selection must preserve source visibility and explicit archive scope.",
+          "method": "source",
+          "result": "Library CSV route:145 passes authorization/context through traversal; list-query.ts:249 resolves principal visibility before each SQL page. Specification output:266,341 constrains collected items to specification plus selected IDs, with agreement-selection.ts:29 checking membership. Subject export:1687 supplies only the authorized target. Archive export:1395 queries one selected specification and explicitly anonymizes actor projections. External downloaded copies/backups are outside these runtime controls and listed separately.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fprivacy%23exports%20and%20reports::lib%2Fprivacy%2Froute-helpers.ts%23derived%20data%20authority::lib%2Fprivacy::DATA-ISOLATION-AND-LIFECYCLE.md%23Retention%20and%20queued-work%20overrun",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "lib/archiving/retention.ts",
+        "app/api/admin/archiving/exports/route.ts",
+        "app/api/admin/archiving/runs/route.ts",
+        "lib/dal/requirements-specifications.ts",
+        "lib/requirements/service-needs-references.ts",
+        "docs/security-privacy/informationsmangder-kravhantering.md"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-outputs",
+          "reviewed_paths": [
+            "lib/archiving/retention.ts",
+            "app/api/admin/archiving/exports/route.ts",
+            "app/api/admin/archiving/runs/route.ts",
+            "lib/dal/requirements-specifications.ts",
+            "lib/requirements/service-needs-references.ts",
+            "docs/security-privacy/informationsmangder-kravhantering.md"
+          ],
+          "invariant": "Mandatory archival preservation must cover the exact child content destroyed by a subsequent disposal.",
+          "method": "source",
+          "result": "Retention:966 hashes candidate keys, UTC-day cutoff, and policy revision; :1020 consumes that confirmation. Needs-reference update:1934 locks the parent but updates only the child at :1965. Thus a same-day committed edit leaves confirmation and eligibility unchanged before :540 deletes children. Documentation:130,152 promises business-history preservation including needs references. Candidate requires isolated SQL validation; other retention-policy dependency graphs remain uncovered.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "archiving/confirmation-candidate-keys/stale-child-content-deletion"
+      ],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fprivacy%23exports%20and%20reports::lib%2Fprivacy%2Froute-helpers.ts%23derived%20data%20authority::lib%2Fprivacy::RESOURCE-EXHAUSTION-AND-AVAILABILITY.md%23File%20descriptor%2C%20handle%2C%20and%20temporary-resource%20leaks",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/generated-output/spool.ts",
+        "lib/generated-output/csv-runner.ts",
+        "lib/generated-output/structured-runner.ts",
+        "lib/generated-output/actor-quota.ts",
+        "lib/pdf/report-worker.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-outputs",
+          "reviewed_paths": [
+            "lib/generated-output/spool.ts",
+            "lib/generated-output/csv-runner.ts",
+            "lib/generated-output/structured-runner.ts",
+            "lib/generated-output/actor-quota.ts",
+            "lib/pdf/report-worker.ts"
+          ],
+          "invariant": "Cancellation, failure, and response completion must release file handles, temporary files, workers, and reservations.",
+          "method": "source",
+          "result": "Spool:181 has idempotent release; :246 closes writers in finally and :306 destroys cancelled read streams before cleanup. CSV runner:137,164 closes writers and releases reservations on failures; structured runner:127 drains queued queries before cleanup. Actor-quota:94 retains admission through response delivery and releases once. PDF worker:66 awaits termination on abort. No repeatable source-visible handle leak identified; failure-injection execution was prohibited.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fprivacy%23exports%20and%20reports::lib%2Fprivacy%2Froute-helpers.ts%23derived%20data%20authority::lib%2Fprivacy::RESOURCE-EXHAUSTION-AND-AVAILABILITY.md%23Quota-accounting%20scope%20and%20reset%20gaps",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/dal/export-actor-quota.ts",
+        "lib/generated-output/actor-quota.ts",
+        "lib/privacy/erasure.ts",
+        "lib/transient-cleanup/export-actor-quota-entries.ts",
+        "lib/generated-output/actor-watchdog.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-outputs",
+          "reviewed_paths": [
+            "lib/dal/export-actor-quota.ts",
+            "lib/generated-output/actor-quota.ts",
+            "lib/privacy/erasure.ts",
+            "lib/transient-cleanup/export-actor-quota-entries.ts",
+            "lib/generated-output/actor-watchdog.ts"
+          ],
+          "invariant": "One human principal must share starts/concurrency accounting across routes, sessions, nodes, retries, and erasure.",
+          "method": "source",
+          "result": "SQL quota:22 serializes admission under an actor-fingerprint application lock; rolling starts include released work. Actor-quota:53 derives identity from verified HSA-id and holds it through response completion. Erasure:1272 takes the identical lock and rejects active operations. Cleanup:35 removes only expired entries. Watchdog:7 fail-stops unsettled work before SQL recovery; no attacker-selected quota key or active-budget reset found.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fprivacy%23exports%20and%20reports::lib%2Fprivacy%2Froute-helpers.ts%23derived%20data%20authority::lib%2Fprivacy::RESOURCE-EXHAUSTION-AND-AVAILABILITY.md%23Worker%2C%20pool%2C%20and%20priority%20starvation",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "app/[locale]/requirements/reports/pdf/review/[id]/route.ts",
+        "lib/reports/templates/review-template.ts",
+        "lib/reports/text-diff.ts",
+        "lib/pdf/synchronous-generation.ts",
+        "lib/http/validation-constants.ts",
+        "lib/requirements/assignment-authorization.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-outputs",
+          "reviewed_paths": [
+            "app/[locale]/requirements/reports/pdf/review/[id]/route.ts",
+            "lib/reports/templates/review-template.ts",
+            "lib/reports/text-diff.ts",
+            "lib/pdf/synchronous-generation.ts",
+            "lib/http/validation-constants.ts",
+            "lib/requirements/assignment-authorization.ts"
+          ],
+          "invariant": "A single admitted report must not monopolize the shared main event loop or heap beyond effective work limits.",
+          "method": "source",
+          "result": "Review route:48 builds the model on the server thread after a version-count check. Template:277 calls diffText; text-diff.ts:62 keeps whitespace tokens and :69 allocates the full Cartesian matrix. Two permitted 9,999-character unequal alternating-word fields imply 100 million cells. Synchronous-generation:59-65 checks abort only around this work, so the timer cannot interrupt it. History requires area assignment or Reviewer (:879); the candidate is authenticated.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "reports/review-diff/quadratic-main-thread-lcs"
+      ],
+      "unresolved": []
+    }
+  ],
+  "candidates": [
+    {
+      "proposed_verdict": "needs_validation",
+      "fingerprint": "reports/review-diff/quadratic-main-thread-lcs",
+      "title": "Review PDF diff expands permitted text into a quadratic main-thread matrix",
+      "description": "An area author able to supply a long review revision against a long published or archived baseline, or a Reviewer requesting that report, can trigger disproportionately expensive shared-server work with one admitted PDF request. Two unequal 9,999-character alternating word/space values fit the 10,000-character text limit and tokenize into 9,999 tokens each, causing a 100-million-cell JavaScript number matrix. The source shows synchronous allocation and traversal on the application event loop; no CPU, memory, timeout, or crash observation was performed. Unrelated requests on the same Node process share its heap and event loop. Work persists until completion or process termination; the independent actor watchdog is a late process-wide fail-stop, not per-job interruption.",
+      "claimed_root_cause": "The accepted field-length limit and report item quota do not constrain the product of diff token counts. Model construction calls the full-matrix LCS synchronously before rendering, while generation cancellation is observed only before and after the callback.",
+      "trace": [
+        {
+          "kind": "entrypoint",
+          "file": "app/[locale]/requirements/reports/pdf/review/[id]/route.ts",
+          "line": 22,
+          "scope": "GET authenticated review PDF",
+          "description": "Authorizes history access, admits the actor, checks version count, and loads stored text."
+        },
+        {
+          "kind": "propagation",
+          "file": "app/[locale]/requirements/reports/pdf/review/[id]/route.ts",
+          "line": 49,
+          "scope": "Report model construction",
+          "description": "Calls buildReviewReport synchronously on the application thread before renderReportModelPdfResponse."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/reports/templates/review-template.ts",
+          "line": 277,
+          "scope": "Published/archived baseline versus review revision",
+          "description": "Passes complete description strings into diffText, then repeats for acceptance criteria."
+        },
+        {
+          "kind": "sink",
+          "file": "lib/reports/text-diff.ts",
+          "line": 69,
+          "scope": "Shared main-thread heap and event-loop work",
+          "description": "Allocates (oldTokenCount+1)*(newTokenCount+1) cells and visits every cell synchronously, without a token-product cap or abort check."
+        }
+      ],
+      "evidence": [
+        {
+          "file": "lib/http/validation-constants.ts",
+          "line": 2,
+          "description": "Business text permits 10,000 characters; alternating single-character words and spaces fit this bound."
+        },
+        {
+          "file": "app/api/requirements/[id]/route.ts",
+          "line": 61,
+          "description": "Requirement edit description uses businessTextSchema; PUT :232 routes authorized area-author changes into manageRequirement."
+        },
+        {
+          "file": "lib/requirements/assignment-authorization.ts",
+          "line": 879,
+          "description": "History access is available to Reviewer or the assigned area author; this is not anonymous exposure."
+        },
+        {
+          "file": "lib/reports/text-diff.ts",
+          "line": 62,
+          "description": "Whitespace is retained as tokens, yielding 9,999 tokens for each proposed 9,999-character fixture."
+        },
+        {
+          "file": "lib/pdf/synchronous-generation.ts",
+          "line": 60,
+          "description": "Awaits the entire callback and checks abortion only afterward; a synchronous LCS cannot yield to its timer."
+        },
+        {
+          "file": "lib/generated-output/actor-watchdog.ts",
+          "line": 7,
+          "description": "The independent watchdog kills the whole process when its outer deadline expires, preserving accounting but not unrelated process availability."
+        }
+      ],
+      "blockers": [
+        "Target execution and process isolation are prohibited in this workspace; no bounded growth/cancellation experiment was run.",
+        "Actual heap representation, event-loop delay, deployed memory ceiling, and process/supervisor recovery require isolated measurement. A long baseline and review revision must be reachable through the real lifecycle, not merely injected into a unit fixture."
+      ],
+      "validation_plan": {
+        "local": "In a disposable environment with hard memory/CPU limits, first instrument small unequal alternating-word fixtures (e.g. 128 and 256 tokens) to establish matrix growth and timer starvation without saturation. Use a local synthetic published baseline and authorized review revision to verify the actual route reaches this function under the configured item quota. Do not run the 100-million-cell case; measure allocation counts or replace the allocation with a sentinel in a focused harness.",
+        "deployment": "Owner confirms Node worker topology, per-process memory limits, supervisor restart behavior, and any existing report isolation or earlier token-product cap. No live load test is needed."
+      }
+    },
+    {
+      "proposed_verdict": "needs_validation",
+      "fingerprint": "archiving/confirmation-candidate-keys/stale-child-content-deletion",
+      "title": "Archive confirmation can remain valid after unarchived child edits",
+      "description": "A specification author can commit a needs-reference edit after a PrivacyOfficer exports an eligible obsolete specification. The child update does not change the parent timestamp or the confirmation inputs. Within the same UTC day and 15-minute confirmation lifetime, the PrivacyOfficer can execute disposal with the original token; the newer needs-reference content is deleted although the exported archive contains its previous version. The affected state is the specification owner’s business history. This needs validation of the mandatory archive-preservation guarantee and the real SQL lifecycle; it is not claimed as a role bypass or arbitrary deletion.",
+      "claimed_root_cause": "The mandatory export confirmation binds candidate identifiers, policy revision, and day-rounded cutoff, but not the exported child content or a revision covering it. The execution transaction rechecks eligibility yet cannot detect a child edit committed between export and execution.",
+      "trace": [
+        {
+          "kind": "entrypoint",
+          "file": "app/api/admin/archiving/exports/route.ts",
+          "line": 35,
+          "scope": "PrivacyOfficer archive export",
+          "description": "Runs the authorized export and returns an export confirmation token with the archive."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/archiving/retention.ts",
+          "line": 966,
+          "scope": "Preview and export confirmation identity",
+          "description": "Hashes candidate keys, UTC-day cutoff, policy ID and policyUpdatedAt; mintExportToken stores that hash and candidate keys for 15 minutes."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/dal/requirements-specifications.ts",
+          "line": 1965,
+          "scope": "Authorized needs-reference edit after export",
+          "description": "Updates text, description and child updated_at inside a parent-locked transaction, without changing the parent updated_at used for retention selection."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/archiving/retention.ts",
+          "line": 1310,
+          "scope": "Subsequent SERIALIZABLE disposal",
+          "description": "Rebuilds the same candidate set and consumes the unchanged export confirmation; committed child edits are absent from the token comparison."
+        },
+        {
+          "kind": "sink",
+          "file": "lib/archiving/retention.ts",
+          "line": 545,
+          "scope": "Deletion of specification child data",
+          "description": "Deletes specification_needs_references before deleting the specification, including content changed since the archive was produced."
+        }
+      ],
+      "evidence": [
+        {
+          "file": "docs/security-privacy/informationsmangder-kravhantering.md",
+          "line": 130,
+          "description": "Defines archive export as preserving business history outside the active database; :152 requires anonymized needs references in the export preceding specification disposal."
+        },
+        {
+          "file": "lib/archiving/retention.ts",
+          "line": 559,
+          "description": "Eligibility is based on specification.updated_at, lifecycle and active/pending agreements; it does not incorporate needs-reference updated_at."
+        },
+        {
+          "file": "lib/archiving/retention.ts",
+          "line": 871,
+          "description": "The cutoff is rounded to midnight, allowing export and later execution on the same day to share a token."
+        },
+        {
+          "file": "lib/archiving/retention.ts",
+          "line": 1489,
+          "description": "Archive payload includes needs-reference text, description and timestamps, so the later edited content has an identifiable missing archived version."
+        },
+        {
+          "file": "lib/requirements/service-needs-references.ts",
+          "line": 120,
+          "description": "The child edit is an ordinary authorized manage_specification_needs_reference operation and does not require privacy disposal authority."
+        }
+      ],
+      "blockers": [
+        "No isolated SQL runtime is permitted, so the export/edit/dispose sequence and persisted archive contents were not exercised.",
+        "The owner must confirm that mandatory archive preservation requires the exact deleted child version; if a point-in-time older archive intentionally satisfies the policy, this is a correctness/hardening issue rather than a security finding."
+      ],
+      "validation_plan": {
+        "local": "Create one synthetic retention-eligible specification with no current/pending agreement and one needs reference. As PrivacyOfficer obtain preview and archive; as its authorized author change the needs-reference text through the real service; on the same UTC day execute disposal using the original tokens. Observe whether execution rejects or deletes the changed text absent from the archive. Use the actual migrations and verify no trigger or workflow touches parent updated_at.",
+        "deployment": "Information owner confirms the documented archive-before-disposal requirement covers the exact destroyed child content and whether an enforced operational write freeze already prevents this interval."
+      }
+    }
+  ],
+  "hardening": [
+    "lib/pdf/server-response.tsx:20 uses renderToBuffer without checking pdfReportMaxFileBytes, while docs/operations/capacity-management.md:110 describes shared PDF byte limits. Worker memory isolation is explicitly limited to worker-rendered PDFs. No separate resource-impact finding is asserted solely from the missing byte check."
+  ],
+  "uncovered": [
+    {
+      "surface": "Non-specification retention policy dependency graphs",
+      "boundary": "Per-policy eligibility, legal-hold exceptions and destructive SQL against concurrent domain changes",
+      "subsystem": "outputs",
+      "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Retention and queued-work overrun",
+      "starting_paths": [
+        "lib/archiving/retention.ts",
+        "typeorm/migrations/0009_archiving_retention.mjs",
+        "typeorm/migrations/0022_requirement_selection_retention.mjs",
+        "typeorm/migrations/0036_rfi_question_retention_policy.mjs"
+      ],
+      "reason": "This review traced the common transaction/token machinery and obsolete-specification child deletion. It did not close every taxonomy, requirement-version, requirement-selection, RFI and responsibility-person dependency/cascade path; these require focused policy-specific review rather than inferred coverage."
+    },
+    {
+      "surface": "Export destinations, platform logs and SQL backup restoration",
+      "boundary": "Application-authorized output versus recipient storage ACLs, external retention and restoration of deleted copies",
+      "subsystem": "operations",
+      "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Export and backup scope expansion",
+      "starting_paths": [
+        "docs/security-privacy/informationsmangder-kravhantering.md",
+        "docs/operations/transient-state-cleanup.md"
+      ],
+      "reason": "The information-assets matrix explicitly assigns exported-file, platform-log and backup/restore retention to operators/recipients. Runtime export scoping does not establish those ACLs or restored-copy lifecycle controls; no external access or deployment validation was permitted."
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "decision": "needs_validation",
+  "record": {
+    "verdict": "needs_validation",
+    "fingerprint": "reports/review-diff/quadratic-main-thread-lcs",
+    "title": "Review PDF model computes a quadratic text diff on the application thread",
+    "description": "An authenticated assigned area author can supply a requirement revision, and that author or a Reviewer can request its review PDF. When a long published or archived baseline and an unequal long review revision coexist, one admitted GET synchronously constructs a Cartesian LCS matrix before PDF rendering. Two 9,999-character fields consisting of single-character words separated by single spaces fit the text schema and each yield 9,999 tokens, implying 100,000,000 allocated matrix cells. This is a source-derived work count, not an observed memory allocation or denial of service. The version-count check, actor admission quota, and per-node concurrency limit constrain admission but do not bound the token product within one accepted comparison. Synchronous work shares the requesting Node process's event loop and heap; meaningful delay, memory pressure, and impact on unrelated requests remain unmeasured. Work ends on completion, failure, or process termination; an independent watchdog can kill the entire process after its outer deadline, with recovery dependent on deployment supervision.",
+    "claimed_root_cause": "The report accepts text bounded by character count and collections bounded by version count, then synchronously allocates and traverses a full token-product LCS matrix without a token-product limit or cooperative cancellation. The report model is evaluated before the rendering function is called, and generation abort checks surround the callback rather than interrupt this computation.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/[locale]/requirements/reports/pdf/review/[id]/route.ts",
+        "line": 22,
+        "scope": "Authenticated review PDF GET",
+        "description": "The requester selects a stored requirement. The route authorizes history access, enters actor/capacity admission, counts versions against the configured item limit, and loads report data."
+      },
+      {
+        "kind": "propagation",
+        "file": "app/[locale]/requirements/reports/pdf/review/[id]/route.ts",
+        "line": 49,
+        "scope": "Synchronous report model construction",
+        "description": "buildReviewReport is evaluated as an argument before renderReportModelPdfResponse is invoked, keeping model computation on the route's application thread."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/reports/templates/review-template.ts",
+        "line": 277,
+        "scope": "Baseline and review text comparison",
+        "description": "After selecting a Review version and a Published or Archived baseline, the template passes their complete descriptions to diffText and also compares acceptance criteria at line 286. Missing review or baseline versions return earlier."
+      },
+      {
+        "kind": "sink",
+        "file": "lib/reports/text-diff.ts",
+        "line": 69,
+        "scope": "Application-thread matrix allocation and traversal",
+        "description": "For unequal nonempty strings, computeLcs allocates (oldLen + 1) rows times (newLen + 1) cells, then synchronously visits oldLen times newLen cells without an abort check or token-product cap."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "lib/http/validation-constants.ts",
+        "line": 2,
+        "description": "BUSINESS_TEXT_MAX_LENGTH is 10,000 characters."
+      },
+      {
+        "file": "lib/http/validation.ts",
+        "line": 107,
+        "description": "businessTextSchema trims only surrounding whitespace and accepts nonempty strings up to the business text limit; alternating words with internal single spaces and word endpoints survive this normalization."
+      },
+      {
+        "file": "app/api/requirements/[id]/route.ts",
+        "line": 230,
+        "description": "The secure PUT mutation uses requirementEditSchema, whose description is businessTextSchema at line 61, and passes the accepted description to manageRequirement. It requires a base version ID and revision token."
+      },
+      {
+        "file": "lib/requirements/service-requirements.ts",
+        "line": 903,
+        "description": "The authorized edit path trims description, requires edit preconditions and a human actor snapshot, and passes description to editRequirement without reducing internal tokens."
+      },
+      {
+        "file": "lib/dal/requirements.ts",
+        "line": 902,
+        "description": "Editing the latest Published version creates a new Draft containing the supplied description while preserving the published baseline. Earlier transaction guards reject stale revision tokens and direct editing of Review or Archived versions. The new draft must subsequently enter Review before this report comparison runs."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 872,
+        "description": "History access requires Reviewer or an area author assignment; the published-detail shortcut does not apply to history. Ordinary unaffiliated readers cannot request this report."
+      },
+      {
+        "file": "lib/reports/templates/review-template.ts",
+        "line": 182,
+        "description": "The template chooses the latest Review version and prefers a Published baseline, falling back to Archived. It returns without a diff when either required side is absent."
+      },
+      {
+        "file": "lib/reports/data/server.ts",
+        "line": 101,
+        "description": "The route's versions collection limit counts database versions, not characters or tokens; collectRequirementForReport returns the stored versions at line 133 without text truncation."
+      },
+      {
+        "file": "lib/reports/text-diff.ts",
+        "line": 62,
+        "description": "Tokenization retains whitespace runs as tokens. Unequal 9,999-character alternating single-character words and single spaces give 9,999 tokens per side. Equal strings and empty sides are explicitly short-circuited at lines 14-23 and do not exercise the matrix."
+      },
+      {
+        "file": "lib/pdf/synchronous-generation.ts",
+        "line": 53,
+        "description": "Configured per-node concurrency is acquired before work, and the configured version item limit is supplied to the callback. Abort checks at lines 59 and 65 surround the entire awaited callback and cannot interrupt its synchronous LCS."
+      },
+      {
+        "file": "lib/generated-output/operation.ts",
+        "line": 95,
+        "description": "The generation deadline is a main-thread setTimeout that aborts a signal; it cannot preempt a synchronous matrix computation on that event loop."
+      },
+      {
+        "file": "lib/generated-output/actor-quota.ts",
+        "line": 87,
+        "description": "Admission requires authenticated identity with HSA ID and a database-backed actor quota before starting work. The independent watchdog is armed at line 118 with an absolute 840,000 ms fail-stop deadline defined at line 18."
+      },
+      {
+        "file": "lib/generated-output/actor-watchdog.ts",
+        "line": 11,
+        "description": "A separate worker sends SIGKILL to the process at its deadline. This bounds eventual live work through whole-process termination rather than isolating or cancelling a single diff."
+      },
+      {
+        "file": "lib/application-settings.ts",
+        "line": 12,
+        "description": "The configured PDF item limit can be 1-1,000, so setting it to 1 would reject the required two-version state. Defaults at lines 61-65 are concurrency 3, item limit 1,000, timeout 180 seconds, and PDF worker memory 512 MiB; deployed values have not been observed. Renderer-stage controls begin after model construction."
+      }
+    ],
+    "blockers": [
+      "The authorized OS-enforced sandbox is unavailable: the supplied trusted bubblewrap probe failed with 'No permissions to create new namespace'. Target execution is prohibited, so no bounded growth, event-loop delay, allocation, cancellation, or shared-request experiment was performed.",
+      "Actual report reachability requires an authorized lifecycle-created Review revision and a long Published or Archived baseline under a deployed item limit of at least two. The schema and draft creation path support the proposed state, but its complete lifecycle and route admission have not been exercised.",
+      "Meaningful shared effect depends on actual Node worker topology, main-process heap and container limits, any external report isolation or upstream rejection, and supervisor recovery. Source alone does not establish elapsed delay, memory consumption, process failure, or service-wide outage."
+    ],
+    "validation_plan": {
+      "local": "In a disposable OS-isolated environment with no external network, an empty allowlisted environment, read-only target/tools, scratch-only writes, and hard CPU, memory and wall-clock limits, use small unequal 128-token and 256-token comparisons to count matrix dimensions and measure bounded event-loop delay. Stop after establishing growth and scheduling behavior; do not allocate the proposed 100-million-cell matrix or attempt saturation. Use dummy authorized principals and a local disposable database to create a legitimate published baseline, edit with current revision preconditions, transition the draft to Review through the supported workflow, and request the real review PDF with an item quota of at least two. Replace the matrix allocation with a sentinel in a focused harness if verifying full-size token counts. Record only the minimum observed result and a harmless same-process scheduling probe; do not claim crash or outage without evidence.",
+      "deployment": "Have the owner confirm configured PDF item limits and admission quotas, whether model construction shares a Node process with unrelated routes, any earlier text/token-product limits or dedicated report process, main-process memory/CPU limits, and supervisor restart behavior. Check configuration and topology records only; no production load test or full-size request is needed."
+    }
+  }
+}

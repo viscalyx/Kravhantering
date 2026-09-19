@@ -1,0 +1,444 @@
+{
+  "units": [
+    {
+      "coverage_id": "app%2Fapi%2Fadmin%2Faccess-reviews%23decision%20lifecycle::lib%2Faccess-review%2Fservice.ts%23run%20and%20item%20state%20transitions::lib%2Faccess-review::ATTACK-CLASSES.md%23Business%20logic",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/admin/access-reviews/route.ts",
+        "app/api/admin/access-reviews/[id]/items/[itemId]/route.ts",
+        "app/api/admin/access-reviews/[id]/complete/route.ts",
+        "app/api/admin/access-reviews/[id]/cancel/route.ts",
+        "lib/access-review/service.ts",
+        "lib/access-review/route-helpers.ts",
+        "docs/governance/behörigheter.md",
+        "docs/adr/0019-behorighetsoversynens-omfattning-i-kravhantering.md"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave2-business",
+          "reviewed_paths": [
+            "app/api/admin/access-reviews/route.ts",
+            "app/api/admin/access-reviews/[id]/items/[itemId]/route.ts",
+            "app/api/admin/access-reviews/[id]/complete/route.ts",
+            "app/api/admin/access-reviews/[id]/cancel/route.ts",
+            "lib/access-review/service.ts",
+            "lib/access-review/route-helpers.ts",
+            "docs/governance/behörigheter.md",
+            "docs/adr/0019-behorighetsoversynens-omfattning-i-kravhantering.md"
+          ],
+          "invariant": "Only authorized review roles may change parent-bound review items; completed/cancelled runs and decision evidence remain consistent under concurrent requests.",
+          "method": "source",
+          "result": "Service.ts:145-183 requires Admin/PrivacyOfficer and HSA identity; documented policy does not reserve decisions to the named reviewer. Creation :590-740 locks the open-run range. Decisions :792-885 lock run and run-bound item; completion :886-967 checks pending items under locks; cancellation :968-1060 guards terminal status. Mutations and action audit share transactions. ADR0019 defines an intentional assignment snapshot, not live grant replacement; changing assignments later does not invalidate that evidence.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fimprovement-suggestions%20and%20app%2Fapi%2Frfi-question-suggestions%23lifecycle::lib%2Frequirements%2Fimprovement-suggestion-mutations.ts%23suggestion%20transitions%20and%20implementation%20attachment::lib%2Frequirements%2Fsuggestions::ATTACK-CLASSES.md%23Business%20logic",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/requirements/service-suggestions.ts",
+        "lib/requirements/improvement-suggestion-mutations.ts",
+        "lib/requirements/rfi-question-suggestion-mutations.ts",
+        "lib/requirements/rfi-question-suggestion-conflicts.ts",
+        "lib/dal/improvement-suggestions.ts",
+        "lib/dal/rfi-questions.ts",
+        "app/api/improvement-suggestions/[id]/implementation/route.ts",
+        "app/api/rfi-question-suggestions/[id]/resolution/route.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "docs/governance/behörigheter.md",
+        "typeorm/migrations/0049_rfi_question_suggestion_lifecycle.mjs",
+        "typeorm/migrations/0052_improvement_suggestion_lifecycle.mjs",
+        "typeorm/migrations/0067_suggestion_implementation.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave2-business",
+          "reviewed_paths": [
+            "lib/requirements/service-suggestions.ts",
+            "lib/requirements/improvement-suggestion-mutations.ts",
+            "lib/requirements/rfi-question-suggestion-mutations.ts",
+            "lib/requirements/rfi-question-suggestion-conflicts.ts",
+            "lib/dal/improvement-suggestions.ts",
+            "lib/dal/rfi-questions.ts",
+            "app/api/improvement-suggestions/[id]/implementation/route.ts",
+            "app/api/rfi-question-suggestions/[id]/resolution/route.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "docs/governance/behörigheter.md",
+            "typeorm/migrations/0049_rfi_question_suggestion_lifecycle.mjs",
+            "typeorm/migrations/0052_improvement_suggestion_lifecycle.mjs",
+            "typeorm/migrations/0067_suggestion_implementation.mjs"
+          ],
+          "invariant": "Suggestion changes require area authorship, enforce draft/review/handled transitions atomically, and attach implementation evidence only once to a version of the same requirement.",
+          "method": "source",
+          "result": "Authorization :951-985 and governance :241-244 intentionally allow area authors/Admin to resolve suggestions; Reviewer alone is insufficient. Improvement DAL :56-115,:425-551,:612-736 uses guarded updates, same-requirement implementing-version locks, and one-time resolved attachment. RFI DAL :1678-1866 similarly guards draft deletion, review submission and terminal resolution. Both mutation layers transact audit with mutation; migrations 0049/0052/0067 add lifecycle/evidence constraints. No source-state race permitting terminal overwrite survived these controls.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fprivacy%2Ferasure-requests%2Froute.ts%23privacy%20erasure::lib%2Fprivacy%2Ferasure.ts%23preview%20actions%20replacement%20and%20identity%20copies::lib%2Fprivacy%2Ferasure::DATA-ISOLATION-AND-LIFECYCLE.md%23Retention%20and%20queued-work%20overrun",
+      "disposition": "blocked",
+      "reviewed_paths": [
+        "app/api/privacy/erasure-preview/route.ts",
+        "app/api/privacy/erasure-requests/route.ts",
+        "lib/privacy/route-helpers.ts",
+        "lib/privacy/erasure.ts",
+        "lib/privacy/display-name.ts",
+        "docs/security-privacy/informationsmangder-kravhantering.md",
+        "docs/governance/admin-center.md",
+        "lib/dal/rfi-questions.ts",
+        "typeorm/migrations/0035_rfi_questions.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave2-business",
+          "reviewed_paths": [
+            "app/api/privacy/erasure-preview/route.ts",
+            "app/api/privacy/erasure-requests/route.ts",
+            "lib/privacy/route-helpers.ts",
+            "lib/privacy/erasure.ts",
+            "lib/privacy/display-name.ts",
+            "docs/security-privacy/informationsmangder-kravhantering.md",
+            "docs/governance/admin-center.md",
+            "lib/dal/rfi-questions.ts",
+            "typeorm/migrations/0035_rfi_questions.mjs"
+          ],
+          "invariant": "Erasure must bind target/replacement/action choices to a fresh preview and the documented structured identity-copy boundary.",
+          "method": "source",
+          "result": "Routes require PrivacyOfficer and human identity. Erasure.ts:902-974 validates identities; :1017-1121 enumerates fixed groups and permitted actions; :1374-1458 refreshes preview and changes identities/audit in SERIALIZABLE. Exact actor/fingerprint matches, owner-transfer restrictions, live-export blocking and forensic purge controls are present. Free text is explicitly excluded. However GROUP_POLICIES includes RFI assessments (:188) but omits RFI question-version/list/suggestion actor snapshots that the information-assets inventory identifies as personal data.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": [
+        "The owner-approved erasure boundary for rfi_question_versions.created_by_*, specification_rfi_lists locked/changed actor fields, and rfi_question_suggestions created/resolved actor fields is not established by the reviewed policy. These stored identities are absent from GROUP_POLICIES; determine whether each requires erasure or an explicit retention exception before claiming complete multi-copy erasure coverage. No unauthorized retention consequence is asserted without this policy fact."
+      ]
+    },
+    {
+      "coverage_id": "app%2Fapi%2Frequirement-suggestions%20and%20app%2Fapi%2Frfi-question-suggestions%23reads%20and%20mutations::lib%2Frequirements%2Fassignment-authorization.ts%23suggestion%20ownership%20and%20version%20visibility::lib%2Frequirements%2Fsuggestions::ATTACK-CLASSES.md%23Access%20control",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "app/api/requirement-suggestions/[id]/route.ts",
+        "lib/requirements/service-suggestions.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/requirements/rfi-question-suggestion-pages.ts",
+        "lib/requirements/suggestion-implementation.ts",
+        "lib/dal/improvement-suggestions.ts",
+        "lib/dal/rfi-questions.ts",
+        "app/api/improvement-suggestions/[id]/route.ts",
+        "app/api/rfi-question-suggestions/route.ts",
+        "app/api/rfi-question-suggestions/[id]/resolution/route.ts",
+        "lib/requirements/service-rfi-questions.ts",
+        "lib/http/route-security-policy.ts",
+        "lib/mcp/server.ts",
+        "docs/governance/behörigheter.md"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave2-business",
+          "reviewed_paths": [
+            "app/api/requirement-suggestions/[id]/route.ts",
+            "lib/requirements/service-suggestions.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "lib/requirements/rfi-question-suggestion-pages.ts",
+            "lib/requirements/suggestion-implementation.ts",
+            "lib/dal/improvement-suggestions.ts",
+            "lib/dal/rfi-questions.ts",
+            "app/api/improvement-suggestions/[id]/route.ts",
+            "app/api/rfi-question-suggestions/route.ts",
+            "app/api/rfi-question-suggestions/[id]/resolution/route.ts",
+            "lib/requirements/service-rfi-questions.ts",
+            "lib/http/route-security-policy.ts",
+            "lib/mcp/server.ts",
+            "docs/governance/behörigheter.md"
+          ],
+          "invariant": "Suggestion reads must not project a nonpublic version through authorization for a published sibling; mutation selectors must bind both versions to the authorized parent.",
+          "method": "source",
+          "result": "Create DAL :372-389 validates the original version belongs to the requirement; implementation DAL :681-701 locks the same-parent version. RFI creation :1487-1544 validates question-area binding; list service :129-190 scopes authors and binds cursor filters. MCP calls the shared service. Implementation projections apply version authorization, but improvement detail route :41-57 authorizes only the parent then returns original-version description from DAL :322-327 without its visibility check. This is separate from intentionally readable suggestion text.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "suggestion-original-version-description-nonpublic-projection"
+      ],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "lib%2Farchiving%2Fretention.ts%23non-specification%20policy%20execution::lib%2Farchiving%2Fretention.ts%23eligibility%20exceptions%20and%20dependent%20deletion::lib%2Farchiving::DATA-ISOLATION-AND-LIFECYCLE.md%23Retention%20and%20queued-work%20overrun",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "lib/archiving/retention.ts",
+        "app/api/admin/archiving/policies/route.ts",
+        "app/api/admin/archiving/exceptions/route.ts",
+        "app/api/admin/archiving/runs/route.ts",
+        "typeorm/migrations/0009_archiving_retention.mjs",
+        "typeorm/migrations/0022_requirement_selection_retention.mjs",
+        "typeorm/migrations/0036_rfi_question_retention_policy.mjs",
+        "docs/governance/admin-center.md",
+        "typeorm/migrations/0021_requirement_selection_questions.mjs",
+        "typeorm/migrations/0035_rfi_questions.mjs",
+        "typeorm/migrations/0067_suggestion_implementation.mjs",
+        "typeorm/runtime-permission-manifest.mjs",
+        "app/api/rfi-questions/[id]/route.ts",
+        "lib/dal/rfi-questions.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave2-business",
+          "reviewed_paths": [
+            "lib/archiving/retention.ts",
+            "app/api/admin/archiving/policies/route.ts",
+            "app/api/admin/archiving/exceptions/route.ts",
+            "app/api/admin/archiving/runs/route.ts",
+            "typeorm/migrations/0009_archiving_retention.mjs",
+            "typeorm/migrations/0022_requirement_selection_retention.mjs",
+            "typeorm/migrations/0036_rfi_question_retention_policy.mjs",
+            "docs/governance/admin-center.md",
+            "typeorm/migrations/0021_requirement_selection_questions.mjs",
+            "typeorm/migrations/0035_rfi_questions.mjs",
+            "typeorm/migrations/0067_suggestion_implementation.mjs",
+            "typeorm/runtime-permission-manifest.mjs",
+            "app/api/rfi-questions/[id]/route.ts",
+            "lib/dal/rfi-questions.ts"
+          ],
+          "invariant": "Retention must preserve active row-level holds and dependent history when deleting old taxonomy, versions, selection/RFI objects and orphan identities.",
+          "method": "source",
+          "result": "Retention.ts:350-539 checks taxonomy links, version age/history and dependencies; :575-850 checks saved selection/RFI references and all six responsibility assignments. SERIALIZABLE preview refresh (:1306) plus foreign keys protect concurrent references; unused-taxonomy references omitted from selectors generally fail closed via NO ACTION. Active exceptions (:179) protect only candidate tuples. Parent question deletes (:242,:331) remove child answers/versions without checking their active exceptions; source definitions :575-767 do not propagate child holds. SQL runtime permits these deletes.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "retention-parent-delete-bypasses-child-exception"
+      ],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "lib%2Frequirements%2Fimport-service.ts%23executeSpecificationLocalImport::lib%2Fdal%2Frequirements-specifications.ts%23createSpecificationLocalRequirementsBatch::lib%2Fspecifications::DATA-ISOLATION-AND-LIFECYCLE.md%23Stale%20authorization%20and%20derived%20copy%20use",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/requirements/import-service.ts",
+        "lib/requirements/import-capacity.ts",
+        "lib/dal/requirements-specifications.ts",
+        "lib/requirements/requirement-application-mutations.ts",
+        "app/api/requirements-specifications/[id]/co-authors/route.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "docs/adr/0027-underlagsstyrd-skrivbehorighet-i-kravunderlag.md"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave2-business",
+          "reviewed_paths": [
+            "lib/requirements/import-service.ts",
+            "lib/requirements/import-capacity.ts",
+            "lib/dal/requirements-specifications.ts",
+            "lib/requirements/requirement-application-mutations.ts",
+            "app/api/requirements-specifications/[id]/co-authors/route.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "docs/adr/0027-underlagsstyrd-skrivbehorighet-i-kravunderlag.md"
+          ],
+          "invariant": "Imports must not reuse a durable authorization grant after assignment revocation or commit against changed content/budget/preview constraints.",
+          "method": "source",
+          "result": "Import-service.ts:3523 authorizes the current specification before execution; :3541-3575 refreshes destination/reference/budget preview and installs transactional budget validation. Import-capacity.ts:14-51 rejects excess work immediately; it does not queue authorized jobs. DAL :2475,:2592-2636 locks editable specification/agreement content and transacts the batch. MCP durable sessions additionally reauthorize transactionally (:2910-2935). A REST in-flight assignment change is possible, but no documented immediate-cancellation invariant was found; it is not elevated to a vulnerability.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [
+    {
+      "proposed_verdict": "needs_validation",
+      "fingerprint": "suggestion-original-version-description-nonpublic-projection",
+      "title": "Suggestion detail can expose a nonpublic requirement-version description",
+      "description": "An authenticated reader who may read a published requirement can request a suggestion attached to another nonpublic version of that same requirement. The suggestion detail endpoint returns that original version’s description despite the reader lacking history/version authority. A legitimate area author can create the link; the reader need not have mutation authority. The suggestion body itself is intentionally readable and is not the disputed data.",
+      "claimed_root_cause": "get_improvement_suggestion authorizes the parent requirement in detail mode using any published sibling, while getSuggestion joins the original requirementVersionId and the REST response spreads requirementDescription without authorizing that version. The separate implementation-version redaction does not cover the original-version description.",
+      "trace": [
+        {
+          "kind": "entrypoint",
+          "file": "app/api/improvement-suggestions/[id]/route.ts",
+          "line": 31,
+          "scope": "GET getHandler",
+          "description": "Authenticated caller chooses a suggestion id; route invokes get_improvement_suggestion authorization."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/requirements/assignment-authorization.ts",
+          "line": 511,
+          "scope": "resolveSuggestionRequirementTarget and assertAuthorized",
+          "description": "Resolves the real parent and whether any version is published, but does not carry the suggestion original version visibility. At :684-689 calls parent detail authorization."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/requirements/assignment-authorization.ts",
+          "line": 872,
+          "scope": "assertCanReadRequirementTarget",
+          "description": "Ordinary authenticated reader passes when the parent has any published version; author/Reviewer checks protect history instead."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/dal/improvement-suggestions.ts",
+          "line": 322,
+          "scope": "getSuggestion",
+          "description": "Projects requirement_version.description joined solely by suggestion.requirement_version_id, without a published-status condition."
+        },
+        {
+          "kind": "sink",
+          "file": "app/api/improvement-suggestions/[id]/route.ts",
+          "line": 56,
+          "scope": "JSON response projection",
+          "description": "Spreads suggestion fields including requirementDescription. Only implementing-version fields are stripped and separately authorized."
+        }
+      ],
+      "evidence": [
+        {
+          "file": "lib/http/route-security-policy.ts",
+          "line": 628,
+          "description": "GET detail requires a session and no-store response, not area authorship at transport level."
+        },
+        {
+          "file": "lib/dal/improvement-suggestions.ts",
+          "line": 372,
+          "description": "Creation verifies original version belongs to the requirement but permits nonpublic status; an authorized author can establish the link."
+        },
+        {
+          "file": "lib/requirements/service-suggestions.ts",
+          "line": 127,
+          "description": "Mutation requires area authority, and caller display identity is replaced by the actual human actor. Candidate relies on a legitimate existing suggestion, not bypassing this control."
+        },
+        {
+          "file": "lib/requirements/assignment-authorization.ts",
+          "line": 860,
+          "description": "Direct nonpublished version reads require history authorization, unlike parent detail reads."
+        },
+        {
+          "file": "lib/requirements/suggestion-implementation.ts",
+          "line": 1,
+          "description": "Implementation-version read helper masks versions the caller cannot read, demonstrating a preventing control for the second selector but not the original version."
+        },
+        {
+          "file": "docs/governance/behörigheter.md",
+          "line": 246,
+          "description": "Published-parent suggestion text may intentionally be readable. The claim is limited to the joined nonpublic requirement description."
+        },
+        {
+          "file": "lib/requirements/service-suggestions.ts",
+          "line": 107,
+          "description": "REST/MCP suggestion listing maps explicit fields and does not return requirementDescription, so the demonstrated source path is direct REST detail rather than every list."
+        }
+      ],
+      "blockers": [
+        "Target execution is prohibited because required namespace/network/filesystem isolation is unavailable. No authenticated HTTP response or SQL-backed authorization denial has been observed locally."
+      ],
+      "validation_plan": {
+        "local": "In a future isolated SQL/application fixture, create an area author and an unrelated authenticated ordinary reader. Give one requirement a published version and a draft sibling with a unique marker description. As the author, create a suggestion linked to the draft. As the reader verify the direct draft-version API rejects access, then GET /api/improvement-suggestions/{id}; inspect whether requirementDescription contains the marker. Also verify list projections and implementing-version masking do not independently expose it. Use dummy data, no shared services, and stop after the bounded disclosure check."
+      }
+    },
+    {
+      "proposed_verdict": "needs_validation",
+      "fingerprint": "retention-parent-delete-bypasses-child-exception",
+      "title": "Parent retention deletion can bypass an active child-row legal hold",
+      "description": "A PrivacyOfficer can place an indefinite row-level retention exception on a historical RFI version or archived selection answer. If its parent question later becomes eligible for deletion, a normal confirmed retention run deletes all child versions/answers even while the child exception remains active. This can destroy held evidence through the parent lifecycle without explicitly removing the hold. No privilege escalation by the PrivacyOfficer is claimed.",
+      "claimed_root_cause": "Retention exceptions are matched only to the selected candidate’s policy/source/table/id tuple. Parent eligibility and dependent deletion do not consult exceptions on child objects, so parent SQL bypasses a child’s legal-hold exclusion. SERIALIZABLE consistency preserves this incomplete predicate rather than correcting it.",
+      "trace": [
+        {
+          "kind": "entrypoint",
+          "file": "app/api/admin/archiving/runs/route.ts",
+          "line": 39,
+          "scope": "POST retention execution",
+          "description": "PrivacyOfficer submits a current policy preview token; role and human-identity checks precede execution."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/archiving/retention.ts",
+          "line": 1306,
+          "scope": "executeArchivingRetention",
+          "description": "Recomputes preview in SERIALIZABLE and verifies its token before dispatching each selected candidate."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/archiving/retention.ts",
+          "line": 179,
+          "scope": "ACTIVE_EXCEPTION_SQL",
+          "description": "Excludes only exceptions matching the source candidate itself, not child versions or answers that the candidate will delete."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/archiving/retention.ts",
+          "line": 715,
+          "scope": "archived RFI-question source definition",
+          "description": "Parent eligibility checks age and RFI-list/assessment/suggestion dependencies, but no active child-version exceptions. Selection-question source at :575 has the same omission for answers."
+        },
+        {
+          "kind": "sink",
+          "file": "lib/archiving/retention.ts",
+          "line": 331,
+          "scope": "DELETE_RFI_QUESTION_SQL and selection-question deletion",
+          "description": "Deletes every version under the parent question. Parallel selection SQL at :242 deletes all answers without testing their row-level exceptions."
+        }
+      ],
+      "evidence": [
+        {
+          "file": "docs/governance/admin-center.md",
+          "line": 527,
+          "description": "Defines row-level exceptions for legal hold or documented operational need, establishing a preservation invariant beyond deletion age."
+        },
+        {
+          "file": "app/api/admin/archiving/exceptions/route.ts",
+          "line": 58,
+          "description": "PrivacyOfficer can create a table/source/id exception with optional expiry; the service records an indefinite hold when expiry is null."
+        },
+        {
+          "file": "lib/archiving/retention.ts",
+          "line": 1867,
+          "description": "Exception creation persists the child policy/source/table/id tuple independently of its parent and preserves still-active existing exceptions."
+        },
+        {
+          "file": "app/api/rfi-questions/[id]/route.ts",
+          "line": 100,
+          "description": "An area author can archive a question through its ordinary lifecycle; this does not inspect or remove retention holds on historical versions."
+        },
+        {
+          "file": "lib/dal/rfi-questions.ts",
+          "line": 862,
+          "description": "Archiving sets parent archived_at. After the configured policy age passes, the parent can enter the deletion candidate set while an indefinite child hold persists."
+        },
+        {
+          "file": "typeorm/migrations/0009_archiving_retention.mjs",
+          "line": 55,
+          "description": "Exceptions reference only the policy; there is no foreign key from held child objects that prevents deletion."
+        },
+        {
+          "file": "typeorm/migrations/0035_rfi_questions.mjs",
+          "line": 40,
+          "description": "RFI versions are deletable with their parent. Selection answer parent foreign key similarly cascades in migration 0021:84."
+        },
+        {
+          "file": "typeorm/runtime-permission-manifest.mjs",
+          "line": 150,
+          "description": "Runtime grant manifest allows CRUD on RFI versions/questions; :107 similarly permits selection-answer deletion. These writes are not defeated by missing DELETE permission."
+        },
+        {
+          "file": "lib/archiving/retention.ts",
+          "line": 286,
+          "description": "Strongest sink controls recheck no specification items, assessments, or suggestions. Use unreferenced fixture objects so those real safeguards do not block the candidate."
+        }
+      ],
+      "blockers": [
+        "Required isolated target execution is unavailable, so the child deletion under real SQL constraints and runtime grants has not been observed."
+      ],
+      "validation_plan": {
+        "local": "In an isolated SQL/application fixture with seeded runtime permissions, create an old inactive RFI version under a still-active question, no list/assessment/suggestion references, and an indefinite exception for rfi_question_versions.historical_unreferenced. Confirm it is excluded from version preview. Set up the parent as archived beyond the policy age, retain the active child exception, obtain a fresh preview, and run retention through the PrivacyOfficer route. Check whether the child disappears while the exception remains. Repeat the same minimal held-answer/eligible-parent scenario for selection questions. Use fixture timestamps rather than real waiting; stop after verifying deletion or a concrete preventing constraint."
+      }
+    }
+  ],
+  "hardening": [
+    "For REST specification imports, consider matching MCP durable-session behavior by rechecking assignment authority inside the write transaction. The current per-request authorization plus immediate capacity admission has no established stale-job exploit; an ordinary in-flight revocation race alone is not a finding."
+  ],
+  "uncovered": []
+}

@@ -1,0 +1,95 @@
+{
+  "decision": "needs_validation",
+  "record": {
+    "verdict": "needs_validation",
+    "fingerprint": "requirement-transition-state-dependent-authority-race",
+    "title": "Concurrent status change can bypass Reviewer-only Review-to-Draft authorization",
+    "description": "Source review supports a state-dependent authorization race affecting a requirement in an author's assigned area. An authenticated area author without Reviewer or Admin can request destination Draft while the latest version is Draft; both route and service authorization permit that destination based on the observed source state. If a second authorized Draft-to-Review request commits after the first request's final service authorization but before its DAL read, the first request can use the now-valid Review-to-Draft graph edge and update the review version without a Reviewer decision. A sequential Review-to-Draft request by the same author is forbidden. This is a source-derived interleaving, not an observed execution result.",
+    "claimed_root_cause": "The shared assignment policy reads latestStatusId outside the transition transaction. The service passes the requirement identifier and destination to transitionStatus, without the authorized source status, revision token, or an authorization callback. The DAL reads the latest version again, validates lifecycle and graph rules for that new state, and updates by version identifier without rechecking the actor's authority for leaving Review.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/requirement-transitions/[id]/route.ts",
+        "line": 29,
+        "scope": "POST",
+        "description": "Authenticated mutation wrapper accepts a positive statusId, authorizes a transition_requirement action, and calls the shared transition service. Draft destination 1 passes the body schema."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 912,
+        "scope": "assertCanTransitionRequirement",
+        "description": "Reads current target state. Leaving Review requires Reviewer; destination Draft while source remains Draft instead requires area authorship."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/requirements/service-requirements.ts",
+        "line": 1264,
+        "scope": "transitionRequirement",
+        "description": "Repeats authorization before the mutation. After authorization completes at line 1273, line 1286 calls transitionStatus without binding the authorized source status or actor authority to its transaction."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/dal/requirements.ts",
+        "line": 1219,
+        "scope": "transitionStatus",
+        "description": "Reads the latest version inside its later transaction and checks the transition graph using this newly observed status at lines 1232-1235."
+      },
+      {
+        "kind": "sink",
+        "file": "lib/dal/requirements.ts",
+        "line": 1328,
+        "scope": "transitionStatus",
+        "description": "Updates the selected version's status by id, without comparing the source status or revision from authorization; the audit callback runs afterward."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 916,
+        "description": "The intended policy requires Reviewer for any destination other than Review when latestStatusId is Review; assertReviewer at line 802 rejects actors lacking that role."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 353,
+        "description": "resolveRequirementTarget reads latest.requirement_status_id through a database query outside the subsequent DAL transaction, rather than returning a transaction-bound authorization guard."
+      },
+      {
+        "file": "app/api/requirement-transitions/[id]/route.ts",
+        "line": 25,
+        "description": "The body schema accepts any positive statusId and does not reject Draft-to-Draft before authorization."
+      },
+      {
+        "file": "lib/http/secure-mutation-route.ts",
+        "line": 204,
+        "description": "The route wrapper invokes the shared assignment authorization service before the handler. This additional check does not close an interleaving after the later service authorization."
+      },
+      {
+        "file": "lib/requirements/service-requirements.ts",
+        "line": 1286,
+        "description": "The DAL receives resource and destination plus an audit callback. The callback records the successful mutation and selection cleanup, not Reviewer authorization for the source state actually changed."
+      },
+      {
+        "file": "lib/dal/requirements.ts",
+        "line": 1243,
+        "description": "Lifecycle checks restrict archiving review and prohibit archive destination from publishing review. They do not reject ordinary publishing Review-to-Draft. The candidate therefore requires archive_initiated_at to be null."
+      },
+      {
+        "file": "typeorm/seed-required.mjs",
+        "line": 441,
+        "description": "The required seed graph includes Draft-to-Review (1 to 2) and, at line 443, Review-to-Draft (2 to 1). The same author can issue the intervening Draft-to-Review operation."
+      },
+      {
+        "file": "lib/dal/requirements.ts",
+        "line": 1329,
+        "description": "The version update predicates only on version id and generates a new revision token; it does not compare the status or revision used for authorization."
+      }
+    ],
+    "blockers": [
+      "The required OS-enforced execution sandbox is unavailable: the parent's bubblewrap namespace probe failed with No permissions to create new namespace. No target code, route, or SQL fixture was executed. The decisive missing observation is whether the complete transaction, including auditing and cleanup, commits the proposed Review-to-Draft change for the non-Reviewer under the specified interleaving."
+    ],
+    "validation_plan": {
+      "local": "In a future approved offline disposable sandbox, use actual assignment authorization, the REST/service path, required schema and seed graph, and an isolated SQL Server fixture. Create one dummy requirement with a single Draft version, null archive_initiated_at, and one authenticated assigned area author without Reviewer or Admin. Let a request targeting Draft pass route and final service authorization, pausing immediately after service-requirements.ts line 1273 and before transitionStatus. Fully commit a normal Draft-to-Review request by that author, then resume the first request. Inspect the final version status and transaction audit to determine whether unauthorized Review-to-Draft committed. As controls, verify that a sequential Review-to-Draft request by the author is forbidden and an uninterrupted Draft-to-Draft request conflicts on the graph. Preserve real authorization and SQL behavior; do not mock authorization success. Stop after these bounded dummy operations and discard the fixture. Do not use shared or deployed services."
+    }
+  }
+}

@@ -1,0 +1,255 @@
+{
+  "units": [
+    {
+      "coverage_id": "components%23browser%20rendering::lib%2Fnorm-references%2Fbrowser-link-uri.ts%23untrusted%20content%20rendering::components::ATTACK-CLASSES.md%23Feature%20abuse%20and%20data%20leakage",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "components/SafeMarkdown.tsx",
+        "components/RequirementDetailSections.tsx",
+        "lib/browser-download.ts",
+        "components/AuthMenu.tsx",
+        "next.config.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-browser",
+          "reviewed_paths": [
+            "components/SafeMarkdown.tsx",
+            "components/RequirementDetailSections.tsx",
+            "lib/browser-download.ts",
+            "components/AuthMenu.tsx",
+            "next.config.ts"
+          ],
+          "invariant": "Browser output must not disclose private context to third-party content or an opener.",
+          "method": "source",
+          "result": "SafeMarkdown.tsx:213,275 never loads model-supplied URLs; links/images are display-only. RequirementDetailSections.tsx:170 and external norm/RFI link renderers use noopener noreferrer. next.config.ts:218-231 sets same-origin opener/resource policy. Blob downloads revoke object URLs in finally (browser-download.ts:9). AuthMenu.tsx:86 reads an explicitly shaped same-origin identity response and logout uses full navigation (:149). No foreign reader or secret-bearing cross-origin sink identified.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "components%23browser%20rendering::lib%2Fnorm-references%2Fbrowser-link-uri.ts%23untrusted%20content%20rendering::components::ATTACK-CLASSES.md%23Injection",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "components/SafeMarkdown.tsx",
+        "components/RequirementDetailSections.tsx",
+        "lib/norm-references/browser-link-uri.ts",
+        "lib/export-csv.ts",
+        "node_modules/react-dom/cjs/react-dom-client.production.js"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-browser",
+          "reviewed_paths": [
+            "components/SafeMarkdown.tsx",
+            "components/RequirementDetailSections.tsx",
+            "lib/norm-references/browser-link-uri.ts",
+            "lib/export-csv.ts",
+            "node_modules/react-dom/cjs/react-dom-client.production.js"
+          ],
+          "invariant": "Stored text must not become executable markup or formula code.",
+          "method": "source",
+          "result": "No raw DOM HTML/eval sink appears in app/components/hooks/lib source search. SafeMarkdown.tsx:213 turns links into spans and :275 turns images into text; ReactMarkdown :325 has no raw-HTML plugin. RequirementDetailSections.tsx:169 uses React href; installed React sanitizer at react-dom-client.production.js:1579 rejects obfuscated javascript protocols. export-csv.ts:20 quotes formula-leading fields. No cross-user execution trace established.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "components%23browser%20rendering::lib%2Fnorm-references%2Fbrowser-link-uri.ts%23untrusted%20content%20rendering::components::CLIENT-SIDE.md%23Browser-storage%20disclosure%20and%20stale%20authorization",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/locale-preference.ts",
+        "components/LocaleStorageSync.tsx",
+        "components/SpecificationPanels.tsx",
+        "components/SpecificationPanelDivider.tsx",
+        "components/Navigation.tsx",
+        "components/RequirementForm.tsx",
+        "app/[locale]/requirements/requirements-client.tsx",
+        "app/[locale]/specifications/[specificationId]/requirements-specification-detail-client.tsx",
+        "components/AuthMenu.tsx"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-browser",
+          "reviewed_paths": [
+            "lib/locale-preference.ts",
+            "components/LocaleStorageSync.tsx",
+            "components/SpecificationPanels.tsx",
+            "components/SpecificationPanelDivider.tsx",
+            "components/Navigation.tsx",
+            "components/RequirementForm.tsx",
+            "app/[locale]/requirements/requirements-client.tsx",
+            "app/[locale]/specifications/[specificationId]/requirements-specification-detail-client.tsx",
+            "components/AuthMenu.tsx"
+          ],
+          "invariant": "Origin-persistent client state must not retain credentials/private business data or grant stale authority.",
+          "method": "source",
+          "result": "Storage inventory contains language/navigation/table widths/visible columns/panel layout/save destination, no tokens or private responses. SpecificationPanels.tsx:61 persists only numeric specificationId and layout; detail client :464 validates stored column IDs; requirements-client.tsx:1046,1063 writes display preferences. Locale storage events validate en/sv before route replacement (LocaleStorageSync.tsx:38). No service worker, Cache Storage, IndexedDB or sessionStorage consumer found. Auth identity stays in component state and HttpOnly cookie; logout navigates away.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "components%23browser%20rendering::lib%2Fnorm-references%2Fbrowser-link-uri.ts%23untrusted%20content%20rendering::components::CLIENT-SIDE.md%23Clickjacking",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "proxy.ts",
+        "next.config.ts",
+        "lib/runtime/build-target.prod.ts",
+        "components/AuthMenu.tsx"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-browser",
+          "reviewed_paths": [
+            "proxy.ts",
+            "next.config.ts",
+            "lib/runtime/build-target.prod.ts",
+            "components/AuthMenu.tsx"
+          ],
+          "invariant": "State-changing browser pages must reject third-party framing.",
+          "method": "source",
+          "result": "Both production and development CSP builders declare frame-ancestors none (proxy.ts:193,210); applyPageHeaders generates and attaches policy to application pages at :414-427. next.config.ts supplies global security headers including frame restrictions; build-target.prod.ts excludes permissive development script settings. AuthMenu.tsx:133 logout and ordinary UI mutations therefore have source-visible page framing controls. No source-selected frameable sensitive action path found.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "components%23browser%20rendering::lib%2Fnorm-references%2Fbrowser-link-uri.ts%23untrusted%20content%20rendering::components::CLIENT-SIDE.md%23Client-side%20navigation%20confusion",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "components/AuthMenu.tsx",
+        "app/api/auth/logout/route.ts",
+        "lib/auth/client-redirect.ts",
+        "hooks/useUnsavedRequirementEdit.ts",
+        "components/RootLocaleRedirect.tsx",
+        "lib/locale-preference.ts",
+        "components/RequirementDetailSections.tsx",
+        "node_modules/react-dom/cjs/react-dom-client.production.js"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-browser",
+          "reviewed_paths": [
+            "components/AuthMenu.tsx",
+            "app/api/auth/logout/route.ts",
+            "lib/auth/client-redirect.ts",
+            "hooks/useUnsavedRequirementEdit.ts",
+            "components/RootLocaleRedirect.tsx",
+            "lib/locale-preference.ts",
+            "components/RequirementDetailSections.tsx",
+            "node_modules/react-dom/cjs/react-dom-client.production.js"
+          ],
+          "invariant": "Lower-trust browser values must not select executable destinations or retain privileged opener access.",
+          "method": "source",
+          "result": "Reauthentication uses fixed /api/auth/login and encoded current path (client-redirect.ts:8). Root locale selection accepts only en/sv. Unsaved-edit handler accepts HTTP(S) before location.assign (useUnsavedRequirementEdit.ts:64-74). Logout target originates from server-configured OIDC end-session/post-logout URI (logout/route.ts:77-94), not caller JSON. Stored norm links use isolated _blank and React javascript rejection. Remaining scheme-policy inconsistency is hardening, not demonstrated script execution.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "components%23browser%20rendering::lib%2Fnorm-references%2Fbrowser-link-uri.ts%23untrusted%20content%20rendering::components::CLIENT-SIDE.md%23Credentialed%20CORS%20trust",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "next.config.ts",
+        "proxy.ts",
+        "lib/http/api-fetch.ts",
+        "lib/auth/csrf.ts",
+        "lib/mcp/http.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-browser",
+          "reviewed_paths": [
+            "next.config.ts",
+            "proxy.ts",
+            "lib/http/api-fetch.ts",
+            "lib/auth/csrf.ts",
+            "lib/mcp/http.ts"
+          ],
+          "invariant": "A foreign origin cannot obtain credentialed private responses through permissive server CORS.",
+          "method": "source",
+          "result": "Source search found no Access-Control-Allow-Origin/Credentials handler in app/lib/proxy/Next config. next.config.ts:231 declares same-origin resource policy. Browser API helper calls same-origin app paths and normalizes mutation header (api-fetch.ts:34,98); csrf.ts:54-91 separately checks configured origin and custom header. MCP uses explicit bearer verification (http.ts:132), not browser ambient cookies. No reflected credentialed CORS path identified; deployed intermediaries are unobserved.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "components%23browser%20rendering::lib%2Fnorm-references%2Fbrowser-link-uri.ts%23untrusted%20content%20rendering::components::CLIENT-SIDE.md%23DOM-based%20XSS",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "components/SafeMarkdown.tsx",
+        "components/NormReferenceFormFields.tsx",
+        "components/rfi/RfiAssessmentEditor.tsx",
+        "components/RequirementDetailSections.tsx",
+        "lib/norm-references/browser-link-uri.ts",
+        "proxy.ts",
+        "node_modules/react-dom/cjs/react-dom-client.production.js"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-browser",
+          "reviewed_paths": [
+            "components/SafeMarkdown.tsx",
+            "components/NormReferenceFormFields.tsx",
+            "components/rfi/RfiAssessmentEditor.tsx",
+            "components/RequirementDetailSections.tsx",
+            "lib/norm-references/browser-link-uri.ts",
+            "proxy.ts",
+            "node_modules/react-dom/cjs/react-dom-client.production.js"
+          ],
+          "invariant": "Attacker-authored text, Markdown and stored links cannot execute in another reader session.",
+          "method": "source",
+          "result": "SafeMarkdown.tsx:325 passes content through react-markdown with custom non-navigating renderers (:213,275); no raw HTML plugin or dangerouslySetInnerHTML path found. Norm/RFI editors apply getBrowserLinkUri HTTP(S) policy. Detail chips use raw stored URI but React href sanitization rejects javascript (react-dom-client.production.js:1579), links isolate opener, and proxy.ts:181 sets nonce script policy. No executing same-origin sink survives these controls.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "components%23browser%20rendering::lib%2Fnorm-references%2Fbrowser-link-uri.ts%23untrusted%20content%20rendering::components::CLIENT-SIDE.md%23Prototype%20pollution%20and%20gadget%20chain",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "components/RequirementEditReconciliation.tsx",
+        "components/requirement-edit-reconciliation.ts",
+        "components/RequirementsImportDialog.tsx",
+        "components/SpecificationPanels.tsx"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-browser",
+          "reviewed_paths": [
+            "components/RequirementEditReconciliation.tsx",
+            "components/requirement-edit-reconciliation.ts",
+            "components/RequirementsImportDialog.tsx",
+            "components/SpecificationPanels.tsx"
+          ],
+          "invariant": "Parsed import/storage object keys cannot modify shared prototypes and reach an authority or rendering gadget.",
+          "method": "source",
+          "result": "Reconciliation Object.assign at RequirementEditReconciliation.tsx:64 uses fields from fixed REQUIREMENT_EDIT_GROUPS (requirement-edit-reconciliation.ts:64,95). Import row updates at RequirementsImportDialog.tsx:1292 use object spreads and UI field keys; arbitrary parsed payload is sent for server validation, not recursive prototype assignment. SpecificationPanels.tsx:35 allowlists stored layout/id. No recursive attacker-key write and security gadget found.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [],
+  "hardening": [
+    "Use getBrowserLinkUri consistently for requirement-detail norm links: requirement-detail-client.tsx:555 and stewardship/requirement-selection-questions-client.tsx:765 currently pass raw stored URI to RequirementDetailSections. React javascript rejection, opener isolation and CSP prevent a demonstrated XSS here; this is policy consistency advice."
+  ],
+  "uncovered": []
+}

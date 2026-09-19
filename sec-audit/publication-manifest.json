@@ -1,0 +1,83 @@
+{
+  "purpose": "Publication copy: omit literal public development credential examples without changing findings, source locations, verdicts, blockers or validation plans.",
+  "original_audit_directory": "tmp/sec-audit/",
+  "published_directory": "sec-audit/",
+  "redaction": "Literal public development credential pair replaced with an omission marker. Similar substrings in repository paths are preserved.",
+  "changed_files": [
+    {
+      "path": "NEEDS-VALIDATION.md",
+      "replacement_count": 4,
+      "original_sha256": "3a272cc84815c4f5911d9cf72f553133518cfd0015f327c9911ab97a76ad7bf4",
+      "published_sha256": "49a1996bcb47ba73df35b5eca6515af4bf81d908185c1eb4eb33726d5e888041"
+    },
+    {
+      "path": "agents/hunt-operations/scratch/result.json",
+      "replacement_count": 2,
+      "original_sha256": "725c7cf2e360a24a226b36102135be4cf4d67ea803bbec0a946cdb6a5aa5e03a",
+      "published_sha256": "f702423e389960fedb9453dfe4e45711b286460c1329b6bc11081ccafd53a1e7"
+    },
+    {
+      "path": "agents/validate-05/scratch/result.json",
+      "replacement_count": 4,
+      "original_sha256": "e8b4ca161a5ebc8d20f6cf1dff73c29ee91000e3543b321d174ef09166f9be39",
+      "published_sha256": "639aa029aa1bfa0403bb2463439ffb09a35b0874bded31c78f369da8c3d3f0c8"
+    },
+    {
+      "path": "candidate-proposals.json",
+      "replacement_count": 1,
+      "original_sha256": "d7d35dc58f03729a9b42285e90a528b18db0bd561e2483defb9e99276bdb8e81",
+      "published_sha256": "7e911fb5a6099d0fe8864160e5e02220a6dfe90363b57a7e9984dc6400d68fcd"
+    },
+    {
+      "path": "candidates.json",
+      "replacement_count": 1,
+      "original_sha256": "1d57fb33fafa10043d5fd97db3903f9f87602c9a9c4d5cd858baf90c04061fb4",
+      "published_sha256": "67709ca296076e1ce010809170c975afa538ed4ceb5cb615ed183ea74ee8189b"
+    },
+    {
+      "path": "coverage-ledger-lossless-view.json",
+      "replacement_count": 1,
+      "original_sha256": "51686f80d3fccf3153f0ada986c332032efaf09836d9fb8042b7077651b9b3d4",
+      "published_sha256": "9e650da4f21116511d5ee8822ae9bd4517a3fd2e23e34dede295b597854a947b"
+    },
+    {
+      "path": "coverage-ledger.json",
+      "replacement_count": 1,
+      "original_sha256": "0dcf07ca8044ef745a9f4472268369423679ccfeab7a38d2c1eb5ffd9e962b35",
+      "published_sha256": "6f85391094cc5f6a38e78f2db46a24c2261983b046cba7187dc94df14cfefb40"
+    },
+    {
+      "path": "findings.json",
+      "replacement_count": 4,
+      "original_sha256": "a26513ace4d358595062f99bd06c8cf29e3e11c2e175006868abd5f9370a0a41",
+      "published_sha256": "c660651b4829a4723feab18bbbc1ae4e7a95816fd9791d29b82c8be69a61083b"
+    },
+    {
+      "path": "prompt-validate-05.md",
+      "replacement_count": 2,
+      "original_sha256": "8c89fd075870b197a221e9551f3e1e40d9fdf362f6c4d99367e14485030eff75",
+      "published_sha256": "855694fa73c4bd1780af83c88eea5be6d7d5e50cda8348066fa1606e11f436ff"
+    },
+    {
+      "path": "prompt-verify-05.md",
+      "replacement_count": 4,
+      "original_sha256": "af2fefda82ef4ec72bafbe535de7f896fc6f65a710a1273c441d42c9dca64ffa",
+      "published_sha256": "a4463f5b1b7da5e1aa571a5649f2e06c4fd281c8e017ca152b6891aaaa20f56a"
+    },
+    {
+      "path": "validated-records.json",
+      "replacement_count": 4,
+      "original_sha256": "a26513ace4d358595062f99bd06c8cf29e3e11c2e175006868abd5f9370a0a41",
+      "published_sha256": "c660651b4829a4723feab18bbbc1ae4e7a95816fd9791d29b82c8be69a61083b"
+    }
+  ],
+  "record_digest_mapping": [
+    {
+      "fingerprint": "dev-keycloak/published-management/default-admin",
+      "verified_original_sha256": "69ffe830a4fbff4d8814b2ccd4ce53808a2cc80ef735cf2bd512d5e70874db0e",
+      "published_sha256": "7cf160f054ab5c49e2c5428c76184fe979bd1a4323ff33dca4a8d3e46328ab00"
+    }
+  ],
+  "verification_note": "final-verification.json retains the original independently reviewed record hashes. The mapping here identifies publication-only redaction changes; no original verification digest was rewritten.",
+  "removed_generated_cache_count": 2
+}

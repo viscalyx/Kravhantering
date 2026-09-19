@@ -1,0 +1,1338 @@
+[
+  {
+    "fingerprint": "ai-forensic-capture/purge-before-close-retained-evidence",
+    "title": "Concurrent capture can leave forensic evidence behind after a successful purge",
+    "description": "An authorized author submitting safety-blocked content while a PrivacyOfficer purges an active capture may cause one forensic excerpt to survive the reported purge. The producer can insert after the purge DELETE but before the capture is marked purged. The retained row would remain in the protected database and be excluded from routine evidence cleanup; no unauthorized application read is claimed. A valid two-person-approved active window and concurrent purge are required.",
+    "claimed_root_cause": "The purge branch deletes child evidence before obtaining an update lock on and closing the parent capture, in a default READ COMMITTED transaction. Producer locking and status rechecking protect its insert but do not serialize it with the earlier purge DELETE. Scheduled cleanup excludes captures already marked purged.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/admin/ai-forensic-captures/route.ts",
+        "line": 91,
+        "scope": "PATCH",
+        "description": "PrivacyOfficer-authorized purge accepts a capture ID and calls the transition service; active captures are not excluded."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/ai/forensic-capture.ts",
+        "line": 476,
+        "scope": "transitionAiForensicCapture purge branch",
+        "description": "Delete evidence without first locking or closing the parent capture. Consider an approved active capture with zero evidence rows."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/ai/forensic-evidence.ts",
+        "line": 286,
+        "scope": "persistAiForensicEvidence concurrent producer",
+        "description": "An in-flight blocked authoring request inserts under the active-window recheck. If it commits between the purge statements, stopped_at and purged_at are still null."
+      },
+      {
+        "kind": "sink",
+        "file": "lib/ai/forensic-capture.ts",
+        "line": 480,
+        "scope": "transitionAiForensicCapture purge completion",
+        "description": "Mark the capture purged and stopped, then commit without another evidence deletion; a concurrent child may remain."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "app/api/ai/requirement-import-shared.ts",
+        "line": 192,
+        "description": "Rejected input records a safety block before returning."
+      },
+      {
+        "file": "lib/ai/safety.ts",
+        "line": 670,
+        "description": "Safety-block recording invokes the evidence producer."
+      },
+      {
+        "file": "lib/ai/forensic-capture.ts",
+        "line": 402,
+        "description": "Transaction begins without stronger isolation or an earlier parent lock in the purge branch."
+      },
+      {
+        "file": "lib/typeorm/sqlserver-config.ts",
+        "line": 12,
+        "description": "Default isolation is READ COMMITTED, passed into SQL Server options at line 201."
+      },
+      {
+        "file": "lib/ai/forensic-evidence.ts",
+        "line": 304,
+        "description": "Strongest insertion control rechecks approval, stopped/purged state, expiry and collection cap under UPDLOCK/HOLDLOCK; these predicates remain true before the purge state update."
+      },
+      {
+        "file": "typeorm/migrations/0058_ai_forensic_evidence_store.mjs",
+        "line": 71,
+        "description": "Ordinary foreign key has delete cascade; purge updates the parent rather than deleting it. No cross-table lifecycle trigger is defined."
+      },
+      {
+        "file": "lib/transient-cleanup/ai-forensic-evidence.ts",
+        "line": 136,
+        "description": "Scheduled deletion selects only captures with purged_at null, excluding any survivor attached to a purged capture."
+      }
+    ],
+    "blockers": [
+      "No target-controlled SQL test could run because the required OS sandbox failed namespace creation. Actual SQL Server range/key locks and the two-connection interleave have not been observed."
+    ],
+    "validation_plan": {
+      "local": "In a future approved isolated SQL fixture with two connections and dummy data, create an approved active capture with zero evidence. Pause the real purge transaction after its DELETE. Run one persistAiForensicEvidence insertion on the other connection and observe whether it commits. Resume purge and inspect parent state plus child count. If a child survives, age the dummy capture beyond cleanup eligibility and run one bounded cleanup to verify exclusion. Use strict timeouts and no shared services; stop after this single-row result. Refute the candidate if locking prevents the interleave."
+    },
+    "verdict": "needs_validation"
+  },
+  {
+    "fingerprint": "archiving/confirmation-candidate-keys/stale-child-content-deletion",
+    "title": "Archive confirmation can remain valid after unarchived child edits",
+    "description": "A specification author can commit a needs-reference edit after a PrivacyOfficer exports an eligible obsolete specification. The child update does not change the parent timestamp or the confirmation inputs. Within the same UTC day and 15-minute confirmation lifetime, the PrivacyOfficer can execute disposal with the original token; the newer needs-reference content is deleted although the exported archive contains its previous version. The affected state is the specification owner\u2019s business history. This needs validation of the mandatory archive-preservation guarantee and the real SQL lifecycle; it is not claimed as a role bypass or arbitrary deletion.",
+    "claimed_root_cause": "The mandatory export confirmation binds candidate identifiers, policy revision, and day-rounded cutoff, but not the exported child content or a revision covering it. The execution transaction rechecks eligibility yet cannot detect a child edit committed between export and execution.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/admin/archiving/exports/route.ts",
+        "line": 35,
+        "scope": "PrivacyOfficer archive export",
+        "description": "Runs the authorized export and returns an export confirmation token with the archive."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/archiving/retention.ts",
+        "line": 966,
+        "scope": "Preview and export confirmation identity",
+        "description": "Hashes candidate keys, UTC-day cutoff, policy ID and policyUpdatedAt; mintExportToken stores that hash and candidate keys for 15 minutes."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/dal/requirements-specifications.ts",
+        "line": 1965,
+        "scope": "Authorized needs-reference edit after export",
+        "description": "Updates text, description and child updated_at inside a parent-locked transaction, without changing the parent updated_at used for retention selection."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/archiving/retention.ts",
+        "line": 1310,
+        "scope": "Subsequent SERIALIZABLE disposal",
+        "description": "Rebuilds the same candidate set and consumes the unchanged export confirmation; committed child edits are absent from the token comparison."
+      },
+      {
+        "kind": "sink",
+        "file": "lib/archiving/retention.ts",
+        "line": 545,
+        "scope": "Deletion of specification child data",
+        "description": "Deletes specification_needs_references before deleting the specification, including content changed since the archive was produced."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "docs/security-privacy/informationsmangder-kravhantering.md",
+        "line": 130,
+        "description": "Defines archive export as preserving business history outside the active database; :152 requires anonymized needs references in the export preceding specification disposal."
+      },
+      {
+        "file": "lib/archiving/retention.ts",
+        "line": 559,
+        "description": "Eligibility is based on specification.updated_at, lifecycle and active/pending agreements; it does not incorporate needs-reference updated_at."
+      },
+      {
+        "file": "lib/archiving/retention.ts",
+        "line": 871,
+        "description": "The cutoff is rounded to midnight, allowing export and later execution on the same day to share a token."
+      },
+      {
+        "file": "lib/archiving/retention.ts",
+        "line": 1489,
+        "description": "Archive payload includes needs-reference text, description and timestamps, so the later edited content has an identifiable missing archived version."
+      },
+      {
+        "file": "lib/requirements/service-needs-references.ts",
+        "line": 120,
+        "description": "The child edit is an ordinary authorized manage_specification_needs_reference operation and does not require privacy disposal authority."
+      },
+      {
+        "file": "typeorm/runtime-permission-manifest.mjs",
+        "line": 173,
+        "description": "Managed runtime permissions for needs references are SELECT/INSERT/DELETE, with no UPDATE. The proposed edit sequence must be checked against this preventing SQL layer; creation of child content is a distinct reachable operation to evaluate under the same snapshot-binding invariant."
+      }
+    ],
+    "blockers": [
+      "No isolated SQL runtime is permitted, so the export/edit/dispose sequence and persisted archive contents were not exercised.",
+      "The owner must confirm that mandatory archive preservation requires the exact deleted child version; if a point-in-time older archive intentionally satisfies the policy, this is a correctness/hardening issue rather than a security finding."
+    ],
+    "validation_plan": {
+      "local": "Create one synthetic retention-eligible specification with no current/pending agreement and one needs reference. As PrivacyOfficer obtain preview and archive; as its authorized author change the needs-reference text through the real service; on the same UTC day execute disposal using the original tokens. Observe whether execution rejects or deletes the changed text absent from the archive. Use the actual migrations and verify no trigger or workflow touches parent updated_at.",
+      "deployment": "Information owner confirms the documented archive-before-disposal requirement covers the exact destroyed child content and whether an enforced operational write freeze already prevents this interval."
+    },
+    "verdict": "needs_validation"
+  },
+  {
+    "fingerprint": "azure-bootstrap/predictable-staging-parent/root-helper-replacement",
+    "title": "Azure bootstrap consumes root helpers from an unchecked shared temporary parent",
+    "description": "A local OS principal other than the sudo-capable vscode/operator account could precreate /tmp/krav-azure-dev as a writable parent before a setup or setup rerun. The authenticated operator uploads tooling beneath it, but the parent owner could exchange the tooling directory before sudo bootstrap consumes verify-apt-key.sh. The affected resource is host root execution authority. The review did not execute this sequence or establish that a deployed personal development VM has such a lower-privilege principal.",
+    "claimed_root_cause": "Remote staging recreates predictable children with mkdir -p while leaving the shared /tmp parent unauthenticated; sudo subsequently resolves and executes helper paths beneath that parent.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+        "line": 495,
+        "scope": "Invoke-AzureDevBootstrap",
+        "description": "Fixed /tmp/krav-azure-dev paths accept filesystem state potentially precreated by another local principal."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+        "line": 273,
+        "scope": "Copy-AzureDevDevelopmentToolFiles",
+        "description": "Remove/recreate only the tooling child; no parent owner, mode, or symlink validation precedes scp."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+        "line": 533,
+        "scope": "Invoke-AzureDevBootstrap",
+        "description": "sudo env passes the staging-tree APT_KEY_VERIFIER to a root bootstrap process."
+      },
+      {
+        "kind": "sink",
+        "file": "scripts/azure-dev/templates/bootstrap-host.sh",
+        "line": 173,
+        "scope": "configure_repositories",
+        "description": "bash executes APT_KEY_VERIFIER after only a regular-file existence check."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+        "line": 273,
+        "description": "No private per-run root or parent ownership check accompanies tooling recreation."
+      },
+      {
+        "file": "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+        "line": 442,
+        "description": "The secret-upload path has a child chmod 0700, but does not secure the common /tmp/krav-azure-dev parent or tooling sibling."
+      },
+      {
+        "file": "scripts/azure-dev/templates/bootstrap-host.sh",
+        "line": 105,
+        "description": "vscode intentionally has NOPASSWD:ALL; this is not a finding for that same principal."
+      },
+      {
+        "file": "scripts/azure-dev/AzureDev.Ssh.psm1",
+        "line": 618,
+        "description": "Control-plane-backed SSH host trust authenticates transport, not post-upload local path ownership."
+      }
+    ],
+    "blockers": [
+      "No required OS execution sandbox is available: namespace creation was denied, so multi-UID replacement and root-consumption behavior were not executed.",
+      "Deployment applicability requires a different local OS principal without sudo that can precreate the shared temporary parent before bootstrap; source only provisions vscode with sudo and does not establish an active lower-privilege attacker."
+    ],
+    "validation_plan": {
+      "local": "In a disposable OS sandbox with two dummy UIDs and no external network, model the exact staging commands under an attacker-owned shared parent, pause after upload, exchange only the tooling child, then invoke only the helper-consumption step with a harmless marker helper. Stop after observing marker identity; do not run package installation or the complete host bootstrap. Apply empty allowlisted environment, read-only source/tools, scratch-only writes and explicit low resource/time limits.",
+      "deployment": "Owner inspects intended VM user/service isolation and bootstrap staging ownership off-line; determine whether any non-sudo principal can create this parent before setup or after temporary-directory cleanup. Do not probe services or run the reproduction on the shared VM."
+    },
+    "verdict": "needs_validation"
+  },
+  {
+    "fingerprint": "container-monitor/private-advisory/description-marker-ownership",
+    "title": "Private advisory updates trust a body marker instead of automation ownership",
+    "description": "The monitor selects an existing security advisory using only a predictable description marker, then updates draft/triage matches with its dedicated token and confidential scanner details. If a lower-trust private reporter can submit such an advisory, have it returned by this listing, and retain read access after the update, their report can become the recipient of automation-only scan data. The privileged update target is source-visible; hosted reporter submission, mutation permissions, and visibility remain explicit validation prerequisites.",
+    "claimed_root_cause": "syncPrivateAdvisories treats inclusion of a deterministic finding fingerprint in a writable description as sufficient authority to select the advisory resource. Neither creator identity nor trusted automation ownership is verified before the privileged PATCH. The fixed repository and draft/triage checks constrain scope but do not establish record ownership.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 1015,
+        "scope": "syncPrivateAdvisories",
+        "description": "Existing advisory objects, including their descriptions and IDs, enter through the repository security-advisories response."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 1036,
+        "scope": "syncPrivateAdvisories",
+        "description": "The first description containing the computed marker is selected with no producer or collaborator check."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 1039,
+        "scope": "renderPrivateAdvisory",
+        "description": "The update payload contains confidential finding identifier, package, severity, exceptions, release digests, and installed/fixed versions."
+      },
+      {
+        "kind": "sink",
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 1047,
+        "scope": "syncPrivateAdvisories",
+        "description": "The dedicated private-advisory credential PATCHes the selected draft/triage advisory ID."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 540,
+        "description": "Fingerprint is an unkeyed SHA-256 of vulnerability identifier, image, and package; knowing those inputs permits reproducing the marker."
+      },
+      {
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 673,
+        "description": "Private advisory payload includes scanner findings and affected release details."
+      },
+      {
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 1002,
+        "description": "Private reporting must be enabled before the path proceeds; this is checked at runtime."
+      },
+      {
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 1036,
+        "description": "Description inclusion is the only record selector before the state check and PATCH."
+      },
+      {
+        "file": "docs/operations/release-artifact-and-image-verification.md",
+        "line": 233,
+        "description": "Operator documentation treats scanner observations lacking a public advisory as confidential."
+      }
+    ],
+    "blockers": [
+      "Required target-execution sandbox is unavailable: bubblewrap namespace creation failed with No permissions to create new namespace. No target code, tests, network, or provider calls were executed.",
+      "GitHub/provider policy was not inspected: a reporter-created triage/draft advisory must be returned by this endpoint to the bot; the bot token must be permitted to PATCH it; and the reporter must retain read access to the overwritten description. If any prerequisite is false, the claimed disclosure is refuted.",
+      "The reporter must know or predict the identifier/image/package tuple for an active confidential scan record. No active record or real finding was inspected."
+    ],
+    "validation_plan": {
+      "local": "In the required isolated sandbox, inject dummy command responses containing enabled private reporting and a reporter-authored draft or triage advisory with a marker computed from one dummy confidential record. Invoke the synchronization interface with a dummy token and recording command adapter. Verify whether a PATCH selects that reporter-owned advisory and includes the dummy scan details; compare with a nonmatching marker. Do not execute gh or access GitHub.",
+      "deployment": "The owner must inspect authoritative provider policy and existing non-sensitive metadata to determine private-reporter creation rights, listing inclusion, retained read access, and bot PATCH rights for triage/draft reports. Establish whether the marker inputs are knowable for the intended scanner data. No new report, live mutation, or exposure of confidential content is requested."
+    },
+    "verdict": "needs_validation"
+  },
+  {
+    "fingerprint": "container-monitor/untrusted-comment-markers/scan-preflight-block",
+    "title": "Untrusted tracker comments can block scheduled container vulnerability scans",
+    "description": "A user allowed to comment on an existing automation-owned release tracker issue can place reserved marker text in an ordinary comment. The next scheduled preflight parses that text as automation state and fails; release selection and downstream scans are gated on preflight success. The user need not modify the issue body, labels, repository code, or workflow. Impact is fail-stop monitoring until the comment is removed, not a successful clean scan or release-code compromise.",
+    "claimed_root_cause": "Issue ownership labels authenticate the issue but not its commenters. Every comment body enters strict automation/continuation marker parsers without checking the producer. A malformed reserved namespace aborts the global terminal-identity preflight, which is required before any release scan.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 849,
+        "scope": "createGitHubTrackerAdapter.listComments",
+        "description": "The adapter returns every comment on a tracker issue, including ordinary user comments."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/release/container-vulnerability-release-issues.mjs",
+        "line": 2502,
+        "scope": "preflightReleaseIssues",
+        "description": "For each labelled owned issue, comments are fetched and passed into state and automation parsers."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/release/container-vulnerability-release-issues.mjs",
+        "line": 2249,
+        "scope": "parseAutomationComments",
+        "description": "Comment bodies are parsed without checking author identity; reserved namespace text is treated as automation metadata."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/release/container-vulnerability-release-issues.mjs",
+        "line": 174,
+        "scope": "parseExactMarker",
+        "description": "One namespace with no valid candidate, such as container-vulnerability-reconciliation:, throws."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 1294,
+        "scope": "main",
+        "description": "A terminal-boundary exception produces CLI exit status 1."
+      },
+      {
+        "kind": "sink",
+        "file": ".github/workflows/container-vulnerability-monitor.yml",
+        "line": 82,
+        "scope": "Select supported published releases",
+        "description": "Workflow release selection requires tracker-preflight.outcome success, so the failure prevents downstream scan selection."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "scripts/release/container-vulnerability-release-issues.mjs",
+        "line": 2496,
+        "description": "Ownership-label gating applies to the issue, not the comment producer."
+      },
+      {
+        "file": "scripts/release/container-vulnerability-release-issues.mjs",
+        "line": 2251,
+        "description": "All comments enter the exact marker parser with optional matching; malformed reserved text still throws."
+      },
+      {
+        "file": "scripts/release/container-vulnerability-release-issues.mjs",
+        "line": 2525,
+        "description": "Terminal-identity boundary preflights all owned issues before constructing any boundary."
+      },
+      {
+        "file": ".github/workflows/container-vulnerability-monitor.yml",
+        "line": 75,
+        "description": "Scheduled monitor runs the terminal-boundary command before selecting releases."
+      },
+      {
+        "file": "scripts/__tests__/container-vulnerability-release-issues.test.mjs",
+        "line": 4818,
+        "description": "Source tests explicitly expect malformed automation-marker comments to throw before mutations; these tests were not run."
+      },
+      {
+        "file": "scripts/release/container-vulnerability-release-issues.mjs",
+        "line": 1076,
+        "description": "Generated issue instructions direct human discussion to comments, establishing a mixed-producer surface."
+      }
+    ],
+    "blockers": [
+      "Required target-execution sandbox is unavailable: bubblewrap namespace creation failed with No permissions to create new namespace. No target code, tests, network, or provider calls were executed.",
+      "Repository deployment facts are unavailable: an owned tracker issue must exist, a lower-trust account must be permitted to comment on it, and the scheduled workflow must be enabled. No GitHub API or live repository state was accessed."
+    ],
+    "validation_plan": {
+      "local": "In the required isolated sandbox, use one valid dummy owned issue and injected tracker adapter. Compare terminal-boundary with an ordinary human comment versus the same fixture plus a non-bot comment containing container-vulnerability-reconciliation:. Verify the latter returns failure without mutation and inspect the workflow gate that excludes selection. Do not contact GitHub or execute a hosted workflow.",
+      "deployment": "The owner can inspect existing tracker labels, issue lock/comment permissions, and workflow enablement to confirm whether ordinary commenters can supply this input. Do not post a test comment or trigger production monitoring."
+    },
+    "verdict": "needs_validation"
+  },
+  {
+    "fingerprint": "dev-keycloak/published-management/default-admin",
+    "title": "Developer Keycloak management is published beyond loopback with public administrator defaults",
+    "description": "Both devcontainer profiles and standalone development Compose publish the complete test Keycloak service without a loopback bind and supply [public development values omitted] when not overridden. If a lower-trust network peer can reach the published port and the bootstrap defaults are active, that peer can administer the development IdP, alter its realm and credentials, and defeat developer identity isolation. This does not claim production account takeover or established host reachability.",
+    "claimed_root_cause": "The local-only test identity service uses host-wide Compose port publication together with intentional public bootstrap credentials, unlike the Azure loopback-bound equivalent.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": ".devcontainer/docker-compose.yml",
+        "line": 128,
+        "scope": "services.idp.ports",
+        "description": "Host port mapping omits a loopback host address."
+      },
+      {
+        "kind": "propagation",
+        "file": ".devcontainer/docker-compose.yml",
+        "line": 118,
+        "scope": "services.idp.command",
+        "description": "The published service runs Keycloak start-dev with the full identity/admin surface."
+      },
+      {
+        "kind": "sink",
+        "file": ".devcontainer/docker-compose.yml",
+        "line": 125,
+        "scope": "services.idp.environment",
+        "description": "Public administrator name and password defaults supply authority to that exposed management surface if initial bootstrap uses them."
+      }
+    ],
+    "evidence": [
+      {
+        "file": ".devcontainer/docker-compose.yml",
+        "line": 125,
+        "description": "KEYCLOAK_ADMIN and KEYCLOAK_ADMIN_PASSWORD default to admin."
+      },
+      {
+        "file": ".devcontainer/elevated/docker-compose.yml",
+        "line": 143,
+        "description": "The opt-in elevated profile repeats the default credentials and host port publication at 146."
+      },
+      {
+        "file": "docker-compose.idp.yml",
+        "line": 26,
+        "description": "The standalone development service repeats the same defaults and publish pattern."
+      },
+      {
+        "file": "scripts/azure-dev/templates/quadlet/krav-idp.container",
+        "line": 10,
+        "description": "The corresponding Azure support service explicitly binds 127.0.0.1:8080."
+      },
+      {
+        "file": ".devcontainer/devcontainer.json",
+        "line": 3,
+        "description": "The default devcontainer selects this Compose file and starts idp."
+      }
+    ],
+    "blockers": [
+      "The effective host bind, Docker/Podman forwarding configuration, host firewall and lower-trust network route were not observed; source publication alone does not establish reachability.",
+      "Effective environment overrides, existing IdP state, and pinned Keycloak acceptance of the bootstrap administrator settings were not verified.",
+      "The required isolated execution sandbox is unavailable, so no local Compose rendering or dummy management authentication was performed."
+    ],
+    "validation_plan": {
+      "local": "With an available isolated sandbox, render each maintained Compose profile from an empty safe environment and use a disposable local Keycloak fixture with dummy realm/users, no external network and bounded resources. Verify the effective listener mapping and only a harmless authorized management read using the intentional public test credential; stop immediately after the boundary result.",
+      "deployment": "Owner reviews the effective local Compose environment, bootstrap state, container bind configuration and host firewall/network policy to determine whether any non-developer network principal can reach the developer IdP. Use configuration inspection, not live login probing."
+    },
+    "verdict": "needs_validation"
+  },
+  {
+    "fingerprint": "dev-login/cached-jar/unscoped-cookie-header",
+    "title": "Cached developer sessions send cookies outside their recorded origin scope",
+    "description": "A developer who previously authenticated to app A can select a different development base B while reusing the default username cache. Before attempting a new login, the helper sends B all cached cookie values, including app-A or separate-IdP cookies whose recorded host/path would exclude B. The lower-trust recipient is B, which has no authority over those source sessions. This is a cookie-disclosure candidate, not a claim of production account takeover; non-public, usable cookies must exist for sensitive impact.",
+    "claimed_root_cause": "Cache validation reconstructs Cookie from only Netscape name/value columns and ignores recorded domain, host-only, path, secure, and expiry constraints. The default cache identity includes username but no destination. Fresh CookieJar filtering and local mode 0600 do not constrain the manual outgoing header.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 35,
+        "scope": "parseArgs",
+        "description": "Operator selects another supported base through --base or DEV_LOGIN_BASE_URL; line 58 preserves the same username cache."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 356,
+        "scope": "main",
+        "description": "An existing cache is tested against the newly selected base before login unless --force is supplied."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 313,
+        "scope": "isJarStillValid",
+        "description": "All non-comment records with seven columns are accepted and line 318 discards destination metadata."
+      },
+      {
+        "kind": "sink",
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 321,
+        "scope": "isJarStillValid",
+        "description": "fetch sends the aggregate cookie header to the selected base /api/auth/me before examining the response."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 58,
+        "description": "Default jar .auth/<user>.cookies is shared across base URLs."
+      },
+      {
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 137,
+        "description": "Fresh requests check host and path, showing the intended destination boundary absent from cache validation."
+      },
+      {
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 158,
+        "description": "Serialized cookie records include domain, subdomain policy, path, secure, and expiry fields."
+      },
+      {
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 318,
+        "description": "Cache validation retains only cookie names and values."
+      },
+      {
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 372,
+        "description": "File mode 0600 protects new local files but cannot prevent remote disclosure by the helper."
+      }
+    ],
+    "blockers": [
+      "Required target-execution sandbox is unavailable: bubblewrap namespace creation failed with No permissions to create new namespace. No target code, tests, network, or provider calls were executed.",
+      "No real cached credential or deployment was inspected. Sensitive impact requires a usable cookie belonging to a different host/path principal than the selected destination; public fixture passwords alone do not establish it."
+    ],
+    "validation_plan": {
+      "local": "In the required isolated sandbox, create a dummy Netscape jar containing host-only app-a.test and idp.test cookies. Invoke isJarStillValid with an injected recording fetch and base https://app-b.test. Record only dummy markers; compare the emitted header against CookieJar.header for the same destination. Confirm disclosure occurs even when the mocked response is unauthenticated, then stop.",
+      "deployment": "The owner can inspect helper configuration and cookie metadata, without exposing values, to establish whether non-public app/IdP sessions are cached and whether developers reuse a username cache across separately administered base URLs."
+    },
+    "verdict": "needs_validation"
+  },
+  {
+    "fingerprint": "norm-reference-linked-requirements-nonpublic-projection",
+    "title": "Taxonomy details may expose nonpublic library and specification-local requirement descriptions",
+    "description": "An authenticated user without Reviewer/Admin role or authorship in a requirement area can request a linked norm reference or priority level and receive nonpublic library requirement descriptions. Norm reference detail returns all linked versions; priority detail returns the latest version matching that priority, even if it is Draft or Review. Normal requirement reads restrict these versions. Both taxonomy projections appear to cross the same content boundary. The priority-level endpoint also returns local requirement descriptions from specifications outside the caller's assignments, including retained historical bindings. Primary specification child APIs enforce assignment-scoped read authority.",
+    "claimed_root_cause": "Taxonomy-detail GET handlers call linked-requirement queries without actor context. Norm-reference SQL filters only norm_reference_id; priority SQL selects the latest matching library version using only priority_level_id. Both project descriptions and return them without published-or-area-author filtering. The priority query's local-requirement UNION similarly filters only priority, without specification assignment or current-content filtering.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/norm-references/[id]/route.ts",
+        "line": 58,
+        "scope": "GET",
+        "description": "Parses caller-selected norm-reference id; transport policy requires only a session."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/dal/norm-references.ts",
+        "line": 249,
+        "scope": "getLinkedRequirements",
+        "description": "Joins links to all requirement_versions and returns description, version and status; sole predicate is norm-reference id."
+      },
+      {
+        "kind": "sink",
+        "file": "app/api/norm-references/[id]/route.ts",
+        "line": 69,
+        "scope": "GET response",
+        "description": "Serializes linkedRequirements without per-requirement or version authorization."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "lib/http/route-security-policy.ts",
+        "line": 674,
+        "description": "Norm-reference detail GET has session/authenticated policy, not Reviewer or area-author policy."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 865,
+        "description": "Explicit nonpublished version access requires history authority, which requires Reviewer or area authorship."
+      },
+      {
+        "file": "lib/requirements/service-requirements.ts",
+        "line": 705,
+        "description": "Direct requirement reads authorize the actual requested version status."
+      },
+      {
+        "file": "lib/dal/norm-references.ts",
+        "line": 258,
+        "description": "Description is projected for every linked version; WHERE at 273 lacks visibility predicates."
+      },
+      {
+        "file": "lib/dal/requirement-packages.ts",
+        "line": 471,
+        "description": "Sibling package-linked descriptions explicitly require published status."
+      },
+      {
+        "file": "app/api/priority-levels/[id]/route.ts",
+        "line": 53,
+        "description": "GET passes caller-selected priority id to getLinkedRequirements and directly serializes the result at line 54."
+      },
+      {
+        "file": "lib/dal/priority-levels.ts",
+        "line": 143,
+        "description": "Library subquery projects description; its WHERE at 158 filters only priority id, and rowNumber=1 at 160 does not enforce publication/area authority."
+      },
+      {
+        "file": "lib/http/route-security-policy.ts",
+        "line": 719,
+        "description": "Priority-level detail GET is session/authenticated only."
+      },
+      {
+        "file": "lib/specifications/permissions.ts",
+        "line": 47,
+        "description": "Source-of-truth read policy limits specifications to Admin/Reviewer or responsible/co-author HSA assignments."
+      },
+      {
+        "file": "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/route.ts",
+        "line": 78,
+        "description": "Primary local detail API authorizes the actual specification child before reading its content."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 311,
+        "description": "Child resolution rejects mismatched parents; author/read checks then require the owning specification assignment."
+      },
+      {
+        "file": "lib/dal/priority-levels.ts",
+        "line": 163,
+        "description": "Alternate local projection uses no assignment or actor predicate and returns description directly."
+      },
+      {
+        "file": "lib/http/route-security-policy.ts",
+        "line": 717,
+        "description": "The taxonomy GET transport policy is session-authenticated rather than administrative."
+      },
+      {
+        "file": "lib/dal/requirements-specifications.ts",
+        "line": 2288,
+        "description": "Primary detail loads a current local requirement and binds both local requirement ID and specification ID; the alternate projection lacks these controls."
+      }
+    ],
+    "blockers": [
+      "Required OS-enforced execution sandbox is unavailable: parent bwrap --unshare-all probe failed with No permissions to create new namespace. No target code, HTTP route or SQL concurrency fixture was executed; the source-derived boundary result remains unobserved."
+    ],
+    "validation_plan": {
+      "local": "In the required offline sandbox with disposable SQL fixtures, create area A with author Alice and unassigned authenticated Bob. Link one draft with unique dummy description to a norm reference. Establish Bob is denied that version by the direct requirement endpoint, then request GET /api/norm-references/{normId} as Bob and inspect only whether the dummy description is present. Repeat with one historical version if needed; stop on the first unauthorized dummy description. Assign the same dummy draft a priority level, call GET /api/priority-levels/{id} as Bob, and check its library-source linked entry against the direct-read denial. Validate the two projection variants independently. Specification-local variant: In an approved network-isolated sandbox, seed two dummy specifications with distinct HSA assignees and one local requirement carrying a harmless marker and shared priority. Call the priority-level GET as the unrelated ordinary assignee, then call the protected local detail route for the target. Observe whether the taxonomy response contains the marker while the direct route denies access. Include one retired binding to characterize historical exposure without asserting an erasure guarantee."
+    },
+    "verdict": "needs_validation"
+  },
+  {
+    "fingerprint": "reports/review-diff/quadratic-main-thread-lcs",
+    "title": "Review PDF diff expands permitted text into a quadratic main-thread matrix",
+    "description": "An area author able to supply a long review revision against a long published or archived baseline, or a Reviewer requesting that report, can trigger disproportionately expensive shared-server work with one admitted PDF request. Two unequal 9,999-character alternating word/space values fit the 10,000-character text limit and tokenize into 9,999 tokens each, causing a 100-million-cell JavaScript number matrix. The source shows synchronous allocation and traversal on the application event loop; no CPU, memory, timeout, or crash observation was performed. Unrelated requests on the same Node process share its heap and event loop. Work persists until completion or process termination; the independent actor watchdog is a late process-wide fail-stop, not per-job interruption.",
+    "claimed_root_cause": "The accepted field-length limit and report item quota do not constrain the product of diff token counts. Model construction calls the full-matrix LCS synchronously before rendering, while generation cancellation is observed only before and after the callback.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/[locale]/requirements/reports/pdf/review/[id]/route.ts",
+        "line": 22,
+        "scope": "GET authenticated review PDF",
+        "description": "Authorizes history access, admits the actor, checks version count, and loads stored text."
+      },
+      {
+        "kind": "propagation",
+        "file": "app/[locale]/requirements/reports/pdf/review/[id]/route.ts",
+        "line": 49,
+        "scope": "Report model construction",
+        "description": "Calls buildReviewReport synchronously on the application thread before renderReportModelPdfResponse."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/reports/templates/review-template.ts",
+        "line": 277,
+        "scope": "Published/archived baseline versus review revision",
+        "description": "Passes complete description strings into diffText, then repeats for acceptance criteria."
+      },
+      {
+        "kind": "sink",
+        "file": "lib/reports/text-diff.ts",
+        "line": 69,
+        "scope": "Shared main-thread heap and event-loop work",
+        "description": "Allocates (oldTokenCount+1)*(newTokenCount+1) cells and visits every cell synchronously, without a token-product cap or abort check."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "lib/http/validation-constants.ts",
+        "line": 2,
+        "description": "Business text permits 10,000 characters; alternating single-character words and spaces fit this bound."
+      },
+      {
+        "file": "app/api/requirements/[id]/route.ts",
+        "line": 61,
+        "description": "Requirement edit description uses businessTextSchema; PUT :232 routes authorized area-author changes into manageRequirement."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 879,
+        "description": "History access is available to Reviewer or the assigned area author; this is not anonymous exposure."
+      },
+      {
+        "file": "lib/reports/text-diff.ts",
+        "line": 62,
+        "description": "Whitespace is retained as tokens, yielding 9,999 tokens for each proposed 9,999-character fixture."
+      },
+      {
+        "file": "lib/pdf/synchronous-generation.ts",
+        "line": 60,
+        "description": "Awaits the entire callback and checks abortion only afterward; a synchronous LCS cannot yield to its timer."
+      },
+      {
+        "file": "lib/generated-output/actor-watchdog.ts",
+        "line": 7,
+        "description": "The independent watchdog kills the whole process when its outer deadline expires, preserving accounting but not unrelated process availability."
+      }
+    ],
+    "blockers": [
+      "Target execution and process isolation are prohibited in this workspace; no bounded growth/cancellation experiment was run.",
+      "Actual heap representation, event-loop delay, deployed memory ceiling, and process/supervisor recovery require isolated measurement. A long baseline and review revision must be reachable through the real lifecycle, not merely injected into a unit fixture."
+    ],
+    "validation_plan": {
+      "local": "In a disposable environment with hard memory/CPU limits, first instrument small unequal alternating-word fixtures (e.g. 128 and 256 tokens) to establish matrix growth and timer starvation without saturation. Use a local synthetic published baseline and authorized review revision to verify the actual route reaches this function under the configured item quota. Do not run the 100-million-cell case; measure allocation counts or replace the allocation with a sentinel in a focused harness.",
+      "deployment": "Owner confirms Node worker topology, per-process memory limits, supervisor restart behavior, and any existing report isolation or earlier token-product cap. No live load test is needed."
+    },
+    "verdict": "needs_validation"
+  },
+  {
+    "fingerprint": "requirement-delete-draft-status-check-write-race",
+    "title": "Draft deletion can act on a version that left Draft after its check",
+    "description": "An area author may start draft deletion while a version is Draft, then have deletion commit after another authorized request moves that same version into Review or Published. The delete path checks the lifecycle state before an unconditional id-based DELETE, potentially removing content now protected by a non-draft lifecycle state.",
+    "claimed_root_cause": "deleteDraftVersion uses a default-isolation transaction and getLatestVersionLite without its lockForUpdate option. After checking status it deletes associations and the version by id, without a status/revision predicate or repeated check.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/requirements/[id]/delete-draft/route.ts",
+        "line": 50,
+        "scope": "POST",
+        "description": "Accepts an area-author-authorized delete_draft operation for the selected requirement."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/requirements/service-requirements.ts",
+        "line": 805,
+        "scope": "manageRequirement",
+        "description": "Authorizes resource/operation, then later invokes draft deletion."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/dal/requirements.ts",
+        "line": 1140,
+        "scope": "deleteDraftVersion",
+        "description": "Reads latest version without update/hold lock and checks Draft."
+      },
+      {
+        "kind": "sink",
+        "file": "lib/dal/requirements.ts",
+        "line": 1164,
+        "scope": "deleteDraftVersion",
+        "description": "Deletes requirement_versions by the previously read id without status or revision matching."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 901,
+        "description": "Non-Reviewer-only manage operations use area-author authority."
+      },
+      {
+        "file": "lib/dal/requirements.ts",
+        "line": 704,
+        "description": "getLatestVersionLite adds UPDLOCK/HOLDLOCK only when explicitly requested; deletion does not request it."
+      },
+      {
+        "file": "lib/dal/requirements.ts",
+        "line": 1141,
+        "description": "Intended lifecycle invariant is explicit: Only draft versions can be deleted."
+      },
+      {
+        "file": "lib/typeorm/sqlserver-config.ts",
+        "line": 12,
+        "description": "Configured default transaction isolation is READ COMMITTED."
+      },
+      {
+        "file": "lib/dal/requirements.ts",
+        "line": 1164,
+        "description": "Final version DELETE contains only id equality."
+      }
+    ],
+    "blockers": [
+      "Required OS-enforced execution sandbox is unavailable: parent bwrap --unshare-all probe failed with No permissions to create new namespace. No target code, HTTP route or SQL concurrency fixture was executed; the source-derived boundary result remains unobserved.",
+      "Actual SQL Server lock/FK behavior for the proposed two-connection schedule is not observed. Use a disposable draft with no external referencing records and verify the state transition commits before deletion resumes."
+    ],
+    "validation_plan": {
+      "local": "In an offline disposable SQL Server fixture, create one area-author-owned Draft without specification/suggestion foreign references. Pause deleteDraftVersion immediately after its successful Draft read. On a second connection commit Draft-to-Review through the normal authorized service. Resume deletion and inspect only whether the Review row is removed despite the Draft-only invariant. If testing Published instead, use an authorized dummy Reviewer to publish before resumption. Record transaction outcomes; do not infer successful deletion from source alone."
+    },
+    "verdict": "needs_validation"
+  },
+  {
+    "fingerprint": "requirement-transition-state-dependent-authority-race",
+    "title": "Concurrent status change can bypass Reviewer-only Review-to-Draft authorization",
+    "description": "An area author without Reviewer/Admin can send a transition to Draft while the requirement is still Draft. Authorization allows that destination in the observed Draft state. If another normal author request commits Draft-to-Review after the final authorization check, the first DAL call reads Review, finds the valid Review-to-Draft transition and can commit it without a Reviewer. A sequential Review-to-Draft request by that principal is explicitly forbidden.",
+    "claimed_root_cause": "Transition permission depends on latestStatusId read outside the mutation transaction. The service passes only requirement id and destination to transitionStatus, which rereads current status and checks the transition graph but cannot reapply actor authorization to the state actually changed.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/requirement-transitions/[id]/route.ts",
+        "line": 29,
+        "scope": "POST",
+        "description": "Accepts any positive status id and invokes transitionRequirement after route authorization."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 912,
+        "scope": "assertCanTransitionRequirement",
+        "description": "Requires Reviewer for leaving Review, but permits area author for Draft destination when source is still Draft."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/requirements/service-requirements.ts",
+        "line": 1264,
+        "scope": "transitionRequirement",
+        "description": "Completes authorization before invoking transitionStatus with only resource and destination."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/dal/requirements.ts",
+        "line": 1219,
+        "scope": "transitionStatus",
+        "description": "Rereads latest status within its later transaction; validates the newly observed transition graph without actor context."
+      },
+      {
+        "kind": "sink",
+        "file": "lib/dal/requirements.ts",
+        "line": 1328,
+        "scope": "transitionStatus",
+        "description": "Updates version status by id without binding the mutation to the state used for authorization."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 916,
+        "description": "Leaving Review is explicitly Reviewer-only; an area author alone fails this check when current state is Review."
+      },
+      {
+        "file": "app/api/requirement-transitions/[id]/route.ts",
+        "line": 25,
+        "description": "PositiveInteger schema admits Draft destination statusId=1; transition-graph validity is not checked before service authorization."
+      },
+      {
+        "file": "lib/requirements/service-requirements.ts",
+        "line": 1286,
+        "description": "DAL receives no actor or authorized source status to bind state-dependent permission."
+      },
+      {
+        "file": "lib/dal/requirements.ts",
+        "line": 1232,
+        "description": "DAL transition graph check uses its newly read current.statusId."
+      },
+      {
+        "file": "typeorm/seed-required.mjs",
+        "line": 443,
+        "description": "Seed graph includes Review (2) to Draft (1)."
+      }
+    ],
+    "blockers": [
+      "Required OS-enforced execution sandbox is unavailable: parent bwrap --unshare-all probe failed with No permissions to create new namespace. No target code, HTTP route or SQL concurrency fixture was executed; the source-derived boundary result remains unobserved."
+    ],
+    "validation_plan": {
+      "local": "Use an offline disposable fixture with one requirement in Draft and an area author having neither Reviewer nor Admin. Begin transition-to-Draft and pause immediately after the service final authorize call at 1273, before DAL invocation. Commit a normal Draft-to-Review call by the same author. Resume the first call and inspect whether it commits Review-to-Draft. Compare a sequential Review-to-Draft call by that author, which should be forbidden. Stop after this single dummy transition; the test must preserve actual policy and SQL behavior rather than mocking authorization success."
+    },
+    "verdict": "needs_validation"
+  },
+  {
+    "fingerprint": "retention-parent-delete-bypasses-child-exception",
+    "title": "Parent retention deletion can bypass an active child-row legal hold",
+    "description": "A PrivacyOfficer can place an indefinite row-level retention exception on a historical RFI version or archived selection answer. If its parent question later becomes eligible for deletion, a normal confirmed retention run deletes all child versions/answers even while the child exception remains active. This can destroy held evidence through the parent lifecycle without explicitly removing the hold. No privilege escalation by the PrivacyOfficer is claimed.",
+    "claimed_root_cause": "Retention exceptions are matched only to the selected candidate\u2019s policy/source/table/id tuple. Parent eligibility and dependent deletion do not consult exceptions on child objects, so parent SQL bypasses a child\u2019s legal-hold exclusion. SERIALIZABLE consistency preserves this incomplete predicate rather than correcting it.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/admin/archiving/runs/route.ts",
+        "line": 39,
+        "scope": "POST retention execution",
+        "description": "PrivacyOfficer submits a current policy preview token; role and human-identity checks precede execution."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/archiving/retention.ts",
+        "line": 1306,
+        "scope": "executeArchivingRetention",
+        "description": "Recomputes preview in SERIALIZABLE and verifies its token before dispatching each selected candidate."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/archiving/retention.ts",
+        "line": 179,
+        "scope": "ACTIVE_EXCEPTION_SQL",
+        "description": "Excludes only exceptions matching the source candidate itself, not child versions or answers that the candidate will delete."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/archiving/retention.ts",
+        "line": 715,
+        "scope": "archived RFI-question source definition",
+        "description": "Parent eligibility checks age and RFI-list/assessment/suggestion dependencies, but no active child-version exceptions. Selection-question source at :575 has the same omission for answers."
+      },
+      {
+        "kind": "sink",
+        "file": "lib/archiving/retention.ts",
+        "line": 331,
+        "scope": "DELETE_RFI_QUESTION_SQL and selection-question deletion",
+        "description": "Deletes every version under the parent question. Parallel selection SQL at :242 deletes all answers without testing their row-level exceptions."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "docs/governance/admin-center.md",
+        "line": 527,
+        "description": "Defines row-level exceptions for legal hold or documented operational need, establishing a preservation invariant beyond deletion age."
+      },
+      {
+        "file": "app/api/admin/archiving/exceptions/route.ts",
+        "line": 58,
+        "description": "PrivacyOfficer can create a table/source/id exception with optional expiry; the service records an indefinite hold when expiry is null."
+      },
+      {
+        "file": "lib/archiving/retention.ts",
+        "line": 1867,
+        "description": "Exception creation persists the child policy/source/table/id tuple independently of its parent and preserves still-active existing exceptions."
+      },
+      {
+        "file": "app/api/rfi-questions/[id]/route.ts",
+        "line": 100,
+        "description": "An area author can archive a question through its ordinary lifecycle; this does not inspect or remove retention holds on historical versions."
+      },
+      {
+        "file": "lib/dal/rfi-questions.ts",
+        "line": 862,
+        "description": "Archiving sets parent archived_at. After the configured policy age passes, the parent can enter the deletion candidate set while an indefinite child hold persists."
+      },
+      {
+        "file": "typeorm/migrations/0009_archiving_retention.mjs",
+        "line": 55,
+        "description": "Exceptions reference only the policy; there is no foreign key from held child objects that prevents deletion."
+      },
+      {
+        "file": "typeorm/migrations/0035_rfi_questions.mjs",
+        "line": 40,
+        "description": "RFI versions are deletable with their parent. Selection answer parent foreign key similarly cascades in migration 0021:84."
+      },
+      {
+        "file": "typeorm/runtime-permission-manifest.mjs",
+        "line": 150,
+        "description": "Runtime grant manifest allows CRUD on RFI versions/questions; :107 similarly permits selection-answer deletion. These writes are not defeated by missing DELETE permission."
+      },
+      {
+        "file": "lib/archiving/retention.ts",
+        "line": 286,
+        "description": "Strongest sink controls recheck no specification items, assessments, or suggestions. Use unreferenced fixture objects so those real safeguards do not block the candidate."
+      }
+    ],
+    "blockers": [
+      "Required isolated target execution is unavailable, so the child deletion under real SQL constraints and runtime grants has not been observed."
+    ],
+    "validation_plan": {
+      "local": "In an isolated SQL/application fixture with seeded runtime permissions, create an old inactive RFI version under a still-active question, no list/assessment/suggestion references, and an indefinite exception for rfi_question_versions.historical_unreferenced. Confirm it is excluded from version preview. Set up the parent as archived beyond the policy age, retain the active child exception, obtain a fresh preview, and run retention through the PrivacyOfficer route. Check whether the child disappears while the exception remains. Repeat the same minimal held-answer/eligible-parent scenario for selection questions. Use fixture timestamps rather than real waiting; stop after verifying deletion or a concrete preventing constraint."
+    },
+    "verdict": "needs_validation"
+  },
+  {
+    "fingerprint": "selection-visibility/recursive-condition-rows/duplicate-path-amplification",
+    "title": "Visibility descendant queries can multiply equivalent dependency paths",
+    "description": "An authenticated area author permitted to save visibility conditions can cause a small edit to traverse an existing valid acyclic question graph. Multiple allowed answer/group conditions between the same questions are separate SQL rows, and the descendant query carries their multiplicity through recursive UNION ALL before returning distinct question IDs. This creates a source-grounded hypothesis of disproportionate work in the shared application database compared with the distinct affected questions. The default 15-second SQL request timeout, driver cancellation, rollback and edge rate limits constrain the operation. No SQL execution, resource consumption, failure to cancel, or impact on another request was observed; this is not a demonstrated denial of service.",
+    "claimed_root_cause": "The descendant relation traverses visibility-condition rows rather than unique question dependencies and has no visited-question set or intermediate deduplication. Its depth limit and final DISTINCT do not bound intermediate path multiplicity. Valid alternative answers/groups can represent equivalent parent-child edges, so cycle rejection and per-question input cardinality limits do not establish work proportional to the graph\u2019s distinct nodes or edges.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/requirement-selection-questions/[id]/visibility/route.ts",
+        "line": 18,
+        "scope": "PUT visibility edit",
+        "description": "An authenticated owning-area author/Admin passes the mutation policy and supplies schema-bounded visibility groups for an existing question."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/dal/requirement-selection-questions.ts",
+        "line": 2019,
+        "scope": "replaceRequirementSelectionQuestionVisibilityGroups transaction",
+        "description": "Checks the target, normalizes and validates the replacement, then stores each allowed answer condition as a separate row; no cycle is needed for this hypothesis."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/dal/requirement-selection-questions.ts",
+        "line": 2078,
+        "scope": "affected question discovery before history propagation",
+        "description": "The same transaction calls listVisibilityAffectedQuestionIds even when its final result contains only a small number of distinct question identities."
+      },
+      {
+        "kind": "sink",
+        "file": "lib/dal/requirement-selection-questions.ts",
+        "line": 1927,
+        "scope": "recursive visibility_descendants query on shared SQL Server",
+        "description": "The anchor includes every matching condition row; UNION ALL and the recursive join at :1944 preserve and extend duplicate dependency paths. Only :1948 deduplicates the result after traversal; the query runs on the shared application database connection."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "app/api/requirement-selection-questions/_schemas.ts",
+        "line": 33,
+        "description": "Finite request schema caps are 50 groups, 50 conditions per group and 200 answer IDs per condition. Multiple answers and groups are valid inputs, not malformed encodings."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 697,
+        "description": "The strongest entry authorization resolves the real owning area and requires area authorship unless Admin; this is not anonymous or ordinary-reader access."
+      },
+      {
+        "file": "lib/dal/requirement-selection-questions.ts",
+        "line": 1797,
+        "description": "Normalization uses a Set of answer IDs for each parent within a group. It does not collapse separate answers/groups into one stored parent-child dependency."
+      },
+      {
+        "file": "typeorm/migrations/0027_requirement_selection_question_visibility.mjs",
+        "line": 25,
+        "description": "Uniqueness is on visibility_group_id, parent_question_id and answer_id. Foreign keys and parent/answer validation prevent invalid references but permit multiple valid rows for one question dependency."
+      },
+      {
+        "file": "lib/dal/requirement-selection-questions.ts",
+        "line": 1866,
+        "description": "Cycle checking uses distinct parent sets and visited nodes; an acyclic graph can pass independently of condition-row multiplicity in the later SQL traversal."
+      },
+      {
+        "file": "lib/dal/requirement-selection-questions.ts",
+        "line": 1946,
+        "description": "The recursive predicate limits depth to 100; final SELECT DISTINCT at :1948 does not express an intermediate cardinality or visited-question limit."
+      },
+      {
+        "file": "lib/typeorm/sqlserver-config.ts",
+        "line": 11,
+        "description": "Default SQL request timeout is 15000 ms and is passed into DataSource options at :227; pool max defaults to 10. These controls constrain duration/concurrency and must be retained in validation."
+      },
+      {
+        "file": "lib/db.ts",
+        "line": 45,
+        "description": "The application caches and reuses its DataSource rather than assigning a private database pool to each caller, establishing the shared resource whose actual impact needs measurement."
+      },
+      {
+        "file": "node_modules/tedious/lib/connection.js",
+        "line": 1321,
+        "description": "Installed driver calls request.cancel on its request timeout. TypeORM EntityManager.js:86-98 attempts rollback and releases the query runner after errors; no indefinite retained connection is established."
+      },
+      {
+        "file": "containers/production/nginx/templates/edge-rate.conf.template",
+        "line": 12,
+        "description": "Production ingress applies configured per-client API rate limiting; app-node-tls.conf.template:39 attaches the zone. Request rate limits do not themselves determine work within one admitted recursive query."
+      },
+      {
+        "file": "tests/unit/requirement-selection-questions-dal.test.ts",
+        "line": 668,
+        "description": "The relevant test substitutes a precomputed descendant list when it sees the recursive query. It verifies affected-specification scoping, not SQL intermediate row growth or cancellation."
+      }
+    ],
+    "blockers": [
+      "The required OS-enforced sandbox is unavailable: the parent namespace probe failed with No permissions to create new namespace. No target code, SQL query, fixture or availability experiment was executed.",
+      "The real SQL Server execution plan and actual intermediate-work growth for valid repeated dependency edges are unobserved. An optimizer transformation or effective workload governor may prevent the hypothesized disproportionate work.",
+      "Meaningful impact beyond the editing user is not established. Effective request timeout/cancellation, SQL workload isolation, concurrent-reader behavior, memory/CPU allocation and deployment ingress controls require bounded local measurement and owner configuration evidence."
+    ],
+    "validation_plan": {
+      "local": "In a future approved offline disposable SQL fixture, use only tiny acyclic graphs with a few questions and alternate valid answers/groups. Compare unique-edge and equivalent repeated-condition graphs with the same distinct descendants, exercising the real route/service validation and migrations. Inspect actual plan row counts or bounded work counters and rollback/cancellation behavior under strict CPU, memory, time and row limits. Stop after establishing or refuting growth; do not scale to saturation or attempt an outage. A benign second fixture request may establish whether the work crosses a shared-resource boundary within those strict bounds. Refute the availability hypothesis if effective controls prevent material shared effects.",
+      "deployment": "The owner can inspect effective DB_REQUEST_TIMEOUT_MS, DB_POOL_MAX, SQL resource/workload isolation, runtime topology and nginx admission settings without generating traffic or exposing secrets. Source defaults alone do not establish deployed impact."
+    },
+    "verdict": "needs_validation"
+  },
+  {
+    "fingerprint": "specification-delete/cancelled-confirmed-agreement-history-loss",
+    "title": "Ordinary specification deletion can remove preserved confirmed-agreement history",
+    "description": "A specification coauthor is authorized to delete its parent specification, but agreement decisions are reserved to its responsible person. After a responsible person legitimately cancels a confirmed upcoming agreement, the ordinary parent delete path appears able to remove that preserved business event and its associated history. ADR 0063 explicitly preserves cancelled confirmed agreements and states that the action log cannot replace exact correction history. The delete guard protects pending/current agreements but does not test historical confirmation. Source establishes this discrepancy; no deletion or SQL fixture ran, and the intended scope of preservation across explicit whole-specification deletion requires owner confirmation.",
+    "claimed_root_cause": "The ordinary author-authorized parent deletion guard checks only current/pending agreement flags before deleting all agreement records. It does not distinguish disposable unconfirmed drafts from previously confirmed agreements whose cancelled state is retained as business history by the agreement lifecycle contract.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/requirements-specifications/[id]/route.ts",
+        "line": 120,
+        "scope": "DELETE specification policy",
+        "description": "canAuthorSpecification permits the assigned responsible person or coauthor, as well as Admin, to request parent deletion."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/requirements/specification-mutations.ts",
+        "line": 186,
+        "scope": "deleteSpecificationWithAudit",
+        "description": "Locks the parent and transacts dependent deletion plus an action audit containing parent lifecycle identity."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/specifications/agreement-policy.ts",
+        "line": 49,
+        "scope": "assertSpecificationDeletionAllowed",
+        "description": "Locks the same parent, materializes due agreements, and rejects current/pending agreements; there is no historical confirmed_at preservation condition."
+      },
+      {
+        "kind": "sink",
+        "file": "lib/dal/requirements-specifications.ts",
+        "line": 1565,
+        "scope": "deleteSpecificationWithExecutor",
+        "description": "Deletes all parent agreement items and agreements, then local/library contents and the specification. The transaction preserves atomicity, not the deleted business event."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "docs/adr/0063-fullstandiga-avtal-i-kravunderlag.md",
+        "line": 27,
+        "description": "Exact before/after agreement corrections are business history that the length-limited action log cannot replace. Lines 33-44 reserve agreement decisions to the responsible person and explicitly preserve cancelled confirmed upcoming agreements."
+      },
+      {
+        "file": "lib/dal/requirements-specifications.ts",
+        "line": 1058,
+        "description": "The real parent author predicate includes specification_co_authors, a broader set than the responsible-only agreement decision authority."
+      },
+      {
+        "file": "lib/specifications/agreement-cancellation.ts",
+        "line": 168,
+        "description": "Legitimate cancellation retains the agreement row and confirmation while setting is_pending=0 and cancellation metadata; an upcoming cancelled agreement is not current."
+      },
+      {
+        "file": "typeorm/migrations/0069_specification_agreements.mjs",
+        "line": 120,
+        "description": "Agreement parent/item foreign keys use NO ACTION, while correction rows cascade from agreement deletion. Explicit child-first deletes account for these guards; other previous-agreement/deviation relations can block particular histories and must be included in a real fixture."
+      },
+      {
+        "file": "lib/archiving/retention.ts",
+        "line": 539,
+        "description": "The separate obsolete-specification retention path requires export and age/lifecycle/exception selection. This is contextual evidence, not a claim that every ordinary author deletion must use that entire administrative policy."
+      },
+      {
+        "file": "lib/requirements/specification-mutations.ts",
+        "line": 195,
+        "description": "Deletion and action audit share one transaction; missing records return not_found and failed SQL rolls back. The retained audit is a preventing control against silent parent deletion, but contains no complete agreement/correction snapshot."
+      }
+    ],
+    "blockers": [
+      "The required OS sandbox is unavailable (No permissions to create new namespace). No target process, SQL fixture, deletion, foreign-key interaction or retained-history readback was executed.",
+      "The owner must confirm whether ADR 0063 preservation applies when an authorized author deletes the whole specification. If whole-parent deletion intentionally supersedes that guarantee, this is a policy-hardening observation rather than a security defect.",
+      "A bounded migrated SQL fixture must establish that a minimal cancelled confirmed agreement can be deleted without another historical foreign key preventing the transaction; no universal deletion success is claimed."
+    ],
+    "validation_plan": {
+      "local": "In a future isolated offline SQL fixture using dummy identities and strict resource limits, create one specification with responsible person and separate coauthor, confirm a future agreement through the legitimate responsible-only path, then cancel it and verify the retained confirmation/history. Invoke the ordinary coauthor parent-delete method once and inspect the minimum affected agreement/history rows plus the retained action audit. Include a pending/current agreement control that must reject deletion and account for actual foreign keys. Stop after this bounded preservation result; do not touch existing services or data.",
+      "deployment": "Ask the owner to resolve the documented preservation scope for explicit whole-specification deletion and inspect deployed schema/runtime grants without modifying data. Reject this claim if that operation is explicitly permitted to erase the history."
+    },
+    "verdict": "needs_validation"
+  },
+  {
+    "fingerprint": "specification-preload/authorization-error-partial-data-disclosure",
+    "title": "Specification preload may disclose parent data when authorization fails with an internal error",
+    "description": "A signed-in user lacking assignment, Admin and Reviewer roles can request another specification page. Its preload queries parent metadata, needs-reference descriptions and selected packages directly, while relying on a separate available-requirements call to authorize final disclosure. Known 401/403 errors correctly return a limited forbidden shell, but an assignment-query error or the source-defined conversion of an authorization-denied audit failure to an internal error takes the partial-data branch and retains those raw values for the client component. No unauthorized response or failure fixture was executed. The conditional disclosure of another owner\u2019s specification data, rather than intended public assignment guidance, is the claim.",
+    "claimed_root_cause": "The preload conflates non-401/403 failures before successful authorization with optional-resource failures after authorization. It has no separately established positive read decision before serializing raw parent-derived data, and the shared authorization helper can replace a real denial with an internal error when mandatory denial auditing fails.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/[locale]/specifications/[specificationId]/page.tsx",
+        "line": 26,
+        "scope": "Specification detail Server Component",
+        "description": "The authenticated browser supplies a numeric/code specification selector; the page resolves it then calls the preload without its own assignment predicate."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/specifications/preload.ts",
+        "line": 219,
+        "scope": "Raw parent and parallel preload reads",
+        "description": "getSpecificationById returns the parent before the separate service authorization; needs references at :290 and selected packages at :352 are direct database helpers."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/requirements/service-specifications.ts",
+        "line": 342,
+        "scope": "getAvailableSpecificationRequirements",
+        "description": "The service authorizes first, so a successful call and recognized 401/403 are strong controls. Assignment lookup or denial-audit failures may instead reject with an internal/non-service error."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/specifications/preload.ts",
+        "line": 374,
+        "scope": "Authorization-dependent error handling",
+        "description": "Recognized 401/403 discard raw data for a limited forbidden summary. Other errors at :398-407 replace only available requirements and retain previously loaded parent/needs/package data in :410-438."
+      },
+      {
+        "kind": "sink",
+        "file": "app/[locale]/specifications/[specificationId]/page.tsx",
+        "line": 109,
+        "scope": "Client component initialData serialization",
+        "description": "Absent notFound/forbidden, the page passes the entire initialData object to RequirementsSpecificationDetailClient; permission flags govern editing rather than redacting these props."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "docs/governance/beh\u00f6righeter.md",
+        "line": 163,
+        "description": "Admin/Reviewer read all specifications; other users read their assigned specifications only. A direct link grants no access to an unassigned specification. Limited forbidden guidance is expressly separate from full contents."
+      },
+      {
+        "file": "proxy.ts",
+        "line": 328,
+        "description": "The proxy enforces a valid signed-in cookie for the page. This is an authenticated assignment-boundary claim, not anonymous access."
+      },
+      {
+        "file": "lib/requirements/server-component-context.ts",
+        "line": 6,
+        "description": "The Server Component context derives HSA identity and roles from the validated session, not caller-supplied identity headers."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 153,
+        "description": "isSpecificationAuthor performs the actual responsible/coauthor database query. :675 requires authentication; :719 routes to specification read authorization; :829-845 checks Reviewer or author authority. A query exception is not a positive decision."
+      },
+      {
+        "file": "lib/requirements/service-shared.ts",
+        "line": 197,
+        "description": "authorize awaits denial auditing before rethrowing the original authorization error; it does not preserve a separate successful-decision token."
+      },
+      {
+        "file": "lib/requirements/security-audit.ts",
+        "line": 478,
+        "description": "Required denial auditing catches an audit error and throws internalError at :508, which can replace a valid forbidden denial. Unknown database errors skip denial-audit classification at :517 and propagate unchanged."
+      },
+      {
+        "file": "lib/dal/requirements-specifications.ts",
+        "line": 1654,
+        "description": "The raw needs-reference helper returns text and description by specification_id only; it has no actor parameter. Parent metadata similarly comes from getSpecificationById :927."
+      },
+      {
+        "file": "lib/specifications/permissions.ts",
+        "line": 69,
+        "description": "The computed permissions describe edit/manage/review/AI capabilities; they do not filter the preloaded data or prove canReadSpecification."
+      },
+      {
+        "file": "lib/specifications/preload.ts",
+        "line": 461,
+        "description": "The sibling catalog uses listSpecificationsForActorCatalog with actor identity/canReadAll; its capture fallback is empty. REST detail GET also awaits authorization before returning content (:54-65)."
+      },
+      {
+        "file": "tests/unit/specifications-preload.test.ts",
+        "line": 341,
+        "description": "Source tests distinguish a recognized forbidden shell and generic optional failure retention at :388, but mock the service call and do not demonstrate a real authorization-denial audit failure. No tests ran."
+      }
+    ],
+    "blockers": [
+      "The required OS sandbox is unavailable (No permissions to create new namespace). No target code, rendered response, dummy authorization failure or client serialization check ran.",
+      "A bounded fixture must establish selective assignment-query or denial-audit failure while raw parent/needs reads remain successful, and confirm no enclosing framework behavior suppresses the client payload. A total database outage or correctly recognized 401/403 does not establish disclosure.",
+      "No source-backed ability for an ordinary user to induce the dependency failure, deployed failure frequency or affected production response has been demonstrated. Impact is conditional on that failure, not a reliable unauthorized read on a healthy system."
+    ],
+    "validation_plan": {
+      "local": "In a future offline OS sandbox, use dummy assigned and unassigned users and one specification containing a unique non-sensitive needs-description marker. Exercise the real default authorization with a successful negative assignment lookup, then inject one failure in required denial auditing using a narrow database adapter; alternatively fail only the assignment query. Keep raw reads successful. Invoke the preload/page boundary once and inspect whether initialData or serialized client props retain that marker. Compare healthy denial (limited forbidden shell), authorized optional-resource failure (allowed partial data), and total database failure. Stop at the one dummy disclosure or refutation; no outage, network or shared services.",
+      "deployment": "The owner may inspect existing sanitized error telemetry and deployment framework configuration for selective authorization/audit failures and response handling. Do not create failures or send audit traffic. Such evidence calibrates occurrence; it cannot replace the bounded source-path fixture."
+    },
+    "verdict": "needs_validation"
+  },
+  {
+    "fingerprint": "suggestion-original-version-description-nonpublic-projection",
+    "title": "Suggestion detail can expose a nonpublic requirement-version description",
+    "description": "An authenticated reader who may read a published requirement can request a suggestion attached to another nonpublic version of that same requirement. The suggestion detail endpoint returns that original version\u2019s description despite the reader lacking history/version authority. A legitimate area author can create the link; the reader need not have mutation authority. The suggestion body itself is intentionally readable and is not the disputed data.",
+    "claimed_root_cause": "get_improvement_suggestion authorizes the parent requirement in detail mode using any published sibling, while getSuggestion joins the original requirementVersionId and the REST response spreads requirementDescription without authorizing that version. The separate implementation-version redaction does not cover the original-version description.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/improvement-suggestions/[id]/route.ts",
+        "line": 31,
+        "scope": "GET getHandler",
+        "description": "Authenticated caller chooses a suggestion id; route invokes get_improvement_suggestion authorization."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 511,
+        "scope": "resolveSuggestionRequirementTarget and assertAuthorized",
+        "description": "Resolves the real parent and whether any version is published, but does not carry the suggestion original version visibility. At :684-689 calls parent detail authorization."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 872,
+        "scope": "assertCanReadRequirementTarget",
+        "description": "Ordinary authenticated reader passes when the parent has any published version; author/Reviewer checks protect history instead."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/dal/improvement-suggestions.ts",
+        "line": 322,
+        "scope": "getSuggestion",
+        "description": "Projects requirement_version.description joined solely by suggestion.requirement_version_id, without a published-status condition."
+      },
+      {
+        "kind": "sink",
+        "file": "app/api/improvement-suggestions/[id]/route.ts",
+        "line": 56,
+        "scope": "JSON response projection",
+        "description": "Spreads suggestion fields including requirementDescription. Only implementing-version fields are stripped and separately authorized."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "lib/http/route-security-policy.ts",
+        "line": 628,
+        "description": "GET detail requires a session and no-store response, not area authorship at transport level."
+      },
+      {
+        "file": "lib/dal/improvement-suggestions.ts",
+        "line": 372,
+        "description": "Creation verifies original version belongs to the requirement but permits nonpublic status; an authorized author can establish the link."
+      },
+      {
+        "file": "lib/requirements/service-suggestions.ts",
+        "line": 127,
+        "description": "Mutation requires area authority, and caller display identity is replaced by the actual human actor. Candidate relies on a legitimate existing suggestion, not bypassing this control."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 860,
+        "description": "Direct nonpublished version reads require history authorization, unlike parent detail reads."
+      },
+      {
+        "file": "lib/requirements/suggestion-implementation.ts",
+        "line": 1,
+        "description": "Implementation-version read helper masks versions the caller cannot read, demonstrating a preventing control for the second selector but not the original version."
+      },
+      {
+        "file": "docs/governance/beh\u00f6righeter.md",
+        "line": 246,
+        "description": "Published-parent suggestion text may intentionally be readable. The claim is limited to the joined nonpublic requirement description."
+      },
+      {
+        "file": "lib/requirements/service-suggestions.ts",
+        "line": 107,
+        "description": "REST/MCP suggestion listing maps explicit fields and does not return requirementDescription, so the demonstrated source path is direct REST detail rather than every list."
+      }
+    ],
+    "blockers": [
+      "Target execution is prohibited because required namespace/network/filesystem isolation is unavailable. No authenticated HTTP response or SQL-backed authorization denial has been observed locally."
+    ],
+    "validation_plan": {
+      "local": "In a future isolated SQL/application fixture, create an area author and an unrelated authenticated ordinary reader. Give one requirement a published version and a draft sibling with a unique marker description. As the author, create a suggestion linked to the draft. As the reader verify the direct draft-version API rejects access, then GET /api/improvement-suggestions/{id}; inspect whether requirementDescription contains the marker. Also verify list projections and implementing-version masking do not independently expose it. Use dummy data, no shared services, and stop after the bounded disclosure check."
+    },
+    "verdict": "needs_validation"
+  }
+]

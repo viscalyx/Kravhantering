@@ -1,0 +1,60 @@
+{
+  "units": [
+    {
+      "coverage_id": "app%2Fapi%2Fadmin%2Fai-settings%20and%20app%2Fapi%2Fadmin%2Fai-safety-rules%23policy%20mutations::lib%2Fdal%2Fai-settings.ts%20and%20lib%2Fdal%2Fai-safety-rules.ts%23persisted%20policy%20to%20authoring%20runtime::lib%2Fai%2Fpolicy-settings::ATTACK-CLASSES.md%23Business%20logic",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/admin/ai-settings/route.ts",
+        "app/api/admin/ai-safety-rules/route.ts",
+        "app/api/admin/ai-safety-rules/terms/[id]/route.ts",
+        "app/api/admin/ai-safety-rules/terms/remove/route.ts",
+        "app/api/admin/ai-safety-rules/[ruleId]/restore-defaults/route.ts",
+        "lib/dal/ai-settings.ts",
+        "lib/dal/ai-safety-rules.ts",
+        "lib/ai/generation-availability.ts",
+        "lib/ai/scan-guard.ts",
+        "lib/ai/safety.ts",
+        "lib/ai/run-trust-boundary.ts",
+        "lib/ai/production-runtime-composition.ts",
+        "app/api/ai/generate-requirement-import/route.ts",
+        "app/api/ai/repair-requirement-import-json/route.ts",
+        "app/api/ai/requirement-import-shared.ts",
+        "docs/governance/admin-center.md"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave3-ai-policy",
+          "reviewed_paths": [
+            "app/api/admin/ai-settings/route.ts",
+            "app/api/admin/ai-safety-rules/route.ts",
+            "app/api/admin/ai-safety-rules/terms/[id]/route.ts",
+            "app/api/admin/ai-safety-rules/terms/remove/route.ts",
+            "app/api/admin/ai-safety-rules/[ruleId]/restore-defaults/route.ts",
+            "lib/dal/ai-settings.ts",
+            "lib/dal/ai-safety-rules.ts",
+            "lib/ai/generation-availability.ts",
+            "lib/ai/scan-guard.ts",
+            "lib/ai/safety.ts",
+            "lib/ai/run-trust-boundary.ts",
+            "lib/ai/production-runtime-composition.ts",
+            "app/api/ai/generate-requirement-import/route.ts",
+            "app/api/ai/repair-requirement-import-json/route.ts",
+            "app/api/ai/requirement-import-shared.ts",
+            "docs/governance/admin-center.md"
+          ],
+          "invariant": "Persisted AI policy changes require Admin authority, preserve hard deployment guards and finite limits, and reach authoring only through explicit safety loading and lifecycle rules.",
+          "method": "source",
+          "artifact": null,
+          "result": "Settings route:35-104 uses strict bounded schemas and :154,204 adminMutationPolicy; DAL:703-779 revalidates ranges, locks the global row-limit dependency at :97, and audits the singleton update transaction. Safety routes require Admin, bound term IDs/types/directions and cap batch removals at100. Safety DAL:148 normalizes terms; :555 rejects deletion of standard terms, :588 deactivates standards/deletes custom, and :620 restores only seeded terms. Every mutation clears local rule cache; :363-393 applies finite TTL from generation-availability.ts:10-12 (30-3600 seconds). Required missing/invalid rules throw rather than yielding an empty rule set. Runtime composition:75 uses these database rules; run-trust-boundary.ts:97,265-310 fails closed on load/decision errors before provider preparation or final output. Generation route:206 and repair:155 independently check effective availability; ai-settings.ts:169 combines persisted preference with operator guard, which Admin cannot override. Legacy settings reads preserve persisted generation preference and bounded defaults; durable MCP settings :552 reject a missing singleton. PATCH :780 reads then merges a full replacement and can lose another Admin update, but no lesser authority or deployment-guard bypass is established. Docs admin-center.md:251-305,318-328 explicitly authorize term deactivation/restore, bounded caching and higher-priority operator guard. No candidate established in these paths; concurrent and multi-node behavior was not executed."
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [],
+  "hardening": [
+    "AI settings PATCH (lib/dal/ai-settings.ts:780) merges a pretransaction read into a complete update. Field-specific transactional updates or a revision check would avoid lost concurrent Admin changes. No lower-privilege action or operator-guard bypass was established."
+  ],
+  "uncovered": []
+}

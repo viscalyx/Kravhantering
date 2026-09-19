@@ -1,0 +1,98 @@
+[
+  {
+    "agent_id": "verify-02",
+    "decision": "verified",
+    "fingerprint": "azure-bootstrap/predictable-staging-parent/root-helper-replacement",
+    "record_sha256": "6ca574fdf1f5ea4300f31eb63d3bb84224bc1f2fc2f9d35427bf25f74b83f0eb"
+  },
+  {
+    "agent_id": "verify-00",
+    "decision": "verified",
+    "fingerprint": "ai-forensic-capture/purge-before-close-retained-evidence",
+    "record_sha256": "f6085731614fb7580c0a750f7bbaf3874fd9ec13b2f03a2a039e80b3f7476476"
+  },
+  {
+    "agent_id": "verify-01",
+    "decision": "verified",
+    "fingerprint": "archiving/confirmation-candidate-keys/stale-child-content-deletion",
+    "record_sha256": "aa72da4084299dbe93d7c763fc7b0cbda02e3d7ad08aa52897918e6c833e38e4"
+  },
+  {
+    "agent_id": "verify-03",
+    "decision": "verified",
+    "fingerprint": "container-monitor/private-advisory/description-marker-ownership",
+    "record_sha256": "f24649d830ab86d1557f221a5a62518ea62c0cd310bcdfd8079d0ce775e05711"
+  },
+  {
+    "agent_id": "verify-04",
+    "decision": "verified",
+    "fingerprint": "container-monitor/untrusted-comment-markers/scan-preflight-block",
+    "record_sha256": "2fc13de6cf6fd6e7ddbae671f9a9d0a7c2eee379e66ad51836852dd41d77fa9f"
+  },
+  {
+    "agent_id": "verify-05",
+    "decision": "verified",
+    "fingerprint": "dev-keycloak/published-management/default-admin",
+    "record_sha256": "69ffe830a4fbff4d8814b2ccd4ce53808a2cc80ef735cf2bd512d5e70874db0e"
+  },
+  {
+    "agent_id": "verify-06",
+    "decision": "verified",
+    "fingerprint": "dev-login/cached-jar/unscoped-cookie-header",
+    "record_sha256": "2467bc988e0a2a5b35a4f5541e24facd56ab46838c57e485c79d286de42776e1"
+  },
+  {
+    "agent_id": "verify-07",
+    "decision": "verified",
+    "fingerprint": "norm-reference-linked-requirements-nonpublic-projection",
+    "record_sha256": "ee617b2fb171d5c21099f6e44e4a0a57d5d00f2eabd8d02df0081536bb619e28"
+  },
+  {
+    "agent_id": "verify-08",
+    "decision": "verified",
+    "fingerprint": "reports/review-diff/quadratic-main-thread-lcs",
+    "record_sha256": "363f25fd1ac52aff10b0858539fc377242cef80a28a5fb5f66e8d50522e0eb44"
+  },
+  {
+    "agent_id": "verify-09",
+    "decision": "verified",
+    "fingerprint": "requirement-delete-draft-status-check-write-race",
+    "record_sha256": "29638974c647f024b341ddd4f3774074d1f180dd1a69b3d49f63ab967a18062e"
+  },
+  {
+    "agent_id": "verify-10",
+    "decision": "verified",
+    "fingerprint": "requirement-transition-state-dependent-authority-race",
+    "record_sha256": "dc9e23994d73a55630da31c1f8077b0ae5d8ee1fd20d940c66ffe30aa3f4f951"
+  },
+  {
+    "agent_id": "verify-11",
+    "decision": "verified",
+    "fingerprint": "retention-parent-delete-bypasses-child-exception",
+    "record_sha256": "d46202aeaca3c7fbbd5eea5ac5315a745589c6097c39cfa4f70a97310da52d64"
+  },
+  {
+    "agent_id": "verify-12",
+    "decision": "verified",
+    "fingerprint": "selection-visibility/recursive-condition-rows/duplicate-path-amplification",
+    "record_sha256": "af6551f58cbeb97ee32bc0282bbf148edb1689a21505c77749d7b429aa31bfd4"
+  },
+  {
+    "agent_id": "verify-13",
+    "decision": "verified",
+    "fingerprint": "specification-delete/cancelled-confirmed-agreement-history-loss",
+    "record_sha256": "50bf86535e0ce958af78853bde58e6701cdee1614f2194cb8271382dadc2e361"
+  },
+  {
+    "agent_id": "verify-14",
+    "decision": "verified",
+    "fingerprint": "specification-preload/authorization-error-partial-data-disclosure",
+    "record_sha256": "a6ffa321087b4026c5ea8f4bc649065d1eb84024de13f68f665387c1bd7a18b0"
+  },
+  {
+    "agent_id": "verify-15",
+    "decision": "verified",
+    "fingerprint": "suggestion-original-version-description-nonpublic-projection",
+    "record_sha256": "6f38ade7cdcf9264e0c9aa74bff7d0e9132020c89c5968b4c1b639dc60929312"
+  }
+]

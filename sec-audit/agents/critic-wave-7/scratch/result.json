@@ -1,0 +1,67 @@
+{
+  "missing_units": [
+    {
+      "surface": "app/api/requirements-specifications#ordinary creation metadata lifecycle and deletion",
+      "boundary": "lib/requirements/specification-mutations.ts#author-authorized parent changes and dependent deletion",
+      "subsystem": "lib/specifications/ordinary-lifecycle",
+      "attack_class": "Business logic",
+      "starting_paths": [
+        "app/api/requirements-specifications/route.ts",
+        "app/api/requirements-specifications/[id]/route.ts",
+        "app/api/requirements-specifications/schema.ts",
+        "lib/requirements/specification-mutations.ts",
+        "lib/dal/requirements-specifications.ts",
+        "lib/specifications/permissions.ts",
+        "lib/specifications/agreement-policy.ts",
+        "lib/archiving/retention.ts",
+        "docs/governance/behörigheter.md",
+        "docs/security-privacy/informationsmangder-kravhantering.md"
+      ],
+      "selected_companion_blocks": [
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Retention and queued-work overrun",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+      ],
+      "excluded_blocks": [
+        {
+          "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Stale authorization and derived copy use",
+          "reason": "Reuse the completed assignment/revocation evidence. An already-admitted authorized request does not establish an instantaneous-revocation violation."
+        }
+      ],
+      "reason": "The live and archived specification business-logic checks trace agreements, deviations, RFI and selection answers; the access checks trace child reads and dedicated assignment changes. They do not close ordinary parent creation, lifecycle metadata changes or deletion. Collection POST binds initial responsibility to the authenticated human; detail PUT/DELETE instead use canAuthorSpecification. specification-mutations.ts:140-205 locks the parent and transacts mutation/audit, while requirements-specifications.ts:1556-1602 deletes agreement records, local/library items, needs references and the parent before cleaning unassigned identities. agreement-policy.ts:49-63 materializes due agreements and blocks current/pending agreements, a strong preventing control that must be retained. Trace these ordinary paths against the documented distinction between author deletion and PrivacyOfficer retention, including retained agreement/RFI/deviation evidence, child foreign keys, explicit holds where applicable, lifecycle-status edits and failed/replayed deletion. Existing retention confirmation candidates do not establish the contract of this separate destructive entrypoint. Do not assume archive export or every retention exception must govern ordinary deletion without source policy support."
+    },
+    {
+      "surface": "containers/production/bin/kravhantering-images.sh#disconnected image export and load",
+      "boundary": "containers/production/bin/kravhantering-images.sh#transport metadata archive extraction and rootless image installation",
+      "subsystem": "containers/production/disconnected-images",
+      "attack_class": "Resource and file handling",
+      "starting_paths": [
+        "containers/production/bin/kravhantering-images.sh",
+        "scripts/containers/export-oci-archives.mjs",
+        "scripts/release/deployment-provenance.mjs",
+        "docs/operations/rhel10-production-disconnected.md",
+        "docs/operations/rhel10-production-single-node-self-contained-disconnected.md",
+        "docs/operations/release-artifact-and-image-verification.md",
+        "docs/operations/transient-state-cleanup.md"
+      ],
+      "selected_companion_blocks": [
+        "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "SUPPLY-CHAIN-AND-RELEASE.md#Cache, artifact, and workspace trust mixing",
+        "SUPPLY-CHAIN-AND-RELEASE.md#Update metadata and rollback confusion",
+        "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+        "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+      ],
+      "excluded_blocks": [
+        {
+          "block": "SUPPLY-CHAIN-AND-RELEASE.md#Untrusted code in a privileged workflow",
+          "reason": "Existing release workflow and publication evidence owns CI credentials and source-event gates. This unit concerns the separate operator-side disconnected transport consumer."
+        }
+      ],
+      "reason": "Release resource-handling evidence closes authenticated cleanup-source extraction, OCI descriptor parsing and archive production; operations evidence closes Quadlet installation and policy-file validation. Neither traces this maintained image consumer. kravhantering-images.sh:111-117 sources its env file; export_images:283-330 verifies selected images then creates a transport archive; load_images:334-360 extracts the supplied bundle, checks its internal hashes, loads OCI archives, tags independently locked image IDs and performs final verification. The disconnected guide:371-396 generates that sourced env from offline-manifest imageRefs, then :400-414 runs the loader as the rootless service user using the installed release lock. Trace external transport metadata through shell serialization, archive/path handling and pre/post-load identity checks across app-node, single-node/demo and cleanup selections. Preserve the independently verified release provenance, fixed service inventory, private temporary directory, expected image-ID checks and approved-transfer prerequisite. A modified bundle, unsafe archive extraction result, lesser-principal metadata writer or service-user command execution is not established by source inspection alone; this is the missing local consumer trace, not a generic request for deployed provenance proof."
+    }
+  ],
+  "reassign_ids": [],
+  "resolved_prior_leads": [],
+  "stop": false
+}

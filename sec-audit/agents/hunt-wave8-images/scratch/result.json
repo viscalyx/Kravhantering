@@ -1,0 +1,47 @@
+{
+  "units": [
+    {
+      "coverage_id": "containers%2Fproduction%2Fbin%2Fkravhantering-images.sh%23disconnected%20image%20export%20and%20load::containers%2Fproduction%2Fbin%2Fkravhantering-images.sh%23transport%20metadata%20archive%20extraction%20and%20rootless%20image%20installation::containers%2Fproduction%2Fdisconnected-images::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "containers/production/bin/kravhantering-images.sh",
+        "containers/production/bin/kravhantering-cleanup.sh",
+        "scripts/containers/export-oci-archives.mjs",
+        "scripts/release/deployment-provenance.mjs",
+        "docs/operations/rhel10-production-disconnected.md",
+        "docs/operations/rhel10-production-single-node-self-contained-disconnected.md",
+        "docs/operations/release-artifact-and-image-verification.md",
+        "docs/operations/transient-state-cleanup.md",
+        "scripts/__tests__/production-image-helper.test.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave8-images",
+          "reviewed_paths": [
+            "containers/production/bin/kravhantering-images.sh",
+            "containers/production/bin/kravhantering-cleanup.sh",
+            "scripts/containers/export-oci-archives.mjs",
+            "scripts/release/deployment-provenance.mjs",
+            "docs/operations/rhel10-production-disconnected.md",
+            "docs/operations/rhel10-production-single-node-self-contained-disconnected.md",
+            "docs/operations/release-artifact-and-image-verification.md",
+            "docs/operations/transient-state-cleanup.md",
+            "scripts/__tests__/production-image-helper.test.mjs"
+          ],
+          "invariant": "Disconnected import preserves the operator-selected authenticated release and its expected runtime image identities across transport, mirror retagging, topology selection and cleanup rollback, without granting a source-established lesser principal control of executable inputs.",
+          "method": "source",
+          "result": "No source-grounded boundary failure survived. The disconnected guide:35-41 assigns pull/verify/export to one operator and :88-99 requires connected provenance verification before release extraction, even when a separately approved target-side exception exists. Verification guide:143-146 requires authenticated trust-root handoff or an out-of-band digest; adjacent checksums are not treated as independent authenticity. deployment-provenance.mjs:114-188 binds repository, signer workflow, source digest/ref, release version/tag and exact archive subject digest. The approved transfer at disconnected guide:280-281 carries operator-produced metadata; :338-357 installs the verified release into a new root-owned directory. Image helper:74-104 uses fixed topology/service/lock mappings; :124-143 reads the separately supplied installed lock, never adopting the lock extracted from the image bundle. :230-254 rejects wrong ref digests and wrong local image IDs while allowing mirror names for the same expected ID. Export:283-333 verifies each selected image and saves fixed service archive names. Load:336-360 uses mktemp plus EXIT cleanup, checks the extracted hashes, loads fixed service archives, requires the independently locked image ID to exist, tags that ID rather than trusting an imported tag, and verifies every selected ref afterward. Commands use quoted arguments; loading performs no pull, service start or current-release switch. A failed load may leave images/tags in the operator's store, but the guide:425-477 keeps upgrade traffic drained and requires provenance before preparing the target release; activation is a later explicit step. No lesser store writer or unauthorized running-image substitution is established. The helper sources its operator env at :106-111; guide:371-396 serializes operator-handoff imageRefs into that file. This is executable configuration, not a safe parser for arbitrary foreign metadata, but source does not establish an attacker-controlled handoff or env writer. Tar extraction at :344 precedes internal hash checks; no malicious archive, traversal effect or parser failure was exercised or inferred. Single-node guide:209-257 keeps support locks explicit and :569-600 uses the same installed-lock loader; its optional demo-seed import is expressly disposable and separate from production topology. Cleanup selection maps only the retained cleanup ref to its release's db-job identity; cleanup.sh:109-128 binds compatibility evidence and copies that exact lock/env into a retained generation, and transient-state-cleanup.md:273-280 preserves it across application rollback. The sibling OCI verifier compares expected IDs in a separate store and cleans up in finally (export-oci-archives.mjs:280-330). Source tests:268-552 document topology, digest-mismatch, cleanup and retagging behavior with fake Podman; none ran. Real transfer authentication, filesystem ownership, tool behavior and deployed versions remain operational assumptions, not demonstrated vulnerabilities.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [],
+  "hardening": [
+    "kravhantering-images.sh:106-111 executes the selected env file, while the disconnected guides generate it from offline-manifest imageRefs. A strict allowlisted assignment parser and image-reference validation would reduce reliance on executable operator configuration. No source-established lesser writer of the authenticated handoff or operator file was found; this is not a command-execution finding.",
+    "kravhantering-images.sh:344 extracts the transport archive before checking its internal hashes and :355 loads OCI data before final image verification. Explicit archive entry/type/path and size checks would strengthen handling of malformed transport inputs. The current contract relies on approved transport and trusted operator artifacts; no archive escape, resource impact or bypass of the independent installed image lock was established."
+  ],
+  "uncovered": []
+}

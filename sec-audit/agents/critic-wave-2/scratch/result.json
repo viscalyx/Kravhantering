@@ -1,0 +1,45 @@
+{
+  "missing_units": [
+    {
+      "surface": "app/api/admin/ai-settings and app/api/admin/ai-safety-rules#policy mutations",
+      "boundary": "lib/dal/ai-settings.ts and lib/dal/ai-safety-rules.ts#persisted policy to authoring runtime",
+      "subsystem": "lib/ai/policy-settings",
+      "attack_class": "ATTACK-CLASSES.md#Business logic",
+      "starting_paths": [
+        "app/api/admin/ai-settings/route.ts",
+        "app/api/admin/ai-safety-rules/route.ts",
+        "app/api/admin/ai-safety-rules/terms/[id]/route.ts",
+        "app/api/admin/ai-safety-rules/terms/remove/route.ts",
+        "app/api/admin/ai-safety-rules/[ruleId]/restore-defaults/route.ts",
+        "lib/dal/ai-settings.ts",
+        "lib/dal/ai-safety-rules.ts",
+        "lib/ai/safety.ts",
+        "app/api/ai/generate-requirement-import/route.ts",
+        "app/api/ai/repair-requirement-import-json/route.ts"
+      ],
+      "selected_companion_blocks": [],
+      "excluded_blocks": [],
+      "reason": "Current AI business-logic evidence addresses connection suspension, secret activation and forensic purge; the follow-up approval unit addresses model/profile evidence. Neither owns the separate settings and safety-rule DALs. ai-settings.ts:703-794 persists complete settings and implements PATCH by reading then merging, while :603-684 has legacy/missing-row read modes. ai-safety-rules.ts:363-393 caches the effective rules and :396-644 implements create/update/remove/restore transitions consumed by safety.ts:549-577. Trace permitted policy changes, concurrent partial updates, default-term lifecycle, bounded cache propagation and read-failure behavior through both authoring routes. Admin-only routes are a visible preventing control; intentional TTLs, administrator policy choices and deployment guard configuration must not be presumed vulnerabilities."
+    },
+    {
+      "surface": "app/api/requirement-selection-questions/[id]/visibility/route.ts#question visibility changes",
+      "boundary": "lib/dal/requirement-selection-questions.ts#visibility graph to persisted specification answer history",
+      "subsystem": "lib/requirements/selection-visibility",
+      "attack_class": "ATTACK-CLASSES.md#Business logic",
+      "starting_paths": [
+        "app/api/requirement-selection-questions/[id]/visibility/route.ts",
+        "app/api/requirement-selection-questions/_authorization.ts",
+        "lib/dal/requirement-selection-questions.ts",
+        "lib/requirement-selection-question-hierarchy.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "app/api/requirements-specifications/[id]/requirement-selection-answers/[questionId]/route.ts"
+      ],
+      "selected_companion_blocks": [],
+      "excluded_blocks": [],
+      "reason": "Existing selection evidence covers ownership resolution, bound SQL, published matching, ordinary per-specification answer writes at DAL:2139-2205, and retention deletion. It does not cover the separate visibility-edit lifecycle at DAL:2013-2083. This route accepts caller-selected parent-question/answer graph edges; :1819-1918 validates parent binding and cycles, :1921 computes descendants, and :1963-2008 changes current answers to historical across affected specifications. Review graph consistency and concurrent graph/answer changes through this bulk history mutation, including the intended stewardship authority over dependent specifications. Ordinary specification assignment checks alone do not settle this deliberately broader propagation, and its breadth alone is not a finding."
+    }
+  ],
+  "reassign_ids": [],
+  "resolved_prior_leads": [],
+  "stop": false
+}

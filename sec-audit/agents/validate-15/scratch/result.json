@@ -1,0 +1,135 @@
+{
+  "decision": "needs_validation",
+  "record": {
+    "verdict": "needs_validation",
+    "fingerprint": "suggestion-original-version-description-nonpublic-projection",
+    "title": "Suggestion detail can expose a nonpublic requirement-version description",
+    "description": "Source review supports a disclosure path for an authenticated ordinary reader who lacks area authorship and the Admin and Reviewer roles. If a requirement has a published version and an existing suggestion linked to a nonpublic sibling version, the direct suggestion-detail REST route authorizes the parent requirement and returns the linked version's description. An authorized author can create that link; the reader needs only the suggestion ID. The claim concerns the joined requirementDescription, not intentionally readable suggestion content. No runtime disclosure or deployed affected data state has been demonstrated.",
+    "claimed_root_cause": "The get_improvement_suggestion action resolves the parent requirement and tests whether any sibling version is currently published. It does not resolve or authorize the suggestion's original requirementVersionId. getSuggestion independently joins that original version and preserves requirementDescription in its row mapper; the REST route spreads it into JSON. Its separate implementing-version authorization masks implementation metadata only. Source-visible session validation, positive numeric parameter validation, parameterized SQL, same-parent creation validation, and no-store responses do not enforce the missing original-version visibility check.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/improvement-suggestions/[id]/route.ts",
+        "line": 31,
+        "scope": "GET getHandler",
+        "description": "An authenticated caller selects a positive numeric suggestion ID through the REST path. After route-param parsing and production runtime creation, lines 41-45 authorize get_improvement_suggestion and line 46 reads the suggestion."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 511,
+        "scope": "SqlAssignmentLookup.resolveSuggestionRequirementTarget",
+        "description": "The parameterized lookup binds the suggestion to its actual parent requirement and computes hasPublishedVersion using any published sibling. It does not select the original requirementVersionId or its current status."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 684,
+        "scope": "AssignmentBasedAuthorizationService.assertAuthorized",
+        "description": "After requireAuthenticated at line 676, the suggestion-read action passes its resolved parent to assertCanReadRequirementTarget with the default detail view. Admin has an explicit bypass."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 872,
+        "scope": "assertCanReadRequirementTarget",
+        "description": "Line 877 allows a detail read when the parent has a published version; otherwise Reviewer or an area author is required. This allows an ordinary reader of the published parent regardless of the linked original version's status."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/dal/improvement-suggestions.ts",
+        "line": 322,
+        "scope": "getSuggestion SQL projection",
+        "description": "Selects requirement_version.description AS requirementDescription. Lines 326-327 join by suggestion.requirement_version_id without a published-status filter, and line 342 returns the mapped row."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/dal/improvement-suggestions.ts",
+        "line": 169,
+        "scope": "mapSqlServerSuggestionRow",
+        "description": "Preserves a non-null requirementDescription as a string without a visibility or lifecycle check."
+      },
+      {
+        "kind": "sink",
+        "file": "app/api/improvement-suggestions/[id]/route.ts",
+        "line": 56,
+        "scope": "GET JSON response projection",
+        "description": "Spreads suggestion into NextResponse.json, including requirementDescription. Lines 47-54 remove implementation-related fields only, and lines 58-62 separately authorize implementation metadata."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "lib/http/route-security-policy.ts",
+        "line": 628,
+        "description": "The direct suggestion-detail GET declares session authentication, sensitive data and no-store caching; it does not require area authorship at the transport boundary."
+      },
+      {
+        "file": "lib/requirements/auth.ts",
+        "line": 306,
+        "description": "Production runtime uses AssignmentBasedAuthorizationService. Session context at lines 318-346 checks configured authentication, same-origin request handling and signed-in session state before projecting identity and roles. The candidate assumes a legitimate reader session."
+      },
+      {
+        "file": "app/api/requirement-suggestions/[id]/route.ts",
+        "line": 24,
+        "description": "Creation accepts an optional positive requirementVersionId, and the secure mutation policy at lines 58-68 requires manage_suggestion/create for the parent requirement before calling the shared service."
+      },
+      {
+        "file": "lib/requirements/service-suggestions.ts",
+        "line": 127,
+        "description": "The shared mutation workflow authorizes manage_suggestion and, for creation at lines 149-164, requires a human actor snapshot, uses that actor's identity, and passes the requested original version ID to createSuggestion."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 951,
+        "description": "Suggestion management requires authorship of the resolved requirement area, subject to the earlier Admin bypass. No ordinary-reader mutation bypass is claimed."
+      },
+      {
+        "file": "lib/dal/improvement-suggestions.ts",
+        "line": 372,
+        "description": "Creation validates that the original version exists and belongs to the supplied requirement; the query has no status condition. Lines 393-407 persist the supplied version ID. This permits a legitimate same-parent nonpublic link."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 860,
+        "description": "A direct version read with a nonpublished status uses history authorization at lines 865-867, requiring Reviewer, Admin or applicable area authorship rather than published-parent detail permission."
+      },
+      {
+        "file": "lib/requirements/service-requirements.ts",
+        "line": 705,
+        "description": "The direct-version workflow authorizes the requested version using its actual loaded status. The version REST route passes view=version and the requested version number, so a client does not choose the status supplied to this check."
+      },
+      {
+        "file": "lib/requirements/suggestion-implementation.ts",
+        "line": 43,
+        "description": "readSuggestionImplementation authorizes the implementing version and replaces its metadata with null on a 403. Without implementing evidence it returns immediately. This control does not inspect the original version or requirementDescription."
+      },
+      {
+        "file": "docs/governance/behörigheter.md",
+        "line": 224,
+        "description": "The documented version-read policy depends on current version status; draft, review and archived versions require privileged roles or applicable authorship, including previously published versions now archived."
+      },
+      {
+        "file": "docs/governance/behörigheter.md",
+        "line": 246,
+        "description": "Suggestion reads intentionally follow parent requirement read permission. This supports readable suggestion content but does not override the separately stated version-content restriction."
+      },
+      {
+        "file": "lib/requirements/service-suggestions.ts",
+        "line": 102,
+        "description": "The shared list response explicitly maps suggestion fields and omits requirementDescription, although it returns suggestion IDs. The reviewed disclosure sink is direct REST detail."
+      },
+      {
+        "file": "lib/http/response-policy.ts",
+        "line": 84,
+        "description": "The response wrapper receives the completed handler response and applies registry cache policy; it does not filter successful suggestion JSON fields."
+      }
+    ],
+    "blockers": [
+      "Required OS-enforced execution isolation is unavailable: the trusted bubblewrap capability probe reported No permissions to create new namespace. Target execution, SQL-backed fixtures and HTTP requests are prohibited in this audit environment. The source path survives refutation, but no independent runtime observation establishes the paired direct-version denial and suggestion-description disclosure."
+    ],
+    "validation_plan": {
+      "local": "In a future approved sandbox with no external network, a read-only target/tools mount, an empty allowlisted environment, scratch-only writes and explicit low resource/time limits, use a disposable local application and SQL fixture. Provision a dummy area author and an unrelated authenticated reader with no Admin or Reviewer role and no assignment in that area. Give one requirement a published version and a draft sibling whose description has a unique harmless marker absent from the published description and suggestion content. Through the normal authenticated author flow, POST /api/requirement-suggestions/{requirementId} with benign content and requirementVersionId equal to the draft row ID; retain the returned suggestion ID. As the reader, first establish a successful published-version read and a 403 from GET /api/requirements/{requirementId}/versions/{draftVersionNumber}. Then GET /api/improvement-suggestions/{suggestionId} and inspect only the status and whether requirementDescription contains the dummy marker. Check GET /api/requirement-suggestions/{requirementId} omits that description. Start with no implementation evidence, so implementation masking cannot change the result. Stop after these bounded checks; preserve only dummy status/field observations through the approved promotion procedure and discard the disposable fixture.",
+      "deployment": "An authorized owner can check the deployed revision and, using existing approved administrative access, determine whether suggestions link to currently nonpublic versions of requirements that also have a published version. Record only whether such a data state exists, without exporting real descriptions or personal information. Reproduce the paired authorization/disclosure check only with dummy records in an isolated staging fixture; no production probing or mutation is needed to establish the code behavior."
+    }
+  }
+}

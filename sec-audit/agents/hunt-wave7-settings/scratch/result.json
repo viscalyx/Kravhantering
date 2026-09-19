@@ -1,0 +1,64 @@
+{
+  "units": [
+    {
+      "coverage_id": "app%2Fapi%2Fadmin%2Fapplication-settings%2Froute.ts%23global%20capacity%20policy%20mutation::lib%2Fdal%2Fapplication-settings.ts%23persisted%20limits%20to%20export%20PDF%20and%20import%20admission::lib%2Fapplication-settings::RESOURCE-EXHAUSTION-AND-AVAILABILITY.md%23Quota-accounting%20scope%20and%20reset%20gaps",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/admin/application-settings/route.ts",
+        "docs/governance/admin-center.md",
+        "docs/operations/capacity-management.md",
+        "lib/application-settings.ts",
+        "lib/dal/ai-settings.ts",
+        "lib/dal/application-settings.ts",
+        "lib/dal/export-actor-quota.ts",
+        "lib/generated-output/csv-runner.ts",
+        "lib/generated-output/structured-runner.ts",
+        "lib/http/secure-mutation-route.ts",
+        "lib/pdf/synchronous-generation.ts",
+        "lib/requirements/import-budget.ts",
+        "lib/requirements/import-service.ts",
+        "tests/unit/admin-application-settings-route.test.ts",
+        "tests/unit/application-settings-dal.test.ts",
+        "typeorm/migrations/0048_application_settings.mjs",
+        "typeorm/migrations/0055_requirement_import_budget.mjs",
+        "typeorm/migrations/0065_export_actor_quota.mjs",
+        "typeorm/runtime-permission-manifest.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave7-settings",
+          "reviewed_paths": [
+            "app/api/admin/application-settings/route.ts",
+            "docs/governance/admin-center.md",
+            "docs/operations/capacity-management.md",
+            "lib/application-settings.ts",
+            "lib/dal/ai-settings.ts",
+            "lib/dal/application-settings.ts",
+            "lib/dal/export-actor-quota.ts",
+            "lib/generated-output/csv-runner.ts",
+            "lib/generated-output/structured-runner.ts",
+            "lib/http/secure-mutation-route.ts",
+            "lib/pdf/synchronous-generation.ts",
+            "lib/requirements/import-budget.ts",
+            "lib/requirements/import-service.ts",
+            "tests/unit/admin-application-settings-route.test.ts",
+            "tests/unit/application-settings-dal.test.ts",
+            "typeorm/migrations/0048_application_settings.mjs",
+            "typeorm/migrations/0055_requirement_import_budget.mjs",
+            "typeorm/migrations/0065_export_actor_quota.mjs",
+            "typeorm/runtime-permission-manifest.mjs"
+          ],
+          "invariant": "Only Admin changes finite global capacity policy, and new admission must honor current limits without resetting shared accounting or bypassing global import ceilings.",
+          "method": "source",
+          "artifact": null,
+          "result": "Admin application-settings GET verifies authenticated Admin (route:135-169); PATCH:176-220 uses the secure mutation wrapper, strictly accepts exactly one named field (:26-132), and bounds integer/Boolean/byte-step values. No ordinary reader, PrivacyOfficer-only user or caller-selected column reaches the mutation. application-settings.ts:3-20,73-85 supplies finite ceilings, valid zeros only for optional nested/proposed-import counts, and safe-integer/step checks. DAL:193-228 revalidates values, obtains the current singleton with UPDLOCK/HOLDLOCK (:143-161), uses a closed field-to-column map (:61-82) and parameterized value, and commits old/new privileged audit with the change. Global max-row decreases clamp the MCP override within that transaction; ai-settings.ts:88-112,721-725 obtains the same global lock before any concurrent AI override update, preventing a persisted override above the current global maximum. Read APIs reject missing/invalid singleton data and return immutable snapshots (DAL:129-181); runtime manifest:67 grants SELECT/UPDATE, not singleton deletion/insertion, and migrations0048/0055/0065 enforce singleton and numeric checks. Export actor admission:17-77 serializes by server-derived actor fingerprint, reads current policy, counts existing active/recent entries and never resets counters during a setting edit; missing settings/lock failure throws. Its scope is independent of requested report format or client correlation identifiers. CSV:77-106, structured-runner:37-128 and synchronous-generation:46-71 read validated settings for each operation and retain that snapshot, matching capacity-management.md:115-123: changes apply to subsequent operations. Limits remain positive and finite; prior admitted work is not retrospectively cancelled by settings changes. Structured output accumulates row budget and bounds output bytes; detailed worker/renderer behavior remains owned by prior output units. Import budget mapping/fingerprint includes all configured dimensions (import-budget.ts:226-250), REST write revalidation reads the locked singleton and rejects changed preview budgets (import-service.ts:577-593), and MCP admission/execution locks global settings then rereads uncached MCP settings and uses the lower row ceiling (:532-570). A stale general MCP cache therefore does not replace this admission budget. Local source tests at application-settings-dal.test.ts:79-159 document atomic audit/clamp and missing/invalid-state rejection; no tests or target processes ran. Allowed Admin tuning and differing per-operation snapshots are intentional policy, not a quota bypass. No new source-grounded failure survived these controls."
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [],
+  "hardening": [],
+  "uncovered": []
+}

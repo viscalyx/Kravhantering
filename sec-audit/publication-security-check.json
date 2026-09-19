@@ -1,0 +1,13 @@
+{
+  "scope": [
+    "sec-audit/",
+    ".github/skills/security-audit/"
+  ],
+  "method": "Read-only UTF-8 file inspection; private-key, provider-token, JWT, authorization-value, authenticated-URL, SAS, named-secret and public-fixture patterns; high-entropy token triage; no external credential validation.",
+  "result": "No credential material detected after publication redaction.",
+  "literal_public_credential_examples_removed": 28,
+  "files_redacted": 11,
+  "generated_bytecode_files_excluded": 2,
+  "skill_copy_matches_original": true,
+  "limits": "Pattern and entropy checks cannot prove absence of every possible secret. No environment dumps, credential-store reads, live authentication or application execution were used. Source paths and ordinary credential-related terminology remain as evidence."
+}

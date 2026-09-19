@@ -1,0 +1,349 @@
+{
+  "units": [
+    {
+      "coverage_id": "scripts%2Fazure-dev%2FAzureDev.Azure.psm1%23resource%20lifecycle::scripts%2Fazure-dev%2FAzureDev.Lifecycle.psm1%23cloud%20resource%20ownership::scripts%2Fazure-dev::CLOUD-AND-DEPLOYMENT.md%23Cross-account%20or%20cross-tenant%20role%20confusion",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "scripts/azure-dev.ps1",
+        "scripts/azure-dev/AzureDev.Azure.psm1",
+        "scripts/azure-dev/AzureDev.Config.psm1",
+        "scripts/azure-dev/AzureDev.Lifecycle.psm1",
+        "scripts/azure-dev/AzureDev.LifecycleLock.psm1"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave2-operations",
+          "reviewed_paths": [
+            "scripts/azure-dev.ps1",
+            "scripts/azure-dev/AzureDev.Azure.psm1",
+            "scripts/azure-dev/AzureDev.Config.psm1",
+            "scripts/azure-dev/AzureDev.Lifecycle.psm1",
+            "scripts/azure-dev/AzureDev.LifecycleLock.psm1"
+          ],
+          "invariant": "Azure lifecycle mutations must bind authenticated account identity and immutable operator configuration to the intended subscription, resource group, VM, and owned resources; stale local lifecycle records must not select a different target.",
+          "method": "source",
+          "result": "Config.psm1:373-710 rejects tracked credential/scope overrides, canonicalizes identifiers, and returns an immutable snapshot. Azure.psm1:130-393 checks subscription and user type, and binds service-principal sessions to configured tenant/client; repair rechecks identity. Lifecycle.psm1:737-798 reads the exact configured target, :1009 deallocates it, and :1561 starts it with explicit subscription/resource-group/name. Lifecycle records at :532-562 are diagnostic, not authority inputs. Azure.psm1:1540-1603 requires ownership tags or explicit adoption; :2583-2624 selects tagged resources within configured subscription/group and :2665-2672 deletes explicit returned IDs. azure-dev.ps1:825-886 previews/approves removal under a lock. LifecycleLock.psm1:5-72 keys canonical identity and :296-446 uses an OS mutex; stale diagnostic files do not acquire ownership. No lower-trust source selector reaches an unauthorized cloud mutation. Actual Azure IAM and account policy were not inferred from source.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "scripts%2Fdev-login.mjs%23developer%20authentication%20helper::scripts%2Flib%2Fdev-login-core.mjs%23cookie%20transport%20persistence%20and%20diagnostics::scripts%2Fauth-helpers::DESKTOP-MOBILE-AND-LOCAL-IPC.md%23Credential-store%20and%20local-secret%20boundary%20mismatch",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "scripts/dev-login.mjs",
+        "scripts/lib/dev-login-core.mjs",
+        "scripts/lib/keycloak-login-form.mjs",
+        "scripts/dev-curl.sh",
+        "scripts/security/get-session-cookie.mjs",
+        "scripts/security/get-mcp-token.mjs",
+        "scripts/__tests__/dev-login-core.test.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave2-operations",
+          "reviewed_paths": [
+            "scripts/dev-login.mjs",
+            "scripts/lib/dev-login-core.mjs",
+            "scripts/lib/keycloak-login-form.mjs",
+            "scripts/dev-curl.sh",
+            "scripts/security/get-session-cookie.mjs",
+            "scripts/security/get-mcp-token.mjs",
+            "scripts/__tests__/dev-login-core.test.mjs"
+          ],
+          "invariant": "Stored developer cookies must retain their destination restrictions when reused, and helper credentials must reach only their intended remote principal or intended local recipient.",
+          "method": "source",
+          "result": "dev-login-core.mjs:35-58 permits changing base while retaining a username-only cache; :147-170 serializes origin/path metadata, but :305-327 discards it and sends every saved cookie to the chosen base before checking authentication. Fresh-cookie host/path/expiry checks at :128-144 and new-file mode 0600 at :372 do not protect this reuse path. Redirects use manual handling, and the separate get-session-cookie helper uses an origin-keyed in-memory jar. get-mcp-token targets the explicitly configured issuer; stdout token output is intentional for the same operator. Login forms and credential posts depend on the explicitly selected development app/IdP; no separate lower-trust principal was established for those flows. Debug output at :202 contains cookies, but no less-privileged log reader was established. Existing tests were read only.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "dev-login/cached-jar/unscoped-cookie-header"
+      ],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "scripts%2Frelease%2Fcontainer-vulnerability-monitor.mjs%23external%20tracking%20records::scripts%2Frelease%2Fcontainer-vulnerability-monitor.mjs%23synchronizeTracking::release%20tracking%20automation::SUPPLY-CHAIN-AND-RELEASE.md%23Automation%20identity%20overreach",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "scripts/release/container-vulnerability-monitor.mjs",
+        "scripts/release/container-vulnerability-release-issues.mjs",
+        ".github/workflows/container-vulnerability-monitor.yml",
+        ".github/workflows/dependency-drift.mjs",
+        ".github/workflows/dependency-drift.yml",
+        "scripts/__tests__/container-vulnerability-release-issues.test.mjs",
+        "scripts/__tests__/container-vulnerability-monitor.test.mjs",
+        "docs/operations/release-artifact-and-image-verification.md"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave2-operations",
+          "reviewed_paths": [
+            "scripts/release/container-vulnerability-monitor.mjs",
+            "scripts/release/container-vulnerability-release-issues.mjs",
+            ".github/workflows/container-vulnerability-monitor.yml",
+            ".github/workflows/dependency-drift.mjs",
+            ".github/workflows/dependency-drift.yml",
+            "scripts/__tests__/container-vulnerability-release-issues.test.mjs",
+            "scripts/__tests__/container-vulnerability-monitor.test.mjs",
+            "docs/operations/release-artifact-and-image-verification.md"
+          ],
+          "invariant": "External issue comments and advisory bodies must not grant their authors control over scan execution or select privileged confidential-advisory updates without trusted automation ownership.",
+          "method": "source",
+          "result": "The monitor workflow runs trusted main code with constrained job permissions, but :67-82 makes release selection depend on tracker preflight. monitor.mjs:849-853 loads all comments; release-issues.mjs:2489-2525 checks issue ownership labels yet sends every comment to marker parsers, where :169-175 throws for malformed reserved text and :2249-2261 never checks commenter identity. This gates off scans before synchronization recovery can run. Separately monitor.mjs:980-1058 checks private-reporting availability and uses a dedicated token but selects any advisory solely by a forgeable description marker before PATCH; author/collaborator ownership is not checked. Fingerprints at :540-546 are deterministic, not authenticators. dependency-drift.mjs:1018-1075 scopes mutation targets to labelled issues and reads comments as snapshots; :1183 onward still derives findings/deferrals from configured detection inputs. No separate lower-trust ability to label those issues or change configured deferrals was established. Source tests and operator documentation were read, not executed.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "container-monitor/untrusted-comment-markers/scan-preflight-block",
+        "container-monitor/private-advisory/description-marker-ownership"
+      ],
+      "unresolved": []
+    }
+  ],
+  "candidates": [
+    {
+      "proposed_verdict": "needs_validation",
+      "fingerprint": "dev-login/cached-jar/unscoped-cookie-header",
+      "title": "Cached developer sessions send cookies outside their recorded origin scope",
+      "description": "A developer who previously authenticated to app A can select a different development base B while reusing the default username cache. Before attempting a new login, the helper sends B all cached cookie values, including app-A or separate-IdP cookies whose recorded host/path would exclude B. The lower-trust recipient is B, which has no authority over those source sessions. This is a cookie-disclosure candidate, not a claim of production account takeover; non-public, usable cookies must exist for sensitive impact.",
+      "claimed_root_cause": "Cache validation reconstructs Cookie from only Netscape name/value columns and ignores recorded domain, host-only, path, secure, and expiry constraints. The default cache identity includes username but no destination. Fresh CookieJar filtering and local mode 0600 do not constrain the manual outgoing header.",
+      "trace": [
+        {
+          "kind": "entrypoint",
+          "file": "scripts/lib/dev-login-core.mjs",
+          "line": 35,
+          "scope": "parseArgs",
+          "description": "Operator selects another supported base through --base or DEV_LOGIN_BASE_URL; line 58 preserves the same username cache."
+        },
+        {
+          "kind": "propagation",
+          "file": "scripts/lib/dev-login-core.mjs",
+          "line": 356,
+          "scope": "main",
+          "description": "An existing cache is tested against the newly selected base before login unless --force is supplied."
+        },
+        {
+          "kind": "propagation",
+          "file": "scripts/lib/dev-login-core.mjs",
+          "line": 313,
+          "scope": "isJarStillValid",
+          "description": "All non-comment records with seven columns are accepted and line 318 discards destination metadata."
+        },
+        {
+          "kind": "sink",
+          "file": "scripts/lib/dev-login-core.mjs",
+          "line": 321,
+          "scope": "isJarStillValid",
+          "description": "fetch sends the aggregate cookie header to the selected base /api/auth/me before examining the response."
+        }
+      ],
+      "evidence": [
+        {
+          "file": "scripts/lib/dev-login-core.mjs",
+          "line": 58,
+          "description": "Default jar .auth/<user>.cookies is shared across base URLs."
+        },
+        {
+          "file": "scripts/lib/dev-login-core.mjs",
+          "line": 137,
+          "description": "Fresh requests check host and path, showing the intended destination boundary absent from cache validation."
+        },
+        {
+          "file": "scripts/lib/dev-login-core.mjs",
+          "line": 158,
+          "description": "Serialized cookie records include domain, subdomain policy, path, secure, and expiry fields."
+        },
+        {
+          "file": "scripts/lib/dev-login-core.mjs",
+          "line": 318,
+          "description": "Cache validation retains only cookie names and values."
+        },
+        {
+          "file": "scripts/lib/dev-login-core.mjs",
+          "line": 372,
+          "description": "File mode 0600 protects new local files but cannot prevent remote disclosure by the helper."
+        }
+      ],
+      "blockers": [
+        "Required target-execution sandbox is unavailable: bubblewrap namespace creation failed with No permissions to create new namespace. No target code, tests, network, or provider calls were executed.",
+        "No real cached credential or deployment was inspected. Sensitive impact requires a usable cookie belonging to a different host/path principal than the selected destination; public fixture passwords alone do not establish it."
+      ],
+      "validation_plan": {
+        "local": "In the required isolated sandbox, create a dummy Netscape jar containing host-only app-a.test and idp.test cookies. Invoke isJarStillValid with an injected recording fetch and base https://app-b.test. Record only dummy markers; compare the emitted header against CookieJar.header for the same destination. Confirm disclosure occurs even when the mocked response is unauthenticated, then stop.",
+        "deployment": "The owner can inspect helper configuration and cookie metadata, without exposing values, to establish whether non-public app/IdP sessions are cached and whether developers reuse a username cache across separately administered base URLs."
+      }
+    },
+    {
+      "proposed_verdict": "needs_validation",
+      "fingerprint": "container-monitor/untrusted-comment-markers/scan-preflight-block",
+      "title": "Untrusted tracker comments can block scheduled container vulnerability scans",
+      "description": "A user allowed to comment on an existing automation-owned release tracker issue can place reserved marker text in an ordinary comment. The next scheduled preflight parses that text as automation state and fails; release selection and downstream scans are gated on preflight success. The user need not modify the issue body, labels, repository code, or workflow. Impact is fail-stop monitoring until the comment is removed, not a successful clean scan or release-code compromise.",
+      "claimed_root_cause": "Issue ownership labels authenticate the issue but not its commenters. Every comment body enters strict automation/continuation marker parsers without checking the producer. A malformed reserved namespace aborts the global terminal-identity preflight, which is required before any release scan.",
+      "trace": [
+        {
+          "kind": "entrypoint",
+          "file": "scripts/release/container-vulnerability-monitor.mjs",
+          "line": 849,
+          "scope": "createGitHubTrackerAdapter.listComments",
+          "description": "The adapter returns every comment on a tracker issue, including ordinary user comments."
+        },
+        {
+          "kind": "propagation",
+          "file": "scripts/release/container-vulnerability-release-issues.mjs",
+          "line": 2502,
+          "scope": "preflightReleaseIssues",
+          "description": "For each labelled owned issue, comments are fetched and passed into state and automation parsers."
+        },
+        {
+          "kind": "propagation",
+          "file": "scripts/release/container-vulnerability-release-issues.mjs",
+          "line": 2249,
+          "scope": "parseAutomationComments",
+          "description": "Comment bodies are parsed without checking author identity; reserved namespace text is treated as automation metadata."
+        },
+        {
+          "kind": "propagation",
+          "file": "scripts/release/container-vulnerability-release-issues.mjs",
+          "line": 174,
+          "scope": "parseExactMarker",
+          "description": "One namespace with no valid candidate, such as container-vulnerability-reconciliation:, throws."
+        },
+        {
+          "kind": "propagation",
+          "file": "scripts/release/container-vulnerability-monitor.mjs",
+          "line": 1294,
+          "scope": "main",
+          "description": "A terminal-boundary exception produces CLI exit status 1."
+        },
+        {
+          "kind": "sink",
+          "file": ".github/workflows/container-vulnerability-monitor.yml",
+          "line": 82,
+          "scope": "Select supported published releases",
+          "description": "Workflow release selection requires tracker-preflight.outcome success, so the failure prevents downstream scan selection."
+        }
+      ],
+      "evidence": [
+        {
+          "file": "scripts/release/container-vulnerability-release-issues.mjs",
+          "line": 2496,
+          "description": "Ownership-label gating applies to the issue, not the comment producer."
+        },
+        {
+          "file": "scripts/release/container-vulnerability-release-issues.mjs",
+          "line": 2251,
+          "description": "All comments enter the exact marker parser with optional matching; malformed reserved text still throws."
+        },
+        {
+          "file": "scripts/release/container-vulnerability-release-issues.mjs",
+          "line": 2525,
+          "description": "Terminal-identity boundary preflights all owned issues before constructing any boundary."
+        },
+        {
+          "file": ".github/workflows/container-vulnerability-monitor.yml",
+          "line": 75,
+          "description": "Scheduled monitor runs the terminal-boundary command before selecting releases."
+        },
+        {
+          "file": "scripts/__tests__/container-vulnerability-release-issues.test.mjs",
+          "line": 4818,
+          "description": "Source tests explicitly expect malformed automation-marker comments to throw before mutations; these tests were not run."
+        },
+        {
+          "file": "scripts/release/container-vulnerability-release-issues.mjs",
+          "line": 1076,
+          "description": "Generated issue instructions direct human discussion to comments, establishing a mixed-producer surface."
+        }
+      ],
+      "blockers": [
+        "Required target-execution sandbox is unavailable: bubblewrap namespace creation failed with No permissions to create new namespace. No target code, tests, network, or provider calls were executed.",
+        "Repository deployment facts are unavailable: an owned tracker issue must exist, a lower-trust account must be permitted to comment on it, and the scheduled workflow must be enabled. No GitHub API or live repository state was accessed."
+      ],
+      "validation_plan": {
+        "local": "In the required isolated sandbox, use one valid dummy owned issue and injected tracker adapter. Compare terminal-boundary with an ordinary human comment versus the same fixture plus a non-bot comment containing container-vulnerability-reconciliation:. Verify the latter returns failure without mutation and inspect the workflow gate that excludes selection. Do not contact GitHub or execute a hosted workflow.",
+        "deployment": "The owner can inspect existing tracker labels, issue lock/comment permissions, and workflow enablement to confirm whether ordinary commenters can supply this input. Do not post a test comment or trigger production monitoring."
+      }
+    },
+    {
+      "proposed_verdict": "needs_validation",
+      "fingerprint": "container-monitor/private-advisory/description-marker-ownership",
+      "title": "Private advisory updates trust a body marker instead of automation ownership",
+      "description": "The monitor selects an existing security advisory using only a predictable description marker, then updates draft/triage matches with its dedicated token and confidential scanner details. If a lower-trust private reporter can submit such an advisory, have it returned by this listing, and retain read access after the update, their report can become the recipient of automation-only scan data. The privileged update target is source-visible; hosted reporter submission, mutation permissions, and visibility remain explicit validation prerequisites.",
+      "claimed_root_cause": "syncPrivateAdvisories treats inclusion of a deterministic finding fingerprint in a writable description as sufficient authority to select the advisory resource. Neither creator identity nor trusted automation ownership is verified before the privileged PATCH. The fixed repository and draft/triage checks constrain scope but do not establish record ownership.",
+      "trace": [
+        {
+          "kind": "entrypoint",
+          "file": "scripts/release/container-vulnerability-monitor.mjs",
+          "line": 1015,
+          "scope": "syncPrivateAdvisories",
+          "description": "Existing advisory objects, including their descriptions and IDs, enter through the repository security-advisories response."
+        },
+        {
+          "kind": "propagation",
+          "file": "scripts/release/container-vulnerability-monitor.mjs",
+          "line": 1036,
+          "scope": "syncPrivateAdvisories",
+          "description": "The first description containing the computed marker is selected with no producer or collaborator check."
+        },
+        {
+          "kind": "propagation",
+          "file": "scripts/release/container-vulnerability-monitor.mjs",
+          "line": 1039,
+          "scope": "renderPrivateAdvisory",
+          "description": "The update payload contains confidential finding identifier, package, severity, exceptions, release digests, and installed/fixed versions."
+        },
+        {
+          "kind": "sink",
+          "file": "scripts/release/container-vulnerability-monitor.mjs",
+          "line": 1047,
+          "scope": "syncPrivateAdvisories",
+          "description": "The dedicated private-advisory credential PATCHes the selected draft/triage advisory ID."
+        }
+      ],
+      "evidence": [
+        {
+          "file": "scripts/release/container-vulnerability-monitor.mjs",
+          "line": 540,
+          "description": "Fingerprint is an unkeyed SHA-256 of vulnerability identifier, image, and package; knowing those inputs permits reproducing the marker."
+        },
+        {
+          "file": "scripts/release/container-vulnerability-monitor.mjs",
+          "line": 673,
+          "description": "Private advisory payload includes scanner findings and affected release details."
+        },
+        {
+          "file": "scripts/release/container-vulnerability-monitor.mjs",
+          "line": 1002,
+          "description": "Private reporting must be enabled before the path proceeds; this is checked at runtime."
+        },
+        {
+          "file": "scripts/release/container-vulnerability-monitor.mjs",
+          "line": 1036,
+          "description": "Description inclusion is the only record selector before the state check and PATCH."
+        },
+        {
+          "file": "docs/operations/release-artifact-and-image-verification.md",
+          "line": 233,
+          "description": "Operator documentation treats scanner observations lacking a public advisory as confidential."
+        }
+      ],
+      "blockers": [
+        "Required target-execution sandbox is unavailable: bubblewrap namespace creation failed with No permissions to create new namespace. No target code, tests, network, or provider calls were executed.",
+        "GitHub/provider policy was not inspected: a reporter-created triage/draft advisory must be returned by this endpoint to the bot; the bot token must be permitted to PATCH it; and the reporter must retain read access to the overwritten description. If any prerequisite is false, the claimed disclosure is refuted.",
+        "The reporter must know or predict the identifier/image/package tuple for an active confidential scan record. No active record or real finding was inspected."
+      ],
+      "validation_plan": {
+        "local": "In the required isolated sandbox, inject dummy command responses containing enabled private reporting and a reporter-authored draft or triage advisory with a marker computed from one dummy confidential record. Invoke the synchronization interface with a dummy token and recording command adapter. Verify whether a PATCH selects that reporter-owned advisory and includes the dummy scan details; compare with a nonmatching marker. Do not execute gh or access GitHub.",
+        "deployment": "The owner must inspect authoritative provider policy and existing non-sensitive metadata to determine private-reporter creation rights, listing inclusion, retained read access, and bot PATCH rights for triage/draft reports. Establish whether the marker inputs are knowable for the intended scanner data. No new report, live mutation, or exposure of confidential content is requested."
+      }
+    }
+  ],
+  "hardening": [
+    "scripts/lib/dev-login-core.mjs:202 logs complete cookie headers under explicit debug mode and :372 sets mode only when creating a file. No lower-trust log/file reader or active permissive existing-file deployment was established, so these are not additional findings.",
+    "Azure resource ownership tags are management metadata rather than independent IAM authorization. No source-backed lesser principal able to retag resources for this operator was established; no cross-account escalation is claimed."
+  ],
+  "uncovered": []
+}

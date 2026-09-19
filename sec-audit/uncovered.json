@@ -1,0 +1,108 @@
+[
+  {
+    "agent_id": "hunt-operations",
+    "surface": "scripts/azure-dev/AzureDev.Azure.psm1#resource lifecycle",
+    "boundary": "scripts/azure-dev/AzureDev.Lifecycle.psm1#cloud resource ownership",
+    "subsystem": "scripts/azure-dev",
+    "attack_class": "CLOUD-AND-DEPLOYMENT.md#Cross-account or cross-tenant role confusion",
+    "starting_paths": [
+      "scripts/azure-dev/AzureDev.Azure.psm1",
+      "scripts/azure-dev/AzureDev.Lifecycle.psm1",
+      "scripts/azure-dev/AzureDev.Config.psm1"
+    ],
+    "reason": "Cloud subscription/resource ownership, adoption and destructive lifecycle operations are distinct from reviewed bootstrap staging and NSG/SSH inputs. These large modules were enumerated but not traced end-to-end; they need a separate source unit rather than inferred coverage."
+  },
+  {
+    "agent_id": "hunt-operations",
+    "surface": "scripts/db-sqlserver-admin.mjs#runtime permission manifest",
+    "boundary": "typeorm/runtime-permission-manifest.mjs#database grants",
+    "subsystem": "typeorm",
+    "attack_class": "ATTACK-CLASSES.md#Access control",
+    "starting_paths": [
+      "scripts/db-sqlserver-admin.mjs",
+      "typeorm/runtime-permission-manifest.mjs",
+      "typeorm/migrations"
+    ],
+    "reason": "SQL construction and production/demo entrypoint segregation were traced, but effective-permission comparison and grant-repair logic at db-sqlserver-admin.mjs:1015-1406 require a separate access-control unit; migration grants were not exhaustively reviewed."
+  },
+  {
+    "agent_id": "hunt-ai",
+    "surface": "app/api/admin/ai-forensic-captures#purge",
+    "boundary": "lib/ai/forensic-capture.ts#capture closure and evidence deletion",
+    "subsystem": "lib/ai/forensic-evidence",
+    "attack_class": "Deletion and retention across derived copies",
+    "starting_paths": [
+      "lib/ai/forensic-capture.ts",
+      "lib/ai/forensic-evidence.ts",
+      "lib/transient-cleanup/ai-forensic-evidence.ts"
+    ],
+    "reason": "AI Business logic contains the purge race candidate, but derived-copy deletion and cleanup recovery merit a separate lifecycle coverage unit. Cleanup was inspected only to establish the candidate retention consequence."
+  },
+  {
+    "agent_id": "hunt-release",
+    "surface": "scripts/release/container-vulnerability-monitor.mjs#external tracking records",
+    "boundary": "scripts/release/container-vulnerability-monitor.mjs#synchronizeTracking",
+    "subsystem": "release tracking automation",
+    "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Automation identity overreach",
+    "starting_paths": [
+      "scripts/release/container-vulnerability-monitor.mjs",
+      ".github/workflows/container-vulnerability-monitor.yml",
+      ".github/workflows/dependency-drift.mjs",
+      ".github/workflows/dependency-drift.yml"
+    ],
+    "reason": "Separate automation authorities consume external issue/advisory state and can mutate public issues or private advisories. The monitor passes a dedicated advisory token at workflow line 251 and matches existing advisory descriptions before PATCH at script lines 1034-1050. This excluded class needs a distinct unit tracing record ownership, allowed mutations and token scope; publication-unit checks do not settle it."
+  },
+  {
+    "agent_id": "hunt-requirements",
+    "surface": "app/api/priority-levels/[id]#GET",
+    "boundary": "lib/requirements/assignment-authorization.ts#specification visibility",
+    "subsystem": "lib/requirements/specification-*",
+    "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Policy and query disagreement",
+    "starting_paths": [
+      "app/api/priority-levels/[id]/route.ts",
+      "lib/dal/priority-levels.ts",
+      "lib/requirements/assignment-authorization.ts"
+    ],
+    "reason": "Priority-linked query UNION also returns specification_local_requirements.description filtered only by priority id (lib/dal/priority-levels.ts:163-175). Specification visibility policy is peer-owned; require its owner to establish affected principal and source-of-truth read policy before extending the consolidated taxonomy-projection finding."
+  },
+  {
+    "agent_id": "hunt-specifications",
+    "surface": "lib/requirements/import-service.ts#executeSpecificationLocalImport",
+    "boundary": "lib/dal/requirements-specifications.ts#createSpecificationLocalRequirementsBatch",
+    "subsystem": "lib/specifications",
+    "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Stale authorization and derived copy use",
+    "starting_paths": [
+      "lib/requirements/import-service.ts",
+      "lib/dal/requirements-specifications.ts",
+      "lib/requirements/requirement-application-mutations.ts",
+      "app/api/requirements-specifications/[id]/co-authors/route.ts"
+    ],
+    "reason": "This excluded class is concretely reachable: execution authorizes before entering import capacity work, while batch writes later acquire their own transaction and specification lock without re-evaluating the assignment. Review revocation semantics and a bounded concurrent assignment-removal schedule as a distinct unit; an in-flight authorization snapshot alone does not establish a vulnerability."
+  },
+  {
+    "agent_id": "hunt-outputs",
+    "surface": "Non-specification retention policy dependency graphs",
+    "boundary": "Per-policy eligibility, legal-hold exceptions and destructive SQL against concurrent domain changes",
+    "subsystem": "outputs",
+    "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Retention and queued-work overrun",
+    "starting_paths": [
+      "lib/archiving/retention.ts",
+      "typeorm/migrations/0009_archiving_retention.mjs",
+      "typeorm/migrations/0022_requirement_selection_retention.mjs",
+      "typeorm/migrations/0036_rfi_question_retention_policy.mjs"
+    ],
+    "reason": "This review traced the common transaction/token machinery and obsolete-specification child deletion. It did not close every taxonomy, requirement-version, requirement-selection, RFI and responsibility-person dependency/cascade path; these require focused policy-specific review rather than inferred coverage."
+  },
+  {
+    "agent_id": "hunt-outputs",
+    "surface": "Export destinations, platform logs and SQL backup restoration",
+    "boundary": "Application-authorized output versus recipient storage ACLs, external retention and restoration of deleted copies",
+    "subsystem": "operations",
+    "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Export and backup scope expansion",
+    "starting_paths": [
+      "docs/security-privacy/informationsmangder-kravhantering.md",
+      "docs/operations/transient-state-cleanup.md"
+    ],
+    "reason": "The information-assets matrix explicitly assigns exported-file, platform-log and backup/restore retention to operators/recipients. Runtime export scoping does not establish those ACLs or restored-copy lifecycle controls; no external access or deployment validation was permitted."
+  }
+]

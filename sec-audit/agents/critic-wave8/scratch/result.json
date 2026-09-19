@@ -1,0 +1,44 @@
+{
+  "missing_units": [
+    {
+      "surface": "app/[locale]/specifications/[specificationId]/page.tsx#Server Component initial data",
+      "boundary": "lib/specifications/preload.ts#assignment authorization and partial-load serialization",
+      "subsystem": "lib/specifications/preload",
+      "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Policy and query disagreement",
+      "starting_paths": [
+        "app/[locale]/specifications/[specificationId]/page.tsx",
+        "app/[locale]/specifications/page.tsx",
+        "lib/specifications/preload.ts",
+        "lib/specifications/preload-types.ts",
+        "lib/requirements/server-component-context.ts",
+        "lib/requirements/service-specifications.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/requirements/specification-requirement-packages.ts",
+        "lib/dal/requirements-specifications.ts",
+        "lib/specifications/permissions.ts",
+        "proxy.ts",
+        "docs/governance/behörigheter.md"
+      ],
+      "selected_companion_blocks": [
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Policy and query disagreement",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+      ],
+      "excluded_blocks": [
+        {
+          "block": "CLIENT-SIDE.md#DOM-based XSS",
+          "reason": "Existing browser evidence owns escaping and React rendering. This unit concerns authority over the data serialized into the client component, including failed authorization dependencies."
+        },
+        {
+          "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Worker, pool, and priority starvation",
+          "reason": "Existing output and database-work units own resource-impact candidates. Dependency failures are relevant here only to disclosure decisions; no stress or availability experiment is requested."
+        }
+      ],
+      "reason": "The existing specification units trace REST/MCP reads and mutations, and the PDF unit traces report selectors; no owned evidence includes the separate preload.ts serialization path. The shared page caller resolves numeric/code identifiers, invokes the preload and passes initialData to RequirementsSpecificationDetailClient. proxy.ts:328-346 requires a signed-in session, while server-component-context.ts derives the actor from that session; neither is object-assignment authorization. preload.ts:219-226 loads the raw parent, :290-294 loads needs references directly and :352-356 queries selected packages directly. It computes permission flags at :250-256 but delegates its disclosure gate to an asynchronous available-requirements service call. That service authorizes first at service-specifications.ts:346-353, and preload.ts:374-396 correctly replaces data with a limited forbidden summary on recognized 401/403 errors. Other errors at :398-407 instead continue to the raw-data return at :410 onward. Trace whether every failure before versus after successful assignment authorization remains distinguishable before parent/needs/package data reaches the client; compare the actor-filtered sibling catalog preload and direct REST policy. Preserve the session gate, real service authorization, known-denial redaction and any caller-level preventing control. This is a distinct alternate reader and partial-load error boundary, not absence of a leaf name or a demonstrated disclosure. No runtime failure schedule or unauthorized response has been observed."
+    }
+  ],
+  "reassign_ids": [],
+  "resolved_prior_leads": [],
+  "stop": false
+}

@@ -1,0 +1,108 @@
+{
+  "manifest_files": 2522,
+  "changed": [
+    "app/[locale]/specifications/[specificationId]/requirements-specification-detail-client.tsx",
+    "app/[locale]/specifications/[specificationId]/specification-rfi-list-panel.tsx",
+    "components/Footer.tsx",
+    "components/RequirementPackagePurposeTooltip.tsx",
+    "components/RequirementsTable.tsx",
+    "components/SpecificationPanels.tsx",
+    "cspell.jsonc",
+    "docs/governance/manuella-testfall.md",
+    "tests/integration/specifications/panel-layout.spec.ts",
+    "tests/unit/reference-data-pages-and-components.test.tsx",
+    "tests/unit/requirements-specification-detail-client.suite.tsx",
+    "tests/unit/requirements-specification-detail-metadata-table.suite.tsx",
+    "tests/unit/requirements-specification-detail-needs-references.suite.tsx",
+    "tests/unit/requirements-specification-detail-panels.suite.tsx",
+    "tests/unit/requirements-table.test.tsx"
+  ],
+  "reviewed_concurrent_changes": [
+    {
+      "path": "app/[locale]/specifications/[specificationId]/requirements-specification-detail-client.tsx",
+      "reviewed_sha256": "9682f2ae790eb6882abab2982b3f2ef40bdb3bac3ba0be4ab2b28e562f2dfd1c",
+      "review": "Concurrent workspace UI layout/tooltip and test changes reviewed by parent against initial source ref; JSX text remains escaped, component slots remain source-owned, and authorization-gated actions/relative export routes are preserved. No target execution. This audit did not make these changes."
+    },
+    {
+      "path": "app/[locale]/specifications/[specificationId]/specification-rfi-list-panel.tsx",
+      "reviewed_sha256": "fb31c1784a710ade1690d598a79478e0e7fce71238ac6b6de5c66acd67d17139",
+      "review": "Concurrent workspace UI layout/tooltip and test changes reviewed by parent against initial source ref; JSX text remains escaped, component slots remain source-owned, and authorization-gated actions/relative export routes are preserved. No target execution. This audit did not make these changes. Supplemental follow-up: RFI mode label/hint remains JSX text, with matching documentation/test updates."
+    },
+    {
+      "path": "components/Footer.tsx",
+      "reviewed_sha256": "1ffc4fb0b51211661910eed8fa0babadaa7965cddd7d0085d732d1586e1fae02",
+      "review": "Concurrent workspace UI layout/tooltip and test changes reviewed by parent against initial source ref; JSX text remains escaped, component slots remain source-owned, and authorization-gated actions/relative export routes are preserved. No target execution. This audit did not make these changes."
+    },
+    {
+      "path": "components/RequirementPackagePurposeTooltip.tsx",
+      "reviewed_sha256": "7ee28e83bc5e3a80310612a77a165acd6fd18f7add752c3e2b85558b79465c96",
+      "review": "Concurrent workspace UI layout/tooltip and test changes reviewed by parent against initial source ref; JSX text remains escaped, component slots remain source-owned, and authorization-gated actions/relative export routes are preserved. No target execution. This audit did not make these changes."
+    },
+    {
+      "path": "components/RequirementsPanelHeader.tsx",
+      "reviewed_sha256": "aeb383f59c48c6549c3630340d83e7d16b031afcd7b2c697fc3f6dd8e5409def",
+      "review": "Concurrent workspace UI layout/tooltip and test changes reviewed by parent against initial source ref; JSX text remains escaped, component slots remain source-owned, and authorization-gated actions/relative export routes are preserved. No target execution. This audit did not make these changes."
+    },
+    {
+      "path": "components/RequirementsTable.tsx",
+      "reviewed_sha256": "05a236ee4540db1afe66573f7392f6a75a07c76b07d62da2ba9195010fd0901e",
+      "review": "Concurrent workspace UI layout/tooltip and test changes reviewed by parent against initial source ref; JSX text remains escaped, component slots remain source-owned, and authorization-gated actions/relative export routes are preserved. No target execution. This audit did not make these changes."
+    },
+    {
+      "path": "components/SpecificationPanels.tsx",
+      "reviewed_sha256": "3db2d34387d0c05150bfcd4768f9ce00b6b0e32f8308b598dd09d721d7fb7b64",
+      "review": "Concurrent workspace UI layout/tooltip and test changes reviewed by parent against initial source ref; JSX text remains escaped, component slots remain source-owned, and authorization-gated actions/relative export routes are preserved. No target execution. This audit did not make these changes."
+    },
+    {
+      "path": "components/requirements-panel-header.css",
+      "reviewed_sha256": "5dffc78275229bdb1a1479c02fc8b498544e6826aebde184b2f27e8011223f26",
+      "review": "Concurrent workspace UI layout/tooltip and test changes reviewed by parent against initial source ref; JSX text remains escaped, component slots remain source-owned, and authorization-gated actions/relative export routes are preserved. No target execution. This audit did not make these changes."
+    },
+    {
+      "path": "cspell.jsonc",
+      "reviewed_sha256": "cccf9a536527d3c9d174e6f98e74cf62e31482016867c06c8857b7a07ddf1fb5",
+      "review": "Concurrent workspace UI layout/tooltip and test changes reviewed by parent against initial source ref; JSX text remains escaped, component slots remain source-owned, and authorization-gated actions/relative export routes are preserved. No target execution. This audit did not make these changes."
+    },
+    {
+      "path": "docs/governance/manuella-testfall.md",
+      "reviewed_sha256": "7cd6162fd086b002fc38571410bb97b415220ebfc559a37bffb95811aa6df1bf",
+      "review": "Concurrent workspace UI layout/tooltip and test changes reviewed by parent against initial source ref; JSX text remains escaped, component slots remain source-owned, and authorization-gated actions/relative export routes are preserved. No target execution. This audit did not make these changes. Supplemental follow-up: RFI mode label/hint remains JSX text, with matching documentation/test updates."
+    },
+    {
+      "path": "tests/integration/specifications/panel-layout.spec.ts",
+      "reviewed_sha256": "0a3c6820e1dcc6f8855081d4255baeda6cc7b58ad17db3ff38e5becabaa080d8",
+      "review": "Concurrent workspace UI layout/tooltip and test changes reviewed by parent against initial source ref; JSX text remains escaped, component slots remain source-owned, and authorization-gated actions/relative export routes are preserved. No target execution. This audit did not make these changes. Supplemental follow-up: RFI mode label/hint remains JSX text, with matching documentation/test updates."
+    },
+    {
+      "path": "tests/unit/requirements-specification-detail-client.suite.tsx",
+      "reviewed_sha256": "3bd72e65ba9de99a220e7df53157ed8e08cc5638f021a2e33c5f198022e3d5b5",
+      "review": "Concurrent workspace UI layout/tooltip and test changes reviewed by parent against initial source ref; JSX text remains escaped, component slots remain source-owned, and authorization-gated actions/relative export routes are preserved. No target execution. This audit did not make these changes."
+    },
+    {
+      "path": "tests/unit/requirements-specification-detail-metadata-table.suite.tsx",
+      "reviewed_sha256": "91d85253a13af5b8745cb99df0cbf7c6c65df8d8960b7eb9226dbb095c0b71e3",
+      "review": "Concurrent workspace UI layout/tooltip and test changes reviewed by parent against initial source ref; JSX text remains escaped, component slots remain source-owned, and authorization-gated actions/relative export routes are preserved. No target execution. This audit did not make these changes."
+    },
+    {
+      "path": "tests/unit/requirements-specification-detail-needs-references.suite.tsx",
+      "reviewed_sha256": "f08655782285421c7ccc5f62f516d5609b6af26f1bb653efe46a084bbb0934d4",
+      "review": "Concurrent workspace UI layout/tooltip and test changes reviewed by parent against initial source ref; JSX text remains escaped, component slots remain source-owned, and authorization-gated actions/relative export routes are preserved. No target execution. This audit did not make these changes."
+    },
+    {
+      "path": "tests/unit/requirements-specification-detail-panels.suite.tsx",
+      "reviewed_sha256": "0c624ff8a4c3b48c931d8852e73c049aa22e7024eefa1d22da9b761192158ebe",
+      "review": "Concurrent workspace UI layout/tooltip and test changes reviewed by parent against initial source ref; JSX text remains escaped, component slots remain source-owned, and authorization-gated actions/relative export routes are preserved. No target execution. This audit did not make these changes."
+    },
+    {
+      "path": "tests/unit/reference-data-pages-and-components.test.tsx",
+      "reviewed_sha256": "7a9e4d1742e371c4faac9bd2ca916cdb27d9d4f75cd884de3d521b49b92e5a0e",
+      "review": "Reviewed concurrent test-only changes: tooltip hover retention and delayed dismissal timer assertions now match the already-reviewed UI behavior. No application authority or finding source changed."
+    },
+    {
+      "path": "tests/unit/requirements-table.test.tsx",
+      "reviewed_sha256": "850812b4f16e2c76989e08e4b8bed12d49b5fc83165b9c215435b75ab580bf1a",
+      "review": "Reviewed concurrent test-only changes: tooltip hover retention and delayed dismissal timer assertions now match the already-reviewed UI behavior. No application authority or finding source changed."
+    }
+  ],
+  "result": "All source hashes unchanged except explicitly reviewed concurrent changes."
+}

@@ -1,0 +1,136 @@
+{
+  "decision": "needs_validation",
+  "record": {
+    "verdict": "needs_validation",
+    "fingerprint": "ai-forensic-capture/purge-before-close-retained-evidence",
+    "title": "Concurrent capture may retain forensic evidence after a successful purge",
+    "description": "An authenticated author allowed to generate requirements can submit safety-blocked input during an approved capture while a PrivacyOfficer purges that capture. Source permits the candidate interleave in which one bounded, redacted evidence event is inserted after the purge DELETE and before the parent is marked purged. If SQL Server permits that interleave, the application would report successful disposal while the organization's protected forensic store still contains an excerpt of the author's submitted text, potentially including residual personal data. Scheduled evidence cleanup excludes the purged parent. This is a retention and disposal-integrity claim, not unauthorized application reading or cross-tenant disclosure. It requires enabled AI generation, scope authorization, an independently approved matching active window below its collection cap, a concurrent authorized purge, and a successful database interleave; no execution result has been observed.",
+    "claimed_root_cause": "transitionAiForensicCapture opens a transaction without an explicit stronger isolation level, deletes child evidence first, and only then updates and locks the capture to set stopped_at and purged_at. The application SQL Server configuration specifies READ COMMITTED. persistAiForensicEvidence rechecks approval, lifecycle, expiry, operation/direction and the collection cap under UPDLOCK/HOLDLOCK, but those conditions remain true until the purge updates the parent. There is no preceding parent lock in the manual-purge branch and no second deletion before commit. Whether the DELETE's actual locks allow a concurrent insertion remains decisive. The cleanup query selects only captures with purged_at IS NULL.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/ai/generate-requirement-import/route.ts",
+        "line": 175,
+        "scope": "POST",
+        "description": "A scope-authorized authenticated author supplies bounded JSON containing need text. Requirements authorization, throttling and the effective-generation availability check precede input screening; line 232 passes body.need to the safety guard."
+      },
+      {
+        "kind": "propagation",
+        "file": "app/api/ai/requirement-import-shared.ts",
+        "line": 176,
+        "scope": "guardAiInput",
+        "description": "When screening rejects the submitted input, await recordAiSafetyBlock before returning the blocked response."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/ai/safety.ts",
+        "line": 671,
+        "scope": "recordAiSafetyBlock",
+        "description": "Attempt bounded forensic persistence for the rejected input and matching operation/direction; persistence failures are contained and fall back to metadata-only recording."
+      },
+      {
+        "kind": "propagation",
+        "file": "app/api/admin/ai-forensic-captures/route.ts",
+        "line": 91,
+        "scope": "PATCH concurrent administrative operation",
+        "description": "A separately authenticated PrivacyOfficer supplies a strict action/captureWindowId body and requests purge. Role and human-identity checks apply; active captures are not excluded by the purge service."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/ai/forensic-capture.ts",
+        "line": 476,
+        "scope": "transitionAiForensicCapture manual purge",
+        "description": "Inside the purge transaction, delete matching evidence before acquiring the parent update lock or marking the capture stopped/purged. The bounded candidate uses an approved active capture with zero evidence events."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/ai/forensic-evidence.ts",
+        "line": 286,
+        "scope": "persistAiForensicEvidence concurrent insertion",
+        "description": "The INSERT SELECT rechecks the matching active parent and evidence count under UPDLOCK/HOLDLOCK. An insertion committing between the purge DELETE and parent UPDATE would still see approval, null stopped/purged timestamps, unexpired state and available collection capacity."
+      },
+      {
+        "kind": "sink",
+        "file": "lib/ai/forensic-capture.ts",
+        "line": 480,
+        "scope": "transitionAiForensicCapture purge completion",
+        "description": "Update the parent to purged/stopped with UPDLOCK/ROWLOCK and commit without another evidence deletion. A child inserted in the proposed gap would survive the successful purged result and audit event."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "docs/security-privacy/informationsmangder-kravhantering.md",
+        "line": 158,
+        "description": "Intended disposal policy: fixed evidence retention of 72 hours after stop/expiry, with immediate PrivacyOfficer purge permitted. This application retention boundary cannot be extended by legal hold."
+      },
+      {
+        "file": "docs/governance/admin-center.md",
+        "line": 346,
+        "description": "Evidence is isolated, redacted and bounded but remains sensitive after masking; it may still contain personal or secret information. The excerpt is not ordinary application/security log content."
+      },
+      {
+        "file": "lib/ai/forensic-capture.ts",
+        "line": 107,
+        "description": "Capture creation uses SERIALIZABLE, permits only one open window, and validates a SQL-time expiry 5–60 minutes ahead. The insert at line 152 sets 8192 bytes, eight items per event and 1000 events per capture."
+      },
+      {
+        "file": "lib/ai/forensic-capture.ts",
+        "line": 359,
+        "description": "Purge and approval require PrivacyOfficer; stop permits Admin or PrivacyOfficer. Both transition authorization and execution require a human actor snapshot. Approval additionally requires a different HSA-id from the requester at line 418."
+      },
+      {
+        "file": "lib/ai/forensic-capture.ts",
+        "line": 402,
+        "description": "Transition transaction has no explicit isolation argument. In its manual-purge branch the first database action is the child DELETE at line 476, followed by the parent UPDATE at line 480."
+      },
+      {
+        "file": "lib/typeorm/sqlserver-config.ts",
+        "line": 12,
+        "description": "The configured default isolation level is READ COMMITTED and is supplied as isolationLevel at line 201. lib/db.ts aliases SqlServerDatabase to the TypeORM DataSource; the application factory adds no enclosing stronger transaction."
+      },
+      {
+        "file": "lib/ai/forensic-evidence.ts",
+        "line": 304,
+        "description": "Strongest insertion control: UPDLOCK/HOLDLOCK on the parent and evidence-count query; rechecks approval, stopped/purged timestamps, expiry, operation, direction and collection capacity in the INSERT statement. These protections may serialize the proposed interleave through actual SQL locks, which has not been observed."
+      },
+      {
+        "file": "lib/ai/forensic-evidence.ts",
+        "line": 154,
+        "description": "Normalize and redact evidence before selecting trigger-centered excerpts. Per-event byte/item limits and the empty-evidence check at line 284 bound the retained copy; actor identity is a capture-specific fingerprint."
+      },
+      {
+        "file": "typeorm/migrations/0058_ai_forensic_evidence_store.mjs",
+        "line": 71,
+        "description": "The child foreign key cascades parent deletion and has ON UPDATE NO ACTION. Manual purge updates lifecycle columns rather than deleting the parent. This migration defines no lifecycle trigger; line 79 indexes the child capture ID."
+      },
+      {
+        "file": "lib/ai/forensic-capture.ts",
+        "line": 307,
+        "description": "Evidence reads require purged_at IS NULL, a stopped/expired capture, the requester/approver HSA-id, and current Admin/PrivacyOfficer role. A surviving row is therefore not exposed by this application evidence-read path."
+      },
+      {
+        "file": "lib/transient-cleanup/ai-forensic-evidence.ts",
+        "line": 136,
+        "description": "Scheduled evidence deletion requires capture.purged_at IS NULL and stop/expiry at least 72 hours ago. A survivor under a manually purged capture is excluded even after aging; backlog inspection has the same purge-state exclusion at line 84."
+      },
+      {
+        "file": "lib/privacy/erasure.ts",
+        "line": 1189,
+        "description": "Explicit privacy erasure independently deletes evidence associated with matching capture parties or exact actor fingerprints; its outer transaction at line 1386 is SERIALIZABLE. This separate user-triggered operation can remove copies but is not routine cleanup guaranteeing disposal after manual forensic purge."
+      },
+      {
+        "file": "tests/unit/ai-forensic-capture.test.ts",
+        "line": 206,
+        "description": "The test named atomic purge uses mocked query results and checks that both calls use one transaction. It does not establish SQL Server key/range locks or the concurrent producer/purge outcome."
+      }
+    ],
+    "blockers": [
+      "The required OS-enforced sandbox is unavailable: the trusted bubblewrap probe failed with 'No permissions to create new namespace'. No target code, SQL fixtures or shared services were executed during this review.",
+      "The decisive fact is whether real SQL Server locks for the empty matching-evidence DELETE and the producer's UPDLOCK/HOLDLOCK INSERT allow the producer to commit before the purge parent UPDATE. Source order and mocked tests do not establish that observed interleave; blocking or deadlock may prevent the claimed surviving row."
+    ],
+    "validation_plan": {
+      "local": "In a future approved OS-isolated fixture with external networking disabled, scratch-only writes, dummy data, bounded resources and no shared services, use the repository schema/indexes and actual DataSource configuration on a dedicated SQL Server. Create one valid matching approved active input capture through the capture services using distinct dummy Admin/PrivacyOfficer HSA-ids, with zero evidence and unused collection capacity. Use two dedicated database connections. Pause the real purge transaction immediately after its child DELETE completes and before its parent UPDATE. On the second connection call persistAiForensicEvidence once with a one-item non-sensitive screening fixture shaped like the existing SQL integration test and a unique event ID. Allow at most five seconds for its insertion to complete; capture whether it commits, blocks, deadlocks or errors. If blocked, resume purge and await both bounded operations rather than inferring survival from a timeout. Inspect only the dummy parent lifecycle fields and its child count. The proposed impact is demonstrated only if purge succeeds with purged_at/stopped_at set and one child remains. If there is a survivor, move only the dummy timestamps beyond the 72-hour threshold while preserving the 5–60-minute requested_at/expires_at constraint, run one cleanup batch with limit one, and check the same child count. Stop after this single-row result and dispose of the isolated fixture. If locks prevent survival, refute the proposed interleave; do not develop broader payloads or scan data.",
+      "deployment": "The owner can compare the deployed revision, SQL Server version, schema/indexes, transaction configuration and database isolation options against the isolated fixture using configuration or catalog metadata only. No production capture, purge, excerpt read or timing experiment is needed. A deployment-specific lock behavior differing from the isolated result must remain an explicit applicability limit."
+    }
+  }
+}

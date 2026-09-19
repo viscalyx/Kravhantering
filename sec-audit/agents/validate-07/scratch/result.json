@@ -1,0 +1,145 @@
+{
+  "decision": "needs_validation",
+  "record": {
+    "verdict": "needs_validation",
+    "fingerprint": "norm-reference-linked-requirements-nonpublic-projection",
+    "title": "Taxonomy details may disclose protected library and specification-local requirement descriptions",
+    "description": "Independent source review supports the candidate. An ordinary authenticated caller without Admin/Reviewer roles or the relevant area/specification assignments can select an existing norm-reference or priority-level ID. The norm detail response projects every linked library version, including nonpublished versions; priority detail projects the latest library version matching that priority without a publication check. Priority detail also projects local requirement descriptions across specifications and from the raw historical-binding table. These are alternate copies of descriptions protected by direct version and specification-child read authorization. The query shape includes expired bindings, but historical retention is not itself an erasure violation. No runtime disclosure was observed.",
+    "claimed_root_cause": "Both taxonomy GET handlers pass only a database connection and validated taxonomy ID to linked-requirement DAL functions, then serialize all returned rows. The norm query filters only norm_reference_id; the priority library branch filters only priority_level_id before ranking versions. The priority local branch filters only priority_level_id and reads specification_local_requirements without owning-specification authorization or current-binding predicates. Session authentication, positive-integer validation, parameterized SQL, taxonomy-existence checks, and shared connection acquisition do not enforce description visibility.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/norm-references/[id]/route.ts",
+        "line": 54,
+        "scope": "GET /api/norm-references/[id]",
+        "description": "Accepts the authenticated caller's taxonomy ID, validates it, and obtains the shared database connection."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/dal/norm-references.ts",
+        "line": 249,
+        "scope": "getLinkedRequirements",
+        "description": "Projects descriptions, version numbers and statuses for every linked requirement version with only a norm-reference-ID predicate."
+      },
+      {
+        "kind": "sink",
+        "file": "app/api/norm-references/[id]/route.ts",
+        "line": 69,
+        "scope": "GET JSON response",
+        "description": "Returns normReference and linkedRequirements without per-requirement authorization or version filtering."
+      },
+      {
+        "kind": "entrypoint",
+        "file": "app/api/priority-levels/[id]/route.ts",
+        "line": 41,
+        "scope": "GET /api/priority-levels/[id]",
+        "description": "Validates the caller's priority ID, checks that the taxonomy entry exists, and invokes getLinkedRequirements with no actor."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/dal/priority-levels.ts",
+        "line": 143,
+        "scope": "getLinkedRequirements library branch",
+        "description": "Selects descriptions and ranks versions within the matching priority; neither the inner priority predicate nor rowNumber=1 checks publication or area authority."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/dal/priority-levels.ts",
+        "line": 163,
+        "scope": "getLinkedRequirements specificationLocal branch",
+        "description": "Unions raw local-requirement descriptions using only priority_level_id, without specification assignment or current-binding filtering."
+      },
+      {
+        "kind": "sink",
+        "file": "app/api/priority-levels/[id]/route.ts",
+        "line": 54,
+        "scope": "GET JSON response",
+        "description": "Returns both linked-description branches directly to the caller."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "lib/http/route-security-policy.ts",
+        "line": 674,
+        "description": "Norm-reference detail GET declares session authentication with no role or resource authority."
+      },
+      {
+        "file": "lib/http/route-security-policy.ts",
+        "line": 719,
+        "description": "Priority-level detail GET likewise declares session authentication; the adjacent PUT's administrative mutation gate does not wrap GET."
+      },
+      {
+        "file": "proxy.ts",
+        "line": 343,
+        "description": "enforceAuth permits a signed-in session without consulting roles or object assignments; API forwarding at line 483 strips spoofable identity headers but adds no object authorization."
+      },
+      {
+        "file": "lib/db.ts",
+        "line": 87,
+        "description": "Request database acquisition returns the shared SQL Server DataSource, with no actor argument or per-request visibility wrapper."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 865,
+        "description": "An explicit Published version is readable; any other requested version requires history authority, which at lines 877-879 requires Reviewer or area authorship. Admin has the earlier general bypass at line 704."
+      },
+      {
+        "file": "lib/requirements/service-requirements.ts",
+        "line": 705,
+        "description": "Direct version reads authorize the actual requested version's status before constructing the selected-version response."
+      },
+      {
+        "file": "lib/dal/norm-references.ts",
+        "line": 258,
+        "description": "Linked norm projection includes description; its only WHERE condition at line 273 is the norm-reference ID."
+      },
+      {
+        "file": "lib/dal/priority-levels.ts",
+        "line": 158,
+        "description": "Library ranking filters only priority ID before rowNumber=1, allowing the latest matching Draft/Review or historical version."
+      },
+      {
+        "file": "lib/dal/requirement-packages.ts",
+        "line": 471,
+        "description": "Comparable package-linked descriptions explicitly require STATUS_PUBLISHED, demonstrating a source-visible visibility filter on a sibling projection."
+      },
+      {
+        "file": "lib/specifications/permissions.ts",
+        "line": 47,
+        "description": "Specification read policy allows Admin/Reviewer or the responsible/coauthor HSA assignment, rather than general session access."
+      },
+      {
+        "file": "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/route.ts",
+        "line": 78,
+        "description": "Direct local detail authorizes the actual specification child before fetching and returning its content."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 678,
+        "description": "Child-read authorization resolves the owning specification before the Admin bypass or specification-read policy; owner resolution rejects a mismatched requested parent at line 305."
+      },
+      {
+        "file": "lib/dal/priority-levels.ts",
+        "line": 172,
+        "description": "Local projection queries the raw specification_local_requirements table and only constrains priority_level_id at line 175."
+      },
+      {
+        "file": "lib/dal/requirements-specifications.ts",
+        "line": 2294,
+        "description": "Default direct detail uses the current local-requirement view and constrains both local ID and specification ID at line 2306."
+      },
+      {
+        "file": "typeorm/migrations/0069_specification_agreements.mjs",
+        "line": 22,
+        "description": "The current local-requirement view filters valid_from and valid_until; the priority projection omits that view and those predicates."
+      }
+    ],
+    "blockers": [
+      "The required OS-enforced execution sandbox is unavailable: the parent capability probe failed with 'No permissions to create new namespace'. No target code, HTTP request, database fixture, test or service was executed. Source supports the omitted visibility checks, but the decisive paired observation of direct-read denial and taxonomy-returned dummy content remains unestablished."
+    ],
+    "validation_plan": {
+      "local": "In a future approved network-isolated sandbox with read-only target/tools, an empty allowlisted environment, scratch-only writes, explicit low resource/time limits, and disposable SQL/OIDC fixtures, create dummy Alice and Bob with distinct HSA IDs. Give Alice authorship of area A; give Bob no Admin/Reviewer role or area-A assignment. Seed one area-A Draft version with marker AUDIT_TAXONOMY_LIBRARY, linked to one existing dummy norm reference and priority. As Bob, request GET /api/requirements/{requirementId}/versions/{versionNumber} and require an authorization denial; then independently request GET /api/norm-references/{normId} and GET /api/priority-levels/{priorityId}, recording only status and marker presence in linkedRequirements (source=library for priority). Verify Alice can read the fixture so an invalid fixture is not confused with authorization. For the specification branch, seed specification S assigned only to Alice and one current local requirement with marker AUDIT_TAXONOMY_LOCAL at that priority. As Bob, compare denial from GET /api/requirements-specifications/{S}/local-requirements/{localId} with marker presence in priority detail's source=specificationLocal rows. Stop each variant after its first paired unauthorized-marker observation. If historical characterization is separately needed, use a separate dummy binding with valid_until in the past and verify it is absent from the authorized current-detail read but present in the taxonomy projection; do not infer an erasure guarantee. No shared services or real records.",
+      "deployment": "The owner may review deployment revision, route exposure, and any externally configured database row-security policy from configuration records without probing production data. None is established by this source review. Run the bounded dummy-fixture comparisons only in an approved disposable environment matching those settings, and retain only status/marker results without session material."
+    }
+  }
+}

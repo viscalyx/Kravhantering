@@ -1,0 +1,79 @@
+{
+  "missing_units": [
+    {
+      "surface": "app/[locale]/requirements/reports/pdf and app/[locale]/specifications/[specificationId]/reports/pdf#report selectors",
+      "boundary": "lib/reports/data/server.ts#authorized requirement versions and specification report projections",
+      "subsystem": "lib/reports",
+      "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Policy and query disagreement",
+      "starting_paths": [
+        "app/[locale]/requirements/reports/pdf/route-helpers.ts",
+        "app/[locale]/requirements/reports/pdf/list/route.ts",
+        "app/[locale]/requirements/reports/pdf/history/[id]/route.ts",
+        "app/[locale]/requirements/reports/pdf/review/[id]/route.ts",
+        "app/[locale]/requirements/reports/pdf/review-combined/route.ts",
+        "app/[locale]/requirements/reports/pdf/suggestion-history/[id]/route.ts",
+        "app/[locale]/requirements/reports/pdf/deviation-review/[id]/route.ts",
+        "app/[locale]/specifications/[specificationId]/reports/pdf/[profile]/route.ts",
+        "app/[locale]/specifications/[specificationId]/reports/pdf/traceability/route.ts",
+        "lib/reports/data/server.ts",
+        "lib/reports/data/specification-output.ts",
+        "lib/reports/data/specification-traceability.ts",
+        "lib/requirements/assignment-authorization.ts"
+      ],
+      "selected_companion_blocks": [
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Policy and query disagreement",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+      ],
+      "excluded_blocks": [
+        {
+          "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Worker, pool, and priority starvation",
+          "reason": "The review-diff candidate and existing output-capacity evidence already own computation and rendering availability; this unit is limited to selection and disclosure authority."
+        },
+        {
+          "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Export and backup scope expansion",
+          "reason": "Reuse existing specification-output and archive/export evidence; external recipient storage and backup policy are not this source-visible report-selector boundary."
+        }
+      ],
+      "reason": "The output access-control check covers privacy, access-review, audit and specification CSV routes; the PDF evidence covers only review-diff resource work. Locale-scoped PDF selectors and lib/reports/data/server.ts have no owned selection-authority evidence. list/route.ts:284-325 has explicit-ID and filtered-list paths with different collectors; server.ts:111 returns all versions while :138-164 selects a display version. Deviation-review authorizes the item owning specification, then supplies a separately selected requirement ID to server.ts:294-336; its matching-version check is an important preventing control. History, suggestion-history and combined review use history authority, while specification profile/traceability use specification authority and optional agreement selection. Trace these distinct paths together through their final projections, retaining per-ID authorization, requirement/deviation membership and agreement-parent checks. Do not infer a leak from raw collectors alone or duplicate the existing taxonomy/suggestion-detail candidates."
+    },
+    {
+      "surface": "app/api/requirement-areas and app/api/requirement-packages#assignment creation transfer and replacement",
+      "boundary": "lib/dal/requirement-areas.ts and lib/dal/requirement-packages.ts#persisted owner lead and co-author grants",
+      "subsystem": "lib/requirements/assignment-management",
+      "attack_class": "ATTACK-CLASSES.md#Access control",
+      "starting_paths": [
+        "app/api/requirement-areas/route.ts",
+        "app/api/requirement-areas/[id]/route.ts",
+        "app/api/requirement-areas/[id]/co-authors/route.ts",
+        "app/api/requirement-packages/route.ts",
+        "app/api/requirement-packages/[id]/route.ts",
+        "app/api/requirement-packages/[id]/co-authors/route.ts",
+        "lib/dal/requirement-areas.ts",
+        "lib/dal/requirement-packages.ts",
+        "lib/dal/requirement-responsibility-people.ts",
+        "lib/requirements/requirement-package-permissions.ts",
+        "lib/requirements/responsibility-person-verification.ts",
+        "app/api/requirements-specifications/[id]/responsible/route.ts",
+        "app/api/requirements-specifications/[id]/co-authors/route.ts",
+        "docs/governance/behörigheter.md"
+      ],
+      "selected_companion_blocks": [],
+      "excluded_blocks": [
+        {
+          "block": "WEB-PROTOCOL-AND-AUTH.md#mTLS peer and application-identity confusion",
+          "reason": "Existing HSA units cover channel identity and returned-person binding. Reuse their evidence; this unit concerns consumers persisting assignment grants."
+        },
+        {
+          "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Migration default and ownership confusion",
+          "reason": "Identity migrations and backfills already have a completed unit; inspect current grant mutations without reopening unchanged migrations."
+        }
+      ],
+      "reason": "Existing requirement access evidence checks the area metadata gate and package permission helper, HSA evidence checks verification-token binding, and specification evidence checks dedicated assignment routes. None traces the separate area/package grant replacement consumers. Area co-authors PUT resolves actor/purpose/scope-bound evidence then calls replaceRequirementAreaCoAuthors; area DAL:710-768 locks current ownership, enforces owner/co-author separation, syncs grants and cleans person records. Package co-authors PUT and DAL:778-840 implement a parallel path, while owner/lead transfers use separate transactions at area DAL:530 and package DAL:603. Governance explicitly denies onward delegation by ordinary co-authors. Review creation, transfer and replacement together for manager-versus-author authority, target/evidence binding, added-versus-existing identities, normalization and concurrent transfer semantics, comparing the already-reviewed specification sibling. Preserve the visible SERIALIZABLE locks and evidence checks; an ordinary authorized in-flight operation after revocation alone is not a vulnerability without an established stronger invariant."
+    }
+  ],
+  "reassign_ids": [],
+  "resolved_prior_leads": [],
+  "stop": false
+}

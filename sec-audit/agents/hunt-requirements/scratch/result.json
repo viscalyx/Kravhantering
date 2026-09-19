@@ -1,0 +1,492 @@
+{
+  "units": [
+    {
+      "coverage_id": "app%2Fapi%2Frequirements%23REST%20workflows::lib%2Frequirements%2Fassignment-authorization.ts%23requirement%20authority::lib%2Frequirements::ATTACK-CLASSES.md%23Access%20control",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "app/api/norm-references/[id]/route.ts",
+        "lib/dal/norm-references.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/requirements/service-requirements.ts",
+        "lib/requirements/requirement-package-permissions.ts",
+        "app/api/requirement-areas/[id]/route.ts",
+        "app/api/requirement-selection-questions/_authorization.ts",
+        "app/api/priority-levels/[id]/route.ts",
+        "lib/dal/priority-levels.ts",
+        "app/api/requirement-categories/route.ts",
+        "app/api/requirement-types/route.ts",
+        "app/api/quality-characteristics/route.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-requirements",
+          "reviewed_paths": [
+            "app/api/norm-references/[id]/route.ts",
+            "lib/dal/norm-references.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "lib/requirements/service-requirements.ts",
+            "lib/requirements/requirement-package-permissions.ts",
+            "app/api/requirement-areas/[id]/route.ts",
+            "app/api/requirement-selection-questions/_authorization.ts",
+            "app/api/priority-levels/[id]/route.ts",
+            "lib/dal/priority-levels.ts",
+            "app/api/requirement-categories/route.ts",
+            "app/api/requirement-types/route.ts",
+            "app/api/quality-characteristics/route.ts"
+          ],
+          "invariant": "Nonpublic requirement content and lifecycle changes must require the current resource authority.",
+          "method": "source",
+          "result": "Direct reads require published status or Reviewer/area-author authority (assignment-authorization.ts:860-879; service-requirements.ts:705-749). Area mutation is manager-gated (requirement-areas route:113-130), package mutations resolve package-specific authority, and selection question/answer policy resolves database ownership. Norm detail bypasses content visibility (norm route:62-69; norm DAL:249-284). Transition authorization uses a pretransaction status snapshot (assignment-authorization.ts:908-924; service-requirements.ts:1264-1286). Same omission exists in priority-level detail: route:41-54 returns library descriptions from priority DAL:143-160 without status/area visibility. Category/type/quality GETs return taxonomy metadata only.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "norm-reference-linked-requirements-nonpublic-projection",
+        "requirement-transition-state-dependent-authority-race"
+      ],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Frequirements%23REST%20workflows::lib%2Frequirements%2Fassignment-authorization.ts%23requirement%20authority::lib%2Frequirements::ATTACK-CLASSES.md%23Business%20logic",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "app/api/requirements/[id]/delete-draft/route.ts",
+        "app/api/requirement-transitions/[id]/route.ts",
+        "lib/requirements/service-requirements.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/dal/requirements.ts",
+        "lib/typeorm/sqlserver-config.ts",
+        "typeorm/seed-required.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-requirements",
+          "reviewed_paths": [
+            "app/api/requirements/[id]/delete-draft/route.ts",
+            "app/api/requirement-transitions/[id]/route.ts",
+            "lib/requirements/service-requirements.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "lib/dal/requirements.ts",
+            "lib/typeorm/sqlserver-config.ts",
+            "typeorm/seed-required.mjs"
+          ],
+          "invariant": "Draft deletion and Reviewer-only transitions must remain valid at the committed write.",
+          "method": "source",
+          "result": "Edit has locked/CAS protection (requirements DAL:813 onward), but deleteDraftVersion checks an unlocked latest row then deletes by id (1140-1166); default isolation is READ COMMITTED (sqlserver-config.ts:12). Transition service authorizes before DAL rereads current status (service:1264-1286; DAL:1219-1240), allowing the distinct Draft-to-Review interleaving described in the candidate. Seed permits Review-to-Draft (seed-required.mjs:443).",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "requirement-delete-draft-status-check-write-race",
+        "requirement-transition-state-dependent-authority-race"
+      ],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Frequirements%23REST%20workflows::lib%2Frequirements%2Fassignment-authorization.ts%23requirement%20authority::lib%2Frequirements::ATTACK-CLASSES.md%23Injection",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/requirements/list-query.ts",
+        "lib/dal/requirements-list-sql.mjs",
+        "lib/dal/requirements.ts",
+        "lib/dal/norm-references.ts",
+        "lib/dal/requirement-packages.ts",
+        "lib/dal/requirement-selection-questions.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-requirements",
+          "reviewed_paths": [
+            "lib/requirements/list-query.ts",
+            "lib/dal/requirements-list-sql.mjs",
+            "lib/dal/requirements.ts",
+            "lib/dal/norm-references.ts",
+            "lib/dal/requirement-packages.ts",
+            "lib/dal/requirement-selection-questions.ts"
+          ],
+          "invariant": "Caller-controlled filters, sorts, identifiers and stored text must remain SQL data.",
+          "method": "source",
+          "result": "List SQL binds values through its builder (requirements-list-sql.mjs:8-19,93-96), selects sort expressions by switch and canonical direction (203-246), and binds cursor/limit values (278-290). Norm/package link queries bind ids (norm DAL:273-276; package DAL:470-474). Requirement lifecycle updates build columns internally and bind content/status (requirements DAL:1315-1330,1429-1457). Selection matched-requirement queries use bound values and published-only versions (selection DAL:791-874). No caller-controlled SQL fragment found on these traced paths.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Frequirements%23REST%20workflows::lib%2Frequirements%2Fassignment-authorization.ts%23requirement%20authority::lib%2Frequirements::DATA-ISOLATION-AND-LIFECYCLE.md%23Import%20and%20restore%20authority%20expansion",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/requirements/import-service.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/dal/requirements.ts",
+        "lib/requirements/service-requirements.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-requirements",
+          "reviewed_paths": [
+            "lib/requirements/import-service.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "lib/dal/requirements.ts",
+            "lib/requirements/service-requirements.ts"
+          ],
+          "invariant": "Import and restore must authorize the resulting requirement area and bind all rows to that destination.",
+          "method": "source",
+          "result": "Library import authorizes create for input.areaId before execution (import-service.ts:3439-3447), validates reference ids (1514-1580), binds each row to authorized area and current actor (1765-1786), and uses transactional draft creation (requirements DAL:572-678). Preview token includes destination/mode/current reference fingerprint (3455-3464). Restore reuses current manage authorization (service:805-815), and DAL rejects versions from another requirement (1408-1409). MCP import additionally reauthorizes its locked destination in the transaction (import-service.ts:2910-2930). No destination override or historical ACL restoration found.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Frequirements%23REST%20workflows::lib%2Frequirements%2Fassignment-authorization.ts%23requirement%20authority::lib%2Frequirements::DATA-ISOLATION-AND-LIFECYCLE.md%23Policy%20and%20query%20disagreement",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "lib/requirements/list-query.ts",
+        "lib/requirements/visibility.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/requirements/service-requirements.ts",
+        "lib/dal/requirements-list-sql.mjs",
+        "app/api/norm-references/[id]/route.ts",
+        "lib/dal/norm-references.ts",
+        "lib/dal/requirement-packages.ts",
+        "app/api/priority-levels/[id]/route.ts",
+        "lib/dal/priority-levels.ts",
+        "app/api/requirement-categories/route.ts",
+        "app/api/requirement-types/route.ts",
+        "app/api/quality-characteristics/route.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-requirements",
+          "reviewed_paths": [
+            "lib/requirements/list-query.ts",
+            "lib/requirements/visibility.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "lib/requirements/service-requirements.ts",
+            "lib/dal/requirements-list-sql.mjs",
+            "app/api/norm-references/[id]/route.ts",
+            "lib/dal/norm-references.ts",
+            "lib/dal/requirement-packages.ts",
+            "app/api/priority-levels/[id]/route.ts",
+            "lib/dal/priority-levels.ts",
+            "app/api/requirement-categories/route.ts",
+            "app/api/requirement-types/route.ts",
+            "app/api/quality-characteristics/route.ts"
+          ],
+          "invariant": "All requirement-description projections must apply equivalent published-or-author visibility.",
+          "method": "source",
+          "result": "List service computes current actor visibility and cursor fingerprint server-side (list-query.ts:238-290); SQL enforces published/authorized area visibility (requirements-list-sql.mjs:62-70). Direct versions enforce actual status (service-requirements.ts:705-717), and package-linked descriptions filter Published (package DAL:471). Norm-linked descriptions omit both status and area predicates (norm DAL:255-274) and return directly (norm route:69). Same omission exists in priority-level detail: route:41-54 returns library descriptions from priority DAL:143-160 without status/area visibility. Category/type/quality GETs return taxonomy metadata only.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "norm-reference-linked-requirements-nonpublic-projection"
+      ],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Frequirements%23REST%20workflows::lib%2Frequirements%2Fassignment-authorization.ts%23requirement%20authority::lib%2Frequirements::DATA-ISOLATION-AND-LIFECYCLE.md%23Restore%20reintroduces%20invalid%20state",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/requirements/service-requirements.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/dal/requirements.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-requirements",
+          "reviewed_paths": [
+            "lib/requirements/service-requirements.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "lib/dal/requirements.ts"
+          ],
+          "invariant": "Restore/reactivation must not restore publication authority or a foreign requirement version.",
+          "method": "source",
+          "result": "Current manage authorization resolves requirement area (service-requirements.ts:805-815; assignment-authorization.ts:901-905). Restore resolves version within requirement history and current actor (service:1202-1220); DAL independently binds source requirement id (1408-1409), creates STATUS_DRAFT with publication/archive timestamps cleared (1439-1449), and copies content associations rather than user grants. Reactivation locks latest state before checking archived and restoring draft (DAL:1480-1508). No obsolete credential or published-state resurrection found in these paths.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Frequirements%23REST%20workflows::lib%2Frequirements%2Fassignment-authorization.ts%23requirement%20authority::lib%2Frequirements::DATA-ISOLATION-AND-LIFECYCLE.md%23Stale%20authorization%20and%20derived%20copy%20use",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "lib/requirements/assignment-authorization.ts",
+        "lib/requirements/service-requirements.ts",
+        "lib/requirements/list-query.ts",
+        "lib/requirements/import-service.ts",
+        "lib/dal/requirements.ts",
+        "app/api/requirement-transitions/[id]/route.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-requirements",
+          "reviewed_paths": [
+            "lib/requirements/assignment-authorization.ts",
+            "lib/requirements/service-requirements.ts",
+            "lib/requirements/list-query.ts",
+            "lib/requirements/import-service.ts",
+            "lib/dal/requirements.ts",
+            "app/api/requirement-transitions/[id]/route.ts"
+          ],
+          "invariant": "Authority derived from mutable state must still match the state mutated; reusable cursors/import sessions must retain current actor scope.",
+          "method": "source",
+          "result": "List requests resolve visibility anew and bind cursors to it (list-query.ts:249-290); MCP import reauthorizes locked destination (import-service.ts:2918-2930). Requirement transition authority depends on latest status (assignment-authorization.ts:912-919) but service does not pass the authorized state or actor to DAL (service-requirements.ts:1264-1286); DAL rereads state and commits by version id (requirements.ts:1219-1240,1328-1330). This permits the proposed author-only Review-to-Draft interleaving.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "requirement-transition-state-dependent-authority-race"
+      ],
+      "unresolved": []
+    }
+  ],
+  "candidates": [
+    {
+      "proposed_verdict": "needs_validation",
+      "fingerprint": "norm-reference-linked-requirements-nonpublic-projection",
+      "title": "Norm-reference and priority-level details expose nonpublic requirement descriptions",
+      "description": "An authenticated user without Reviewer/Admin role or authorship in a requirement area can request a linked norm reference or priority level and receive nonpublic library requirement descriptions. Norm reference detail returns all linked versions; priority detail returns the latest version matching that priority, even if it is Draft or Review. Normal requirement reads restrict these versions. Both taxonomy projections appear to cross the same content boundary.",
+      "claimed_root_cause": "Taxonomy-detail GET handlers call linked-requirement queries without actor context. Norm-reference SQL filters only norm_reference_id; priority SQL selects the latest matching library version using only priority_level_id. Both project descriptions and return them without published-or-area-author filtering.",
+      "trace": [
+        {
+          "kind": "entrypoint",
+          "file": "app/api/norm-references/[id]/route.ts",
+          "line": 58,
+          "scope": "GET",
+          "description": "Parses caller-selected norm-reference id; transport policy requires only a session."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/dal/norm-references.ts",
+          "line": 249,
+          "scope": "getLinkedRequirements",
+          "description": "Joins links to all requirement_versions and returns description, version and status; sole predicate is norm-reference id."
+        },
+        {
+          "kind": "sink",
+          "file": "app/api/norm-references/[id]/route.ts",
+          "line": 69,
+          "scope": "GET response",
+          "description": "Serializes linkedRequirements without per-requirement or version authorization."
+        }
+      ],
+      "evidence": [
+        {
+          "file": "lib/http/route-security-policy.ts",
+          "line": 674,
+          "description": "Norm-reference detail GET has session/authenticated policy, not Reviewer or area-author policy."
+        },
+        {
+          "file": "lib/requirements/assignment-authorization.ts",
+          "line": 865,
+          "description": "Explicit nonpublished version access requires history authority, which requires Reviewer or area authorship."
+        },
+        {
+          "file": "lib/requirements/service-requirements.ts",
+          "line": 705,
+          "description": "Direct requirement reads authorize the actual requested version status."
+        },
+        {
+          "file": "lib/dal/norm-references.ts",
+          "line": 258,
+          "description": "Description is projected for every linked version; WHERE at 273 lacks visibility predicates."
+        },
+        {
+          "file": "lib/dal/requirement-packages.ts",
+          "line": 471,
+          "description": "Sibling package-linked descriptions explicitly require published status."
+        },
+        {
+          "file": "app/api/priority-levels/[id]/route.ts",
+          "line": 53,
+          "description": "GET passes caller-selected priority id to getLinkedRequirements and directly serializes the result at line 54."
+        },
+        {
+          "file": "lib/dal/priority-levels.ts",
+          "line": 143,
+          "description": "Library subquery projects description; its WHERE at 158 filters only priority id, and rowNumber=1 at 160 does not enforce publication/area authority."
+        },
+        {
+          "file": "lib/http/route-security-policy.ts",
+          "line": 719,
+          "description": "Priority-level detail GET is session/authenticated only."
+        }
+      ],
+      "blockers": [
+        "Required OS-enforced execution sandbox is unavailable: parent bwrap --unshare-all probe failed with No permissions to create new namespace. No target code, HTTP route or SQL concurrency fixture was executed; the source-derived boundary result remains unobserved."
+      ],
+      "validation_plan": {
+        "local": "In the required offline sandbox with disposable SQL fixtures, create area A with author Alice and unassigned authenticated Bob. Link one draft with unique dummy description to a norm reference. Establish Bob is denied that version by the direct requirement endpoint, then request GET /api/norm-references/{normId} as Bob and inspect only whether the dummy description is present. Repeat with one historical version if needed; stop on the first unauthorized dummy description. Assign the same dummy draft a priority level, call GET /api/priority-levels/{id} as Bob, and check its library-source linked entry against the direct-read denial. Validate the two projection variants independently."
+      }
+    },
+    {
+      "proposed_verdict": "needs_validation",
+      "fingerprint": "requirement-delete-draft-status-check-write-race",
+      "title": "Draft deletion can act on a version that left Draft after its check",
+      "description": "An area author may start draft deletion while a version is Draft, then have deletion commit after another authorized request moves that same version into Review or Published. The delete path checks the lifecycle state before an unconditional id-based DELETE, potentially removing content now protected by a non-draft lifecycle state.",
+      "claimed_root_cause": "deleteDraftVersion uses a default-isolation transaction and getLatestVersionLite without its lockForUpdate option. After checking status it deletes associations and the version by id, without a status/revision predicate or repeated check.",
+      "trace": [
+        {
+          "kind": "entrypoint",
+          "file": "app/api/requirements/[id]/delete-draft/route.ts",
+          "line": 50,
+          "scope": "POST",
+          "description": "Accepts an area-author-authorized delete_draft operation for the selected requirement."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/requirements/service-requirements.ts",
+          "line": 805,
+          "scope": "manageRequirement",
+          "description": "Authorizes resource/operation, then later invokes draft deletion."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/dal/requirements.ts",
+          "line": 1140,
+          "scope": "deleteDraftVersion",
+          "description": "Reads latest version without update/hold lock and checks Draft."
+        },
+        {
+          "kind": "sink",
+          "file": "lib/dal/requirements.ts",
+          "line": 1164,
+          "scope": "deleteDraftVersion",
+          "description": "Deletes requirement_versions by the previously read id without status or revision matching."
+        }
+      ],
+      "evidence": [
+        {
+          "file": "lib/requirements/assignment-authorization.ts",
+          "line": 901,
+          "description": "Non-Reviewer-only manage operations use area-author authority."
+        },
+        {
+          "file": "lib/dal/requirements.ts",
+          "line": 704,
+          "description": "getLatestVersionLite adds UPDLOCK/HOLDLOCK only when explicitly requested; deletion does not request it."
+        },
+        {
+          "file": "lib/dal/requirements.ts",
+          "line": 1141,
+          "description": "Intended lifecycle invariant is explicit: Only draft versions can be deleted."
+        },
+        {
+          "file": "lib/typeorm/sqlserver-config.ts",
+          "line": 12,
+          "description": "Configured default transaction isolation is READ COMMITTED."
+        },
+        {
+          "file": "lib/dal/requirements.ts",
+          "line": 1164,
+          "description": "Final version DELETE contains only id equality."
+        }
+      ],
+      "blockers": [
+        "Required OS-enforced execution sandbox is unavailable: parent bwrap --unshare-all probe failed with No permissions to create new namespace. No target code, HTTP route or SQL concurrency fixture was executed; the source-derived boundary result remains unobserved.",
+        "Actual SQL Server lock/FK behavior for the proposed two-connection schedule is not observed. Use a disposable draft with no external referencing records and verify the state transition commits before deletion resumes."
+      ],
+      "validation_plan": {
+        "local": "In an offline disposable SQL Server fixture, create one area-author-owned Draft without specification/suggestion foreign references. Pause deleteDraftVersion immediately after its successful Draft read. On a second connection commit Draft-to-Review through the normal authorized service. Resume deletion and inspect only whether the Review row is removed despite the Draft-only invariant. If testing Published instead, use an authorized dummy Reviewer to publish before resumption. Record transaction outcomes; do not infer successful deletion from source alone."
+      }
+    },
+    {
+      "proposed_verdict": "needs_validation",
+      "fingerprint": "requirement-transition-state-dependent-authority-race",
+      "title": "Concurrent status change can bypass Reviewer-only Review-to-Draft authorization",
+      "description": "An area author without Reviewer/Admin can send a transition to Draft while the requirement is still Draft. Authorization allows that destination in the observed Draft state. If another normal author request commits Draft-to-Review after the final authorization check, the first DAL call reads Review, finds the valid Review-to-Draft transition and can commit it without a Reviewer. A sequential Review-to-Draft request by that principal is explicitly forbidden.",
+      "claimed_root_cause": "Transition permission depends on latestStatusId read outside the mutation transaction. The service passes only requirement id and destination to transitionStatus, which rereads current status and checks the transition graph but cannot reapply actor authorization to the state actually changed.",
+      "trace": [
+        {
+          "kind": "entrypoint",
+          "file": "app/api/requirement-transitions/[id]/route.ts",
+          "line": 29,
+          "scope": "POST",
+          "description": "Accepts any positive status id and invokes transitionRequirement after route authorization."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/requirements/assignment-authorization.ts",
+          "line": 912,
+          "scope": "assertCanTransitionRequirement",
+          "description": "Requires Reviewer for leaving Review, but permits area author for Draft destination when source is still Draft."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/requirements/service-requirements.ts",
+          "line": 1264,
+          "scope": "transitionRequirement",
+          "description": "Completes authorization before invoking transitionStatus with only resource and destination."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/dal/requirements.ts",
+          "line": 1219,
+          "scope": "transitionStatus",
+          "description": "Rereads latest status within its later transaction; validates the newly observed transition graph without actor context."
+        },
+        {
+          "kind": "sink",
+          "file": "lib/dal/requirements.ts",
+          "line": 1328,
+          "scope": "transitionStatus",
+          "description": "Updates version status by id without binding the mutation to the state used for authorization."
+        }
+      ],
+      "evidence": [
+        {
+          "file": "lib/requirements/assignment-authorization.ts",
+          "line": 916,
+          "description": "Leaving Review is explicitly Reviewer-only; an area author alone fails this check when current state is Review."
+        },
+        {
+          "file": "app/api/requirement-transitions/[id]/route.ts",
+          "line": 25,
+          "description": "PositiveInteger schema admits Draft destination statusId=1; transition-graph validity is not checked before service authorization."
+        },
+        {
+          "file": "lib/requirements/service-requirements.ts",
+          "line": 1286,
+          "description": "DAL receives no actor or authorized source status to bind state-dependent permission."
+        },
+        {
+          "file": "lib/dal/requirements.ts",
+          "line": 1232,
+          "description": "DAL transition graph check uses its newly read current.statusId."
+        },
+        {
+          "file": "typeorm/seed-required.mjs",
+          "line": 443,
+          "description": "Seed graph includes Review (2) to Draft (1)."
+        }
+      ],
+      "blockers": [
+        "Required OS-enforced execution sandbox is unavailable: parent bwrap --unshare-all probe failed with No permissions to create new namespace. No target code, HTTP route or SQL concurrency fixture was executed; the source-derived boundary result remains unobserved."
+      ],
+      "validation_plan": {
+        "local": "Use an offline disposable fixture with one requirement in Draft and an area author having neither Reviewer nor Admin. Begin transition-to-Draft and pause immediately after the service final authorize call at 1273, before DAL invocation. Commit a normal Draft-to-Review call by the same author. Resume the first call and inspect whether it commits Review-to-Draft. Compare a sequential Review-to-Draft call by that author, which should be forbidden. Stop after this single dummy transition; the test must preserve actual policy and SQL behavior rather than mocking authorization success."
+      }
+    }
+  ],
+  "hardening": [],
+  "uncovered": [
+    {
+      "surface": "app/api/priority-levels/[id]#GET",
+      "boundary": "lib/requirements/assignment-authorization.ts#specification visibility",
+      "subsystem": "lib/requirements/specification-*",
+      "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Policy and query disagreement",
+      "starting_paths": [
+        "app/api/priority-levels/[id]/route.ts",
+        "lib/dal/priority-levels.ts",
+        "lib/requirements/assignment-authorization.ts"
+      ],
+      "reason": "Priority-linked query UNION also returns specification_local_requirements.description filtered only by priority id (lib/dal/priority-levels.ts:163-175). Specification visibility policy is peer-owned; require its owner to establish affected principal and source-of-truth read policy before extending the consolidated taxonomy-projection finding."
+    }
+  ]
+}

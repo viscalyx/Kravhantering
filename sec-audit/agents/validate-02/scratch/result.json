@@ -1,0 +1,102 @@
+{
+  "decision": "needs_validation",
+  "record": {
+    "verdict": "needs_validation",
+    "fingerprint": "azure-bootstrap/predictable-staging-parent/root-helper-replacement",
+    "title": "Azure bootstrap consumes root helpers from an unchecked shared temporary parent",
+    "description": "Source supports a conditional local privilege-boundary failure: a local OS principal other than the sudo-capable operator could precreate /tmp/krav-azure-dev with permissions allowing operator staging while retaining authority to replace its tooling child. An authenticated setup or setup rerun uploads verify-apt-key.sh there, then invokes a root bootstrap that executes that pathname. Replacing the child between upload and consumption could select attacker-controlled helper content for root execution. The upload path checks, SSH host authentication, child recreation, and service-env child mode do not establish ownership of the common parent. No target execution or deployed lower-privilege attacker was established; manipulation by vscode itself is excluded because that account intentionally receives unrestricted sudo.",
+    "claimed_root_cause": "Copy-AzureDevDevelopmentToolFiles recreates a predictable tooling child beneath an existing /tmp parent without authenticating the parent owner or constraining parent replacement rights. Invoke-AzureDevBootstrap passes the resulting pathname into sudo, and configure_repositories executes the selected helper after only a regular-file existence check.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+        "line": 497,
+        "scope": "Invoke-AzureDevBootstrap",
+        "description": "Selects /tmp/krav-azure-dev/tooling, accepting preexisting common-parent filesystem state. The lower-trust input is that state, conditional on a distinct non-sudo local principal being able to create and control the parent before staging."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+        "line": 273,
+        "scope": "Copy-AzureDevDevelopmentToolFiles",
+        "description": "The authenticated remote command removes and recreates only the tooling child; scp subsequently uploads fixed local helper files at lines 282-287. Neither operation authenticates or secures the common parent."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+        "line": 546,
+        "scope": "Invoke-AzureDevBootstrap",
+        "description": "The sudo env command begun at line 533 passes AZURE_DEV_APT_KEY_VERIFIER pointing into the tooling child and executes the bootstrap with bash at line 551."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/azure-dev/templates/bootstrap-host.sh",
+        "line": 44,
+        "scope": "bootstrap environment initialization",
+        "description": "Copies AZURE_DEV_APT_KEY_VERIFIER into APT_KEY_VERIFIER without validating the selected file or its ancestors. main calls install_host_packages, which calls configure_repositories."
+      },
+      {
+        "kind": "sink",
+        "file": "scripts/azure-dev/templates/bootstrap-host.sh",
+        "line": 173,
+        "scope": "configure_repositories",
+        "description": "Executes bash on APT_KEY_VERIFIER in the sudo-launched process after the -f existence check at line 168; no ownership, ancestor-write, immutable-content, or no-follow check binds execution to the uploaded helper."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+        "line": 245,
+        "description": "RemotePath must be absolute, local helper files must exist at lines 263-266, and the remote path is shell-quoted at line 270. These controls constrain interface shape and command interpretation, but do not authenticate destination ancestry."
+      },
+      {
+        "file": "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+        "line": 442,
+        "description": "The service-env sibling receives chmod 0700, but the common /tmp/krav-azure-dev parent and tooling sibling receive no corresponding owner validation or protection."
+      },
+      {
+        "file": "scripts/azure-dev/AzureDev.Ssh.psm1",
+        "line": 594,
+        "description": "Wait-AzureDevSsh retrieves Azure VM host-key evidence, installs that trust at lines 612-615, and marks trust established only after successful SSH at lines 632-634. This authenticates transport; it does not protect uploaded paths from another local principal."
+      },
+      {
+        "file": "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+        "line": 493,
+        "description": "Bootstrap asserts established SSH host trust before staging. ShouldProcess gates uploads and root invocation, including line 554, so exploitation also requires an authorized operator setup run."
+      },
+      {
+        "file": "scripts/azure-dev/templates/bootstrap-host.sh",
+        "line": 106,
+        "description": "ensure_vscode_user intentionally grants vscode NOPASSWD:ALL; the alleged boundary crossing therefore requires a different non-sudo OS principal."
+      },
+      {
+        "file": "scripts/azure-dev/templates/main.bicep",
+        "line": 24,
+        "description": "The VM administrator defaults to vscode. This provisioning source does not establish an active separate lower-privilege attacker with access to the shared host temporary directory."
+      },
+      {
+        "file": "scripts/azure-dev/templates/bootstrap-host.sh",
+        "line": 1694,
+        "description": "main calls install_host_packages first; that function calls configure_repositories at line 218. Later user-root and sandbox setup does not validate the staged helper before this sink."
+      },
+      {
+        "file": "containers/production/bin/kravhantering-quadlet.sh",
+        "line": 369,
+        "description": "Comparable production policy-file handling checks a nonsymlink leaf, root ownership, mode, and service-account write access to ancestors through line 400. Unit installation separately uses mktemp staging at lines 871 and 878. These controls calibrate the Azure gap; they are not applied on its helper path."
+      },
+      {
+        "file": "containers/production/bin/kravhantering-cleanup.sh",
+        "line": 123,
+        "description": "Comparable cleanup installation creates a unique generation beneath STATE_DIR and switches the current link at lines 142-143; it does not share the fixed Azure shared-temporary-parent helper path."
+      }
+    ],
+    "blockers": [
+      "The authorized audit handoff reports that bubblewrap namespace creation was denied with No permissions to create new namespace. Required OS-enforced network and mount isolation is unavailable, so no target code, multi-UID replacement experiment, or root helper-consumption step was executed. There is no observed execution result.",
+      "Deployment applicability requires a distinct non-sudo local OS principal with access to the host /tmp namespace who can precreate /tmp/krav-azure-dev before staging, allow the operator's child creation, and replace the tooling child before root opens the helper. Actual principal isolation, ownership/ACLs, temporary-directory lifecycle, and applicable OS restrictions are not established by repository source. Existing secure operator-owned staging would not give that principal the claimed initial capability."
+    ],
+    "validation_plan": {
+      "local": "In a future disposable OS-enforced sandbox, use dummy operator and attacker UIDs plus confined root, a private shared-temporary-directory fixture, no network, an empty allowlisted environment, read-only source/tools, scratch-only writes, and explicit low resource/time limits. Model the exact source staging commands with dummy files beneath an attacker-owned parent that permits operator staging. Pause after upload, attempt replacement of only the tooling child as the attacker, and run only the source-equivalent existence check and helper invocation with a harmless identity marker. Stop at the helper identity result; do not run package installation or the complete bootstrap. Predeclare any evidence file and parent-side safe-promotion bounds before execution; the current empty promotion allowlist cannot retain runtime artifacts.",
+      "deployment": "The VM owner should inspect existing configuration records or perform an approved offline assessment of intended users/services, sudo grants, host temporary-directory namespace access, parent ownership/ACLs and cleanup lifecycle. Establish whether any principal distinct from the operator and lacking sudo can obtain the precise precreation and replacement capability before an intended setup or rerun. Do not create the parent, alter permissions, replace helpers, probe services, or reproduce on the shared VM."
+    }
+  }
+}

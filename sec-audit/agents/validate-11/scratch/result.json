@@ -1,0 +1,128 @@
+{
+  "decision": "needs_validation",
+  "record": {
+    "verdict": "needs_validation",
+    "fingerprint": "retention-parent-delete-bypasses-child-exception",
+    "title": "Parent retention deletion can bypass an active child-row legal hold",
+    "description": "Source supports a lifecycle preservation gap for historical RFI versions and archived requirement-selection answers in the shared application database. A human PrivacyOfficer can create an indefinite child-row exception, then later submit an ordinary confirmed retention run after the question becomes eligible. Parent deletion SQL removes the held child without removing its exception. An assigned area author can bring an RFI question into the archived lifecycle, but cannot execute retention without the separate PrivacyOfficer role. The affected protected state is held business history belonging to that question's area; no tenant crossing or privilege escalation is claimed. Actual deletion under SQL Server constraints and runtime permissions has not been observed.",
+    "claimed_root_cause": "ACTIVE_EXCEPTION_SQL matches only the selected candidate's policy/source/table/id tuple. Parent eligibility does not check active holds on dependent versions or answers, and parent deletion removes all those children. Child selectors suppress separate candidates when the parent is eligible, so a held child does not become a separately protected deletion subject in that run. The SERIALIZABLE preview refresh, token comparison, dependency guards and audited transaction preserve the incomplete predicate rather than adding child-hold enforcement.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/admin/archiving/runs/route.ts",
+        "line": 38,
+        "scope": "POST retention execution",
+        "description": "Accepts a browser actor's policyId and previewToken through a strict schema and secure mutation wrapper; the custom policy requires PrivacyOfficer and verified human identity before retention execution. This is an authorized administrative operation whose lifecycle behavior is under review."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/archiving/retention.ts",
+        "line": 1306,
+        "scope": "executeArchivingRetention",
+        "description": "Recomputes the enabled policy's preview within SERIALIZABLE, rejects a stale token, checks export confirmation when required, and dispatches the recomputed candidates."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/archiving/retention.ts",
+        "line": 179,
+        "scope": "ACTIVE_EXCEPTION_SQL",
+        "description": "Excludes an active exception only when its policy, source key, subject table and subject ID match the current candidate; no dependent-row exception is matched."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/archiving/retention.ts",
+        "line": 715,
+        "scope": "Archived RFI-question retention source",
+        "description": "Selects aged archived questions without list, assessment or suggestion references and applies only the parent exception predicate. The selection-question source at line 575 similarly checks saved answers and unarchived children, but not child holds."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/archiving/retention.ts",
+        "line": 1236,
+        "scope": "executeCandidate",
+        "description": "Runs the allowlisted source SQL with the numeric subject ID after source resolution; it performs no additional descendant-hold check."
+      },
+      {
+        "kind": "sink",
+        "file": "lib/archiving/retention.ts",
+        "line": 331,
+        "scope": "DELETE_RFI_QUESTION_SQL",
+        "description": "After parent dependency guards and link cleanup, deletes every version under the question and then the question. The parallel selection sink at line 242 deletes every answer under its eligible parent. Neither sink consults retention exceptions on the deleted children."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "docs/governance/admin-center.md",
+        "line": 527,
+        "description": "Documents row-level exceptions for legal hold or operational need. Lines 539-543 identify selection questions/answers and RFI questions/versions as supported deletion subjects."
+      },
+      {
+        "file": "app/api/admin/archiving/exceptions/route.ts",
+        "line": 32,
+        "description": "The strict exception schema accepts policyId, sourceKey, subjectTable, subjectId, reason and optional expiry; absent expiry becomes null. POST at line 57 requires PrivacyOfficer and human identity and writes the exception with audit in a transaction."
+      },
+      {
+        "file": "lib/archiving/retention.ts",
+        "line": 1867,
+        "description": "Exception creation validates the policy, persists the supplied child tuple independently of any parent, stores null for indefinite expiry and preserves an existing active exception."
+      },
+      {
+        "file": "lib/archiving/retention.ts",
+        "line": 633,
+        "description": "The archived-answer selector suppresses a separate child candidate when its parent meets deletion eligibility; the historical RFI-version selector repeats this pattern at line 683. Neither suppression propagates the child's hold to the parent."
+      },
+      {
+        "file": "lib/archiving/retention.ts",
+        "line": 286,
+        "description": "RFI sink guards recheck archived state and absence of list rows, assessments and suggestions. Selection guards at line 213 require no saved question answers or unarchived children. Fixtures must satisfy these real safeguards. The sources do not require export, and mapCandidate at line 933 defaults requiresExport to false."
+      },
+      {
+        "file": "app/api/rfi-questions/[id]/route.ts",
+        "line": 100,
+        "description": "DELETE performs ordinary archiving under the manage_rfi_question archive policy. The assignment policy resolves the target's area and requires area authorship in lib/requirements/assignment-authorization.ts at line 959."
+      },
+      {
+        "file": "lib/dal/rfi-questions.ts",
+        "line": 862,
+        "description": "setRfiQuestionArchived records archived_at and is_archived without changing retention exceptions, allowing a previously held historical child to remain held as its parent ages into eligibility."
+      },
+      {
+        "file": "typeorm/migrations/0009_archiving_retention.mjs",
+        "line": 40,
+        "description": "Exceptions store textual subject identifiers and reference only the policy by foreign key at line 55; they have no foreign key to prevent deletion of a held version or answer."
+      },
+      {
+        "file": "typeorm/migrations/0035_rfi_questions.mjs",
+        "line": 40,
+        "description": "RFI versions reference their parent with ON DELETE CASCADE. Referenced list versions/questions have NO ACTION constraints at lines 97-98, consistent with requiring an unreferenced fixture."
+      },
+      {
+        "file": "typeorm/migrations/0021_requirement_selection_questions.mjs",
+        "line": 84,
+        "description": "Selection answers reference their parent with ON DELETE CASCADE; an exception record does not add a preservation constraint."
+      },
+      {
+        "file": "typeorm/runtime-permission-manifest.mjs",
+        "line": 150,
+        "description": "The source runtime contract grants CRUD, including DELETE, on RFI versions/questions; lines 107 and 120 grant CRUD on selection answers/questions. These are declared grants, not observed deployed permissions."
+      },
+      {
+        "file": "lib/privacy/route-helpers.ts",
+        "line": 19,
+        "description": "assertPrivacyOfficer requires the explicit PrivacyOfficer role and a human actor snapshot. Admin alone does not satisfy this route policy."
+      },
+      {
+        "file": "lib/http/route-security-policy.ts",
+        "line": 366,
+        "description": "The retention-run route declares session authentication, same-origin CSRF, sensitive data and no-store. These controls restrict who can initiate the run, without extending the retention predicate to child exceptions."
+      }
+    ],
+    "blockers": [
+      "No target execution is permitted because the required OS-enforced sandbox could not create a bubblewrap namespace (No permissions to create new namespace). Consequently no isolated SQL/application reproduction has established the decisive result: a committed parent retention run deleting the held child while its active exception remains. Source-visible dependencies and the runtime permission manifest support the path but are not an observed database outcome."
+    ],
+    "validation_plan": {
+      "local": "After approved isolation is available, use a disposable SQL Server/application fixture with repository migrations and runtime-role grants, dummy human PrivacyOfficer and dummy assigned area author. Enable rfi_questions_retention_delete. Create a historical inactive version under a still-unarchived question with no specification list rows, assessments or suggestions. Give the child an old updated_at, verify its preview candidacy, then create an indefinite exception through POST /api/admin/archiving/exceptions using that policy's ID, sourceKey rfi_question_versions.historical_unreferenced, subjectTable rfi_question_versions, the child ID and a dummy reason. Verify the child remains stored and is excluded from its preview. Archive the parent through its authorized lifecycle and use fixture timestamps to place archived_at beyond the policy age. Obtain a fresh POST /api/admin/archiving/preview token and submit policyId plus previewToken to POST /api/admin/archiving/runs as the PrivacyOfficer. Inspect only fixture parent, child, exception and transaction outcome. Stop at child deletion with a still-active exception, or the exact preventing guard/constraint. Separately repeat with archived_requirement_selection_delete and a held archived answer using sourceKey requirement_selection_answers.archived and subjectTable requirement_selection_answers; all siblings must be archived, with no saved specification answers or external question references. Keep every mutation confined to disposable dummy data; do not execute against shared or production services.",
+      "deployment": "An owner can read-only verify whether the deployed revision, enabled policies, schema constraints and effective runtime DELETE grants match this source. Confirm the intended preservation meaning of active child exceptions. If additional deployed controls could prevent the path, reproduce those controls only in the disposable local fixture. Do not run retention against real held records to validate this candidate."
+    }
+  }
+}

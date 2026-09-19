@@ -1,0 +1,62 @@
+{
+  "units": [
+    {
+      "coverage_id": "app%2Fapi%2Frequirements-specifications%2F%5Bid%5D%2Flocal-requirements%2F%5BlocalRequirementId%5D%2Fgraduate%20and%20MCP%20graduation::lib%2Fdal%2Frequirements-specifications.ts%23graduateSpecificationLocalRequirementToLibrary::lib%2Fspecifications%2Fgraduation::DATA-ISOLATION-AND-LIFECYCLE.md%23Import%20and%20restore%20authority%20expansion",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/graduate/route.ts",
+        "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/graduation-target-areas/route.ts",
+        "lib/mcp/server.ts",
+        "lib/mcp/http.ts",
+        "lib/requirements/server.ts",
+        "lib/requirements/auth.ts",
+        "lib/requirements/service-specifications.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/dal/requirement-areas.ts",
+        "lib/dal/requirements-specifications.ts",
+        "lib/specifications/agreement-policy.ts",
+        "lib/requirements/status-constants.mjs",
+        "lib/requirements/security-audit.ts",
+        "typeorm/migrations/0069_specification_agreements.mjs",
+        "docs/governance/behörigheter.md",
+        "CONTEXT.md",
+        "tests/unit/requirements-service.test.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave7-graduation",
+          "reviewed_paths": [
+            "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/graduate/route.ts",
+            "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/graduation-target-areas/route.ts",
+            "lib/mcp/server.ts",
+            "lib/mcp/http.ts",
+            "lib/requirements/server.ts",
+            "lib/requirements/auth.ts",
+            "lib/requirements/service-specifications.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "lib/dal/requirement-areas.ts",
+            "lib/dal/requirements-specifications.ts",
+            "lib/specifications/agreement-policy.ts",
+            "lib/requirements/status-constants.mjs",
+            "lib/requirements/security-audit.ts",
+            "typeorm/migrations/0069_specification_agreements.mjs",
+            "docs/governance/behörigheter.md",
+            "CONTEXT.md",
+            "tests/unit/requirements-service.test.ts"
+          ],
+          "invariant": "Graduation requires source-specification authorship and destination-area authorship, copies only the selected current source into a fresh Draft with new actor attribution, and cannot import source approvals, assignments or historical agreement authority.",
+          "method": "source",
+          "artifact": null,
+          "result": "REST graduate route:17-51 strictly accepts source IDs and one destination area, requires a human actor and calls the shared service; its custom route policy is not the final resource gate. MCP server:1604-1652 uses strict positive-ID schemas, :1718-1741 maps only those fields, and :2597 calls the same service with request-derived context. MCP http:165 and requirements/server.ts:34-42 construct the production AssignmentBasedAuthorizationService (auth.ts:306). assignment-authorization.ts:704,729-736 implements the documented Admin exception and dual source-author/destination-author checks; service-specifications.ts:566-600 also rechecks the real destination via canAuthorArea, whose query at requirement-areas.ts:260-290 binds area and verified HSA assignment. Target discovery:498-535 first authorizes the source, verifies the selected current child belongs to it, and returns only authorable areas; its list is not a capability token. DAL:2845-2866 locks editable specification content and selects the current source by both local ID and parent under UPDLOCK/HOLDLOCK. agreement-policy.ts:9-47 rejects any noncancelled agreement when no draft selector is supplied; neither adapter accepts an agreement override. Migration0069:22-23 excludes future/retired rows from the current view. Ordinary local edits acquire the same parent content lock at DAL:2649, keeping copied content/norm associations coherent with those writers. DAL:2874-3013 copies explicit content/taxonomy/norm fields, allocates a fresh target-area sequence atomically, inserts a new requirement and version 1 with STATUS_DRAFT=1, null publication/archive timestamps and the current human actor, and inserts no package membership. It does not copy needs references, deviations, review decisions, source assignments or agreement bindings, and does not retire the source. All sequence/new-row/join writes share one transaction; missing parent/target or join failure rolls them back. The service loads the new ID and returns its Draft links only after commit (:605-657); postcommit read/audit failure can produce an error after successful creation, while a replay intentionally creates another newly authorized Draft (MCP idempotentHint:false at :2585). This is not publication or privilege gain. Governance:179-185 and CONTEXT.md:930-936 state the same dual-authority/copy-as-Draft contract. Service tests labelled target-area-only (:2035,2111) inject a no-op authorizer at :326 and therefore do not refute production source authorization. No source-grounded authority expansion survived these controls; no target code or runtime schedules were executed."
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [],
+  "hardening": [
+    "tests/unit/requirements-service.test.ts:2035,2111 describe source access as unnecessary while the fixture injects a no-op authorizer at :326. Rename these isolated workflow tests and add a real-authorizer regression for source-only, target-only and dual-assigned actors when test execution is available; production source enforces both assignments."
+  ],
+  "uncovered": []
+}

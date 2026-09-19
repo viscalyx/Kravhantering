@@ -1,0 +1,487 @@
+{
+  "units": [
+    {
+      "coverage_id": "containers%2Fproduction%2Fbin%23operator%20inputs::containers%2Fproduction%2Fbin%2Fkravhantering-quadlet.sh%23host%20authority::containers%2Fproduction::ATTACK-CLASSES.md%23Injection",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "containers/production/bin/kravhantering-quadlet.sh",
+        "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+        "scripts/db-sqlserver-admin.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-operations",
+          "reviewed_paths": [
+            "containers/production/bin/kravhantering-quadlet.sh",
+            "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+            "scripts/db-sqlserver-admin.mjs"
+          ],
+          "invariant": "Operator strings must remain data through shell, template and SQL handoffs; no lower-trust selector may acquire host command authority.",
+          "method": "source",
+          "result": "kravhantering-quadlet.sh:143-159 parses assignment lines without sourcing or eval; rendering at 817-831 substitutes operator-owned values. AzureDev.Bootstrap.psm1:3-10 quotes shell literals, used for Git identity at 517-526. db-sqlserver-admin.mjs:787-801 binds database names then uses QUOTENAME; 866-914 quotes SQL login identifiers and string literals. Release configuration and bundle paths are already operator-authority inputs; no remote application-input path to these commands was found.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "containers%2Fproduction%2Fbin%23operator%20inputs::containers%2Fproduction%2Fbin%2Fkravhantering-quadlet.sh%23host%20authority::containers%2Fproduction::ATTACK-CLASSES.md%23Obvious%20things",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        ".devcontainer/docker-compose.yml",
+        ".devcontainer/elevated/docker-compose.yml",
+        "docker-compose.idp.yml",
+        "containers/app/start-runtime.mjs",
+        "containers/app/Dockerfile",
+        ".env.example",
+        ".env.production",
+        ".gitignore",
+        ".devcontainer/devcontainer.json"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-operations",
+          "reviewed_paths": [
+            ".devcontainer/docker-compose.yml",
+            ".devcontainer/elevated/docker-compose.yml",
+            "docker-compose.idp.yml",
+            "containers/app/start-runtime.mjs",
+            "containers/app/Dockerfile",
+            ".env.example",
+            ".env.production",
+            ".gitignore",
+            ".devcontainer/devcontainer.json"
+          ],
+          "invariant": "Public test credentials must not become a credential for a lower-trust network or production environment.",
+          "method": "source",
+          "result": "Devcontainer idp publishes port 8080 without a loopback address at docker-compose.yml:128 and elevated/docker-compose.yml:146, with [public development values omitted] defaults at 125-126 and 143-144. docker-compose.idp.yml:26-29 repeats it. In production, start-runtime.mjs:46-72 refuses missing/shipped auth secrets before server import; Dockerfile:168-178 omits demo seed data from db-job. .env.production:1 delegates secrets to the deployment store. The surviving development-network hypothesis is linked; actual host reachability is unverified.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "dev-keycloak/published-management/default-admin"
+      ],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "containers%2Fproduction%2Fbin%23operator%20inputs::containers%2Fproduction%2Fbin%2Fkravhantering-quadlet.sh%23host%20authority::containers%2Fproduction::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "containers/production/bin/kravhantering-quadlet.sh",
+        "containers/production/bin/kravhantering-cleanup.sh",
+        "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+        "scripts/azure-dev/templates/bootstrap-host.sh"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-operations",
+          "reviewed_paths": [
+            "containers/production/bin/kravhantering-quadlet.sh",
+            "containers/production/bin/kravhantering-cleanup.sh",
+            "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+            "scripts/azure-dev/templates/bootstrap-host.sh"
+          ],
+          "invariant": "File paths consumed by a privileged operation must not be replaceable by a lower-trust local principal.",
+          "method": "source",
+          "result": "Quadlet policy-file validation at 355-395 checks a plain absolute path, nonsymlink root-owned leaf, mode, and ancestor write access; installation at 867-911 stages and atomically replaces known units. Cleanup generation at kravhantering-cleanup.sh:130-155 uses mktemp and an atomic current link under the operator-owned state directory. Azure tooling instead enters a predictable parent at AzureDev.Bootstrap.psm1:495-498; 273 recreates only the tooling child and bootstrap-host.sh:173 executes a helper as root. Parent ownership is unchecked.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "azure-bootstrap/predictable-staging-parent/root-helper-replacement"
+      ],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "containers%2Fproduction%2Fbin%23operator%20inputs::containers%2Fproduction%2Fbin%2Fkravhantering-quadlet.sh%23host%20authority::containers%2Fproduction::CLOUD-AND-DEPLOYMENT.md%23Credential%20renewal%20and%20outage%20fallback",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "containers/app/start-runtime.mjs",
+        "lib/typeorm/sqlserver-config.ts",
+        "scripts/azure-dev/hsa-persistent-renewal.sh",
+        "containers/production/bin/kravhantering-quadlet.sh"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-operations",
+          "reviewed_paths": [
+            "containers/app/start-runtime.mjs",
+            "lib/typeorm/sqlserver-config.ts",
+            "scripts/azure-dev/hsa-persistent-renewal.sh",
+            "containers/production/bin/kravhantering-quadlet.sh"
+          ],
+          "invariant": "Missing credentials or failed certificate renewal must not silently switch to weaker authentication.",
+          "method": "source",
+          "result": "start-runtime.mjs:46-72 rejects missing auth fields and placeholders before starting. sqlserver-config.ts:127-155 defaults database encryption on and certificate bypass off; missing complete credentials fail URL construction rather than enabling anonymous access. hsa-persistent-renewal.sh:22-98 binds finalization to the authenticated generation, requires successful verification before finalizing, and requires authenticated rollback after stopping endpoints. Quadlet validation at 251-267 refuses production convenience-bundled identity. No weaker-auth fallback was found in these source paths; certificate issuance itself is peer-owned.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "containers%2Fproduction%2Fbin%23operator%20inputs::containers%2Fproduction%2Fbin%2Fkravhantering-quadlet.sh%23host%20authority::containers%2Fproduction::CLOUD-AND-DEPLOYMENT.md%23Host%20or%20control-plane%20capability%20exposure",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "containers/production/quadlet/templates/single-node/kravhantering-app-runtime.container.template",
+        "containers/production/quadlet/templates/single-node/kravhantering-nginx.container.template",
+        "containers/production/quadlet/templates/single-node/kravhantering-sqlserver.container.template",
+        "containers/production/quadlet/templates/app-node-http/kravhantering-app-runtime.container.template",
+        "containers/production/quadlet/templates/app-node-tls/kravhantering-app-runtime.container.template",
+        "containers/production/bin/kravhantering-quadlet.sh",
+        ".devcontainer/elevated/docker-compose.yml"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-operations",
+          "reviewed_paths": [
+            "containers/production/quadlet/templates/single-node/kravhantering-app-runtime.container.template",
+            "containers/production/quadlet/templates/single-node/kravhantering-nginx.container.template",
+            "containers/production/quadlet/templates/single-node/kravhantering-sqlserver.container.template",
+            "containers/production/quadlet/templates/app-node-http/kravhantering-app-runtime.container.template",
+            "containers/production/quadlet/templates/app-node-tls/kravhantering-app-runtime.container.template",
+            "containers/production/bin/kravhantering-quadlet.sh",
+            ".devcontainer/elevated/docker-compose.yml"
+          ],
+          "invariant": "Application-controlled content must not select host namespaces, runtime sockets, privileged mode, or host execution.",
+          "method": "source",
+          "result": "Maintained production runtime templates drop all capabilities, set NoNewPrivileges/read-only filesystems, and mount explicit read-only secrets plus bounded spool/tmp storage. The SQL template grants only NET_BIND_SERVICE. No production template publishes the application, SQL, or runtime control socket. kravhantering-quadlet.sh:782-792 requires rootless Podman/cgroup v2/crun before installation. Elevated devcontainer capability changes at 81-96 are explicit trusted-code opt-in, not an application-exposed authority selector. Source does not establish a workload-to-host operation across these mounts.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "containers%2Fproduction%2Fbin%23operator%20inputs::containers%2Fproduction%2Fbin%2Fkravhantering-quadlet.sh%23host%20authority::containers%2Fproduction::CLOUD-AND-DEPLOYMENT.md%23Secret%20exposure%20across%20workload%20boundaries",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "containers/production/env/app.env.template",
+        "containers/production/env/cleanup.env.template",
+        "containers/production/env/db-job.env.template",
+        "containers/production/quadlet/templates/single-node/kravhantering-app-runtime.container.template",
+        "containers/production/quadlet/templates/single-node/kravhantering-nginx.container.template",
+        "containers/production/bin/kravhantering-cleanup.sh",
+        "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+        "scripts/azure-dev/templates/bootstrap-host.sh"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-operations",
+          "reviewed_paths": [
+            "containers/production/env/app.env.template",
+            "containers/production/env/cleanup.env.template",
+            "containers/production/env/db-job.env.template",
+            "containers/production/quadlet/templates/single-node/kravhantering-app-runtime.container.template",
+            "containers/production/quadlet/templates/single-node/kravhantering-nginx.container.template",
+            "containers/production/bin/kravhantering-cleanup.sh",
+            "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+            "scripts/azure-dev/templates/bootstrap-host.sh"
+          ],
+          "invariant": "Runtime, edge, cleanup and migration identities must receive only their intended secrets; uploads must stay private.",
+          "method": "source",
+          "result": "Application template names an external keyring and no key bytes; runtime mounts only its secret directory, nginx mounts TLS material without app.env, and cleanup.env explicitly contains only runtime DB credentials. kravhantering-cleanup.sh:57 supplies cleanup.env, not app.env or db-job.env. AzureDev.Bootstrap.psm1:386-430 uses private local staging and 0600 uploads; 442 restricts the remote service-env child and 471 removes local files. Its unchecked shared remote parent belongs to the separately linked root-helper replacement candidate; no additional demonstrated disclosure of the uploaded 0600 files is claimed.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "containers%2Fproduction%2Fbin%23operator%20inputs::containers%2Fproduction%2Fbin%2Fkravhantering-quadlet.sh%23host%20authority::containers%2Fproduction::CLOUD-AND-DEPLOYMENT.md%23Security-control%20precedence%20drift",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "containers/production/bin/kravhantering-quadlet.sh",
+        "containers/production/env/app.env.template",
+        "containers/production/nginx/templates/single-node-tls.conf.template",
+        "containers/production/nginx/templates/single-node-hardened-keycloak-tls.conf.template",
+        "containers/production/nginx/templates/single-node-external-oidc-tls.conf.template",
+        "containers/production/nginx/templates/app-node-http.conf.template",
+        "containers/production/nginx/templates/app-node-tls.conf.template",
+        "containers/app/start-runtime.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-operations",
+          "reviewed_paths": [
+            "containers/production/bin/kravhantering-quadlet.sh",
+            "containers/production/env/app.env.template",
+            "containers/production/nginx/templates/single-node-tls.conf.template",
+            "containers/production/nginx/templates/single-node-hardened-keycloak-tls.conf.template",
+            "containers/production/nginx/templates/single-node-external-oidc-tls.conf.template",
+            "containers/production/nginx/templates/app-node-http.conf.template",
+            "containers/production/nginx/templates/app-node-tls.conf.template",
+            "containers/app/start-runtime.mjs"
+          ],
+          "invariant": "Every maintained production topology must preserve authentication and its declared ingress trust boundary after profile selection.",
+          "method": "source",
+          "result": "kravhantering-quadlet.sh:256-267 requires explicit environment identity and rejects production bundled mode; 271-314 selects one of three matching single-node nginx configurations, removing identity units for external mode at 851-858. Hardened mode public nginx blocks management paths and uses a separate mTLS listener at single-node-hardened-keycloak-tls.conf.template:119-146. App-node TLS terminates TLS; app-node HTTP explicitly models an upstream TLS edge with validated trusted-proxy CIDRs (quadlet:472-476). Startup auth validation remains common. Actual external TLS-edge attachment is not inferred; no conflicting source overlay was found.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "containers%2Fproduction%2Fbin%23operator%20inputs::containers%2Fproduction%2Fbin%2Fkravhantering-quadlet.sh%23host%20authority::containers%2Fproduction::CLOUD-AND-DEPLOYMENT.md%23Unexpected%20service%20or%20management-plane%20reachability",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        ".devcontainer/docker-compose.yml",
+        ".devcontainer/elevated/docker-compose.yml",
+        "docker-compose.idp.yml",
+        "scripts/azure-dev/templates/quadlet/krav-idp.container",
+        "scripts/azure-dev/templates/main.bicep",
+        "containers/production/nginx/templates/single-node-hardened-keycloak-tls.conf.template",
+        "containers/production/bin/kravhantering-quadlet.sh",
+        ".devcontainer/devcontainer.json"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-operations",
+          "reviewed_paths": [
+            ".devcontainer/docker-compose.yml",
+            ".devcontainer/elevated/docker-compose.yml",
+            "docker-compose.idp.yml",
+            "scripts/azure-dev/templates/quadlet/krav-idp.container",
+            "scripts/azure-dev/templates/main.bicep",
+            "containers/production/nginx/templates/single-node-hardened-keycloak-tls.conf.template",
+            "containers/production/bin/kravhantering-quadlet.sh",
+            ".devcontainer/devcontainer.json"
+          ],
+          "invariant": "Management handlers with public test credentials must remain outside lower-trust network reach.",
+          "method": "source",
+          "result": "Production hardened Keycloak routes public realm traffic separately from management mTLS at nginx template:119-146; quadlet:324-352 rejects wildcard management binds. Azure idp Quadlet:10 uses loopback, and main.bicep:102-119 creates only source-CIDR SSH rules. Both devcontainer profiles and standalone docker-compose.idp.yml instead publish the test IdP port without a loopback host address while supplying public admin credentials. This gives a concrete IdP management hypothesis, pending effective credential/bootstrap and host-network validation.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "dev-keycloak/published-management/default-admin"
+      ],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "containers%2Fproduction%2Fbin%23operator%20inputs::containers%2Fproduction%2Fbin%2Fkravhantering-quadlet.sh%23host%20authority::containers%2Fproduction::DESKTOP-MOBILE-AND-LOCAL-IPC.md%23Local%20file%20ownership%20and%20TOCTOU",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+        "scripts/azure-dev/templates/bootstrap-host.sh",
+        "containers/production/bin/kravhantering-quadlet.sh",
+        "scripts/azure-dev/AzureDev.Ssh.psm1"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-operations",
+          "reviewed_paths": [
+            "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+            "scripts/azure-dev/templates/bootstrap-host.sh",
+            "containers/production/bin/kravhantering-quadlet.sh",
+            "scripts/azure-dev/AzureDev.Ssh.psm1"
+          ],
+          "invariant": "Authenticated uploads must not later be exchanged by another OS user before root consumes them.",
+          "method": "source",
+          "result": "AzureDev.Bootstrap.psm1:273 recreates tooling under /tmp/krav-azure-dev selected at 497, without checking parent ownership or creating a private per-run root. The operator then invokes sudo env ... bash at 533-552, passing verify-apt-key.sh under that tree; bootstrap-host.sh:168-173 checks only file existence before root execution. SSH trust is established through control-plane evidence in AzureDev.Ssh.psm1:573-655, which authenticates transport but does not protect the destination tree. Production Quadlet policy files have separate root ownership and ancestor-write checks at 355-395.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "azure-bootstrap/predictable-staging-parent/root-helper-replacement"
+      ],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "containers%2Fproduction%2Fbin%23operator%20inputs::containers%2Fproduction%2Fbin%2Fkravhantering-quadlet.sh%23host%20authority::containers%2Fproduction::DESKTOP-MOBILE-AND-LOCAL-IPC.md%23Privileged%20helper%20as%20confused%20deputy",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+        "scripts/azure-dev/templates/bootstrap-host.sh",
+        "scripts/azure-dev/AzureDev.Validation.psm1",
+        "scripts/azure-dev.ps1"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-operations",
+          "reviewed_paths": [
+            "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+            "scripts/azure-dev/templates/bootstrap-host.sh",
+            "scripts/azure-dev/AzureDev.Validation.psm1",
+            "scripts/azure-dev.ps1"
+          ],
+          "invariant": "A local principal lacking sudo must not be able to substitute a helper selected by an authenticated administrator.",
+          "method": "source",
+          "result": "azure-dev.ps1:763-772 reaches bootstrap after SSH trust; AzureDev.Validation.psm1:671 calls Invoke-AzureDevBootstrap. AzureDev.Bootstrap.psm1:495-552 selects a fixed shared temporary hierarchy and asks sudo to execute its helper inputs. bootstrap-host.sh:173 invokes the unchecked helper with root authority. vscode itself has NOPASSWD:ALL at 105-108, so the candidate explicitly requires a different lower-privilege OS principal; same-vscode manipulation is excluded.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "azure-bootstrap/predictable-staging-parent/root-helper-replacement"
+      ],
+      "unresolved": []
+    }
+  ],
+  "candidates": [
+    {
+      "proposed_verdict": "needs_validation",
+      "fingerprint": "azure-bootstrap/predictable-staging-parent/root-helper-replacement",
+      "title": "Azure bootstrap consumes root helpers from an unchecked shared temporary parent",
+      "description": "A local OS principal other than the sudo-capable vscode/operator account could precreate /tmp/krav-azure-dev as a writable parent before a setup or setup rerun. The authenticated operator uploads tooling beneath it, but the parent owner could exchange the tooling directory before sudo bootstrap consumes verify-apt-key.sh. The affected resource is host root execution authority. The review did not execute this sequence or establish that a deployed personal development VM has such a lower-privilege principal.",
+      "claimed_root_cause": "Remote staging recreates predictable children with mkdir -p while leaving the shared /tmp parent unauthenticated; sudo subsequently resolves and executes helper paths beneath that parent.",
+      "trace": [
+        {
+          "kind": "entrypoint",
+          "file": "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+          "line": 495,
+          "scope": "Invoke-AzureDevBootstrap",
+          "description": "Fixed /tmp/krav-azure-dev paths accept filesystem state potentially precreated by another local principal."
+        },
+        {
+          "kind": "propagation",
+          "file": "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+          "line": 273,
+          "scope": "Copy-AzureDevDevelopmentToolFiles",
+          "description": "Remove/recreate only the tooling child; no parent owner, mode, or symlink validation precedes scp."
+        },
+        {
+          "kind": "propagation",
+          "file": "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+          "line": 533,
+          "scope": "Invoke-AzureDevBootstrap",
+          "description": "sudo env passes the staging-tree APT_KEY_VERIFIER to a root bootstrap process."
+        },
+        {
+          "kind": "sink",
+          "file": "scripts/azure-dev/templates/bootstrap-host.sh",
+          "line": 173,
+          "scope": "configure_repositories",
+          "description": "bash executes APT_KEY_VERIFIER after only a regular-file existence check."
+        }
+      ],
+      "evidence": [
+        {
+          "file": "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+          "line": 273,
+          "description": "No private per-run root or parent ownership check accompanies tooling recreation."
+        },
+        {
+          "file": "scripts/azure-dev/AzureDev.Bootstrap.psm1",
+          "line": 442,
+          "description": "The secret-upload path has a child chmod 0700, but does not secure the common /tmp/krav-azure-dev parent or tooling sibling."
+        },
+        {
+          "file": "scripts/azure-dev/templates/bootstrap-host.sh",
+          "line": 105,
+          "description": "vscode intentionally has NOPASSWD:ALL; this is not a finding for that same principal."
+        },
+        {
+          "file": "scripts/azure-dev/AzureDev.Ssh.psm1",
+          "line": 618,
+          "description": "Control-plane-backed SSH host trust authenticates transport, not post-upload local path ownership."
+        }
+      ],
+      "blockers": [
+        "No required OS execution sandbox is available: namespace creation was denied, so multi-UID replacement and root-consumption behavior were not executed.",
+        "Deployment applicability requires a different local OS principal without sudo that can precreate the shared temporary parent before bootstrap; source only provisions vscode with sudo and does not establish an active lower-privilege attacker."
+      ],
+      "validation_plan": {
+        "local": "In a disposable OS sandbox with two dummy UIDs and no external network, model the exact staging commands under an attacker-owned shared parent, pause after upload, exchange only the tooling child, then invoke only the helper-consumption step with a harmless marker helper. Stop after observing marker identity; do not run package installation or the complete host bootstrap. Apply empty allowlisted environment, read-only source/tools, scratch-only writes and explicit low resource/time limits.",
+        "deployment": "Owner inspects intended VM user/service isolation and bootstrap staging ownership off-line; determine whether any non-sudo principal can create this parent before setup or after temporary-directory cleanup. Do not probe services or run the reproduction on the shared VM."
+      }
+    },
+    {
+      "proposed_verdict": "needs_validation",
+      "fingerprint": "dev-keycloak/published-management/default-admin",
+      "title": "Developer Keycloak management is published beyond loopback with public administrator defaults",
+      "description": "Both devcontainer profiles and standalone development Compose publish the complete test Keycloak service without a loopback bind and supply [public development values omitted] when not overridden. If a lower-trust network peer can reach the published port and the bootstrap defaults are active, that peer can administer the development IdP, alter its realm and credentials, and defeat developer identity isolation. This does not claim production account takeover or established host reachability.",
+      "claimed_root_cause": "The local-only test identity service uses host-wide Compose port publication together with intentional public bootstrap credentials, unlike the Azure loopback-bound equivalent.",
+      "trace": [
+        {
+          "kind": "entrypoint",
+          "file": ".devcontainer/docker-compose.yml",
+          "line": 128,
+          "scope": "services.idp.ports",
+          "description": "Host port mapping omits a loopback host address."
+        },
+        {
+          "kind": "propagation",
+          "file": ".devcontainer/docker-compose.yml",
+          "line": 118,
+          "scope": "services.idp.command",
+          "description": "The published service runs Keycloak start-dev with the full identity/admin surface."
+        },
+        {
+          "kind": "sink",
+          "file": ".devcontainer/docker-compose.yml",
+          "line": 125,
+          "scope": "services.idp.environment",
+          "description": "Public administrator name and password defaults supply authority to that exposed management surface if initial bootstrap uses them."
+        }
+      ],
+      "evidence": [
+        {
+          "file": ".devcontainer/docker-compose.yml",
+          "line": 125,
+          "description": "KEYCLOAK_ADMIN and KEYCLOAK_ADMIN_PASSWORD default to admin."
+        },
+        {
+          "file": ".devcontainer/elevated/docker-compose.yml",
+          "line": 143,
+          "description": "The opt-in elevated profile repeats the default credentials and host port publication at 146."
+        },
+        {
+          "file": "docker-compose.idp.yml",
+          "line": 26,
+          "description": "The standalone development service repeats the same defaults and publish pattern."
+        },
+        {
+          "file": "scripts/azure-dev/templates/quadlet/krav-idp.container",
+          "line": 10,
+          "description": "The corresponding Azure support service explicitly binds 127.0.0.1:8080."
+        },
+        {
+          "file": ".devcontainer/devcontainer.json",
+          "line": 3,
+          "description": "The default devcontainer selects this Compose file and starts idp."
+        }
+      ],
+      "blockers": [
+        "The effective host bind, Docker/Podman forwarding configuration, host firewall and lower-trust network route were not observed; source publication alone does not establish reachability.",
+        "Effective environment overrides, existing IdP state, and pinned Keycloak acceptance of the bootstrap administrator settings were not verified.",
+        "The required isolated execution sandbox is unavailable, so no local Compose rendering or dummy management authentication was performed."
+      ],
+      "validation_plan": {
+        "local": "With an available isolated sandbox, render each maintained Compose profile from an empty safe environment and use a disposable local Keycloak fixture with dummy realm/users, no external network and bounded resources. Verify the effective listener mapping and only a harmless authorized management read using the intentional public test credential; stop immediately after the boundary result.",
+        "deployment": "Owner reviews the effective local Compose environment, bootstrap state, container bind configuration and host firewall/network policy to determine whether any non-developer network principal can reach the developer IdP. Use configuration inspection, not live login probing."
+      }
+    }
+  ],
+  "hardening": [
+    "Production app-node-http deliberately relies on an external TLS edge and network attachment; reviewed source normalizes forwarded headers and validates trusted-proxy CIDR files, but owner deployment evidence is necessary to claim operational isolation.",
+    "The elevated devcontainer intentionally grants SYS_ADMIN and unconfined sandbox options to trusted developer code. That opt-in alone is not a demonstrated escape or privilege escalation."
+  ],
+  "uncovered": [
+    {
+      "surface": "scripts/azure-dev/AzureDev.Azure.psm1#resource lifecycle",
+      "boundary": "scripts/azure-dev/AzureDev.Lifecycle.psm1#cloud resource ownership",
+      "subsystem": "scripts/azure-dev",
+      "attack_class": "CLOUD-AND-DEPLOYMENT.md#Cross-account or cross-tenant role confusion",
+      "starting_paths": [
+        "scripts/azure-dev/AzureDev.Azure.psm1",
+        "scripts/azure-dev/AzureDev.Lifecycle.psm1",
+        "scripts/azure-dev/AzureDev.Config.psm1"
+      ],
+      "reason": "Cloud subscription/resource ownership, adoption and destructive lifecycle operations are distinct from reviewed bootstrap staging and NSG/SSH inputs. These large modules were enumerated but not traced end-to-end; they need a separate source unit rather than inferred coverage."
+    },
+    {
+      "surface": "scripts/db-sqlserver-admin.mjs#runtime permission manifest",
+      "boundary": "typeorm/runtime-permission-manifest.mjs#database grants",
+      "subsystem": "typeorm",
+      "attack_class": "ATTACK-CLASSES.md#Access control",
+      "starting_paths": [
+        "scripts/db-sqlserver-admin.mjs",
+        "typeorm/runtime-permission-manifest.mjs",
+        "typeorm/migrations"
+      ],
+      "reason": "SQL construction and production/demo entrypoint segregation were traced, but effective-permission comparison and grant-repair logic at db-sqlserver-admin.mjs:1015-1406 require a separate access-control unit; migration grants were not exhaustively reviewed."
+    }
+  ]
+}

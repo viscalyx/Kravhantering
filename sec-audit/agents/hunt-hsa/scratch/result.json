@@ -1,0 +1,251 @@
+{
+  "units": [
+    {
+      "coverage_id": "containers%2Fhsa-person-lookup-adapter%2Fsrc%2Fstrict-server.mjs%23HSA%20ingress::lib%2Fhsa%2Fstrict-certificate-validation.mjs%23peer%20identity::containers%2Fhsa-person-lookup-adapter::ATTACK-CLASSES.md%23Access%20control",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/requirement-responsibility-people/verify/route.ts",
+        "lib/requirements/responsibility-person-verification.ts",
+        "containers/hsa-person-lookup-adapter/src/strict-server.mjs",
+        "containers/hsa-directory-mock/src/strict-server.mjs",
+        "containers/kong/strict-runtime.env",
+        "containers/kong/strict-app-client-subject.conf"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-hsa",
+          "reviewed_paths": [
+            "app/api/requirement-responsibility-people/verify/route.ts",
+            "lib/requirements/responsibility-person-verification.ts",
+            "containers/hsa-person-lookup-adapter/src/strict-server.mjs",
+            "containers/hsa-directory-mock/src/strict-server.mjs",
+            "containers/kong/strict-runtime.env",
+            "containers/kong/strict-app-client-subject.conf"
+          ],
+          "invariant": "Directory lookup and reusable identity evidence must stay bound to authorized purpose, resource and actor.",
+          "method": "source",
+          "result": "verify/route.ts:86-204 gates manager-only assignment purposes before lookup and admits self-only creation exceptions; quota precedes provider call (:252). Evidence resolution binds actor, purpose, scope, identity and expiry (responsibility-person-verification.ts:335-358). Kong requires app client certificate and exact subject; adapter :271 and mock :139 require authorized TLS plus exact expected subject/serial. Loopback health handlers return only status, not lookup data.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "containers%2Fhsa-person-lookup-adapter%2Fsrc%2Fstrict-server.mjs%23HSA%20ingress::lib%2Fhsa%2Fstrict-certificate-validation.mjs%23peer%20identity::containers%2Fhsa-person-lookup-adapter::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/hsa/strict-person-lookup.ts",
+        "lib/hsa/strict-certificate-validation.mjs",
+        "containers/hsa-person-lookup-adapter/src/strict-server.mjs",
+        "containers/hsa-person-lookup-adapter/src/soap-contract.mjs",
+        "containers/hsa-directory-mock/src/soap-fixture.mjs",
+        "node_modules/saxes/saxes.js",
+        "containers/hsa-mtls-topology/compose.yml"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-hsa",
+          "reviewed_paths": [
+            "lib/hsa/strict-person-lookup.ts",
+            "lib/hsa/strict-certificate-validation.mjs",
+            "containers/hsa-person-lookup-adapter/src/strict-server.mjs",
+            "containers/hsa-person-lookup-adapter/src/soap-contract.mjs",
+            "containers/hsa-directory-mock/src/soap-fixture.mjs",
+            "node_modules/saxes/saxes.js",
+            "containers/hsa-mtls-topology/compose.yml"
+          ],
+          "invariant": "Untrusted HSA identifiers/XML must not select file/network sinks or disclose key material.",
+          "method": "source",
+          "result": "Caller supplies only HSA-id; configured HTTPS endpoints and exact TLS names drive outbound requests (strict-person-lookup.ts:280-308). Discovery issuer/token endpoint origin is checked (:377-390); redirects are not followed. SOAP XML escapes all interpolated values (soap-contract.mjs:72). Saxes uses built-in entities (saxes.js:25,340) and no external-entity resolver is installed. TLS file paths are operator config, and topology mounts role-separated runtime bundles read-only; application input cannot select them.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "containers%2Fhsa-person-lookup-adapter%2Fsrc%2Fstrict-server.mjs%23HSA%20ingress::lib%2Fhsa%2Fstrict-certificate-validation.mjs%23peer%20identity::containers%2Fhsa-person-lookup-adapter::PROTOCOLS-RPC-AND-MESSAGING.md%23Callback%20and%20reply-correlation%20confusion",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/hsa/correlation.mjs",
+        "lib/hsa/strict-person-lookup.ts",
+        "containers/hsa-person-lookup-adapter/src/strict-server.mjs",
+        "containers/hsa-person-lookup-adapter/src/soap-contract.mjs",
+        "containers/hsa-directory-mock/src/strict-server.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-hsa",
+          "reviewed_paths": [
+            "lib/hsa/correlation.mjs",
+            "lib/hsa/strict-person-lookup.ts",
+            "containers/hsa-person-lookup-adapter/src/strict-server.mjs",
+            "containers/hsa-person-lookup-adapter/src/soap-contract.mjs",
+            "containers/hsa-directory-mock/src/strict-server.mjs"
+          ],
+          "invariant": "Correlation metadata must not route replies or grant authority across calls.",
+          "method": "source",
+          "result": "Application creates UUID correlation per request (strict-person-lookup.ts:446); adapter requires UUID syntax (:294) and forwards it as SOAP MessageID. Mock validates/logs UUID and bounds recorder to 10000 keys (strict-server.mjs:22,92,160). Replies remain bound to their HTTPS request callback, not a correlation-ID dispatch table; person identity is checked separately. Reusing caller correlation changes diagnostic counts, not authorization or reply recipient.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "containers%2Fhsa-person-lookup-adapter%2Fsrc%2Fstrict-server.mjs%23HSA%20ingress::lib%2Fhsa%2Fstrict-certificate-validation.mjs%23peer%20identity::containers%2Fhsa-person-lookup-adapter::PROTOCOLS-RPC-AND-MESSAGING.md%23Envelope%20and%20payload%20identity%20mismatch",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "containers/hsa-person-lookup-adapter/src/soap-contract.mjs",
+        "containers/hsa-person-lookup-adapter/src/strict-server.mjs",
+        "containers/hsa-directory-mock/src/soap-fixture.mjs",
+        "lib/hsa/strict-person-lookup.ts",
+        "lib/requirements/responsibility-person-verification.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-hsa",
+          "reviewed_paths": [
+            "containers/hsa-person-lookup-adapter/src/soap-contract.mjs",
+            "containers/hsa-person-lookup-adapter/src/strict-server.mjs",
+            "containers/hsa-directory-mock/src/soap-fixture.mjs",
+            "lib/hsa/strict-person-lookup.ts",
+            "lib/requirements/responsibility-person-verification.ts"
+          ],
+          "invariant": "The authenticated request identity and retained verification subject must agree with the returned person.",
+          "method": "source",
+          "result": "Adapter uses payload hsaId only as a lookup selector after peer auth, escapes it into SOAP (:317), and filters returned people to the same ID (:mapSoapPeopleToRest). The configured SOAP destination is not payload controlled. App independently rejects mismatched identity (:489). Signed evidence contains actor/person/purpose/scope (responsibility-person-verification.ts:245) and rechecks each at consume time (:347-354). No envelope field overrides the authorized actor or evidence target.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "containers%2Fhsa-person-lookup-adapter%2Fsrc%2Fstrict-server.mjs%23HSA%20ingress::lib%2Fhsa%2Fstrict-certificate-validation.mjs%23peer%20identity::containers%2Fhsa-person-lookup-adapter::PROTOCOLS-RPC-AND-MESSAGING.md%23Message%20boundary%20and%20canonicalization%20disagreement",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "containers/hsa-person-lookup-adapter/src/soap-contract.mjs",
+        "containers/hsa-person-lookup-adapter/src/strict-server.mjs",
+        "containers/hsa-directory-mock/src/soap-fixture.mjs",
+        "lib/hsa/strict-person-lookup.ts",
+        "node_modules/saxes/saxes.js"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-hsa",
+          "reviewed_paths": [
+            "containers/hsa-person-lookup-adapter/src/soap-contract.mjs",
+            "containers/hsa-person-lookup-adapter/src/strict-server.mjs",
+            "containers/hsa-directory-mock/src/soap-fixture.mjs",
+            "lib/hsa/strict-person-lookup.ts",
+            "node_modules/saxes/saxes.js"
+          ],
+          "invariant": "JSON/SOAP transformations must not interpret a different identity or operation across consumers.",
+          "method": "source",
+          "result": "Adapter builds a single escaped GetHsaPerson request with fixed namespace and configured To; mock extractRequest verifies SOAP root, namespace, operation, To, one identity kind and search base (soap-fixture.mjs:73-112). Response parser selects namespaced userInformation; mapSoapPeopleToRest (:155-171) filters exact requested ID and rejects conflicting records. App checks returned ID again (:489). Duplicate XML first-child behavior has no source-visible alternate policy consumer yielding another authorized subject.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "containers%2Fhsa-person-lookup-adapter%2Fsrc%2Fstrict-server.mjs%23HSA%20ingress::lib%2Fhsa%2Fstrict-certificate-validation.mjs%23peer%20identity::containers%2Fhsa-person-lookup-adapter::RESOURCE-EXHAUSTION-AND-AVAILABILITY.md%23Unbounded%20buffering%20and%20cardinality",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "containers/hsa-person-lookup-adapter/src/strict-server.mjs",
+        "containers/hsa-directory-mock/src/soap-fixture.mjs",
+        "containers/hsa-directory-mock/src/strict-server.mjs",
+        "lib/hsa/strict-person-lookup.ts",
+        "app/api/requirement-responsibility-people/verify/route.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-hsa",
+          "reviewed_paths": [
+            "containers/hsa-person-lookup-adapter/src/strict-server.mjs",
+            "containers/hsa-directory-mock/src/soap-fixture.mjs",
+            "containers/hsa-directory-mock/src/strict-server.mjs",
+            "lib/hsa/strict-person-lookup.ts",
+            "app/api/requirement-responsibility-people/verify/route.ts"
+          ],
+          "invariant": "Authenticated lookup input and replies must have source-visible size/time/state bounds before shared work grows.",
+          "method": "source",
+          "result": "Adapter bounds ingress and SOAP responses to 1 MiB (:19-20,158,214); mock bounds request bytes to 1 MiB (soap-fixture.mjs:202). App bounds response to 64 KiB and timeouts to 1-30000ms (strict-person-lookup.ts:19,88), uses fixed outbound host identity, and verifies route quota before lookup (verify/route.ts:252). Mock correlation keys cap at 10000 with eviction. No demonstrated shared availability violation; full hostile-load capacity behavior is not tested.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "containers%2Fhsa-person-lookup-adapter%2Fsrc%2Fstrict-server.mjs%23HSA%20ingress::lib%2Fhsa%2Fstrict-certificate-validation.mjs%23peer%20identity::containers%2Fhsa-person-lookup-adapter::WEB-PROTOCOL-AND-AUTH.md%23Certificate%20lifecycle%20fallback",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "containers/hsa-mtls-provisioner/src/profile.mjs",
+        "containers/hsa-mtls-provisioner/src/provisioner.mjs",
+        "containers/hsa-mtls-provisioner/src/cli.mjs",
+        "lib/hsa/strict-certificate-validation.mjs",
+        "containers/hsa-mtls-topology/compose.yml",
+        "scripts/azure-dev/hsa-persistent-renewal.sh"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-hsa",
+          "reviewed_paths": [
+            "containers/hsa-mtls-provisioner/src/profile.mjs",
+            "containers/hsa-mtls-provisioner/src/provisioner.mjs",
+            "containers/hsa-mtls-provisioner/src/cli.mjs",
+            "lib/hsa/strict-certificate-validation.mjs",
+            "containers/hsa-mtls-topology/compose.yml",
+            "scripts/azure-dev/hsa-persistent-renewal.sh"
+          ],
+          "invariant": "Renewal/promotion/rollback must not silently accept invalid certificates or cross service trust domains.",
+          "method": "source",
+          "result": "Profile requires exact single DNS SAN/no wildcard/CN fallback (profile.mjs:86-99). Staging verifies generated bundles before promotion; promoteGeneration (:1008) validates directory and disallows an outstanding previous generation. Materialization (:1052-1107) verifies selected generation and emits separate role bundles; rollback verifies prior generation (:1206), finalize binds expected authenticated ID (:1230). Renewal orchestration stops endpoints and verifies/rolls back before resumption. Actual mounted production trust roots remain deployment facts, with no source fallback to insecure TLS.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "containers%2Fhsa-person-lookup-adapter%2Fsrc%2Fstrict-server.mjs%23HSA%20ingress::lib%2Fhsa%2Fstrict-certificate-validation.mjs%23peer%20identity::containers%2Fhsa-person-lookup-adapter::WEB-PROTOCOL-AND-AUTH.md%23mTLS%20peer%20and%20application-identity%20confusion",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/hsa/strict-certificate-validation.mjs",
+        "lib/hsa/strict-person-lookup.ts",
+        "containers/hsa-person-lookup-adapter/src/strict-server.mjs",
+        "containers/hsa-directory-mock/src/strict-server.mjs",
+        "containers/kong/kong.strict.yml",
+        "containers/kong/strict-runtime.env",
+        "containers/kong/strict-app-client-subject.conf"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-hsa",
+          "reviewed_paths": [
+            "lib/hsa/strict-certificate-validation.mjs",
+            "lib/hsa/strict-person-lookup.ts",
+            "containers/hsa-person-lookup-adapter/src/strict-server.mjs",
+            "containers/hsa-directory-mock/src/strict-server.mjs",
+            "containers/kong/kong.strict.yml",
+            "containers/kong/strict-runtime.env",
+            "containers/kong/strict-app-client-subject.conf"
+          ],
+          "invariant": "Each hop must bind a verified channel to its intended service peer and person response.",
+          "method": "source",
+          "result": "Certificate loader validates validity, leaf role/basic constraints, exact key usage, chain, key match and expected identity (:910-966). App and adapter use rejectUnauthorized and exact DNS SAN/name (:286-307; adapter :182-200). Kong requires app-client CA/exact subject and verifies adapter TLS; adapter checks exact Kong subject, mock checks adapter serialNumber. REST result must match requested HSA-id (strict-person-lookup.ts:489); certificate possession does not select another application user.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [],
+  "hardening": [],
+  "uncovered": []
+}

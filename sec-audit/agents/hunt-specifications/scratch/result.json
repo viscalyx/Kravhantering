@@ -1,0 +1,362 @@
+{
+  "units": [
+    {
+      "coverage_id": "app%2Fapi%2Frequirements-specifications%23REST%20workflows::lib%2Fspecifications%2Fpermissions.ts%23specification%20authority::lib%2Fspecifications::ATTACK-CLASSES.md%23Access%20control",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "app/api/priority-levels/[id]/route.ts",
+        "lib/dal/priority-levels.ts",
+        "lib/http/route-security-policy.ts",
+        "lib/specifications/permissions.ts",
+        "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/route.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "app/api/requirements-specifications/schema.ts",
+        "app/api/requirements-specifications/[id]/responsible/route.ts",
+        "app/api/requirements-specifications/[id]/co-authors/route.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-specifications",
+          "reviewed_paths": [
+            "app/api/priority-levels/[id]/route.ts",
+            "lib/dal/priority-levels.ts",
+            "lib/http/route-security-policy.ts",
+            "lib/specifications/permissions.ts",
+            "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/route.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "app/api/requirements-specifications/schema.ts",
+            "app/api/requirements-specifications/[id]/responsible/route.ts",
+            "app/api/requirements-specifications/[id]/co-authors/route.ts"
+          ],
+          "invariant": "Specification-local content requires owning-specification read authority; assignment changes require manager authority.",
+          "method": "source",
+          "result": "Primary local reads resolve the child owner before authorizing (local route:78; assignment-authorization.ts:250-323). Update schemas exclude responsibleHsaId; dedicated assignment routes require managers. However priority-levels/[id]/route.ts:54 returns local descriptions through priority-levels.ts:163-175 without actor or specification filtering. Registry:717 requires only a session. This independently establishes the specification-local variant of the shared taxonomy-projection candidate.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "norm-reference-linked-requirements-nonpublic-projection"
+      ],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Frequirements-specifications%23REST%20workflows::lib%2Fspecifications%2Fpermissions.ts%23specification%20authority::lib%2Fspecifications::ATTACK-CLASSES.md%23Business%20logic",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/specifications/agreements.ts",
+        "lib/specifications/agreement-policy.ts",
+        "lib/specifications/agreement-confirmation.ts",
+        "lib/specifications/agreement-content.ts",
+        "lib/specifications/agreement-end.ts",
+        "lib/dal/deviations.ts",
+        "lib/specifications/agreement-deviation-policy.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/dal/rfi-questions.ts",
+        "lib/dal/requirement-selection-questions.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-specifications",
+          "reviewed_paths": [
+            "lib/specifications/agreements.ts",
+            "lib/specifications/agreement-policy.ts",
+            "lib/specifications/agreement-confirmation.ts",
+            "lib/specifications/agreement-content.ts",
+            "lib/specifications/agreement-end.ts",
+            "lib/dal/deviations.ts",
+            "lib/specifications/agreement-deviation-policy.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "lib/dal/rfi-questions.ts",
+            "lib/dal/requirement-selection-questions.ts"
+          ],
+          "invariant": "Agreement, deviation and RFI mutations must preserve role separation, parent binding and valid lifecycle transitions.",
+          "method": "source",
+          "result": "agreements.ts:695-831 rechecks author/responsible roles inside a locked transaction and binds confirmation to an editable draft. agreement-policy.ts:21 locks immutable content. Deviation decisions require Reviewer (assignment-authorization.ts:927) and conditional review-state updates (deviations.ts:958,1200). RFI updates serialize list changes and compare assessed version/lock revision (rfi-questions.ts:1232-1319). Selection answers validate active question membership and exclusivity at requirement-selection-questions.ts:2139-2205. No separate state-transition bypass was found.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Frequirements-specifications%23REST%20workflows::lib%2Fspecifications%2Fpermissions.ts%23specification%20authority::lib%2Fspecifications::ATTACK-CLASSES.md%23Injection",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/requirements/specification-item-query.ts",
+        "lib/requirements/specification-item-page.ts",
+        "lib/dal/specification-item-page.ts",
+        "lib/dal/requirements-specifications.ts",
+        "lib/dal/deviations.ts",
+        "lib/dal/rfi-questions.ts",
+        "lib/specifications/agreement-item-source.ts",
+        "lib/specifications/agreement-content.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-specifications",
+          "reviewed_paths": [
+            "lib/requirements/specification-item-query.ts",
+            "lib/requirements/specification-item-page.ts",
+            "lib/dal/specification-item-page.ts",
+            "lib/dal/requirements-specifications.ts",
+            "lib/dal/deviations.ts",
+            "lib/dal/rfi-questions.ts",
+            "lib/specifications/agreement-item-source.ts",
+            "lib/specifications/agreement-content.ts"
+          ],
+          "invariant": "User-controlled identifiers, filters, ordering and business text must remain SQL parameter values.",
+          "method": "source",
+          "result": "specification-item-query.ts:27 constrains sort enums; specification-item-page.ts:125 revalidates them. specification-item-page DAL:181 escapes LIKE metacharacters and :425 binds cursors, filters and limits; parent predicates appear in both UNION branches at :206. Local requirement writes, deviations and RFI use positional parameters. Agreement SQL identifier interpolation selects fixed library/local names, never request text. No SQL or command-injection sink was established in these traced paths.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Frequirements-specifications%23REST%20workflows::lib%2Fspecifications%2Fpermissions.ts%23specification%20authority::lib%2Fspecifications::DATA-ISOLATION-AND-LIFECYCLE.md%23Import%20and%20restore%20authority%20expansion",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/specification-local-requirements/import/execute/route.ts",
+        "app/api/specification-local-requirements/import/preview/route.ts",
+        "app/api/requirements-specifications/[id]/local-requirements/import/execute/route.ts",
+        "lib/requirements/import-service.ts",
+        "lib/dal/requirements-specifications.ts",
+        "lib/specifications/agreement-policy.ts",
+        "lib/requirements/service-specifications.ts",
+        "lib/requirements/assignment-authorization.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-specifications",
+          "reviewed_paths": [
+            "app/api/specification-local-requirements/import/execute/route.ts",
+            "app/api/specification-local-requirements/import/preview/route.ts",
+            "app/api/requirements-specifications/[id]/local-requirements/import/execute/route.ts",
+            "lib/requirements/import-service.ts",
+            "lib/dal/requirements-specifications.ts",
+            "lib/specifications/agreement-policy.ts",
+            "lib/requirements/service-specifications.ts",
+            "lib/requirements/assignment-authorization.ts"
+          ],
+          "invariant": "Imports must authorize the destination and validate every resulting local requirement; graduation must also require destination-area authority.",
+          "method": "source",
+          "result": "Both import route variants authorize the selected specification. import-service.ts:3512-3608 independently authorizes execution, validates destination/reference/budget preview fingerprints and revalidates rows. requirements-specifications.ts:2475-2636 atomically creates normalized rows; agreement-policy.ts:27 binds an optional agreement to that specification and editable state. needsReferenceId is parent-bound at DAL:2080. Graduation requires specification plus area authorship (assignment-authorization.ts:733-736). Tokens do not substitute for destination authority.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Frequirements-specifications%23REST%20workflows::lib%2Fspecifications%2Fpermissions.ts%23specification%20authority::lib%2Fspecifications::DATA-ISOLATION-AND-LIFECYCLE.md%23Missing%20tenant%20or%20owner%20enforcement",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "app/api/priority-levels/[id]/route.ts",
+        "lib/dal/priority-levels.ts",
+        "lib/http/route-security-policy.ts",
+        "lib/specifications/permissions.ts",
+        "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/route.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/requirements/service-specifications.ts",
+        "lib/dal/requirements-specifications.ts",
+        "lib/requirements/requirement-application-mutations.ts",
+        "lib/specifications/agreement-selection.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-specifications",
+          "reviewed_paths": [
+            "app/api/priority-levels/[id]/route.ts",
+            "lib/dal/priority-levels.ts",
+            "lib/http/route-security-policy.ts",
+            "lib/specifications/permissions.ts",
+            "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/route.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "lib/requirements/service-specifications.ts",
+            "lib/dal/requirements-specifications.ts",
+            "lib/requirements/requirement-application-mutations.ts",
+            "lib/specifications/agreement-selection.ts"
+          ],
+          "invariant": "Lists, child lookups and batch operations must remain within the authenticated actor's specification assignments.",
+          "method": "source",
+          "result": "service-specifications.ts:234 uses the actor-filtered catalog; requirements-specifications.ts:519 binds responsible/co-author HSA IDs. requirement-application-mutations.ts:105-149 rejects foreign children and repeats target resolution within mutations. agreement-selection.ts:20 binds selected agreement IDs to their parent. The alternate priority-level projection omits the same ownership predicate and returns descriptions from unassigned specifications, linked to the existing taxonomy-projection fingerprint.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "norm-reference-linked-requirements-nonpublic-projection"
+      ],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Frequirements-specifications%23REST%20workflows::lib%2Fspecifications%2Fpermissions.ts%23specification%20authority::lib%2Fspecifications::DATA-ISOLATION-AND-LIFECYCLE.md%23Policy%20and%20query%20disagreement",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "app/api/priority-levels/[id]/route.ts",
+        "lib/dal/priority-levels.ts",
+        "lib/http/route-security-policy.ts",
+        "lib/specifications/permissions.ts",
+        "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/route.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/dal/requirements-specifications.ts",
+        "lib/specifications/agreements.ts",
+        "lib/requirements/specification-item-page.ts",
+        "lib/dal/specification-item-page.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-specifications",
+          "reviewed_paths": [
+            "app/api/priority-levels/[id]/route.ts",
+            "lib/dal/priority-levels.ts",
+            "lib/http/route-security-policy.ts",
+            "lib/specifications/permissions.ts",
+            "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/route.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "lib/dal/requirements-specifications.ts",
+            "lib/specifications/agreements.ts",
+            "lib/requirements/specification-item-page.ts",
+            "lib/dal/specification-item-page.ts"
+          ],
+          "invariant": "Alternate projections must enforce the same specification visibility policy as direct reads and paginated queries.",
+          "method": "source",
+          "result": "permissions.ts:47 permits specification reads only for assignments, Admin or Reviewer. Direct child reads and agreement reads enforce that policy; paginated library/local branches bind specificationId. priority-levels.ts:163-175 instead joins raw local requirements to status metadata using only priority_level_id. Its authenticated GET accepts no actor context and returns those rows, creating a concrete policy/query disagreement under the consolidated taxonomy finding.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "norm-reference-linked-requirements-nonpublic-projection"
+      ],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Frequirements-specifications%23REST%20workflows::lib%2Fspecifications%2Fpermissions.ts%23specification%20authority::lib%2Fspecifications::DATA-ISOLATION-AND-LIFECYCLE.md%23Soft-delete%20and%20tombstone%20bypass",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/dal/requirements-specifications.ts",
+        "lib/specifications/agreement-policy.ts",
+        "lib/specifications/agreement-discard.ts",
+        "lib/specifications/agreement-activation.ts",
+        "lib/specifications/agreement-item-source.ts",
+        "lib/specifications/agreements.ts",
+        "lib/specifications/agreement-deviation-policy.ts",
+        "typeorm/migrations/0069_specification_agreements.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-specifications",
+          "reviewed_paths": [
+            "lib/dal/requirements-specifications.ts",
+            "lib/specifications/agreement-policy.ts",
+            "lib/specifications/agreement-discard.ts",
+            "lib/specifications/agreement-activation.ts",
+            "lib/specifications/agreement-item-source.ts",
+            "lib/specifications/agreements.ts",
+            "lib/specifications/agreement-deviation-policy.ts",
+            "typeorm/migrations/0069_specification_agreements.mjs"
+          ],
+          "invariant": "Retired content must not remain mutable as current content; historical agreement access must preserve specification authorization.",
+          "method": "source",
+          "result": "Migration 0069:20-23 defines temporal current views. Local update/delete paths at requirements-specifications.ts:2639-2777 lock content, retire bindings and read current rows. agreement-deviation-policy.ts:34 rejects historical decision targets; discard requires an unconfirmed parent-bound draft. Agreement history reads retain specification authorization (agreements.ts:614-644). Historical content is intentionally preserved, so retention alone is not a deletion failure; the alternate taxonomy reader is reported under access control.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [
+    {
+      "proposed_verdict": "needs_validation",
+      "fingerprint": "norm-reference-linked-requirements-nonpublic-projection",
+      "title": "Taxonomy detail projections expose specification-local requirement descriptions outside assignment scope",
+      "description": "Specification-local variant of the requirements hunter's consolidated taxonomy projection issue. An authenticated ordinary user without responsibility, co-authorship, Admin or Reviewer authority for a target specification can request a priority-level detail. The endpoint returns linked local requirement IDs, unique IDs, descriptions and status metadata selected globally by priority. The query also reads retained historical bindings rather than the current-content view. Primary specification detail APIs would reject the same actor. No runtime disclosure was executed in this source-only audit.",
+      "claimed_root_cause": "The taxonomy-linked requirement projection treats session-authenticated access to global reference data as authority to read every linked requirement. Its specification-local UNION branch never receives actor context, joins assignment scope or invokes the specification read policy. This is the same missing content-visibility predicate as the consolidated norm-reference/taxonomy finding.",
+      "trace": [
+        {
+          "kind": "entrypoint",
+          "file": "lib/http/route-security-policy.ts",
+          "line": 717,
+          "scope": "GET /api/priority-levels/[id]",
+          "description": "The route requires a session, without an Admin or Reviewer role requirement."
+        },
+        {
+          "kind": "propagation",
+          "file": "app/api/priority-levels/[id]/route.ts",
+          "line": 41,
+          "scope": "GET",
+          "description": "Parses a priority ID, loads reference data and calls getLinkedRequirements(db,id) without constructing actor context or checking specification access."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/dal/priority-levels.ts",
+          "line": 163,
+          "scope": "getLinkedRequirements specificationLocal UNION branch",
+          "description": "Selects local IDs, unique IDs, descriptions and status names from raw specification_local_requirements, with only priority_level_id=@0 and no owner, assignment or lifecycle predicate."
+        },
+        {
+          "kind": "sink",
+          "file": "app/api/priority-levels/[id]/route.ts",
+          "line": 55,
+          "scope": "GET JSON response",
+          "description": "Returns the linkedRequirements rows to the session-authenticated caller."
+        }
+      ],
+      "evidence": [
+        {
+          "file": "lib/specifications/permissions.ts",
+          "line": 47,
+          "description": "Source-of-truth read policy limits specifications to Admin/Reviewer or responsible/co-author HSA assignments."
+        },
+        {
+          "file": "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/route.ts",
+          "line": 78,
+          "description": "Primary local detail API authorizes the actual specification child before reading its content."
+        },
+        {
+          "file": "lib/requirements/assignment-authorization.ts",
+          "line": 311,
+          "description": "Child resolution rejects mismatched parents; author/read checks then require the owning specification assignment."
+        },
+        {
+          "file": "lib/dal/priority-levels.ts",
+          "line": 163,
+          "description": "Alternate local projection uses no assignment or actor predicate and returns description directly."
+        },
+        {
+          "file": "lib/http/route-security-policy.ts",
+          "line": 717,
+          "description": "The taxonomy GET transport policy is session-authenticated rather than administrative."
+        },
+        {
+          "file": "lib/dal/requirements-specifications.ts",
+          "line": 2288,
+          "description": "Primary detail loads a current local requirement and binds both local requirement ID and specification ID; the alternate projection lacks these controls."
+        }
+      ],
+      "blockers": [
+        "The required OS-enforced sandbox is unavailable: namespace creation failed. No isolated route/database fixture could be executed, so the cross-specification response remains source-grounded rather than locally demonstrated."
+      ],
+      "validation_plan": {
+        "local": "In an approved network-isolated sandbox, seed two dummy specifications with distinct HSA assignees and one local requirement carrying a harmless marker and shared priority. Call the priority-level GET as the unrelated ordinary assignee, then call the protected local detail route for the target. Observe whether the taxonomy response contains the marker while the direct route denies access. Include one retired binding to characterize historical exposure without asserting an erasure guarantee."
+      }
+    }
+  ],
+  "hardening": [],
+  "uncovered": [
+    {
+      "surface": "lib/requirements/import-service.ts#executeSpecificationLocalImport",
+      "boundary": "lib/dal/requirements-specifications.ts#createSpecificationLocalRequirementsBatch",
+      "subsystem": "lib/specifications",
+      "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Stale authorization and derived copy use",
+      "starting_paths": [
+        "lib/requirements/import-service.ts",
+        "lib/dal/requirements-specifications.ts",
+        "lib/requirements/requirement-application-mutations.ts",
+        "app/api/requirements-specifications/[id]/co-authors/route.ts"
+      ],
+      "reason": "This excluded class is concretely reachable: execution authorizes before entering import capacity work, while batch writes later acquire their own transaction and specification lock without re-evaluating the assignment. Review revocation semantics and a bounded concurrent assignment-removal schedule as a distinct unit; an in-flight authorization snapshot alone does not establish a vulnerability."
+    }
+  ]
+}

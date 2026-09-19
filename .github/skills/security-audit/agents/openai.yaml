@@ -1,0 +1,6 @@
+interface:
+  display_name: "Security Audit"
+  short_description: "Security guidance and vulnerability review for codebases, APIs, services, CLI tools, libraries, and daemons."
+  default_prompt: "Use $security-audit to perform a security audit of the codebase."
+policy:
+  allow_implicit_invocation: false

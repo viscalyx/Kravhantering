@@ -1,0 +1,398 @@
+{
+  "units": [
+    {
+      "coverage_id": "app%2Fapi%2Fai%23AI%20requests::lib%2Fai%2Frun-trust-boundary.ts%23provider%20and%20content%20authority::lib%2Fai::AI-AND-LLM.md%23Excessive%20agency%20and%20confused-deputy%20authority",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/ai/generate-requirement-import/route.ts",
+        "app/api/ai/repair-requirement-import-json/route.ts",
+        "lib/http/secure-mutation-route.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/ai/openrouter-adapter.ts",
+        "lib/ai/run-trust-boundary.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-ai",
+          "reviewed_paths": [
+            "app/api/ai/generate-requirement-import/route.ts",
+            "app/api/ai/repair-requirement-import-json/route.ts",
+            "lib/http/secure-mutation-route.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "lib/ai/openrouter-adapter.ts",
+            "lib/ai/run-trust-boundary.ts"
+          ],
+          "invariant": "Provider authority requires authorized scope; model content cannot invoke mutations.",
+          "method": "source",
+          "result": "Both routes declare scope policy (generation:181; repair:112); secure-mutation-route.ts:344 authorizes before handler; assignment-authorization.ts:988 checks area/specification authorship. Provider request at openrouter-adapter.ts:501 has no tools; run-trust-boundary.ts:183 rejects activation keys and validates schema. Generation returns candidates at route.ts:334 without publishing.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fai%23AI%20requests::lib%2Fai%2Frun-trust-boundary.ts%23provider%20and%20content%20authority::lib%2Fai::AI-AND-LLM.md%23Indirect%20injection%20through%20retrieved%20or%20ingested%20content",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/ai/generate-requirement-import/route.ts",
+        "lib/requirements/import-service.ts",
+        "lib/ai/requirement-prompt.ts",
+        "lib/ai/integration-layer.ts",
+        "lib/ai/openrouter-adapter.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-ai",
+          "reviewed_paths": [
+            "app/api/ai/generate-requirement-import/route.ts",
+            "lib/requirements/import-service.ts",
+            "lib/ai/requirement-prompt.ts",
+            "lib/ai/integration-layer.ts",
+            "lib/ai/openrouter-adapter.ts"
+          ],
+          "invariant": "Ingested content cannot grant capabilities or cross resource contexts.",
+          "method": "source",
+          "result": "Generation builds context for its authorized destination (route.ts:243); import-service.ts:639,677 scopes needs references to that specification. Repair wraps supplied JSON as data (requirement-prompt.ts:343). There is no retrieval-driven dispatcher or durable model memory in these paths; openrouter-adapter.ts:501 sends fixed messages without tools. Integration quarantines deltas until approval (integration-layer.ts:613,655).",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fai%23AI%20requests::lib%2Fai%2Frun-trust-boundary.ts%23provider%20and%20content%20authority::lib%2Fai::AI-AND-LLM.md%23Insecure%20output%20rendering",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/ai/integration-layer.ts",
+        "lib/ai/run-trust-boundary.ts",
+        "app/api/ai/generate-requirement-import/route.ts",
+        "components/AiRequirementGenerator.tsx",
+        "components/SafeMarkdown.tsx"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-ai",
+          "reviewed_paths": [
+            "lib/ai/integration-layer.ts",
+            "lib/ai/run-trust-boundary.ts",
+            "app/api/ai/generate-requirement-import/route.ts",
+            "components/AiRequirementGenerator.tsx",
+            "components/SafeMarkdown.tsx"
+          ],
+          "invariant": "AI output must not execute HTML, links, images or commands.",
+          "method": "source",
+          "result": "Output is quarantined and screened (integration-layer.ts:655; run-trust-boundary.ts:264), then JSON-encoded in SSE (generation route.ts:307). Raw output is JSX text in pre (AiRequirementGenerator.tsx:1736); analysis uses SafeMarkdown (1644). Its links render spans (SafeMarkdown.tsx:213), images render text placeholders (277), and ReactMarkdown uses an element allowlist without raw-HTML processing.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fai%23AI%20requests::lib%2Fai%2Frun-trust-boundary.ts%23provider%20and%20content%20authority::lib%2Fai::AI-AND-LLM.md%23Sensitive%20context%20extraction",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/requirements/import-service.ts",
+        "lib/ai/openrouter-adapter.ts",
+        "lib/ai/provider-secret-service.ts",
+        "lib/ai/forensic-evidence.ts",
+        "lib/ai/forensic-capture.ts",
+        "app/api/admin/ai-forensic-captures/route.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-ai",
+          "reviewed_paths": [
+            "lib/requirements/import-service.ts",
+            "lib/ai/openrouter-adapter.ts",
+            "lib/ai/provider-secret-service.ts",
+            "lib/ai/forensic-evidence.ts",
+            "lib/ai/forensic-capture.ts",
+            "app/api/admin/ai-forensic-captures/route.ts"
+          ],
+          "invariant": "Scoped prompt data must remain separate from credentials and restricted forensic evidence.",
+          "method": "source",
+          "result": "Reference fields are explicitly projected (import-service.ts:3396), with needs references scoped at 661. Credentials enter only the adapter callback (provider-secret-service.ts:2406) and Authorization header (openrouter-adapter.ts:569), not messages (527). Evidence is redacted and capped (forensic-evidence.ts:70,146,193); reads require Admin/PrivacyOfficer plus requester/approver identity after stop/expiry (forensic-capture.ts:274). Separate purge race is recorded under Business logic.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fai%23AI%20requests::lib%2Fai%2Frun-trust-boundary.ts%23provider%20and%20content%20authority::lib%2Fai::ATTACK-CLASSES.md%23Business%20logic",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "app/api/admin/ai-forensic-captures/route.ts",
+        "app/api/ai/requirement-import-shared.ts",
+        "lib/ai/safety.ts",
+        "lib/ai/forensic-capture.ts",
+        "lib/ai/forensic-evidence.ts",
+        "lib/typeorm/sqlserver-config.ts",
+        "typeorm/migrations/0058_ai_forensic_evidence_store.mjs",
+        "lib/transient-cleanup/ai-forensic-evidence.ts",
+        "lib/dal/ai-connection-admin.ts",
+        "lib/ai/provider-secret-service.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-ai",
+          "reviewed_paths": [
+            "app/api/admin/ai-forensic-captures/route.ts",
+            "app/api/ai/requirement-import-shared.ts",
+            "lib/ai/safety.ts",
+            "lib/ai/forensic-capture.ts",
+            "lib/ai/forensic-evidence.ts",
+            "lib/typeorm/sqlserver-config.ts",
+            "typeorm/migrations/0058_ai_forensic_evidence_store.mjs",
+            "lib/transient-cleanup/ai-forensic-evidence.ts",
+            "lib/dal/ai-connection-admin.ts",
+            "lib/ai/provider-secret-service.ts"
+          ],
+          "invariant": "Administrative state transitions must atomically revoke their previous effects and purge forensic copies.",
+          "method": "source",
+          "result": "Suspension marks existing work for cancellation (ai-connection-admin.ts:1650); secret activation binds revisions and invalidates verification transactionally (provider-secret-service.ts:1242). Forensic purge deletes before locking/updating its capture (forensic-capture.ts:476,480), under default READ COMMITTED (sqlserver-config.ts:12,201). Concurrent capture may survive deletion; exact SQL locking requires validation.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "ai-forensic-capture/purge-before-close-retained-evidence"
+      ],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fai%23AI%20requests::lib%2Fai%2Frun-trust-boundary.ts%23provider%20and%20content%20authority::lib%2Fai::ATTACK-CLASSES.md%23Cryptography%20and%20secrets",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/ai/provider-secret-crypto.ts",
+        "lib/ai/provider-secret-crypto-core.mjs",
+        "lib/ai/provider-secret-keyring.ts",
+        "lib/ai/provider-secret-keyring-core.mjs",
+        "lib/ai/provider-secret-service.ts",
+        "scripts/ai-provider-secret-maintenance.mjs",
+        "scripts/ai-provider-secret-restore-cli.mjs",
+        "lib/ai/openrouter-financial-adapter.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-ai",
+          "reviewed_paths": [
+            "lib/ai/provider-secret-crypto.ts",
+            "lib/ai/provider-secret-crypto-core.mjs",
+            "lib/ai/provider-secret-keyring.ts",
+            "lib/ai/provider-secret-keyring-core.mjs",
+            "lib/ai/provider-secret-service.ts",
+            "scripts/ai-provider-secret-maintenance.mjs",
+            "scripts/ai-provider-secret-restore-cli.mjs",
+            "lib/ai/openrouter-financial-adapter.ts"
+          ],
+          "invariant": "Secrets require authenticated connection/version/purpose binding and metadata-only operational output.",
+          "method": "source",
+          "result": "AES-256-GCM uses random nonces and authenticated tags (provider-secret-crypto.ts:87,135); AAD binds versions, connection, secret and management purpose (crypto-core.mjs:77). Invalid key/envelope operations fail closed. Runtime and management operations are separated (provider-secret-service.ts:953,1393,2406). Maintenance uses the same AAD, SERIALIZABLE rotation and buffer clearing (maintenance.mjs:56,201,240); restore emits bounded metadata (115-181; restore-cli.mjs:73). Financial credentials remain headers on fixed endpoints (financial-adapter.ts:192).",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fai%23AI%20requests::lib%2Fai%2Frun-trust-boundary.ts%23provider%20and%20content%20authority::lib%2Fai::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/ai/requirement-import-shared.ts",
+        "lib/ai/image-sanitizer.ts",
+        "lib/ai/production-runtime-composition.ts",
+        "lib/ai/connection-trust.ts",
+        "lib/ai/pinned-https-transport.ts",
+        "lib/ai/admin-external.ts",
+        "lib/ai/provider-secret-keyring.ts",
+        "scripts/ai-provider-secret-maintenance.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-ai",
+          "reviewed_paths": [
+            "app/api/ai/requirement-import-shared.ts",
+            "lib/ai/image-sanitizer.ts",
+            "lib/ai/production-runtime-composition.ts",
+            "lib/ai/connection-trust.ts",
+            "lib/ai/pinned-https-transport.ts",
+            "lib/ai/admin-external.ts",
+            "lib/ai/provider-secret-keyring.ts",
+            "scripts/ai-provider-secret-maintenance.mjs"
+          ],
+          "invariant": "Images and provider targets must remain inside size, decoding, origin, address and filesystem boundaries.",
+          "method": "source",
+          "result": "Images are capped at three 10 MiB inputs (requirement-import-shared.ts:49); sanitizer validates signature/frames/pixels and re-encodes PNG (image-sanitizer.ts:103; production limits at production-runtime-composition.ts:67). Egress enforces configured origin/subtree, DNS checks and redirect:error (connection-trust.ts:285,329,344). HTTPS pins the vetted IP with SNI (pinned-https-transport.ts:46). Keyring path is operator configuration, not authoring input (provider-secret-keyring.ts:18); no user-directed file write was found.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fai%23AI%20requests::lib%2Fai%2Frun-trust-boundary.ts%23provider%20and%20content%20authority::lib%2Fai::RESOURCE-EXHAUSTION-AND-AVAILABILITY.md%23Detached%20work%20after%20cancellation",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/ai/generate-requirement-import/route.ts",
+        "app/api/ai/repair-requirement-import-json/route.ts",
+        "lib/ai/integration-layer.ts",
+        "lib/ai/run-coordinator.ts",
+        "lib/ai/openrouter-adapter.ts",
+        "lib/ai/pinned-https-transport.ts",
+        "lib/dal/ai-connection-admin.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-ai",
+          "reviewed_paths": [
+            "app/api/ai/generate-requirement-import/route.ts",
+            "app/api/ai/repair-requirement-import-json/route.ts",
+            "lib/ai/integration-layer.ts",
+            "lib/ai/run-coordinator.ts",
+            "lib/ai/openrouter-adapter.ts",
+            "lib/ai/pinned-https-transport.ts",
+            "lib/dal/ai-connection-admin.ts"
+          ],
+          "invariant": "Cancellation must reach provider transport and coordinated cleanup.",
+          "method": "source",
+          "result": "Routes forward request.signal (generation:268; repair:223), passed through integration-layer.ts:587. Coordinator propagates abort, polls cancellation/lease ownership, bounds pulls and force-closes after cleanup grace (run-coordinator.ts:667,808,876,1047,1166). Adapter installs caller/deadline abort and clears transport in finally (openrouter-adapter.ts:351,1055); HTTPS receives the signal and destroys requests (pinned-https-transport.ts:62,105). This establishes source-level propagation; no runtime disconnect test ran.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fai%23AI%20requests::lib%2Fai%2Frun-trust-boundary.ts%23provider%20and%20content%20authority::lib%2Fai::RESOURCE-EXHAUSTION-AND-AVAILABILITY.md%23Quota-accounting%20scope%20and%20reset%20gaps",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/ai/requirement-import-shared.ts",
+        "lib/ai/profile-resolver.ts",
+        "lib/ai/run-coordinator.ts",
+        "lib/ai/run-coordination-store.ts",
+        "lib/ai/openrouter-adapter.ts",
+        "lib/ai/openrouter-financial-adapter.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-ai",
+          "reviewed_paths": [
+            "app/api/ai/requirement-import-shared.ts",
+            "lib/ai/profile-resolver.ts",
+            "lib/ai/run-coordinator.ts",
+            "lib/ai/run-coordination-store.ts",
+            "lib/ai/openrouter-adapter.ts",
+            "lib/ai/openrouter-financial-adapter.ts"
+          ],
+          "invariant": "AI work must respect shared concurrency, queue, output and retry bounds.",
+          "method": "source",
+          "result": "User/operation throttle exists (requirement-import-shared.ts:424). SQL admission/acquisition counts by connection/model and caps profile queues under SERIALIZABLE (run-coordination-store.ts:144,179,259,504), with fenced leases. Profile numeric policy is bounded (profile-resolver.ts:251). Coordinator permits at most two explicitly safe attempts without retry after deltas (run-coordinator.ts:417,731), and caps output/memory/tokens (938,975). Provider token limit is profile-controlled (openrouter-adapter.ts:532). Financial allowance is reporting, not an application spend quota.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [
+    {
+      "proposed_verdict": "needs_validation",
+      "fingerprint": "ai-forensic-capture/purge-before-close-retained-evidence",
+      "title": "Concurrent capture can leave forensic evidence behind after a successful purge",
+      "description": "An authorized author submitting safety-blocked content while a PrivacyOfficer purges an active capture may cause one forensic excerpt to survive the reported purge. The producer can insert after the purge DELETE but before the capture is marked purged. The retained row would remain in the protected database and be excluded from routine evidence cleanup; no unauthorized application read is claimed. A valid two-person-approved active window and concurrent purge are required.",
+      "claimed_root_cause": "The purge branch deletes child evidence before obtaining an update lock on and closing the parent capture, in a default READ COMMITTED transaction. Producer locking and status rechecking protect its insert but do not serialize it with the earlier purge DELETE. Scheduled cleanup excludes captures already marked purged.",
+      "trace": [
+        {
+          "kind": "entrypoint",
+          "file": "app/api/admin/ai-forensic-captures/route.ts",
+          "line": 91,
+          "scope": "PATCH",
+          "description": "PrivacyOfficer-authorized purge accepts a capture ID and calls the transition service; active captures are not excluded."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/ai/forensic-capture.ts",
+          "line": 476,
+          "scope": "transitionAiForensicCapture purge branch",
+          "description": "Delete evidence without first locking or closing the parent capture. Consider an approved active capture with zero evidence rows."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/ai/forensic-evidence.ts",
+          "line": 286,
+          "scope": "persistAiForensicEvidence concurrent producer",
+          "description": "An in-flight blocked authoring request inserts under the active-window recheck. If it commits between the purge statements, stopped_at and purged_at are still null."
+        },
+        {
+          "kind": "sink",
+          "file": "lib/ai/forensic-capture.ts",
+          "line": 480,
+          "scope": "transitionAiForensicCapture purge completion",
+          "description": "Mark the capture purged and stopped, then commit without another evidence deletion; a concurrent child may remain."
+        }
+      ],
+      "evidence": [
+        {
+          "file": "app/api/ai/requirement-import-shared.ts",
+          "line": 192,
+          "description": "Rejected input records a safety block before returning."
+        },
+        {
+          "file": "lib/ai/safety.ts",
+          "line": 670,
+          "description": "Safety-block recording invokes the evidence producer."
+        },
+        {
+          "file": "lib/ai/forensic-capture.ts",
+          "line": 402,
+          "description": "Transaction begins without stronger isolation or an earlier parent lock in the purge branch."
+        },
+        {
+          "file": "lib/typeorm/sqlserver-config.ts",
+          "line": 12,
+          "description": "Default isolation is READ COMMITTED, passed into SQL Server options at line 201."
+        },
+        {
+          "file": "lib/ai/forensic-evidence.ts",
+          "line": 304,
+          "description": "Strongest insertion control rechecks approval, stopped/purged state, expiry and collection cap under UPDLOCK/HOLDLOCK; these predicates remain true before the purge state update."
+        },
+        {
+          "file": "typeorm/migrations/0058_ai_forensic_evidence_store.mjs",
+          "line": 71,
+          "description": "Ordinary foreign key has delete cascade; purge updates the parent rather than deleting it. No cross-table lifecycle trigger is defined."
+        },
+        {
+          "file": "lib/transient-cleanup/ai-forensic-evidence.ts",
+          "line": 136,
+          "description": "Scheduled deletion selects only captures with purged_at null, excluding any survivor attached to a purged capture."
+        }
+      ],
+      "blockers": [
+        "No target-controlled SQL test could run because the required OS sandbox failed namespace creation. Actual SQL Server range/key locks and the two-connection interleave have not been observed."
+      ],
+      "validation_plan": {
+        "local": "In a future approved isolated SQL fixture with two connections and dummy data, create an approved active capture with zero evidence. Pause the real purge transaction after its DELETE. Run one persistAiForensicEvidence insertion on the other connection and observe whether it commits. Resume purge and inspect parent state plus child count. If a child survives, age the dummy capture beyond cleanup eligibility and run one bounded cleanup to verify exclusion. Use strict timeouts and no shared services; stop after this single-row result. Refute the candidate if locking prevents the interleave."
+      }
+    }
+  ],
+  "hardening": [
+    "Authoring routes provide a five-minute deadline, but integration passes only abortSignal to the coordinator, which derives a fresh deadline from the operator profile (integration-layer.ts:583; run-coordinator.ts:664). Clarify or clamp the deadline contract; finite profile budgets prevent treating this alone as unbounded work."
+  ],
+  "uncovered": [
+    {
+      "surface": "app/api/admin/ai-forensic-captures#purge",
+      "boundary": "lib/ai/forensic-capture.ts#capture closure and evidence deletion",
+      "subsystem": "lib/ai/forensic-evidence",
+      "attack_class": "Deletion and retention across derived copies",
+      "starting_paths": [
+        "lib/ai/forensic-capture.ts",
+        "lib/ai/forensic-evidence.ts",
+        "lib/transient-cleanup/ai-forensic-evidence.ts"
+      ],
+      "reason": "AI Business logic contains the purge race candidate, but derived-copy deletion and cleanup recovery merit a separate lifecycle coverage unit. Cleanup was inspected only to establish the candidate retention consequence."
+    }
+  ]
+}

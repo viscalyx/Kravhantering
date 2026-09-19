@@ -1,0 +1,172 @@
+{
+  "units": [
+    {
+      "coverage_id": "app%2Fapi%2Frequirement-selection-questions%2F%5Bid%5D%2Fvisibility%2Froute.ts%23visibility%20dependency%20propagation::lib%2Fdal%2Frequirement-selection-questions.ts%23recursive%20descendant%20query%20and%20per-specification%20visibility%20recomputation::lib%2Frequirements%2Fselection-visibility::RESOURCE-EXHAUSTION-AND-AVAILABILITY.md%23Database%20and%20downstream%20query%20amplification",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "app/api/requirement-selection-questions/[id]/visibility/route.ts",
+        "app/api/requirement-selection-questions/_schemas.ts",
+        "app/api/requirement-selection-questions/_authorization.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/dal/requirement-selection-questions.ts",
+        "lib/http/secure-mutation-route.ts",
+        "lib/http/validation.ts",
+        "lib/db.ts",
+        "lib/typeorm/data-source.ts",
+        "lib/typeorm/sqlserver-config.ts",
+        "typeorm/migrations/0027_requirement_selection_question_visibility.mjs",
+        "docs/adr/0022-synlighetsvillkor-for-kravurvalsfragor.md",
+        "containers/production/nginx/templates/edge-rate.conf.template",
+        "containers/production/nginx/templates/app-node-tls.conf.template",
+        "tests/unit/requirement-selection-questions-dal.test.ts",
+        "node_modules/typeorm/entity-manager/EntityManager.js",
+        "node_modules/typeorm/driver/sqlserver/SqlServerQueryRunner.js",
+        "node_modules/mssql/lib/tedious/connection-pool.js",
+        "node_modules/tedious/lib/connection.js"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave4-visibility",
+          "reviewed_paths": [
+            "app/api/requirement-selection-questions/[id]/visibility/route.ts",
+            "app/api/requirement-selection-questions/_schemas.ts",
+            "app/api/requirement-selection-questions/_authorization.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "lib/dal/requirement-selection-questions.ts",
+            "lib/http/secure-mutation-route.ts",
+            "lib/http/validation.ts",
+            "lib/db.ts",
+            "lib/typeorm/data-source.ts",
+            "lib/typeorm/sqlserver-config.ts",
+            "typeorm/migrations/0027_requirement_selection_question_visibility.mjs",
+            "docs/adr/0022-synlighetsvillkor-for-kravurvalsfragor.md",
+            "containers/production/nginx/templates/edge-rate.conf.template",
+            "containers/production/nginx/templates/app-node-tls.conf.template",
+            "tests/unit/requirement-selection-questions-dal.test.ts",
+            "node_modules/typeorm/entity-manager/EntityManager.js",
+            "node_modules/typeorm/driver/sqlserver/SqlServerQueryRunner.js",
+            "node_modules/mssql/lib/tedious/connection-pool.js",
+            "node_modules/tedious/lib/connection.js"
+          ],
+          "invariant": "An authorized visibility edit should compute affected question identities without multiplying equivalent condition paths into disproportionate shared SQL work; timeouts and rollback must bound failure.",
+          "method": "source",
+          "result": "Route:18-35 and assignment-authorization.ts:697-702 require the owning area author/Admin. _schemas.ts:33-51 caps 50 groups, 50 conditions/group and 200 answers/condition. DAL:1767-1918 deduplicates answers within groups, binds parents and rejects cycles; migration0027:25 uniquely binds group/parent/answer, permitting several condition rows per graph edge. DAL:1927-1957 recursively UNION ALLs those rows and only then SELECT DISTINCTs question IDs; repeated answer/group edges therefore remain multiplicative in the recursive relation. The depth-100 predicate bounds depth, not intermediate multiplicity. DAL:1969-2008 limits subsequent updates to affected saved answers; per-specification recomputation is intentional under ADR0022 and computeVisibleQuestionIds:482 memoizes evaluation. Shared DataSource:lib/db.ts:45-85 uses SQL pool defaults 10 connections and 15-second request timeout (sqlserver-config.ts:6-11,216-229). Installed tedious connection.js:1321 cancels on timeout; EntityManager.js:86-98 rolls back/releases on error. Production nginx rate limits requests. These are real preventing/containment controls; no missing-timeout or indefinite-leak claim is made. Tests:668 mock the recursive query result. Actual SQL plan, bounded growth and unrelated-request impact remain unobserved, so the multiplicative-query hypothesis requires validation.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "selection-visibility/recursive-condition-rows/duplicate-path-amplification"
+      ],
+      "unresolved": []
+    }
+  ],
+  "candidates": [
+    {
+      "proposed_verdict": "needs_validation",
+      "fingerprint": "selection-visibility/recursive-condition-rows/duplicate-path-amplification",
+      "title": "Visibility descendant queries can multiply equivalent dependency paths",
+      "description": "An authenticated area author permitted to save visibility conditions can cause a small edit to traverse an existing valid acyclic question graph. Multiple allowed answer/group conditions between the same questions are separate SQL rows, and the descendant query carries their multiplicity through recursive UNION ALL before returning distinct question IDs. This creates a source-grounded hypothesis of disproportionate work in the shared application database compared with the distinct affected questions. The default 15-second SQL request timeout, driver cancellation, rollback and edge rate limits constrain the operation. No SQL execution, resource consumption, failure to cancel, or impact on another request was observed; this is not a demonstrated denial of service.",
+      "claimed_root_cause": "The descendant relation traverses visibility-condition rows rather than unique question dependencies and has no visited-question set or intermediate deduplication. Its depth limit and final DISTINCT do not bound intermediate path multiplicity. Valid alternative answers/groups can represent equivalent parent-child edges, so cycle rejection and per-question input cardinality limits do not establish work proportional to the graph’s distinct nodes or edges.",
+      "trace": [
+        {
+          "kind": "entrypoint",
+          "file": "app/api/requirement-selection-questions/[id]/visibility/route.ts",
+          "line": 18,
+          "scope": "PUT visibility edit",
+          "description": "An authenticated owning-area author/Admin passes the mutation policy and supplies schema-bounded visibility groups for an existing question."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/dal/requirement-selection-questions.ts",
+          "line": 2019,
+          "scope": "replaceRequirementSelectionQuestionVisibilityGroups transaction",
+          "description": "Checks the target, normalizes and validates the replacement, then stores each allowed answer condition as a separate row; no cycle is needed for this hypothesis."
+        },
+        {
+          "kind": "propagation",
+          "file": "lib/dal/requirement-selection-questions.ts",
+          "line": 2078,
+          "scope": "affected question discovery before history propagation",
+          "description": "The same transaction calls listVisibilityAffectedQuestionIds even when its final result contains only a small number of distinct question identities."
+        },
+        {
+          "kind": "sink",
+          "file": "lib/dal/requirement-selection-questions.ts",
+          "line": 1927,
+          "scope": "recursive visibility_descendants query on shared SQL Server",
+          "description": "The anchor includes every matching condition row; UNION ALL and the recursive join at :1944 preserve and extend duplicate dependency paths. Only :1948 deduplicates the result after traversal; the query runs on the shared application database connection."
+        }
+      ],
+      "evidence": [
+        {
+          "file": "app/api/requirement-selection-questions/_schemas.ts",
+          "line": 33,
+          "description": "Finite request schema caps are 50 groups, 50 conditions per group and 200 answer IDs per condition. Multiple answers and groups are valid inputs, not malformed encodings."
+        },
+        {
+          "file": "lib/requirements/assignment-authorization.ts",
+          "line": 697,
+          "description": "The strongest entry authorization resolves the real owning area and requires area authorship unless Admin; this is not anonymous or ordinary-reader access."
+        },
+        {
+          "file": "lib/dal/requirement-selection-questions.ts",
+          "line": 1797,
+          "description": "Normalization uses a Set of answer IDs for each parent within a group. It does not collapse separate answers/groups into one stored parent-child dependency."
+        },
+        {
+          "file": "typeorm/migrations/0027_requirement_selection_question_visibility.mjs",
+          "line": 25,
+          "description": "Uniqueness is on visibility_group_id, parent_question_id and answer_id. Foreign keys and parent/answer validation prevent invalid references but permit multiple valid rows for one question dependency."
+        },
+        {
+          "file": "lib/dal/requirement-selection-questions.ts",
+          "line": 1866,
+          "description": "Cycle checking uses distinct parent sets and visited nodes; an acyclic graph can pass independently of condition-row multiplicity in the later SQL traversal."
+        },
+        {
+          "file": "lib/dal/requirement-selection-questions.ts",
+          "line": 1946,
+          "description": "The recursive predicate limits depth to 100; final SELECT DISTINCT at :1948 does not express an intermediate cardinality or visited-question limit."
+        },
+        {
+          "file": "lib/typeorm/sqlserver-config.ts",
+          "line": 11,
+          "description": "Default SQL request timeout is 15000 ms and is passed into DataSource options at :227; pool max defaults to 10. These controls constrain duration/concurrency and must be retained in validation."
+        },
+        {
+          "file": "lib/db.ts",
+          "line": 45,
+          "description": "The application caches and reuses its DataSource rather than assigning a private database pool to each caller, establishing the shared resource whose actual impact needs measurement."
+        },
+        {
+          "file": "node_modules/tedious/lib/connection.js",
+          "line": 1321,
+          "description": "Installed driver calls request.cancel on its request timeout. TypeORM EntityManager.js:86-98 attempts rollback and releases the query runner after errors; no indefinite retained connection is established."
+        },
+        {
+          "file": "containers/production/nginx/templates/edge-rate.conf.template",
+          "line": 12,
+          "description": "Production ingress applies configured per-client API rate limiting; app-node-tls.conf.template:39 attaches the zone. Request rate limits do not themselves determine work within one admitted recursive query."
+        },
+        {
+          "file": "tests/unit/requirement-selection-questions-dal.test.ts",
+          "line": 668,
+          "description": "The relevant test substitutes a precomputed descendant list when it sees the recursive query. It verifies affected-specification scoping, not SQL intermediate row growth or cancellation."
+        }
+      ],
+      "blockers": [
+        "The required OS-enforced sandbox is unavailable: the parent namespace probe failed with No permissions to create new namespace. No target code, SQL query, fixture or availability experiment was executed.",
+        "The real SQL Server execution plan and actual intermediate-work growth for valid repeated dependency edges are unobserved. An optimizer transformation or effective workload governor may prevent the hypothesized disproportionate work.",
+        "Meaningful impact beyond the editing user is not established. Effective request timeout/cancellation, SQL workload isolation, concurrent-reader behavior, memory/CPU allocation and deployment ingress controls require bounded local measurement and owner configuration evidence."
+      ],
+      "validation_plan": {
+        "local": "In a future approved offline disposable SQL fixture, use only tiny acyclic graphs with a few questions and alternate valid answers/groups. Compare unique-edge and equivalent repeated-condition graphs with the same distinct descendants, exercising the real route/service validation and migrations. Inspect actual plan row counts or bounded work counters and rollback/cancellation behavior under strict CPU, memory, time and row limits. Stop after establishing or refuting growth; do not scale to saturation or attempt an outage. A benign second fixture request may establish whether the work crosses a shared-resource boundary within those strict bounds. Refute the availability hypothesis if effective controls prevent material shared effects.",
+        "deployment": "The owner can inspect effective DB_REQUEST_TIMEOUT_MS, DB_POOL_MAX, SQL resource/workload isolation, runtime topology and nginx admission settings without generating traffic or exposing secrets. Source defaults alone do not establish deployed impact."
+      }
+    }
+  ],
+  "hardening": [
+    "The per-specification loop at lib/dal/requirement-selection-questions.ts:1981 intentionally propagates stewardship changes only to specifications with affected current answers; ADR0022 explicitly requires that behavior. Its breadth alone is not an authorization or availability finding. Memoized visibility evaluation at :482 avoids repeated recursive computation within each specification."
+  ],
+  "uncovered": []
+}

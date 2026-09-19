@@ -1,0 +1,326 @@
+{
+  "units": [
+    {
+      "coverage_id": "scripts%2Frelease%2Fcontainer-release.mjs%23release%20inputs::scripts%2Frelease%2Fpublication.mjs%23publication%20authority::scripts%2Frelease::ATTACK-CLASSES.md%23Chained%20vulnerabilities%20and%20trust%20boundaries",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "scripts/release/selection.mjs",
+        "scripts/release/publication.mjs",
+        "scripts/release/promote-container-candidates.mjs",
+        "scripts/release/publish-github-release.mjs",
+        ".github/workflows/container-release.yml"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-release",
+          "reviewed_paths": [
+            "scripts/release/selection.mjs",
+            "scripts/release/publication.mjs",
+            "scripts/release/promote-container-candidates.mjs",
+            "scripts/release/publish-github-release.mjs",
+            ".github/workflows/container-release.yml"
+          ],
+          "invariant": "Only eligible source events and matching successful validation may acquire registry and release publication authority.",
+          "method": "source",
+          "result": "selection.mjs:360-455 rejects incomplete source facts and PR release eligibility. publication.mjs:29-77 binds source, repository, run, event, selection and successful checks. Both publishers call that gate before remote mutations; promotion preserves and rechecks digest identity. container-release.yml:28-55 limits the privileged job and checks out github.sha without persisted credentials. No lower-trust bypass was found in this source chain.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "scripts%2Frelease%2Fcontainer-release.mjs%23release%20inputs::scripts%2Frelease%2Fpublication.mjs%23publication%20authority::scripts%2Frelease::ATTACK-CLASSES.md%23Obvious%20things",
+      "disposition": "covered",
+      "reviewed_paths": [
+        ".github/workflows/operator-upgrade-gate.yml",
+        ".github/workflows/ssdlc-gate.yml",
+        ".github/actions/ghcr-credential-helper/action.yml",
+        ".github/actions/ghcr-credential-helper/docker-credential-ghcr-env",
+        ".github/workflows/container-release.yml",
+        "scripts/release/container-release.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-release",
+          "reviewed_paths": [
+            ".github/workflows/operator-upgrade-gate.yml",
+            ".github/workflows/ssdlc-gate.yml",
+            ".github/actions/ghcr-credential-helper/action.yml",
+            ".github/actions/ghcr-credential-helper/docker-credential-ghcr-env",
+            ".github/workflows/container-release.yml",
+            "scripts/release/container-release.mjs"
+          ],
+          "invariant": "Public PR content and committed test material must not grant release credentials or expose real production secrets.",
+          "method": "source",
+          "result": "Both pull_request_target gate workflows check out base.sha with read-only permissions and no persisted credentials. The GHCR helper serves only ghcr.io and obtains credentials from environment without persisting the token. container-release.yml:349-353 generates local fixture credentials/TLS after candidate builds; container-release.mjs:1088-1182 stages explicit bundle entries and demo-user documentation. Public test credentials do not establish production authority.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "scripts%2Frelease%2Fcontainer-release.mjs%23release%20inputs::scripts%2Frelease%2Fpublication.mjs%23publication%20authority::scripts%2Frelease::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "scripts/release/prepare-cleanup-source.mjs",
+        "scripts/release/deployment-provenance.mjs",
+        "scripts/release/container-release.mjs",
+        "scripts/containers/export-oci-archives.mjs",
+        ".github/skills/security-audit/validate-findings.cjs",
+        ".github/skills/security-audit/validate-coverage-ledger.cjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-release",
+          "reviewed_paths": [
+            "scripts/release/prepare-cleanup-source.mjs",
+            "scripts/release/deployment-provenance.mjs",
+            "scripts/release/container-release.mjs",
+            "scripts/containers/export-oci-archives.mjs",
+            ".github/skills/security-audit/validate-findings.cjs",
+            ".github/skills/security-audit/validate-coverage-ledger.cjs"
+          ],
+          "invariant": "Archive and report inputs must cross their authenticity, path and bounded-reading gates before extraction or interpretation.",
+          "method": "source",
+          "result": "prepare-cleanup-source.mjs:85-107 authenticates downloaded archives before extraction. container-release.mjs:550-670 restricts OCI descriptor paths; bundle Markdown assets reject traversal outside the bundle. export-oci-archives.mjs uses argument arrays, an isolated temporary Podman store and lock image IDs. validate-findings.cjs:604 and validate-coverage-ledger.cjs:721 open report inputs with no-follow/nonblocking flags, require regular files and bound descriptor reads. No target execution occurred.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "scripts%2Frelease%2Fcontainer-release.mjs%23release%20inputs::scripts%2Frelease%2Fpublication.mjs%23publication%20authority::scripts%2Frelease::SUPPLY-CHAIN-AND-RELEASE.md%23Build-context%20inclusion",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "containers/app/Dockerfile",
+        "containers/app/Dockerfile.dockerignore",
+        "scripts/release/container-release.mjs",
+        ".github/workflows/container-release.yml",
+        "scripts/provision-ai-provider-secret-keyring.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-release",
+          "reviewed_paths": [
+            "containers/app/Dockerfile",
+            "containers/app/Dockerfile.dockerignore",
+            "scripts/release/container-release.mjs",
+            ".github/workflows/container-release.yml",
+            "scripts/provision-ai-provider-secret-keyring.mjs"
+          ],
+          "invariant": "Build and deployment artifacts must not absorb operator credentials or unrelated workspace files.",
+          "method": "source",
+          "result": "Dockerfile.dockerignore:1-44 excludes environment files, credentials directories, repository metadata and temporary output. Dockerfile:48 copies the remaining context into the builder; runtime copies are explicitly selected at 123-126. container-release.mjs:1088-1182 stages an explicit deployment inventory. The local keyring default is not excluded from builder context, but no final-image, exported-cache or untrusted-builder disclosure path was established; this remains hardening.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "scripts%2Frelease%2Fcontainer-release.mjs%23release%20inputs::scripts%2Frelease%2Fpublication.mjs%23publication%20authority::scripts%2Frelease::SUPPLY-CHAIN-AND-RELEASE.md%23Build-to-promotion%20substitution",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "scripts/release/container-release.mjs",
+        "scripts/release/promote-container-candidates.mjs",
+        "scripts/release/publication.mjs",
+        ".github/workflows/container-release.yml"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-release",
+          "reviewed_paths": [
+            "scripts/release/container-release.mjs",
+            "scripts/release/promote-container-candidates.mjs",
+            "scripts/release/publication.mjs",
+            ".github/workflows/container-release.yml"
+          ],
+          "invariant": "Promoted images must be the exact immutable candidates validated by this release run.",
+          "method": "source",
+          "result": "container-release.mjs:658 compares OCI archive roots with Buildx digest metadata. container-release.yml:278-395 derives locks from those candidates and validates the archive against locally loaded candidates. promote-container-candidates.mjs:96 verifies publication evidence, local OCI digest and remote conflicts before copying with --preserve-digests; subsequent remote inspections enforce the same digest. No rebuild or cross-run artifact substitution exists on this promotion path.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "scripts%2Frelease%2Fcontainer-release.mjs%23release%20inputs::scripts%2Frelease%2Fpublication.mjs%23publication%20authority::scripts%2Frelease::SUPPLY-CHAIN-AND-RELEASE.md%23Cache%2C%20artifact%2C%20and%20workspace%20trust%20mixing",
+      "disposition": "covered",
+      "reviewed_paths": [
+        ".github/workflows/container-release.yml",
+        ".github/workflows/container-pr-smoke.yml",
+        "scripts/release/publication.mjs",
+        "scripts/release/prepare-cleanup-source.mjs",
+        "scripts/release/deployment-provenance.mjs",
+        "docs/operations/release-artifact-and-image-verification.md"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-release",
+          "reviewed_paths": [
+            ".github/workflows/container-release.yml",
+            ".github/workflows/container-pr-smoke.yml",
+            "scripts/release/publication.mjs",
+            "scripts/release/prepare-cleanup-source.mjs",
+            "scripts/release/deployment-provenance.mjs",
+            "docs/operations/release-artifact-and-image-verification.md"
+          ],
+          "invariant": "Untrusted PR caches, prior artifacts and alternate workspaces must not substitute release code or validated inputs.",
+          "method": "source",
+          "result": "The release workflow builds from its exact checkout and promotes local same-run OCI files; PR artifacts remain in the read-only PR smoke workflow. publication.mjs:146 validates current-run workflow/source/job evidence. npm caching stores downloads consumed by npm ci. prepare-cleanup-source.mjs:89-105 obtains independent verifier trust roots and binds prior archives to repository, workflow, source and release. Offline verification documentation:144 requires authenticated trust-root handoff.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "scripts%2Frelease%2Fcontainer-release.mjs%23release%20inputs::scripts%2Frelease%2Fpublication.mjs%23publication%20authority::scripts%2Frelease::SUPPLY-CHAIN-AND-RELEASE.md%23Mutable%20and%20unbound%20build%20inputs",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "containers/app/Dockerfile",
+        "package.json",
+        "package-lock.json",
+        ".npmrc",
+        "scripts/install-repository-npm.mjs",
+        ".github/workflows/container-release.yml",
+        ".github/actions/attest-with-retry/action.yml"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-release",
+          "reviewed_paths": [
+            "containers/app/Dockerfile",
+            "package.json",
+            "package-lock.json",
+            ".npmrc",
+            "scripts/install-repository-npm.mjs",
+            ".github/workflows/container-release.yml",
+            ".github/actions/attest-with-retry/action.yml"
+          ],
+          "invariant": "Dependency and action inputs must have source-visible version/integrity binding without an uncontrolled privileged input.",
+          "method": "source",
+          "result": "Dockerfile:3-4 pins builder/runtime image digests. package.json:5 selects exact npm; install-repository-npm.mjs validates that selector and bootstraps from a separate temporary directory. npm ci consumes the v3 lockfile; .npmrc and package.json:258 constrain install scripts. Reviewed external workflow/actions use commit SHAs. The Dockerfile frontend tag is mutable, but no less-trusted writer or demonstrated substitution was established; record it as hardening.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "scripts%2Frelease%2Fcontainer-release.mjs%23release%20inputs::scripts%2Frelease%2Fpublication.mjs%23publication%20authority::scripts%2Frelease::SUPPLY-CHAIN-AND-RELEASE.md%23Release%20authorization%20and%20signing-policy%20gaps",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "scripts/release/selection.mjs",
+        "scripts/release/publication.mjs",
+        "scripts/release/publish-github-release.mjs",
+        "scripts/release/deployment-provenance.mjs",
+        ".github/workflows/container-release.yml"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-release",
+          "reviewed_paths": [
+            "scripts/release/selection.mjs",
+            "scripts/release/publication.mjs",
+            "scripts/release/publish-github-release.mjs",
+            "scripts/release/deployment-provenance.mjs",
+            ".github/workflows/container-release.yml"
+          ],
+          "invariant": "Publication and signing must bind the authorized repository, source revision, release identity and successful validation.",
+          "method": "source",
+          "result": "publication.mjs:29-77 and :146 enforce source/run/repository identity and same-run successful gates. publish-github-release.mjs validates source tags, exact operator notes, image digests and asset inventory before publishing a draft. deployment-provenance.mjs:114-188 constrains signer workflow, source digest/ref, release predicate and subject hash; container-release.yml:638 verifies positive and negative archive-policy cases. Deployed branch/tag permission settings are outside this source-only conclusion.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "scripts%2Frelease%2Fcontainer-release.mjs%23release%20inputs::scripts%2Frelease%2Fpublication.mjs%23publication%20authority::scripts%2Frelease::SUPPLY-CHAIN-AND-RELEASE.md%23Untrusted%20code%20in%20a%20privileged%20workflow",
+      "disposition": "covered",
+      "reviewed_paths": [
+        ".github/workflows/operator-upgrade-gate.yml",
+        ".github/workflows/ssdlc-gate.yml",
+        "scripts/release/operator-upgrade-gate.mjs",
+        ".github/workflows/container-release.yml",
+        ".github/workflows/container-pr-smoke.yml",
+        ".github/workflows/security-repository.yml"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-release",
+          "reviewed_paths": [
+            ".github/workflows/operator-upgrade-gate.yml",
+            ".github/workflows/ssdlc-gate.yml",
+            "scripts/release/operator-upgrade-gate.mjs",
+            ".github/workflows/container-release.yml",
+            ".github/workflows/container-pr-smoke.yml",
+            ".github/workflows/security-repository.yml"
+          ],
+          "invariant": "Untrusted pull-request code must not run with production release credentials.",
+          "method": "source",
+          "result": "The two pull_request_target workflows check out the base SHA and execute trusted-base gate scripts with read-only tokens; PR metadata is API data. container-pr-smoke.yml:7-45 executes candidate code with contents:read. container-release.yml:28-55 restricts the publication job to eligible main/tag source and checks out exact github.sha. security-repository.yml guards privileged reporting for fork PRs. No source path transfers PR code into release credentials.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "scripts%2Frelease%2Fcontainer-release.mjs%23release%20inputs::scripts%2Frelease%2Fpublication.mjs%23publication%20authority::scripts%2Frelease::SUPPLY-CHAIN-AND-RELEASE.md%23Workflow%20command%20and%20expression%20confusion",
+      "disposition": "covered",
+      "reviewed_paths": [
+        ".github/workflows/container-release.yml",
+        ".github/actions/container-candidate/action.yml",
+        ".github/actions/container-vulnerability-gate/action.yml",
+        "scripts/release/select-validation.mjs",
+        "scripts/release/selection.mjs",
+        "scripts/release/promote-container-candidates.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-release",
+          "reviewed_paths": [
+            ".github/workflows/container-release.yml",
+            ".github/actions/container-candidate/action.yml",
+            ".github/actions/container-vulnerability-gate/action.yml",
+            "scripts/release/select-validation.mjs",
+            "scripts/release/selection.mjs",
+            "scripts/release/promote-container-candidates.mjs"
+          ],
+          "invariant": "Workflow metadata and operator inputs must remain data when passed to commands or workflow outputs.",
+          "method": "source",
+          "result": "container-release.yml:377 bridges cleanup-source input through environment; shell paths/arguments are quoted. container-candidate/action.yml similarly bridges matrix values through environment. select-validation.mjs parses NUL-delimited Git changes and selection.mjs validates paths/source values. Promotion uses spawn argument arrays. container-vulnerability-gate/action.yml:49 interpolates artifact-prefix into shell, but all inspected callers provide fixed repository-controlled paths, so no lower-trust expression-injection chain was established.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [],
+  "hardening": [
+    "containers/app/Dockerfile.dockerignore omits .local/, while scripts/provision-ai-provider-secret-keyring.mjs:72 defaults a private keyring there and Dockerfile:48 copies the build context. Exclude .local/ to avoid unnecessary builder exposure. No final-image disclosure, exported builder cache, or less-trusted builder principal was established.",
+    "containers/app/Dockerfile:1 selects docker/dockerfile:1.7 by mutable tag while its builder/runtime bases are digest-pinned. Pinning the frontend digest would improve reproducibility; tag mutability alone did not establish an attacker-controlled publication boundary."
+  ],
+  "uncovered": [
+    {
+      "surface": "scripts/release/container-vulnerability-monitor.mjs#external tracking records",
+      "boundary": "scripts/release/container-vulnerability-monitor.mjs#synchronizeTracking",
+      "subsystem": "release tracking automation",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Automation identity overreach",
+      "starting_paths": [
+        "scripts/release/container-vulnerability-monitor.mjs",
+        ".github/workflows/container-vulnerability-monitor.yml",
+        ".github/workflows/dependency-drift.mjs",
+        ".github/workflows/dependency-drift.yml"
+      ],
+      "reason": "Separate automation authorities consume external issue/advisory state and can mutate public issues or private advisories. The monitor passes a dedicated advisory token at workflow line 251 and matches existing advisory descriptions before PATCH at script lines 1034-1050. This excluded class needs a distinct unit tracing record ownership, allowed mutations and token scope; publication-unit checks do not settle it."
+    }
+  ]
+}

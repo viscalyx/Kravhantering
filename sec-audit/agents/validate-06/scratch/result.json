@@ -1,0 +1,92 @@
+{
+  "decision": "needs_validation",
+  "record": {
+    "verdict": "needs_validation",
+    "fingerprint": "dev-login/cached-jar/unscoped-cookie-header",
+    "title": "Cached developer sessions send cookies outside their recorded destination scope",
+    "description": "Source supports a conditional cookie-disclosure path: a party controlling development endpoint B can receive cached cookies belonging to app A or its separate IdP if a developer selects B through --base or DEV_LOGIN_BASE_URL while reusing the same username cache without --force. The helper runs as the developer's OS principal, reads that principal's local cache, and constructs an outgoing Cookie header before checking whether B reports authentication. Selecting B authorizes requests to B but does not grant B authority over sessions scoped to A or the IdP. This requires operator interaction and a recipient outside the source cookies' authority; no automatic attacker control of local configuration is established. Non-public, usable cookies are necessary for sensitive impact, and neither runtime disclosure nor production account takeover has been demonstrated.",
+    "claimed_root_cause": "isJarStillValid reconstructs Cookie from only Netscape name/value columns and discards recorded domain, host-only, path and expiry constraints. The default cache path includes username but no destination. Fresh CookieJar.header filters host, path and expiry, but is bypassed on cache validation. Secure is also discarded by validation, although the fresh jar deliberately ignores Secure for local development, so Secure omission is not the distinguishing cause of this candidate. Manual redirect handling and mode 0600 on newly created cache files do not constrain the initial outgoing header.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 35,
+        "scope": "parseArgs",
+        "description": "The developer can select a lower-trust destination B with DEV_LOGIN_BASE_URL or --base at lines 45-46. The CLI flag removes one trailing slash; no origin binding to the cache is applied. Attacker control of B and the developer's selection of B are prerequisites, not capabilities established by source."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 58,
+        "scope": "parseArgs",
+        "description": "Absent --jar, the cache remains .auth/<user>.cookies when the selected destination changes."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 356,
+        "scope": "main",
+        "description": "Unless --force is present, the existing cache is checked against the selected base before any fresh login; --print-jar returns earlier without validation."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 313,
+        "scope": "isJarStillValid",
+        "description": "Nonempty, non-comment lines with at least seven tab-separated fields are accepted; line 318 joins fields 5 and 6 into one Cookie header without destination or expiry filtering."
+      },
+      {
+        "kind": "sink",
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 321,
+        "scope": "isJarStillValid",
+        "description": "fetchImpl is called with the selected base plus /api/auth/me and the aggregated cookie header. redirect: manual constrains subsequent hops; non-ok and authenticated checks occur after this request."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 58,
+        "description": "The default cache identity contains only username, allowing the same stored jar to be selected for another base."
+      },
+      {
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 128,
+        "description": "CookieJar.header applies expiry, host-only/domain and path checks; lines 139-141 explicitly document ignoring Secure for development. This baseline supports the domain/path mismatch without implying full browser cookie semantics."
+      },
+      {
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 158,
+        "description": "toNetscape writes domain, include-subdomains, path, secure, expiry, name and value as non-comment records, including cookies originally marked HttpOnly."
+      },
+      {
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 318,
+        "description": "Only names and values are retained when rebuilding the cached header; recorded source scope has no effect on the request."
+      },
+      {
+        "file": "scripts/lib/dev-login-core.mjs",
+        "line": 372,
+        "description": "New cache files are written with mode 0600. Local file permissions do not stop the authorized developer process from disclosing contents through its manually assembled request."
+      },
+      {
+        "file": "scripts/security/get-session-cookie.mjs",
+        "line": 170,
+        "description": "The separate session-cookie helper selects cookies from an origin-keyed in-memory map. It does not share this username-cache aggregation pattern, though its comment explicitly excludes other cookie attributes from its simplified model."
+      },
+      {
+        "file": "scripts/__tests__/dev-login-core.test.mjs",
+        "line": 371,
+        "description": "The existing cache-validation test supplies only one matching-host cookie and expects a manual Cookie header; it does not cover cross-host cache reuse. Tests were inspected as source only and were not executed."
+      }
+    ],
+    "blockers": [
+      "Required OS-enforced target-execution isolation is unavailable: the audit's bubblewrap capability probe failed with No permissions to create new namespace. No target code, tests, network requests or runtime reproduction were executed during this validation.",
+      "No deployment configuration or real cookie cache was inspected. Sensitive impact requires a non-public, still-usable session cookie scoped outside the selected recipient's authority and an operator workflow that exposes that cache to the recipient. Public fixture passwords alone do not establish this."
+    ],
+    "validation_plan": {
+      "local": "In a future approved sandbox with no external network, an empty allowlisted environment, read-only target/tools, scratch-only writes and low resource/time limits, invoke the exported isJarStillValid interface with injected existsSyncImpl/readFileSyncImpl returning a synthetic Netscape jar and a recording fetchImpl. Use only dummy host-only app-a.test and idp.test cookies, select https://app-b.test, and have fetchImpl return ok:true with authenticated:false. Check that the recorded target is https://app-b.test/api/auth/me, the recorded Cookie contains both dummy markers despite incompatible source hosts, and validation returns false after the call. Compare against CookieJar.header for the same destination with equivalent synthetic cookie state. Separately check the parseArgs default cache path is unchanged across A/B. Stop after that boundary observation; do not invoke live login, use real credentials, or replay cookies. Any retained execution evidence requires a new parent-owned promotion allowlist and limits because this run's allowlist is empty.",
+      "deployment": "The owner can inspect cookie metadata and developer workflow configuration locally, without copying values or sending requests, to determine whether a default username cache contains a non-public app or IdP session, whether it is still usable under its issuer's session policy, and whether the same cache is reused for a separately administered destination without --force or an explicit per-destination jar. Establish who controls the selected recipient and whether the developer intentionally authorized that recipient to receive the source sessions. Report only metadata and the resulting trust relationship."
+    }
+  }
+}

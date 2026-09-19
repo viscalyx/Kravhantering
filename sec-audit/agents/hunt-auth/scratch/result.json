@@ -1,0 +1,376 @@
+{
+  "units": [
+    {
+      "coverage_id": "proxy.ts%23HTTP%20entry::lib%2Fauth%2Fsession.ts%23authenticated%20identity::lib%2Fauth::ATTACK-CLASSES.md%23Access%20control",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "proxy.ts",
+        "lib/auth/proxy-public-paths.ts",
+        "lib/auth/session.ts",
+        "lib/requirements/auth.ts",
+        "lib/admin/privileged-audit.ts",
+        "lib/http/secure-mutation-route.ts",
+        "lib/http/route-security-policy.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-auth",
+          "reviewed_paths": [
+            "proxy.ts",
+            "lib/auth/proxy-public-paths.ts",
+            "lib/auth/session.ts",
+            "lib/requirements/auth.ts",
+            "lib/admin/privileged-audit.ts",
+            "lib/http/secure-mutation-route.ts",
+            "lib/http/route-security-policy.ts"
+          ],
+          "invariant": "Untrusted requests cannot select an authenticated actor or bypass REST authentication through alternate paths.",
+          "method": "source",
+          "result": "proxy.ts:328-381 verifies session on protected paths; :483-488 strips identity headers. Public bypass inventory is exact-path/static-prefix based. lib/auth/session.ts:108-138 requires full identity shape and future expiry. lib/requirements/auth.ts:335 onward derives identity from sealed session or an in-process verified attachment; admin context independently uses session at lib/admin/privileged-audit.ts:145-169. Mutation wrapper authenticates at :290-304 and authorizes at :343-357 before handler. Unknown registry operations remain session-protected at lib/http/route-security-policy.ts:2382-2389. No source-supported auth bypass found.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "proxy.ts%23HTTP%20entry::lib%2Fauth%2Fsession.ts%23authenticated%20identity::lib%2Fauth::ATTACK-CLASSES.md%23Cryptography%20and%20secrets",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/auth/config.ts",
+        "lib/auth/session.ts",
+        "lib/auth/login-state.ts",
+        "lib/auth/audit.ts",
+        "app/api/auth/login/route.ts",
+        "app/api/auth/callback/route.ts",
+        "app/api/auth/me/route.ts",
+        "package-lock.json"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-auth",
+          "reviewed_paths": [
+            "lib/auth/config.ts",
+            "lib/auth/session.ts",
+            "lib/auth/login-state.ts",
+            "lib/auth/audit.ts",
+            "app/api/auth/login/route.ts",
+            "app/api/auth/callback/route.ts",
+            "app/api/auth/me/route.ts",
+            "package-lock.json"
+          ],
+          "invariant": "Session and challenge integrity use secret verification and generated randomness, and auth responses/logs do not expose credential material.",
+          "method": "source",
+          "result": "lib/auth/config.ts:142-152 enforces minimum password length and rejects shipped placeholder markers in prod; no fallback secret. Session/login-state use iron-session sealing at lib/auth/session.ts:59-73 and lib/auth/login-state.ts:31-44. app/api/auth/login/route.ts:55-59 generates library PKCE/state/nonce. Callback projection at :457-488 replaces identity fields and clears absent optional claims; /me explicitly selects safe fields. Audit removes query/fragment and denied detail keys at lib/auth/audit.ts:107-173. package-lock.json pins iron-session 9.0.1/openid-client 6.8.8. No credential disclosure or unverified-cookie acceptance trace found.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "proxy.ts%23HTTP%20entry::lib%2Fauth%2Fsession.ts%23authenticated%20identity::lib%2Fauth::ATTACK-CLASSES.md%23Obvious%20things",
+      "disposition": "covered",
+      "reviewed_paths": [
+        ".gitignore",
+        ".env.production",
+        "lib/auth/config.ts",
+        "lib/runtime/build-target.prod.ts",
+        "next.config.ts",
+        "app/api/health/route.ts",
+        "app/api/ready/route.ts",
+        "lib/http/secure-mutation-route.ts",
+        "app/api/auth/login/route.ts",
+        "app/api/auth/callback/route.ts",
+        "package-lock.json"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-auth",
+          "reviewed_paths": [
+            ".gitignore",
+            ".env.production",
+            "lib/auth/config.ts",
+            "lib/runtime/build-target.prod.ts",
+            "next.config.ts",
+            "app/api/health/route.ts",
+            "app/api/ready/route.ts",
+            "lib/http/secure-mutation-route.ts",
+            "app/api/auth/login/route.ts",
+            "app/api/auth/callback/route.ts",
+            "package-lock.json"
+          ],
+          "invariant": "Auth-owned debug, configuration, probe, redirect, credential and error surfaces do not confer unintended authority.",
+          "method": "source",
+          "result": "Production build target requires explicit selection at next.config.ts:20-35; prod constants disable insecure OIDC/cookies and dev CSP; auth config rejects shipped placeholders. Scoped source search found no eval/child_process/dynamic-input execution or permissive CORS setting. Health returns only status; readiness returns ready/not_ready (app/api/ready/route.ts:78). Unexpected mutation error details are development-only at lib/http/secure-mutation-route.ts:127-151. Login/callback returnTo paths reject schemes, double slash, backslash and unapproved first segments. .gitignore excludes local secret env/cookies/PEM/keyring and .env.production contains deployment-secret guidance; tracked key inventory identifies a test fixture outside auth ownership. Dependency versions are locked; no vulnerability database refresh was performed.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "proxy.ts%23HTTP%20entry::lib%2Fauth%2Fsession.ts%23authenticated%20identity::lib%2Fauth::RESOURCE-EXHAUSTION-AND-AVAILABILITY.md%23Pre-authentication%20work%20imbalance",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/security/csp-reports.ts",
+        "app/api/security/csp-reports/route.ts",
+        "lib/http/native-csp-report-route.ts",
+        "app/api/ready/route.ts",
+        "lib/readiness/coordinator.ts",
+        "app/api/auth/login/route.ts",
+        "app/api/auth/callback/route.ts",
+        "lib/auth/oidc.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-auth",
+          "reviewed_paths": [
+            "lib/security/csp-reports.ts",
+            "app/api/security/csp-reports/route.ts",
+            "lib/http/native-csp-report-route.ts",
+            "app/api/ready/route.ts",
+            "lib/readiness/coordinator.ts",
+            "app/api/auth/login/route.ts",
+            "app/api/auth/callback/route.ts",
+            "lib/auth/oidc.ts"
+          ],
+          "invariant": "Anonymous routes apply effective admission or shared-work bounds before expensive downstream work.",
+          "method": "source",
+          "result": "CSP receiver enforces 64 KiB body, 5s read timeout, 8 concurrent requests, per-process/per-source rates and bounded source cardinality before settings lookup (lib/security/csp-reports.ts:7-21, :168-203, :236-300); attached cookies never supply actor identity. Readiness coalesces one in-flight evaluation and caches for 5s (lib/readiness/coordinator.ts:38-76), with 2s OIDC timeout (app/api/ready/route.ts:161). OIDC discovery shares a cached promise (lib/auth/oidc.ts:51); callback checks login-state prerequisites before grant (app/api/auth/callback/route.ts:293-365). No low-cost unbounded shared-effect path established; absence of additional login throttling alone is not a finding.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "proxy.ts%23HTTP%20entry::lib%2Fauth%2Fsession.ts%23authenticated%20identity::lib%2Fauth::WEB-PROTOCOL-AND-AUTH.md%23Cache%20deception%20and%20private-response%20caching",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/http/response-policy.ts",
+        "lib/http/route-security-policy.ts",
+        "proxy.ts",
+        "lib/auth/proxy-public-paths.ts",
+        "app/api/auth/me/route.ts",
+        "next.config.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-auth",
+          "reviewed_paths": [
+            "lib/http/response-policy.ts",
+            "lib/http/route-security-policy.ts",
+            "proxy.ts",
+            "lib/auth/proxy-public-paths.ts",
+            "app/api/auth/me/route.ts",
+            "next.config.ts"
+          ],
+          "invariant": "Private authentication responses cannot be reclassified as cacheable static responses by a suffix or unsupported-method path.",
+          "method": "source",
+          "result": "Registry requires no-store for sensitive operations (lib/http/route-security-policy.ts:2169), derives HEAD from GET and OPTIONS/path policy, and uses conservative no-store for unknown operations (:2351-2391). Response helper applies the most restrictive path policy for unsupported methods (lib/http/response-policy.ts:37-51), used by proxy finalization at proxy.ts:385-397 and /me wrapper. Static bypass patterns are anchored exact paths at proxy.ts:499-502, not a generic dotted-path exclusion. No source-visible public-cache/private-response mismatch found; external edge cache configuration is not presumed.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "proxy.ts%23HTTP%20entry::lib%2Fauth%2Fsession.ts%23authenticated%20identity::lib%2Fauth::WEB-PROTOCOL-AND-AUTH.md%23Cookie%20scope%20and%20transport",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/auth/config.ts",
+        "lib/auth/session.ts",
+        "lib/auth/login-state.ts",
+        "lib/runtime/build-target.prod.ts",
+        "next.config.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-auth",
+          "reviewed_paths": [
+            "lib/auth/config.ts",
+            "lib/auth/session.ts",
+            "lib/auth/login-state.ts",
+            "lib/runtime/build-target.prod.ts",
+            "next.config.ts"
+          ],
+          "invariant": "Browser credentials remain host scoped, unavailable to script, and secure in production builds.",
+          "method": "source",
+          "result": "lib/auth/config.ts:175-189 validates cookie name and adds __Host- in secure builds; session and login-state cookies use HttpOnly, Secure, SameSite=Lax, Path=/ and no Domain (lib/auth/session.ts:59-73; lib/auth/login-state.ts:31-44). Prod constants make Secure unconditional, selected through next.config.ts:164-177 aliases. A sibling-origin cookie-overwrite or transport-leak path is not established. Development/local-prod HTTP concessions are explicit build modes, not request-controlled switches.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "proxy.ts%23HTTP%20entry::lib%2Fauth%2Fsession.ts%23authenticated%20identity::lib%2Fauth::WEB-PROTOCOL-AND-AUTH.md%23Host%20and%20forwarded-header%20trust",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "proxy.ts",
+        "lib/auth/csrf.ts",
+        "app/api/auth/callback/route.ts",
+        "app/api/auth/login/route.ts",
+        "app/api/auth/logout/route.ts",
+        "lib/auth/client-ip.ts",
+        "containers/production/nginx/templates/app-node-http.conf.template",
+        "containers/production/nginx/templates/app-node-tls.conf.template",
+        "containers/production/nginx/templates/single-node-external-oidc-tls.conf.template"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-auth",
+          "reviewed_paths": [
+            "proxy.ts",
+            "lib/auth/csrf.ts",
+            "app/api/auth/callback/route.ts",
+            "app/api/auth/login/route.ts",
+            "app/api/auth/logout/route.ts",
+            "lib/auth/client-ip.ts",
+            "containers/production/nginx/templates/app-node-http.conf.template",
+            "containers/production/nginx/templates/app-node-tls.conf.template",
+            "containers/production/nginx/templates/single-node-external-oidc-tls.conf.template"
+          ],
+          "invariant": "Request host/proxy metadata cannot redefine the security origin or authenticated identity.",
+          "method": "source",
+          "result": "CSRF expected origin comes from configured redirectUri (lib/auth/csrf.ts:54-80); callback token redirect URI is reconstructed from that configured value (app/api/auth/callback/route.ts:343-365). Login/end-session use configured provider and redirect targets. Proxy navigation redirects use request URL but contain no credentials and are not used as auth proof. Client IP helper accepts only syntactically valid dedicated header values, and inspected maintained nginx templates overwrite X-Kravhantering-Client-IP with remote_addr (:53/:57/:56 respectively). Actual ingress attachment remains operator responsibility; no demonstrated identity/auth-origin confusion found.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "proxy.ts%23HTTP%20entry::lib%2Fauth%2Fsession.ts%23authenticated%20identity::lib%2Fauth::WEB-PROTOCOL-AND-AUTH.md%23JWT%20verification%20and%20claim%20binding",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/auth/oidc.ts",
+        "lib/auth/mcp-token.ts",
+        "lib/auth/config.ts",
+        "app/api/auth/callback/route.ts",
+        "lib/auth/roles.ts",
+        "lib/auth/hsa-id.ts",
+        "package-lock.json"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-auth",
+          "reviewed_paths": [
+            "lib/auth/oidc.ts",
+            "lib/auth/mcp-token.ts",
+            "lib/auth/config.ts",
+            "app/api/auth/callback/route.ts",
+            "lib/auth/roles.ts",
+            "lib/auth/hsa-id.ts",
+            "package-lock.json"
+          ],
+          "invariant": "Accepted identity claims bind the configured issuer/client, intended token use, nonce/expiry and canonical identity.",
+          "method": "source",
+          "result": "Browser code flow gets ID tokens from the configured TLS token endpoint through openid-client; local dependency source confirms issuer/audience/required-claim/expiry/nonce checks (oauth4webapi validateIdTokenClaims/validateIdTokenNonce), with direct token response TLS providing provenance in the default code flow. Callback then requires names, HSA-id and canonical roles (app/api/auth/callback/route.ts:383-440). MCP uses jose jwtVerify with issuer/audience, then typ=at+jwt, finite exp/iat, age/lifetime, client_id/azp, scopes and HSA-id (lib/auth/mcp-token.ts:237-305). Untrusted token headers do not select the configured JWKS URI. No wrong-service/wrong-client acceptance path established.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "proxy.ts%23HTTP%20entry::lib%2Fauth%2Fsession.ts%23authenticated%20identity::lib%2Fauth::WEB-PROTOCOL-AND-AUTH.md%23OAuth%2FOIDC%20request%20and%20callback%20binding",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/auth/login/route.ts",
+        "app/api/auth/callback/route.ts",
+        "lib/auth/login-state.ts",
+        "lib/auth/oidc.ts",
+        "lib/http/validation.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-auth",
+          "reviewed_paths": [
+            "app/api/auth/login/route.ts",
+            "app/api/auth/callback/route.ts",
+            "lib/auth/login-state.ts",
+            "lib/auth/oidc.ts",
+            "lib/http/validation.ts"
+          ],
+          "invariant": "Callback creates a session only for a code linked to the initiating browser challenge and configured IdP/client.",
+          "method": "source",
+          "result": "Login creates sealed 5-minute verifier/state/nonce with S256 PKCE (app/api/auth/login/route.ts:55-76; lib/auth/login-state.ts:29-44). Callback strict schema permits exactly one code/error, requires all three challenge fields, and passes expectedState/expectedNonce/pkceCodeVerifier/idTokenExpected to authorizationCodeGrant (:293-365). Login state is destroyed on grant rejection or success (:367, :518); returnTo is independently revalidated (:71-87). IdP error branch can clear login-state but does not create or replace authenticated identity. No login-CSRF, redirect ownership or callback-mixup finding established.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "proxy.ts%23HTTP%20entry::lib%2Fauth%2Fsession.ts%23authenticated%20identity::lib%2Fauth::WEB-PROTOCOL-AND-AUTH.md%23Ordinary%20CSRF",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "proxy.ts",
+        "lib/auth/csrf.ts",
+        "lib/requirements/auth.ts",
+        "lib/admin/privileged-audit.ts",
+        "lib/http/secure-mutation-route.ts",
+        "lib/http/route-security-policy.ts",
+        "lib/http/native-csp-report-route.ts",
+        "app/api/auth/logout/route.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-auth",
+          "reviewed_paths": [
+            "proxy.ts",
+            "lib/auth/csrf.ts",
+            "lib/requirements/auth.ts",
+            "lib/admin/privileged-audit.ts",
+            "lib/http/secure-mutation-route.ts",
+            "lib/http/route-security-policy.ts",
+            "lib/http/native-csp-report-route.ts",
+            "app/api/auth/logout/route.ts"
+          ],
+          "invariant": "Cookie-authenticated mutations require the configured same origin and a non-simple custom request header.",
+          "method": "source",
+          "result": "proxy.ts:458-470 authenticates and checks CSRF before mutation trailing-slash redirects. Both ordinary and admin wrapper contexts call assertSameOriginRequest; lib/auth/csrf.ts:63-91 rejects missing/mismatched Origin/Referer and missing/non-XMLHttpRequest header. Registry compile disallows mutation exemptions except exact anonymous CSP operation (:2141-2167); logout GET is explicitly non-destructive while POST uses secureLogoutMutationRoute. Read-only lexical inventory of app/api route exports found MCP as sole direct POST/PUT/PATCH/DELETE function; it is bearer-authenticated and peer-owned. No accepted cross-origin cookie mutation path found.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "proxy.ts%23HTTP%20entry::lib%2Fauth%2Fsession.ts%23authenticated%20identity::lib%2Fauth::WEB-PROTOCOL-AND-AUTH.md%23Session%20fixation%20and%20invalidation",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/auth/session.ts",
+        "lib/auth/login-state.ts",
+        "app/api/auth/callback/route.ts",
+        "app/api/auth/logout/route.ts",
+        "docs/security-privacy/auth-how-it-works.md"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-auth",
+          "reviewed_paths": [
+            "lib/auth/session.ts",
+            "lib/auth/login-state.ts",
+            "app/api/auth/callback/route.ts",
+            "app/api/auth/logout/route.ts",
+            "docs/security-privacy/auth-how-it-works.md"
+          ],
+          "invariant": "Login/account switch replaces identity state; expired or malformed sessions are denied; lifecycle behavior matches the stated stateless model.",
+          "method": "source",
+          "result": "Callback overwrites all mandatory identity fields and removes absent email/ID token before saving a new sealed cookie (app/api/auth/callback/route.ts:470-488). isSignedIn rejects missing fields and accessTokenExpiresAt <= now (lib/auth/session.ts:108-138); iron-session additionally checks seal validity/TTL. Logout destroys local cookie before provider discovery (:73-90). docs/security-privacy/auth-how-it-works.md:143-169 explicitly documents no server revocation/introspection/logout receiver and expiry-bounded stale roles. Copied cookies remaining replayable to expiry are an acknowledged stateless-design limitation, without an independently established new privilege-gain prerequisite.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [],
+  "hardening": [
+    "Stateless browser sessions intentionally retain IdP role snapshots until expiry and cannot revoke a copied cookie individually; operators should retain the documented short access-token lifetime and coordinated secret-rotation response. This is not reported as a new vulnerability."
+  ],
+  "uncovered": []
+}

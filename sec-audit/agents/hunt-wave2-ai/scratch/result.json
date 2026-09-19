@@ -1,0 +1,188 @@
+{
+  "units": [
+    {
+      "coverage_id": "app%2Fapi%2Fadmin%2Fai-connections%20and%20app%2Fapi%2Fadmin%2Fai-run-profiles%23verification%20activation::lib%2Fai%2Fadmin-service.ts%23current%20model%20profile%20and%20deployment%20evidence%20binding::lib%2Fai%2Fadmin::AI-AND-LLM.md%23Action-confirmation%20and%20approval%20binding",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/admin/ai-connections/[connectionId]/actions/route.ts",
+        "app/api/admin/ai-run-profiles/[profileKey]/actions/route.ts",
+        "lib/ai/admin-contracts.ts",
+        "lib/ai/admin-service.ts",
+        "lib/ai/admin-external.ts",
+        "lib/ai/staging-live-policy.ts",
+        "lib/dal/ai-connection-admin.ts",
+        "lib/dal/ai-model-verification-attempts.ts",
+        "scripts/release/ai-staging-live-probe.mjs",
+        "scripts/release/ai-deployment-gate.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave2-ai",
+          "reviewed_paths": [
+            "app/api/admin/ai-connections/[connectionId]/actions/route.ts",
+            "app/api/admin/ai-run-profiles/[profileKey]/actions/route.ts",
+            "lib/ai/admin-contracts.ts",
+            "lib/ai/admin-service.ts",
+            "lib/ai/admin-external.ts",
+            "lib/ai/staging-live-policy.ts",
+            "lib/dal/ai-connection-admin.ts",
+            "lib/dal/ai-model-verification-attempts.ts",
+            "scripts/release/ai-staging-live-probe.mjs",
+            "scripts/release/ai-deployment-gate.mjs"
+          ],
+          "invariant": "Administrative changes and verification evidence remain bound to validated actions and current configuration identities.",
+          "method": "source",
+          "result": "Both routes require adminMutationPolicy; contracts use strict action variants. admin-service.ts:576 fingerprints verification configuration; :1182-1237 binds and rechecks the live path. Attempt DAL:97 consumes connection/fingerprint/expiry-matched evidence transactionally. Connection DAL:1677 checks current revision, attestation, evidence, model and secret before activation. staging-live-policy.ts:6 binds the environment and guard. Probe:220 checks server environment; deployment gate:373 compares exact path sets. These document source controls, not deployed evidence provenance.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Frequirement-responsibility-people%2Fverify%2Froute.ts%23lookup%20admission::lib%2Fdal%2Fhsa-verification-quota.ts%23shared%20actor%20and%20target%20budgets::lib%2Fhsa::RESOURCE-EXHAUSTION-AND-AVAILABILITY.md%23Quota-accounting%20scope%20and%20reset%20gaps",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/requirement-responsibility-people/verify/route.ts",
+        "lib/dal/hsa-verification-quota.ts",
+        "lib/requirements/responsibility-person-verification.ts",
+        "lib/requirements/responsibility-person-verification-fingerprint.mjs",
+        "lib/privacy/erasure.ts",
+        "lib/privacy/route-helpers.ts",
+        "lib/transient-cleanup/hsa-verification-quota-buckets.ts",
+        "typeorm/migrations/0061_hsa_verification_quota.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave2-ai",
+          "reviewed_paths": [
+            "app/api/requirement-responsibility-people/verify/route.ts",
+            "lib/dal/hsa-verification-quota.ts",
+            "lib/requirements/responsibility-person-verification.ts",
+            "lib/requirements/responsibility-person-verification-fingerprint.mjs",
+            "lib/privacy/erasure.ts",
+            "lib/privacy/route-helpers.ts",
+            "lib/transient-cleanup/hsa-verification-quota-buckets.ts",
+            "typeorm/migrations/0061_hsa_verification_quota.mjs"
+          ],
+          "invariant": "Authorized verification shares actor, actor-target and target accounting, with explicit expiry and privileged privacy reset.",
+          "method": "source",
+          "result": "Verification route authorizes scope before quota admission and returns 503 on quota failure. Fingerprint module:14,28 separates keyed actor/target namespaces; targets are lowercased. Quota DAL:185 uses SERIALIZABLE, SQL time and per-bucket application locks with limits 50/10/10. Migration enforces unique identity/window and bounded counts. Cleanup:58 deletes only expired buckets. Erasure:1261 deletes exact subject matches inside :1386 SERIALIZABLE; privacy role gating is explicit in route-helpers.ts:19.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "lib%2Fmcp%2Fserver.ts%23HTML%20requirement%20resource::lib%2Fmcp%2Fserver.ts%23renderRequirementHtml::lib%2Fmcp%2Frendering::AI-AND-LLM.md%23Insecure%20output%20rendering",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/mcp/server.ts",
+        "lib/norm-references/browser-link-uri.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave2-ai",
+          "reviewed_paths": [
+            "lib/mcp/server.ts",
+            "lib/norm-references/browser-link-uri.ts"
+          ],
+          "invariant": "Stored requirement text and reference URLs enter MCP HTML only through contextual escaping and an explicit link scheme policy.",
+          "method": "source",
+          "result": "server.ts:619 escapes ampersands, angle brackets and both quote characters. Every stored-value interpolation in :763-902 uses that function, including composed list markup. Reference hrefs pass :628 HTTP/HTTPS/mailto validation and attribute escaping; rejected URLs become escaped text. Styles are static and there are no dynamic script or automatically loaded resource slots. Resource handler:1856 obtains data through service.getRequirement. Browser-link-uri.ts:1 permits HTTP/HTTPS for its separate browser surface.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "lib%2Ftransient-cleanup%2Fai-forensic-evidence.ts%23scheduled%20evidence%20expiry::lib%2Fai%2Fforensic-capture.ts%23capture%20and%20derived%20evidence%20lifetime::lib%2Fai%2Fforensic-evidence::DATA-ISOLATION-AND-LIFECYCLE.md%23Retention%20and%20queued-work%20overrun",
+      "disposition": "candidate",
+      "reviewed_paths": [
+        "lib/ai/forensic-capture.ts",
+        "lib/ai/forensic-evidence.ts",
+        "lib/transient-cleanup/ai-forensic-evidence.ts",
+        "lib/privacy/erasure.ts",
+        "typeorm/migrations/0058_ai_forensic_evidence_store.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave2-ai",
+          "reviewed_paths": [
+            "lib/ai/forensic-capture.ts",
+            "lib/ai/forensic-evidence.ts",
+            "lib/transient-cleanup/ai-forensic-evidence.ts",
+            "lib/privacy/erasure.ts",
+            "typeorm/migrations/0058_ai_forensic_evidence_store.mjs"
+          ],
+          "invariant": "Evidence production, reading and disposal follow capture authorization and explicit lifetime states.",
+          "method": "source",
+          "result": "Capture:105 creates bounded windows; :274 restricts stopped/expired evidence reads to authorized parties. Evidence:286 rechecks approval, stop/purge flags, expiry, operation/direction and collection limit under locks. Cleanup:104 closes expired windows, deletes evidence after 72 hours, then marks empty captures purged. Erasure:1189-1247 removes matching copies and closes/anonymizes captures within :1386 SERIALIZABLE. Migration bounds bytes/items and adds cascading parent deletion. The existing manual-purge candidate remains linked without new analysis or duplication.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [
+        "ai-forensic-capture/purge-before-close-retained-evidence"
+      ],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "lib%2Ftransient-cleanup%2Fcli.ts%23release-independent%20cleanup::lib%2Ftransient-cleanup%2Fregistry.ts%23schema%20applicability%20and%20producer%20recovery::lib%2Ftransient-cleanup::RESOURCE-EXHAUSTION-AND-AVAILABILITY.md%23Unsafe%20recovery%20and%20capacity%20rollback",
+      "disposition": "blocked",
+      "reviewed_paths": [
+        "lib/transient-cleanup/cli.ts",
+        "lib/transient-cleanup/registry.ts",
+        "lib/transient-cleanup/runner.ts",
+        "lib/transient-cleanup/compatibility.ts",
+        "lib/transient-cleanup/schema.ts",
+        "lib/transient-cleanup/ai-run-coordination-entries.ts",
+        "lib/transient-cleanup/ai-model-verification-attempts.ts",
+        "lib/transient-cleanup/requirement-import-validation-rate-buckets.ts",
+        "lib/transient-cleanup/hsa-verification-quota-buckets.ts",
+        "lib/ai/run-coordination-store.ts",
+        "lib/ai/run-coordinator.ts",
+        "scripts/release/cleanup-compatibility.mjs",
+        "scripts/release/cleanup-compatibility-contract.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave2-ai",
+          "reviewed_paths": [
+            "lib/transient-cleanup/cli.ts",
+            "lib/transient-cleanup/registry.ts",
+            "lib/transient-cleanup/runner.ts",
+            "lib/transient-cleanup/compatibility.ts",
+            "lib/transient-cleanup/schema.ts",
+            "lib/transient-cleanup/ai-run-coordination-entries.ts",
+            "lib/transient-cleanup/ai-model-verification-attempts.ts",
+            "lib/transient-cleanup/requirement-import-validation-rate-buckets.ts",
+            "lib/transient-cleanup/hsa-verification-quota-buckets.ts",
+            "lib/ai/run-coordination-store.ts",
+            "lib/ai/run-coordinator.ts",
+            "scripts/release/cleanup-compatibility.mjs",
+            "scripts/release/cleanup-compatibility-contract.mjs"
+          ],
+          "invariant": "Cleanup operates only on applicable verified schemas and expired state while producers remain fenced by current ownership.",
+          "method": "source",
+          "result": "CLI:195-246 checks contract schema fingerprints and target applicability; registry:13 rejects partial/inoperable schemas. Runner:90 bounds batches and total work and records failures. Cleanup predicates use SQL expiry. Coordination store:532,551 fences renewal/requeue by run, owner, token and live lease; coordinator:808 aborts on renewal loss and :1054 invokes bounded settling. Release contract verifier:24 binds image and source/target releases. End-to-end producer termination and old/new-schema recovery were not established by this control-documentation review.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": [
+        "No execution was permitted. The actual producer termination boundary following lease loss or force-close, including external provider completion, remains unverified.",
+        "The deployed cleanup image, mounted compatibility contract, old/new-schema verification matrix, scheduler cadence and restored database state were not available. Source parsing and fencing controls do not establish those operational facts."
+      ]
+    }
+  ],
+  "candidates": [],
+  "hardening": [
+    "Scope limitation: this follow-up documents existing controls only, as instructed. No new vulnerability assessment, exploit design, execution or external verification was performed. The forensic fingerprint references the already tracked record without restating or extending it.",
+    "AI deployment evidence assessment validates supplied structured evidence and matching path identities; actual evidence provenance, staging environment configuration and production attachment remain operator-observed facts.",
+    "Shared HSA fingerprint accounting assumes consistently provisioned server secrets and stable authenticated actor identity across nodes. No deployment secret values or identity-provider behavior were inspected.",
+    "MCP output escaping was inspected in source; the external MCP host's sandbox, navigation and rendering behavior were not exercised."
+  ],
+  "uncovered": []
+}

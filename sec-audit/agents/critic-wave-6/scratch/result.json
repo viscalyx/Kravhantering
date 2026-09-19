@@ -1,0 +1,144 @@
+{
+  "missing_units": [
+    {
+      "surface": "app/api/requirement-selection-questions#question and answer lifecycle",
+      "boundary": "lib/dal/requirement-selection-questions.ts#state changes duplication link replacement and saved-answer history",
+      "subsystem": "lib/requirements/selection-lifecycle",
+      "attack_class": "ATTACK-CLASSES.md#Business logic",
+      "starting_paths": [
+        "app/api/requirement-selection-questions/_authorization.ts",
+        "app/api/requirement-selection-questions/_schemas.ts",
+        "app/api/requirement-selection-questions/[id]/route.ts",
+        "app/api/requirement-selection-questions/[id]/activate/route.ts",
+        "app/api/requirement-selection-questions/[id]/deactivate/route.ts",
+        "app/api/requirement-selection-questions/[id]/archive/route.ts",
+        "app/api/requirement-selection-questions/[id]/reactivate/route.ts",
+        "app/api/requirement-selection-questions/[id]/duplicate/route.ts",
+        "app/api/requirement-selection-questions/[id]/answers/route.ts",
+        "app/api/requirement-selection-questions/[id]/answers/[answerId]/route.ts",
+        "app/api/requirement-selection-questions/[id]/answers/[answerId]/activate/route.ts",
+        "app/api/requirement-selection-questions/[id]/answers/[answerId]/deactivate/route.ts",
+        "app/api/requirement-selection-questions/[id]/answers/[answerId]/archive/route.ts",
+        "app/api/requirement-selection-questions/[id]/answers/[answerId]/reactivate/route.ts",
+        "lib/dal/requirement-selection-questions.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "docs/adr/0022-synlighetsvillkor-for-kravurvalsfragor.md"
+      ],
+      "selected_companion_blocks": [
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Restore reintroduces invalid state",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+      ],
+      "excluded_blocks": [
+        {
+          "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Database and downstream query amplification",
+          "reason": "The existing visibility descendant-query unit owns the recursive-work candidate; reuse it without duplicating the fingerprint. This unit concerns distinct producer lifecycle transitions."
+        },
+        {
+          "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Retention and queued-work overrun",
+          "reason": "Scheduled retention and the child-exception candidate already have owned evidence. Ordinary question/answer mutation and reactivation are the new boundary."
+        }
+      ],
+      "reason": "Existing checks close visibility-group replacement and per-specification answer writes, while their hardening explicitly leaves restoration semantics unsettled. DAL:1151-1184 and :1458-1492 implement separate activation/deactivation/archive/reactivation paths and mark directly affected saved answers historical; :1494-1577 deletes answer/question links and children; :1579-1653 duplicates active answers and their links. These producers are not traced by the existing visibility checks at :1767-2083. Review them together with answer link replacement and question selection-type edits for actual-parent binding, active-question usability, saved-history preservation and reactivation effects on hidden descendants. Preserve the area-author/Admin policy, answer-parent resolution, active-answer checks, saved-use checks, transactions and SERIALIZABLE duplication as preventing controls. Current readers recompute visibility and exclude hidden answers, so the existing descendant-history observation is not by itself an authorization failure. No runtime schedule or stronger restoration guarantee is established here."
+    },
+    {
+      "surface": "app/api/rfi-questions#question creation version replacement archive and reactivation",
+      "boundary": "lib/dal/rfi-questions.ts#current question versions versus retained specification RFI assessments",
+      "subsystem": "lib/requirements/rfi-question-lifecycle",
+      "attack_class": "ATTACK-CLASSES.md#Business logic",
+      "starting_paths": [
+        "app/api/rfi-questions/route.ts",
+        "app/api/rfi-questions/[id]/route.ts",
+        "app/api/rfi-questions/[id]/reactivate/route.ts",
+        "app/api/rfi-questions/_schemas.ts",
+        "lib/dal/rfi-questions.ts",
+        "lib/requirements/service-rfi-questions.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "typeorm/migrations/0035_rfi_questions.mjs",
+        "docs/governance/behörigheter.md"
+      ],
+      "selected_companion_blocks": [
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Restore reintroduces invalid state",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+      ],
+      "excluded_blocks": [
+        {
+          "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Retention and queued-work overrun",
+          "reason": "RFI parent/child retention and the unresolved erasure-policy boundary are already represented. Reuse those results and preserve their policy/runtime limitations."
+        }
+      ],
+      "reason": "RFI suggestion transitions and specification-list assessments have owned checks, but question producer transitions do not. POST creates a version and links at DAL:608-714; PUT replaces the active version and copies or replaces links at :716-860; DELETE and reactivate call the separate archive toggle at :862-878. The existing retention evidence cites that toggle only as a candidate prerequisite. Trace these entrypaths through area-author authorization, server-derived actor attribution, related requirement/package/selection references, version replacement and the effect on locked/unlocked specification RFI consumers. SERIALIZABLE parent/current-version locks and preservation of old versions are strong existing controls; shared assessment/lock checks should be reused, not reopened wholesale. Establish the intended handling of archived/reactivated questions and old assessed versions from source policy. Do not infer a vulnerability from an authorized author replacing their question or from the absence of an executed concurrency test."
+    },
+    {
+      "surface": "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/graduate and MCP graduation",
+      "boundary": "lib/dal/requirements-specifications.ts#graduateSpecificationLocalRequirementToLibrary",
+      "subsystem": "lib/specifications/graduation",
+      "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Import and restore authority expansion",
+      "starting_paths": [
+        "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/graduate/route.ts",
+        "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/graduation-target-areas/route.ts",
+        "lib/mcp/server.ts",
+        "lib/requirements/service-specifications.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/dal/requirements-specifications.ts",
+        "lib/specifications/agreement-policy.ts",
+        "lib/requirements/status-constants.mjs"
+      ],
+      "selected_companion_blocks": [
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Import and restore authority expansion",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+      ],
+      "excluded_blocks": [
+        {
+          "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Stale authorization and derived copy use",
+          "reason": "Existing revocation evidence establishes that an ordinary already-admitted request does not imply a stronger instantaneous cancellation guarantee. Reuse that constraint; this unit traces the separate copy destination and resulting lifecycle state."
+        }
+      ],
+      "reason": "The specification import check mentions graduation's dual permission requirement at assignment-authorization.ts:733-736, but does not trace the distinct copying sink. REST uses a custom human-actor policy before shared service authorization, and MCP calls the same service at server.ts:2597. service-specifications.ts:553-606 checks specification and destination area authority, while DAL:2835-3015 locks editable specification content, binds the source to both local ID and specification, allocates a new destination sequence, copies selected content/norm references, and inserts a new library version. Trace both adapters through these controls and the final response, including historical or agreement-bound source selection, inherited associations, new actor attribution, resulting Draft status and failure/replay semantics. The actual-parent query, content lock, transaction and explicit STATUS_DRAFT are preventing controls, not evidence of a bypass. This is a missing end-to-end source trace; runtime concurrency and publication consequences remain unobserved."
+    },
+    {
+      "surface": "app/api/admin/application-settings/route.ts#global capacity policy mutation",
+      "boundary": "lib/dal/application-settings.ts#persisted limits to export PDF and import admission",
+      "subsystem": "lib/application-settings",
+      "attack_class": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Quota-accounting scope and reset gaps",
+      "starting_paths": [
+        "app/api/admin/application-settings/route.ts",
+        "lib/application-settings.ts",
+        "lib/dal/application-settings.ts",
+        "lib/dal/ai-settings.ts",
+        "lib/dal/export-actor-quota.ts",
+        "lib/generated-output/csv-runner.ts",
+        "lib/generated-output/structured-runner.ts",
+        "lib/pdf/synchronous-generation.ts",
+        "lib/requirements/import-budget.ts",
+        "lib/requirements/import-service.ts",
+        "docs/operations/capacity-management.md"
+      ],
+      "selected_companion_blocks": [
+        "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Quota-accounting scope and reset gaps",
+        "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Universal moves",
+        "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Validation rules"
+      ],
+      "excluded_blocks": [
+        {
+          "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Worker, pool, and priority starvation",
+          "reason": "Existing output checks and the review-diff candidate own report computation and worker isolation. Reuse them; this unit concerns changes to the shared admission policy and its consumers."
+        },
+        {
+          "block": "AI-AND-LLM.md#Action-confirmation and approval binding",
+          "reason": "AI model/profile activation and deployment evidence have separate completed units. Global application capacity settings do not grant model approval."
+        }
+      ],
+      "reason": "The ledger traces export/import quota consumers and separately traces AI settings, but no owned check includes the global application-settings route or DAL. The strict Admin PATCH changes exactly one bounded field; DAL:193-228 revalidates the field, locks the singleton, updates the fixed column, and lowers ai_settings.mcp_import_max_rows in the same transaction when the global import maximum decreases. Runtime consumers independently load settings in csv-runner.ts:77, structured-runner.ts:37 and synchronous-generation.ts:46; import-service.ts:529,551,583 also has ordinary and locked budget reads. Trace the allowed persisted transitions through these readers, including concurrent policy changes, already-admitted work, missing/invalid singleton behavior and the cross-table import ceiling. Preserve strict bounds, Admin authorization, fixed-column selection and transactional audit as controls. An administrator choosing an allowed limit is intentional authority; differing snapshots or defaults require an established admission/accounting invariant before becoming a candidate. Runtime and deployed resource limits remain explicit limitations."
+    }
+  ],
+  "reassign_ids": [],
+  "resolved_prior_leads": [],
+  "stop": false
+}

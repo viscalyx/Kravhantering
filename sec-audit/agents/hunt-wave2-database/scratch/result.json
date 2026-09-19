@@ -1,0 +1,85 @@
+{
+  "units": [
+    {
+      "coverage_id": "scripts%2Fdb-sqlserver-admin.mjs%23runtime%20permission%20manifest::typeorm%2Fruntime-permission-manifest.mjs%23database%20grants::typeorm::ATTACK-CLASSES.md%23Access%20control",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "scripts/db-sqlserver-admin.mjs",
+        "typeorm/runtime-permission-manifest.mjs",
+        "typeorm/migrations/0054_runtime_role.mjs",
+        "typeorm/migrations/0056_mcp_import_validation_ownership_quotas.mjs",
+        "typeorm/migrations/0058_ai_forensic_evidence_store.mjs",
+        "typeorm/migrations/0060_ai_connections_data_model.mjs",
+        "typeorm/migrations/0061_hsa_verification_quota.mjs",
+        "typeorm/migrations/0063_ai_model_verification_attempts.mjs",
+        "typeorm/migrations/0065_export_actor_quota.mjs",
+        "docs/operations/rhel10-production-deploy.md"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave2-database",
+          "reviewed_paths": [
+            "scripts/db-sqlserver-admin.mjs",
+            "typeorm/runtime-permission-manifest.mjs",
+            "typeorm/migrations/0054_runtime_role.mjs",
+            "typeorm/migrations/0056_mcp_import_validation_ownership_quotas.mjs",
+            "typeorm/migrations/0058_ai_forensic_evidence_store.mjs",
+            "typeorm/migrations/0060_ai_connections_data_model.mjs",
+            "typeorm/migrations/0061_hsa_verification_quota.mjs",
+            "typeorm/migrations/0063_ai_model_verification_attempts.mjs",
+            "typeorm/migrations/0065_export_actor_quota.mjs",
+            "docs/operations/rhel10-production-deploy.md"
+          ],
+          "invariant": "Runtime grant reconciliation must preserve the explicit object/column contract and reject migration or protected-audit mutation authority.",
+          "method": "source",
+          "result": "Manifest:17,220 gives explicit object/column grants; :393 rejects a non-role name collision; :404-527 enumerates/revokes unexpected role permissions, fails on unsupported residual classes, then grants fixed manifest entries. Admin script:937 rejects migration/runtime identity equality; :1050-1128 impersonates the quoted runtime user to test prohibited effective capabilities; :1244-1300 compares exact grants and role parents. Reconcile:1357-1416 runs transactionally, verifies custom grants before removing legacy roles, then asserts strict compatibility. CLI:2102,2205 requires named runtime users; migrate:1536-1556 validates schema head and reconciles current grants after migrations. Docs:525-550 explicitly preserve unrelated user grants/site extensions while rejecting schema/audit authority. No source-grounded privilege expansion established; actual site grants and SQL execution are unobserved.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "typeorm%2Fmigrations%23identity%20and%20temporal%20ownership%20backfills::typeorm%2Fmigrations%23old%20data%20to%20current%20authorization%20semantics::typeorm%2Fmigrations::DATA-ISOLATION-AND-LIFECYCLE.md%23Migration%20default%20and%20ownership%20confusion",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "typeorm/migrations/0026_requirement_area_owner_hsa_id.mjs",
+        "typeorm/migrations/0028_requirement_responsibility_people.mjs",
+        "typeorm/migrations/0031_require_specification_responsible_hsa_id.mjs",
+        "typeorm/migrations/0069_specification_agreements.mjs",
+        "typeorm/migrations/0070_deviation_validity.mjs",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/specifications/permissions.ts",
+        "lib/specifications/agreement-policy.ts",
+        "scripts/db-sqlserver-admin.mjs",
+        "docs/operations/rhel10-production-upgrade.md"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave2-database",
+          "reviewed_paths": [
+            "typeorm/migrations/0026_requirement_area_owner_hsa_id.mjs",
+            "typeorm/migrations/0028_requirement_responsibility_people.mjs",
+            "typeorm/migrations/0031_require_specification_responsible_hsa_id.mjs",
+            "typeorm/migrations/0069_specification_agreements.mjs",
+            "typeorm/migrations/0070_deviation_validity.mjs",
+            "lib/requirements/assignment-authorization.ts",
+            "lib/specifications/permissions.ts",
+            "lib/specifications/agreement-policy.ts",
+            "scripts/db-sqlserver-admin.mjs",
+            "docs/operations/rhel10-production-upgrade.md"
+          ],
+          "invariant": "Migration/backfill must preserve owning identity and historical state rather than assign permissive defaults or enable an unsafe mixed-version rollback.",
+          "method": "source",
+          "result": "Migration0026:12-33 validates HSA shape and copies the existing owner identity, rejecting null results; 0028:13-120 preserves live HSA assignment keys and adds person foreign keys instead of granting authority from placeholder names. 0031:1-18 refuses ownerless specifications rather than assigning a default owner. Migration0069:2-23 backfills validity from creation time without replacing specification ownership; new agreement tables start empty and current views filter time validity; down:143 refuses destructive history rollback. 0070 adds nullable terms and classifies only existing matching agreement-end evidence, never fabricating approvals/actors; down refuses rollback. Permission service:47 checks actual responsible/coauthor identities; agreement-policy:21-47 locks the actual specification and binds editable draft membership. Admin migration preflight/head checks:665-677 fail on incompatible histories. Upgrade guide:133 drains/stops apps and :567-570 requires full backup restore after migration, excluding mixed-reader/down-path rollback. No source-grounded ownership expansion found; migration failure/restart behavior was not executed.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [],
+  "hardening": [],
+  "uncovered": []
+}

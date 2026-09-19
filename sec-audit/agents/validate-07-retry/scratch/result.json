@@ -1,0 +1,133 @@
+{
+  "decision": "needs_validation",
+  "record": {
+    "verdict": "needs_validation",
+    "fingerprint": "norm-reference-linked-requirements-nonpublic-projection",
+    "title": "Taxonomy detail projections may disclose nonpublic library and specification-local requirement descriptions",
+    "description": "Source review supports an alternate-read authorization gap for an authenticated ordinary user who has neither Admin/Reviewer roles nor authorship in the affected area or specification. Norm-reference detail projects descriptions of every linked library version, including nonpublished versions belonging to another area's authors. Priority-level detail independently projects the latest library version matching that priority without visibility filtering and local requirement descriptions from specifications outside the caller's assignments. Its local branch also reads retained, noncurrent bindings. Direct version and specification-child APIs enforce the corresponding content authority. No HTTP response or SQL fixture was executed, so disclosure and historical exposure remain source-derived predictions rather than observed results; historical preservation itself is not asserted to violate an erasure guarantee.",
+    "claimed_root_cause": "The taxonomy GET handlers pass only a validated taxonomy ID and a shared database handle to linked-description queries. Norm-reference SQL filters only the linked norm-reference ID. Priority-level SQL ranks library versions after filtering by priority, without published-status or area-author predicates, and unions local rows filtered only by priority, without specification assignment or current-binding predicates. Neither handler applies authorization or description filtering before JSON serialization. Session authentication, integer validation, parameterized SQL and taxonomy existence checks do not enforce these resource-level content boundaries.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/norm-references/[id]/route.ts",
+        "line": 58,
+        "scope": "GET route parameter parsing",
+        "description": "Accepts the caller-selected norm-reference ID through idParamSchema; the registered transport policy permits a signed-in session."
+      },
+      {
+        "kind": "propagation",
+        "file": "app/api/norm-references/[id]/route.ts",
+        "line": 64,
+        "scope": "GET linked requirement lookup",
+        "description": "Passes the database handle and parsed ID to getLinkedRequirements without actor or assignment context."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/dal/norm-references.ts",
+        "line": 258,
+        "scope": "getLinkedRequirements SQL and return mapping",
+        "description": "Projects linked requirement_versions.description, version and status; WHERE at line 273 restricts only norm_reference_id. The mapping at line 278 retains description and merely normalizes archiveInitiatedAt."
+      },
+      {
+        "kind": "sink",
+        "file": "app/api/norm-references/[id]/route.ts",
+        "line": 69,
+        "scope": "GET JSON response",
+        "description": "After confirming the norm reference exists, serializes linkedRequirements without per-requirement or per-version authorization."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "lib/http/route-security-policy.ts",
+        "line": 674,
+        "description": "Norm-reference detail GET declares session auth, no CSRF, authenticated sensitivity and framework-default cache policy; it does not declare a role or assignment gate."
+      },
+      {
+        "file": "proxy.ts",
+        "line": 343,
+        "description": "enforceAuth accepts an isSignedIn session. The API continuation at lines 483-489 strips spoofable identity headers and forwards the request without taxonomy-specific role or content authorization."
+      },
+      {
+        "file": "lib/http/validation.ts",
+        "line": 152,
+        "description": "idParamSchema uses positiveIntegerStringSchema, whose lines 51-56 validate and convert a positive SQL Server integer; this constrains identifier shape, not object visibility."
+      },
+      {
+        "file": "lib/db.ts",
+        "line": 87,
+        "description": "getRequestSqlServerDataSource returns the shared application DataSource without receiving actor context. The connection cache at lines 63-72 is keyed by connection URL, not authenticated principal."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 865,
+        "description": "Explicit Published versions are readable; nonpublished versions require history authority, which at lines 872-879 requires Reviewer or area authorship. The earlier Admin bypass is at line 704."
+      },
+      {
+        "file": "lib/requirements/service-requirements.ts",
+        "line": 705,
+        "description": "Direct version reads authorize the actual selected version's status before selecting the response content at lines 734-749."
+      },
+      {
+        "file": "app/api/requirements/[id]/versions/[version]/route.ts",
+        "line": 36,
+        "description": "The protected comparison endpoint calls service.getRequirement with the selected versionNumber and view='version'."
+      },
+      {
+        "file": "lib/dal/requirement-packages.ts",
+        "line": 471,
+        "description": "Comparable package-linked description SQL explicitly requires STATUS_PUBLISHED, demonstrating a source-visible visibility restriction absent from the norm and priority projections."
+      },
+      {
+        "file": "app/api/priority-levels/[id]/route.ts",
+        "line": 53,
+        "description": "Sibling GET validates the ID and checks priority existence, then passes only db and id to getLinkedRequirements and directly serializes the returned descriptions at line 54."
+      },
+      {
+        "file": "lib/http/route-security-policy.ts",
+        "line": 719,
+        "description": "Priority-level detail GET likewise declares session authentication, with no administrative or specification-assignment transport gate."
+      },
+      {
+        "file": "lib/dal/priority-levels.ts",
+        "line": 143,
+        "description": "The library branch projects version description and orders each requirement's versions descending after filtering only by priority_level_id at line 158; rowNumber=1 selects the latest matching version, not necessarily the latest overall or a Published version."
+      },
+      {
+        "file": "lib/dal/priority-levels.ts",
+        "line": 163,
+        "description": "The specificationLocal UNION branch projects local description from specification_local_requirements, with only priority_level_id in its WHERE at line 175; it neither receives actor identity nor joins specification assignments or a current-binding view."
+      },
+      {
+        "file": "lib/specifications/permissions.ts",
+        "line": 47,
+        "description": "canReadSpecification requires Admin/Reviewer or responsible/co-author HSA assignment; it does not permit arbitrary authenticated users."
+      },
+      {
+        "file": "app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/route.ts",
+        "line": 78,
+        "description": "Primary local requirement detail authorizes get_specification_child for both supplied specification ID and local child ID before reading its description."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 678,
+        "description": "Child authorization resolves the actual owner and then requires Admin or specification-read authority. Owner resolution at lines 258-314 rejects mismatched parents; lines 828-845 allow Reviewer or owning-specification authorship."
+      },
+      {
+        "file": "lib/dal/requirements-specifications.ts",
+        "line": 2288,
+        "description": "Default direct local detail uses LOCAL_REQUIREMENT_DETAIL_SELECT, whose line 2185 reads current_specification_local_requirements, and binds both local ID and specification ID at line 2306."
+      },
+      {
+        "file": "typeorm/migrations/0069_specification_agreements.mjs",
+        "line": 22,
+        "description": "The current local-requirements view excludes bindings whose valid_until is past and whose valid_from is future. Priority detail instead reads the underlying table; retained historical rows are therefore within its source-visible query domain."
+      }
+    ],
+    "blockers": [
+      "The parent reports that the required OS-enforced sandbox probe failed with 'No permissions to create new namespace'. Namespace-based network/mount isolation is unavailable, so no target code, HTTP route, database query or dummy fixture was executed. The decisive unresolved observation is whether the taxonomy JSON includes a dummy description for a principal denied that exact version or owning specification by the direct API."
+    ],
+    "validation_plan": {
+      "local": "Only in an approved OS-isolated offline environment with read-only target/tools, scratch-only writes, an empty allowlisted environment, explicit resource/time limits, and disposable SQL plus synthetic authentication: create ordinary principals Alice and Bob with distinct dummy HSA identities, neither Admin nor Reviewer. Assign Alice area A and specification A; give Bob no assignment in either. Seed one Draft library version with a harmless unique marker, linked to existing dummy norm N and system priority P. Verify Alice can read it and Bob is denied GET /api/requirements/{requirementId}/versions/{versionNumber}. As Bob request GET /api/norm-references/{N}; inspect only whether linkedRequirements contains that marker, then stop that variant. Independently request GET /api/priority-levels/{P} as Bob and inspect only the marker in source='library', then stop that variant. For the local variant seed one current local requirement in Alice's specification A with another harmless marker and priority P. Verify Bob is denied GET /api/requirements-specifications/{A}/local-requirements/{localId}, then inspect the priority GET for that marker in source='specificationLocal' and stop. If historical scope must be characterized, use one separate dummy retained binding with valid_until in the past and a distinct marker; compare the normal local detail's absence with priority output without claiming deletion or erasure failure. Record only fixture identifiers, principal roles/assignments, response statuses and marker-presence booleans; never use production data, credentials or shared services."
+    }
+  }
+}

@@ -1,0 +1,340 @@
+{
+  "missing_units": [
+    {
+      "surface": "scripts/azure-dev/AzureDev.Azure.psm1#resource lifecycle",
+      "boundary": "scripts/azure-dev/AzureDev.Lifecycle.psm1#cloud resource ownership",
+      "subsystem": "scripts/azure-dev",
+      "attack_class": "CLOUD-AND-DEPLOYMENT.md#Cross-account or cross-tenant role confusion",
+      "starting_paths": [
+        "scripts/azure-dev/AzureDev.Azure.psm1",
+        "scripts/azure-dev/AzureDev.Lifecycle.psm1",
+        "scripts/azure-dev/AzureDev.Config.psm1",
+        "scripts/azure-dev/AzureDev.LifecycleLock.psm1"
+      ],
+      "selected_companion_blocks": [
+        "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "CLOUD-AND-DEPLOYMENT.md#Cross-account or cross-tenant role confusion",
+        "CLOUD-AND-DEPLOYMENT.md#Universal moves",
+        "CLOUD-AND-DEPLOYMENT.md#Validation rules"
+      ],
+      "excluded_blocks": [],
+      "reason": "AzureDev.Azure.psm1:1528-1598 checks/adopts resource tags, :2606-2624 selects owned resources, and :2666 performs deletion; Lifecycle.psm1:532-562 serializes subscription/resource-group identity into lifecycle records. Existing operation checks cover bootstrap, SSH and ingress but not these ownership/adoption/destruction paths. Accept the hunter uncovered entry and trace cloud identity plus stale lifecycle records through all destructive modes."
+    },
+    {
+      "surface": "scripts/db-sqlserver-admin.mjs#runtime permission manifest",
+      "boundary": "typeorm/runtime-permission-manifest.mjs#database grants",
+      "subsystem": "typeorm",
+      "attack_class": "ATTACK-CLASSES.md#Access control",
+      "starting_paths": [
+        "scripts/db-sqlserver-admin.mjs",
+        "typeorm/runtime-permission-manifest.mjs",
+        "typeorm/migrations/0054_runtime_role.mjs"
+      ],
+      "selected_companion_blocks": [],
+      "excluded_blocks": [],
+      "reason": "The manifest grants object and column permissions and buildRuntimePermissionReconcileSql at :404-527 removes existing direct grants before recreating the manifest. db-sqlserver-admin.mjs:1015-1406 compares/repairs runtime authority. Existing injection and workload-secret checks do not establish effective membership, inherited permissions, grant reconciliation or rerun behavior. This is in-repository permission logic; observing actual deployed SQL grants is a separate limitation."
+    },
+    {
+      "surface": "scripts/release/container-vulnerability-monitor.mjs#external tracking records",
+      "boundary": "scripts/release/container-vulnerability-monitor.mjs#synchronizeTracking",
+      "subsystem": "release tracking automation",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Automation identity overreach",
+      "starting_paths": [
+        "scripts/release/container-vulnerability-monitor.mjs",
+        ".github/workflows/container-vulnerability-monitor.yml",
+        ".github/workflows/dependency-drift.mjs",
+        ".github/workflows/dependency-drift.yml"
+      ],
+      "selected_companion_blocks": [
+        "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "SUPPLY-CHAIN-AND-RELEASE.md#Automation identity overreach",
+        "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+        "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+      ],
+      "excluded_blocks": [],
+      "reason": "The monitor reads existing issues/advisories and matches descriptions by marker before updating private advisories at :1034-1050 with a dedicated token. The release publication units do not trace automation record ownership, allowable issue/advisory mutations, or authority inherited from external record bodies. Accept the hunter uncovered entry; inspect source only, with no GitHub writes or API checks."
+    },
+    {
+      "surface": "lib/requirements/import-service.ts#executeSpecificationLocalImport",
+      "boundary": "lib/dal/requirements-specifications.ts#createSpecificationLocalRequirementsBatch",
+      "subsystem": "lib/specifications",
+      "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Stale authorization and derived copy use",
+      "starting_paths": [
+        "lib/requirements/import-service.ts",
+        "lib/requirements/import-capacity.ts",
+        "lib/dal/requirements-specifications.ts",
+        "lib/requirements/requirement-application-mutations.ts",
+        "app/api/requirements-specifications/[id]/co-authors/route.ts"
+      ],
+      "selected_companion_blocks": [
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Stale authorization and derived copy use",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+      ],
+      "excluded_blocks": [],
+      "reason": "Specification REST import authorizes at import-service.ts:3512-3608 before capacity work and later batch transaction/parent locking at requirements-specifications.ts:2475-2636. Existing import coverage establishes destination and row validity, while MCP explicitly reauthorizes in its SERIALIZABLE transaction. The current specification class map excludes stale authorization and the hunter identifies no completed revocation-semantics review. Trace assignment removal and current authority at execution without presuming that an in-flight snapshot is a vulnerability."
+    },
+    {
+      "surface": "lib/archiving/retention.ts#non-specification policy execution",
+      "boundary": "lib/archiving/retention.ts#eligibility exceptions and dependent deletion",
+      "subsystem": "lib/archiving",
+      "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Retention and queued-work overrun",
+      "starting_paths": [
+        "lib/archiving/retention.ts",
+        "app/api/admin/archiving/policies/route.ts",
+        "app/api/admin/archiving/exceptions/route.ts",
+        "app/api/admin/archiving/runs/route.ts",
+        "typeorm/migrations/0009_archiving_retention.mjs",
+        "typeorm/migrations/0022_requirement_selection_retention.mjs",
+        "typeorm/migrations/0036_rfi_question_retention_policy.mjs"
+      ],
+      "selected_companion_blocks": [
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Retention and queued-work overrun",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+      ],
+      "excluded_blocks": [],
+      "reason": "Existing retention evidence explicitly closes only common confirmation machinery and obsolete-specification children. Source definitions at retention.ts:360-513, :578-720 and :796 also destroy unused taxonomy, historical requirement versions, selection questions/answers, RFI data and orphaned responsibility people. Trace each policy dependency/cascade graph, exception and concurrent reference creation; common transaction code does not establish those eligibility predicates."
+    },
+    {
+      "surface": "lib/transient-cleanup/ai-forensic-evidence.ts#scheduled evidence expiry",
+      "boundary": "lib/ai/forensic-capture.ts#capture and derived evidence lifetime",
+      "subsystem": "lib/ai/forensic-evidence",
+      "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Retention and queued-work overrun",
+      "starting_paths": [
+        "lib/ai/forensic-capture.ts",
+        "lib/ai/forensic-evidence.ts",
+        "lib/transient-cleanup/ai-forensic-evidence.ts",
+        "lib/privacy/erasure.ts",
+        "typeorm/migrations/0058_ai_forensic_evidence_store.mjs"
+      ],
+      "selected_companion_blocks": [
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Retention and queued-work overrun",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+      ],
+      "excluded_blocks": [],
+      "reason": "The AI business-logic candidate establishes manual purge ordering and cites scheduled cleanup only for exclusion of purged captures. Normal expiration, stopping, cleanup retries, evidence production and privacy-triggered capture/evidence removal at erasure.ts:1189-1247 are separate reachable lifecycle modes with no completed retention unit. Reuse the existing purge fingerprint if relevant; do not duplicate its finding or reopen it merely because SQL execution is unavailable."
+    },
+    {
+      "surface": "lib/transient-cleanup/cli.ts#release-independent cleanup",
+      "boundary": "lib/transient-cleanup/registry.ts#schema applicability and producer recovery",
+      "subsystem": "lib/transient-cleanup",
+      "attack_class": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Unsafe recovery and capacity rollback",
+      "starting_paths": [
+        "lib/transient-cleanup/cli.ts",
+        "lib/transient-cleanup/registry.ts",
+        "lib/transient-cleanup/runner.ts",
+        "lib/transient-cleanup/compatibility.ts",
+        "lib/transient-cleanup/ai-run-coordination-entries.ts",
+        "lib/transient-cleanup/ai-model-verification-attempts.ts",
+        "lib/transient-cleanup/requirement-import-validation-rate-buckets.ts",
+        "lib/transient-cleanup/hsa-verification-quota-buckets.ts",
+        "scripts/release/cleanup-compatibility.mjs"
+      ],
+      "selected_companion_blocks": [
+        "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Unsafe recovery and capacity rollback",
+        "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Universal moves",
+        "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Validation rules"
+      ],
+      "excluded_blocks": [],
+      "reason": "Registry:66 registers seven independently purged stores, but existing checks cover only import sessions, export actor entries and the forensic candidate consequence. ai-run-coordination-entries.ts:20-23 selects running rows by expired lease, and runner.ts:90 onward shares a work budget across targets while recovering from failures. Trace producer lease/fencing guarantees, verification/rate-bucket expiry, schema applicability and old-cleaner/new-schema compatibility; ingress quota bounds alone do not cover cleanup releasing state."
+    },
+    {
+      "surface": "app/api/privacy/erasure-requests/route.ts#privacy erasure",
+      "boundary": "lib/privacy/erasure.ts#preview actions replacement and identity copies",
+      "subsystem": "lib/privacy/erasure",
+      "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Retention and queued-work overrun",
+      "starting_paths": [
+        "app/api/privacy/erasure-preview/route.ts",
+        "app/api/privacy/erasure-requests/route.ts",
+        "lib/privacy/route-helpers.ts",
+        "lib/privacy/erasure.ts",
+        "lib/privacy/display-name.ts",
+        "docs/security-privacy/informationsmangder-kravhantering.md"
+      ],
+      "selected_companion_blocks": [
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Retention and queued-work overrun",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Stale authorization and derived copy use"
+      ],
+      "excluded_blocks": [],
+      "reason": "The existing privacy units review exports and erasure only as an export-quota reset path. Actual erasure previews all GROUP_POLICIES at :1017, resolves caller action choices and replacement identity, then switches/deletes/anonymizes assignments, audit/access-review identities and other copies in a SERIALIZABLE transaction at :1374. Neither erasure route nor this multi-copy action contract has owned evidence. Review the documented deletion boundary, replacement authority, stale preview handling and concurrent identity writers; external backups remain outside this source unit."
+    },
+    {
+      "surface": "app/api/admin/access-reviews#decision lifecycle",
+      "boundary": "lib/access-review/service.ts#run and item state transitions",
+      "subsystem": "lib/access-review",
+      "attack_class": "ATTACK-CLASSES.md#Business logic",
+      "starting_paths": [
+        "app/api/admin/access-reviews/route.ts",
+        "app/api/admin/access-reviews/[id]/items/[itemId]/route.ts",
+        "app/api/admin/access-reviews/[id]/complete/route.ts",
+        "app/api/admin/access-reviews/[id]/cancel/route.ts",
+        "lib/access-review/service.ts",
+        "lib/access-review/route-helpers.ts"
+      ],
+      "selected_companion_blocks": [],
+      "excluded_blocks": [],
+      "reason": "Existing output access-control evidence cites only view/export role checks. service.ts:608 creates assignment snapshots; :792 decides parent-bound items; :886 and :968 complete/cancel locked runs. Review these distinct decision-authority, snapshot and terminal-state invariants, including concurrency and audit atomicity. Do not infer that the named reviewer must be exclusive without checking the documented role policy."
+    },
+    {
+      "surface": "app/api/requirement-suggestions and app/api/rfi-question-suggestions#reads and mutations",
+      "boundary": "lib/requirements/assignment-authorization.ts#suggestion ownership and version visibility",
+      "subsystem": "lib/requirements/suggestions",
+      "attack_class": "ATTACK-CLASSES.md#Access control",
+      "starting_paths": [
+        "app/api/requirement-suggestions/[id]/route.ts",
+        "app/api/improvement-suggestions",
+        "app/api/rfi-question-suggestions",
+        "lib/requirements/service-suggestions.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/requirements/rfi-question-suggestion-pages.ts",
+        "lib/requirements/suggestion-implementation.ts",
+        "lib/dal/improvement-suggestions.ts",
+        "lib/dal/rfi-questions.ts"
+      ],
+      "selected_companion_blocks": [],
+      "excluded_blocks": [],
+      "reason": "Suggestions are starting paths in the requirement assignment but have no owned service/DAL evidence. requirement-suggestions POST accepts an optional requirementVersionId; improvement implementation accepts a second implementingRequirementVersionId; RFI suggestions have their own list/cursor and parent resolution. Trace creator/area/reviewer permissions and both version/resource identities through direct REST, shared-service/MCP and rendered implementation projections. Requirement read and taxonomy checks do not close these selectors."
+    },
+    {
+      "surface": "app/api/improvement-suggestions and app/api/rfi-question-suggestions#lifecycle",
+      "boundary": "lib/requirements/improvement-suggestion-mutations.ts#suggestion transitions and implementation attachment",
+      "subsystem": "lib/requirements/suggestions",
+      "attack_class": "ATTACK-CLASSES.md#Business logic",
+      "starting_paths": [
+        "lib/requirements/service-suggestions.ts",
+        "lib/requirements/improvement-suggestion-mutations.ts",
+        "lib/requirements/rfi-question-suggestion-mutations.ts",
+        "lib/requirements/rfi-question-suggestion-conflicts.ts",
+        "lib/dal/improvement-suggestions.ts",
+        "lib/dal/rfi-questions.ts",
+        "app/api/improvement-suggestions/[id]/implementation/route.ts",
+        "app/api/rfi-question-suggestions/[id]/resolution/route.ts"
+      ],
+      "selected_companion_blocks": [],
+      "excluded_blocks": [],
+      "reason": "improvement-suggestions DAL has requestReview, revertToDraft, recordResolution and attachSuggestionImplementation at :445,:612,:648,:705; the mutation layer opens transactions after service authorization. RFI resolution is a separate transaction path at rfi-question-suggestion-mutations.ts:94. Existing requirement transition candidates and specification RFI assessment checks concern different state machines. Check source-state authorization, terminal decision integrity, implementing-version eligibility and idempotent/concurrent paths."
+    },
+    {
+      "surface": "app/api/admin/ai-connections and app/api/admin/ai-run-profiles#verification activation",
+      "boundary": "lib/ai/admin-service.ts#current model profile and deployment evidence binding",
+      "subsystem": "lib/ai/admin",
+      "attack_class": "AI-AND-LLM.md#Action-confirmation and approval binding",
+      "starting_paths": [
+        "app/api/admin/ai-connections/[connectionId]/actions/route.ts",
+        "app/api/admin/ai-run-profiles/[profileKey]/actions/route.ts",
+        "lib/ai/admin-contracts.ts",
+        "lib/ai/admin-service.ts",
+        "lib/ai/admin-external.ts",
+        "lib/ai/model-verification-attempts.ts",
+        "lib/ai/staging-live-policy.ts",
+        "lib/dal/ai-connection-admin.ts",
+        "scripts/release/ai-staging-live-probe.mjs",
+        "scripts/release/ai-deployment-gate.mjs"
+      ],
+      "selected_companion_blocks": [
+        "AI-AND-LLM.md#Core discipline",
+        "AI-AND-LLM.md#Action-confirmation and approval binding",
+        "AI-AND-LLM.md#Universal moves",
+        "AI-AND-LLM.md#Validation rules"
+      ],
+      "excluded_blocks": [],
+      "reason": "The actions route dispatches model verification, attestations, activation, lifecycle and staging live verification. admin-service.ts:1182-1239 binds exact connection/model/profile revisions and rechecks after external verification; ai-deployment-gate.mjs consumes a separate evidence schema. Current AI evidence covers authoring, secrets, suspension and one forensic transition but does not inspect admin-service or these route/proof lifecycle paths. Trace approval/revision binding, expired/discarded attempts and environment-bound evidence through activation. An Admin role alone does not settle enforced configuration/environment boundaries."
+    },
+    {
+      "surface": "app/api/requirement-responsibility-people/verify/route.ts#lookup admission",
+      "boundary": "lib/dal/hsa-verification-quota.ts#shared actor and target budgets",
+      "subsystem": "lib/hsa",
+      "attack_class": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Quota-accounting scope and reset gaps",
+      "starting_paths": [
+        "app/api/requirement-responsibility-people/verify/route.ts",
+        "lib/dal/hsa-verification-quota.ts",
+        "lib/privacy/erasure.ts",
+        "lib/transient-cleanup/hsa-verification-quota-buckets.ts",
+        "typeorm/migrations/0061_hsa_verification_quota.mjs"
+      ],
+      "selected_companion_blocks": [
+        "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Quota-accounting scope and reset gaps",
+        "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Universal moves",
+        "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Validation rules"
+      ],
+      "excluded_blocks": [],
+      "reason": "HSA evidence notes a quota call before lookup but never reviews its DAL. The DAL defines actor, actor-target and target budgets, fingerprint namespaces and transactional applocks; erasure.ts:1261 deletes matching buckets and scheduled cleanup expires them. This class is explicitly excluded in the HSA map despite a reachable shared identity/target accounting boundary. Review canonicalization, denied requests, concurrent admission, cleanup and privacy resets without running traffic."
+    },
+    {
+      "surface": "typeorm/migrations#identity and temporal ownership backfills",
+      "boundary": "typeorm/migrations#old data to current authorization semantics",
+      "subsystem": "typeorm/migrations",
+      "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Migration default and ownership confusion",
+      "starting_paths": [
+        "typeorm/migrations/0026_requirement_area_owner_hsa_id.mjs",
+        "typeorm/migrations/0028_requirement_responsibility_people.mjs",
+        "typeorm/migrations/0031_require_specification_responsible_hsa_id.mjs",
+        "typeorm/migrations/0069_specification_agreements.mjs",
+        "typeorm/migrations/0070_deviation_validity.mjs",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/specifications/agreement-policy.ts"
+      ],
+      "selected_companion_blocks": [
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Migration default and ownership confusion",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+        "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+      ],
+      "excluded_blocks": [],
+      "reason": "Migration 0028 validates and consolidates live HSA identities while replacing assignment columns; 0031 changes required ownership; 0069 backfills valid_from, changes uniqueness to current rows and creates temporal views/owning-agreement relations. The only existing 0069 evidence cites current views for soft-delete behavior, not migration/backfill or supported rollback compatibility. No migration-default class is assigned although authorization consumes the transformed data. Trace preserved owner identity and immutable/historical state across supported migration modes."
+    },
+    {
+      "surface": "scripts/dev-login.mjs#developer authentication helper",
+      "boundary": "scripts/lib/dev-login-core.mjs#cookie transport persistence and diagnostics",
+      "subsystem": "scripts/auth-helpers",
+      "attack_class": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Credential-store and local-secret boundary mismatch",
+      "starting_paths": [
+        "scripts/dev-login.mjs",
+        "scripts/lib/dev-login-core.mjs",
+        "scripts/lib/keycloak-login-form.mjs",
+        "scripts/dev-curl.sh",
+        "scripts/security/get-session-cookie.mjs",
+        "scripts/security/get-mcp-token.mjs"
+      ],
+      "selected_companion_blocks": [
+        "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Credential-store and local-secret boundary mismatch",
+        "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Universal moves",
+        "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Validation rules"
+      ],
+      "excluded_blocks": [],
+      "reason": "These authenticated helper entrypoints are outside existing auth-owned reviewed paths and operation starting paths. dev-login-core.mjs:190-238 manually transports cookies/redirects, :202 emits cookie headers when debugging, :313-323 reuses a jar, and :371-372 persists it with mode 0600. Scanner helpers implement a parallel redirect/cookie flow. Trace configured-origin/form-action binding, cache reuse, existing-file permissions and diagnostic recipients; intentional public fixture credentials and same-principal token output are not findings by themselves."
+    },
+    {
+      "surface": "lib/mcp/server.ts#HTML requirement resource",
+      "boundary": "lib/mcp/server.ts#renderRequirementHtml",
+      "subsystem": "lib/mcp/rendering",
+      "attack_class": "AI-AND-LLM.md#Insecure output rendering",
+      "starting_paths": [
+        "lib/mcp/server.ts",
+        "lib/norm-references/browser-link-uri.ts"
+      ],
+      "selected_companion_blocks": [
+        "AI-AND-LLM.md#Core discipline",
+        "AI-AND-LLM.md#Insecure output rendering",
+        "AI-AND-LLM.md#Universal moves",
+        "AI-AND-LLM.md#Validation rules"
+      ],
+      "excluded_blocks": [],
+      "reason": "MCP serves text/html at server.ts:1856-1880 via a hand-built template at :763-902 with escapeHtml and link normalization. Existing MCP evidence covers resource authorization and schema dispatch; browser rendering evidence covers React components and never cites this distinct template sink. The MCP class map excludes insecure output rendering despite this reachable stored-text/URL output. Review every template interpolation and link context against the source-visible escaping controls; no unsafe rendering is asserted."
+    }
+  ],
+  "reassign_ids": [],
+  "resolved_prior_leads": [],
+  "stop": false
+}

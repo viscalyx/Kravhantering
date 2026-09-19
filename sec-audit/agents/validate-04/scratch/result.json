@@ -1,0 +1,111 @@
+{
+  "decision": "needs_validation",
+  "record": {
+    "verdict": "needs_validation",
+    "fingerprint": "container-monitor/untrusted-comment-markers/scan-preflight-block",
+    "title": "Untrusted tracker comments can block scheduled container vulnerability scans",
+    "description": "Source review supports a monitoring availability failure: an account permitted to comment on an existing automation-owned release tracker issue can introduce malformed reserved marker text through an ordinary comment. The terminal-identity preflight processes that comment without authenticating its producer, fails globally, and prevents supported-release selection and downstream scans. The account need not change issue labels, the issue body, repository source, or workflow configuration. Strict state validation, restricted workflow identity, and the final failure step contain the result to a visibly failed monitoring run; they do not prevent the comment-triggered failure. No clean scan, release-code compromise, or secret disclosure is established. No runtime reproduction or live comment-permission verification was performed.",
+    "claimed_root_cause": "The preflight treats comments on an owned issue as automation state solely from body marker text. Issue ownership-label and body validation do not authenticate comment producers. Every comment enters strict continuation and automation parsers, and a malformed reserved namespace throws before a terminal boundary can be returned. Supported-release selection requires that global preflight to succeed.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 849,
+        "scope": "createGitHubTrackerAdapter.listComments",
+        "description": "Fetches the issue-comments endpoint through paginatedGitHubItems, which flattens all returned pages without filtering authors. An account allowed to comment controls its own comment body in this response."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/release/container-vulnerability-release-issues.mjs",
+        "line": 2502,
+        "scope": "preflightReleaseIssues",
+        "description": "After checking the issue ownership label and parsing the issue body, loads its comments, validates public state, and passes the complete comment array to continuation-state completion and parseAutomationComments."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/release/container-vulnerability-release-issues.mjs",
+        "line": 2251,
+        "scope": "parseAutomationComments",
+        "description": "Passes every comment body to parseExactMarker for reconciliation or duplicate namespaces, with optional matching but no producer authentication. Identity and journal consistency checks occur only after marker parsing."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/release/container-vulnerability-release-issues.mjs",
+        "line": 174,
+        "scope": "parseExactMarker",
+        "description": "A comment containing container-vulnerability-reconciliation: without a complete marker has one namespace occurrence and zero candidates, so the parser throws. Optional matching skips only text with no namespace and no candidate."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/release/container-vulnerability-release-issues.mjs",
+        "line": 2525,
+        "scope": "buildTrustedTerminalIdentityBoundary",
+        "description": "Preflights all owned issues before constructing any terminal boundary; no per-comment or per-issue recovery catches the malformed-marker exception."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 1158,
+        "scope": "main terminal-boundary command",
+        "description": "Calls buildTrustedTerminalIdentityBoundary before writing its output. The outer catch at lines 1294-1297 returns 1 on the parsing exception, and direct CLI dispatch assigns that result to process.exitCode at line 1306."
+      },
+      {
+        "kind": "sink",
+        "file": ".github/workflows/container-vulnerability-monitor.yml",
+        "line": 82,
+        "scope": "Select supported published releases",
+        "description": "Selection requires tracker-preflight.outcome success. A failed terminal-boundary step therefore prevents selection, dependent attestation verification, and the supported-release scan step."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "scripts/release/container-vulnerability-monitor.mjs",
+        "line": 737,
+        "description": "GitHub pagination validates arrays and flattens them without author filtering. listIssues at line 855 requests open and closed issues and excludes pull requests, so the preflight is not restricted to currently open trackers."
+      },
+      {
+        "file": "scripts/release/container-vulnerability-release-issues.mjs",
+        "line": 2222,
+        "description": "Ownership gating checks the issue's automation label. parseOwnedIssue at line 198 additionally validates issue identity, context, state, digest, and reconciliation time; none of these checks establishes commenter authority."
+      },
+      {
+        "file": "scripts/release/container-vulnerability-release-issues.mjs",
+        "line": 51,
+        "description": "The automation namespace regular expression matches reserved text anywhere in a comment, while a candidate requires a complete HTML comment marker. The strict cardinality check therefore also rejects ordinary prose mentioning an incomplete namespace."
+      },
+      {
+        "file": "scripts/release/container-vulnerability-release-issues.mjs",
+        "line": 2384,
+        "description": "Continuation parsing likewise processes every comment without author checks. Identity, slot-count, length, and content-hash validation protect structured-state consistency but do not isolate untrusted comments before strict parsing."
+      },
+      {
+        "file": "scripts/release/container-vulnerability-release-issues.mjs",
+        "line": 1076,
+        "description": "Generated issue instructions say automation replaces the issue body and direct human analysis to comments, with the sentence completed by lifecycle text at lines 1046-1054. The comment surface intentionally mixes human and automation producers."
+      },
+      {
+        "file": "scripts/__tests__/container-vulnerability-release-issues.test.mjs",
+        "line": 4818,
+        "description": "An existing source test supplies human analysis plus a malformed reconciliation-marker comment and expects an invalid automation comment error with only list-issues and list-comments calls. This supports intended fail-stop parser behavior; the test was read, not executed, and does not authenticate its fixture comment authors."
+      },
+      {
+        "file": ".github/workflows/container-vulnerability-monitor.yml",
+        "line": 21,
+        "description": "The job is restricted to the named repository and main branch. Its constrained token permissions and pinned actions do not filter issue-comment producers. The scheduled preflight runs terminal-boundary at line 75 before selection."
+      },
+      {
+        "file": ".github/workflows/container-vulnerability-monitor.yml",
+        "line": 328,
+        "description": "The unconditional final status step includes tracker-preflight among required successful outcomes and exits 1 when any fails. The evaluation gate at lines 212-224 also blocks public mutation after failed preflight. Thus continue-on-error preserves diagnostics without turning this path into a successful clean scan."
+      }
+    ],
+    "blockers": [
+      "The required target-execution isolation is unavailable: the audit capability probe reported bubblewrap namespace creation failed with No permissions to create new namespace. No target code or tests were executed, so source-predicted CLI failure has not been independently observed.",
+      "The decisive hosted reachability facts are unavailable from repository source: an existing valid automation-owned tracker must be commentable by an account lacking automation/repository-write authority, and the scheduled main-branch workflow must be enabled at this revision. Issue locks, repository interaction limits, access policy, and current workflow state were not inspected through GitHub or any external service."
+    ],
+    "validation_plan": {
+      "local": "After the required isolated sandbox becomes available, call the exported main terminal-boundary interface using an injected tracker adapter with one valid dummy owned issue, an in-memory filesystem, and recorded mutation calls. Establish a successful baseline with an ordinary human comment; repeat with the identical issue and comments plus a non-automation author's comment whose body is container-vulnerability-reconciliation:. Verify the second call returns 1, reports the invalid automation marker, writes no terminal boundary, and performs no mutations. Read the workflow dependency conditions to map that result to skipped selection and scans. Do not invoke gh, contact GitHub, start a hosted workflow, or execute outside the approved sandbox.",
+      "deployment": "The repository owner should inspect existing tracker ownership labels and valid bodies, issue locks and interaction restrictions, the effective comment rights of a lower-trust account, and whether this scheduled main-branch workflow is enabled and deployed. Use existing state and access-policy inspection only; do not post a test comment, modify an issue, or trigger monitoring. Confirm whether at least one such tracker is readable by the workflow and writable in its comment surface by that account."
+    }
+  }
+}

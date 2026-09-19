@@ -1,0 +1,243 @@
+{
+  "units": [
+    {
+      "coverage_id": "app%2Fapi%2Fmcp%2Froute.ts%23MCP%20tools::lib%2Fauth%2Fmcp-token.ts%23MCP%20principal::lib%2Fmcp::AI-AND-LLM.md%23MCP%20server%20and%20tool%20identity%20confusion",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/mcp/route.ts",
+        "lib/mcp/http.ts",
+        "lib/auth/mcp-token.ts",
+        "lib/requirements/auth.ts",
+        "lib/mcp/server.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-mcp",
+          "reviewed_paths": [
+            "app/api/mcp/route.ts",
+            "lib/mcp/http.ts",
+            "lib/auth/mcp-token.ts",
+            "lib/requirements/auth.ts",
+            "lib/mcp/server.ts"
+          ],
+          "invariant": "A tool/resource call must retain the authenticated request principal and cannot select another connection or identity.",
+          "method": "source",
+          "result": "app/api/mcp/route.ts:10 fails closed when MCP is disabled; lib/mcp/http.ts:132 verifies and attaches identity before DB access and :165-172 creates a fresh server/stateless transport per request. lib/auth/mcp-token.ts:242-305 binds issuer, audience, token type, client, scopes, age and HSA identity. lib/requirements/auth.ts:17 and :315 use a Request-keyed WeakMap; lib/mcp/server.ts:658 and :1816 derive tool/resource context from that same closed-over request. Tool names and resource selectors never replace the actor.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fmcp%2Froute.ts%23MCP%20tools::lib%2Fauth%2Fmcp-token.ts%23MCP%20principal::lib%2Fmcp::AI-AND-LLM.md%23Sub-agent%20and%20MCP%20trust%20inheritance",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/auth/mcp-token.ts",
+        "lib/requirements/auth.ts",
+        "lib/mcp/server.ts",
+        "lib/requirements/service-requirements.ts",
+        "lib/requirements/assignment-authorization.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-mcp",
+          "reviewed_paths": [
+            "lib/auth/mcp-token.ts",
+            "lib/requirements/auth.ts",
+            "lib/mcp/server.ts",
+            "lib/requirements/service-requirements.ts",
+            "lib/requirements/assignment-authorization.ts"
+          ],
+          "invariant": "MCP delegation carries verified caller identity into ordinary resource authorization without granting server-wide authority.",
+          "method": "source",
+          "result": "lib/auth/mcp-token.ts:319 projects verified claims only. lib/requirements/auth.ts:315 prefers the attached actor and :306 constructs assignment authorization; lib/mcp/server.ts:2186 passes context separately from tool arguments. lib/requirements/service-requirements.ts:805 authorizes the final action/resource and :840-843 derives creator attribution from requireHumanActorSnapshot, overriding the optional model-supplied createdBy label. lib/requirements/assignment-authorization.ts:763 and :882-904 resolve existing ownership and require target-area authorship when an area changes. The server does not forward caller credentials to arbitrary MCP peers.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fmcp%2Froute.ts%23MCP%20tools::lib%2Fauth%2Fmcp-token.ts%23MCP%20principal::lib%2Fmcp::AI-AND-LLM.md%23Tool-argument%20injection%20into%20a%20downstream%20sink",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/mcp/server.ts",
+        "lib/requirements/service-norm-references.ts",
+        "lib/dal/norm-references.ts",
+        "lib/requirements/service-needs-references.ts",
+        "lib/requirements/import-service.ts",
+        "lib/dal/requirement-import-validation-sessions.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-mcp",
+          "reviewed_paths": [
+            "lib/mcp/server.ts",
+            "lib/requirements/service-norm-references.ts",
+            "lib/dal/norm-references.ts",
+            "lib/requirements/service-needs-references.ts",
+            "lib/requirements/import-service.ts",
+            "lib/dal/requirement-import-validation-sessions.ts"
+          ],
+          "invariant": "Model-produced arguments must be schema constrained and remain data at the service/storage sink.",
+          "method": "source",
+          "result": "lib/mcp/server.ts:1197-1325 constrains needs/norm operations, positive resource IDs, bounded strings and exact selector alternatives; handlers :2064 and :2104 pass explicit service inputs. lib/requirements/service-norm-references.ts:215 authorizes before :238 creation; lib/dal/norm-references.ts:177-198 parameterizes business-ID lookup and :417-440 persists fields through TypeORM. lib/requirements/service-needs-references.ts:120 binds specification authorization and :200-209 scopes individual reads by specification. Raw import payload at server.ts:1091 is revalidated by import-service.ts:2680-2705 before retention; validation-session SQL at lib/dal/requirement-import-validation-sessions.ts:357-410 uses parameters. No handler-controlled shell, arbitrary file path or provider URL-fetch sink was found in these MCP paths.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fmcp%2Froute.ts%23MCP%20tools::lib%2Fauth%2Fmcp-token.ts%23MCP%20principal::lib%2Fmcp::AI-AND-LLM.md%23Tool-schema%20and%20dispatcher%20disagreement",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/mcp/server.ts",
+        "node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js",
+        "lib/requirements/import-service.ts",
+        "lib/requirements/service-requirements.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-mcp",
+          "reviewed_paths": [
+            "lib/mcp/server.ts",
+            "node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js",
+            "lib/requirements/import-service.ts",
+            "lib/requirements/service-requirements.ts"
+          ],
+          "invariant": "Dispatcher handlers consume the normalized schema result and cannot smuggle alternative operation/resource fields past validation.",
+          "method": "source",
+          "result": "Installed SDK server/mcp.js:125-126 dispatches validateToolInput output; :166-183 returns parseResult.data. lib/mcp/server.ts:1072-1144 uses a strict import schema plus operation-specific allowed-field checks; execute/inspect accept only operation and validationToken. Requirement schemas :1328-1380 require exactly one selector and positive version numbers; :1465-1545 requires edit base identities. Resource URIs use a parallel numeric conversion at :1813-1824, but lib/requirements/service-requirements.ts:692-716 matches the selected version and reauthorizes its server-derived status before returning content; nonmatching numeric forms do not select another version. No security-relevant normalized/raw disagreement was identified.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fmcp%2Froute.ts%23MCP%20tools::lib%2Fauth%2Fmcp-token.ts%23MCP%20principal::lib%2Fmcp::ATTACK-CLASSES.md%23Access%20control",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/mcp/http.ts",
+        "lib/requirements/auth.ts",
+        "lib/mcp/server.ts",
+        "lib/requirements/service-requirements.ts",
+        "lib/requirements/import-service.ts",
+        "lib/dal/requirement-import-validation-sessions.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-mcp",
+          "reviewed_paths": [
+            "lib/mcp/http.ts",
+            "lib/requirements/auth.ts",
+            "lib/mcp/server.ts",
+            "lib/requirements/service-requirements.ts",
+            "lib/requirements/import-service.ts",
+            "lib/dal/requirement-import-validation-sessions.ts"
+          ],
+          "invariant": "MCP reads and retained import sessions must enforce caller identity and current resource permission on every alternate path.",
+          "method": "source",
+          "result": "lib/mcp/http.ts:132 authenticates before service construction; lib/mcp/server.ts:1816 and :1867 send both JSON and HTML resources through service.getRequirement, whose service-requirements.ts:644 and :706 gates parent/version visibility. import-service.ts:2835 loads sessions by token and caller fingerprint, :2846 reauthorizes inspection, and :2918-2938 reacquires/locks the owned session and reauthorizes execution. DAL :439-457 predicates token_hash, creator_principal_fingerprint and unexpired SQL clock. Token possession alone cannot inspect or execute another HSA principal\u2019s session.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fmcp%2Froute.ts%23MCP%20tools::lib%2Fauth%2Fmcp-token.ts%23MCP%20principal::lib%2Fmcp::ATTACK-CLASSES.md%23Chained%20vulnerabilities%20and%20trust%20boundaries",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/requirements/import-service.ts",
+        "lib/requirements/service.ts",
+        "lib/mcp/import-validation-principal.ts",
+        "lib/mcp/import-validation-fingerprint.mjs",
+        "lib/dal/requirement-import-validation-sessions.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-mcp",
+          "reviewed_paths": [
+            "lib/requirements/import-service.ts",
+            "lib/requirements/service.ts",
+            "lib/mcp/import-validation-principal.ts",
+            "lib/mcp/import-validation-fingerprint.mjs",
+            "lib/dal/requirement-import-validation-sessions.ts"
+          ],
+          "invariant": "Validation-to-execution and retry must preserve principal, destination, current authorization and one-time row consumption.",
+          "method": "source",
+          "result": "import-service.ts:1992 uses 32 random bytes for opaque tokens, stores their hash, and :2610 derives the caller fingerprint from verified HSA ID. Fingerprint helpers trim/validate HSA and use domain-separated HMAC (lib/mcp/import-validation-principal.ts:25; import-validation-fingerprint.mjs:22). Execute runs SERIALIZABLE at import-service.ts:2910, locks ownership lookup at :2918, obtains fresh transactional assignment authorization at :2931 via service.ts:613, rejects changed budgets/reference data at :2947 and :2966, and uses stored destination. :3011-3018 excludes persisted imported rows, :3148-3167 bounds and persists receipts in the same transaction. No authority growth, destination substitution or retry re-import path was identified.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fmcp%2Froute.ts%23MCP%20tools::lib%2Fauth%2Fmcp-token.ts%23MCP%20principal::lib%2Fmcp::DATA-ISOLATION-AND-LIFECYCLE.md%23Import%20and%20restore%20authority%20expansion",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/mcp/server.ts",
+        "lib/requirements/import-service.ts",
+        "lib/requirements/import-budget.ts",
+        "lib/dal/requirement-import-validation-sessions.ts",
+        "lib/requirements/service.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-mcp",
+          "reviewed_paths": [
+            "lib/mcp/server.ts",
+            "lib/requirements/import-service.ts",
+            "lib/requirements/import-budget.ts",
+            "lib/dal/requirement-import-validation-sessions.ts",
+            "lib/requirements/service.ts"
+          ],
+          "invariant": "Imported data cannot choose an unauthorized destination, override immutable validation state, or restore stale authority.",
+          "method": "source",
+          "result": "lib/mcp/server.ts:1116-1144 rejects destination/payload fields on execute. lib/requirements/import-service.ts:2620 authorizes validation destination, :2663 checks the 8 MiB content cap, :2680-2705 checks bounded content/schema, and :2766 persists immutable submitted/validated snapshots. :2931 reauthorizes the stored destination with a transaction-scoped authorizer supplied by lib/requirements/service.ts:613; :2983 rechecks destination importability, and :3034/:3092 writes only authorized library-area or specification-local rows constructed from stored validated state. Import budget ceilings are in lib/requirements/import-budget.ts:25-35. Owned-session DAL :451-455 also excludes expired or foreign sessions.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    },
+    {
+      "coverage_id": "app%2Fapi%2Fmcp%2Froute.ts%23MCP%20tools::lib%2Fauth%2Fmcp-token.ts%23MCP%20principal::lib%2Fmcp::RESOURCE-EXHAUSTION-AND-AVAILABILITY.md%23Quota-accounting%20scope%20and%20reset%20gaps",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "lib/mcp/http.ts",
+        "lib/requirements/import-service.ts",
+        "lib/mcp/import-validation-storage.ts",
+        "lib/dal/requirement-import-validation-sessions.ts",
+        "lib/requirements/import-capacity.ts",
+        "lib/transient-cleanup/requirement-import-validation-sessions.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-mcp",
+          "reviewed_paths": [
+            "lib/mcp/http.ts",
+            "lib/requirements/import-service.ts",
+            "lib/mcp/import-validation-storage.ts",
+            "lib/dal/requirement-import-validation-sessions.ts",
+            "lib/requirements/import-capacity.ts",
+            "lib/transient-cleanup/requirement-import-validation-sessions.ts"
+          ],
+          "invariant": "Import quota usage must be bound to verified principal/destination and admitted atomically with accurate storage reservation.",
+          "method": "source",
+          "result": "lib/mcp/http.ts:84-110 measures actual POST bytes, not only Content-Length, before SDK parsing. import-service.ts:2610 derives quota principal from verified actor, not input. DAL :254-351 serializes admission using a transaction-owned global applock, locked current settings, SQL clock, principal/destination session counts, global reserved-byte sum and per-principal fixed-window creation counter; :411-434 increments that counter in the same transaction. lib/mcp/import-validation-storage.ts:27-64 counts UTF-16 SQL strings and reserves a bounded future receipt, enforced at import-service.ts:3150. import-capacity.ts:14 and :49-54 bound in-flight imports and release in finally. Expired state is ineligible to use and purge batches are bounded at transient-cleanup/requirement-import-validation-sessions.ts:76-100. No caller-controlled quota-key/reset bypass was found.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [],
+  "hardening": [],
+  "uncovered": []
+}

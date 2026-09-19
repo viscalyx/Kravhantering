@@ -1,0 +1,70 @@
+{
+  "units": [
+    {
+      "coverage_id": "app%2Fapi%2Frequirement-areas%20and%20app%2Fapi%2Frequirement-packages%23assignment%20creation%20transfer%20and%20replacement::lib%2Fdal%2Frequirement-areas.ts%20and%20lib%2Fdal%2Frequirement-packages.ts%23persisted%20owner%20lead%20and%20co-author%20grants::lib%2Frequirements%2Fassignment-management::ATTACK-CLASSES.md%23Access%20control",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/requirement-areas/[id]/co-authors/route.ts",
+        "app/api/requirement-areas/[id]/route.ts",
+        "app/api/requirement-areas/route.ts",
+        "app/api/requirement-packages/[id]/co-authors/route.ts",
+        "app/api/requirement-packages/[id]/route.ts",
+        "app/api/requirement-packages/route.ts",
+        "app/api/requirements-specifications/[id]/co-authors/route.ts",
+        "app/api/requirements-specifications/[id]/responsible/route.ts",
+        "docs/governance/beh\u00f6righeter.md",
+        "lib/auth/hsa-id.ts",
+        "lib/dal/requirement-areas.ts",
+        "lib/dal/requirement-packages.ts",
+        "lib/dal/requirement-responsibility-people.ts",
+        "lib/dal/requirements-specifications.ts",
+        "lib/http/secure-mutation-route.ts",
+        "lib/requirements/requirement-package-permissions.ts",
+        "lib/requirements/responsibility-person-verification.ts",
+        "lib/requirements/responsibility-person.ts",
+        "tests/unit/requirement-areas-dal.test.ts",
+        "tests/unit/requirement-packages-dal.test.ts",
+        "tests/unit/responsibility-person-verification.test.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave6-grants",
+          "reviewed_paths": [
+            "app/api/requirement-areas/[id]/co-authors/route.ts",
+            "app/api/requirement-areas/[id]/route.ts",
+            "app/api/requirement-areas/route.ts",
+            "app/api/requirement-packages/[id]/co-authors/route.ts",
+            "app/api/requirement-packages/[id]/route.ts",
+            "app/api/requirement-packages/route.ts",
+            "app/api/requirements-specifications/[id]/co-authors/route.ts",
+            "app/api/requirements-specifications/[id]/responsible/route.ts",
+            "docs/governance/beh\u00f6righeter.md",
+            "lib/auth/hsa-id.ts",
+            "lib/dal/requirement-areas.ts",
+            "lib/dal/requirement-packages.ts",
+            "lib/dal/requirement-responsibility-people.ts",
+            "lib/dal/requirements-specifications.ts",
+            "lib/http/secure-mutation-route.ts",
+            "lib/requirements/requirement-package-permissions.ts",
+            "lib/requirements/responsibility-person-verification.ts",
+            "lib/requirements/responsibility-person.ts",
+            "tests/unit/requirement-areas-dal.test.ts",
+            "tests/unit/requirement-packages-dal.test.ts",
+            "tests/unit/responsibility-person-verification.test.ts"
+          ],
+          "invariant": "Only owner/lead/Admin can create or transfer assignment authority; verified identities and real parent scope remain bound through persisted grant changes.",
+          "method": "source",
+          "artifact": null,
+          "result": "Area creation is Admin-only (area collection route:62); package creation requires authenticated HSA identity and area authorship/Admin (package-permissions.ts:69-90), strictly rejects client lead input and derives its lead from the actor (package collection route:70-103). Area ownership/metadata transfer and grant replacement use canManageAreaCoAuthors (area DAL:313-338), which checks owner/Admin, not ordinary co-authorship; package equivalents use requireRequirementPackageLeadOrAdmin (:98-148). Public read permission flags never drive server authority. secureMutationRoute.ts:281-357 establishes authenticated context, parses bounded strict schemas and authorizes before dispatch. Each transfer resolves signed person evidence against authenticated actor, exact recipient, purpose and resource ID; responsibility-person-verification.ts:175-205 verifies signature/canonical payload and :336-380 checks expiry, actor/source, target, purpose, scope and unique supplied people. Empty evidence is allowed only for unchanged/removal-only grants: area DAL:665-706 and package DAL:726-775 calculate added IDs inside the serializable transaction and require verifiedPeopleCoverAddedAssignments (responsibility-person.ts:36-46). Replacement locks its actual parent (area:720-728, package:791-798), prevents owner/lead appearing among co-authors using case/space-normalized comparisons, verifies person-set membership, and atomically syncs additions/removals/person cleanup. Transfer shares SERIALIZABLE parent/range locks and rejects current co-authors as next owner/lead (area:545-623, package:603-646). Parameterized queries bind IDs; request data cannot select another parent or introduce identity fields. Cleanup only removes people absent from all six assignment relations (responsibility-people.ts:78-121), not another resource assignment. Comparable specification routes use the same manager-vs-author distinction (specification DAL:1090-1118), evidence purpose/scope binding and serializable exclusive-role updates (:1357-1404,1499-1555). Current routes are the only app/lib consumers found for area/package co-author replacement; no weaker reachable grant writer was found. Source test fixtures corroborate added-person evidence rejection (area test:287) and replacement normalization/atomicity (package test:551); tests were not executed. Case equivalence is an explicit local identity convention (verification test:472), not proof of two distinct principals. Authorization precedes the transaction, so no claim of instantaneous cancellation of already-admitted requests is made; no stronger revocation guarantee or unauthorized grant entry was established. No candidate survived this bounded source trace."
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [],
+  "hardening": [
+    "Area/package grant routes authorize before entering their serializable mutation transaction. If the intended policy requires transfers to cancel already-admitted grant writes, pass actor identity into the locked mutation and recheck authority there. This optional stronger revocation invariant is not established by current governance; no security bypass is asserted."
+  ],
+  "uncovered": []
+}

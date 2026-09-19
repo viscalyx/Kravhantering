@@ -1,0 +1,335 @@
+[
+  {
+    "id": "auth",
+    "surface": "proxy.ts#HTTP entry",
+    "boundary": "lib/auth/session.ts#authenticated identity",
+    "subsystem": "lib/auth",
+    "paths": [
+      "proxy.ts",
+      "lib/auth",
+      "lib/http",
+      "app/api/auth",
+      "app/api/security",
+      "lib/security",
+      "next.config.ts"
+    ],
+    "ordinary": [
+      "Access control",
+      "Cryptography and secrets",
+      "Obvious things"
+    ],
+    "companions": {
+      "WEB-PROTOCOL-AND-AUTH.md": [
+        "Ordinary CSRF",
+        "Session fixation and invalidation",
+        "JWT verification and claim binding",
+        "OAuth/OIDC request and callback binding",
+        "Host and forwarded-header trust",
+        "Cache deception and private-response caching",
+        "Cookie scope and transport"
+      ],
+      "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md": [
+        "Pre-authentication work imbalance"
+      ]
+    }
+  },
+  {
+    "id": "requirements",
+    "surface": "app/api/requirements#REST workflows",
+    "boundary": "lib/requirements/assignment-authorization.ts#requirement authority",
+    "subsystem": "lib/requirements",
+    "paths": [
+      "lib/requirements",
+      "lib/dal/requirements.ts",
+      "lib/dal/requirements-list-sql.mjs",
+      "app/api/requirements",
+      "app/api/requirement-transitions",
+      "app/api/improvement-suggestions",
+      "app/api/rfi-question-suggestions",
+      "app/api/requirement-areas",
+      "app/api/requirement-packages",
+      "app/api/norm-references",
+      "app/api/requirement-selection-questions"
+    ],
+    "ordinary": [
+      "Access control",
+      "Injection",
+      "Business logic"
+    ],
+    "companions": {
+      "DATA-ISOLATION-AND-LIFECYCLE.md": [
+        "Policy and query disagreement",
+        "Import and restore authority expansion",
+        "Restore reintroduces invalid state",
+        "Stale authorization and derived copy use"
+      ]
+    }
+  },
+  {
+    "id": "specifications",
+    "surface": "app/api/requirements-specifications#REST workflows",
+    "boundary": "lib/specifications/permissions.ts#specification authority",
+    "subsystem": "lib/specifications",
+    "paths": [
+      "lib/specifications",
+      "lib/requirements/service-specifications.ts",
+      "lib/requirements/specification-mutations.ts",
+      "lib/dal/requirements-specifications.ts",
+      "lib/dal/deviations.ts",
+      "app/api/requirements-specifications",
+      "app/api/specification-local-requirements",
+      "app/api/deviations",
+      "app/api/specification-local-deviations"
+    ],
+    "ordinary": [
+      "Access control",
+      "Business logic",
+      "Injection"
+    ],
+    "companions": {
+      "DATA-ISOLATION-AND-LIFECYCLE.md": [
+        "Missing tenant or owner enforcement",
+        "Policy and query disagreement",
+        "Import and restore authority expansion",
+        "Soft-delete and tombstone bypass"
+      ]
+    }
+  },
+  {
+    "id": "mcp",
+    "surface": "app/api/mcp/route.ts#MCP tools",
+    "boundary": "lib/auth/mcp-token.ts#MCP principal",
+    "subsystem": "lib/mcp",
+    "paths": [
+      "app/api/mcp/route.ts",
+      "lib/mcp",
+      "lib/auth/mcp-token.ts",
+      "lib/requirements/import-service.ts",
+      "lib/dal/requirement-import-validation-sessions.ts"
+    ],
+    "ordinary": [
+      "Access control",
+      "Chained vulnerabilities and trust boundaries"
+    ],
+    "companions": {
+      "AI-AND-LLM.md": [
+        "Sub-agent and MCP trust inheritance",
+        "MCP server and tool identity confusion",
+        "Tool-schema and dispatcher disagreement",
+        "Tool-argument injection into a downstream sink"
+      ],
+      "DATA-ISOLATION-AND-LIFECYCLE.md": [
+        "Import and restore authority expansion"
+      ],
+      "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md": [
+        "Quota-accounting scope and reset gaps"
+      ]
+    }
+  },
+  {
+    "id": "ai",
+    "surface": "app/api/ai#AI requests",
+    "boundary": "lib/ai/run-trust-boundary.ts#provider and content authority",
+    "subsystem": "lib/ai",
+    "paths": [
+      "lib/ai",
+      "app/api/ai",
+      "app/api/admin/ai-connections",
+      "app/api/admin/ai-settings",
+      "app/api/admin/ai-run-profiles",
+      "app/api/admin/ai-forensic-captures",
+      "lib/dal/ai-connection-admin.ts",
+      "scripts/ai-provider-secret-maintenance.mjs",
+      "scripts/ai-provider-secret-restore-cli.mjs"
+    ],
+    "ordinary": [
+      "Resource and file handling",
+      "Cryptography and secrets",
+      "Business logic"
+    ],
+    "companions": {
+      "AI-AND-LLM.md": [
+        "Indirect injection through retrieved or ingested content",
+        "Excessive agency and confused-deputy authority",
+        "Sensitive context extraction",
+        "Insecure output rendering"
+      ],
+      "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md": [
+        "Detached work after cancellation",
+        "Quota-accounting scope and reset gaps"
+      ]
+    }
+  },
+  {
+    "id": "outputs",
+    "surface": "app/api/privacy#exports and reports",
+    "boundary": "lib/privacy/route-helpers.ts#derived data authority",
+    "subsystem": "lib/privacy",
+    "paths": [
+      "lib/privacy",
+      "lib/access-review",
+      "lib/archiving",
+      "lib/audit",
+      "lib/reports",
+      "lib/pdf",
+      "lib/generated-output",
+      "lib/transient-cleanup",
+      "app/api/privacy",
+      "app/api/admin/access-reviews",
+      "app/api/admin/archiving",
+      "app/api/admin/audit-events",
+      "app/api/requirements/export",
+      "app/api/requirements-specifications"
+    ],
+    "ordinary": [
+      "Feature abuse and data leakage",
+      "Resource and file handling",
+      "Access control"
+    ],
+    "companions": {
+      "DATA-ISOLATION-AND-LIFECYCLE.md": [
+        "Export and backup scope expansion",
+        "Analytics, logs, traces, and diagnostics as alternate readers",
+        "Retention and queued-work overrun"
+      ],
+      "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md": [
+        "File descriptor, handle, and temporary-resource leaks",
+        "Worker, pool, and priority starvation",
+        "Quota-accounting scope and reset gaps"
+      ]
+    }
+  },
+  {
+    "id": "browser",
+    "surface": "components#browser rendering",
+    "boundary": "lib/norm-references/browser-link-uri.ts#untrusted content rendering",
+    "subsystem": "components",
+    "paths": [
+      "components",
+      "app/[locale]",
+      "hooks",
+      "lib/norm-references/browser-link-uri.ts",
+      "lib/browser-download.ts",
+      "lib/export-csv.ts",
+      "next.config.ts"
+    ],
+    "ordinary": [
+      "Injection",
+      "Feature abuse and data leakage"
+    ],
+    "companions": {
+      "CLIENT-SIDE.md": [
+        "DOM-based XSS",
+        "Prototype pollution and gadget chain",
+        "Browser-storage disclosure and stale authorization",
+        "Client-side navigation confusion",
+        "Credentialed CORS trust",
+        "Clickjacking"
+      ]
+    }
+  },
+  {
+    "id": "hsa",
+    "surface": "containers/hsa-person-lookup-adapter/src/strict-server.mjs#HSA ingress",
+    "boundary": "lib/hsa/strict-certificate-validation.mjs#peer identity",
+    "subsystem": "containers/hsa-person-lookup-adapter",
+    "paths": [
+      "lib/hsa",
+      "lib/requirements/responsibility-person-verification.ts",
+      "app/api/requirement-responsibility-people",
+      "containers/hsa-person-lookup-adapter",
+      "containers/hsa-directory-mock",
+      "containers/hsa-mtls-provisioner",
+      "containers/hsa-mtls-topology"
+    ],
+    "ordinary": [
+      "Access control",
+      "Resource and file handling"
+    ],
+    "companions": {
+      "WEB-PROTOCOL-AND-AUTH.md": [
+        "mTLS peer and application-identity confusion",
+        "Certificate lifecycle fallback"
+      ],
+      "PROTOCOLS-RPC-AND-MESSAGING.md": [
+        "Message boundary and canonicalization disagreement",
+        "Envelope and payload identity mismatch",
+        "Callback and reply-correlation confusion"
+      ],
+      "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md": [
+        "Unbounded buffering and cardinality"
+      ]
+    }
+  },
+  {
+    "id": "release",
+    "surface": "scripts/release/container-release.mjs#release inputs",
+    "boundary": "scripts/release/publication.mjs#publication authority",
+    "subsystem": "scripts/release",
+    "paths": [
+      ".github/workflows",
+      "scripts/release",
+      "scripts/containers/export-oci-archives.mjs",
+      "scripts/install-repository-npm.mjs",
+      "package-lock.json",
+      "package.json",
+      "containers/app/Dockerfile",
+      "containers/app/Dockerfile.dockerignore",
+      ".github/skills/security-audit"
+    ],
+    "ordinary": [
+      "Resource and file handling",
+      "Obvious things",
+      "Chained vulnerabilities and trust boundaries"
+    ],
+    "companions": {
+      "SUPPLY-CHAIN-AND-RELEASE.md": [
+        "Mutable and unbound build inputs",
+        "Untrusted code in a privileged workflow",
+        "Workflow command and expression confusion",
+        "Cache, artifact, and workspace trust mixing",
+        "Build-to-promotion substitution",
+        "Release authorization and signing-policy gaps",
+        "Build-context inclusion"
+      ]
+    }
+  },
+  {
+    "id": "operations",
+    "surface": "containers/production/bin#operator inputs",
+    "boundary": "containers/production/bin/kravhantering-quadlet.sh#host authority",
+    "subsystem": "containers/production",
+    "paths": [
+      "containers/production",
+      "scripts/azure-dev.ps1",
+      "scripts/azure-dev",
+      "scripts/containers",
+      "scripts/db-sqlserver-admin.mjs",
+      "lib/typeorm",
+      "typeorm",
+      "lib/transient-cleanup",
+      "containers/app/start-runtime.mjs",
+      ".devcontainer",
+      ".env.example",
+      ".env.production"
+    ],
+    "ordinary": [
+      "Injection",
+      "Resource and file handling",
+      "Obvious things"
+    ],
+    "companions": {
+      "CLOUD-AND-DEPLOYMENT.md": [
+        "Unexpected service or management-plane reachability",
+        "Host or control-plane capability exposure",
+        "Security-control precedence drift",
+        "Secret exposure across workload boundaries",
+        "Credential renewal and outage fallback"
+      ],
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md": [
+        "Privileged helper as confused deputy",
+        "Local file ownership and TOCTOU"
+      ]
+    }
+  }
+]

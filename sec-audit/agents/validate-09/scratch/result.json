@@ -1,0 +1,112 @@
+{
+  "decision": "needs_validation",
+  "record": {
+    "verdict": "needs_validation",
+    "fingerprint": "requirement-delete-draft-status-check-write-race",
+    "title": "Draft deletion may remove a version after it enters Review",
+    "description": "An authenticated author assigned to the requirement area can request draft deletion and a permitted Draft-to-Review transition. Source permits deletion to read Draft, the transition to commit Review, and deletion to subsequently target the same version by id. If this schedule commits on SQL Server, it violates the explicit Draft-only deletion invariant and can remove the requirement when this was its sole version. Authentication, same-origin policy, assignment authorization and atomic audit/deletion do not themselves preserve the checked status through the delete. No execution or committed deletion of a Review version has been observed; the minimum validation is limited to Review, without claiming demonstrated removal of Published content.",
+    "claimed_root_cause": "deleteDraftVersion opens a transaction without an explicit isolation override, reads getLatestVersionLite without lockForUpdate, checks the returned Draft status, then removes associations and deletes requirement_versions by id alone. The configured isolation is READ COMMITTED. There is no repeated lifecycle check or status/revision predicate at the delete. The nearby edit path explicitly uses SERIALIZABLE and UPDLOCK/HOLDLOCK, but those controls do not cover draft deletion.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/requirements/[id]/delete-draft/route.ts",
+        "line": 50,
+        "scope": "POST",
+        "description": "Browser-callable mutation validates the requirement reference, applies manage_requirement/delete_draft authorization, and invokes the shared service at line 67."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/requirements/service-requirements.ts",
+        "line": 805,
+        "scope": "manageRequirement",
+        "description": "Repeats shared operation authorization before resolving and mutating the requirement."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/requirements/service-requirements.ts",
+        "line": 1111,
+        "scope": "manageRequirement delete_draft branch",
+        "description": "Calls deleteDraftVersion with an audit callback inside the deletion transaction; supplies no expected revision or lifecycle predicate."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/dal/requirements.ts",
+        "line": 1140,
+        "scope": "deleteDraftVersion",
+        "description": "Reads latest version without the available update/hold lock option, then rejects unless the returned status is Draft."
+      },
+      {
+        "kind": "sink",
+        "file": "lib/dal/requirements.ts",
+        "line": 1164,
+        "scope": "deleteDraftVersion",
+        "description": "Deletes the previously read version by id without requiring its status or revision still to match the checked Draft."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "lib/http/secure-mutation-route.ts",
+        "line": 291,
+        "description": "Wrapper requires authenticated context; lines 306-311 validate params and lines 343-357 authorize before invoking the handler."
+      },
+      {
+        "file": "lib/http/route-security-policy.ts",
+        "line": 1584,
+        "description": "Delete-draft REST policy declares session authentication and same-origin CSRF protection. These protect request admission, not concurrent lifecycle consistency."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 901,
+        "description": "Non-Admin delete_draft authorization resolves the requirement and requires area authorship; assertAreaAuthor at lines 848-856 binds the assignment to actor HSA-id. The global Admin bypass is at lines 704-705."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 908,
+        "description": "Transition authorization allows an assigned area author to request Draft-to-Review; publishing, archiving and exits from Review require Reviewer. This does not authorize deletion of a Review version."
+      },
+      {
+        "file": "typeorm/seed-required.mjs",
+        "line": 441,
+        "description": "Required transition seed permits Draft (1) to Review (2); the minimum validation does not depend on a publication decision."
+      },
+      {
+        "file": "lib/dal/requirements.ts",
+        "line": 704,
+        "description": "getLatestVersionLite emits WITH (UPDLOCK, HOLDLOCK) only when explicitly requested. deleteDraftVersion does not request it."
+      },
+      {
+        "file": "lib/typeorm/sqlserver-config.ts",
+        "line": 201,
+        "description": "DataSource uses DEFAULT_TRANSACTION_ISOLATION_LEVEL, defined as READ COMMITTED at line 12. deleteDraftVersion calls db.transaction without overriding it."
+      },
+      {
+        "file": "lib/dal/requirements.ts",
+        "line": 1141,
+        "description": "Explicit invariant rejects non-Draft versions at the initial read; the later delete at line 1164 uses id equality only. Remaining-version counting can then cause deletion of the requirement at line 1188."
+      },
+      {
+        "file": "lib/dal/requirements.ts",
+        "line": 1328,
+        "description": "transitionStatus updates status and revision_token on the current version id and then runs its audit callback. Its earlier current-status and configured-transition checks are at lines 1219-1244."
+      },
+      {
+        "file": "lib/dal/requirements.ts",
+        "line": 813,
+        "description": "Comparable edit path uses SERIALIZABLE, a locked latest-version read and base-version/revision checks, establishing source-visible concurrency protection that is absent from deletion."
+      },
+      {
+        "file": "typeorm/migrations/0003_explicit_fk_actions.mjs",
+        "line": 82,
+        "description": "Specification-item references to requirement_versions use ON DELETE NO ACTION, so referenced data can prevent deletion; validation must use an unreferenced disposable version."
+      }
+    ],
+    "blockers": [
+      "Required OS-enforced execution sandbox is unavailable: the parent bubblewrap namespace probe failed with No permissions to create new namespace. No target code, HTTP request, or SQL concurrency fixture was executed.",
+      "The decisive SQL Server outcome remains unobserved: the authorized Draft-to-Review transition must commit after deletion reads Draft and before it resumes, and deletion must then commit despite lock, foreign-key and audit interactions. Source supports the schedule but does not establish its observed execution."
+    ],
+    "validation_plan": {
+      "local": "In a future approved offline OS-isolated sandbox, use a disposable SQL Server database with repository migrations, required status/transition seed, and a dummy area-author principal. Create one Draft version without specification, local-requirement, suggestion, package or other external referencing records. First verify a sequential deletion request against Review is rejected. For the bounded concurrency case, start authorized delete_draft through the shared service and pause inside deleteDraftVersion immediately after its successful Draft check, before any following query. On a separate connection invoke the normal authorized transitionRequirement service with toStatusId 2 and require its transaction to commit. Resume deletion, record both transaction outcomes and inspect the version id and parent requirement. Confirm only if deletion commits and removes the now-Review row; blocking, rollback or rejection is not successful reproduction. Stop after this minimum outcome and destroy only the disposable fixture. Do not use shared development services or real records.",
+      "deployment": "No live destructive validation is needed. An owner may repeat the same dummy-record schedule in an isolated staging database with the deployed schema and isolation configuration if those differ; report any differences and actual outcomes without deleting production content."
+    }
+  }
+}

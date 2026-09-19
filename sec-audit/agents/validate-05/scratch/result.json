@@ -1,0 +1,102 @@
+{
+  "decision": "needs_validation",
+  "record": {
+    "verdict": "needs_validation",
+    "fingerprint": "dev-keycloak/published-management/default-admin",
+    "title": "Developer Keycloak publishes its HTTP port without a loopback bind and supplies public administrator defaults",
+    "description": "Both maintained devcontainer Compose profiles and standalone development Compose publish Keycloak's HTTP port without an explicit loopback host address and supply [public development values omitted] bootstrap defaults. A non-developer network peer could gain development IdP administrator authority if the effective publication is reachable, those credentials are active, and the master realm permits that peer's HTTP management authentication. The devcontainer startup helper attempts to relax the master realm HTTPS requirement; this was not observed to succeed, and standalone Compose does not invoke that helper. The potential resource affected is the development realm and its identities, with realm configuration or credential changes as the unauthorized operation. No network reachability, successful authentication, production exposure, or application takeover was demonstrated.",
+    "claimed_root_cause": "Development Compose publication lacks an explicit host-loopback restriction while the same service is configured with intentional public administrator credentials. The devcontainer also attempts to remove the master realm HTTPS requirement for local console convenience. The comparable Azure developer IdP explicitly binds its published port to 127.0.0.1.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": ".devcontainer/docker-compose.yml",
+        "line": 128,
+        "scope": "services.idp.ports",
+        "description": "The HTTP publication defaults to 8080:8080 without an explicit host address. This is the prospective entry for a lower-trust host-network peer; actual non-loopback reachability depends on the effective engine configuration, environment, and routing."
+      },
+      {
+        "kind": "propagation",
+        "file": ".devcontainer/docker-compose.yml",
+        "line": 118,
+        "scope": "services.idp.command",
+        "description": "The published Keycloak 26.7.4-0 service runs start-dev with realm import and HTTP port 8080, without a source-defined path-filtering proxy in this publication."
+      },
+      {
+        "kind": "propagation",
+        "file": ".devcontainer/start-keycloak-forwarder.sh",
+        "line": 79,
+        "scope": "relax_master_ssl_required",
+        "description": "The devcontainer startup helper attempts an authenticated update setting the master realm sslRequired to NONE. It can exhaust retries and return successfully without applying the change; source does not establish the effective master realm policy."
+      },
+      {
+        "kind": "sink",
+        "file": ".devcontainer/docker-compose.yml",
+        "line": 125,
+        "scope": "services.idp.environment",
+        "description": "KEYCLOAK_ADMIN and KEYCLOAK_ADMIN_PASSWORD both default to admin, potentially supplying the administrator identity for the exposed management surface if the pinned image accepts these settings and the resulting credentials remain active."
+      }
+    ],
+    "evidence": [
+      {
+        "file": ".devcontainer/docker-compose.yml",
+        "line": 125,
+        "description": "The default profile declares [public development values omitted] bootstrap credentials and the HTTP publication at line 128; its optional environment file and interpolation permit effective configuration to differ."
+      },
+      {
+        "file": ".devcontainer/elevated/docker-compose.yml",
+        "line": 143,
+        "description": "The elevated profile repeats [public development values omitted] defaults, with the address-unspecified publication at line 146."
+      },
+      {
+        "file": "docker-compose.idp.yml",
+        "line": 26,
+        "description": "Standalone development Compose repeats the defaults and publication at line 29, but contains no master realm HTTPS relaxation step."
+      },
+      {
+        "file": ".devcontainer/devcontainer.json",
+        "line": 3,
+        "description": "The default devcontainer selects its Compose file, includes idp in runServices at line 8, and invokes start-keycloak-forwarder.sh through postStartCommand at line 254."
+      },
+      {
+        "file": ".devcontainer/elevated/devcontainer.json",
+        "line": 254,
+        "description": "The elevated devcontainer also invokes the forwarding and master realm relaxation helper."
+      },
+      {
+        "file": ".devcontainer/start-keycloak-forwarder.sh",
+        "line": 44,
+        "description": "The socat hop binds only the app container's loopback address. This does not restrict the separate Compose host publication. The helper attempts the master realm update at lines 76-80, then tolerates failure at lines 86-87."
+      },
+      {
+        "file": "docs/development/auth-developer-workflow.md",
+        "line": 48,
+        "description": "Documentation distinguishes the development realm's disabled HTTPS requirement from the master realm restriction and the helper's attempted relaxation. It documents public [public development values omitted] credentials at line 56 and says realm edits survive container restart but not recreation at lines 38-42. These statements are source guidance, not pinned-provider runtime evidence."
+      },
+      {
+        "file": "scripts/azure-dev/templates/quadlet/krav-idp.container",
+        "line": 10,
+        "description": "The comparable Azure developer IdP explicitly publishes 127.0.0.1:8080:8080, so it does not share the address-unspecified publication."
+      },
+      {
+        "file": "containers/production/nginx/templates/single-node-hardened-keycloak-tls.conf.template",
+        "line": 120,
+        "description": "The hardened production management listener requires a client certificate. Its public listener separately allows selected realm/resource paths and rejects other /auth/ paths at lines 49-73; these controls are not on the development Compose publication."
+      },
+      {
+        "file": "containers/production/bin/kravhantering-quadlet.sh",
+        "line": 333,
+        "description": "The hardened production configuration requires an explicit management IPv4 bind, rejects the wildcard address at lines 345-347, and requires management container port 9443 at lines 351-352."
+      }
+    ],
+    "blockers": [
+      "The effective Compose manifest, environment overrides, container-engine version and forwarding defaults, host bind, firewall, and route from a non-developer peer were not observed. Source port publication does not establish lower-trust reachability.",
+      "Acceptance of the legacy KEYCLOAK_ADMIN settings by the pinned Keycloak 26.7.4-0 image and the effective bootstrap administrator state were not verified. Existing container state or overrides can make the public defaults inactive.",
+      "The effective master realm sslRequired policy and the origin classification of forwarded requests remain decisive. The repository describes an external-HTTPS default; the devcontainer helper attempts to relax it but tolerates failure, and standalone Compose has no equivalent step. Provider behavior at the pinned version was not independently verified.",
+      "The required OS-enforced execution sandbox is unavailable because the trusted bubblewrap probe could not create a namespace. No Compose rendering, target execution, management authentication, or runtime observation was performed."
+    ],
+    "validation_plan": {
+      "local": "In a future approved OS-isolated sandbox with no external network, empty allowlisted environment, read-only target and tools, scratch-only writes, and explicit resource/time limits, render each of the three maintained Compose profiles using dummy configuration. Use a pre-provisioned disposable fixture for the exact pinned Keycloak image and fresh dummy state to verify bootstrap-setting acceptance and the master realm HTTPS policy. Compare the standalone path with the devcontainer helper path, recording whether that helper actually changes the policy. Inspect the resulting publication and request-origin behavior from an isolated peer. Attempt only one harmless authorized management read of a dummy realm using the intentional public test administrator after policy and bootstrap conditions are established; stop at the boundary result. Do not change shared services or use real users, secrets, or realms.",
+      "deployment": "The owner should inspect the active profile and effective manifest, sanitized bootstrap-setting status, existing administrator state, master realm HTTPS policy, actual container port bindings and forwarding configuration, host firewall, and applicable network routing. Establish whether a specifically identified non-developer principal has a permitted route to the development IdP and whether public bootstrap credentials are still active. Use configuration inspection and owner-held records without disclosing secrets or probing live management login. Keep standalone, ordinary devcontainer, elevated devcontainer, Azure, and production conclusions separate."
+    }
+  }
+}

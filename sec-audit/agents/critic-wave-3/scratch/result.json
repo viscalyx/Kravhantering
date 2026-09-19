@@ -1,0 +1,29 @@
+{
+  "missing_units": [
+    {
+      "surface": "app/api/requirement-selection-questions/[id]/visibility/route.ts#visibility dependency propagation",
+      "boundary": "lib/dal/requirement-selection-questions.ts#recursive descendant query and per-specification visibility recomputation",
+      "subsystem": "lib/requirements/selection-visibility",
+      "attack_class": "Database and downstream query amplification",
+      "starting_paths": [
+        "app/api/requirement-selection-questions/[id]/visibility/route.ts",
+        "app/api/requirement-selection-questions/_schemas.ts",
+        "app/api/requirement-selection-questions/_authorization.ts",
+        "lib/dal/requirement-selection-questions.ts",
+        "lib/http/secure-mutation-route.ts",
+        "lib/typeorm/sqlserver-config.ts"
+      ],
+      "selected_companion_blocks": [
+        "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Database and downstream query amplification",
+        "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Universal moves",
+        "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Validation rules"
+      ],
+      "excluded_blocks": [],
+      "reason": "The visibility business-logic unit closes stewardship authority, parent binding, cycle checks and history mutation, but its evidence does not examine database work. DAL:1921-1961 traverses visibility-condition rows using recursive UNION ALL, joins descendants again on each level and applies DISTINCT only to final output; condition rows can represent multiple answers/groups for a parent-child relation. DAL:1964-2008 then enumerates affected specifications and reloads their visibility state individually, all within the visibility replacement transaction at :2013-2083. Trace whether accepted graph multiplicity and persisted graph size can amplify work beyond intended stewardship scope, considering route area-author authorization, schema caps at _schemas.ts:33-55, cycle validation, the depth-100 predicate, shared SQL pool/request timeouts and rollback/cancellation. The existing report-diff and cleanup availability units cover different computations. Intentional cross-specification propagation alone is not a defect, and actual SQL execution cost or shared availability impact remains a runtime/deployment validation fact; no target execution or stress testing is requested here."
+    }
+  ],
+  "reassign_ids": [],
+  "resolved_prior_leads": [],
+  "stop": false
+}

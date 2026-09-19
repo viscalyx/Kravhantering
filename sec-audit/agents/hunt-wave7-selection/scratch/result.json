@@ -1,0 +1,88 @@
+{
+  "units": [
+    {
+      "coverage_id": "app%2Fapi%2Frequirement-selection-questions%23question%20and%20answer%20lifecycle::lib%2Fdal%2Frequirement-selection-questions.ts%23state%20changes%20duplication%20link%20replacement%20and%20saved-answer%20history::lib%2Frequirements%2Fselection-lifecycle::ATTACK-CLASSES.md%23Business%20logic",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/requirement-selection-questions/_authorization.ts",
+        "app/api/requirement-selection-questions/_schemas.ts",
+        "app/api/requirement-selection-questions/[id]/route.ts",
+        "app/api/requirement-selection-questions/[id]/activate/route.ts",
+        "app/api/requirement-selection-questions/[id]/deactivate/route.ts",
+        "app/api/requirement-selection-questions/[id]/archive/route.ts",
+        "app/api/requirement-selection-questions/[id]/reactivate/route.ts",
+        "app/api/requirement-selection-questions/[id]/duplicate/route.ts",
+        "app/api/requirement-selection-questions/[id]/answers/route.ts",
+        "app/api/requirement-selection-questions/[id]/answers/[answerId]/route.ts",
+        "app/api/requirement-selection-questions/[id]/answers/[answerId]/activate/route.ts",
+        "app/api/requirement-selection-questions/[id]/answers/[answerId]/deactivate/route.ts",
+        "app/api/requirement-selection-questions/[id]/answers/[answerId]/archive/route.ts",
+        "app/api/requirement-selection-questions/[id]/answers/[answerId]/reactivate/route.ts",
+        "lib/dal/requirement-selection-questions.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "docs/adr/0022-synlighetsvillkor-for-kravurvalsfragor.md",
+        "app/api/requirement-selection-questions/route.ts",
+        "app/api/requirement-selection-questions/[id]/_state.ts",
+        "app/api/requirement-selection-questions/[id]/answers/[answerId]/_state.ts",
+        "lib/http/secure-mutation-route.ts",
+        "lib/requirements/service-specifications.ts",
+        "lib/audit/action-audit.ts",
+        "typeorm/migrations/0021_requirement_selection_questions.mjs",
+        "typeorm/migrations/0027_requirement_selection_question_visibility.mjs",
+        "CONTEXT.md",
+        "docs/governance/behörigheter.md",
+        "tests/unit/requirement-selection-questions-dal.test.ts",
+        "tests/unit/requirement-selection-question-routes.test.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave7-selection",
+          "reviewed_paths": [
+            "app/api/requirement-selection-questions/_authorization.ts",
+            "app/api/requirement-selection-questions/_schemas.ts",
+            "app/api/requirement-selection-questions/[id]/route.ts",
+            "app/api/requirement-selection-questions/[id]/activate/route.ts",
+            "app/api/requirement-selection-questions/[id]/deactivate/route.ts",
+            "app/api/requirement-selection-questions/[id]/archive/route.ts",
+            "app/api/requirement-selection-questions/[id]/reactivate/route.ts",
+            "app/api/requirement-selection-questions/[id]/duplicate/route.ts",
+            "app/api/requirement-selection-questions/[id]/answers/route.ts",
+            "app/api/requirement-selection-questions/[id]/answers/[answerId]/route.ts",
+            "app/api/requirement-selection-questions/[id]/answers/[answerId]/activate/route.ts",
+            "app/api/requirement-selection-questions/[id]/answers/[answerId]/deactivate/route.ts",
+            "app/api/requirement-selection-questions/[id]/answers/[answerId]/archive/route.ts",
+            "app/api/requirement-selection-questions/[id]/answers/[answerId]/reactivate/route.ts",
+            "lib/dal/requirement-selection-questions.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "docs/adr/0022-synlighetsvillkor-for-kravurvalsfragor.md",
+            "app/api/requirement-selection-questions/route.ts",
+            "app/api/requirement-selection-questions/[id]/_state.ts",
+            "app/api/requirement-selection-questions/[id]/answers/[answerId]/_state.ts",
+            "lib/http/secure-mutation-route.ts",
+            "lib/requirements/service-specifications.ts",
+            "lib/audit/action-audit.ts",
+            "typeorm/migrations/0021_requirement_selection_questions.mjs",
+            "typeorm/migrations/0027_requirement_selection_question_visibility.mjs",
+            "CONTEXT.md",
+            "docs/governance/behörigheter.md",
+            "tests/unit/requirement-selection-questions-dal.test.ts",
+            "tests/unit/requirement-selection-question-routes.test.ts"
+          ],
+          "invariant": "Question and answer lifecycle operations preserve actual owning-area authority, referenced specification evidence, and the distinction between current selection context and an authorized published-requirement filter.",
+          "method": "source",
+          "artifact": null,
+          "result": "All eight state endpoints delegate fixed operations to question/answer _state.ts:13-32; CRUD and duplication use the same secureMutationRoute. The wrapper authenticates and authorizes before dispatch (:290-357); _authorization.ts:13-41 passes both parent and answer selectors. Assignment authorization:580-625 joins the answer to its actual question before :697-702 enforces area authorship/Admin, so foreign-answer requests cannot reach earlier answer-ID-only history/link statements. Schemas reject ownership overrides and bound IDs, text and link arrays; DAL:917-944 and authorization use equivalent numeric-or-code resolution. Creation :1005-1051 and duplication :1579-1653 allocate fresh codes inside SERIALIZABLE, retain the source area, create inactive questions and copy only active unarchived answers through link revalidation; they copy no saved specification answers or user grants. Answer create/update :1296-1415 transact the parent-bound write and link replacement; :1236-1294 deduplicates IDs, rejects no-selection answers with links, requires active packages/published requirements, and binds SQL values. Link changes mark existing direct selections historical. Question activation :1151-1184 requires an active answer; answer deactivation/archive :1417-1492 checks remaining usability and marks direct saved selections historical. Reactivation changes only question/answer flags and dates, never resets saved is_historical or assigns a new actor. Delete :1494-1577 refuses any saved use; migration0021:117-118 and migration0027:33-38 add NO ACTION foreign keys for saved and visibility references, preventing deletion of referenced questions/answers even if the preliminary read races. Parent predicates bind final deletes; child removals roll back together on constraint errors. Current reader :1680-1739 derives selected IDs only from nonhistorical rows and recomputes visibility; filter :2296-2379 independently excludes inactive/archived/hidden objects and rechecks Published status. service-specifications.ts:342-401 separately authorizes the specification, applies this optional filter only when explicitly requested, and queries Published requirements. Thus lifecycle consistency issues do not confer specification writes, publication or draft-read authority. ADR0022 explicitly permits stewardship propagation across areas; directly historical answers remain historical after restoration. The already recorded missing descendant-history propagation remains correctness hardening, not a newly demonstrated access violation. Source tests :1258-1310 document state/date updates and route tests :780-966 enumerate denial before lifecycle writes; no tests or target code ran. No additional security candidate survived this source trace."
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [],
+  "hardening": [
+    "Lifecycle usability is not uniformly enforced: deleteRequirementSelectionAnswer at lib/dal/requirement-selection-questions.ts:1494 lacks the last-active-answer guard used by deactivate/archive, and updateRequirementSelectionQuestion:1053 permits changing multiple to single without reconciling existing multiple selections. Shared parent locking and consistent reconciliation would improve correctness under sequential or concurrent edits. The affected filter is optional and Published-only; no new authority or protected-data access is established.",
+    "The existing descendant-history note remains applicable: state changes at lib/dal/requirement-selection-questions.ts:1151 and :1458 mark only direct saved selections, while ADR0022 also calls for newly hidden descendants to become historical. Reactivation itself does not clear historical flags, and current readers independently recompute visibility. Preserve this as the existing lifecycle correctness issue rather than duplicating the visibility unit or claiming a demonstrated security impact.",
+    "Lifecycle routes write action audit after the DAL transaction, for example app/api/requirement-selection-questions/[id]/_state.ts:36. An audit storage failure can leave a committed authorized mutation with an error response; transaction-scoped audit would avoid that mismatch. No caller-controlled audit failure, unauthorized operation or separate security consequence was established."
+  ],
+  "uncovered": []
+}

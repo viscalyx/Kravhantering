@@ -1,0 +1,740 @@
+Repository: /workspace. This is an authorized defensive repository audit. Read applicable AGENTS.md/repository instructions. Source-only review. NO target execution: bwrap namespace creation denied. No network, dependencies, shared services, credential reads, source edits or subagents. No runtime evidence has been established; do not claim an observed execution result. Review/refute the source claims and bounded validation handoff without developing executable exploits. You may write only /workspace/tmp/sec-audit/agents/verify-12/scratch. Parent owns artifacts; promotion allowlist empty; all byte limits zero.
+
+## Architecture
+# Architecture and audit scope
+
+This standard-profile audit covers the repository at commit
+`d39bb52daa5446392cc825dca40325f49b9e3241`, including the existing untracked
+`.github/skills/security-audit/` tooling. No prior compatible audit ledger was
+found under repository temporary output or the default audit location.
+
+Kravhantering is a requirements-management application. Ordinary users read
+published requirements; area owners/coauthors author requirements. Specification
+responsible people/coauthors manage their assigned specifications. Reviewers
+make explicit review decisions. Admin and PrivacyOfficer are separate global
+roles. The main isolation boundary is assignment-scoped objects in a shared SQL
+Server database, not a tenant-ID partition. Protected resources include drafts,
+specifications, assignments, personal identity, privacy exports, audit records,
+AI provider credentials, and release/deployment authority.
+
+The application uses Next.js 16, React 19, TypeScript, SQL Server/TypeORM,
+openid-client, jose, iron-session, MCP SDK, Sharp and React PDF. Browser identity
+uses OIDC code flow with state, nonce and PKCE; sealed cookies carry identity and
+expiry. The proxy strips identity headers. REST transport policy is centralized;
+mutation wrappers enforce authentication, same-origin checks and declared
+policies. Shared services and assignment authorization mediate resource access.
+MCP uses separately validated bearer identity and a stateless transport, then
+calls shared services. Important starting points are `proxy.ts`, `lib/auth/`,
+`lib/http/`, `lib/requirements/assignment-authorization.ts`, and `lib/mcp/`.
+
+Business inputs include route/query identifiers, JSON mutations, imported
+requirements, stored text/URLs, state transitions and optimistic revision tokens.
+Review requirements, specifications/agreements/deviations/RFI, import validation
+sessions, and alternate REST/MCP paths separately. Database writes and locks live
+in `lib/dal/`; schema/migrations and required/demo seeds live under `typeorm/`.
+Statistics terminology exists, but reconnaissance found no separate implemented
+statistics API to invent as an active subsystem.
+
+AI generation and repair accept text and bounded images, construct provider
+requests, inspect generated content, and produce candidates for human import.
+Models have no intended autonomous publication authority. Connection trust checks
+origins, DNS, pinned transport and redirects. Server-held encrypted provider
+secrets and operator root keyrings are distinct trust boundaries. Review
+`lib/ai/`, `app/api/ai/`, and AI admin routes, including forensic copies, cost
+coordination, cancellation, and external management operations.
+
+Exports, PDF/CSV generation, privacy operations, access reviews, archiving,
+audit events and cleanup create derived copies and lifetime boundaries. Review
+`lib/privacy/`, `lib/archiving/`, `lib/access-review/`, `lib/reports/`,
+`lib/generated-output/`, `lib/pdf/`, and `lib/transient-cleanup/`. Browser rendering,
+URL policy, client state and MCP HTML are parallel output sinks.
+
+HSA person lookup is a separate identity subsystem: application requests,
+REST-to-SOAP adapter, directory mock, strict certificate validation, and test PKI
+provisioner. Inspect `lib/hsa/` and the three `containers/hsa-*` service packages.
+Business listeners use mTLS; health listeners are separate. Certificate renewal,
+subject binding, XML parsing and returned-person binding require their own units.
+
+Production deployment supports standalone Next runtime, separate database/cleanup
+jobs, nginx, and Quadlet templates for single-node, app-node HTTP and app-node TLS.
+Hardened/local Keycloak and external OIDC variants select different ingress paths.
+Release scripts validate provenance and publish artifacts; GitHub workflows own
+privileged release credentials. Azure development scripts provision hosts and
+remote bootstrap state. Starting paths include `.github/workflows/`,
+`scripts/release/`, `scripts/containers/`, `containers/production/`, and
+`scripts/azure-dev/`. Glossary-only Deployment Composer concepts are not presumed
+to have an implementation.
+
+Selected companion domains are HTTP/auth, browser, AI/MCP, data lifecycle,
+resource availability, RPC/SOAP, supply chain, cloud/deployment and privileged
+local files. Each ledger unit records exact selected and excluded blocks.
+No application-owned native binary parser, mobile app, broker or webhook entry
+was found; dependency internals and externally deployed policy are not assumed
+safe or vulnerable. No meaningful comparable requirements product was established.
+
+Execution is source-only: the trusted bubblewrap capability probe failed with
+`No permissions to create new namespace`. Required network/mount isolation is
+unavailable, so no target tests/builds/processes or live/shared services may run.
+Runtime-dependent leads need bounded validation in a suitable future sandbox.
+Offline fixtures exist, but builds write generated source/`.next`; SQL and
+Playwright workflows may touch development services and are prohibited here.
+No dependency installation or vulnerability-database refresh is performed.
+
+Source establishes intended controls, not actual IdP claim issuance, proxy
+attachment, cloud/DB grants, network exposure, secret provisioning, provider data
+handling, branch protections or deployed revisions. Report precise missing facts.
+
+## Record
+{
+  "fingerprint": "selection-visibility/recursive-condition-rows/duplicate-path-amplification",
+  "title": "Visibility descendant queries can multiply equivalent dependency paths",
+  "description": "An authenticated area author permitted to save visibility conditions can cause a small edit to traverse an existing valid acyclic question graph. Multiple allowed answer/group conditions between the same questions are separate SQL rows, and the descendant query carries their multiplicity through recursive UNION ALL before returning distinct question IDs. This creates a source-grounded hypothesis of disproportionate work in the shared application database compared with the distinct affected questions. The default 15-second SQL request timeout, driver cancellation, rollback and edge rate limits constrain the operation. No SQL execution, resource consumption, failure to cancel, or impact on another request was observed; this is not a demonstrated denial of service.",
+  "claimed_root_cause": "The descendant relation traverses visibility-condition rows rather than unique question dependencies and has no visited-question set or intermediate deduplication. Its depth limit and final DISTINCT do not bound intermediate path multiplicity. Valid alternative answers/groups can represent equivalent parent-child edges, so cycle rejection and per-question input cardinality limits do not establish work proportional to the graph\u2019s distinct nodes or edges.",
+  "trace": [
+    {
+      "kind": "entrypoint",
+      "file": "app/api/requirement-selection-questions/[id]/visibility/route.ts",
+      "line": 16,
+      "scope": "PUT visibility edit",
+      "description": "An authenticated owning-area author/Admin passes the mutation policy and supplies schema-bounded visibility groups for an existing question."
+    },
+    {
+      "kind": "propagation",
+      "file": "lib/dal/requirement-selection-questions.ts",
+      "line": 2018,
+      "scope": "replaceRequirementSelectionQuestionVisibilityGroups transaction",
+      "description": "Checks the target, normalizes and validates the replacement, then stores each allowed answer condition as a separate row; no cycle is needed for this hypothesis."
+    },
+    {
+      "kind": "propagation",
+      "file": "lib/dal/requirement-selection-questions.ts",
+      "line": 2080,
+      "scope": "affected question discovery before history propagation",
+      "description": "The transaction invokes listVisibilityAffectedQuestionIds before selecting specifications with affected current answers, so the recursive query runs even if no specification will subsequently need an update."
+    },
+    {
+      "kind": "sink",
+      "file": "lib/dal/requirement-selection-questions.ts",
+      "line": 1927,
+      "scope": "recursive visibility_descendants query on shared SQL Server",
+      "description": "The anchor includes every matching condition row; UNION ALL and the recursive join at :1944 preserve and extend duplicate dependency paths. Only :1948 deduplicates the result after traversal; the query runs on the shared application database connection."
+    }
+  ],
+  "evidence": [
+    {
+      "file": "app/api/requirement-selection-questions/_schemas.ts",
+      "line": 33,
+      "description": "Finite request schema caps are 50 groups, 50 conditions per group and 200 answer IDs per condition. Multiple answers and groups are valid inputs, not malformed encodings."
+    },
+    {
+      "file": "lib/requirements/assignment-authorization.ts",
+      "line": 697,
+      "description": "The strongest entry authorization resolves the real owning area and requires area authorship unless Admin; this is not anonymous or ordinary-reader access."
+    },
+    {
+      "file": "lib/dal/requirement-selection-questions.ts",
+      "line": 1797,
+      "description": "Normalization uses a Set of answer IDs for each parent within a group. It does not collapse separate answers/groups into one stored parent-child dependency."
+    },
+    {
+      "file": "typeorm/migrations/0027_requirement_selection_question_visibility.mjs",
+      "line": 25,
+      "description": "Uniqueness is on visibility_group_id, parent_question_id and answer_id. Foreign keys bind each reference; DAL answer-parent validation rejects mismatches. Distinct answers or groups still permit multiple rows for one parent-child dependency."
+    },
+    {
+      "file": "lib/dal/requirement-selection-questions.ts",
+      "line": 1866,
+      "description": "Cycle checking uses distinct parent sets and visited nodes; an acyclic graph can pass independently of condition-row multiplicity in the later SQL traversal."
+    },
+    {
+      "file": "lib/dal/requirement-selection-questions.ts",
+      "line": 1946,
+      "description": "The recursive predicate limits depth to 100; final SELECT DISTINCT at :1948 does not express an intermediate cardinality or visited-question limit."
+    },
+    {
+      "file": "lib/typeorm/sqlserver-config.ts",
+      "line": 11,
+      "description": "Default SQL request timeout is 15000 ms and is passed into DataSource options at :227; pool max defaults to 10. These controls constrain duration/concurrency and must be retained in validation."
+    },
+    {
+      "file": "lib/db.ts",
+      "line": 45,
+      "description": "The application caches and reuses its DataSource rather than assigning a private database pool to each caller, establishing the shared resource whose actual impact needs measurement."
+    },
+    {
+      "file": "node_modules/tedious/lib/connection.js",
+      "line": 1321,
+      "description": "Installed tedious requestTimeout calls request.cancel at line 1324. Its cancelTimeout at lines 1312-1315 dispatches a socket error if cancellation times out. TypeORM EntityManager.js lines 86-98 attempts transaction rollback and releases its query runner after an error. Source does not establish an indefinite retained connection or failed cancellation."
+    },
+    {
+      "file": "containers/production/nginx/templates/edge-rate.conf.template",
+      "line": 12,
+      "description": "The production template defines a per-client API request rate zone; app-node-tls.conf.template line 39 attaches it. Effective deployment admission settings are unknown, and request frequency does not determine work within an admitted recursive query."
+    },
+    {
+      "file": "tests/unit/requirement-selection-questions-dal.test.ts",
+      "line": 668,
+      "description": "The relevant test substitutes a precomputed descendant list when it sees the recursive query. It verifies affected-specification scoping, not SQL intermediate row growth or cancellation."
+    },
+    {
+      "file": "lib/http/route-security-policy.ts",
+      "line": 1116,
+      "description": "The visibility PUT is registered for session authentication and same-origin CSRF. secure-mutation-route.ts checks authentication, parses its declared schemas, and authorizes the assignment policy before calling the DAL handler."
+    },
+    {
+      "file": "lib/dal/requirement-selection-questions.ts",
+      "line": 1969,
+      "description": "Subsequent history propagation selects only specifications with current answers to affected questions. The separate visibility evaluator at line 482 memoizes question visibility. These downstream controls do not deduplicate the earlier recursive SQL relation."
+    }
+  ],
+  "blockers": [
+    "The required OS-enforced sandbox is unavailable: the parent namespace probe failed with No permissions to create new namespace. This verifier performed source inspection only; no target code, SQL query, fixture or availability experiment was executed.",
+    "The SQL Server execution plan and bounded actual intermediate-work growth are unobserved. Source expresses repeated-path multiplicity, but actual physical work and the effectiveness of SQL workload controls remain decisive runtime facts.",
+    "Meaningful impact on another request is unestablished. The default 15000 ms request timeout, driver cancellation, transaction rollback and shared pool are source-visible controls; their effective timings, resource isolation and deployed ingress settings have not been measured or owner-verified."
+  ],
+  "validation_plan": {
+    "local": "Only after an approved OS-enforced offline sandbox is available, use a disposable SQL Server fixture with dummy identities and the real migrations and visibility route validation. Predeclare a fixed tiny corpus of at most five questions with one or two valid answer conditions per dependency, comparing acyclic cases with identical distinct descendants. Limit the runner to one edit at a time, at most one benign concurrent fixture request, explicit CPU and memory ceilings, an external wall-clock cutoff, and a cap on measured query rows; retain the configured request timeout and cancellation controls. Inspect actual plan row counts or bounded work counters, transaction rollback and connection release. Do not enlarge the corpus to force a timeout or availability degradation; if the fixed bounds cannot settle shared effects, retain the blocker. Stop immediately once growth is established or refuted. Separately observe cancellation only using a predeclared lower fixture timeout without increasing graph size. No production or shared development traffic is permitted.",
+    "deployment": "The owner should inspect effective DB_REQUEST_TIMEOUT_MS, DB_POOL_MAX, pool acquisition limits, SQL resource/workload isolation, runtime instances sharing the database, and nginx API rate/burst attachment without traffic generation or secret disclosure. Verify recovery/cancellation telemetry if it already exists. Source defaults and a small local growth result alone do not establish meaningful deployed shared impact."
+  },
+  "verdict": "needs_validation"
+}
+## Final record verification
+### Phase 5: Verify the final records with fresh eyes
+
+Launch one fresh `research` verifier per final `confirmed` and `needs_validation` record, in parallel. This verifier checks the structured record, not the hunter write-up, and remains inside source/local boundaries.
+
+In a `quick` run, Phase 3 and Phase 5 merge: the Phase 3 verifier also performs these record checks and returns the final schema-shaped record, so each candidate gets one fresh independent reviewer instead of two. Every other profile keeps the two passes separate. Never skip independent review of a `confirmed` record in any profile.
+
+For `confirmed`, require it to check:
+
+1. Every repository-relative trace/evidence path, line, scope, and described operation.
+2. Real entry interface and exact local input shape.
+3. Every condition, parser/policy step, source-visible preventing layer, and observed local result.
+4. Affected principal/resource and demonstrated impact.
+5. Severity separation: realistic likelihood, demonstrated impact, overall no greater than impact.
+6. Remediation strategy and any `code_changes`, including whether the fix enforces the invariant without merely moving trust.
+
+For `needs_validation`, require it to check:
+
+1. The source path is real and supports only the `claimed_root_cause` stated.
+2. Every listed blocker is decisive and not already answerable locally.
+3. The candidate names a boundary and a possible concrete result rather than a generic concern.
+4. At least one validation-plan field is present and exact. `local` uses a bounded fixture; `deployment` asks an owner to observe a configuration, identity, route, policy, or runtime fact. Do not invent a plan for an inapplicable context, and never send audit traffic to a deployment.
+5. The fingerprint matches prior/current records for the same root cause.
+
+Each verifier returns exactly one JSON object: `{"decision":"verified","fingerprint":"..."}` or `{"decision":"replace","reason":"...","record":{...}}`, with no surrounding prose. A replacement record must match its `confirmed`, `needs_validation`, or `rejected` schema branch. Treat a malformed or prose-wrapped Phase 5 result the same way as in Phase 3: discard it without repairing it and re-run with a fresh verifier when the budget permits.
+
+Do not apply a Phase 5 replacement as final when it promotes a record to a stronger verdict, including any promotion to `confirmed`, or materially changes the root cause, trace, execution input or observed result, demonstrated impact, or severity. Give that complete replacement to a new independent verifier that did not hunt, perform Phase 3 validation, or propose the Phase 5 replacement. The new verifier rechecks the current source and independently reproduces any decisive local result under the execution boundary, then returns `verified` or another replacement. Apply a material replacement only after this fresh verification. If another material replacement results, repeat with a fresh verifier. If budget or independence is unavailable, remove the disputed record from `findings.json`, keep its ledger unit as an unresolved candidate, and set `run_status: "incomplete"` with an exact `incomplete_reason`. Non-material wording or repository-line corrections may be applied directly when they do not change meaning or evidence.
+
+After every applied replacement, rerun both validators and update linked ledger decisions. If a final verifier identifies a separate root cause, assign a new fingerprint and send it through independent candidate validation before inclusion. Set `run_status: "complete"` only when every ledger candidate has an independent final disposition and every retained record passes Phase 5.
+
+Do not verify only `confirmed` records. A misleading `needs_validation` handoff wastes owner time and can preserve a false premise.
+
+
+## Relevant companion validation blocks
+## Validation rules (apply before reporting ANY finding here)
+
+1. Name untrusted input, requester work, service amplification or retained resource, shared blast radius, and recovery. Missing limits without concrete shared impact are hardening.
+2. Confirm no source-visible upstream, parser, queue, tenant, or framework bound prevents the path. Unknown deployed controls require `needs_validation`.
+3. For superlinear behavior, establish the accepted complexity and bounded local growth. For leaks, show repeatable retention after cleanup should occur. For fatal paths, identify process/supervisor isolation.
+4. Prioritize by low requester work, unauthenticated reachability, cross-tenant scope, persistence, and poor recovery; do not validate with availability impact.
+5. Return `confirmed` only with safe local proof and meaningful shared effect. Return `needs_validation` with the exact upstream limit, topology, quota, or recovery observation an owner must check.
+## Promotion procedure
+Artifact promotion procedure (trusted parent-side code only):
+Reference only for you: the parent performs these steps; you never perform them.
+
+Before execution, the parent opens and retains trusted, non-inheritable directory
+descriptors for the agent's scratch/ and artifacts/ roots, and records an allowlist
+of expected scratch-relative artifact files plus explicit per-file and cumulative
+byte limits. Never pass those descriptors to the agent or sandbox. After the sandbox
+and all its processes terminate, trusted parent-side code promotes each allowlisted
+file separately:
+
+1. Validate the declared relative path: reject absolute, empty, `.`, `..`, or
+   symlinked components.
+2. Walk each parent component from the retained scratch-root descriptor with
+   no-follow directory-relative operations; never reopen by path.
+3. Open the leaf no-follow and nonblocking.
+4. Verify with `fstat` that it is a regular file with link count exactly one and
+   within the recorded per-file and cumulative byte limits.
+5. Enforce those limits again while reading from that descriptor.
+6. Copy exactly the verified size, repeat `fstat`, and reject a changed identity,
+   type, link count, or size.
+7. For the destination, walk every parent component from the retained
+   artifacts-root descriptor with no-follow directory-relative operations; require
+   each existing component to be a real directory, and create any missing directory
+   exclusively before reopening and verifying it no-follow.
+8. Create the leaf exclusively without following links, verify that the opened
+   destination is a regular file with link count exactly one, and copy from the
+   verified source descriptor without reopening either path.
+9. Use equivalent race-safe APIs on non-POSIX systems.
+10. Never recursively copy or glob scratch, extract an archive into artifacts, or
+    open or promote a symlink, FIFO, socket, device, directory, hard-linked file,
+    changing file, or file that exceeds its bound.
+11. If any check is unavailable, cannot be enforced, or fails, discard the scratch
+    entry; if it is decisive evidence, retain `needs_validation` with the exact
+    promotion blocker.
+## Schema verbatim
+{
+  "$comment": "Top-level contract for findings.json. validate-findings.cjs interprets and checks this schema directly.",
+  "type": "array",
+  "items": {
+    "oneOf": [
+      {
+        "type": "object",
+        "description": "A source-grounded vulnerability that was independently demonstrated.",
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "const": "confirmed"
+          },
+          "fingerprint": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$",
+            "description": "A stable source-derived identifier that does not change between validation states."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "visibleContent": true
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "visibleContent": true
+          },
+          "root_cause": {
+            "type": "string",
+            "minLength": 1,
+            "visibleContent": true
+          },
+          "intended_behavior": {
+            "type": "string",
+            "minLength": 1,
+            "visibleContent": true
+          },
+          "trace": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": ["entrypoint", "propagation", "sink"]
+                },
+                "file": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "line": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "scope": {
+                  "type": "string",
+                  "minLength": 1,
+                  "visibleContent": true
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "visibleContent": true
+                }
+              },
+              "required": ["kind", "file", "line", "scope", "description"],
+              "additionalProperties": false
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "line": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "visibleContent": true
+                }
+              },
+              "required": ["file", "line", "description"],
+              "additionalProperties": false
+            }
+          },
+          "conditions": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": ["authentication_level", "authorization_role", "user_interaction", "system_configuration", "network_routing", "environmental_dependency", "data_state", "timing_dependency", "third_party_dependency"]
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "visibleContent": true
+                }
+              },
+              "required": ["kind", "description"],
+              "additionalProperties": false
+            }
+          },
+          "execution": {
+            "type": "object",
+            "description": "Target-neutral reproduction in the target's native interface.",
+            "properties": {
+              "attacker_perspective": {
+                "type": "string",
+                "minLength": 1,
+                "visibleContent": true
+              },
+              "payloads": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string"
+                }
+              },
+              "instructions": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "visibleContent": true
+                }
+              },
+              "observed_result": {
+                "type": "string",
+                "minLength": 1,
+                "visibleContent": true
+              }
+            },
+            "required": ["attacker_perspective", "payloads", "instructions", "observed_result"],
+            "additionalProperties": false
+          },
+          "remediation": {
+            "type": "object",
+            "properties": {
+              "strategy": {
+                "type": "string",
+                "minLength": 1,
+                "visibleContent": true
+              },
+              "code_changes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "file_name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "fixed_code": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["file_name", "fixed_code"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["strategy"],
+            "additionalProperties": false
+          },
+          "severity": {
+            "type": "object",
+            "properties": {
+              "likelihood": {
+                "type": "object",
+                "properties": {
+                  "score": {
+                    "type": "string",
+                    "enum": ["informational", "low", "medium", "high", "critical"]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "visibleContent": true
+                  }
+                },
+                "required": ["score", "reason"],
+                "additionalProperties": false
+              },
+              "impact": {
+                "type": "object",
+                "properties": {
+                  "score": {
+                    "type": "string",
+                    "enum": ["informational", "low", "medium", "high", "critical"]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "visibleContent": true
+                  }
+                },
+                "required": ["score", "reason"],
+                "additionalProperties": false
+              },
+              "overall_severity": {
+                "type": "string",
+                "enum": ["informational", "low", "medium", "high", "critical"]
+              }
+            },
+            "required": ["likelihood", "impact", "overall_severity"],
+            "additionalProperties": false
+          },
+          "confidence": {
+            "type": "object",
+            "properties": {
+              "score": {
+                "type": "string",
+                "enum": ["low", "medium", "high"]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "visibleContent": true
+              }
+            },
+            "required": ["score", "reason"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["verdict", "fingerprint", "title", "description", "root_cause", "intended_behavior", "trace", "evidence", "conditions", "execution", "remediation", "severity", "confidence"],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "description": "A source-grounded candidate whose decisive validation is blocked.",
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "const": "needs_validation"
+          },
+          "fingerprint": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "visibleContent": true
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "visibleContent": true
+          },
+          "claimed_root_cause": {
+            "type": "string",
+            "minLength": 1,
+            "visibleContent": true
+          },
+          "trace": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": ["entrypoint", "propagation", "sink"]
+                },
+                "file": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "line": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "scope": {
+                  "type": "string",
+                  "minLength": 1,
+                  "visibleContent": true
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "visibleContent": true
+                }
+              },
+              "required": ["kind", "file", "line", "scope", "description"],
+              "additionalProperties": false
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "line": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "visibleContent": true
+                }
+              },
+              "required": ["file", "line", "description"],
+              "additionalProperties": false
+            }
+          },
+          "blockers": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "visibleContent": true
+            }
+          },
+          "validation_plan": {
+            "type": "object",
+            "properties": {
+              "local": {
+                "type": "string",
+                "minLength": 1,
+                "visibleContent": true
+              },
+              "deployment": {
+                "type": "string",
+                "minLength": 1,
+                "visibleContent": true
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["verdict", "fingerprint", "title", "description", "claimed_root_cause", "trace", "evidence", "blockers", "validation_plan"],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "description": "A source-grounded candidate refuted during validation.",
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "const": "rejected"
+          },
+          "fingerprint": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "visibleContent": true
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "visibleContent": true
+          },
+          "claimed_root_cause": {
+            "type": "string",
+            "minLength": 1,
+            "visibleContent": true
+          },
+          "trace": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": ["entrypoint", "propagation", "sink"]
+                },
+                "file": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "line": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "scope": {
+                  "type": "string",
+                  "minLength": 1,
+                  "visibleContent": true
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "visibleContent": true
+                }
+              },
+              "required": ["kind", "file", "line", "scope", "description"],
+              "additionalProperties": false
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "line": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "visibleContent": true
+                }
+              },
+              "required": ["file", "line", "description"],
+              "additionalProperties": false
+            }
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "visibleContent": true
+          }
+        },
+        "required": ["verdict", "fingerprint", "title", "description", "claimed_root_cause", "trace", "evidence", "reason"],
+        "additionalProperties": false
+      }
+    ]
+  }
+}
+
+No compatible prior-run records with this fingerprint exist. Save your exact JSON response to scratch/result.json and return that JSON with no prose. Do not read any other verifier output or final reports. Logical reviewer ID: verify-12

@@ -1,0 +1,98 @@
+[
+  {
+    "index": 0,
+    "fingerprint": "ai-forensic-capture/purge-before-close-retained-evidence",
+    "candidate_verifier_id": "validate-00",
+    "final_verifier_id": "verify-00"
+  },
+  {
+    "index": 1,
+    "fingerprint": "archiving/confirmation-candidate-keys/stale-child-content-deletion",
+    "candidate_verifier_id": "validate-01",
+    "final_verifier_id": "verify-01"
+  },
+  {
+    "index": 2,
+    "fingerprint": "azure-bootstrap/predictable-staging-parent/root-helper-replacement",
+    "candidate_verifier_id": "validate-02",
+    "final_verifier_id": "verify-02"
+  },
+  {
+    "index": 3,
+    "fingerprint": "container-monitor/private-advisory/description-marker-ownership",
+    "candidate_verifier_id": "validate-03",
+    "final_verifier_id": "verify-03"
+  },
+  {
+    "index": 4,
+    "fingerprint": "container-monitor/untrusted-comment-markers/scan-preflight-block",
+    "candidate_verifier_id": "validate-04",
+    "final_verifier_id": "verify-04"
+  },
+  {
+    "index": 5,
+    "fingerprint": "dev-keycloak/published-management/default-admin",
+    "candidate_verifier_id": "validate-05",
+    "final_verifier_id": "verify-05"
+  },
+  {
+    "index": 6,
+    "fingerprint": "dev-login/cached-jar/unscoped-cookie-header",
+    "candidate_verifier_id": "validate-06",
+    "final_verifier_id": "verify-06"
+  },
+  {
+    "index": 7,
+    "fingerprint": "norm-reference-linked-requirements-nonpublic-projection",
+    "candidate_verifier_id": "validate-07",
+    "final_verifier_id": "verify-07"
+  },
+  {
+    "index": 8,
+    "fingerprint": "reports/review-diff/quadratic-main-thread-lcs",
+    "candidate_verifier_id": "validate-08",
+    "final_verifier_id": "verify-08"
+  },
+  {
+    "index": 9,
+    "fingerprint": "requirement-delete-draft-status-check-write-race",
+    "candidate_verifier_id": "validate-09",
+    "final_verifier_id": "verify-09"
+  },
+  {
+    "index": 10,
+    "fingerprint": "requirement-transition-state-dependent-authority-race",
+    "candidate_verifier_id": "validate-10",
+    "final_verifier_id": "verify-10"
+  },
+  {
+    "index": 11,
+    "fingerprint": "retention-parent-delete-bypasses-child-exception",
+    "candidate_verifier_id": "validate-11",
+    "final_verifier_id": "verify-11"
+  },
+  {
+    "index": 12,
+    "fingerprint": "selection-visibility/recursive-condition-rows/duplicate-path-amplification",
+    "candidate_verifier_id": "validate-12",
+    "final_verifier_id": "verify-12"
+  },
+  {
+    "index": 13,
+    "fingerprint": "specification-delete/cancelled-confirmed-agreement-history-loss",
+    "candidate_verifier_id": "validate-13",
+    "final_verifier_id": "verify-13"
+  },
+  {
+    "index": 14,
+    "fingerprint": "specification-preload/authorization-error-partial-data-disclosure",
+    "candidate_verifier_id": "validate-14",
+    "final_verifier_id": "verify-14"
+  },
+  {
+    "index": 15,
+    "fingerprint": "suggestion-original-version-description-nonpublic-projection",
+    "candidate_verifier_id": "validate-15",
+    "final_verifier_id": "verify-15"
+  }
+]

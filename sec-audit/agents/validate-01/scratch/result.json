@@ -1,0 +1,121 @@
+{
+  "decision": "needs_validation",
+  "record": {
+    "verdict": "needs_validation",
+    "fingerprint": "archiving/confirmation-candidate-keys/stale-child-content-deletion",
+    "title": "Archive confirmation does not bind needs references created after export",
+    "description": "Source supports an archive-preservation gap when an authenticated specification responsible person or coauthor creates a needs reference after a PrivacyOfficer exports an eligible specification. The insert changes neither the parent updated_at nor the candidate keys used by confirmation. If the officer then executes disposal on the same UTC day, within the 15-minute token lifetime and in the process holding the token, execution can still select that specification and delete the new child absent from the earlier archive. The protected state is the specification owner's business history. This is conditional on exact-content archival preservation being mandatory and on no operational write freeze or legal hold covering the specification. It is not a role bypass, cross-specification write, or demonstrated runtime deletion. The original UPDATE example is not supported under the managed runtime permission contract, which grants this table SELECT, INSERT and DELETE but no UPDATE; creation is the corrected source-grounded operation for the same confirmation-binding root cause.",
+    "claimed_root_cause": "The export confirmation records policy identity, policy revision, a day-rounded cutoff and parent candidate identifiers, without an archive-content digest or revision covering child creation. Retention eligibility uses the parent updated_at, while the needs-reference creation path only inserts the child. A SERIALIZABLE execution transaction rechecks current eligibility but does not compare the child state with the previously exported state.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "app/api/requirements-specifications/[id]/needs-references/route.ts",
+        "line": 70,
+        "scope": "Authenticated specification author's needs-reference creation",
+        "description": "POST validates a specification identifier and strict text/description body, applies manage_specification_needs_reference/create authorization and forwards the request to the shared service. This is the lower-trust content entrypoint after a separate officer has completed the archive export."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/requirements/service-needs-references.ts",
+        "line": 120,
+        "scope": "Shared authorization and creation dispatch",
+        "description": "The service authorizes the requested operation, verifies that the specification exists and dispatches create at line 152 to createSpecificationNeedsReference without an archive-confirmation or retention-state check."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/dal/requirements-specifications.ts",
+        "line": 1894,
+        "scope": "Child insertion without parent revision change",
+        "description": "The creation helper normalizes nonempty text, checks uniqueness and inserts the needs reference with its own created_at and updated_at. The exported wrapper at line 1922 calls this helper directly; neither path updates requirements_specifications.updated_at."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/archiving/retention.ts",
+        "line": 966,
+        "scope": "Previously issued archive confirmation identity",
+        "description": "previewTokenFor hashes only sorted candidate keys, cutoff, policy ID and policy updated_at. mintExportToken at line 999 stores that hash and export candidate keys; consumeExportToken at line 1019 compares the same values. Needs-reference rows and their timestamps are absent from all comparisons."
+      },
+      {
+        "kind": "propagation",
+        "file": "app/api/admin/archiving/runs/route.ts",
+        "line": 38,
+        "scope": "PrivacyOfficer's subsequent disposal request",
+        "description": "The secure mutation wrapper requires PrivacyOfficer authorization, validates policy and confirmation inputs and invokes executeArchivingRetention with a human actor snapshot. The author cannot independently invoke the disposal path."
+      },
+      {
+        "kind": "propagation",
+        "file": "lib/archiving/retention.ts",
+        "line": 1306,
+        "scope": "Transactional eligibility and confirmation recheck",
+        "description": "A SERIALIZABLE transaction recomputes preview, rejects changed preview tokens, requires a live one-use export token for export-required candidates and then executes the selected deletion SQL. A child insert completed before this transaction does not alter the source-visible preview inputs."
+      },
+      {
+        "kind": "sink",
+        "file": "lib/archiving/retention.ts",
+        "line": 545,
+        "scope": "Deletion of all selected specification needs references",
+        "description": "The obsolete-specification deletion batch deletes every specification_needs_references row for the selected specification ID before deleting the parent, without restricting child IDs or versions to the exported archive."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "docs/security-privacy/informationsmangder-kravhantering.md",
+        "line": 130,
+        "description": "Defines archive export as preserving business history outside the active database. The matrix at line 152 requires export confirmation before specification and needs-reference deletion, with needs references included in anonymized JSON; it also names active work, business need and legal hold as exceptions. It does not explicitly define concurrent-edit or exact-version semantics."
+      },
+      {
+        "file": "docs/governance/admin-center.md",
+        "line": 566,
+        "description": "Operator guidance requires anonymized JSON before obsolete-specification deletion and explicitly includes needs references in the archive."
+      },
+      {
+        "file": "lib/requirements/assignment-authorization.ts",
+        "line": 746,
+        "description": "Needs-reference mutations require specification authorship. assertSpecificationAuthor at line 836 checks the authenticated actor HSA-id against the responsible person or coauthor lookup at line 153; those checks do not impose a lifecycle or archive write freeze. Admin has an explicit earlier allowance."
+      },
+      {
+        "file": "app/api/admin/archiving/exports/route.ts",
+        "line": 35,
+        "description": "Archive export is a strict-schema secure POST requiring PrivacyOfficer; it collects the archive and exportToken through the bounded structured-output runner. lib/privacy/route-helpers.ts:19 additionally requires a human actor snapshot."
+      },
+      {
+        "file": "lib/archiving/retention.ts",
+        "line": 559,
+        "description": "Obsolete-specification eligibility uses parent updated_at, excludes management lifecycle and current/pending agreements, and applies active retention exceptions. It does not inspect needs-reference creation or update timestamps. previewArchivingRetention at line 1159 also rejects disabled policies."
+      },
+      {
+        "file": "lib/archiving/retention.ts",
+        "line": 871,
+        "description": "The cutoff is rounded to UTC midnight before subtracting policy age, so same-day export and execution use the same cutoff. The export token is process-local, random, one-use and expires after the 15 minutes configured at line 168; a process change or expiry prevents this sequence."
+      },
+      {
+        "file": "lib/archiving/retention.ts",
+        "line": 1489,
+        "description": "Archive collection selects needs-reference ID, text, description and created/updated timestamps. A child created after the completed export cannot appear in this previously returned payload."
+      },
+      {
+        "file": "typeorm/runtime-permission-manifest.mjs",
+        "line": 173,
+        "description": "The runtime table contract grants READ_CREATE_DELETE, defined at line 8 as SELECT, INSERT and DELETE. The current manifest preserves this entry. This prevents the original UPDATE example when the managed least-privilege role is enforced, but does not prevent the corrected INSERT operation."
+      },
+      {
+        "file": "lib/dal/requirements-specifications.ts",
+        "line": 1965,
+        "description": "The originally cited UPDATE does write only child text, description and updated_at inside a parent-locked transaction, but runtime UPDATE permission is missing. It is not used as the corrected validation sequence."
+      },
+      {
+        "file": "typeorm/migrations/0017_specification_needs_reference_description.mjs",
+        "line": 2,
+        "description": "Adds child description and updated_at and backfills the timestamp. Source inspection of migrations found no needs-reference trigger updating the parent; migration 0004_specification_needs_reference_cascade.mjs:3 establishes the child-to-parent foreign key with delete cascade, not a parent timestamp update."
+      }
+    ],
+    "blockers": [
+      "No target execution is permitted: the required OS sandbox cannot create its bubblewrap namespace (No permissions to create new namespace). Consequently no isolated SQL database, actual migrations/runtime-role sequence, API response or committed deletion was exercised.",
+      "The information owner must establish that the archive-before-disposal guarantee covers every child present at deletion, including content created after export, and whether active-work exceptions or an enforced operational write freeze prevent this interval. If an earlier point-in-time archive intentionally suffices, source establishes a correctness or hardening concern rather than the claimed security boundary impact."
+    ],
+    "validation_plan": {
+      "local": "Only in a future approved network-isolated sandbox with disposable SQL storage, apply the actual migrations and managed runtime permission manifest. Prepare exactly one synthetic obsolete specification assigned to a dummy non-PrivacyOfficer coauthor, with parent updated_at older than policy age, no current or pending agreement, no hold and no unrelated dependent data. Keep the policy/candidate set fixed. As a separate dummy PrivacyOfficer obtain preview and complete the archive export; retain the returned archive only within disposable scratch. As the assigned coauthor POST one unique non-sensitive needs reference through the actual route/service, confirm successful insertion and read the unchanged parent timestamp. On the same UTC day, before token expiry and in the same app process, let the dummy officer submit the original preview/export tokens once. Observe rejection or the minimum database result showing whether that one new child and parent were deleted; compare the new child ID with the earlier archive. Do not substitute UPDATE, grant extra permissions, touch shared services, or infer success from a mocked query result. Stop at this result and destroy the isolated fixture.",
+      "deployment": "Have the information owner review the documented retention/export requirement and explicitly decide whether the final destroyed child content must be archived. Have the operator document any enforced write freeze or active-work exception that covers the full export-to-disposal interval, including API and MCP writes. Review these controls and runtime-role grants without executing disposal against deployed data."
+    }
+  }
+}

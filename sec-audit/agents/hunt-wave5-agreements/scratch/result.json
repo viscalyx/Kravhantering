@@ -1,0 +1,82 @@
+{
+  "units": [
+    {
+      "coverage_id": "app%2Fapi%2Frequirements-specifications%23REST%20workflows::lib%2Fspecifications%2Fpermissions.ts%23specification%20authority::lib%2Fspecifications::ATTACK-CLASSES.md%23Business%20logic",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "app/api/requirements-specifications/[id]/agreement/route.ts",
+        "app/api/deviations/[id]/decision/route.ts",
+        "app/api/specification-local-deviations/[id]/decision/route.ts",
+        "lib/specifications/agreement-contract.ts",
+        "lib/specifications/agreements.ts",
+        "lib/specifications/permissions.ts",
+        "lib/specifications/agreement-cancellation.ts",
+        "lib/specifications/agreement-corrections.ts",
+        "lib/specifications/agreement-activation.ts",
+        "lib/specifications/agreement-dates.ts",
+        "lib/specifications/agreement-deviation-endings.ts",
+        "lib/specifications/agreement-deviation-policy.ts",
+        "lib/specifications/agreement-confirmation.ts",
+        "lib/specifications/agreement-content.ts",
+        "lib/specifications/agreement-policy.ts",
+        "lib/specifications/agreement-discard.ts",
+        "lib/specifications/agreement-end.ts",
+        "lib/specifications/deviation-closure.ts",
+        "lib/dal/deviations.ts",
+        "lib/dal/requirements-specifications.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/dal/rfi-questions.ts",
+        "lib/dal/requirement-selection-questions.ts",
+        "lib/requirements/specification-requirement-selection-answer-mutations.ts",
+        "typeorm/migrations/0069_specification_agreements.mjs",
+        "docs/governance/behörigheter.md",
+        "CONTEXT.md",
+        "tests/sql-integration/specification-agreements.sqlserver.test.ts"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave5-agreements",
+          "reviewed_paths": [
+            "app/api/requirements-specifications/[id]/agreement/route.ts",
+            "app/api/deviations/[id]/decision/route.ts",
+            "app/api/specification-local-deviations/[id]/decision/route.ts",
+            "lib/specifications/agreement-contract.ts",
+            "lib/specifications/agreements.ts",
+            "lib/specifications/permissions.ts",
+            "lib/specifications/agreement-cancellation.ts",
+            "lib/specifications/agreement-corrections.ts",
+            "lib/specifications/agreement-activation.ts",
+            "lib/specifications/agreement-dates.ts",
+            "lib/specifications/agreement-deviation-endings.ts",
+            "lib/specifications/agreement-deviation-policy.ts",
+            "lib/specifications/agreement-confirmation.ts",
+            "lib/specifications/agreement-content.ts",
+            "lib/specifications/agreement-policy.ts",
+            "lib/specifications/agreement-discard.ts",
+            "lib/specifications/agreement-end.ts",
+            "lib/specifications/deviation-closure.ts",
+            "lib/dal/deviations.ts",
+            "lib/dal/requirements-specifications.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "lib/dal/rfi-questions.ts",
+            "lib/dal/requirement-selection-questions.ts",
+            "lib/requirements/specification-requirement-selection-answer-mutations.ts",
+            "typeorm/migrations/0069_specification_agreements.mjs",
+            "docs/governance/behörigheter.md",
+            "CONTEXT.md",
+            "tests/sql-integration/specification-agreements.sqlserver.test.ts"
+          ],
+          "invariant": "Assigned responsibility, Reviewer decisions, immutable agreement history and parent-bound state transitions remain distinct and coherent across cancellation, correction, due activation, replay and concurrent mutations.",
+          "method": "source",
+          "result": "Agreement route POST:109-126 applies schema and specification mutation policy; agreement-contract.ts:24-145 strictly separates operations, IDs, dates and required reasons. agreements.ts:124-135 locks the specification with UPDLOCK/HOLDLOCK; mutate:695-726 then reads current responsible/coauthors and requires assigned responsibility for confirm/correct/cancel/end/discard/close, while content authors may prepare drafts and cancel undecided cases. This matches governance:152-161 and does not let Admin/Reviewer alone make agreement decisions. Responsible transfer uses the same parent lock (requirements-specifications.ts:1357-1398). Cancellation:117-176 requires the selected parent-bound confirmed pending agreement, snapshots follow-up, cancels only unexecuted ending plans, changes only undecided cases to cancellation=3, preserves cases shared with current content, and creates independent working copies only before any activation; clearing is_pending prevents replay. Corrections:25-85 bind the parent, reject date changes after activation/cancellation, enforce ordering/uniqueness and require explicit immediate-activation confirmation; :97-133 records old/new metadata and changes outstanding planned endings atomically. Due activation:37-104 selects only confirmed pending due rows, snapshots previous follow-up, updates temporal membership, clears pending and executes uncancelled endings. Read:377-385 and mutation callers hold the same specification lock, so a read materializes prior consent rather than granting new approval authority. Deviation decision DAL:243-263 acquires that lock through agreement-deviation-policy.ts:33-52 and rechecks live membership; :958-975 and :1200-1217 condition decisions on undecided submitted state. Thus cancellation/activation and Reviewer decisions cannot independently pass stale state checks under this source protocol. Agreement mutation audit joins the transaction at agreements.ts:1040-1054; migration0069:54-57 also enforces one pending/current agreement and unique identity. Confirmation rechecks changed-content deviations (agreement-confirmation.ts:58-104); content helpers bind an unconfirmed draft and preserve old bindings; discard removes draft-owned copies, end preserves snapshots, and closeApprovedDeviation preserves original decisions. RFI list mutations lock the header (rfi-questions.ts:881-911), bind assessed version/revision and reject locked scope changes (:1239-1319). Selection replacement authorizes its specification and transacts mutation/audit (specification-requirement-selection-answer-mutations.ts:65-110), validates active parent/answer membership and exclusivity, and requires consent before historical marking (selection DAL:2139-2273). Read-only SQL test cases at :2011,2387,2565 corroborate intended cancellation, correction and midnight semantics; none were executed. No source-grounded security invariant failure survived these controls.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [],
+  "hardening": [],
+  "uncovered": []
+}

@@ -1,0 +1,56 @@
+{
+  "units": [
+    {
+      "coverage_id": "app%2Fapi%2Frfi-questions%23question%20creation%20version%20replacement%20archive%20and%20reactivation::lib%2Fdal%2Frfi-questions.ts%23current%20question%20versions%20versus%20retained%20specification%20RFI%20assessments::lib%2Frequirements%2Frfi-question-lifecycle::ATTACK-CLASSES.md%23Business%20logic",
+      "disposition": "covered",
+      "reviewed_paths": [
+        "CONTEXT.md",
+        "docs/governance/behörigheter.md",
+        "docs/governance/requirements-ui-behaviour.md",
+        "docs/governance/manuella-testfall.md",
+        "app/api/rfi-questions/route.ts",
+        "app/api/rfi-questions/[id]/route.ts",
+        "app/api/rfi-questions/[id]/reactivate/route.ts",
+        "app/api/rfi-questions/_schemas.ts",
+        "lib/http/secure-mutation-route.ts",
+        "lib/requirements/auth.ts",
+        "lib/requirements/assignment-authorization.ts",
+        "lib/requirements/service-rfi-questions.ts",
+        "lib/dal/rfi-questions.ts",
+        "typeorm/migrations/0035_rfi_questions.mjs",
+        "typeorm/migrations/0068_rfi_assessments.mjs"
+      ],
+      "checks": [
+        {
+          "agent_id": "hunt-wave7-rfi",
+          "reviewed_paths": [
+            "CONTEXT.md",
+            "docs/governance/behörigheter.md",
+            "docs/governance/requirements-ui-behaviour.md",
+            "docs/governance/manuella-testfall.md",
+            "app/api/rfi-questions/route.ts",
+            "app/api/rfi-questions/[id]/route.ts",
+            "app/api/rfi-questions/[id]/reactivate/route.ts",
+            "app/api/rfi-questions/_schemas.ts",
+            "lib/http/secure-mutation-route.ts",
+            "lib/requirements/auth.ts",
+            "lib/requirements/assignment-authorization.ts",
+            "lib/requirements/service-rfi-questions.ts",
+            "lib/dal/rfi-questions.ts",
+            "typeorm/migrations/0035_rfi_questions.mjs",
+            "typeorm/migrations/0068_rfi_assessments.mjs"
+          ],
+          "invariant": "Only an administrator or current question-area author can create, replace, archive or reactivate a bank question; producer changes preserve retained question content, advisory links and specification assessments and cannot silently transfer an old assessment to a different version.",
+          "method": "source",
+          "result": "No source-grounded invariant failure survived. Policy is explicit in docs/governance/behörigheter.md:194-207; CONTEXT.md:1408-1419 defines versioned advisory links and retained history, and docs/governance/requirements-ui-behaviour.md:1261-1271 plus docs/governance/manuella-testfall.md:1855-1872 require retained locked assessments and fresh confirmation after adopting a different version. POST at app/api/rfi-questions/route.ts:48-63 authorizes body.areaId; PUT/DELETE at app/api/rfi-questions/[id]/route.ts:67-105 and reactivate at app/api/rfi-questions/[id]/reactivate/route.ts:14-28 authorize the route questionId. lib/http/secure-mutation-route.ts:179-207,344-357 completes authorization before the handler. lib/requirements/assignment-authorization.ts:555-577,959-965 resolves the stored area; :175-191,848-857 checks its owner/coauthor HSA-id, with authenticated Admin handling at :672-705. Strict create/update schemas at app/api/rfi-questions/_schemas.ts:17-46 reject actor and area-reassignment fields; create/edit derive actor snapshots from request context through lib/requirements/auth.ts:67-84, and archive/reactivate audit uses that same context. Reads retain area scoping through lib/requirements/service-rfi-questions.ts:102-125 and lib/dal/rfi-questions.ts:229-270. DAL creation at :624-707 atomically locks area/sequence, inserts parent/version and links; replacement at :738-855 locks parent/current version under SERIALIZABLE, deactivates the old version, creates the next version and copies omitted links or replaces supplied links only on the new version. Link IDs are deduplicated and parameterized at :281-291,449-504; migration 0035:38-68 enforces version uniqueness, a single active version and referenced-record existence. Link hydration at :378-433 returns the submitted advisory IDs, not referenced draft content, and producer writes do not modify referenced requirements/packages/selection questions or specification membership. Archive/reactivate at DAL:862-878 changes only parent archive state/timestamps, preserving versions, assignments and assessments. Locked consumer reads at :956-1015 select retained item version IDs without active/archive filtering and hydrate those versions' links; unlocked reads at :1016-1052 select active nonarchived questions and null relevance on version mismatch. Relocking at :1107-1204 runs under SERIALIZABLE and preserves relevance only for the same included version. Assessment/history projection at :1061-1096 remains specification-scoped; the existing consumer checks at :1239-1319 require locked included membership, exact assessed version and lock revision. Migration 0068:18-19 prevents deleting referenced versions. Reactivation therefore restores the current bank question without rewriting retained historical evidence; same-version assessment preservation is the documented behavior. Source-only review; no target code, tests, services or network were executed, and no generic runtime-validation gap is asserted.",
+          "artifact": null
+        }
+      ],
+      "candidate_fingerprints": [],
+      "unresolved": []
+    }
+  ],
+  "candidates": [],
+  "hardening": [],
+  "uncovered": []
+}
