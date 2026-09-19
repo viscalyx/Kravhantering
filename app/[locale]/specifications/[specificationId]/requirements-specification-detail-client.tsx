@@ -3136,7 +3136,10 @@ export default function KravunderlagDetailClient({
       {...devMarker({
         name: 'panel header',
         context: 'requirements specification detail',
-        value: 'right panel',
+        value:
+          prototypeVariant === 'B'
+            ? 'stable right panel tabs with vertical divider'
+            : 'right panel',
       })}
     >
       {!shelf && <SpecificationPanelToggle />}

@@ -178,12 +178,14 @@
   html.dark[data-height-prototype="B"] [role="tab"][aria-selected="true"] {
     color: #c7d2fe;
   }
-  /* Decorative dividers between the three left-panel tabs in B. */
-  html[data-height-prototype="B"] #specification-left-panel [role="tab"] {
+  /* Decorative dividers between the tabs in both B panels. */
+  html[data-height-prototype="B"]
+    :is(#specification-left-panel, #specification-right-panel)
+    [role="tab"] {
     position: relative;
   }
   html[data-height-prototype="B"]
-    #specification-left-panel
+    :is(#specification-left-panel, #specification-right-panel)
     [role="tab"]
     + [role="tab"]::before {
     position: absolute;
@@ -196,7 +198,7 @@
     background: #cbd5e1;
   }
   html.dark[data-height-prototype="B"]
-    #specification-left-panel
+    :is(#specification-left-panel, #specification-right-panel)
     [role="tab"]
     + [role="tab"]::before {
     background: #475569;
@@ -255,10 +257,10 @@
 }
 
 @media (min-width: 1280px) {
-  /* Match B's table tab row in the needs-reference, RFI and empty views.
+  /* Match B's table tab row in both panels' alternative and empty views.
      Contextual actions get their own row, so they cannot recenter the tabs. */
   html[data-height-prototype="B"]
-    #specification-left-panel
+    :is(#specification-left-panel, #specification-right-panel)
     .prototype-panel-header {
     display: flex;
     flex-direction: column;
@@ -268,14 +270,14 @@
     border-bottom: 0;
   }
   html[data-height-prototype="B"]
-    #specification-left-panel
+    :is(#specification-left-panel, #specification-right-panel)
     .prototype-panel-header
     > :first-child {
     padding: 3px 8px;
     border-bottom: 1px solid #94a3b840;
   }
   html[data-height-prototype="B"]
-    #specification-left-panel
+    :is(#specification-left-panel, #specification-right-panel)
     .prototype-panel-header
     > .prototype-tab-actions {
     display: flex;
@@ -344,7 +346,7 @@
     padding: 0;
   }
   html[data-height-prototype="B"]
-    #specification-left-panel
+    :is(#specification-left-panel, #specification-right-panel)
     .prototype-panel-header
     button:not([role="tab"]) {
     min-width: 30px;

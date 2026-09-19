@@ -1,0 +1,856 @@
+{
+  "before": {
+    "available": {
+      "x": 821,
+      "y": 166.5
+    },
+    "questions": {
+      "x": 825,
+      "y": 171.5
+    }
+  },
+  "result": "Both right-panel tabs retain identical rectangles throughout switching; one vertical divider in both themes.",
+  "results": [
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "collapsed",
+      "theme": "light",
+      "tab": "Tillgängliga krav",
+      "bounds": [
+        {
+          "x": 821,
+          "y": 166.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 955.578125,
+          "y": 166.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(203, 213, 225)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "collapsed",
+      "theme": "light",
+      "tab": "Kravurvalsfrågor",
+      "bounds": [
+        {
+          "x": 821,
+          "y": 166.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 955.578125,
+          "y": 166.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(203, 213, 225)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "collapsed",
+      "theme": "light",
+      "tab": "Tillgängliga krav",
+      "bounds": [
+        {
+          "x": 821,
+          "y": 166.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 955.578125,
+          "y": 166.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(203, 213, 225)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "collapsed",
+      "theme": "dark",
+      "tab": "Tillgängliga krav",
+      "bounds": [
+        {
+          "x": 821,
+          "y": 166.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 955.578125,
+          "y": 166.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(71, 85, 105)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "collapsed",
+      "theme": "dark",
+      "tab": "Kravurvalsfrågor",
+      "bounds": [
+        {
+          "x": 821,
+          "y": 166.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 955.578125,
+          "y": 166.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(71, 85, 105)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "collapsed",
+      "theme": "dark",
+      "tab": "Tillgängliga krav",
+      "bounds": [
+        {
+          "x": 821,
+          "y": 166.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 955.578125,
+          "y": 166.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(71, 85, 105)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "expanded",
+      "theme": "light",
+      "tab": "Tillgängliga krav",
+      "bounds": [
+        {
+          "x": 917,
+          "y": 183,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1051.578125,
+          "y": 183,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(203, 213, 225)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "expanded",
+      "theme": "light",
+      "tab": "Kravurvalsfrågor",
+      "bounds": [
+        {
+          "x": 917,
+          "y": 183,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1051.578125,
+          "y": 183,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(203, 213, 225)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "expanded",
+      "theme": "light",
+      "tab": "Tillgängliga krav",
+      "bounds": [
+        {
+          "x": 917,
+          "y": 183,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1051.578125,
+          "y": 183,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(203, 213, 225)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "expanded",
+      "theme": "dark",
+      "tab": "Tillgängliga krav",
+      "bounds": [
+        {
+          "x": 917,
+          "y": 183,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1051.578125,
+          "y": 183,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(71, 85, 105)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "expanded",
+      "theme": "dark",
+      "tab": "Kravurvalsfrågor",
+      "bounds": [
+        {
+          "x": 917,
+          "y": 183,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1051.578125,
+          "y": 183,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(71, 85, 105)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nav": "expanded",
+      "theme": "dark",
+      "tab": "Tillgängliga krav",
+      "bounds": [
+        {
+          "x": 917,
+          "y": 183,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1051.578125,
+          "y": 183,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(71, 85, 105)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "collapsed",
+      "theme": "light",
+      "tab": "Tillgängliga krav",
+      "bounds": [
+        {
+          "x": 1061,
+          "y": 146.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1195.578125,
+          "y": 146.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(203, 213, 225)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "collapsed",
+      "theme": "light",
+      "tab": "Kravurvalsfrågor",
+      "bounds": [
+        {
+          "x": 1061,
+          "y": 146.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1195.578125,
+          "y": 146.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(203, 213, 225)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "collapsed",
+      "theme": "light",
+      "tab": "Tillgängliga krav",
+      "bounds": [
+        {
+          "x": 1061,
+          "y": 146.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1195.578125,
+          "y": 146.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(203, 213, 225)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "collapsed",
+      "theme": "dark",
+      "tab": "Tillgängliga krav",
+      "bounds": [
+        {
+          "x": 1061,
+          "y": 146.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1195.578125,
+          "y": 146.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(71, 85, 105)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "collapsed",
+      "theme": "dark",
+      "tab": "Kravurvalsfrågor",
+      "bounds": [
+        {
+          "x": 1061,
+          "y": 146.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1195.578125,
+          "y": 146.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(71, 85, 105)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "collapsed",
+      "theme": "dark",
+      "tab": "Tillgängliga krav",
+      "bounds": [
+        {
+          "x": 1061,
+          "y": 146.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1195.578125,
+          "y": 146.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(71, 85, 105)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "expanded",
+      "theme": "light",
+      "tab": "Tillgängliga krav",
+      "bounds": [
+        {
+          "x": 1157,
+          "y": 146.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1291.578125,
+          "y": 146.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(203, 213, 225)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "expanded",
+      "theme": "light",
+      "tab": "Kravurvalsfrågor",
+      "bounds": [
+        {
+          "x": 1157,
+          "y": 146.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1291.578125,
+          "y": 146.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(203, 213, 225)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "expanded",
+      "theme": "light",
+      "tab": "Tillgängliga krav",
+      "bounds": [
+        {
+          "x": 1157,
+          "y": 146.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1291.578125,
+          "y": 146.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(203, 213, 225)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "expanded",
+      "theme": "dark",
+      "tab": "Tillgängliga krav",
+      "bounds": [
+        {
+          "x": 1157,
+          "y": 146.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1291.578125,
+          "y": 146.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(71, 85, 105)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "expanded",
+      "theme": "dark",
+      "tab": "Kravurvalsfrågor",
+      "bounds": [
+        {
+          "x": 1157,
+          "y": 146.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1291.578125,
+          "y": 146.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(71, 85, 105)"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nav": "expanded",
+      "theme": "dark",
+      "tab": "Tillgängliga krav",
+      "bounds": [
+        {
+          "x": 1157,
+          "y": 146.5,
+          "width": 132.578125,
+          "height": 33
+        },
+        {
+          "x": 1291.578125,
+          "y": 146.5,
+          "width": 134.46875,
+          "height": 33
+        }
+      ],
+      "divider": [
+        {
+          "content": "none",
+          "width": "auto",
+          "color": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "content": "\"\"",
+          "width": "1px",
+          "color": "rgb(71, 85, 105)"
+        }
+      ]
+    }
+  ],
+  "pageErrors": []
+}

@@ -48,7 +48,7 @@ already-registered Keycloak client for port 3001. It does not seed or migrate.
 - **A: Compact stack.** Keep the original ordering: tabs and actions, package
   filters, then table headings. Reduce padding and button heights.
 - **B: Full-width tabs.** Give tabs an entire line with an underline for the
-  active tab. Vertical dividers separate the three left-panel tabs. Put
+  active tab. Vertical dividers separate the tabs in both panels. Put
   package filters and actions together on the next line.
 - **C: Shared shelf.** Move both tab groups above the panels. Combine filters
   and actions inside each panel. The shelf follows the panel widths.
@@ -93,7 +93,8 @@ page overflow falls from 21px to zero at both desktop sizes.
 | B: shared action-row layout | Switch through all three left-panel tabs. | Each action row starts at the same height and is 37px tall; icon actions are 30 × 30px. Ny belongs to Behovsreferenser; filter, CSV/PDF and lock belong to RFI. |
 | B: RFI controls | Select RFI-frågelista and toggle the included-only filter; inspect CSV/PDF links and the lock switch. | The filter still changes state; exports and locking are grouped below the tabs. Group and question actions stay with their content. |
 | B: RFI mode text | Select RFI-frågelista, expand navigation and resize the panel. | Mode and explanation sit left of the actions; the row stays 37px high. Long explanations truncate with the full text in a tooltip. |
-| B: vertical tab dividers | Inspect the left panel in B in both themes. | Two short vertical lines separate Krav i underlaget, Behovsreferenser and RFI-frågelista; tab sizes and list height stay the same. |
+| B: vertical tab dividers | Inspect both panels in B in both themes. | Two lines separate the three left tabs; one line separates Tillgängliga krav and Kravurvalsfrågor. |
+| B: stable right tabs | Switch Tillgängliga krav → Kravurvalsfrågor → Tillgängliga krav. | Both tabs keep exactly the same position and size. |
 | C: shared tab shelf | Switch to C; select tabs and drag the panel divider. | Tab groups sit above the panels and follow their widths; collapsed panel's shelf group is hidden. |
 | C: flat surfaces | Inspect C in both themes after switching variants. | Backdrop blur is disabled in C to keep Chromium from obscuring adjacent content during grid changes. |
 | Smaller actions | Compare 0 with A/B/C; open column and more-action menus. | Header buttons are 30px high; actions remain reachable. Package controls keep their existing sizes. |
@@ -165,6 +166,19 @@ viewports retain the existing placement.
 - [Needs references, dark](images/1440-B-needs-references-dark.png)
 - [RFI list, light](images/1440-B-rfi-light.png)
 - [RFI list, dark](images/1440-B-rfi-dark.png)
+
+## Stable right tabs in B
+
+Tillgängliga krav and Kravurvalsfrågor now use the same header spacing and
+collapse-button height. Previously the question view moved both tabs 5px
+down and 4px right. Both now stay at the same coordinates. A vertical line
+separates the tabs in both themes.
+
+[Right-tab geometry evidence](right-tab-stability.json) covers 24 states:
+both desktop sizes, both navigation states, both themes, and switching back.
+
+- [Selection questions, light](images/1440-B-selection-questions-light.png)
+- [Selection questions, dark](images/1440-B-selection-questions-dark.png)
 
 ## Source inventory
 
