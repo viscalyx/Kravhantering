@@ -1,6 +1,6 @@
 'use client'
 
-// Throwaway: baseline geometry + six alternatives on /requirements/new?variant=.
+// Throwaway: baseline geometry + seven alternatives on /requirements/new?variant=.
 // Question: compare field widths, purpose visibility and inline/modal selection.
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -16,7 +16,7 @@ import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 import { devMarker } from '@/lib/developer-mode-markers'
 import './requirement-form.prototype.css'
 
-const KEYS = ['baseline', 'A', 'B', 'C', 'D', 'E.1', 'E.2'] as const
+const KEYS = ['baseline', 'A', 'B', 'C', 'D', 'E.1', 'E.2', 'E.3'] as const
 type Variant = (typeof KEYS)[number]
 const EMPTY: RequirementFormFieldValues = {
   acceptanceCriteria: '',
@@ -43,7 +43,8 @@ export default function RequirementFormPrototype() {
   const variant: Variant = KEYS.includes(requested as Variant)
     ? (requested as Variant)
     : 'A'
-  const modalVariant = variant === 'E.1' || variant === 'E.2'
+  const modalVariant = variant.startsWith('E.')
+  const tableVariant = variant === 'E.2' || variant === 'E.3'
   const variantMessageKey = variant.replace('.', '')
   const [values, setValues] = useState<RequirementFormFieldValues>(EMPTY)
   const [destination, setDestination] = useState<'inline' | 'page'>('inline')
@@ -216,6 +217,7 @@ export default function RequirementFormPrototype() {
                 prototypeNormFieldset={
                   modalVariant ? (
                     <PrototypeRequirementAssociations
+                      compact={variant === 'E.3'}
                       disabled={!taxonomy.readiness.canSave}
                       kind="norms"
                       modal
@@ -228,12 +230,13 @@ export default function RequirementFormPrototype() {
                       }
                       packages={[]}
                       selected={values.normReferenceIds}
-                      table={variant === 'E.2'}
+                      table={tableVariant}
                     />
                   ) : undefined
                 }
                 prototypePackageFieldset={
                   <PrototypeRequirementAssociations
+                    compact={variant === 'E.3'}
                     disabled={!taxonomy.readiness.canSave}
                     kind="packages"
                     modal={modalVariant}
@@ -246,7 +249,7 @@ export default function RequirementFormPrototype() {
                     }
                     packages={taxonomy.requirementPackages}
                     selected={values.requirementPackageIds}
-                    table={variant === 'E.2'}
+                    table={tableVariant}
                   />
                 }
                 referenceDataReadiness={taxonomy.readiness}

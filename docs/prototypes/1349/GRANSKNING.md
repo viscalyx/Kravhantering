@@ -1,4 +1,4 @@
-# Granska prototyp D, E.1, E.2 och paketens syfte
+# Granska prototyp D, E.1, E.2, E.3 och paketens syfte
 
 <!-- markdownlint-configure-file {"MD060": {"style": "compact"}} -->
 
@@ -8,9 +8,10 @@ Den vanliga utvecklingsappen på port 3000 påverkas inte.
 - [Öppna D: lika breda urvalsrutor](http://localhost:3001/sv/requirements/new?variant=D)
 - [Öppna E.1: välj i lista](http://localhost:3001/sv/requirements/new?variant=E.1)
 - [Öppna E.2: välj i tabell](http://localhost:3001/sv/requirements/new?variant=E.2)
+- [Öppna E.3: kompakt väljare](http://localhost:3001/sv/requirements/new?variant=E.3)
 
 Logga in med utvecklingskontot om det behövs. Använd väljaren längst ned för
-att växla mellan Nuläge, A, B, C, D, E.1 och E.2. Via **Ändringar och checklista**
+att växla mellan Nuläge, A, B, C, D, E.1, E.2 och E.3. Via **Ändringar och checklista**
 visas beskrivningen av vald variant och formulärets aktuella tillstånd.
 
 Starta prototypen om den inte redan körs:
@@ -153,6 +154,41 @@ Den gamla länken med `?variant=E` öppnar E.1.
 - [Kontroll av märken och tooltips](badge-tooltip-inspection.json)
 - [Kontroll av fasta rubriker](sticky-header-inspection.json)
 - [Kontroller för E.2](table-modal-inspection.json)
+
+## E.3: kompakt väljare på rubrikraden
+
+E.3 använder samma dialoger och grupper som E.2. Skillnaden är hur man
+öppnar dialogerna: en liten pennikon med texten **Välj** ligger till höger
+på samma rad som rubriken. Hjälpknappen finns kvar bredvid rubriken.
+
+Ingen siffra visas på ikonen. Den separata knappraden och raden med antal
+är borttagna; valda objekt visas som märken under rubriken.
+
+Vid 1440 × 900 minskar varje tom urvalsyta från 190 till 84 pixlars höjd.
+Med två paket respektive en normreferens minskar höjden från 178 till 96
+pixlar per yta. Detta är urvalsytornas höjd; skrivfälten behåller sin höjd.
+
+1. Jämför E.2 och E.3 med samma val. Kontrollera höjden på urvalsytorna.
+2. Klicka **Välj** på rubrikraden och markera flera objekt. Formulärets
+   märken ska uppdateras först efter **Välj** i dialogen. Avbryt behåller dem.
+3. Ta bort ett valt märke i formuläret. Det ska försvinna. Pennikonen ska
+   alltid visas utan en siffra, även när flera objekt är valda.
+4. Använd Tab och Enter för att öppna dialogen. Efter stängning ska fokus
+   återgå till samma knapp. Kontrollera även den separata hjälpknappen.
+5. Upprepa vid 320 pixlars bredd och i mörkt tema. Ikon och text ska
+   rymmas på rubrikraden.
+
+- [E.2 med tomma urvalsytor](screenshots/E2-compact-comparison-empty.png)
+- [E.3 med tomma urvalsytor](screenshots/E3-compact-comparison-empty.png)
+- [E.3 med val](screenshots/E3-compact-1440-light.png)
+- [E.3 i mörkt tema](screenshots/E3-compact-1440-dark.png)
+- [E.3 vid 320 pixlar](screenshots/E3-compact-320-light.png)
+- [Kontroller och höjdmätningar](E3-compact-inspection.json)
+- [Dialogernas gruppkontroller](E3-group-inspection.json)
+- [Kontroll av tooltips](E3-tooltip-inspection.json)
+
+Om en redan öppen utvecklingssida visar `MISSING_MESSAGE` för E.3 efter
+uppdateringen, ladda om hela sidan för att läsa in de nya översättningarna.
 
 ## Ändringslista och kontrollpunkter
 

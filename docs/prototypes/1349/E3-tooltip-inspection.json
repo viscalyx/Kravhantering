@@ -1,0 +1,20 @@
+{
+  "checks": [
+    "E.3 norm badge contains reference ID only",
+    "Package badge contains package name",
+    "norm tooltip text in light theme",
+    "norm badge described by tooltip in light theme",
+    "package tooltip text in light theme",
+    "package badge described by tooltip in light theme",
+    "norm tooltip text in dark theme",
+    "norm badge described by tooltip in dark theme",
+    "package tooltip text in dark theme",
+    "package badge described by tooltip in dark theme",
+    "E.1 retains ID and name",
+    "Tooltip fits mobile viewport",
+    "Norm badge remains removable",
+    "Removing norm preserves package"
+  ],
+  "errors": [],
+  "mutations": []
+}

@@ -4038,19 +4038,19 @@
     "normName": "Preview norm-reference name",
     "addNorm": "Add in memory",
     "normAdded": "Preview norm added and selected in memory.",
-    "scope": "Compare layout and selection. Package purpose supports human judgment without a separate acknowledgment or automatic matching. Saving and navigation are simulated. E.1 and E.2 select existing norms; New in other variants creates only in memory. No final layout is approved yet.",
+    "scope": "Compare layout and selection. Package purpose supports human judgment without a separate acknowledgment or automatic matching. Saving and navigation are simulated. E.1, E.2 and E.3 select existing norms; New in other variants creates only in memory. No final layout is approved yet.",
     "sampleText": "The system shall retain traceability between each requirement and the governing norm references throughout review, publication and use. A reviewer shall be able to read long norm names, select the relevant references and continue editing without losing the requirement text.\n\nChanges shall remain understandable for users working with multiple requirement packages, including packages with long names. Keyboard users shall be able to reach all controls and review their selections.",
     "sampleCriteria": "1. The complete norm-reference name can be read.\n2. Selected packages and references remain selected when changing the layout.\n3. The writing areas remain large enough for a complete requirement.\n4. Help, navigation and the save destination remain reachable.",
     "sampleMethod": "Inspect at 1440 × 900 and 1920 × 1080 in both themes and navigation states. Use Tab and Space to operate the selection controls.",
     "checks": {
-      "1": "Switch Baseline → A → B → C → D → E.1 → E.2. The URL changes and field values remain. Reload for the same layout with fresh form state.",
+      "1": "Switch Baseline → A → B → C → D → E.1 → E.2 → E.3. The URL changes and field values remain. Reload for the same layout with fresh form state.",
       "2": "At 1920 × 1080, compare EN 301 549, NIS2 and ISO/IEC 25010. Count wrapped lines and compare the list top edges.",
       "3": "At 1440 × 900, expand navigation and load long text. Check writing space, list scrolling and the entire footer. Repeat with light/dark themes.",
       "4": "Choose an area, edit the text, select packages/norms, open help and toggle Verifiable. Confirm these controls are available in every variant.",
-      "5": "Change destination with Tab/Space and simulate Save. In Baseline–D, New creates an in-memory norm; E.1 and E.2 select existing norms. Reload clears local edits.",
+      "5": "Change destination with Tab/Space and simulate Save. In Baseline–D, New creates an in-memory norm; E.1, E.2 and E.3 select existing norms. Reload clears local edits.",
       "6": "Use ←/→ outside fields to cycle layouts. Inside a text field they must move the caret. At 320 px width, verify wrapping and no horizontal page overflow.",
       "7": "Read package purpose before selecting in every variant. Verify that it is visible without hovering or a separate confirmation, and that missing purpose is marked.",
-      "8": "In E.1/E.2, mark multiple items. Try Cancel first, then Select. Only Select changes the form. Check badges, removal, reopening and Escape."
+      "8": "In E.1/E.2/E.3, mark multiple items. Try Cancel first, then Select. Only Select changes the form. Check badges, removal, reopening and Escape."
     },
     "variants": {
       "baseline": {
@@ -4101,6 +4101,13 @@
         "change1": "Norm references show reference ID and name in separate columns. IDs retain their gray color.",
         "change2": "Packages show name and purpose in separate columns. Checkboxes sit at the far left.",
         "change3": "Previous selections appear first. Rows keep their group when checked or unchecked. Search filters both groups. Select applies changes; groups update when you reopen the dialog."
+      },
+      "E3": {
+        "name": "E.3 · compact selector",
+        "summary": "Use a small pencil icon and short label in the title row.",
+        "change1": "Selection controls move into the title row as a pencil icon and Select label. The separate button row is removed.",
+        "change2": "No separate count row or count badge on the icon. Selected items appear below the title.",
+        "change3": "Tables, fixed groups, search and tooltips work as in E.2. Select applies the draft; Cancel discards it."
       }
     },
     "purposeGuidance": "Select only packages whose purpose and scope cover the requirement. Each package shows its purpose to support your judgment.",

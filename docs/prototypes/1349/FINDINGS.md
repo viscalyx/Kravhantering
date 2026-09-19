@@ -51,9 +51,10 @@ refer to the stacked summary panels; full lists appear in separate dialogs.
 Local Chromium, authenticated development administrator, existing reference
 catalogs, Swedish locale. No requirement or norm-reference data is written.
 
-- 56 desktop combinations: seven variants × two viewport sizes
+- 56 desktop combinations: seven variants (baseline through E.2)
+  × two viewport sizes
   (1440 × 900 and 1920 × 1080) × two themes × two navigation states.
-- All seven variants also inspected at 320-pixel viewport width with long text
+- Those seven variants also inspected at 320-pixel viewport width with long text
   and selected associations. No horizontal page overflow in those checks.
 - Long sample text, area selection, package/norm selection and Verifiable
   remain usable. The shared description help opens and closes.
@@ -94,6 +95,28 @@ draft; reopening rebuilds the groups. Cancel discards the draft.
 
 The user confirmed these decisions during the grilling discussion.
 See [group inspection](group-inspection.json) and the Swedish review guide.
+
+## E.3 compact controls
+
+The confirmed E.3 design places a pencil icon and Select label in the title
+row, with no count badge or separate count row. E.2 remains available for
+comparison.
+
+At 1440 × 900, each empty association fieldset decreases from 190 to 84 px.
+With two packages and one norm selected, each fieldset decreases from 178 to
+96 px. Writing fields keep their existing height.
+
+- 22 compact-control checks cover badge-free controls, draft/apply/cancel,
+  keyboard opening,
+  focus return, help, removal, reload and layout at 1440/320 px in both themes.
+- 32 group checks and 14 tooltip checks also pass for E.3.
+- The Swedish page resolves the E3 translation keys after a full page reload,
+  with no missing-message console errors. An open development tab can retain
+  the older messages during a live code update.
+
+See [compact measurements](E3-compact-inspection.json),
+[group checks](E3-group-inspection.json) and
+[tooltip checks](E3-tooltip-inspection.json).
 
 ## Limits
 

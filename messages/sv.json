@@ -4038,19 +4038,19 @@
     "normName": "Namn på prototypens normreferens",
     "addNorm": "Lägg till i minnet",
     "normAdded": "Prototypens normreferens har lagts till och valts i minnet.",
-    "scope": "Jämför layout och urval. Paketens syfte visas som stöd för användarens bedömning, utan extra bekräftelse eller automatisk matchning. Sparning och navigering simuleras. E.1 och E.2 väljer befintliga normreferenser; Ny i övriga varianter skapar endast i minnet. Ingen slutlig layout är godkänd ännu.",
+    "scope": "Jämför layout och urval. Paketens syfte visas som stöd för användarens bedömning, utan extra bekräftelse eller automatisk matchning. Sparning och navigering simuleras. E.1, E.2 och E.3 väljer befintliga normreferenser; Ny i övriga varianter skapar endast i minnet. Ingen slutlig layout är godkänd ännu.",
     "sampleText": "Systemet ska bevara spårbarheten mellan varje krav och dess styrande normreferenser genom granskning, publicering och användning. En granskare ska kunna läsa långa normnamn, välja relevanta referenser och fortsätta redigera utan att förlora kravtexten.\n\nÄndringar ska vara begripliga för användare som arbetar med flera kravpaket, även paket med långa namn. Tangentbordsanvändare ska kunna nå alla kontroller och granska sina val.",
     "sampleCriteria": "1. Normreferensens fullständiga namn går att läsa.\n2. Valda kravpaket och normreferenser förblir valda när layouten ändras.\n3. Skrivytorna rymmer ett fullständigt krav.\n4. Hjälp, navigering och sparmål är åtkomliga.",
     "sampleMethod": "Granska vid 1440 × 900 och 1920 × 1080 i båda temana och navigationslägena. Använd Tab och mellanslag för urvalskontrollerna.",
     "checks": {
-      "1": "Växla Nuläge → A → B → C → D → E.1 → E.2. Adressen ändras och dina fältvärden finns kvar. Ladda om för samma layout med tomma fält.",
+      "1": "Växla Nuläge → A → B → C → D → E.1 → E.2 → E.3. Adressen ändras och dina fältvärden finns kvar. Ladda om för samma layout med tomma fält.",
       "2": "Jämför EN 301 549, NIS2 och ISO/IEC 25010 vid 1920 × 1080. Räkna textrader och jämför listornas överkanter.",
       "3": "Vid 1440 × 900: fäll ut navigationen och läs in lång text. Granska skrivutrymme, listrullning och hela avslutningen. Upprepa med ljust/mörkt tema.",
       "4": "Välj kravområde, redigera text, välj kravpaket/normreferenser, öppna hjälp och växla Verifierbar. Kontrollera att funktionerna finns i alla varianter.",
-      "5": "Ändra sparmål med Tab/mellanslag och simulera Spara. I Nuläge–D kan Ny skapa en normreferens i minnet; E.1 och E.2 väljer befintliga normreferenser. Omladdning rensar lokala ändringar.",
+      "5": "Ändra sparmål med Tab/mellanslag och simulera Spara. I Nuläge–D kan Ny skapa en normreferens i minnet; E.1, E.2 och E.3 väljer befintliga normreferenser. Omladdning rensar lokala ändringar.",
       "6": "Använd ←/→ utanför fält för att växla layout. I textfält ska pilarna flytta markören. Kontrollera radbrytning och avsaknad av horisontell sidrullning vid 320 pixlar.",
       "7": "Läs paketets syfte före val i varje variant. Kontrollera att det visas utan hovring eller extra bekräftelse, och att saknat syfte märks tydligt.",
-      "8": "I E.1/E.2: markera flera objekt i dialogen. Prova först Avbryt, sedan Välj. Endast Välj ska ändra formuläret. Kontrollera märken, borttagning, återöppning och Escape."
+      "8": "I E.1/E.2/E.3: markera flera objekt i dialogen. Prova först Avbryt, sedan Välj. Endast Välj ska ändra formuläret. Kontrollera märken, borttagning, återöppning och Escape."
     },
     "variants": {
       "baseline": {
@@ -4101,6 +4101,13 @@
         "change1": "Normreferenser visar referens-ID och namn i separata kolumner. ID behåller den grå tonen.",
         "change2": "Kravpaket visar namn och syfte i separata kolumner. Kryssrutorna ligger längst till vänster.",
         "change3": "Tidigare val visas överst. Raderna behåller sin grupp när du markerar eller avmarkerar. Sökningen filtrerar båda grupperna. Välj tillämpar ändringarna; grupperna räknas om när dialogen öppnas igen."
+      },
+      "E3": {
+        "name": "E.3 · kompakt väljare",
+        "summary": "Välj med en liten pennikon och kort text på rubrikraden.",
+        "change1": "Knapparna flyttas till rubrikraden och visar en pennikon med texten Välj. Den separata knappraden tas bort.",
+        "change2": "Ingen separat rad med antal eller märke med antal på ikonen. Valda objekt visas under rubriken.",
+        "change3": "Samma tabeller, fasta grupper, sökning och tooltips som E.2. Välj tillämpar urvalet; Avbryt kasserar ändringarna."
       }
     },
     "purposeGuidance": "Välj endast kravpaket vars syfte och avgränsning omfattar kravet. Syftet visas vid varje paket som stöd för din bedömning.",

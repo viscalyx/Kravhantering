@@ -1,0 +1,85 @@
+{
+  "checks": [
+    "No count badge when empty",
+    "E.3 empty fields are shorter than E.2",
+    "Draft selection adds no count badge",
+    "Select adds selected item badge",
+    "Focus returns to compact trigger",
+    "No count badge or count row after selection",
+    "Cancel preserves selection",
+    "Multiple selections shown as item badges",
+    "Norm selected with no count badge",
+    "Compact buttons share heading row and meet target size at 1440px light",
+    "No horizontal overflow at 1440px light",
+    "Compact buttons share heading row and meet target size at 320px light",
+    "No horizontal overflow at 320px light",
+    "Compact buttons share heading row and meet target size at 1440px dark",
+    "No horizontal overflow at 1440px dark",
+    "Compact buttons share heading row and meet target size at 320px dark",
+    "No horizontal overflow at 320px dark",
+    "Separate help remains available",
+    "Badge removal preserves other selections",
+    "No count badge after removing all packages",
+    "Reload retains E.3 URL",
+    "Reload clears selections"
+  ],
+  "measurements": [
+    {
+      "variant": "E.2",
+      "empty": true,
+      "fields": [
+        {
+          "height": 190,
+          "summary": 162
+        },
+        {
+          "height": 190,
+          "summary": 162
+        }
+      ]
+    },
+    {
+      "variant": "E.3",
+      "empty": true,
+      "fields": [
+        {
+          "height": 84,
+          "summary": 52
+        },
+        {
+          "height": 84,
+          "summary": 52
+        }
+      ]
+    },
+    {
+      "variant": "E.2",
+      "empty": false,
+      "fields": [
+        {
+          "height": 178,
+          "summary": 150
+        },
+        {
+          "height": 178,
+          "summary": 150
+        }
+      ]
+    },
+    {
+      "variant": "E.3",
+      "empty": false,
+      "fields": [
+        {
+          "height": 96,
+          "summary": 64
+        },
+        {
+          "height": 96,
+          "summary": 64
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

@@ -1,5 +1,6 @@
 'use client'
 
+import { Pencil } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useRef, useState } from 'react'
 import FieldHelpButton from '@/components/FieldHelpButton'
@@ -14,6 +15,7 @@ import { devMarker } from '@/lib/developer-mode-markers'
 import { ARRAY_INPUT_MAX_ITEMS } from '@/lib/http/validation-constants'
 
 interface Props {
+  compact?: boolean
   disabled?: boolean
   kind: 'packages' | 'norms'
   modal?: boolean
@@ -27,6 +29,7 @@ interface Props {
 /** Throwaway #1349: visible purpose and an optional draft/apply modal picker. */
 export default function PrototypeRequirementAssociations({
   kind,
+  compact = false,
   modal = false,
   table = false,
   packages,
@@ -237,9 +240,49 @@ export default function PrototypeRequirementAssociations({
     </>
   )
 
+  const triggerLabel = t(
+    table
+      ? isPackage
+        ? 'choosePackages'
+        : 'selectNorm'
+      : isPackage
+        ? 'addPackages'
+        : 'addNorms',
+  )
+  const trigger = (
+    <button
+      aria-expanded={open}
+      aria-haspopup="dialog"
+      aria-label={compact ? triggerLabel : undefined}
+      className={
+        compact ? 'prototype-1349-compact-trigger' : 'prototype-1349-button'
+      }
+      disabled={disabled}
+      onClick={() => {
+        setDraft([...selected])
+        setSelectedOnOpen([...selected])
+        setQuery('')
+        setOpen(true)
+      }}
+      ref={triggerRef}
+      title={compact ? triggerLabel : undefined}
+      type="button"
+      {...devMarker({ name: 'prototype selection trigger', value: kind })}
+    >
+      {compact ? (
+        <>
+          <Pencil aria-hidden="true" className="h-3.5 w-3.5" />
+          <span>{t('applySelection')}</span>
+        </>
+      ) : (
+        triggerLabel
+      )}
+    </button>
+  )
+
   return (
     <fieldset
-      className="prototype-1349-association-fieldset"
+      className={`prototype-1349-association-fieldset${compact ? ' prototype-1349-association-compact' : ''}`}
       {...devMarker({
         name: 'prototype association selection',
         value: `${kind} ${modal ? 'modal' : 'inline'}`,
@@ -253,6 +296,7 @@ export default function PrototypeRequirementAssociations({
           label={t('helpFor', { name: title })}
           onClick={() => setHelp(!help)}
         />
+        {compact && trigger}
       </div>
       {help && (
         <p
@@ -264,31 +308,12 @@ export default function PrototypeRequirementAssociations({
       )}
       {modal ? (
         <div className="prototype-1349-summary">
-          <button
-            className="prototype-1349-button"
-            disabled={disabled}
-            onClick={() => {
-              setDraft([...selected])
-              setSelectedOnOpen([...selected])
-              setQuery('')
-              setOpen(true)
-            }}
-            ref={triggerRef}
-            type="button"
-          >
-            {t(
-              table
-                ? isPackage
-                  ? 'choosePackages'
-                  : 'selectNorm'
-                : isPackage
-                  ? 'addPackages'
-                  : 'addNorms',
-            )}
-          </button>
-          <p className="prototype-1349-selection-count" role="status">
-            {t('selectedCount', { count: selected.length })}
-          </p>
+          {!compact && trigger}
+          {!compact && (
+            <p className="prototype-1349-selection-count" role="status">
+              {t('selectedCount', { count: selected.length })}
+            </p>
+          )}
           <div className="prototype-1349-badges">
             {items
               .filter(item => selected.includes(item.id))

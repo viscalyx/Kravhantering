@@ -5,9 +5,9 @@
 This throwaway prototype asks: **which arrangement makes norm references easier
 to read while preserving useful writing space?** No variant is approved yet.
 Use the existing form, navigation, themes, field help and reference data to
-compare the baseline geometry with six alternatives.
+compare the baseline geometry with seven alternatives.
 
-For the D/E.1/E.2 update, see the [Swedish review guide](GRANSKNING.md).
+For the D/E.1/E.2/E.3 update, see the [Swedish review guide](GRANSKNING.md).
 
 ## Open it
 
@@ -42,6 +42,7 @@ the URLs below. Use Ctrl+C in its terminal to stop just that prototype.
 | B: stacked rail | [Open](http://localhost:3001/sv/requirements/new?variant=B) | Is more list scrolling worth a wider writing column? |
 | C: writing first | [Open](http://localhost:3001/sv/requirements/new?variant=C) | Is extra page scrolling worth full-width writing? |
 | D: equal panels | [Open](http://localhost:3001/sv/requirements/new?variant=D) | Can narrower writing fields give both lists enough space? |
+| E.3: compact controls | [Open](http://localhost:3001/sv/requirements/new?variant=E.3) | Do compact title-row controls make the form easier to scan? |
 | E.2: modal tables | [Open](http://localhost:3001/sv/requirements/new?variant=E.2) | Are separate left-aligned columns easier to scan? |
 | E.1: modal lists | [Open](http://localhost:3001/sv/requirements/new?variant=E.1) | Is a compact badge summary preferable to inline lists? |
 <!-- markdownlint-enable MD013 -->
@@ -99,7 +100,7 @@ outer browser window. Repeat with navigation expanded and both themes.
 | Responsive layout | All | Inspect 1440 × 900, 1920 × 1080 and 320 px width. Check wrapping, list scrolling and access to every footer control. |
 | Baseline comparison | Baseline | Confirm equal association columns, taller New button, offset norm-list top and separate destination row. |
 | Shareable layout URL | All | Select a variant and inspect `?variant=`. Reload; the layout stays but unsaved edits disappear. |
-| Floating switcher | All | Cycle both directions, including E.2 → Baseline. Arrow keys in text fields must move the caret instead. |
+| Floating switcher | All | Cycle both directions, including E.3 → Baseline. Arrow keys in text fields must move the caret instead. |
 | Long-text sample | Toolbar | Click Load long text. Requirement text, acceptance criteria and verification method fill; Verifiable becomes checked. |
 | Local state preserved while comparing | All | Select packages/norms, edit fields and switch variants. Inspect the state panel and selections. |
 | Simulated Save | Footer | Choose an area, enter requirement text and click Save. Read the simulation message; no navigation or database write occurs. |
