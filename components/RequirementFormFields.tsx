@@ -56,6 +56,8 @@ export interface RequirementFormFieldsProps {
   /** Extra actions rendered after norm reference list (e.g. "Create" button) */
   normReferenceActions?: ReactNode
   onChange: (values: RequirementFormFieldValues) => void
+  /** Throwaway #1349: move classification and priority above associations in E.3. */
+  prototypeClassificationInSidebar?: boolean
   prototypeNormFieldset?: ReactNode
   /** Throwaway #1349 rendering slots; remove when implementing the chosen design. */
   prototypePackageFieldset?: ReactNode
@@ -92,6 +94,7 @@ export default function RequirementFormFields({
   idPrefix = '',
   layout = 'sidebar',
   normReferenceActions,
+  prototypeClassificationInSidebar = false,
   prototypePackageFieldset,
   prototypeNormFieldset,
   onChange,
@@ -330,84 +333,10 @@ export default function RequirementFormFields({
       ].join('\n')
     : null
 
-  const mainFields = (
+  const classificationInSidebar =
+    prototypeClassificationInSidebar && layout === 'sidebar'
+  const classificationFields = (
     <>
-      {showArea ? (
-        <div>
-          <div className="flex items-center gap-1.5 mb-1">
-            <label className="text-sm font-medium" htmlFor={fid('areaId')}>
-              {t('area')}
-              {areaRequired ? <RequiredFieldMarker /> : null}
-            </label>
-            {helpButton(fid('areaId'), t('area'))}
-          </div>
-          {helpPanel(
-            areaRequired ? 'areaHelp' : 'areaHelpOptional',
-            fid('areaId'),
-          )}
-          <select
-            aria-describedby={
-              catalogIsBlocked('areas') ? referenceDataStatusId : undefined
-            }
-            className={selectClassName}
-            disabled={catalogIsBlocked('areas')}
-            id={fid('areaId')}
-            onChange={e => handleChange('areaId', e.target.value)}
-            required={areaRequired}
-            value={values.areaId}
-          >
-            <option value="">{t('area')}...</option>
-            {areas.map(a => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-          {values.areaId && (
-            <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-              {t('area')} — {t('areaOwner')}: {selectedAreaOwnerName ?? '—'}
-            </p>
-          )}
-        </div>
-      ) : null}
-
-      <div>
-        <div className="flex items-center gap-1.5 mb-1">
-          <label className="text-sm font-medium" htmlFor={fid('description')}>
-            {t('description')}
-            <RequiredFieldMarker />
-          </label>
-          {helpButton(fid('description'), t('description'))}
-        </div>
-        {helpPanel('descriptionHelp', fid('description'))}
-        <textarea
-          className={textareaClassName}
-          id={fid('description')}
-          onChange={e => handleChange('description', e.target.value)}
-          required
-          value={values.description}
-        />
-      </div>
-
-      <div>
-        <div className="flex items-center gap-1.5 mb-1">
-          <label
-            className="text-sm font-medium"
-            htmlFor={fid('acceptanceCriteria')}
-          >
-            {t('acceptanceCriteria')}
-          </label>
-          {helpButton(fid('acceptanceCriteria'), t('acceptanceCriteria'))}
-        </div>
-        {helpPanel('acceptanceCriteriaHelp', fid('acceptanceCriteria'))}
-        <textarea
-          className={textareaClassName}
-          id={fid('acceptanceCriteria')}
-          onChange={e => handleChange('acceptanceCriteria', e.target.value)}
-          value={values.acceptanceCriteria}
-        />
-      </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <div className="flex items-center gap-1.5 mb-1">
@@ -501,7 +430,6 @@ export default function RequirementFormFields({
           />
         </select>
       </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <div className="flex items-center gap-1.5 mb-1">
@@ -601,6 +529,88 @@ export default function RequirementFormFields({
         </div>
         {extraFieldsAfterPriorityLevel}
       </div>
+    </>
+  )
+
+  const mainFields = (
+    <>
+      {showArea ? (
+        <div>
+          <div className="flex items-center gap-1.5 mb-1">
+            <label className="text-sm font-medium" htmlFor={fid('areaId')}>
+              {t('area')}
+              {areaRequired ? <RequiredFieldMarker /> : null}
+            </label>
+            {helpButton(fid('areaId'), t('area'))}
+          </div>
+          {helpPanel(
+            areaRequired ? 'areaHelp' : 'areaHelpOptional',
+            fid('areaId'),
+          )}
+          <select
+            aria-describedby={
+              catalogIsBlocked('areas') ? referenceDataStatusId : undefined
+            }
+            className={selectClassName}
+            disabled={catalogIsBlocked('areas')}
+            id={fid('areaId')}
+            onChange={e => handleChange('areaId', e.target.value)}
+            required={areaRequired}
+            value={values.areaId}
+          >
+            <option value="">{t('area')}...</option>
+            {areas.map(a => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+          {values.areaId && (
+            <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+              {t('area')} — {t('areaOwner')}: {selectedAreaOwnerName ?? '—'}
+            </p>
+          )}
+        </div>
+      ) : null}
+
+      <div>
+        <div className="flex items-center gap-1.5 mb-1">
+          <label className="text-sm font-medium" htmlFor={fid('description')}>
+            {t('description')}
+            <RequiredFieldMarker />
+          </label>
+          {helpButton(fid('description'), t('description'))}
+        </div>
+        {helpPanel('descriptionHelp', fid('description'))}
+        <textarea
+          className={textareaClassName}
+          id={fid('description')}
+          onChange={e => handleChange('description', e.target.value)}
+          required
+          value={values.description}
+        />
+      </div>
+
+      <div>
+        <div className="flex items-center gap-1.5 mb-1">
+          <label
+            className="text-sm font-medium"
+            htmlFor={fid('acceptanceCriteria')}
+          >
+            {t('acceptanceCriteria')}
+          </label>
+          {helpButton(fid('acceptanceCriteria'), t('acceptanceCriteria'))}
+        </div>
+        {helpPanel('acceptanceCriteriaHelp', fid('acceptanceCriteria'))}
+        <textarea
+          className={textareaClassName}
+          id={fid('acceptanceCriteria')}
+          onChange={e => handleChange('acceptanceCriteria', e.target.value)}
+          value={values.acceptanceCriteria}
+        />
+      </div>
+
+      {!classificationInSidebar && classificationFields}
 
       <div className="flex items-center gap-2 text-sm">
         <label className="flex items-center gap-2">
@@ -937,6 +947,17 @@ export default function RequirementFormFields({
           className={associationSidebarClassName}
           style={associationSidebarStyle}
         >
+          {classificationInSidebar && (
+            <div
+              className="min-w-0 space-y-5"
+              {...devMarker({
+                name: 'prototype classification fields',
+                value: 'right column',
+              })}
+            >
+              {classificationFields}
+            </div>
+          )}
           {prototypePackageFieldset ?? requirementPackagesFieldset}
           {prototypeNormFieldset ?? normReferencesFieldset}
         </div>

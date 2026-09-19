@@ -4104,9 +4104,9 @@
       },
       "E3": {
         "name": "E.3 · kompakt väljare",
-        "summary": "Välj med en liten pennikon och kort text på rubrikraden.",
+        "summary": "Kategori, typ, kvalitetsegenskap och prioritet ligger överst i högerkolumnen. Välj paket och normreferenser med kompakta knappar på rubrikraden.",
         "change1": "Knapparna flyttas till rubrikraden och visar en pennikon med texten Välj. Den separata knappraden tas bort.",
-        "change2": "Ingen separat rad med antal eller märke med antal på ikonen. Valda objekt visas under rubriken.",
+        "change2": "Kategori och typ delar en rad. Kvalitetsegenskap och sedan Prioritet ligger under, ovanför kravpaket och normreferenser. Ingen siffra visas på pennikonen.",
         "change3": "Samma tabeller, fasta grupper, sökning och tooltips som E.2. Välj tillämpar urvalet; Avbryt kasserar ändringarna."
       }
     },

@@ -155,11 +155,21 @@ Den gamla länken med `?variant=E` öppnar E.1.
 - [Kontroll av fasta rubriker](sticky-header-inspection.json)
 - [Kontroller för E.2](table-modal-inspection.json)
 
-## E.3: kompakt väljare på rubrikraden
+## E.3: klassificering till höger och kompakt väljare
 
-E.3 använder samma dialoger och grupper som E.2. Skillnaden är hur man
-öppnar dialogerna: en liten pennikon med texten **Välj** ligger till höger
-på samma rad som rubriken. Hjälpknappen finns kvar bredvid rubriken.
+E.3 flyttar **Kategori**, **Typ**, **Kvalitetsegenskap** och **Prioritet**
+till toppen av högerkolumnen, ovanför kravpaket och normreferenser. Kategori och
+Typ delar
+en rad; Kvalitetsegenskap ligger på raden under, följt av Prioritet.
+På mobil staplas fälten i en kolumn, före kravpaket och normreferenser.
+
+Hjälptexter och beroendet mellan Typ och Kvalitetsegenskap följer med.
+Byter man typ rensas den tidigare kvalitetsegenskapen, som tidigare.
+Övriga varianter behåller klassificeringen i vänsterkolumnen.
+
+E.3 använder samma dialoger och grupper som E.2. Dialogerna öppnas med
+en liten pennikon och texten **Välj**, till höger på samma rad som rubriken.
+Hjälpknappen finns kvar bredvid rubriken.
 
 Ingen siffra visas på ikonen. Den separata knappraden och raden med antal
 är borttagna; valda objekt visas som märken under rubriken.
@@ -177,7 +187,16 @@ pixlar per yta. Detta är urvalsytornas höjd; skrivfälten behåller sin höjd.
    återgå till samma knapp. Kontrollera även den separata hjälpknappen.
 5. Upprepa vid 320 pixlars bredd och i mörkt tema. Ikon och text ska
    rymmas på rubrikraden.
+6. Välj kategori, typ, kvalitetsegenskap och prioritet. Växla till E.2 och
+   tillbaka; värdena ska finnas kvar medan fälten byter kolumn.
+7. Byt typ. Den gamla kvalitetsegenskapen ska rensas. Utan vald typ ska
+   fältet för kvalitetsegenskap vara inaktiverat. Prova hjälpknapparna och
+   knappen för prioritetsskalan.
 
+- [E.3 med klassificering till höger](screenshots/E3-classification-1440-light.png)
+- [E.3 med klassificering i mörkt tema](screenshots/E3-classification-1440-dark.png)
+- [Klassificering på mobil](screenshots/E3-classification-320-light.png)
+- [Kontroll av flyttade fält](E3-classification-inspection.json)
 - [E.2 med tomma urvalsytor](screenshots/E2-compact-comparison-empty.png)
 - [E.3 med tomma urvalsytor](screenshots/E3-compact-comparison-empty.png)
 - [E.3 med val](screenshots/E3-compact-1440-light.png)

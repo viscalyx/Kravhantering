@@ -4104,9 +4104,9 @@
       },
       "E3": {
         "name": "E.3 · compact selector",
-        "summary": "Use a small pencil icon and short label in the title row.",
+        "summary": "Category, type, quality characteristic and priority sit at the top of the right column. Choose packages and norm references with compact title-row controls.",
         "change1": "Selection controls move into the title row as a pencil icon and Select label. The separate button row is removed.",
-        "change2": "No separate count row or count badge on the icon. Selected items appear below the title.",
+        "change2": "Category and type share a row. Quality characteristic and then Priority sit below, above packages and norm references. The pencil icon has no count badge.",
         "change3": "Tables, fixed groups, search and tooltips work as in E.2. Select applies the draft; Cancel discards it."
       }
     },

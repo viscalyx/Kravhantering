@@ -96,7 +96,14 @@ draft; reopening rebuilds the groups. Cancel discards the draft.
 The user confirmed these decisions during the grilling discussion.
 See [group inspection](group-inspection.json) and the Swedish review guide.
 
-## E.3 compact controls
+## E.3 classification and compact controls
+
+E.3 moves Category, Type, Quality characteristic and Priority above the package
+and norm summaries in the right column. Category and Type share a row, with Quality
+characteristic beneath, followed by Priority. Existing controls, help and options
+are reused. Other variants keep classification in the writing column.
+See [classification inspection](E3-classification-inspection.json) for checks
+of state retention, dependent options and responsive placement.
 
 The confirmed E.3 design places a pencil icon and Select label in the title
 row, with no count badge or separate count row. E.2 remains available for

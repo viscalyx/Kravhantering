@@ -571,3 +571,13 @@ body:has([aria-modal="true"]) .prototype-1349-review {
 .prototype-1349-association-compact .prototype-1349-empty {
   margin: 0;
 }
+
+/* E.3 keeps classification above both association summaries at every width. */
+.prototype-1349[data-prototype-variant="E.3"]
+  .prototype-1349-fields
+  > div
+  > div
+  > div:last-child {
+  grid-template-rows: auto;
+  grid-template-columns: minmax(0, 1fr);
+}
