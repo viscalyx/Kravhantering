@@ -529,7 +529,8 @@ också 403 för tilldelningsstyrning och global Admin.
 1. Logga in som `petra.specresp`.
 1. Öppna `/sv/specifications` och filtrera fram `AUTHZ-SPEC-2026`.
 1. Öppna redigeringsåtgärden och ändra ett säkert metadatafält, till exempel
-   verksamhetsbehovsreferens.
+   verksamhetsbehovsreferens. Fäll ut sidhuvudet och kontrollera ändringen,
+   även efter omladdning.
 1. Stäng redigeringen och öppna radåtgärden `Hantera medförfattare`.
 1. Kontrollera att tilläggsfältet ligger över den sparade tabellen och lägg
    till en tillfällig kravunderlagsmedförfattare i dialogen.
@@ -558,7 +559,8 @@ inte delegera ansvar.
 1. Logga in som `signe.speccoauthor`.
 1. Öppna `/sv/specifications/910400` eller `/sv/specifications/AUTHZ-SPEC-2026`.
 1. Gör en liten tillåten innehållsändring.
-1. Ladda om sidan och verifiera att ändringen finns kvar.
+1. Fäll ut sidhuvudet och kontrollera ändringen. Ladda om sidan, fäll ut
+   sidhuvudet igen och verifiera att ändringen finns kvar.
 1. Öppna kravunderlagslistan och försök hitta radåtgärden för att hantera
    medförfattare, och försök ändra kravunderlagsansvarig.
 
@@ -2260,7 +2262,8 @@ webbläsarlagring och med en ogiltig sparad layout.
 
 **Förväntat resultat:** A börjar med endast vänster panel. Omladdning och
 återbesök via listan återställer det manuella valet. B börjar med båda
-panelerna. Återkomsten från B använder A:s grundlayout och lika panelbredder.
+panelerna. Återkomsten från B använder A:s grundlayout och standardfördelningen
+60/40 mellan panelerna.
 Omladdning och återbesök via listan bevarar även vald breddfördelning.
 Otillgänglig eller
 ogiltig lagring hindrar inte hopfällning och öppning. Bibliotekskrav och

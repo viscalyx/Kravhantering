@@ -89,9 +89,15 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
       .fill(updatedPurpose)
     await dialog.getByRole('button', { name: 'Spara' }).click()
     await expect(dialog).toBeHidden()
+    await page
+      .getByRole('button', { name: 'Fäll ut sidhuvud', exact: true })
+      .click()
     await expect(page.getByText(updatedPurpose)).toBeVisible()
 
     await page.reload()
+    await page
+      .getByRole('button', { name: 'Fäll ut sidhuvud', exact: true })
+      .click()
     await expect(page.getByText(updatedPurpose)).toBeVisible()
 
     await page.goto('/sv/specifications')

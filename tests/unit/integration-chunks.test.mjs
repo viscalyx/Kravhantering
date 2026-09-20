@@ -56,6 +56,33 @@ async function captureError(action) {
 }
 
 describe('integration chunk manifest generation', () => {
+  it('isolates long specification journeys so each file gets fresh authentication', () => {
+    const specificationSpecs = [
+      'tests/integration/specifications/agreements.spec.ts',
+      'tests/integration/specifications/header-layout.spec.ts',
+      'tests/integration/specifications/panel-layout.spec.ts',
+      'tests/integration/specifications/requirement-detail.spec.ts',
+      'tests/integration/specifications/selection-action-limit.spec.ts',
+    ]
+    const manifest = buildManifestFromSpecs([
+      ...fixtureSpecs,
+      ...specificationSpecs,
+    ])
+    const chunks = manifest.suites.dev.chunks.filter(chunk =>
+      chunk.id.startsWith('dev-specifications-'),
+    )
+    expect(chunks.map(chunk => chunk.paths)).toEqual(
+      specificationSpecs.map(spec => [spec]),
+    )
+    expect(chunks.every(chunk => chunk.specCount === 1)).toBe(true)
+    expect(
+      checkManifestAgainstSpecs(manifest, [
+        ...fixtureSpecs,
+        ...specificationSpecs,
+      ]).ok,
+    ).toBe(true)
+  })
+
   it('allocates the fixed runtime contract separately from browser journeys', () => {
     const manifest = buildManifestFromSpecs(fixtureSpecs)
     expect(

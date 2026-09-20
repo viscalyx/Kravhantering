@@ -62,9 +62,31 @@
           "specCount": 12
         },
         {
-          "id": "dev-specifications",
-          "paths": ["tests/integration/specifications"],
-          "specCount": 5
+          "id": "dev-specifications-agreements",
+          "paths": ["tests/integration/specifications/agreements.spec.ts"],
+          "specCount": 1
+        },
+        {
+          "id": "dev-specifications-header-layout",
+          "paths": ["tests/integration/specifications/header-layout.spec.ts"],
+          "specCount": 1
+        },
+        {
+          "id": "dev-specifications-list",
+          "paths": ["tests/integration/specifications/list.spec.ts"],
+          "specCount": 1
+        },
+        {
+          "id": "dev-specifications-panel-layout",
+          "paths": ["tests/integration/specifications/panel-layout.spec.ts"],
+          "specCount": 1
+        },
+        {
+          "id": "dev-specifications-requirement-detail",
+          "paths": [
+            "tests/integration/specifications/requirement-detail.spec.ts"
+          ],
+          "specCount": 1
         },
         {
           "id": "dev-stewardship",

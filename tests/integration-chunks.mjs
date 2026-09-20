@@ -29,6 +29,9 @@ export const SEPARATE_OWNER_SPECS = [
 
 const GENERATED_BY = 'tests/integration-chunks.mjs'
 const SUITE_NAMES = ['dev', 'prodlike']
+// These workflows together exceed the CI session lifetime. Give each file
+// its own app server and authentication setup without extending that lifetime.
+const SINGLE_FILE_CHUNK_AREAS = new Set(['specifications'])
 const APP_READY_PATH = '/api/auth/login'
 const APP_READY_STATUSES = [302, 303, 307, 308]
 const READY_BODY_EXCERPT_LENGTH = 1_000
@@ -200,9 +203,12 @@ function buildSuiteManifest({
 
   for (const spec of normalSpecs) {
     const area = topLevelArea(root, spec)
-    const areaSpecs = grouped.get(area) ?? []
+    const chunkPath = SINGLE_FILE_CHUNK_AREAS.has(path.basename(area))
+      ? spec
+      : area
+    const areaSpecs = grouped.get(chunkPath) ?? []
     areaSpecs.push(spec)
-    grouped.set(area, areaSpecs)
+    grouped.set(chunkPath, areaSpecs)
   }
 
   const areas = [...grouped.entries()]
@@ -233,7 +239,7 @@ function buildSuiteManifest({
     const wouldExceedAreas = currentAreas.length >= areasPerChunk
     const wouldExceedSpecs = currentSpecCount + area.specCount > targetSpecs
 
-    if (isLargeArea) {
+    if (isLargeArea || area.area.endsWith('.spec.ts')) {
       flushCurrent()
       chunks.push({
         id: chunkIdForPaths(suite, root, [area.area]),

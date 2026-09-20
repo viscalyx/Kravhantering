@@ -612,8 +612,8 @@ focus moves to the left panel's collapse button.
 The browser stores one width preference in `specification-panel-width-v1`:
 `{specificationId, leftRatio}`. It belongs only to the latest specification,
 independently of its open/collapsed layout. Refresh and visits to other page
-types retain it. Opening another specification replaces it with 50/50;
-A → B → A therefore uses 50/50 on return. Invalid or unavailable storage
+types retain it. Opening another specification replaces it with 60/40;
+A → B → A therefore uses 60/40 on return. Invalid or unavailable storage
 falls back to 60/40 proportions without disabling resizing. A smaller desktop
 workspace clamps displayed widths to the minimum without overwriting the
 preferred ratio; more space restores that ratio. Window resizing never

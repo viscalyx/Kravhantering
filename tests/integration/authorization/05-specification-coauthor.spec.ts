@@ -55,9 +55,15 @@ test('AUTHZ-05/AUTH-10/AUTH-11: specification co-authors can edit content but no
       .fill(updatedPurpose)
     await dialog.getByRole('button', { name: 'Spara' }).click()
     await expect(dialog).toBeHidden()
+    await page
+      .getByRole('button', { name: 'Fäll ut sidhuvud', exact: true })
+      .click()
     await expect(page.getByText(updatedPurpose)).toBeVisible()
 
     await page.reload()
+    await page
+      .getByRole('button', { name: 'Fäll ut sidhuvud', exact: true })
+      .click()
     await expect(page.getByText(updatedPurpose)).toBeVisible()
 
     const readResponse = await specificationCoauthor.get(
