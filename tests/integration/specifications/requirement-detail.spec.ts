@@ -5,6 +5,7 @@ import {
   expect,
   type Locator,
   type Page,
+  type Response,
   type Route,
   type TestInfo,
   test,
@@ -216,21 +217,31 @@ async function gotoSpecificationDetail(
 ): Promise<void> {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     // The server-rendered controls are visible before their handlers hydrate.
-    await Promise.all([
-      ...['items', 'available-requirements'].map(list =>
-        page.waitForResponse(response => {
-          const url = new URL(response.url())
-          return (
-            response.request().method() === 'GET' &&
-            url.pathname === `/api/requirements-specifications/${id}/${list}`
-          )
-        }),
+    const pendingLists = new Set(
+      ['items', 'available-requirements'].map(
+        list => `/api/requirements-specifications/${id}/${list}`,
       ),
-      page.goto(`/sv/specifications/${id}`, {
+    )
+    const recordListResponse = (response: Response) => {
+      if (response.request().method() === 'GET') {
+        pendingLists.delete(new URL(response.url()).pathname)
+      }
+    }
+    page.on('response', recordListResponse)
+    try {
+      await page.goto(`/sv/specifications/${id}`, {
         timeout: 45_000,
         waitUntil: 'domcontentloaded',
-      }),
-    ])
+      })
+      // Keep early responses, but do not spend the list-loading wait on navigation.
+      await expect
+        .poll(() => [...pendingLists], {
+          message: 'Both specification lists respond after hydration',
+        })
+        .toEqual([])
+    } finally {
+      page.off('response', recordListResponse)
+    }
 
     try {
       await expect(
