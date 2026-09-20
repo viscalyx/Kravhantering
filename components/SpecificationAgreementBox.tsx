@@ -343,17 +343,22 @@ export default function SpecificationAgreementBox({
       className="relative min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40"
       {...devMarker({
         context: 'requirements specification detail',
-        name: 'metadata card',
+        name: compact ? 'agreement summary row' : 'metadata card',
         value: 'agreement selector',
         priority: 350,
       })}
     >
       <dt className="text-[11px] font-semibold uppercase tracking-normal text-secondary-500 wrap-break-word dark:text-secondary-400">
         {t('heading')}
+        {compact ? ':' : null}
       </dt>
       <dd className="mt-1 text-sm text-secondary-800 dark:text-secondary-100">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2">
-          <div className="min-w-0" role="status">
+          <div
+            className="min-w-0"
+            id={compact ? `agreement-summary-${specificationId}` : undefined}
+            role="status"
+          >
             {busy && !view ? (
               t('working')
             ) : selected ? (
@@ -383,10 +388,17 @@ export default function SpecificationAgreementBox({
             {!!view?.agreements.length && (
               <button
                 aria-controls={`agreement-selector-${specificationId}`}
+                aria-describedby={
+                  compact ? `agreement-summary-${specificationId}` : undefined
+                }
                 aria-expanded={selectorOpen}
                 aria-haspopup="dialog"
                 aria-label={t('select')}
-                className={iconButton}
+                className={
+                  compact
+                    ? `${iconButton} prototype-agreement-row-trigger`
+                    : iconButton
+                }
                 disabled={busy}
                 onClick={() => setSelectorOpen(open => !open)}
                 ref={selectorTrigger}

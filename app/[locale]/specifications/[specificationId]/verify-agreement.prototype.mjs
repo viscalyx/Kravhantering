@@ -29,15 +29,25 @@ try {
     page.locator('#specification-right-panel tbody tr').first(),
   ).toContainText(/./)
   await expect(card).not.toContainText('Working…')
+  await expect(card.getByRole('button')).toHaveCount(0)
   const realAgreement = await card.textContent()
   await page.getByRole('button', { name: 'Long text', exact: true }).click()
   for (const text of ['2026-01-01', 'Current'])
     await expect(card).toContainText(text)
   await expect(card).not.toContainText('MOCK-2026-001')
   await expect(card.getByRole('button')).toHaveCount(1)
-  await card
-    .getByRole('button', { name: 'Select agreement', exact: true })
-    .click()
+  const rowLabel = await card.locator('dt').boundingBox()
+  await page.mouse.click(rowLabel.x + 5, rowLabel.y + 5)
+  await expect(
+    page.getByRole('dialog', { name: 'Select agreement' }),
+  ).toBeVisible()
+  await page.keyboard.press('Escape')
+  const compactSelector = card.getByRole('button', {
+    name: 'Select agreement',
+    exact: true,
+  })
+  await expect(compactSelector).toBeFocused()
+  await page.keyboard.press('Enter')
   await page
     .getByRole('dialog', { name: 'Select agreement' })
     .locator('summary')
@@ -165,6 +175,8 @@ try {
         compactDateStatusOnly: true,
         collapsedSelectorOnly: true,
         compactSelection: true,
+        fullRowClickAndKeyboard: true,
+        emptyAgreementHasNoAction: true,
         details: true,
         registration: true,
         correctionHistory: true,

@@ -3416,7 +3416,7 @@ export default function KravunderlagDetailClient({
                   >
                     <dt className="text-[11px] font-semibold uppercase tracking-normal text-secondary-500 wrap-break-word dark:text-secondary-400">
                       {prototypeHeaderCollapsed
-                        ? tp('collapsedLifecycleStatus')
+                        ? `${tp('collapsedLifecycleStatus')}:`
                         : t('lifecycleStatus')}
                     </dt>
                     <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">

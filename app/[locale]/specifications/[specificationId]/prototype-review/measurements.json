@@ -7642,11 +7642,11 @@
         "side": "left",
         "bounds": {
           "x": 80,
-          "y": 122,
+          "y": 135,
           "right": 881.59375,
           "bottom": 851,
           "width": 801.59375,
-          "height": 729
+          "height": 716
         },
         "tabsFit": true,
         "tabs": [
@@ -7654,9 +7654,9 @@
             "label": "Krav i underlaget",
             "bounds": {
               "x": 137,
-              "y": 128,
+              "y": 141,
               "right": 274.890625,
-              "bottom": 160,
+              "bottom": 173,
               "width": 137.890625,
               "height": 32
             }
@@ -7665,9 +7665,9 @@
             "label": "Behovsreferenser1",
             "bounds": {
               "x": 276.890625,
-              "y": 128,
+              "y": 141,
               "right": 434.78125,
-              "bottom": 160,
+              "bottom": 173,
               "width": 157.890625,
               "height": 32
             }
@@ -7676,9 +7676,9 @@
             "label": "RFI-frågelista",
             "bounds": {
               "x": 436.78125,
-              "y": 128,
+              "y": 141,
               "right": 548.171875,
-              "bottom": 160,
+              "bottom": 173,
               "width": 111.390625,
               "height": 32
             }
@@ -7687,18 +7687,18 @@
         "horizontalOverflow": 18,
         "needsBounds": {
           "x": 509,
-          "y": 248,
+          "y": 261,
           "right": 669,
-          "bottom": 324.5,
+          "bottom": 337.5,
           "width": 160,
           "height": 76.5
         },
         "needsVisible": true,
         "textBounds": {
           "x": 229,
-          "y": 248,
+          "y": 261,
           "right": 509,
-          "bottom": 324.5,
+          "bottom": 337.5,
           "width": 280,
           "height": 76.5
         },
@@ -7709,11 +7709,11 @@
         "side": "right",
         "bounds": {
           "x": 897.59375,
-          "y": 122,
+          "y": 135,
           "right": 1432,
           "bottom": 851,
           "width": 534.40625,
-          "height": 729
+          "height": 716
         },
         "tabsFit": true,
         "tabs": [
@@ -7721,9 +7721,9 @@
             "label": "Tillgängliga krav",
             "bounds": {
               "x": 954.59375,
-              "y": 128,
+              "y": 141,
               "right": 1085.171875,
-              "bottom": 160,
+              "bottom": 173,
               "width": 130.578125,
               "height": 32
             }
@@ -7732,9 +7732,9 @@
             "label": "Kravurvalsfrågor",
             "bounds": {
               "x": 1087.171875,
-              "y": 128,
+              "y": 141,
               "right": 1219.640625,
-              "bottom": 160,
+              "bottom": 173,
               "width": 132.46875,
               "height": 32
             }
@@ -7745,9 +7745,9 @@
         "needsVisible": false,
         "textBounds": {
           "x": 1046.59375,
-          "y": 278,
+          "y": 291,
           "right": 1326.59375,
-          "bottom": 334.5,
+          "bottom": 347.5,
           "width": 280,
           "height": 56.5
         },
@@ -7757,16 +7757,16 @@
     ],
     "metadata": [
       {
-        "text": "Avtal",
+        "text": "Avtal:",
         "bounds": {
           "x": 1021,
-          "y": 71,
-          "right": 1133,
-          "bottom": 91,
-          "width": 112,
+          "y": 84,
+          "right": 1054.5625,
+          "bottom": 104,
+          "width": 33.5625,
           "height": 20
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -7779,7 +7779,7 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -7792,7 +7792,7 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -7805,20 +7805,20 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
-        "text": "Livscykelstatus",
+        "text": "Livscykelstatus:",
         "bounds": {
           "x": 1021,
           "y": 43,
-          "right": 1133,
+          "right": 1118.046875,
           "bottom": 63,
-          "width": 112,
+          "width": 97.046875,
           "height": 20
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       }
     ],
@@ -7837,11 +7837,11 @@
         "side": "left",
         "bounds": {
           "x": 80,
-          "y": 122,
+          "y": 135,
           "right": 881.59375,
           "bottom": 851,
           "width": 801.59375,
-          "height": 729
+          "height": 716
         },
         "tabsFit": true,
         "tabs": [
@@ -7849,9 +7849,9 @@
             "label": "Krav i underlaget",
             "bounds": {
               "x": 137,
-              "y": 128,
+              "y": 141,
               "right": 274.890625,
-              "bottom": 160,
+              "bottom": 173,
               "width": 137.890625,
               "height": 32
             }
@@ -7860,9 +7860,9 @@
             "label": "Behovsreferenser1",
             "bounds": {
               "x": 276.890625,
-              "y": 128,
+              "y": 141,
               "right": 434.78125,
-              "bottom": 160,
+              "bottom": 173,
               "width": 157.890625,
               "height": 32
             }
@@ -7871,9 +7871,9 @@
             "label": "RFI-frågelista",
             "bounds": {
               "x": 436.78125,
-              "y": 128,
+              "y": 141,
               "right": 548.171875,
-              "bottom": 160,
+              "bottom": 173,
               "width": 111.390625,
               "height": 32
             }
@@ -7882,18 +7882,18 @@
         "horizontalOverflow": 18,
         "needsBounds": {
           "x": 509,
-          "y": 248,
+          "y": 261,
           "right": 669,
-          "bottom": 324.5,
+          "bottom": 337.5,
           "width": 160,
           "height": 76.5
         },
         "needsVisible": true,
         "textBounds": {
           "x": 229,
-          "y": 248,
+          "y": 261,
           "right": 509,
-          "bottom": 324.5,
+          "bottom": 337.5,
           "width": 280,
           "height": 76.5
         },
@@ -7904,11 +7904,11 @@
         "side": "right",
         "bounds": {
           "x": 897.59375,
-          "y": 122,
+          "y": 135,
           "right": 1432,
           "bottom": 851,
           "width": 534.40625,
-          "height": 729
+          "height": 716
         },
         "tabsFit": true,
         "tabs": [
@@ -7916,9 +7916,9 @@
             "label": "Tillgängliga krav",
             "bounds": {
               "x": 954.59375,
-              "y": 128,
+              "y": 141,
               "right": 1085.171875,
-              "bottom": 160,
+              "bottom": 173,
               "width": 130.578125,
               "height": 32
             }
@@ -7927,9 +7927,9 @@
             "label": "Kravurvalsfrågor",
             "bounds": {
               "x": 1087.171875,
-              "y": 128,
+              "y": 141,
               "right": 1219.640625,
-              "bottom": 160,
+              "bottom": 173,
               "width": 132.46875,
               "height": 32
             }
@@ -7940,9 +7940,9 @@
         "needsVisible": false,
         "textBounds": {
           "x": 1046.59375,
-          "y": 278,
+          "y": 291,
           "right": 1326.59375,
-          "bottom": 334.5,
+          "bottom": 347.5,
           "width": 280,
           "height": 56.5
         },
@@ -7952,16 +7952,16 @@
     ],
     "metadata": [
       {
-        "text": "Avtal",
+        "text": "Avtal:",
         "bounds": {
           "x": 1021,
-          "y": 71,
-          "right": 1133,
-          "bottom": 91,
-          "width": 112,
+          "y": 84,
+          "right": 1054.5625,
+          "bottom": 104,
+          "width": 33.5625,
           "height": 20
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -7974,7 +7974,7 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -7987,7 +7987,7 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -8000,20 +8000,20 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
-        "text": "Livscykelstatus",
+        "text": "Livscykelstatus:",
         "bounds": {
           "x": 1021,
           "y": 43,
-          "right": 1133,
+          "right": 1118.046875,
           "bottom": 63,
-          "width": 112,
+          "width": 97.046875,
           "height": 20
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       }
     ],
@@ -8032,11 +8032,11 @@
         "side": "left",
         "bounds": {
           "x": 272,
-          "y": 122,
+          "y": 135,
           "right": 958.390625,
           "bottom": 851,
           "width": 686.390625,
-          "height": 729
+          "height": 716
         },
         "tabsFit": true,
         "tabs": [
@@ -8044,9 +8044,9 @@
             "label": "Krav i underlaget",
             "bounds": {
               "x": 329,
-              "y": 128,
+              "y": 141,
               "right": 466.890625,
-              "bottom": 160,
+              "bottom": 173,
               "width": 137.890625,
               "height": 32
             }
@@ -8055,9 +8055,9 @@
             "label": "Behovsreferenser1",
             "bounds": {
               "x": 468.890625,
-              "y": 128,
+              "y": 141,
               "right": 626.78125,
-              "bottom": 160,
+              "bottom": 173,
               "width": 157.890625,
               "height": 32
             }
@@ -8066,9 +8066,9 @@
             "label": "RFI-frågelista",
             "bounds": {
               "x": 628.78125,
-              "y": 128,
+              "y": 141,
               "right": 740.171875,
-              "bottom": 160,
+              "bottom": 173,
               "width": 111.390625,
               "height": 32
             }
@@ -8077,18 +8077,18 @@
         "horizontalOverflow": 134,
         "needsBounds": {
           "x": 701,
-          "y": 248,
+          "y": 261,
           "right": 861,
-          "bottom": 324.5,
+          "bottom": 337.5,
           "width": 160,
           "height": 76.5
         },
         "needsVisible": true,
         "textBounds": {
           "x": 421,
-          "y": 248,
+          "y": 261,
           "right": 701,
-          "bottom": 324.5,
+          "bottom": 337.5,
           "width": 280,
           "height": 76.5
         },
@@ -8099,11 +8099,11 @@
         "side": "right",
         "bounds": {
           "x": 974.390625,
-          "y": 122,
+          "y": 135,
           "right": 1432,
           "bottom": 851,
           "width": 457.609375,
-          "height": 729
+          "height": 716
         },
         "tabsFit": true,
         "tabs": [
@@ -8111,9 +8111,9 @@
             "label": "Tillgängliga krav",
             "bounds": {
               "x": 1031.390625,
-              "y": 128,
+              "y": 141,
               "right": 1161.96875,
-              "bottom": 160,
+              "bottom": 173,
               "width": 130.578125,
               "height": 32
             }
@@ -8122,9 +8122,9 @@
             "label": "Kravurvalsfrågor",
             "bounds": {
               "x": 1163.96875,
-              "y": 128,
+              "y": 141,
               "right": 1296.4375,
-              "bottom": 160,
+              "bottom": 173,
               "width": 132.46875,
               "height": 32
             }
@@ -8135,9 +8135,9 @@
         "needsVisible": false,
         "textBounds": {
           "x": 1123.390625,
-          "y": 278,
+          "y": 291,
           "right": 1403.390625,
-          "bottom": 334.5,
+          "bottom": 347.5,
           "width": 280,
           "height": 56.5
         },
@@ -8147,16 +8147,16 @@
     ],
     "metadata": [
       {
-        "text": "Avtal",
+        "text": "Avtal:",
         "bounds": {
           "x": 1065.171875,
-          "y": 71,
-          "right": 1177.171875,
-          "bottom": 91,
-          "width": 112,
+          "y": 84,
+          "right": 1098.734375,
+          "bottom": 104,
+          "width": 33.5625,
           "height": 20
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -8169,7 +8169,7 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -8182,7 +8182,7 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -8195,20 +8195,20 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
-        "text": "Livscykelstatus",
+        "text": "Livscykelstatus:",
         "bounds": {
           "x": 1065.171875,
           "y": 43,
-          "right": 1177.171875,
+          "right": 1162.21875,
           "bottom": 63,
-          "width": 112,
+          "width": 97.046875,
           "height": 20
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       }
     ],
@@ -8227,11 +8227,11 @@
         "side": "left",
         "bounds": {
           "x": 272,
-          "y": 122,
+          "y": 135,
           "right": 958.390625,
           "bottom": 851,
           "width": 686.390625,
-          "height": 729
+          "height": 716
         },
         "tabsFit": true,
         "tabs": [
@@ -8239,9 +8239,9 @@
             "label": "Krav i underlaget",
             "bounds": {
               "x": 329,
-              "y": 128,
+              "y": 141,
               "right": 466.890625,
-              "bottom": 160,
+              "bottom": 173,
               "width": 137.890625,
               "height": 32
             }
@@ -8250,9 +8250,9 @@
             "label": "Behovsreferenser1",
             "bounds": {
               "x": 468.890625,
-              "y": 128,
+              "y": 141,
               "right": 626.78125,
-              "bottom": 160,
+              "bottom": 173,
               "width": 157.890625,
               "height": 32
             }
@@ -8261,9 +8261,9 @@
             "label": "RFI-frågelista",
             "bounds": {
               "x": 628.78125,
-              "y": 128,
+              "y": 141,
               "right": 740.171875,
-              "bottom": 160,
+              "bottom": 173,
               "width": 111.390625,
               "height": 32
             }
@@ -8272,18 +8272,18 @@
         "horizontalOverflow": 134,
         "needsBounds": {
           "x": 701,
-          "y": 248,
+          "y": 261,
           "right": 861,
-          "bottom": 324.5,
+          "bottom": 337.5,
           "width": 160,
           "height": 76.5
         },
         "needsVisible": true,
         "textBounds": {
           "x": 421,
-          "y": 248,
+          "y": 261,
           "right": 701,
-          "bottom": 324.5,
+          "bottom": 337.5,
           "width": 280,
           "height": 76.5
         },
@@ -8294,11 +8294,11 @@
         "side": "right",
         "bounds": {
           "x": 974.390625,
-          "y": 122,
+          "y": 135,
           "right": 1432,
           "bottom": 851,
           "width": 457.609375,
-          "height": 729
+          "height": 716
         },
         "tabsFit": true,
         "tabs": [
@@ -8306,9 +8306,9 @@
             "label": "Tillgängliga krav",
             "bounds": {
               "x": 1031.390625,
-              "y": 128,
+              "y": 141,
               "right": 1161.96875,
-              "bottom": 160,
+              "bottom": 173,
               "width": 130.578125,
               "height": 32
             }
@@ -8317,9 +8317,9 @@
             "label": "Kravurvalsfrågor",
             "bounds": {
               "x": 1163.96875,
-              "y": 128,
+              "y": 141,
               "right": 1296.4375,
-              "bottom": 160,
+              "bottom": 173,
               "width": 132.46875,
               "height": 32
             }
@@ -8330,9 +8330,9 @@
         "needsVisible": false,
         "textBounds": {
           "x": 1123.390625,
-          "y": 278,
+          "y": 291,
           "right": 1403.390625,
-          "bottom": 334.5,
+          "bottom": 347.5,
           "width": 280,
           "height": 56.5
         },
@@ -8342,16 +8342,16 @@
     ],
     "metadata": [
       {
-        "text": "Avtal",
+        "text": "Avtal:",
         "bounds": {
           "x": 1065.171875,
-          "y": 71,
-          "right": 1177.171875,
-          "bottom": 91,
-          "width": 112,
+          "y": 84,
+          "right": 1098.734375,
+          "bottom": 104,
+          "width": 33.5625,
           "height": 20
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -8364,7 +8364,7 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -8377,7 +8377,7 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -8390,20 +8390,20 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
-        "text": "Livscykelstatus",
+        "text": "Livscykelstatus:",
         "bounds": {
           "x": 1065.171875,
           "y": 43,
-          "right": 1177.171875,
+          "right": 1162.21875,
           "bottom": 63,
-          "width": 112,
+          "width": 97.046875,
           "height": 20
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       }
     ],
@@ -8422,11 +8422,11 @@
         "side": "left",
         "bounds": {
           "x": 80,
-          "y": 122,
+          "y": 135,
           "right": 1169.59375,
           "bottom": 1031,
           "width": 1089.59375,
-          "height": 909
+          "height": 896
         },
         "tabsFit": true,
         "tabs": [
@@ -8434,9 +8434,9 @@
             "label": "Krav i underlaget",
             "bounds": {
               "x": 137,
-              "y": 128,
+              "y": 141,
               "right": 274.890625,
-              "bottom": 160,
+              "bottom": 173,
               "width": 137.890625,
               "height": 32
             }
@@ -8445,9 +8445,9 @@
             "label": "Behovsreferenser1",
             "bounds": {
               "x": 276.890625,
-              "y": 128,
+              "y": 141,
               "right": 434.78125,
-              "bottom": 160,
+              "bottom": 173,
               "width": 157.890625,
               "height": 32
             }
@@ -8456,9 +8456,9 @@
             "label": "RFI-frågelista",
             "bounds": {
               "x": 436.78125,
-              "y": 128,
+              "y": 141,
               "right": 548.171875,
-              "bottom": 160,
+              "bottom": 173,
               "width": 111.390625,
               "height": 32
             }
@@ -8467,18 +8467,18 @@
         "horizontalOverflow": 0,
         "needsBounds": {
           "x": 779,
-          "y": 248,
+          "y": 261,
           "right": 939,
-          "bottom": 304.5,
+          "bottom": 317.5,
           "width": 160,
           "height": 56.5
         },
         "needsVisible": true,
         "textBounds": {
           "x": 229,
-          "y": 248,
+          "y": 261,
           "right": 779,
-          "bottom": 304.5,
+          "bottom": 317.5,
           "width": 550,
           "height": 56.5
         },
@@ -8489,11 +8489,11 @@
         "side": "right",
         "bounds": {
           "x": 1185.59375,
-          "y": 122,
+          "y": 135,
           "right": 1912,
           "bottom": 1031,
           "width": 726.40625,
-          "height": 909
+          "height": 896
         },
         "tabsFit": true,
         "tabs": [
@@ -8501,9 +8501,9 @@
             "label": "Tillgängliga krav",
             "bounds": {
               "x": 1242.59375,
-              "y": 128,
+              "y": 141,
               "right": 1373.171875,
-              "bottom": 160,
+              "bottom": 173,
               "width": 130.578125,
               "height": 32
             }
@@ -8512,9 +8512,9 @@
             "label": "Kravurvalsfrågor",
             "bounds": {
               "x": 1375.171875,
-              "y": 128,
+              "y": 141,
               "right": 1507.640625,
-              "bottom": 160,
+              "bottom": 173,
               "width": 132.46875,
               "height": 32
             }
@@ -8525,28 +8525,28 @@
         "needsVisible": false,
         "textBounds": {
           "x": 1334.59375,
-          "y": 248,
+          "y": 261,
           "right": 1790.59375,
-          "bottom": 304.5,
+          "bottom": 317.5,
           "width": 456,
           "height": 56.5
         },
         "textSize": "14px",
-        "completeRows": 15
+        "completeRows": 14
       }
     ],
     "metadata": [
       {
-        "text": "Avtal",
+        "text": "Avtal:",
         "bounds": {
           "x": 1501,
-          "y": 71,
-          "right": 1613,
-          "bottom": 91,
-          "width": 112,
+          "y": 84,
+          "right": 1534.5625,
+          "bottom": 104,
+          "width": 33.5625,
           "height": 20
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -8559,7 +8559,7 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -8572,7 +8572,7 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -8585,20 +8585,20 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
-        "text": "Livscykelstatus",
+        "text": "Livscykelstatus:",
         "bounds": {
           "x": 1501,
           "y": 43,
-          "right": 1613,
+          "right": 1598.046875,
           "bottom": 63,
-          "width": 112,
+          "width": 97.046875,
           "height": 20
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       }
     ],
@@ -8617,11 +8617,11 @@
         "side": "left",
         "bounds": {
           "x": 80,
-          "y": 122,
+          "y": 135,
           "right": 1169.59375,
           "bottom": 1031,
           "width": 1089.59375,
-          "height": 909
+          "height": 896
         },
         "tabsFit": true,
         "tabs": [
@@ -8629,9 +8629,9 @@
             "label": "Krav i underlaget",
             "bounds": {
               "x": 137,
-              "y": 128,
+              "y": 141,
               "right": 274.890625,
-              "bottom": 160,
+              "bottom": 173,
               "width": 137.890625,
               "height": 32
             }
@@ -8640,9 +8640,9 @@
             "label": "Behovsreferenser1",
             "bounds": {
               "x": 276.890625,
-              "y": 128,
+              "y": 141,
               "right": 434.78125,
-              "bottom": 160,
+              "bottom": 173,
               "width": 157.890625,
               "height": 32
             }
@@ -8651,9 +8651,9 @@
             "label": "RFI-frågelista",
             "bounds": {
               "x": 436.78125,
-              "y": 128,
+              "y": 141,
               "right": 548.171875,
-              "bottom": 160,
+              "bottom": 173,
               "width": 111.390625,
               "height": 32
             }
@@ -8662,18 +8662,18 @@
         "horizontalOverflow": 0,
         "needsBounds": {
           "x": 779,
-          "y": 248,
+          "y": 261,
           "right": 939,
-          "bottom": 304.5,
+          "bottom": 317.5,
           "width": 160,
           "height": 56.5
         },
         "needsVisible": true,
         "textBounds": {
           "x": 229,
-          "y": 248,
+          "y": 261,
           "right": 779,
-          "bottom": 304.5,
+          "bottom": 317.5,
           "width": 550,
           "height": 56.5
         },
@@ -8684,11 +8684,11 @@
         "side": "right",
         "bounds": {
           "x": 1185.59375,
-          "y": 122,
+          "y": 135,
           "right": 1912,
           "bottom": 1031,
           "width": 726.40625,
-          "height": 909
+          "height": 896
         },
         "tabsFit": true,
         "tabs": [
@@ -8696,9 +8696,9 @@
             "label": "Tillgängliga krav",
             "bounds": {
               "x": 1242.59375,
-              "y": 128,
+              "y": 141,
               "right": 1373.171875,
-              "bottom": 160,
+              "bottom": 173,
               "width": 130.578125,
               "height": 32
             }
@@ -8707,9 +8707,9 @@
             "label": "Kravurvalsfrågor",
             "bounds": {
               "x": 1375.171875,
-              "y": 128,
+              "y": 141,
               "right": 1507.640625,
-              "bottom": 160,
+              "bottom": 173,
               "width": 132.46875,
               "height": 32
             }
@@ -8720,28 +8720,28 @@
         "needsVisible": false,
         "textBounds": {
           "x": 1334.59375,
-          "y": 248,
+          "y": 261,
           "right": 1790.59375,
-          "bottom": 304.5,
+          "bottom": 317.5,
           "width": 456,
           "height": 56.5
         },
         "textSize": "14px",
-        "completeRows": 15
+        "completeRows": 14
       }
     ],
     "metadata": [
       {
-        "text": "Avtal",
+        "text": "Avtal:",
         "bounds": {
           "x": 1501,
-          "y": 71,
-          "right": 1613,
-          "bottom": 91,
-          "width": 112,
+          "y": 84,
+          "right": 1534.5625,
+          "bottom": 104,
+          "width": 33.5625,
           "height": 20
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -8754,7 +8754,7 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -8767,7 +8767,7 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -8780,20 +8780,20 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
-        "text": "Livscykelstatus",
+        "text": "Livscykelstatus:",
         "bounds": {
           "x": 1501,
           "y": 43,
-          "right": 1613,
+          "right": 1598.046875,
           "bottom": 63,
-          "width": 112,
+          "width": 97.046875,
           "height": 20
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       }
     ],
@@ -8812,11 +8812,11 @@
         "side": "left",
         "bounds": {
           "x": 272,
-          "y": 122,
+          "y": 135,
           "right": 1246.390625,
           "bottom": 1031,
           "width": 974.390625,
-          "height": 909
+          "height": 896
         },
         "tabsFit": true,
         "tabs": [
@@ -8824,9 +8824,9 @@
             "label": "Krav i underlaget",
             "bounds": {
               "x": 329,
-              "y": 128,
+              "y": 141,
               "right": 466.890625,
-              "bottom": 160,
+              "bottom": 173,
               "width": 137.890625,
               "height": 32
             }
@@ -8835,9 +8835,9 @@
             "label": "Behovsreferenser1",
             "bounds": {
               "x": 468.890625,
-              "y": 128,
+              "y": 141,
               "right": 626.78125,
-              "bottom": 160,
+              "bottom": 173,
               "width": 157.890625,
               "height": 32
             }
@@ -8846,9 +8846,9 @@
             "label": "RFI-frågelista",
             "bounds": {
               "x": 628.78125,
-              "y": 128,
+              "y": 141,
               "right": 740.171875,
-              "bottom": 160,
+              "bottom": 173,
               "width": 111.390625,
               "height": 32
             }
@@ -8857,18 +8857,18 @@
         "horizontalOverflow": 0,
         "needsBounds": {
           "x": 855,
-          "y": 248,
+          "y": 261,
           "right": 1015,
-          "bottom": 304.5,
+          "bottom": 317.5,
           "width": 160,
           "height": 56.5
         },
         "needsVisible": true,
         "textBounds": {
           "x": 421,
-          "y": 248,
+          "y": 261,
           "right": 855,
-          "bottom": 304.5,
+          "bottom": 317.5,
           "width": 434,
           "height": 56.5
         },
@@ -8879,11 +8879,11 @@
         "side": "right",
         "bounds": {
           "x": 1262.390625,
-          "y": 122,
+          "y": 135,
           "right": 1912,
           "bottom": 1031,
           "width": 649.609375,
-          "height": 909
+          "height": 896
         },
         "tabsFit": true,
         "tabs": [
@@ -8891,9 +8891,9 @@
             "label": "Tillgängliga krav",
             "bounds": {
               "x": 1319.390625,
-              "y": 128,
+              "y": 141,
               "right": 1449.96875,
-              "bottom": 160,
+              "bottom": 173,
               "width": 130.578125,
               "height": 32
             }
@@ -8902,9 +8902,9 @@
             "label": "Kravurvalsfrågor",
             "bounds": {
               "x": 1451.96875,
-              "y": 128,
+              "y": 141,
               "right": 1584.4375,
-              "bottom": 160,
+              "bottom": 173,
               "width": 132.46875,
               "height": 32
             }
@@ -8915,9 +8915,9 @@
         "needsVisible": false,
         "textBounds": {
           "x": 1411.390625,
-          "y": 248,
+          "y": 261,
           "right": 1791.390625,
-          "bottom": 304.5,
+          "bottom": 317.5,
           "width": 380,
           "height": 56.5
         },
@@ -8927,16 +8927,16 @@
     ],
     "metadata": [
       {
-        "text": "Avtal",
+        "text": "Avtal:",
         "bounds": {
           "x": 1501,
-          "y": 71,
-          "right": 1613,
-          "bottom": 91,
-          "width": 112,
+          "y": 84,
+          "right": 1534.5625,
+          "bottom": 104,
+          "width": 33.5625,
           "height": 20
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -8949,7 +8949,7 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -8962,7 +8962,7 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -8975,20 +8975,20 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
-        "text": "Livscykelstatus",
+        "text": "Livscykelstatus:",
         "bounds": {
           "x": 1501,
           "y": 43,
-          "right": 1613,
+          "right": 1598.046875,
           "bottom": 63,
-          "width": 112,
+          "width": 97.046875,
           "height": 20
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       }
     ],
@@ -9007,11 +9007,11 @@
         "side": "left",
         "bounds": {
           "x": 272,
-          "y": 122,
+          "y": 135,
           "right": 1246.390625,
           "bottom": 1031,
           "width": 974.390625,
-          "height": 909
+          "height": 896
         },
         "tabsFit": true,
         "tabs": [
@@ -9019,9 +9019,9 @@
             "label": "Krav i underlaget",
             "bounds": {
               "x": 329,
-              "y": 128,
+              "y": 141,
               "right": 466.890625,
-              "bottom": 160,
+              "bottom": 173,
               "width": 137.890625,
               "height": 32
             }
@@ -9030,9 +9030,9 @@
             "label": "Behovsreferenser1",
             "bounds": {
               "x": 468.890625,
-              "y": 128,
+              "y": 141,
               "right": 626.78125,
-              "bottom": 160,
+              "bottom": 173,
               "width": 157.890625,
               "height": 32
             }
@@ -9041,9 +9041,9 @@
             "label": "RFI-frågelista",
             "bounds": {
               "x": 628.78125,
-              "y": 128,
+              "y": 141,
               "right": 740.171875,
-              "bottom": 160,
+              "bottom": 173,
               "width": 111.390625,
               "height": 32
             }
@@ -9052,18 +9052,18 @@
         "horizontalOverflow": 0,
         "needsBounds": {
           "x": 855,
-          "y": 248,
+          "y": 261,
           "right": 1015,
-          "bottom": 304.5,
+          "bottom": 317.5,
           "width": 160,
           "height": 56.5
         },
         "needsVisible": true,
         "textBounds": {
           "x": 421,
-          "y": 248,
+          "y": 261,
           "right": 855,
-          "bottom": 304.5,
+          "bottom": 317.5,
           "width": 434,
           "height": 56.5
         },
@@ -9074,11 +9074,11 @@
         "side": "right",
         "bounds": {
           "x": 1262.390625,
-          "y": 122,
+          "y": 135,
           "right": 1912,
           "bottom": 1031,
           "width": 649.609375,
-          "height": 909
+          "height": 896
         },
         "tabsFit": true,
         "tabs": [
@@ -9086,9 +9086,9 @@
             "label": "Tillgängliga krav",
             "bounds": {
               "x": 1319.390625,
-              "y": 128,
+              "y": 141,
               "right": 1449.96875,
-              "bottom": 160,
+              "bottom": 173,
               "width": 130.578125,
               "height": 32
             }
@@ -9097,9 +9097,9 @@
             "label": "Kravurvalsfrågor",
             "bounds": {
               "x": 1451.96875,
-              "y": 128,
+              "y": 141,
               "right": 1584.4375,
-              "bottom": 160,
+              "bottom": 173,
               "width": 132.46875,
               "height": 32
             }
@@ -9110,9 +9110,9 @@
         "needsVisible": false,
         "textBounds": {
           "x": 1411.390625,
-          "y": 248,
+          "y": 261,
           "right": 1791.390625,
-          "bottom": 304.5,
+          "bottom": 317.5,
           "width": 380,
           "height": 56.5
         },
@@ -9122,16 +9122,16 @@
     ],
     "metadata": [
       {
-        "text": "Avtal",
+        "text": "Avtal:",
         "bounds": {
           "x": 1501,
-          "y": 71,
-          "right": 1613,
-          "bottom": 91,
-          "width": 112,
+          "y": 84,
+          "right": 1534.5625,
+          "bottom": 104,
+          "width": 33.5625,
           "height": 20
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -9144,7 +9144,7 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -9157,7 +9157,7 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
@@ -9170,20 +9170,20 @@
           "width": 0,
           "height": 0
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       },
       {
-        "text": "Livscykelstatus",
+        "text": "Livscykelstatus:",
         "bounds": {
           "x": 1501,
           "y": 43,
-          "right": 1613,
+          "right": 1598.046875,
           "bottom": 63,
-          "width": 112,
+          "width": 97.046875,
           "height": 20
         },
-        "size": "12px",
+        "size": "14px",
         "transform": "none"
       }
     ],
