@@ -894,12 +894,12 @@ erDiagram
     requirements_specifications {
         integer id PK
         text specification_code UK
-        text name
+        nvarchar(150) name
         integer local_requirement_next_sequence
         integer specification_governance_object_type_id FK
         integer specification_implementation_type_id FK
         integer specification_lifecycle_status_id FK
-        text business_needs_reference
+        nvarchar(300) business_needs_reference
         text responsible_hsa_id FK
         text created_at
         text updated_at
@@ -2937,12 +2937,12 @@ specific procurement or project.
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
 | `specification_code` | text, unique | Stable human-readable specification code |
-| `name` | text | Display name for the specification |
+| `name` | nvarchar(150) | Display name for the specification |
 | `local_requirement_next_sequence` | integer NOT NULL DEFAULT 1 | Next sequence number reserved for specification-local requirement IDs such as `KRAV0001` |
 | `specification_governance_object_type_id` | integer FK → `specification_governance_object_types.id` | Governance object type classification (nullable) |
 | `specification_implementation_type_id` | integer FK → `specification_implementation_types.id` | Implementation type classification (nullable) |
 | `specification_lifecycle_status_id` | integer FK → `specification_lifecycle_statuses.id` | Specification lifecycle status classification |
-| `business_needs_reference` | text | Optional free-text reference to the underlying business need |
+| `business_needs_reference` | nvarchar(300) | Optional free-text reference to the underlying business need |
 | `responsible_hsa_id` | text FK → `requirement_responsibility_people.hsa_id` | HSA-id for the live specification lead |
 | `created_at` | datetime2 | Creation timestamp |
 | `updated_at` | datetime2 | Last-modified timestamp |

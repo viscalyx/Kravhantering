@@ -68,24 +68,26 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       expect(
         screen.queryByRole('link', { name: 'nav.specifications' }),
       ).not.toBeInTheDocument()
+      const expand = screen.getByRole('button', {
+        name: 'specification.expandHeader',
+      })
+      expect(expand).toHaveAttribute('aria-expanded', 'false')
+      expect(expand).toHaveAttribute('data-developer-mode-name', 'disclosure')
+      expect(
+        screen.queryByText('Shared IAM business case'),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'specification.editSpecification',
+        }),
+      ).toBeVisible()
+      fireEvent.click(expand)
+      expect(expand).toHaveAttribute('aria-expanded', 'true')
       expect(headerSummary).toHaveTextContent('Platform')
       expect(headerSummary).toHaveTextContent('Ada Admin')
       expect(headerSummary).toHaveTextContent('SE5560000001-ada1')
       expect(headerSummary).toHaveTextContent('Program')
       expect(headerSummary).toHaveTextContent('Shared IAM business case')
-      expect(headerSummary).not.toHaveTextContent(
-        'specification.businessNeedsReference',
-      )
-      expect(headerSummary).toHaveClass('xl:grid')
-      expect(headerSummary).toHaveClass(
-        'xl:grid-cols-[minmax(18rem,1fr)_minmax(0,2fr)]',
-      )
-      expect(headerMetadata).not.toHaveTextContent('Shared IAM business case')
-      expect(headerMetadata).toHaveClass('grid-flow-col')
-      expect(headerMetadata).toHaveClass('auto-cols-[minmax(12rem,1fr)]')
-      expect(headerMetadata).toHaveClass('overflow-x-auto')
-      expect(headerMetadata).toHaveClass('xl:auto-cols-fr')
-      expect(headerMetadata).not.toHaveClass('xl:grid-cols-3')
 
       const editButton = screen.getByRole('button', {
         name: /specification\.editSpecification/i,
@@ -285,6 +287,9 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         }),
       ).toBeNull()
       expect(screen.queryByText('Shared IAM business case')).toBeNull()
+      fireEvent.click(
+        screen.getByRole('button', { name: 'specification.expandHeader' }),
+      )
       expect(screen.getByText('Readonly Owner')).toBeInTheDocument()
       expect(screen.queryByText('SE5560000001-ada1')).toBeNull()
       fireEvent.click(

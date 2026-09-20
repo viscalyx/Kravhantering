@@ -27,6 +27,10 @@ export function registerPanelResizeTests(context: SpecDetailWorkflowContext) {
         layoutKey,
         JSON.stringify({ specificationId: 8, layout: 'both' }),
       )
+      localStorage.setItem(
+        widthKey,
+        JSON.stringify({ specificationId: 8, leftRatio: 0.5 }),
+      )
       workspaceWidth = 1216
       desktop = true
       frames = new Map()
@@ -288,14 +292,14 @@ export function registerPanelResizeTests(context: SpecDetailWorkflowContext) {
       expect(view.width()).toBe('400px')
       expect(toggle('collapse', 'left')).toBeVisible()
       fireEvent.keyDown(view.divider, { key: 'Enter' })
-      expect(view.width()).toBe('600px')
+      expect(view.width()).toBe('720px')
       fireEvent.keyDown(view.divider, { key: 'ArrowRight', shiftKey: true })
       fireEvent.doubleClick(view.divider)
-      expect(view.width()).toBe('600px')
-      expect(savedRatio().leftRatio).toBe(0.5)
+      expect(view.width()).toBe('720px')
+      expect(savedRatio().leftRatio).toBe(0.6)
       fireEvent.keyDown(toggle('collapse', 'left'), { key: 'ArrowRight' })
       fireEvent.keyDown(view.divider, { key: 'Home' })
-      expect(view.width()).toBe('600px')
+      expect(view.width()).toBe('720px')
     })
 
     it('clamps a narrow workspace without overwriting the preferred ratio', async () => {

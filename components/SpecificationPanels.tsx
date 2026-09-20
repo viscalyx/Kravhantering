@@ -123,7 +123,7 @@ export default function SpecificationPanels({
   }, [opening])
 
   const columns = {
-    both: 'xl:grid-cols-[minmax(0,var(--specification-left-width,1fr))_minmax(0,1fr)]',
+    both: 'xl:grid-cols-[minmax(0,var(--specification-left-width,1.5fr))_minmax(0,1fr)]',
     left: 'xl:grid-cols-[minmax(0,1fr)_auto]',
     right: 'xl:grid-cols-[auto_minmax(0,1fr)]',
   }[layout]

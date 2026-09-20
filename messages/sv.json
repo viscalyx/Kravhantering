@@ -755,6 +755,13 @@
     "nonFunctional": "Icke-funktionellt"
   },
   "specification": {
+    "nameTooLong": "Titeln får innehålla högst {max} tecken.",
+    "descriptionTooLong": "Beskrivningen får innehålla högst {max} tecken.",
+    "nameRequired": "Ange en titel.",
+    "textLimit": "{count} / {max} tecken (utan inledande och avslutande blanksteg)",
+    "expandHeader": "Fäll ut sidhuvud",
+    "collapseHeader": "Fäll in sidhuvud",
+    "lifecycleStatusShort": "Livscykelstatus",
     "name": "Namn",
     "help": {
       "name": "Ange ett tydligt namn som gör underlaget lätt att känna igen och återanvända."

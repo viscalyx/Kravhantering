@@ -43,7 +43,7 @@ function readRatio(specificationId: number): number {
   } catch {
     // A width preference is optional when storage is invalid or unavailable.
   }
-  return 0.5
+  return 0.6
 }
 
 function saveRatio(specificationId: number, leftRatio: number) {
@@ -67,7 +67,7 @@ export default function SpecificationPanelDivider({
 }: SpecificationPanelDividerProps) {
   const t = useTranslations('specification')
   const dividerRef = useRef<HTMLDivElement>(null)
-  const preferredRatio = useRef(0.5)
+  const preferredRatio = useRef(0.6)
   const [collapsePreview, setCollapsePreview] = useState<CollapsePreview>(null)
 
   useLayoutEffect(() => {
@@ -219,7 +219,7 @@ export default function SpecificationPanelDivider({
     const cancel = () => finish(false)
     const reset = () => {
       cancel()
-      preferredRatio.current = 0.5
+      preferredRatio.current = 0.6
       saveRatio(specificationId, preferredRatio.current)
       restore()
     }
@@ -321,7 +321,7 @@ export default function SpecificationPanelDivider({
       aria-orientation="vertical"
       aria-valuemax={100}
       aria-valuemin={0}
-      aria-valuenow={50}
+      aria-valuenow={60}
       className={
         active
           ? 'group absolute inset-y-0 z-20 hidden w-4 touch-none cursor-ew-resize items-stretch justify-center outline-none xl:flex'
@@ -331,7 +331,7 @@ export default function SpecificationPanelDivider({
       ref={dividerRef}
       role="separator"
       style={{
-        left: 'var(--specification-left-width, calc((100% - 1rem) / 2))',
+        left: 'var(--specification-left-width, calc((100% - 1rem) * 0.6))',
       }}
       tabIndex={0}
       {...devMarker({

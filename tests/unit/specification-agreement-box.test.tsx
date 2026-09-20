@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
@@ -12,6 +12,159 @@ vi.mock('next-intl', () => {
 
 describe('agreement header author workflow', () => {
   afterEach(() => vi.unstubAllGlobals())
+
+  it('keeps the selected historical agreement when expanding the compact header', async () => {
+    const user = userEvent.setup()
+    const current = {
+      id: 1,
+      agreementReference: 'Current reference',
+      effectiveDate: '2026-01-01',
+      state: 'current',
+    }
+    const previous = {
+      id: 2,
+      agreementReference: 'Historical reference',
+      effectiveDate: '2024-01-01',
+      state: 'previous',
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async (url: string) =>
+          new Response(
+            JSON.stringify({
+              agreements: [current, previous],
+              selectedAgreement: url.includes('agreementId=2')
+                ? previous
+                : current,
+              canAuthor: true,
+              canDecide: true,
+            }),
+          ),
+      ),
+    )
+    const renderBox = (compact: boolean) => (
+      <ConfirmModalProvider>
+        <dl>
+          <SpecificationAgreementBox
+            compact={compact}
+            onContextChange={vi.fn()}
+            specificationId={1}
+          />
+        </dl>
+      </ConfirmModalProvider>
+    )
+    const { rerender } = render(renderBox(true))
+    expect(await screen.findByText('2026-01-01 · states.current')).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'details' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'newAgreement' }),
+    ).not.toBeInTheDocument()
+    const selector = screen.getByRole('button', { name: 'select' })
+    selector.focus()
+    await user.keyboard('{Enter}')
+    await user.click(screen.getByText('previousAgreements'))
+    await user.click(
+      screen.getByRole('button', { name: /Historical reference/ }),
+    )
+    expect(
+      await screen.findByText('2024-01-01 · states.previous'),
+    ).toBeVisible()
+    expect(selector).toHaveFocus()
+    rerender(renderBox(false))
+    expect(screen.getByText('Historical reference')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'details' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'newAgreement' })).toBeEnabled()
+  })
+
+  it('preserves focus moved outside the selector while an agreement loads', async () => {
+    const user = userEvent.setup()
+    const current = {
+      id: 1,
+      agreementReference: 'Current',
+      effectiveDate: '2026-01-01',
+      state: 'current',
+    }
+    const draft = {
+      id: 2,
+      agreementReference: 'Next',
+      effectiveDate: '2027-01-01',
+      state: 'draft',
+    }
+    const view = {
+      agreements: [current, draft],
+      selectedAgreement: current,
+      canAuthor: true,
+      canDecide: true,
+    }
+    let finish = () => {}
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        url.includes('agreementId=2')
+          ? new Promise<Response>(resolve => {
+              finish = () =>
+                resolve(
+                  new Response(
+                    JSON.stringify({ ...view, selectedAgreement: draft }),
+                  ),
+                )
+            })
+          : new Response(JSON.stringify(view)),
+      ),
+    )
+    render(
+      <ConfirmModalProvider>
+        <button type="button">Another action</button>
+        <dl>
+          <SpecificationAgreementBox
+            compact
+            onContextChange={vi.fn()}
+            specificationId={1}
+          />
+        </dl>
+      </ConfirmModalProvider>,
+    )
+    await user.click(await screen.findByRole('button', { name: 'select' }))
+    await user.click(screen.getByRole('button', { name: /^Next ·/ }))
+    const other = screen.getByRole('button', { name: 'Another action' })
+    await user.click(other)
+    await act(async () => finish())
+    expect(await screen.findByText('2027-01-01 · states.draft')).toBeVisible()
+    expect(other).toHaveFocus()
+  })
+
+  it('shows an inert empty agreement value in the compact header', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              agreements: [],
+              selectedAgreement: null,
+              canAuthor: true,
+              canDecide: true,
+            }),
+          ),
+      ),
+    )
+    render(
+      <ConfirmModalProvider>
+        <dl>
+          <SpecificationAgreementBox
+            compact
+            onContextChange={vi.fn()}
+            specificationId={1}
+          />
+        </dl>
+      </ConfirmModalProvider>,
+    )
+    expect(await screen.findByText('none')).toBeVisible()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
 
   it.each([false, true])(
     'shows the history disclosure only when previous agreements exist (%s) and restores focus',

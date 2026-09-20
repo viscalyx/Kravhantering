@@ -183,6 +183,71 @@ describe('SpecificationFormModal', () => {
     vi.unstubAllGlobals()
   })
 
+  it.each(['create', 'edit'] as const)(
+    '%s validates trimmed title and description limits',
+    async mode => {
+      if (mode === 'create') renderCreateModal()
+      else renderEditModal()
+      const name = screen.getByRole('textbox', { name: /^specification\.name/ })
+      const description = screen.getByLabelText(
+        'specification.businessNeedsReference',
+      )
+      const form = document.getElementById(
+        SPECIFICATION_FORM_ID,
+      ) as HTMLFormElement
+      fireEvent.change(name, { target: { value: 'x'.repeat(151) } })
+      fireEvent.submit(form)
+      expect(
+        await screen.findAllByText('specification.nameTooLong'),
+      ).not.toHaveLength(0)
+      expect(name).toHaveAttribute('aria-invalid', 'true')
+      fireEvent.change(name, { target: { value: `  ${'x'.repeat(150)}  ` } })
+      fireEvent.change(description, { target: { value: 'y'.repeat(301) } })
+      fireEvent.submit(form)
+      expect(
+        await screen.findAllByText('specification.descriptionTooLong'),
+      ).not.toHaveLength(0)
+      expect(description).toHaveAttribute('aria-invalid', 'true')
+      expect(
+        fetchMock.mock.calls.filter(
+          ([, init]) => init?.method === 'POST' || init?.method === 'PUT',
+        ),
+      ).toHaveLength(0)
+      fireEvent.change(description, {
+        target: { value: `  ${'y'.repeat(300)}  ` },
+      })
+      fireEvent.change(
+        screen.getByRole('combobox', {
+          name: /specification\.lifecycleStatus/,
+        }),
+        { target: { value: '3' } },
+      )
+      fireEvent.change(
+        screen.getByRole('textbox', {
+          name: /^specification\.specificationCode/,
+        }),
+        { target: { value: 'LIMIT-TEST' } },
+      )
+      fireEvent.submit(form)
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith(
+          mode === 'create'
+            ? '/api/requirements-specifications'
+            : '/api/requirements-specifications/1',
+          expect.objectContaining({
+            body: expect.stringContaining('"name":"' + 'x'.repeat(150) + '"'),
+          }),
+        ),
+      )
+      const saved = fetchMock.mock.calls.find(
+        ([, init]) => init?.method === 'POST' || init?.method === 'PUT',
+      )
+      expect(JSON.parse(saved?.[1].body).businessNeedsReference).toBe(
+        'y'.repeat(300),
+      )
+    },
+  )
+
   it('prefills the specification edit form and exposes developer-mode metadata', () => {
     renderEditModal()
 

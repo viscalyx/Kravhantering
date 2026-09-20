@@ -116,6 +116,8 @@ export const PUT = secureMutationRoute({
   },
 })
 
+export const PATCH = PUT
+
 export const DELETE = secureMutationRoute({
   paramsSchema: specificationParamSchema,
   policy: customMutationPolicy(

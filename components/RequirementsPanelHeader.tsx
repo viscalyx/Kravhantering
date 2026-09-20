@@ -29,7 +29,9 @@ export default function RequirementsPanelHeader({
           value: 'filters and tab actions',
         })}
       >
-        {filter ? <div className="min-w-0 flex-1">{filter}</div> : null}
+        {filter ? (
+          <div className="min-w-0 flex-1 basis-62.5">{filter}</div>
+        ) : null}
         <div
           className={`requirements-panel-actions ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1 px-2 py-0.75 ${filter ? '' : 'w-full'}`}
         >

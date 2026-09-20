@@ -24,6 +24,11 @@ import {
   normalizeSpecificationCodeInput,
 } from '@/lib/slug'
 
+import {
+  SPECIFICATION_DESCRIPTION_MAX_LENGTH,
+  SPECIFICATION_NAME_MAX_LENGTH,
+} from '@/lib/specifications/text-limits'
+
 export const SPECIFICATION_FORM_ID = 'requirement-specification-form'
 
 interface TaxonomyItem {
@@ -255,6 +260,16 @@ export default function SpecificationFormModal({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [codeEdited, setCodeEdited] = useState(false)
   const [codeError, setCodeError] = useState<string | null>(null)
+
+  const nameError =
+    form.name.trim().length > SPECIFICATION_NAME_MAX_LENGTH
+      ? t('nameTooLong', { max: SPECIFICATION_NAME_MAX_LENGTH })
+      : null
+  const descriptionError =
+    form.businessNeedsReference.trim().length >
+    SPECIFICATION_DESCRIPTION_MAX_LENGTH
+      ? t('descriptionTooLong', { max: SPECIFICATION_DESCRIPTION_MAX_LENGTH })
+      : null
 
   const effectiveCurrentUser = currentUser ?? loadedCurrentUser
   const effectiveCurrentUserLoading =
@@ -506,6 +521,12 @@ export default function SpecificationFormModal({
     if (mode === 'edit' && !editSpecificationId) return
     if (!metadataDirty) return
     if (isEdit && !canEditContent) return
+    if (!form.name.trim() || nameError || descriptionError) {
+      setSaveError(
+        !form.name.trim() ? t('nameRequired') : nameError || descriptionError,
+      )
+      return
+    }
     if (createCurrentUserBlocked) {
       setSaveError(t('currentUserUnavailable'))
       return
@@ -522,7 +543,7 @@ export default function SpecificationFormModal({
     try {
       const specificationPayload = {
         specificationCode: form.specificationCode,
-        name: form.name,
+        name: form.name.trim(),
         specificationGovernanceObjectTypeId:
           form.specificationGovernanceObjectTypeId
             ? Number(form.specificationGovernanceObjectTypeId)
@@ -534,7 +555,7 @@ export default function SpecificationFormModal({
         specificationLifecycleStatusId: Number(
           form.specificationLifecycleStatusId,
         ),
-        businessNeedsReference: form.businessNeedsReference || null,
+        businessNeedsReference: form.businessNeedsReference.trim() || null,
       }
       const requestBody =
         mode === 'edit'
@@ -624,6 +645,8 @@ export default function SpecificationFormModal({
                   required
                 />
                 <input
+                  aria-describedby="spec-name-limit"
+                  aria-invalid={!!nameError}
                   className={inputClassName}
                   disabled={metadataControlsDisabled}
                   id="spec-name"
@@ -655,6 +678,16 @@ export default function SpecificationFormModal({
                   required
                   value={form.name}
                 />
+                <p
+                  className={`mt-1 text-xs ${nameError ? 'text-red-600 dark:text-red-400' : 'text-secondary-500 dark:text-secondary-400'}`}
+                  id="spec-name-limit"
+                >
+                  {nameError ??
+                    t('textLimit', {
+                      count: form.name.trim().length,
+                      max: SPECIFICATION_NAME_MAX_LENGTH,
+                    })}
+                </p>
               </div>
 
               <div>
@@ -709,6 +742,8 @@ export default function SpecificationFormModal({
                   label={t('businessNeedsReference')}
                 />
                 <textarea
+                  aria-describedby="spec-description-limit"
+                  aria-invalid={!!descriptionError}
                   className={`${inputClassName} resize-none`}
                   disabled={metadataControlsDisabled}
                   id="spec-business-ref"
@@ -722,6 +757,16 @@ export default function SpecificationFormModal({
                   rows={5}
                   value={form.businessNeedsReference}
                 />
+                <p
+                  className={`mt-1 text-xs ${descriptionError ? 'text-red-600 dark:text-red-400' : 'text-secondary-500 dark:text-secondary-400'}`}
+                  id="spec-description-limit"
+                >
+                  {descriptionError ??
+                    t('textLimit', {
+                      count: form.businessNeedsReference.trim().length,
+                      max: SPECIFICATION_DESCRIPTION_MAX_LENGTH,
+                    })}
+                </p>
               </div>
             </div>
 

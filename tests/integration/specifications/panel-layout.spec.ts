@@ -232,13 +232,13 @@ test('SPEC-33: resizes both panels live without changing their gap or table colu
       )
       .toBe(80)
   })
-  await test.step('Reset to equal widths', async () => {
+  await test.step('Reset to the default proportions', async () => {
     await divider.dblclick()
     await expect
       .poll(async () =>
         Math.abs(
           requireTestValue(await left.boundingBox()).width -
-            requireTestValue(await right.boundingBox()).width,
+            requireTestValue(await right.boundingBox()).width * 1.5,
         ),
       )
       .toBeLessThan(1)
@@ -800,7 +800,7 @@ test('SPEC-31: keeps only the latest specification layout across reloads and oth
         .click()
       await expect(
         page.getByRole('separator', { name: 'Ändra panelbredder' }),
-      ).toHaveAttribute('aria-valuenow', '50')
+      ).toHaveAttribute('aria-valuenow', '60')
     })
   } finally {
     await expectApiResponseOk(
@@ -1090,6 +1090,15 @@ for (const width of [1440, 1920]) {
           }
         }
         await test.step('Give the lists space without page overflow or smaller row text', async () => {
+          const needsReference = left
+            .locator('[data-developer-mode-name="column header"]')
+            .filter({ hasText: 'Behovsreferens' })
+          const referenceBounds = await bounds(needsReference)
+          const leftBounds = await bounds(left)
+          expect(referenceBounds.x + referenceBounds.width).toBeLessThanOrEqual(
+            leftBounds.x + leftBounds.width,
+          )
+
           const footer = await bounds(page.getByRole('contentinfo'))
           expect(footer.height).toBe(41)
           for (const panel of [left, right]) {
@@ -1100,10 +1109,10 @@ for (const width of [1440, 1920]) {
               '[data-developer-mode-name="panel toolbar"]',
             )
             const toolbarBounds = await bounds(toolbar)
-            // The empty-filter message can wrap to three lines beside the
-            // selection filter in the narrow, expanded-navigation layout.
+            // The compact right panel wraps filters and actions onto two rows
+            // when its 40% share cannot fit them beside one another.
             expect(toolbarBounds.height).toBeLessThanOrEqual(
-              width === 1440 && expanded ? 55 : 37,
+              width === 1440 && panel === right ? 67 : 37,
             )
             expect(
               row.y - panelBounds.y - toolbarBounds.height,
@@ -1155,6 +1164,7 @@ for (const width of [1440, 1920]) {
           }
         })
         await test.step('Scroll each list while keeping its tabs, filter and table header fixed', async () => {
+          await page.setViewportSize({ width, height: 650 })
           await left.getByRole('button', { name: /^BEH0001\b/ }).click()
           for (const [panel, other] of [
             [left, right],

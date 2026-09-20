@@ -36,6 +36,9 @@ for (const role of [
           'You do not have access to this requirements specification',
         )
       } else {
+        await rolePage
+          .getByRole('button', { name: 'Expand header', exact: true })
+          .click()
         await expect(
           rolePage.locator('[data-developer-mode-value="agreement selector"]'),
         ).toContainText('None')
@@ -87,6 +90,9 @@ test('AUTHZ-04/AUTHZ-05/SPEC-24: co-authors prepare whole agreements and cancel 
     })
     await test.step('The co-author explicitly cancels a pending case from the requirement row', async () => {
       await page.goto(url)
+      await page
+        .getByRole('button', { name: 'Expand header', exact: true })
+        .click()
       await expect(
         page.locator('[data-developer-mode-value="agreement selector"]'),
       ).toContainText('Current')
@@ -182,6 +188,9 @@ test('AUTHZ-04/AUTHZ-05/SPEC-24: co-authors prepare whole agreements and cancel 
       ).toHaveCount(0)
       await page.keyboard.press('Escape')
       await ownerPage.goto(url)
+      await ownerPage
+        .getByRole('button', { name: 'Expand header', exact: true })
+        .click()
       await ownerPage
         .getByRole('button', { name: 'Select agreement', exact: true })
         .click()

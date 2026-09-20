@@ -512,6 +512,29 @@ retain their existing semantics.
 The specification name above the panels uses 20px bold text at every
 viewport width.
 
+The detail header starts collapsed. The title, disclosure and permitted edit
+action stay on the left. One compact frame shows lifecycle status followed by
+the selected agreement's date and status, or None. Only the arrow beside the
+agreement value opens the selector; it also provides earlier agreements.
+Without agreements there is no selector action. Selection survives header
+expansion, and keyboard focus returns to the selector after choosing an entry.
+On small screens this frame stacks below the title.
+
+Expanding reveals the description below the title and the agreement,
+governance object type, lead, implementation type and lifecycle metadata
+cards. Full agreement details and permitted actions are available there.
+Metadata labels use normal capitalization. The title permits 150 characters
+and the optional description 300, measured after trimming surrounding spaces.
+Create and edit forms explain the limits and reject longer values, as do POST,
+PATCH and PUT requests. These limits apply only to specification metadata.
+
+Both open panels default to a 60/40 split. Specification tables use compact
+column defaults: Requirement ID 112px, requirement text 280px, needs reference
+160px, area 120px and application status 110px. Needs reference follows the
+requirement text. Text retains its 14px font and can wrap; spare width grows
+the text column unless manual widths apply. Library table defaults and saved
+preferences retain their own presentation.
+
 Both specification panels can be collapsed from any active tab. Hiding a
 panel keeps its subtree mounted: active tab, search, filters, sorting,
 selection, expanded rows, unsaved input and scroll position survive within
@@ -559,7 +582,7 @@ outer gutter beside the global navigation and the right viewport edge.
 Hover, focus and dragging
 highlight the line; the pointer uses `ew-resize`. The full gap accepts
 mouse, pen and touch dragging. Resizing updates both panel widths live,
-without changing their combined width, table-column widths or mounted
+without changing their combined width, manual column preferences or mounted
 content. Every tab uses the same panel ratio. The divider is hidden when
 either panel is collapsed or the panels stack below `xl`.
 
@@ -573,7 +596,7 @@ ratio in the same way.
 
 Left and Right resize by 8px; Shift increases the step to 32px. Keyboard
 resizing stops at the minimum width and never collapses a panel. Enter or
-double-click restores equal widths. Escape cancels a drag. Pointer
+double-click restores the default 60/40 proportions. Escape cancels a drag. Pointer
 cancellation, loss of capture, loss of window focus or a workspace width change
 during dragging also cancels it. Only a completed resize changes the saved
 ratio. The focusable vertical separator exposes its current ratio and
@@ -586,7 +609,7 @@ The browser stores one width preference in `specification-panel-width-v1`:
 independently of its open/collapsed layout. Refresh and visits to other page
 types retain it. Opening another specification replaces it with 50/50;
 A → B → A therefore uses 50/50 on return. Invalid or unavailable storage
-falls back to equal widths without disabling resizing. A smaller desktop
+falls back to 60/40 proportions without disabling resizing. A smaller desktop
 workspace clamps displayed widths to the minimum without overwriting the
 preferred ratio; more space restores that ratio. Window resizing never
 collapses a panel.

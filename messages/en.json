@@ -755,6 +755,13 @@
     "nonFunctional": "Non-functional"
   },
   "specification": {
+    "nameTooLong": "The title must contain at most {max} characters.",
+    "descriptionTooLong": "The description must contain at most {max} characters.",
+    "nameRequired": "Enter a title.",
+    "textLimit": "{count} / {max} characters (excluding surrounding spaces)",
+    "expandHeader": "Expand header",
+    "collapseHeader": "Collapse header",
+    "lifecycleStatusShort": "Lifecycle status",
     "name": "Name",
     "help": {
       "name": "Provide a clear name that makes the specification easy to recognize and reuse."

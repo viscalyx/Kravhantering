@@ -3264,6 +3264,50 @@ describe('RequirementsTable', () => {
     expect(tableContent?.style.width).toBe('1544px')
   })
 
+  it('uses compact specification columns with needs reference after text and preserves manual widths', () => {
+    const props = {
+      locale: 'sv',
+      rows: [makeRow()],
+      presentation: 'specification' as const,
+      visibleColumns: [
+        'uniqueId',
+        'description',
+        'area',
+        'needsReference',
+        'specificationItemStatus',
+      ] as const,
+    }
+    const { container, rerender } = render(
+      <RequirementsTable
+        {...props}
+        visibleColumns={[...props.visibleColumns]}
+      />,
+    )
+    expect(getColumnWidths(container)).toEqual([
+      '112px',
+      '280px',
+      '160px',
+      '120px',
+      '110px',
+    ])
+    const headers = screen.getAllByRole('columnheader')
+    expect(headers[2]).toHaveTextContent('needsReference')
+    rerender(
+      <RequirementsTable
+        {...props}
+        columnWidths={{ description: 500 }}
+        visibleColumns={[...props.visibleColumns]}
+      />,
+    )
+    expect(getColumnWidths(container)).toEqual([
+      '112px',
+      '500px',
+      '160px',
+      '120px',
+      '110px',
+    ])
+  })
+
   it('does not emit duplicate width updates for repeated pointer moves at the same position', () => {
     const onColumnWidthsChange = vi.fn()
     const { container } = render(

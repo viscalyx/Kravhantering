@@ -130,6 +130,7 @@ export interface RequirementsTableProps {
   onSpecificationItemStatusChange?: (itemRef: string, statusId: number) => void
   onVisibleColumnsChange?: (value: RequirementColumnId[]) => void
   pinnedIds?: Set<number>
+  presentation?: 'library' | 'specification'
   priorityLevels?: PriorityLevelOption[]
   qualityCharacteristics?: QualityCharacteristicOption[]
   renderExpanded?: (id: number) => ReactNode
@@ -1508,6 +1509,7 @@ export default function RequirementsTable({
   categories = [],
   columnDefaults,
   columnPickerPlacement = 'betweenActions',
+  presentation = 'library',
   columnWidths = {},
   defaultVisibleColumns,
   excludeColumns,
@@ -1569,9 +1571,35 @@ export default function RequirementsTable({
   const effectiveExcludeColumns: RequirementColumnId[] = (
     excludeColumns ?? []
   ).filter(columnId => columnId !== 'uniqueId' && columnId !== 'description')
-  const allColumns = getOrderedRequirementListColumns(
-    normalizedColumnDefaults,
-  ).filter(col => !effectiveExcludeColumns.includes(col.id))
+  const allColumns = getOrderedRequirementListColumns(normalizedColumnDefaults)
+    .filter(col => !effectiveExcludeColumns.includes(col.id))
+    .map(column => ({ ...column }))
+  if (presentation === 'specification') {
+    const widths: RequirementColumnWidths = {
+      uniqueId: 112,
+      description: 280,
+      needsReference: 160,
+      area: 120,
+      specificationItemStatus: 110,
+    }
+    for (const column of allColumns) {
+      const width = widths[column.id]
+      if (width !== undefined) column.defaultWidthPx = width
+    }
+    const referenceIndex = allColumns.findIndex(
+      column => column.id === 'needsReference',
+    )
+    const [referenceColumn] = allColumns.splice(
+      referenceIndex,
+      referenceIndex < 0 ? 0 : 1,
+    )
+    if (referenceColumn)
+      allColumns.splice(
+        allColumns.findIndex(column => column.id === 'description') + 1,
+        0,
+        referenceColumn,
+      )
+  }
   const normalizedVisibleColumns = useMemo(
     () =>
       orderRequirementVisibleColumns(
@@ -1607,7 +1635,10 @@ export default function RequirementsTable({
   const configuredColumnWidths = Object.fromEntries(
     columnDefinitions.map(column => [
       column.id,
-      getRequirementColumnWidth(column.id, columnWidths),
+      typeof columnWidths[column.id] === 'number' &&
+      Number.isFinite(columnWidths[column.id])
+        ? getRequirementColumnWidth(column.id, columnWidths)
+        : column.defaultWidthPx,
     ]),
   ) as Record<RequirementColumnId, number>
   const tableRootRef = useRef<HTMLDivElement>(null)

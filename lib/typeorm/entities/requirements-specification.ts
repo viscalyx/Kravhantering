@@ -35,7 +35,7 @@ export const requirementsSpecificationEntity =
       businessNeedsReference: {
         name: 'business_needs_reference',
         type: 'nvarchar',
-        length: 'MAX',
+        length: 300,
         nullable: true,
       },
       specificationCode: {
@@ -47,7 +47,7 @@ export const requirementsSpecificationEntity =
       name: {
         name: 'name',
         type: 'nvarchar',
-        length: 'MAX',
+        length: 150,
         default: '',
       },
       localRequirementNextSequence: {

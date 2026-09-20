@@ -32,6 +32,7 @@ export type SpecificationAgreementView = Awaited<
 >
 
 interface ComponentProps {
+  compact?: boolean
   itemRefs?: string
   onContextChange: (
     view: SpecificationAgreementView,
@@ -59,6 +60,7 @@ function StateIcon({ state }: { state: string }) {
 }
 
 export default function SpecificationAgreementBox({
+  compact = false,
   specificationId,
   onContextChange,
   refreshKey = 0,
@@ -81,8 +83,18 @@ export default function SpecificationAgreementBox({
     'create' | 'details' | 'cancel' | 'end' | 'correct' | null
   >(null)
   const [selectorOpen, setSelectorOpen] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
   const selectorTrigger = useRef<HTMLButtonElement>(null)
+  const restoreSelectorFocus = useRef(false)
   const selectorPanel = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (restoreSelectorFocus.current && !busy && !selectorOpen) {
+      if (document.activeElement === document.body) {
+        selectorTrigger.current?.focus()
+      }
+      restoreSelectorFocus.current = false
+    }
+  }, [busy, selectorOpen])
   const [selectorPosition, setSelectorPosition] = useState({
     top: 0,
     left: 0,
@@ -91,9 +103,11 @@ export default function SpecificationAgreementBox({
   useEffect(() => {
     if (!selectorOpen) return
     const position = () => {
-      const rect = selectorTrigger.current?.getBoundingClientRect()
+      const rect = (
+        compact ? cardRef.current?.closest('dl') : selectorTrigger.current
+      )?.getBoundingClientRect()
       if (!rect) return
-      const width = Math.min(360, window.innerWidth - 16)
+      const width = Math.min(compact ? rect.width : 360, window.innerWidth - 16)
       setSelectorPosition({
         width,
         left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
@@ -139,7 +153,7 @@ export default function SpecificationAgreementBox({
       window.removeEventListener('resize', position)
       window.removeEventListener('scroll', position, true)
     }
-  }, [selectorOpen])
+  }, [selectorOpen, compact])
   const [reference, setReference] = useState('')
   const [date, setDate] = useState('')
   const [description, setDescription] = useState('')
@@ -292,6 +306,7 @@ export default function SpecificationAgreementBox({
         disabled={busy}
         onClick={() => {
           setSelectorOpen(false)
+          restoreSelectorFocus.current = true
           void load(agreement.id)
         }}
         type="button"
@@ -307,32 +322,57 @@ export default function SpecificationAgreementBox({
 
   return (
     <div
-      className="relative min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40"
+      className={
+        compact
+          ? 'flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-sm'
+          : 'relative min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40'
+      }
+      ref={cardRef}
       {...devMarker({
         context: 'requirements specification detail',
-        name: 'metadata card',
+        name: compact ? 'metadata row' : 'metadata card',
         value: 'agreement selector',
         priority: 350,
       })}
     >
-      <dt className="text-[11px] font-semibold uppercase tracking-normal text-secondary-500 wrap-break-word dark:text-secondary-400">
+      <dt
+        className={
+          compact
+            ? 'text-secondary-500 dark:text-secondary-400'
+            : 'text-xs font-semibold text-secondary-500 dark:text-secondary-400'
+        }
+      >
         {t('heading')}
+        {compact && ':'}
       </dt>
-      <dd className="mt-1 text-sm text-secondary-800 dark:text-secondary-100">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2">
+      <dd
+        className={`${compact ? 'min-w-0 font-semibold' : 'mt-1'} text-sm text-secondary-800 dark:text-secondary-100`}
+      >
+        <div
+          className={
+            compact
+              ? 'flex min-w-0 items-center gap-1'
+              : 'grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2'
+          }
+        >
           <div className="min-w-0" role="status">
             {busy && !view ? (
               t('working')
             ) : selected ? (
-              <span className="font-medium wrap-break-word">
-                {selected.agreementReference}
+              <span className="inline-flex min-w-0 items-center gap-1 wrap-anywhere">
+                {compact && <StateIcon state={selected.state} />}
+                <span>
+                  {compact
+                    ? `${selected.effectiveDate} · ${t(`states.${selected.state}`)}`
+                    : selected.agreementReference}
+                </span>
               </span>
             ) : (
               t('none')
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {(selected || view?.canDecide) && (
+            {!compact && (selected || view?.canDecide) && (
               <button
                 aria-haspopup="dialog"
                 aria-label={selected ? t('details') : t('register')}
@@ -360,7 +400,7 @@ export default function SpecificationAgreementBox({
                 <ChevronDown aria-hidden="true" className="h-4 w-4" />
               </button>
             )}
-            {!first && view?.canAuthor && (
+            {!compact && !first && view?.canAuthor && (
               <button
                 aria-label={t('newAgreement')}
                 className={iconButton}
@@ -373,7 +413,7 @@ export default function SpecificationAgreementBox({
               </button>
             )}
           </div>
-          {selected && (
+          {!compact && selected && (
             <div
               className="col-span-2 mt-0.5 flex items-start gap-1 text-xs text-secondary-600 dark:text-secondary-300"
               role="status"

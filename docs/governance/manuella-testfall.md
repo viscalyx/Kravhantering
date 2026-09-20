@@ -1561,22 +1561,31 @@ listan vid rensning. Hjälpen förklarar sökningen. Omladdning öppnar tabellvy
 
 **Steg:** Öppna skapa-dialogen och kontrollera att Spara är inaktiverad. Fyll
 unikt ID och namn och kontrollera att kravunderlagets livscykelstatus och
-ansvarig person är obligatoriska fält i formuläret.
+ansvarig person är obligatoriska fält i formuläret. Prova titel med 150 och
+151 tecken samt beskrivning med 300 och 301 tecken, också med omgivande
+blanksteg och på båda språken. Prova tom titel och tom beskrivning.
 
 **Förväntat resultat:** Spara är inaktiverad tills användaren har gjort en
 normaliserad metadataändring. Skapa-dialogen visar obligatorisk
-livscykelstatus och ansvarig person innan kravunderlag kan sparas.
+livscykelstatus och ansvarig person innan kravunderlag kan sparas. Titel är
+obligatorisk och beskrivning valfri. Efter trimning godtas högst 150 respektive
+300 tecken; längre värden ger begripliga fältfel.
 
 ### SPEC-03: redigera kravunderlag från titelåtgärd
 
-**Steg:** Öppna detalj, använd titelns redigeringsåtgärd och kontrollera att
+**Steg:** Öppna detalj med hopfällt sidhuvud. Fäll ut och in med mus och
+tangentbord och kontrollera att fokus syns. Kontrollera livscykelstatus och
+avtal i båda lägena. Använd titelns redigeringsåtgärd i båda lägena och
+kontrollera att
 Spara är inaktiverad innan ändring. Ändra text, klicka X och avbryt
 förkastandet. Kontrollera ansvarig persons HSA-id-fält och att klick utanför
-dialogen inte stänger formuläret.
+dialogen inte stänger formuläret. Prova samma textgränser som i SPEC-02.
 
 **Förväntat resultat:** Spara aktiveras först efter metadataändringen. X visar
 bekräftelse innan formulär med osparade ändringar förkastas. HSA-id för
 ansvarig person visas i formuläret och dialogen ligger kvar vid klick utanför.
+Sidhuvudet börjar hopfällt med livscykelstatus och avtal. Utfällt visas även
+beskrivning och samtliga metadata. Textgränserna gäller även redigering.
 
 ### SPEC-04: ta bort kravunderlag med bekräftelse
 
@@ -2033,7 +2042,8 @@ expanderingen; ingen extra stängning och öppning ska behövas.
 ### SPEC-22: bekräfta hela kravunderlaget och välj avtal
 
 **Steg:** Skapa ett kravunderlag med ett bibliotekskrav och ett lokalt krav som
-kravunderlagsansvarig. Öppna pennan vid **Inget** i rutan **Avtal** till vänster
+kravunderlagsansvarig. Fäll ut sidhuvudet och öppna pennan vid **Inget** i
+rutan **Avtal**
 om **Styrningsobjektstyp**. Ange avtalsreferens och avtalsdatum, lämna beskrivningen
 tom och bekräfta. Prova även ett första avtal med framtida datum. Öppna dialogens
 registreringsuppgifter och byt mellan tillgängliga avtal. Kontrollera
@@ -2115,6 +2125,12 @@ uttryckliga godkännande av planerat avslut för ett nytt godkänt avsteg. Skapa
 ett avsteg direkt från kravraden i ett kommande avtal. En begäran eller ett
 beslut från en tidigare avtalsvy ska avvisas även om samma innehåll finns kvar
 i aktuellt avtal.
+
+Fäll in sidhuvudet. Endast avtalsdatum och status visas efter etiketten Avtal.
+Öppna väljaren med pilen och välj ett tidigare avtal med tangentbordet.
+Kontrollera att fokus återgår till pilen, att valt avtal bevaras när sidhuvudet
+fälls ut och att fullständiga avtalsuppgifter och tillåtna åtgärder går att nå.
+Utan avtal är Inget en text utan pil i hopfällt läge.
 
 ### SPEC-25: rätta referens och datum
 
@@ -2265,7 +2281,7 @@ och ingen redigering sparas av hopfällningen. Nollträffar ändrar inte layout.
 avdelaren mellan panelerna åt båda hållen. Dubbelklicka på avdelaren.
 
 **Förväntat resultat:** Panelerna ändrar bredd under dragningen och behåller
-sitt innehåll. Dubbelklick återställer lika breda paneler.
+sitt innehåll. Dubbelklick återställer förvalda panelproportioner.
 
 ### SPEC-34: ändra och bevara panelbredder med tangentbord
 
@@ -2276,7 +2292,7 @@ fäll ihop och öppna en panel och ändra fönsterbredd. Tryck Enter på avdelar
 **Förväntat resultat:** Piltangenterna ändrar bredd, med större steg med
 Shift. Valet bevaras vid omladdning, tabbbyte och hopfällning. Smala fönster
 visar staplade paneler utan avdelare; breda fönster återställer valt läge.
-Enter återställer lika breda paneler. Piltangenter fäller inte ihop paneler.
+Enter återställer förvalda panelproportioner. Piltangenter fäller inte ihop paneler.
 
 ### SPEC-35: förhandsvisa och avbryt hopfällning vid dragning
 

@@ -2,9 +2,24 @@ import { z } from 'zod'
 import { HSA_ID_MAX_LENGTH, isHsaId } from '@/lib/auth/hsa-id'
 import {
   boundedDbStringSchema,
-  nullableBusinessTextSchema,
   positiveIntegerSchema,
 } from '@/lib/http/validation'
+
+import {
+  SPECIFICATION_DESCRIPTION_MAX_LENGTH,
+  SPECIFICATION_NAME_MAX_LENGTH,
+} from '@/lib/specifications/text-limits'
+
+const specificationNameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(SPECIFICATION_NAME_MAX_LENGTH)
+const specificationDescriptionSchema = z
+  .string()
+  .trim()
+  .max(SPECIFICATION_DESCRIPTION_MAX_LENGTH)
+  .nullable()
 
 const responsibleHsaIdSchema = z
   .string()
@@ -31,8 +46,8 @@ export const specificationCodeSchema = boundedDbStringSchema
 
 export const createSpecificationSchema = z
   .object({
-    businessNeedsReference: nullableBusinessTextSchema.optional(),
-    name: boundedDbStringSchema,
+    businessNeedsReference: specificationDescriptionSchema.optional(),
+    name: specificationNameSchema,
     specificationImplementationTypeId: positiveIntegerSchema
       .nullable()
       .optional(),
@@ -47,8 +62,8 @@ export const createSpecificationSchema = z
 
 export const updateSpecificationSchema = z
   .object({
-    businessNeedsReference: nullableBusinessTextSchema.optional(),
-    name: boundedDbStringSchema.optional(),
+    businessNeedsReference: specificationDescriptionSchema.optional(),
+    name: specificationNameSchema.optional(),
     specificationImplementationTypeId: positiveIntegerSchema
       .nullable()
       .optional(),

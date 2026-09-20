@@ -1526,6 +1526,15 @@ export const REST_OPERATION_DECLARATIONS = [
     'focused',
   ],
   [
+    'PATCH',
+    '/api/requirements-specifications/[id]',
+    'session',
+    'same-origin',
+    'authenticated',
+    'framework-default',
+    'focused',
+  ],
+  [
     'DELETE',
     '/api/requirements-specifications/[id]',
     'session',

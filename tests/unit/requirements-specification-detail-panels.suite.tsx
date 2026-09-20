@@ -46,27 +46,27 @@ export function registerPanelLayoutTests(context: SpecDetailWorkflowContext) {
     it.each([
       [
         'valid preference',
-        JSON.stringify({ specificationId: 8, leftRatio: 0.6 }),
-        0.6,
+        JSON.stringify({ specificationId: 8, leftRatio: 0.55 }),
+        0.55,
       ],
       [
         'another specification',
         JSON.stringify({ specificationId: 9, leftRatio: 0.6 }),
-        0.5,
+        0.6,
       ],
-      ['invalid JSON', '{invalid', 0.5],
-      ['missing ratio', JSON.stringify({ specificationId: 8 }), 0.5],
-      ['zero ratio', JSON.stringify({ specificationId: 8, leftRatio: 0 }), 0.5],
-      ['full width', JSON.stringify({ specificationId: 8, leftRatio: 1 }), 0.5],
+      ['invalid JSON', '{invalid', 0.6],
+      ['missing ratio', JSON.stringify({ specificationId: 8 }), 0.6],
+      ['zero ratio', JSON.stringify({ specificationId: 8, leftRatio: 0 }), 0.6],
+      ['full width', JSON.stringify({ specificationId: 8, leftRatio: 1 }), 0.6],
       [
         'out of range',
         JSON.stringify({ specificationId: 8, leftRatio: -2 }),
-        0.5,
+        0.6,
       ],
       [
         'string ratio',
         JSON.stringify({ specificationId: 8, leftRatio: '0.6' }),
-        0.5,
+        0.6,
       ],
     ])(
       'normalizes the current specification width record: %s',

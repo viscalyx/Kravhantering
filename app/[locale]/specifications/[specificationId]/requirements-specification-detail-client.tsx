@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   AlertTriangle,
+  ChevronDown,
   ChevronRight,
   Download,
   Ellipsis,
@@ -81,7 +82,11 @@ import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
-import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
+import {
+  collapsiblePanelMotion,
+  dialogPanelMotion,
+  fadeMotion,
+} from '@/lib/reduced-motion'
 import {
   canExportProcurementCsvForLifecycleStatus,
   getSpecificationReportProfileForLifecycleStatus,
@@ -697,6 +702,7 @@ export default function KravunderlagDetailClient({
   const [specificationItemStatuses] = useState(
     initialData.specificationItemStatuses,
   )
+  const [headerExpanded, setHeaderExpanded] = useState(false)
   const [showEditSpecificationForm, setShowEditSpecificationForm] =
     useState(false)
   const [showBulkDeviationModal, setShowBulkDeviationModal] = useState(false)
@@ -2981,7 +2987,7 @@ export default function KravunderlagDetailClient({
   }
 
   const desktopSplitPanelCardClassName =
-    'bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain'
+    'bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain xl:[overflow-anchor:none]'
   const specificationDetailStickyTopOffsetClassName = 'top-0'
   const specificationDetailPagePaddingClassName =
     'px-4 pb-8 pt-6 sm:px-6 sm:pb-10 sm:pt-7 lg:px-8 lg:pt-8 xl:pb-2'
@@ -3188,16 +3194,20 @@ export default function KravunderlagDetailClient({
           {/* Header */}
           <div className="mb-5">
             <div
-              className="flex flex-col gap-3 xl:grid xl:grid-cols-[minmax(18rem,1fr)_minmax(0,2fr)] xl:items-start xl:gap-5"
+              className={
+                headerExpanded
+                  ? 'min-w-0'
+                  : 'grid min-w-0 grid-cols-1 items-start gap-3 sm:grid-cols-[minmax(0,1fr)_fit-content(25rem)] sm:gap-6'
+              }
               data-specification-detail-header-summary="true"
             >
               <div className="min-w-0">
                 <div
-                  className="flex items-center gap-3"
+                  className="flex items-start gap-3"
                   data-specification-detail-title-row="true"
                 >
                   <h1
-                    className="min-w-0 text-xl font-bold text-secondary-900 dark:text-secondary-100"
+                    className="min-w-0 text-xl font-bold wrap-anywhere text-secondary-900 dark:text-secondary-100"
                     {...devMarker({
                       context: 'requirements specification detail',
                       name: 'heading',
@@ -3206,6 +3216,26 @@ export default function KravunderlagDetailClient({
                   >
                     {specName}
                   </h1>
+                  <button
+                    aria-controls="specification-header-metadata specification-header-description"
+                    aria-expanded={headerExpanded}
+                    aria-label={t(
+                      headerExpanded ? 'collapseHeader' : 'expandHeader',
+                    )}
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-white/80 text-secondary-700 hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:border-secondary-700 dark:bg-secondary-900/70 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                    onClick={() => setHeaderExpanded(expanded => !expanded)}
+                    type="button"
+                    {...devMarker({
+                      context: 'requirements specification detail',
+                      name: 'disclosure',
+                      value: 'header metadata',
+                    })}
+                  >
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={`h-4 w-4 ${headerExpanded ? 'rotate-180' : ''}`}
+                    />
+                  </button>
                   {canMutateSpecification ? (
                     <button
                       aria-expanded={showEditSpecificationForm}
@@ -3226,17 +3256,37 @@ export default function KravunderlagDetailClient({
                     </button>
                   ) : null}
                 </div>
-                {spec.businessNeedsReference && (
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary-700 dark:text-secondary-200">
-                    {spec.businessNeedsReference}
-                  </p>
-                )}
+                <div id="specification-header-description">
+                  <AnimatePresence initial={false}>
+                    {headerExpanded && spec.businessNeedsReference && (
+                      <motion.p
+                        {...collapsiblePanelMotion(shouldReduceMotion)}
+                        className="mt-2 overflow-hidden text-sm leading-6 text-secondary-700 wrap-anywhere dark:text-secondary-200"
+                      >
+                        {spec.businessNeedsReference}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
               <dl
-                className="grid grid-flow-col auto-cols-[minmax(12rem,1fr)] gap-3 overflow-x-auto pb-1 xl:auto-cols-fr"
+                className={
+                  headerExpanded
+                    ? 'mt-4 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5'
+                    : 'grid w-fit min-w-0 max-w-full gap-0.5 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2 sm:-mt-4 sm:justify-self-end dark:border-secondary-700/70 dark:bg-secondary-900/40'
+                }
                 data-specification-detail-header-metadata="true"
+                id="specification-header-metadata"
+                {...devMarker({
+                  context: 'requirements specification detail',
+                  name: 'metadata summary',
+                  value: headerExpanded
+                    ? 'expanded header'
+                    : 'collapsed header',
+                })}
               >
                 <SpecificationAgreementBox
+                  compact={!headerExpanded}
                   itemRefs={leftExpandedItemRef ?? ''}
                   onContextChange={(view, refreshItems) => {
                     const stateChanged =
@@ -3252,47 +3302,80 @@ export default function KravunderlagDetailClient({
                   refreshKey={agreementRefreshKey}
                   specificationId={specificationId}
                 />
-                {spec.governanceObjectType && (
-                  <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
-                    <dt className="text-[11px] font-semibold uppercase tracking-normal text-secondary-500 wrap-break-word dark:text-secondary-400">
-                      {t('governanceObjectType')}
-                    </dt>
-                    <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">
-                      {localName(spec.governanceObjectType)}
-                    </dd>
-                  </div>
-                )}
-                {responsibleDisplayName && (
-                  <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
-                    <dt className="text-[11px] font-semibold uppercase tracking-normal text-secondary-500 wrap-break-word dark:text-secondary-400">
-                      {t('responsible')}
-                    </dt>
-                    <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">
-                      {responsibleDisplayName}
-                    </dd>
-                    {spec.responsibleHsaId ? (
-                      <dd className="mt-0.5 font-mono text-xs leading-5 text-secondary-500 wrap-break-word dark:text-secondary-400">
-                        {spec.responsibleHsaId}
+                <AnimatePresence initial={false}>
+                  {headerExpanded && spec.governanceObjectType && (
+                    <motion.div
+                      key="governance"
+                      {...fadeMotion(shouldReduceMotion)}
+                      className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40"
+                    >
+                      <dt className="text-xs font-semibold text-secondary-500 dark:text-secondary-400">
+                        {t('governanceObjectType')}
+                      </dt>
+                      <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">
+                        {localName(spec.governanceObjectType)}
                       </dd>
-                    ) : null}
-                  </div>
-                )}
-                {spec.implementationType && (
-                  <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
-                    <dt className="text-[11px] font-semibold uppercase tracking-normal text-secondary-500 wrap-break-word dark:text-secondary-400">
-                      {t('implementationType')}
-                    </dt>
-                    <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">
-                      {localName(spec.implementationType)}
-                    </dd>
-                  </div>
-                )}
+                    </motion.div>
+                  )}
+                  {headerExpanded && responsibleDisplayName && (
+                    <motion.div
+                      key="responsible"
+                      {...fadeMotion(shouldReduceMotion)}
+                      className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40"
+                    >
+                      <dt className="text-xs font-semibold text-secondary-500 dark:text-secondary-400">
+                        {t('responsible')}
+                      </dt>
+                      <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">
+                        {responsibleDisplayName}
+                      </dd>
+                      {spec.responsibleHsaId ? (
+                        <dd className="mt-0.5 font-mono text-xs leading-5 text-secondary-500 wrap-break-word dark:text-secondary-400">
+                          {spec.responsibleHsaId}
+                        </dd>
+                      ) : null}
+                    </motion.div>
+                  )}
+                  {headerExpanded && spec.implementationType && (
+                    <motion.div
+                      key="implementation"
+                      {...fadeMotion(shouldReduceMotion)}
+                      className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40"
+                    >
+                      <dt className="text-xs font-semibold text-secondary-500 dark:text-secondary-400">
+                        {t('implementationType')}
+                      </dt>
+                      <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">
+                        {localName(spec.implementationType)}
+                      </dd>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 {spec.lifecycleStatus && (
-                  <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
-                    <dt className="text-[11px] font-semibold uppercase tracking-normal text-secondary-500 wrap-break-word dark:text-secondary-400">
-                      {t('lifecycleStatus')}
+                  <div
+                    className={
+                      headerExpanded
+                        ? 'min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 dark:border-secondary-700/70 dark:bg-secondary-900/40'
+                        : 'order-first flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-sm'
+                    }
+                  >
+                    <dt
+                      className={
+                        headerExpanded
+                          ? 'text-xs font-semibold text-secondary-500 dark:text-secondary-400'
+                          : 'text-secondary-500 dark:text-secondary-400'
+                      }
+                    >
+                      {t(
+                        headerExpanded
+                          ? 'lifecycleStatus'
+                          : 'lifecycleStatusShort',
+                      )}
+                      {!headerExpanded && ':'}
                     </dt>
-                    <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">
+                    <dd
+                      className={`${headerExpanded ? 'mt-1 font-medium' : 'font-semibold'} min-w-0 text-sm leading-5 text-secondary-800 wrap-anywhere dark:text-secondary-100`}
+                    >
                       {localName(spec.lifecycleStatus)}
                     </dd>
                   </div>
@@ -3779,6 +3862,7 @@ export default function KravunderlagDetailClient({
                         : undefined
                     }
                     onVisibleColumnsChange={setLeftVisibleCols}
+                    presentation="specification"
                     renderExpanded={id => {
                       const item = specificationItems.find(r => r.id === id)
                       const agreementItem = agreementContext?.items.find(
@@ -4370,6 +4454,7 @@ export default function KravunderlagDetailClient({
                       onSelectionChange={setRightSelectedIds}
                       onSortChange={setRightSort}
                       onVisibleColumnsChange={setRightVisibleCols}
+                      presentation="specification"
                       renderExpanded={id => (
                         <RequirementDetailClient
                           currentActorName={currentActorName}

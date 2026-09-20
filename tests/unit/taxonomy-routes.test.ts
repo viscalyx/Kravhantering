@@ -539,6 +539,7 @@ import { PUT as putSpecResponsible } from '@/app/api/requirements-specifications
 import {
   DELETE as deletePkg,
   GET as getPkg,
+  PATCH as patchPkg,
   PUT as putPkg,
 } from '@/app/api/requirements-specifications/[id]/route'
 import {
@@ -2121,6 +2122,55 @@ describe('requirement-specifications routes', () => {
       id === 404 ? null : { id, responsibleHsaId: 'SE5560000001-route' },
     )
   })
+
+  it.each(['POST', 'PATCH', 'PUT'] as const)(
+    '%s validates specification title and description limits after trimming',
+    async method => {
+      const send = (fields: Record<string, unknown>) =>
+        method === 'POST'
+          ? postPkg(jsonReq(method, specificationCreateBody(fields)))
+          : (method === 'PATCH' ? patchPkg : putPkg)(
+              jsonReq(method, fields),
+              makeParams('1'),
+            )
+      for (const [field, value] of [
+        ['name', 'x'.repeat(151)],
+        ['businessNeedsReference', 'x'.repeat(301)],
+        ['name', '   '],
+      ]) {
+        const response = await send({ [field]: value })
+        expect(response.status).toBe(400)
+        await expectInvalidRequest(response, field)
+      }
+      const response = await send({
+        name: `  ${'x'.repeat(150)}  `,
+        businessNeedsReference: `  ${'y'.repeat(300)}  `,
+      })
+      expect(response.status).toBe(method === 'POST' ? 201 : 200)
+      await expect(response.json()).resolves.toMatchObject({
+        id: method === 'POST' ? 2 : 1,
+      })
+      expect(
+        method === 'POST' ? mockCreatePkg : mockUpdatePkg,
+      ).toHaveBeenLastCalledWith(
+        expect.anything(),
+        ...(method === 'POST' ? [] : [1]),
+        expect.objectContaining({
+          name: 'x'.repeat(150),
+          businessNeedsReference: 'y'.repeat(300),
+        }),
+        authState.context,
+      )
+      for (const description of [undefined, null, '', '   ']) {
+        const optional = await send({
+          name: 'Required title',
+          businessNeedsReference: description,
+        })
+        expect(optional.status).toBe(method === 'POST' ? 201 : 200)
+        await expect(optional.json()).resolves.toHaveProperty('id')
+      }
+    },
+  )
 
   it('GET returns specifications', async () => {
     const r = await getPkgs(new NextRequest('http://l'))

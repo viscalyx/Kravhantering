@@ -194,7 +194,7 @@ async function confirmDraft(page: Page) {
   await expect(dialog).toBeHidden()
 }
 
-test('SPEC-23/SPEC-26: show compact future and cancelled changes while viewing an earlier agreement', async ({
+test('SPEC-23/SPEC-24/SPEC-26: show compact future and cancelled changes while viewing an earlier agreement', async ({
   page,
 }, testInfo) => {
   const owner = await newRoleContext(testInfo, 'specificationResponsible')
@@ -281,6 +281,9 @@ test('SPEC-23/SPEC-26: show compact future and cancelled changes while viewing a
     })
     await page.setViewportSize(DESKTOP_VIEWPORT)
     await page.goto(`/sv/specifications/${data.id}`)
+    await page
+      .getByRole('button', { name: 'Fäll ut sidhuvud', exact: true })
+      .click()
     await expect(card(page)).toContainText('Avtal B')
     await expand(page, data.local.uniqueId)
     const disclosure = page.locator('details').filter({
@@ -319,13 +322,34 @@ test('SPEC-23/SPEC-26: show compact future and cancelled changes while viewing a
       .last()
       .click()
     await expect(comparison).toBeHidden()
-    await page.getByRole('button', { name: 'Välj avtal', exact: true }).click()
+    await page
+      .getByRole('button', { name: 'Fäll in sidhuvud', exact: true })
+      .click()
+    const trigger = page.getByRole('button', {
+      name: 'Välj avtal',
+      exact: true,
+    })
+    await trigger.focus()
+    await trigger.press('Enter')
     const selector = page.getByRole('dialog', {
       name: 'Välj avtal',
       exact: true,
     })
+    const compactBounds = requireTestValue(
+      await page
+        .locator('[data-specification-detail-header-metadata]')
+        .boundingBox(),
+    )
+    await expect
+      .poll(async () => requireTestValue(await selector.boundingBox()).width)
+      .toBeCloseTo(compactBounds.width, 0)
     await selector.getByText('Tidigare avtal', { exact: true }).click()
     await selector.getByRole('button', { name: /^Avtal A ·/ }).click()
+    await expect(trigger).toBeFocused()
+    await expect(card(page)).toContainText('2020-01-01')
+    await page
+      .getByRole('button', { name: 'Fäll ut sidhuvud', exact: true })
+      .click()
     await expect(card(page)).toContainText('Avtal A')
     await expect(
       page
@@ -378,6 +402,9 @@ test('SPEC-23: center wrapped Swedish action labels and keep room for requiremen
     }
     await page.setViewportSize(DESKTOP_VIEWPORT)
     await page.goto(`/sv/specifications/${data.id}`)
+    await page
+      .getByRole('button', { name: 'Fäll ut sidhuvud', exact: true })
+      .click()
     await page.getByRole('button', { name: 'Välj avtal', exact: true }).click()
     const selector = page.getByRole('dialog', {
       name: 'Välj avtal',
@@ -521,6 +548,9 @@ test('SPEC-22/SPEC-23/SPEC-28: edit the complete agreement in the requirement li
     )
     await page.setViewportSize(DESKTOP_VIEWPORT)
     await page.goto(`/en/specifications/${data.id}`)
+    await page
+      .getByRole('button', { name: 'Expand header', exact: true })
+      .click()
     await register(page, 'Agreement A', '2020-01-01')
     await expect(card(page)).toContainText('Current')
     await expand(page, data.local.uniqueId)
@@ -673,6 +703,9 @@ test('SPEC-22/SPEC-25/SPEC-26: correct and cancel the first upcoming agreement, 
     const data = await fixture(owner)
     await page.setViewportSize(DESKTOP_VIEWPORT)
     await page.goto(`/en/specifications/${data.id}`)
+    await page
+      .getByRole('button', { name: 'Expand header', exact: true })
+      .click()
     await register(page, 'Future A', futureDate())
     await expectFullWidthAgreementStatus(page)
     await expect(card(page)).toContainText('Upcoming')
@@ -763,6 +796,9 @@ test('SPEC-26/SPEC-27: discard a pending draft, record agreement end and prepare
   try {
     const data = await fixture(owner)
     await page.goto(`/en/specifications/${data.id}`)
+    await page
+      .getByRole('button', { name: 'Expand header', exact: true })
+      .click()
     await register(page, 'Agreement A', '2020-01-01')
     await draft(page, 'Discard B', futureDate())
     await page
@@ -847,6 +883,9 @@ test('SPEC-23: compare and adopt a newer library version before the first agreem
       return source
     })
     await page.goto(`/en/specifications/${data.id}`)
+    await page
+      .getByRole('button', { name: 'Expand header', exact: true })
+      .click()
     await expect(
       page.getByRole('button', { name: 'Register agreement', exact: true }),
     ).toBeEnabled()
@@ -1019,6 +1058,12 @@ for (const locale of ['sv', 'en'] as const) {
       const data = await fixture(owner)
       await page.setViewportSize({ width: 320, height: 740 })
       await page.goto(`/${locale}/specifications/${data.id}`)
+      await page
+        .getByRole('button', {
+          name: locale === 'sv' ? 'Fäll ut sidhuvud' : 'Expand header',
+          exact: true,
+        })
+        .click()
       const registerButton = page.getByRole('button', {
         name: labels.register,
         exact: true,
@@ -1161,6 +1206,9 @@ for (const kind of ['library', 'local'] as const) {
       const { data, uniqueId, item, read, createEndpoint } =
         await deviationFixture(owner, kind)
       await page.goto(`/en/specifications/${data.id}`)
+      await page
+        .getByRole('button', { name: 'Expand header', exact: true })
+        .click()
       await expect(
         page.getByRole('button', { name: 'Register agreement', exact: true }),
       ).toBeEnabled()
@@ -1289,6 +1337,9 @@ for (const kind of ['library', 'local'] as const) {
       }
 
       await page.reload()
+      await page
+        .getByRole('button', { name: 'Expand header', exact: true })
+        .click()
       await expect(
         page.getByRole('button', { name: 'Register agreement', exact: true }),
       ).toBeEnabled()
@@ -1323,6 +1374,9 @@ for (const kind of ['library', 'local'] as const) {
         'request deviation review',
       )
       await page.goto(`/en/specifications/${data.id}`)
+      await page
+        .getByRole('button', { name: 'Expand header', exact: true })
+        .click()
       await expect(
         page.getByRole('button', { name: 'Register agreement', exact: true }),
       ).toBeEnabled()
@@ -1371,6 +1425,9 @@ for (const kind of ['library', 'local'] as const) {
         ),
       ).toMatchObject({ decision: 3, isReviewRequested: 0 })
       await page.reload()
+      await page
+        .getByRole('button', { name: 'Expand header', exact: true })
+        .click()
       await expect(
         page.getByRole('button', { name: 'Register agreement', exact: true }),
       ).toBeEnabled()
@@ -1388,6 +1445,9 @@ for (const kind of ['library', 'local'] as const) {
     try {
       const { data, uniqueId } = await deviationFixture(owner, kind)
       await page.goto(`/en/specifications/${data.id}`)
+      await page
+        .getByRole('button', { name: 'Expand header', exact: true })
+        .click()
       await expect(
         page.getByRole('button', { name: 'Register agreement', exact: true }),
       ).toBeEnabled()
@@ -1501,6 +1561,9 @@ test('SPEC-24: future ending still requires consent to remove approved content',
           'approve permission',
         )
         await page.goto(`/en/specifications/${data.id}`)
+        await page
+          .getByRole('button', { name: 'Expand header', exact: true })
+          .click()
         await register(page, 'Approval A', '2020-01-01')
         await draft(page, 'Approval B', futureDate())
         // Model a recorded ending whose effective time is still in the future.
@@ -1538,6 +1601,9 @@ test('SPEC-24: future ending still requires consent to remove approved content',
             response.request().method() === 'GET',
         )
         await page.reload()
+        await page
+          .getByRole('button', { name: 'Expand header', exact: true })
+          .click()
         expect((await refreshed).ok()).toBe(true)
         await select(page, 'Approval B')
         await expect(
@@ -1611,6 +1677,9 @@ test('DEV-11/DEV-12: shared renewal and responsible closure survive draft discar
         'approve initial permission',
       )
       await page.goto(`/en/specifications/${data.id}`)
+      await page
+        .getByRole('button', { name: 'Expand header', exact: true })
+        .click()
       await register(page, 'Validity A', '2020-01-01')
       await draft(page, 'Validity B', futureDate())
       return data
@@ -1625,6 +1694,9 @@ test('DEV-11/DEV-12: shared renewal and responsible closure survive draft discar
             response.request().method() === 'GET',
         )
         await page.reload()
+        await page
+          .getByRole('button', { name: 'Expand header', exact: true })
+          .click()
         expect((await refreshed).ok()).toBe(true)
         await expect(
           page
@@ -1754,6 +1826,9 @@ test('DEV-11/DEV-12: shared renewal and responsible closure survive draft discar
           response.request().method() === 'GET',
       )
       await page.reload()
+      await page
+        .getByRole('button', { name: 'Expand header', exact: true })
+        .click()
       expect((await refreshed).ok()).toBe(true)
       await select(page, 'Validity B')
       await expect(
@@ -1979,6 +2054,12 @@ for (const locale of ['en', 'sv'] as const) {
             )
           }
           await page.goto(url)
+          await page
+            .getByRole('button', {
+              name: locale === 'sv' ? 'Fäll ut sidhuvud' : 'Expand header',
+              exact: true,
+            })
+            .click()
           await showContext()
           return {
             data,
@@ -2010,6 +2091,12 @@ for (const locale of ['en', 'sv'] as const) {
               details: { reason: 'removal_requires_included' },
             })
             await page.reload()
+            await page
+              .getByRole('button', {
+                name: locale === 'sv' ? 'Fäll ut sidhuvud' : 'Expand header',
+                exact: true,
+              })
+              .click()
             await showContext()
             await expand(page, id)
             const action = page
@@ -2078,6 +2165,12 @@ for (const locale of ['en', 'sv'] as const) {
         }
         await test.step('Successful removal', async () => {
           await page.reload()
+          await page
+            .getByRole('button', {
+              name: locale === 'sv' ? 'Fäll ut sidhuvud' : 'Expand header',
+              exact: true,
+            })
+            .click()
           await showContext()
           await expand(page, data.local.uniqueId)
           const localRemove = page
@@ -2111,6 +2204,12 @@ for (const locale of ['en', 'sv'] as const) {
             .click()
           await expect(page.getByRole('alertdialog')).toHaveCount(0)
           await page.reload()
+          await page
+            .getByRole('button', {
+              name: locale === 'sv' ? 'Fäll ut sidhuvud' : 'Expand header',
+              exact: true,
+            })
+            .click()
           await showContext()
           const viewAfterLocal = (await (
             await owner.get(
@@ -2146,6 +2245,12 @@ for (const locale of ['en', 'sv'] as const) {
             .click()
           await expect(page.getByRole('alertdialog')).toHaveCount(0)
           await page.reload()
+          await page
+            .getByRole('button', {
+              name: locale === 'sv' ? 'Fäll ut sidhuvud' : 'Expand header',
+              exact: true,
+            })
+            .click()
           const finalView = (await (
             await owner.get(
               `${data.endpoint}${agreementId ? `?agreementId=${agreementId}` : ''}`,
