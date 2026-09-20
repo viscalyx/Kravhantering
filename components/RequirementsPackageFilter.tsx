@@ -157,7 +157,11 @@ export default function RequirementsPackageFilter({
   const updateChooserPosition = useCallback(() => {
     if (!bandRef.current || typeof window === 'undefined') return
 
-    const rect = bandRef.current.getBoundingClientRect()
+    const bandRect = bandRef.current.getBoundingClientRect()
+    const rect =
+      bandRef.current
+        .closest('[data-requirement-package-chooser-anchor]')
+        ?.getBoundingClientRect() ?? bandRect
     const viewportWidth = window.innerWidth
     const width = Math.max(
       0,
@@ -167,7 +171,7 @@ export default function RequirementsPackageFilter({
       Math.max(rect.left, VIEWPORT_MARGIN),
       viewportWidth - VIEWPORT_MARGIN - width,
     )
-    const top = rect.bottom
+    const top = bandRect.bottom
 
     const nextPosition = {
       left,
@@ -335,6 +339,7 @@ export default function RequirementsPackageFilter({
       <fieldset
         aria-busy={catalogStatus === 'loading'}
         className="relative m-0 min-w-0 border-x-0 border-t-0 border-b border-secondary-200 bg-white/80 px-3 py-2 text-sm backdrop-blur-sm dark:border-secondary-700 dark:bg-secondary-900/80"
+        data-requirement-package-filter-band="true"
         {...devMarker({
           context: 'requirements table',
           name: 'requirements package filter',
@@ -505,6 +510,7 @@ export default function RequirementsPackageFilter({
     <>
       <fieldset
         className="relative m-0 min-w-0 border-x-0 border-t-0 border-b border-secondary-200 bg-white/80 px-3 py-2 text-sm backdrop-blur-sm dark:border-secondary-700 dark:bg-secondary-900/80"
+        data-requirement-package-filter-band="true"
         onPointerEnter={handlePointerEnter}
         onPointerLeave={handlePointerLeave}
         ref={bandRef}

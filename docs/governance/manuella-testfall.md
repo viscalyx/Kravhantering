@@ -1619,7 +1619,10 @@ verifieringsmetod, före metadata. Områdesinformationen visar beskrivning och
 **Steg:** Lägg till ett krav och kontrollera att det syns. Kontrollera att
 underlagets kravlista har individuella markeringsrutor men ingen Markera alla.
 Kontrollera att båda kravlistorna använder det kompakta kravpaketsbandet och
-att vänster och höger paketval är oberoende. Välj flera paket och minska
+att vänster och höger paketval är oberoende. Hovra över respektive filter,
+flytta pekaren till ett paket i väljaren och kontrollera att väljaren är kvar.
+Stäng med Escape och kontrollera att fokus återgår till rätt filterknapp.
+Välj flera paket och minska
 fönsterbredden. Paketvalen går fortfarande att läsa och ta bort, och övriga
 knappar i knappraden går att använda. Höger väljare ska visa hela den
 aktiva katalogen, även paket utan tillgängliga träffar. Vänster väljare ska

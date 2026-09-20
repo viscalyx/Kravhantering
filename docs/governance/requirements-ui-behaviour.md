@@ -352,7 +352,12 @@ retain their existing semantics.
 - The chooser overlays the table, contains only unselected packages, wraps
   badges, scrolls vertically when necessary, and remains inside the viewport.
   Its top edge follows the live bottom edge of the filter band when selected
-  badges wrap or unwrap. Adding a package does not close it. Focus recovers to
+  badges wrap or unwrap. In specification panels, it spans its own panel's
+  toolbar horizontally while staying directly below its filter band, so the
+  pointer can enter the chooser without a gap even when toolbar actions wrap. Both
+  panel choosers use the library chooser's opaque background, border, padding,
+  and wrapping badge layout in light and dark themes.
+  Adding a package does not close it. Focus recovers to
   an adjacent package or the filter button after an add, remove, or clear
   action.
 - Package selection preserves the existing OR query semantics. Selected badges

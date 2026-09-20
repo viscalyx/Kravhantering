@@ -170,6 +170,83 @@ test('SPEC-06 SPEC-30: keeps multiple package selections and toolbar actions usa
   ).toBeVisible()
 })
 
+for (const theme of ['light', 'dark'] as const) {
+  for (const width of [320, 1440, 1920]) {
+    test(`SPEC-06: package choosers match the library and span each panel at ${width}, ${theme}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await page.addInitScript(
+        theme => localStorage.setItem('theme', theme),
+        theme,
+      )
+      await page.goto('/sv/requirements')
+      await page
+        .getByRole('button', { name: 'Filtrera kravpaket', exact: true })
+        .hover()
+      const chooser = page.getByRole('group', {
+        name: 'Tillgängliga kravpaket',
+        exact: true,
+      })
+      await expect(chooser).toBeVisible()
+      await expect(chooser).toHaveCSS('opacity', '1')
+      const surface = () =>
+        chooser.evaluate(node => {
+          const style = getComputedStyle(node)
+          return {
+            background: style.backgroundColor,
+            padding: style.padding,
+            border: style.borderBottomWidth,
+          }
+        })
+      const librarySurface = await surface()
+      expect(librarySurface.background).not.toBe('rgba(0, 0, 0, 0)')
+      await page.keyboard.press('Escape')
+      await openSpecification(page)
+      await page
+        .getByRole('button', { name: 'Öppna Kravbibliotek', exact: true })
+        .click()
+      for (const side of ['left', 'right']) {
+        const panel = page.locator(`#specification-${side}-panel`)
+        const trigger = panel.getByRole('button', {
+          name: 'Filtrera kravpaket',
+          exact: true,
+        })
+        await trigger.scrollIntoViewIfNeeded()
+        await trigger.hover()
+        await expect(chooser).toBeVisible()
+        await expect(chooser).toHaveCSS('opacity', '1')
+        expect(await surface()).toEqual(librarySurface)
+        const toolbar = panel.locator(
+          '[data-developer-mode-name="panel toolbar"]',
+        )
+        await expect
+          .poll(async () => {
+            const menu = requireTestValue(await chooser.boundingBox())
+            const bar = requireTestValue(await toolbar.boundingBox())
+            const band = requireTestValue(
+              await panel
+                .locator('[data-requirement-package-filter-band]')
+                .boundingBox(),
+            )
+            return (
+              Math.abs(menu.x - bar.x) < 1 &&
+              Math.abs(menu.width - bar.width) < 1 &&
+              Math.abs(menu.y - band.y - band.height) < 1
+            )
+          })
+          .toBe(true)
+        await chooser.getByRole('button').first().hover()
+        await expect(chooser).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(chooser).toBeHidden()
+        await expect(trigger).toBeFocused()
+      }
+    })
+  }
+}
+
 test('SPEC-33: resizes both panels live without changing their gap or table columns', async ({
   page,
 }) => {

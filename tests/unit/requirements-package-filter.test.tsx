@@ -125,6 +125,44 @@ describe('RequirementsPackageFilter', () => {
     expect(cancelFrame).toHaveBeenCalledWith(1)
   })
 
+  it('spans the toolbar horizontally and stays directly below the filter band', async () => {
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: 1200,
+    })
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: HTMLElement) {
+        const isToolbar = this.hasAttribute(
+          'data-requirement-package-chooser-anchor',
+        )
+        return {
+          x: 100,
+          y: 80,
+          top: 80,
+          bottom: isToolbar ? 160 : 120,
+          left: 100,
+          right: isToolbar ? 900 : 340,
+          width: isToolbar ? 800 : 240,
+          height: isToolbar ? 80 : 40,
+          toJSON: () => ({}),
+        }
+      },
+    )
+    render(
+      <div data-requirement-package-chooser-anchor="true">
+        <Harness />
+      </div>,
+    )
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Filter packages' }))
+    expect(screen.getByRole('group', { name: 'Package chooser' })).toHaveStyle({
+      left: '100px',
+      top: '120px',
+      width: '800px',
+    })
+  })
+
   it('shows delayed loading, failure, and empty catalog states', async () => {
     vi.useFakeTimers()
     const onChange = vi.fn()

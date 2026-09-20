@@ -23,6 +23,7 @@ export default function RequirementsPanelHeader({
       <div className="min-w-0 border-b px-2 py-0.75">{title}</div>
       <div
         className="requirements-panel-toolbar flex min-h-9.25 min-w-0 flex-wrap items-center border-b"
+        data-requirement-package-chooser-anchor="true"
         {...devMarker({
           context: 'requirements specification detail',
           name: 'panel toolbar',
