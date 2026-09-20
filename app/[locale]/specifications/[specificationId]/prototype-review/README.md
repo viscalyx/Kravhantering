@@ -187,9 +187,9 @@ boxes, the full lifecycle label, and Agreement reference/details/add controls.
 Specification editing remains available in both states.
 
 Use **Long text** to inspect the mock registered Agreement. Confirm that the
-compact rows place bold values directly after their labels, with a thin
-divider between rows. Click the Avtal label or value to open the selector.
-Use Tab to check the full-row focus border, then Enter or Space to open it.
+compact rows place bold values directly after their labels, inside one
+outer border with no divider. Only the arrow opens the selector; the menu
+matches the full box width. Use Tab to focus the arrow, then Enter or Space.
 Confirm that selecting a previous agreement changes the date/status without
 expanding the header. Toggle Long text off to verify the empty Agreement row
 has no arrow or click action. On mobile the shared box moves below the title.
@@ -252,7 +252,7 @@ At 1440 × 900, navigation expanded, light theme:
 | B | 629 / 515 px | Yes | 3 / 5 | 0 / 0 px | 164 px |
 | C | 572 / 572 px | Yes | 2 / 4 | 0 / 0 px | 182 px |
 | D | 686 / 458 px | Yes | 7 / 8 | 134 / 92 px | 189 px |
-| E (collapsed) | 686 / 458 px | Yes | 8 / 9 | 134 / 92 px | 135 px |
+| E (collapsed) | 686 / 458 px | Yes | 8 / 9 | 134 / 92 px | 112 px |
 <!-- markdownlint-enable MD013 -->
 
 All three left tab labels fit across the Swedish capture matrix. All proposals
@@ -340,8 +340,8 @@ are unchanged; this branch supplies its own throwaway review guide instead.
 - E passes mouse/Enter/Space, reset, reload and mobile checks in Swedish
   and English, light and dark themes. See [header checks](expandable-header-checks.json).
   Collapsed metadata uses one box with lifecycle above Agreement,
-  labels and bold values next to each other, a divider between rows, and the
-  whole Agreement row available as a selector when an agreement exists.
+  labels and bold values next to each other and only one outer border. The
+  arrow opens a selector as wide as the whole box.
 - Mock agreement checks cover registration details, correction history,
   previous-agreement selection and restoring real data. No mutation or
   mock-ID API requests occur; see [mock checks](mock-agreement-checks.json).

@@ -40,12 +40,22 @@ try {
   await page.mouse.click(rowLabel.x + 5, rowLabel.y + 5)
   await expect(
     page.getByRole('dialog', { name: 'Select agreement' }),
-  ).toBeVisible()
-  await page.keyboard.press('Escape')
+  ).toBeHidden()
   const compactSelector = card.getByRole('button', {
     name: 'Select agreement',
     exact: true,
   })
+  await compactSelector.click()
+  const compactMenu = page.getByRole('dialog', { name: 'Select agreement' })
+  await expect(compactMenu).toBeVisible()
+  const box = await page
+    .locator('[data-specification-detail-header-metadata]')
+    .boundingBox()
+  await expect
+    .poll(async () => (await compactMenu.boundingBox()).width)
+    .toBe(box.width)
+  await expect.poll(async () => (await compactMenu.boundingBox()).x).toBe(box.x)
+  await page.keyboard.press('Escape')
   await expect(compactSelector).toBeFocused()
   await page.keyboard.press('Enter')
   await page
@@ -175,7 +185,8 @@ try {
         compactDateStatusOnly: true,
         collapsedSelectorOnly: true,
         compactSelection: true,
-        fullRowClickAndKeyboard: true,
+        arrowOnlyAndKeyboard: true,
+        dropdownMatchesBox: true,
         emptyAgreementHasNoAction: true,
         details: true,
         registration: true,

@@ -6,15 +6,15 @@
       "theme": "light",
       "oneBox": true,
       "statusAboveAgreement": true,
-      "divider": true,
+      "noDivider": true,
       "labelValueGaps": [
         6,
         6
       ],
-      "boldValues": true,
+      "boxHeight": 64,
       "overflow": 0,
-      "keyboardFocus": true,
-      "expandedBoxes": 5
+      "dropdownMatchesBox": true,
+      "keyboardFocusRestored": true
     },
     {
       "width": 1440,
@@ -22,15 +22,15 @@
       "theme": "dark",
       "oneBox": true,
       "statusAboveAgreement": true,
-      "divider": true,
+      "noDivider": true,
       "labelValueGaps": [
         6,
         6
       ],
-      "boldValues": true,
+      "boxHeight": 64,
       "overflow": 0,
-      "keyboardFocus": true,
-      "expandedBoxes": 5
+      "dropdownMatchesBox": true,
+      "keyboardFocusRestored": true
     },
     {
       "width": 1440,
@@ -38,15 +38,15 @@
       "theme": "light",
       "oneBox": true,
       "statusAboveAgreement": true,
-      "divider": true,
+      "noDivider": true,
       "labelValueGaps": [
         6,
         6
       ],
-      "boldValues": true,
+      "boxHeight": 64,
       "overflow": 0,
-      "keyboardFocus": true,
-      "expandedBoxes": 5
+      "dropdownMatchesBox": true,
+      "keyboardFocusRestored": true
     },
     {
       "width": 1440,
@@ -54,15 +54,15 @@
       "theme": "dark",
       "oneBox": true,
       "statusAboveAgreement": true,
-      "divider": true,
+      "noDivider": true,
       "labelValueGaps": [
         6,
         6
       ],
-      "boldValues": true,
+      "boxHeight": 64,
       "overflow": 0,
-      "keyboardFocus": true,
-      "expandedBoxes": 5
+      "dropdownMatchesBox": true,
+      "keyboardFocusRestored": true
     },
     {
       "width": 1920,
@@ -70,15 +70,15 @@
       "theme": "light",
       "oneBox": true,
       "statusAboveAgreement": true,
-      "divider": true,
+      "noDivider": true,
       "labelValueGaps": [
         6,
         6
       ],
-      "boldValues": true,
+      "boxHeight": 64,
       "overflow": 0,
-      "keyboardFocus": true,
-      "expandedBoxes": 5
+      "dropdownMatchesBox": true,
+      "keyboardFocusRestored": true
     },
     {
       "width": 1920,
@@ -86,15 +86,15 @@
       "theme": "dark",
       "oneBox": true,
       "statusAboveAgreement": true,
-      "divider": true,
+      "noDivider": true,
       "labelValueGaps": [
         6,
         6
       ],
-      "boldValues": true,
+      "boxHeight": 64,
       "overflow": 0,
-      "keyboardFocus": true,
-      "expandedBoxes": 5
+      "dropdownMatchesBox": true,
+      "keyboardFocusRestored": true
     },
     {
       "width": 1920,
@@ -102,15 +102,15 @@
       "theme": "light",
       "oneBox": true,
       "statusAboveAgreement": true,
-      "divider": true,
+      "noDivider": true,
       "labelValueGaps": [
         6,
         6
       ],
-      "boldValues": true,
+      "boxHeight": 64,
       "overflow": 0,
-      "keyboardFocus": true,
-      "expandedBoxes": 5
+      "dropdownMatchesBox": true,
+      "keyboardFocusRestored": true
     },
     {
       "width": 1920,
@@ -118,15 +118,15 @@
       "theme": "dark",
       "oneBox": true,
       "statusAboveAgreement": true,
-      "divider": true,
+      "noDivider": true,
       "labelValueGaps": [
         6,
         6
       ],
-      "boldValues": true,
+      "boxHeight": 64,
       "overflow": 0,
-      "keyboardFocus": true,
-      "expandedBoxes": 5
+      "dropdownMatchesBox": true,
+      "keyboardFocusRestored": true
     },
     {
       "width": 375,
@@ -134,15 +134,15 @@
       "theme": "light",
       "oneBox": true,
       "statusAboveAgreement": true,
-      "divider": true,
+      "noDivider": true,
       "labelValueGaps": [
         6,
         6
       ],
-      "boldValues": true,
+      "boxHeight": 64,
       "overflow": 0,
-      "keyboardFocus": true,
-      "expandedBoxes": 5
+      "dropdownMatchesBox": true,
+      "keyboardFocusRestored": true
     },
     {
       "width": 375,
@@ -150,15 +150,15 @@
       "theme": "dark",
       "oneBox": true,
       "statusAboveAgreement": true,
-      "divider": true,
+      "noDivider": true,
       "labelValueGaps": [
         6,
         6
       ],
-      "boldValues": true,
+      "boxHeight": 64,
       "overflow": 0,
-      "keyboardFocus": true,
-      "expandedBoxes": 5
+      "dropdownMatchesBox": true,
+      "keyboardFocusRestored": true
     },
     {
       "width": 375,
@@ -166,15 +166,15 @@
       "theme": "light",
       "oneBox": true,
       "statusAboveAgreement": true,
-      "divider": true,
+      "noDivider": true,
       "labelValueGaps": [
         6,
         6
       ],
-      "boldValues": true,
+      "boxHeight": 64,
       "overflow": 0,
-      "keyboardFocus": true,
-      "expandedBoxes": 5
+      "dropdownMatchesBox": true,
+      "keyboardFocusRestored": true
     },
     {
       "width": 375,
@@ -182,15 +182,15 @@
       "theme": "dark",
       "oneBox": true,
       "statusAboveAgreement": true,
-      "divider": true,
+      "noDivider": true,
       "labelValueGaps": [
         6,
         6
       ],
-      "boldValues": true,
+      "boxHeight": 64,
       "overflow": 0,
-      "keyboardFocus": true,
-      "expandedBoxes": 5
+      "dropdownMatchesBox": true,
+      "keyboardFocusRestored": true
     }
   ]
 }

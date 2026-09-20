@@ -117,9 +117,14 @@ export default function SpecificationAgreementBox({
   useEffect(() => {
     if (!selectorOpen) return
     const position = () => {
-      const rect = selectorTrigger.current?.getBoundingClientRect()
+      const anchor = compact
+        ? selectorTrigger.current?.closest(
+            '[data-specification-detail-header-metadata]',
+          )
+        : selectorTrigger.current
+      const rect = anchor?.getBoundingClientRect()
       if (!rect) return
-      const width = Math.min(360, window.innerWidth - 16)
+      const width = Math.min(compact ? rect.width : 360, window.innerWidth - 16)
       setSelectorPosition({
         width,
         left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
@@ -165,7 +170,7 @@ export default function SpecificationAgreementBox({
       window.removeEventListener('resize', position)
       window.removeEventListener('scroll', position, true)
     }
-  }, [selectorOpen])
+  }, [compact, selectorOpen])
   const [reference, setReference] = useState('')
   const [date, setDate] = useState('')
   const [description, setDescription] = useState('')
@@ -394,11 +399,7 @@ export default function SpecificationAgreementBox({
                 aria-expanded={selectorOpen}
                 aria-haspopup="dialog"
                 aria-label={t('select')}
-                className={
-                  compact
-                    ? `${iconButton} prototype-agreement-row-trigger`
-                    : iconButton
-                }
+                className={iconButton}
                 disabled={busy}
                 onClick={() => setSelectorOpen(open => !open)}
                 ref={selectorTrigger}
