@@ -4072,7 +4072,7 @@
     "question": "Which layout makes names, purpose and responsibility easiest to compare?",
     "badge": "PROTOTYPE #1353",
     "guide": "Review guide · changes and how to check them",
-    "instructions": "Use Before, A, B and C below with the same data. Try 1440 × 900 and 1920 × 1080, both navigation widths and both themes. Arrow keys switch layouts outside text fields. Decisions are pending your review.",
+    "instructions": "Use Before, A, B, C and D below with the same data. Try 1440 × 900 and 1920 × 1080, both navigation widths and both themes. Arrow keys switch layouts outside text fields. D reflects the preference to keep the existing layout and add only a status badge.",
     "switcher": "Prototype layout switcher",
     "previous": "Previous layout",
     "next": "Next layout",
@@ -4080,13 +4080,15 @@
       "before": "Before",
       "A": "A · Compact table",
       "B": "B · Purpose rows",
-      "C": "C · Split view"
+      "C": "C · Split view",
+      "D": "D · Before with badge"
     },
     "description": {
       "before": "Current column structure and 44px actions, reproduced for comparison.",
       "A": "Keep seven columns; return space to name and purpose.",
       "B": "Name and purpose together; responsibility in a side column.",
-      "C": "Scan names on the left; read one complete package on the right."
+      "C": "Scan names on the left; read one complete package on the right.",
+      "D": "Keep Before; add only the status badge from A, using Aktiv and Arkiverad in Swedish."
     },
     "actions": "Actions",
     "stress": "Long-text samples",
@@ -4099,6 +4101,10 @@
     "stub": "This control previews placement and focus. The real workflow is outside this prototype.",
     "applyPreview": "Apply in preview",
     "checks": [
+      {
+        "change": "D: existing layout with a status badge",
+        "verify": "Switch Before → D with the same data. Columns, responsibility, counts and 44px actions use the same layout. Only status gets the badge from A; its Swedish labels are Aktiv and Arkiverad. Automatic table widths may adjust to accommodate the badge."
+      },
       {
         "change": "A: more room for the main text",
         "verify": "Compare Before with A at the same viewport. Name and purpose retain separate columns; the action column shrinks from about 220px to 142px. All text remains available."
@@ -4150,6 +4156,8 @@
       "name4": "One requirement, restricted assignment control",
       "purpose4": "A small package with one linked requirement. The co-author action is absent, while the remaining actions retain their order.",
       "longPerson": "Alexandra Exempelsson with a deliberately long display name"
-    }
+    },
+    "activeBadge": "Active",
+    "archivedBadge": "Archived"
   }
 }

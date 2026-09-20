@@ -4,9 +4,11 @@ This throwaway prototype answers: **which layout makes package names,
 purpose, responsibility and contents easiest to compare?**
 
 Branch: `prototype/issue-1353-package-layout`.
-Base: `ba673ee7` from the main checkout. No winner is approved yet.
-The initial recommendation is **A**, because it improves the existing table
-without adding a selection step. B and C make the tradeoffs visible.
+Base: `ba673ee7` from the main checkout. The preferred direction is now **D**:
+keep the current layout and add only A's status badge, with **Aktiv** and
+**Arkiverad** as the Swedish status labels. A, B and C remain available for comparison.
+This preference supersedes the initial recommendation of A; implementation
+in production is still a separate step.
 
 ## Open it
 
@@ -16,8 +18,8 @@ same hostname, `localhost`, so the existing session cookie is available.
 If authentication sends you back to port 3000, finish signing in and reopen
 the prototype link. No Keycloak configuration changes are needed.
 
-- [Open A in Swedish](http://localhost:3133/sv/requirements/stewardship?tab=packages&variant=A)
-- [Open A in English](http://localhost:3133/en/requirements/stewardship?tab=packages&variant=A)
+- [Open D in Swedish](http://localhost:3133/sv/requirements/stewardship?tab=packages&variant=D)
+- [Open D in English](http://localhost:3133/en/requirements/stewardship?tab=packages&variant=D)
 - [Open the screenshot gallery](./index.html)
 - [Open the normal app for comparison](http://localhost:3000/sv/requirements/stewardship?tab=packages)
 
@@ -36,8 +38,9 @@ the prototype port. Dependencies are copied from the source if needed.
 
 ## Five-minute review
 
-1. Open A. Use the bottom bar to compare **Before**, **A**, **B** and **C**.
-   The URL contains `variant=before`, `variant=A`, `variant=B` or `variant=C`.
+1. Open D. Use the bottom bar to compare **Before**, **A**, **B**, **C** and **D**.
+   The URL selects `variant=before`, `variant=A`, `variant=B`, `variant=C`
+   or `variant=D`.
    Left/right arrow keys also switch, except while editing text or in a dialog.
 2. Compare at 1440 × 900 and 1920 × 1080 using browser responsive mode.
    Expand/collapse the real navigation and use its theme control.
@@ -58,6 +61,7 @@ the prototype port. Dependencies are copied from the source if needed.
 
 | Change | How to verify | Expected result |
 | --- | --- | --- |
+| D: existing layout plus status badge | Switch Before → D. Inspect active and archived samples. | Same table structure, responsibility, counts and 44px actions; only status receives A's badge. Swedish status labels read Aktiv and Arkiverad. |
 | A: compact seven-column table | Switch Before → A without changing data or viewport. | More combined width for name/purpose; 142px action column instead of 220px. |
 | B: name and purpose grouped in rows | Switch to B and compare consecutive packages. | Name/status/count sit above the complete purpose; responsibility and actions sit alongside. Rows are taller. |
 | C: split list and detail | Switch to C and select several package names. | The selected package's full purpose, responsibility, status, count and actions appear in the detail pane. Full-purpose comparison requires selection. |
@@ -80,6 +84,23 @@ the prototype port. Dependencies are copied from the source if needed.
 | Development-only gate | Inspect the gate in the package client and switcher. | Prototype rendering requires a development build and the launcher's explicit flag. No production design is promoted. |
 
 <!-- markdownlint-enable MD013 -->
+
+## Prototype D verification
+
+D reuses Before's rendering for every part except the status cell. Its
+seven-column auto-layout, text styles, count wrapping and 44px action targets
+remain the baseline design. The badge has text and an icon, using `Aktiv`
+and `Arkiverad` in Swedish, and `Active` and `Archived` in English.
+Automatic table column widths can shift because the badge takes more room
+than plain status text; D does not introduce A's compact column proportions.
+
+Compare Before and D using the bottom bar, then enable Long-text samples to
+inspect both states. Preview archive/reactivate and reset to confirm that
+only the status presentation changes. The [D verification record](./D-verification.json)
+covers eight desktop combinations, identical non-status markup to Before,
+44px actions, both localized labels, and the switcher at 320px.
+[Light screenshot](./screenshots/D-1440-light.png) and
+[dark screenshot](./screenshots/D-1440-expanded-dark.png) show both states.
 
 ## Measured comparison
 
@@ -132,7 +153,7 @@ The sample permission flag demonstrates control placement only.
 
 ## Files and purpose
 
-- `package-layout.prototype.tsx`: three views, Before reference, sample data,
+- `package-layout.prototype.tsx`: four alternatives, Before reference, sample data,
   filter, review guide, state inspector and memory-only action previews.
 - `package-layout.prototype.module.css`: table proportions, action sizes,
   identity scrolling, row/split structures and responsive/theme rules.

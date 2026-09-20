@@ -1,6 +1,6 @@
 'use client'
 
-// THROWAWAY #1353: before + three structurally different layouts on the existing
+// THROWAWAY #1353: before + four layout alternatives on the existing
 // stewardship route, selected by ?variant=. Every interaction is memory-only.
 import {
   Archive,
@@ -232,7 +232,7 @@ export default function PackageLayoutPrototype({
   )
     ? (queryVariant as PrototypeVariant)
     : 'A'
-  const before = variant === 'before'
+  const before = variant === 'before' || variant === 'D'
   const [stress, setStress] = useState(false)
   const [filter, setFilter] = useState('')
   const [patches, setPatches] = useState<
@@ -389,7 +389,7 @@ export default function PackageLayoutPrototype({
       </span>
     ),
     status: row =>
-      before ? (
+      variant === 'before' ? (
         <span>{row.isArchived ? tp('archived') : tp('active')}</span>
       ) : (
         <span
@@ -406,7 +406,13 @@ export default function PackageLayoutPrototype({
           ) : (
             <CheckCircle2 aria-hidden="true" size={13} />
           )}
-          {row.isArchived ? tp('archived') : tp('active')}
+          {row.isArchived
+            ? variant === 'D'
+              ? t('archivedBadge')
+              : tp('archived')
+            : variant === 'D'
+              ? t('activeBadge')
+              : tp('active')}
         </span>
       ),
     count: row => (

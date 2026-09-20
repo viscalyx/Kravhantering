@@ -20,7 +20,7 @@ require('@next/env').loadEnvConfig(source, true, {
   info() {},
   error: console.error,
 })
-const url = `http://localhost:${port}/sv/requirements/stewardship?tab=packages&variant=A`
+const url = `http://localhost:${port}/sv/requirements/stewardship?tab=packages&variant=D`
 console.log(
   `\nThrowaway prototype #1353\n${url}\n\nSign in at http://localhost:3000 first, then open the prototype URL.\nPackage actions only change memory. Ctrl+C stops this server.\n`,
 )

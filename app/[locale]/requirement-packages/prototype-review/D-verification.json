@@ -1,0 +1,240 @@
+{
+  "desktop": [
+    {
+      "width": 1440,
+      "height": 900,
+      "navigation": "collapsed",
+      "theme": "light",
+      "nonStatusMarkupMatchesBefore": true,
+      "labels": [
+        "Aktiv",
+        "Arkiverad"
+      ],
+      "actionTargets": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "navigation": "collapsed",
+      "theme": "dark",
+      "nonStatusMarkupMatchesBefore": true,
+      "labels": [
+        "Aktiv",
+        "Arkiverad"
+      ],
+      "actionTargets": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "navigation": "expanded",
+      "theme": "light",
+      "nonStatusMarkupMatchesBefore": true,
+      "labels": [
+        "Aktiv",
+        "Arkiverad"
+      ],
+      "actionTargets": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "navigation": "expanded",
+      "theme": "dark",
+      "nonStatusMarkupMatchesBefore": true,
+      "labels": [
+        "Aktiv",
+        "Arkiverad"
+      ],
+      "actionTargets": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "navigation": "collapsed",
+      "theme": "light",
+      "nonStatusMarkupMatchesBefore": true,
+      "labels": [
+        "Aktiv",
+        "Arkiverad"
+      ],
+      "actionTargets": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "navigation": "collapsed",
+      "theme": "dark",
+      "nonStatusMarkupMatchesBefore": true,
+      "labels": [
+        "Aktiv",
+        "Arkiverad"
+      ],
+      "actionTargets": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "navigation": "expanded",
+      "theme": "light",
+      "nonStatusMarkupMatchesBefore": true,
+      "labels": [
+        "Aktiv",
+        "Arkiverad"
+      ],
+      "actionTargets": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "navigation": "expanded",
+      "theme": "dark",
+      "nonStatusMarkupMatchesBefore": true,
+      "labels": [
+        "Aktiv",
+        "Arkiverad"
+      ],
+      "actionTargets": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        }
+      ]
+    }
+  ],
+  "englishLabels": true,
+  "mobileSwitcher": true,
+  "errors": [],
+  "writes": []
+}

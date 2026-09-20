@@ -8,7 +8,7 @@ import { useCallback, useEffect } from 'react'
 import { usePathname, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 
-export const prototypeVariants = ['before', 'A', 'B', 'C'] as const
+export const prototypeVariants = ['before', 'A', 'B', 'C', 'D'] as const
 export type PrototypeVariant = (typeof prototypeVariants)[number]
 
 export default function PrototypeSwitcher({

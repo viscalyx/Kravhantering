@@ -4072,7 +4072,7 @@
     "question": "Vilken layout gör det enklast att jämföra namn, syfte och ansvar?",
     "badge": "PROTOTYP #1353",
     "guide": "Granskningsguide · ändringar och hur du kontrollerar dem",
-    "instructions": "Växla mellan Före, A, B och C nedan med samma data. Prova 1 440 × 900 och 1 920 × 1 080, båda navigationsbredderna och båda temana. Piltangenter växlar layout utanför textfält. Utformningen väntar på din bedömning.",
+    "instructions": "Växla mellan Före, A, B, C och D nedan med samma data. Prova 1 440 × 900 och 1 920 × 1 080, båda navigationsbredderna och båda temana. Piltangenter växlar layout utanför textfält. D visar önskemålet att behålla nuvarande layout och bara lägga till en statusbricka.",
     "switcher": "Växla prototyplayout",
     "previous": "Föregående layout",
     "next": "Nästa layout",
@@ -4080,13 +4080,15 @@
       "before": "Före",
       "A": "A · Kompakt tabell",
       "B": "B · Syftesrader",
-      "C": "C · Delad vy"
+      "C": "C · Delad vy",
+      "D": "D · Före med statusbricka"
     },
     "description": {
       "before": "Nuvarande kolumnstruktur och 44 px åtgärder, återskapade för jämförelse.",
       "A": "Behåll sju kolumner; ge namn och syfte mer plats.",
       "B": "Samla namn och syfte; placera ansvar i en sidokolumn.",
-      "C": "Överblicka namn till vänster; läs ett helt paket till höger."
+      "C": "Överblicka namn till vänster; läs ett helt paket till höger.",
+      "D": "Behåll Före; lägg bara till statusbrickan från A med Aktiv och Arkiverad."
     },
     "actions": "Åtgärder",
     "stress": "Långa exempeltexter",
@@ -4099,6 +4101,10 @@
     "stub": "Kontrollen visar placering och fokus. Det verkliga arbetsflödet ingår inte i prototypen.",
     "applyPreview": "Tillämpa i förhandsvisning",
     "checks": [
+      {
+        "change": "D: nuvarande layout med statusbricka",
+        "verify": "Växla Före → D med samma data. Kolumner, ansvarspresentation, kravantal och 44 px radåtgärder använder samma layout. Endast status får brickan från A; statusarna heter Aktiv och Arkiverad. Tabellens automatiska kolumnbredder kan anpassas till brickans utrymme."
+      },
       {
         "change": "A: mer plats för huvudtexten",
         "verify": "Jämför Före med A i samma fönster. Namn och syfte har separata kolumner; åtgärdskolumnen minskar från cirka 220 px till 142 px. All text finns kvar."
@@ -4121,7 +4127,7 @@
       },
       {
         "change": "Paketstatus har text och ikon",
-        "verify": "Hitta Aktivt och Arkiverat bland exemplen. Förhandsvisa arkivering/återaktivering och återställ. Statusen är fortsatt skild från en kravversionsstatus."
+        "verify": "Hitta Aktiv och Arkiverad i D (Aktivt och Arkiverat i A/B/C). Förhandsvisa arkivering/återaktivering och återställ. Statusen är fortsatt skild från en kravversionsstatus."
       },
       {
         "change": "Ansvarsinformation går att läsa",
@@ -4150,6 +4156,8 @@
       "name4": "Ett krav och begränsad tilldelningskontroll",
       "purpose4": "Ett litet paket med ett kopplat krav. Medförfattaråtgärden saknas medan övriga åtgärder behåller sin ordning.",
       "longPerson": "Alexandra Exempelsson med ett avsiktligt långt visningsnamn"
-    }
+    },
+    "activeBadge": "Aktiv",
+    "archivedBadge": "Arkiverad"
   }
 }
