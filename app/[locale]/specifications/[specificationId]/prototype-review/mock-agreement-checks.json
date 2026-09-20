@@ -4,6 +4,9 @@
     "sv"
   ],
   "referenceDateStatus": true,
+  "compactDateStatusOnly": true,
+  "collapsedSelectorOnly": true,
+  "compactSelection": true,
   "details": true,
   "registration": true,
   "correctionHistory": true,

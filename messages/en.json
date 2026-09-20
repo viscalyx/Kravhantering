@@ -4074,7 +4074,7 @@
     "descriptionB": "55/45. A compact definition list beside the title. ID and area sit above full-width text, with needs reference and status below.",
     "descriptionC": "50/50. Metadata flows inline below the title. Reading cards group the text, needs reference and supporting metadata.",
     "descriptionD": "60/40 with A’s compact tables. The title sits at the top left, with a left-aligned description beside it. The original metadata boxes sit underneath.",
-    "descriptionE": "Title and edit button stay on the left, with Lifecycle status and Agreement on the right when collapsed. Expand to show the description below the title and all original metadata boxes underneath.",
+    "descriptionE": "Title and edit button stay on the left. One collapsed box shows Lifecycle status and its value, then Agreement with date/status or None. Only the agreement selector is available. Expand for the description and full agreement controls.",
     "collapsedLifecycleStatus": "Lifecycle status",
     "mockAgreementReadOnly": "This is a mock agreement in the prototype. Changes are not saved.",
     "expandHeader": "Show specification details",

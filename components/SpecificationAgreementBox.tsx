@@ -38,6 +38,7 @@ interface ComponentProps {
     view: SpecificationAgreementView,
     refreshItems?: boolean,
   ) => void
+  prototypeCompact?: boolean
   prototypeMockAgreement?: boolean
   refreshKey?: number
   specificationId: number
@@ -66,6 +67,7 @@ export default function SpecificationAgreementBox({
   refreshKey = 0,
   itemRefs = '',
   prototypeMockAgreement = false,
+  prototypeCompact = false,
 }: ComponentProps) {
   const tp = useTranslations('proportionsPrototype')
   const t = useTranslations('agreement')
@@ -75,6 +77,10 @@ export default function SpecificationAgreementBox({
   const [realView, setView] = useState<SpecificationAgreementView | null>(null)
   const mockAgreement =
     prototypeMockAgreement &&
+    process.env.NODE_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_PROTOTYPE_1352 === 'true'
+  const compact =
+    prototypeCompact &&
     process.env.NODE_ENV !== 'production' &&
     process.env.NEXT_PUBLIC_PROTOTYPE_1352 === 'true'
   const [mockSelectedId, setMockSelectedId] = useState(-135201)
@@ -352,14 +358,16 @@ export default function SpecificationAgreementBox({
               t('working')
             ) : selected ? (
               <span className="font-medium wrap-break-word">
-                {selected.agreementReference}
+                {compact
+                  ? `${selected.effectiveDate} · ${t(`states.${selected.state}`)}`
+                  : selected.agreementReference}
               </span>
             ) : (
               t('none')
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {(selected || view?.canDecide) && (
+            {!compact && (selected || view?.canDecide) && (
               <button
                 aria-haspopup="dialog"
                 aria-label={selected ? t('details') : t('register')}
@@ -387,7 +395,7 @@ export default function SpecificationAgreementBox({
                 <ChevronDown aria-hidden="true" className="h-4 w-4" />
               </button>
             )}
-            {!first && view?.canAuthor && (
+            {!compact && !first && view?.canAuthor && (
               <button
                 aria-label={t('newAgreement')}
                 className={iconButton}
@@ -400,7 +408,7 @@ export default function SpecificationAgreementBox({
               </button>
             )}
           </div>
-          {selected && (
+          {selected && !compact && (
             <div
               className="col-span-2 mt-0.5 flex items-start gap-1 text-xs text-secondary-600 dark:text-secondary-300"
               role="status"

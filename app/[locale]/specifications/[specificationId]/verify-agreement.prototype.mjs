@@ -31,8 +31,26 @@ try {
   await expect(card).not.toContainText('Working…')
   const realAgreement = await card.textContent()
   await page.getByRole('button', { name: 'Long text', exact: true }).click()
-  for (const text of ['MOCK-2026-001', '2026-01-01', 'Current'])
+  for (const text of ['2026-01-01', 'Current'])
     await expect(card).toContainText(text)
+  await expect(card).not.toContainText('MOCK-2026-001')
+  await expect(card.getByRole('button')).toHaveCount(1)
+  await card
+    .getByRole('button', { name: 'Select agreement', exact: true })
+    .click()
+  await page
+    .getByRole('dialog', { name: 'Select agreement' })
+    .locator('summary')
+    .click()
+  await page.getByRole('button', { name: /MOCK-2024-001/ }).click()
+  await expect(card).toContainText('2024-01-01')
+  await expect(card).toContainText('Previous')
+  await card
+    .getByRole('button', { name: 'Select agreement', exact: true })
+    .click()
+  await page.getByRole('button', { name: /MOCK-2026-001/ }).click()
+  await page.locator('h1 button').click()
+  await expect(card).toContainText('MOCK-2026-001')
   await card
     .getByRole('button', { name: 'Agreement details', exact: true })
     .click()
@@ -80,11 +98,13 @@ try {
     .click()
   await expect(dialog).toBeHidden()
   await page.getByRole('button', { name: 'Long text', exact: true }).click()
+  await page.locator('h1 button').click()
   await expect(card).toHaveText(realAgreement)
   await page.goto(
     'http://localhost:3001/sv/specifications/8?variant=E&nav=expanded&theme=light&sample=long&review=clean',
   )
-  await expect(card).toContainText('MOCK-2026-001')
+  await expect(card).toContainText('2026-01-01')
+  await expect(card).not.toContainText('MOCK-2026-001')
   await expect(
     page.locator('#specification-right-panel tbody tr').first(),
   ).toContainText(/./)
@@ -142,6 +162,9 @@ try {
       {
         locales: ['en', 'sv'],
         referenceDateStatus: true,
+        compactDateStatusOnly: true,
+        collapsedSelectorOnly: true,
+        compactSelection: true,
         details: true,
         registration: true,
         correctionHistory: true,

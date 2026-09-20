@@ -51,7 +51,7 @@ the comparison slider scales images to fit your current window.
 | B | 55/45 | Two-column definition list beside title | ID/area above text; reference/status below | Taller records, fewer visible rows |
 | C | 50/50 | Inline properties below title | Bounded cards with full-width text and labeled reference/status footer | Lowest row density |
 | D | 60/40 | Title left, description beside it; original metadata boxes underneath | Same compact table as A | Original boxes retain their styling and consume header space |
-| E | 60/40 | Collapsed: title/edit left, Lifecycle status then Agreement at right; expanded: description below title, then all boxes | Same compact table as D | Agreement stays available while other metadata is hidden |
+| E | 60/40 | Collapsed: one box with lifecycle and Agreement summary rows; expanded: description below title, then full metadata | Same compact table as D | Agreement selection stays available; add/edit Agreement actions require expansion |
 <!-- markdownlint-enable MD013 -->
 
 The proposals keep requirement text at 14 px. A/B/C metadata labels use normal
@@ -82,7 +82,7 @@ permanent list modes or a new manual column-resize feature.
 - **Long text** temporarily replaces the title with exactly 150 characters
   and the description below it with exactly 300 characters in both languages.
   It also previews a registered mock Agreement with reference, effective
-  date and current status. Open Agreement details for its description,
+  date and current status. Expand E to access Agreement details for its description,
   registration/confirmation information and correction history. The selector
   includes a previous mock agreement. Mock selection does not change the
   requirement lists, and mock actions never call the API. Toggling Long text
@@ -173,22 +173,24 @@ D is also available through the header mixer, for example `?variant=B&header=D`.
 
 ### Variant E: expandable header based on D
 
-Open `?variant=E`. The title, disclosure chevron and edit button sit on the
-left; Lifecycle status and Agreement sit to the right on the same row.
-Lifecycle status is immediately left of Agreement. Click the
-title, or focus it and press Enter/Space, to show the description directly
-under the title and all metadata boxes underneath. Click again to collapse.
-The edit button remains available in both states, subject to permissions.
+Open `?variant=E`. The title, disclosure chevron and specification edit button
+sit on the left. A single compact box on the right contains two rows:
 
-Use **Long text** to check the 150-character title and the 300-character
-description. Verify that the collapsed Agreement box aligns with the right
-edge of the header and that the description starts at the title's left edge
-when expanded. The collapsed status label is **Livscykelstatus** in Swedish
-and **Lifecycle status** in English; expansion restores the full label.
-Open and close the edit dialog while collapsed. Agreement controls remain
-usable; the other three boxes are hidden until expansion. On mobile, the two
-visible boxes share a row below the title.
-The same Agreement component stays mounted when changing header state.
+- **Livscykelstatus** (English: **Lifecycle status**) with its value on the right.
+- **Avtal** (English: **Agreement**) with **Inget** / **None**, or its effective
+  date and status. Only the selector dropdown is shown for registered agreements.
+
+The compact Agreement row omits the reference and add/edit actions. Its
+selector still switches between agreements, including previous ones. Expand
+the header to see the description below the title, all original metadata
+boxes, the full lifecycle label, and Agreement reference/details/add controls.
+Specification editing remains available in both states.
+
+Use **Long text** to inspect the mock registered Agreement. Confirm that the
+compact rows align their labels and values, and that selecting a previous
+agreement changes the date/status without expanding the header. Toggle Long
+text off to verify the empty Agreement row. On mobile the shared box moves
+below the title. The Agreement component stays mounted throughout.
 
 Expansion is preview URL state: `headerDetails=expanded` opens it directly
 and survives reload. Variant switching and **Reset** return to collapsed.
@@ -247,7 +249,7 @@ At 1440 × 900, navigation expanded, light theme:
 | B | 629 / 515 px | Yes | 3 / 5 | 0 / 0 px | 164 px |
 | C | 572 / 572 px | Yes | 2 / 4 | 0 / 0 px | 182 px |
 | D | 686 / 458 px | Yes | 7 / 8 | 134 / 92 px | 189 px |
-| E (collapsed) | 686 / 458 px | Yes | 8 / 9 | 134 / 92 px | 119 px |
+| E (collapsed) | 686 / 458 px | Yes | 8 / 9 | 134 / 92 px | 122 px |
 <!-- markdownlint-enable MD013 -->
 
 All three left tab labels fit across the Swedish capture matrix. All proposals
@@ -334,6 +336,8 @@ are unchanged; this branch supplies its own throwaway review guide instead.
   mobile stacking. A Swedish long-text capture supplements the English one.
 - E passes mouse/Enter/Space, reset, reload and mobile checks in Swedish
   and English, light and dark themes. See [header checks](expandable-header-checks.json).
+  Collapsed metadata uses one box with lifecycle above Agreement, aligned
+  labels and values, and only the Agreement selector available.
 - Mock agreement checks cover registration details, correction history,
   previous-agreement selection and restoring real data. No mutation or
   mock-ID API requests occur; see [mock checks](mock-agreement-checks.json).

@@ -464,16 +464,51 @@ body:has([aria-modal="true"]) .prototype-review {
 [data-prototype-header="E"][data-prototype-header-collapsed="true"]
   [data-specification-detail-header-summary] {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(18rem, 40%, 30rem);
+  grid-template-columns: minmax(0, 1fr) clamp(19rem, 32%, 25rem);
   gap: 24px;
   align-items: start;
 }
 [data-prototype-header="E"][data-prototype-header-collapsed="true"]
   [data-specification-detail-header-metadata] {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  padding: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  padding: 10px 12px;
   margin: 0;
   overflow: visible;
+  background: rgb(255 255 255 / 50%);
+  border: 1px solid rgb(226 232 240 / 70%);
+  border-radius: 12px;
+}
+.dark
+  [data-prototype-header="E"][data-prototype-header-collapsed="true"]
+  [data-specification-detail-header-metadata] {
+  background: rgb(15 23 42 / 40%);
+  border-color: rgb(51 65 85 / 70%);
+}
+[data-prototype-header="E"][data-prototype-header-collapsed="true"]
+  [data-specification-detail-header-metadata]
+  > div {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  backdrop-filter: none;
+}
+[data-prototype-header="E"][data-prototype-header-collapsed="true"]
+  [data-specification-detail-header-metadata]
+  dt {
+  font-size: 12px;
+  line-height: 20px;
+  text-transform: none;
+}
+[data-prototype-header="E"][data-prototype-header-collapsed="true"]
+  [data-specification-detail-header-metadata]
+  dd {
+  margin: 0;
 }
 [data-prototype-header="E"][data-prototype-header-collapsed="true"]
   [data-specification-detail-header-metadata]
@@ -486,8 +521,8 @@ body:has([aria-modal="true"]) .prototype-review {
 [data-prototype-header="E"][data-prototype-header-collapsed="true"]
   [data-specification-detail-header-metadata]
   > div:first-child {
-  grid-row: 1;
-  grid-column: 2;
+  grid-row: 2;
+  grid-column: 1;
 }
 [data-prototype-header="E"][data-prototype-header-collapsed="true"]
   [data-prototype-lifecycle-status] {

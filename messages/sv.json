@@ -4074,7 +4074,7 @@
     "descriptionB": "55/45. Kompakt definitionslista bredvid rubriken. ID och kravområde ligger ovanför bred kravtext; behovsreferens och status under.",
     "descriptionC": "50/50. Metadata följer under rubriken. Läskort samlar kravtext, behovsreferens och övriga metadata.",
     "descriptionD": "60/40 med A:s kompakta tabeller. Rubriken ligger överst till vänster med vänsterställd beskrivning bredvid. De ursprungliga metadatarutorna ligger under.",
-    "descriptionE": "Rubrik och redigeringsknapp ligger till vänster, med Livscykelstatus och Avtal till höger i hopfällt läge. Fäll ut för att visa beskrivningen under rubriken och alla ursprungliga metadatarutor nedanför.",
+    "descriptionE": "Rubrik och redigeringsknapp ligger till vänster. I hopfällt läge visar en gemensam ruta Livscykelstatus med värde och Avtal med datum/status eller Inget. Endast avtalsväljaren visas. Fäll ut för beskrivning och fullständiga avtalskontroller.",
     "collapsedLifecycleStatus": "Livscykelstatus",
     "mockAgreementReadOnly": "Detta är ett exempelavtal i prototypen. Ändringar sparas inte.",
     "expandHeader": "Visa underlagsdetaljer",

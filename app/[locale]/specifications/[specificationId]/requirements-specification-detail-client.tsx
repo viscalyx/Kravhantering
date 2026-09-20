@@ -3339,7 +3339,9 @@ export default function KravunderlagDetailClient({
                 }
                 {...(prototypeVariant
                   ? devMarker({
-                      name: 'metadata summary',
+                      name: prototypeHeaderCollapsed
+                        ? 'lifecycle and agreement summary'
+                        : 'metadata summary',
                       context: 'requirements specification detail',
                       value: `prototype ${prototypeVariant}`,
                     })
@@ -3358,6 +3360,7 @@ export default function KravunderlagDetailClient({
                     if (refreshItems || stateChanged)
                       void fetchSpecificationItems()
                   }}
+                  prototypeCompact={prototypeHeaderCollapsed}
                   prototypeMockAgreement={prototypeLong}
                   refreshKey={agreementRefreshKey}
                   specificationId={specificationId}
