@@ -25,7 +25,7 @@ for (const width of process.argv.includes('--quick') ? [1440] : [1440, 1920]) {
     for (const theme of process.argv.includes('--quick')
       ? ['light']
       : ['light', 'dark']) {
-      for (const variant of ['0', 'A', 'B', 'C']) {
+      for (const variant of ['0', 'A', 'B', 'C', 'D']) {
         const context = await browser.newContext({
           viewport: { width, height: width === 1440 ? 900 : 1080 },
           reducedMotion: 'reduce',

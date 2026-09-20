@@ -1,7 +1,7 @@
 # Issue 1352: proportions and labels prototype
 
 This is a throwaway visual experiment on the existing specification detail
-route. It compares three answers to: **how can needs reference and both
+route. It compares four answers to: **how can needs reference and both
 requirement texts remain readable without cramped header metadata?**
 
 No design is approved. Keep issue 1352 open. This branch is reference material;
@@ -50,20 +50,22 @@ the comparison slider scales images to fit your current window.
 | A | 60/40 | Full-width, flat metadata band | Compact conventional table; reference immediately after text | Some horizontal scrolling for area/status at 1440 |
 | B | 55/45 | Two-column definition list beside title | ID/area above text; reference/status below | Taller records, fewer visible rows |
 | C | 50/50 | Inline properties below title | Bounded cards with full-width text and labeled reference/status footer | Lowest row density |
+| D | 60/40 | Title left, description beside it; original metadata boxes underneath | Same compact table as A | Original boxes retain their styling and consume header space |
 <!-- markdownlint-enable MD013 -->
 
-The proposals keep requirement text at 14 px. Metadata labels use normal case
-at 12 px. C reduces English tab side padding so all three labels fit.
+The proposals keep requirement text at 14 px. A/B/C metadata labels use normal
+case at 12 px; D retains the original boxes and their label styling. C reduces
+English tab side padding so all three labels fit.
 The existing business data, actions, tabs and panel roles remain.
 Reference moves before area in all proposals; no default field is removed.
 
-A uses initial column widths of 112 px for ID, 280 for text, 160 for reference,
+A and D use initial column widths of 112 px for ID, 280 for text, 160 for reference,
 120 for area and 110 for usage status, plus the existing 36 px selection
 column. The right table uses the corresponding ID/text/area widths. Spare
 width can still grow the text column. B and C reflow the real cells to the
 available panel width instead of using those widths as horizontal tracks.
 
-This is a presentation experiment, not a proposal to introduce three new
+This is a presentation experiment, not a proposal to introduce new
 permanent list modes or a new manual column-resize feature.
 
 ## Review controls
@@ -73,7 +75,7 @@ permanent list modes or a new manual column-resize feature.
 - **State & changes** shows the variant, viewport, navigation, theme, panel
   widths, table overflow, column geometry, tabs, metadata and write policy.
   Relevant state is also logged on each variant switch.
-- Inside State & changes, **Mix header** selects A, B or C independently.
+- Inside State & changes, **Mix header** selects A, B, C or D independently.
   For example, `?variant=A&header=C` combines the conventional table with
   inline metadata. Switching the main variant clears this override.
 - **Long text** temporarily replaces the title with exactly 150 characters
@@ -149,6 +151,19 @@ The gallery links to English long-text captures.
 Check both 1440 × 900 and 1920 × 1080, navigation expanded/collapsed and
 light/dark themes. At 375 px, the panels stack rather than share a row.
 
+### Variant D: title, description and original boxes
+
+Open `?variant=D`. The title occupies the left two fifths of the header row;
+the description sits beside it, aligned left with a 24 px gap. The original
+metadata boxes (Agreement, governance object, lead, implementation type and
+lifecycle status) span the row underneath. D uses A's tables and 60/40 split.
+
+Toggle **Long text** to review a 150-character title and 300-character
+description. Check that their top edges align and that all boxes remain below
+both texts. Compare the boxes with 0: borders, backgrounds, labels and actions
+retain the original appearance. On narrow screens the text and boxes stack.
+D is also available through the header mixer, for example `?variant=B&header=D`.
+
 ### 8. Preview state and write isolation
 
 Change a view setting, then reload: the preview returns to URL-selected
@@ -179,7 +194,7 @@ npm run prototype:1352:verify
 npm run type-check
 ```
 
-Capture regenerates 32 comparison images, measurements and the offline
+Capture regenerates 40 comparison images, measurements and the offline
 gallery. Verify exercises browser interactions and writes additional English
 long-text/mobile captures and a JSON report. These are prototype review
 scripts, not production acceptance tests.
@@ -189,7 +204,7 @@ scripts, not production acceptance tests.
 Baseline: `12fbf8228dddf566382e89df7affe4fa1ea6930a`.
 Evidence uses Chromium, specification 8, existing SQL Server demodata,
 administrator controls and fresh in-memory view state. No user data is
-changed. Measurements cover all 32 size/navigation/theme/variant combinations.
+changed. Measurements cover all 40 size/navigation/theme/variant combinations.
 
 At 1440 × 900, navigation expanded, light theme:
 
@@ -200,6 +215,7 @@ At 1440 × 900, navigation expanded, light theme:
 | A | 686 / 458 px | Yes | 7 / 8 | 134 / 92 px | 194 px |
 | B | 629 / 515 px | Yes | 3 / 5 | 0 / 0 px | 164 px |
 | C | 572 / 572 px | Yes | 2 / 4 | 0 / 0 px | 182 px |
+| D | 686 / 458 px | Yes | 7 / 8 | 134 / 92 px | 189 px |
 <!-- markdownlint-enable MD013 -->
 
 All three left tab labels fit across the Swedish capture matrix. All proposals
@@ -224,6 +240,8 @@ header also costs 17 px of height in the narrowest sample.
 B and C expose all default fields without horizontal scrolling, but their
 larger records give up much of the list density recovered in issue 1351.
 A's table with C's inline metadata is a useful combination to review.
+D adds the requested title/description row above the original metadata boxes
+and is ready for review.
 No winner is approved and no production implementation is included.
 
 The prototype does not prove production preference migration/preservation,
@@ -243,7 +261,7 @@ All files below are on the throwaway branch only.
   labels, record/card markers and fluid B/C table wrappers.
 - `components/PrototypeProportionsSwitcher.tsx`: URL switcher, keyboard
   controls, header mixer, state inspector and reset/long-text actions.
-- `proportions.prototype.css`: the three headers and list structures,
+- `proportions.prototype.css`: the four headers and list structures,
   filter wrapping, responsive behavior and review controls.
 - `instrumentation-client.ts`: in-memory view settings and URL defaults.
 - `proxy.ts`: development-only application-write block.
@@ -263,15 +281,18 @@ are unchanged; this branch supplies its own throwaway review guide instead.
 ## Verification record
 
 - TypeScript type checking passes.
-- Focused Biome checks pass for all 13 changed code/configuration files.
+- Focused Biome checks pass for the changed code/configuration files.
 - Markdown linting and spelling checks pass for this guide.
-- All 32 comparison captures retain readable Swedish tabs; all 24 proposal
+- All 40 comparison captures retain readable Swedish tabs; all 32 proposal
   captures bring needs reference into view, with no desktop page overflow.
-- All three interaction runs pass, including English tab visibility,
+- All four interaction runs pass, including English tab visibility,
   pointer/keyboard resizing, stable left/right tabs, expanded details,
   mixed headers and mobile stacking without horizontal document overflow.
-- The gallery's 24 proposal combinations load their images. Its slider works
-  at both keyboard endpoints. The evidence includes 44 application images.
+- The gallery's 32 proposal combinations load their images. Its slider works
+  at both keyboard endpoints. The evidence includes 57 application images.
+- D also passes focused checks for title/description alignment, 150/300
+  characters, matching original box styling, D/0 keyboard wrapping and
+  mobile stacking. A Swedish long-text capture supplements the English one.
 - Application mutation attempts return the preview-specific 403 response.
 - The isolated launcher's stop and restart commands are verified.
 

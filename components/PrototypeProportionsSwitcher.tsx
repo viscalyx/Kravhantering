@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
 
-export const prototypeVariants = ['0', 'A', 'B', 'C'] as const
+export const prototypeVariants = ['0', 'A', 'B', 'C', 'D'] as const
 export type PrototypeVariant = (typeof prototypeVariants)[number]
 export function useProportionsPrototypeVariant(): PrototypeVariant | null {
   const params = useSearchParams()
@@ -32,7 +32,7 @@ function choose(key: PrototypeVariant) {
     'specification-panel-width-v1',
     JSON.stringify({
       specificationId,
-      leftRatio: key === 'A' ? 0.6 : key === 'B' ? 0.55 : 0.5,
+      leftRatio: key === 'A' || key === 'D' ? 0.6 : key === 'B' ? 0.55 : 0.5,
     }),
   )
   localStorage.setItem(
@@ -152,7 +152,11 @@ export default function PrototypeProportionsSwitcher({
         event.preventDefault()
         const index = prototypeVariants.indexOf(variant)
         choose(
-          prototypeVariants[(index + (event.key === 'ArrowRight' ? 1 : 3)) % 4],
+          prototypeVariants[
+            (index +
+              (event.key === 'ArrowRight' ? 1 : prototypeVariants.length - 1)) %
+              prototypeVariants.length
+          ],
         )
       }
     }
@@ -179,7 +183,7 @@ export default function PrototypeProportionsSwitcher({
           {variant !== '0' && (
             <div className="prototype-bar">
               <span>{t('header')}</span>
-              {(['A', 'B', 'C'] as const).map(key => (
+              {(['A', 'B', 'C', 'D'] as const).map(key => (
                 <button
                   aria-pressed={(params.get('header') ?? variant) === key}
                   key={key}
@@ -202,7 +206,14 @@ export default function PrototypeProportionsSwitcher({
         <span className="prototype-tag">{t('tag')}</span>
         <button
           aria-label={t('previous')}
-          onClick={() => choose(prototypeVariants[(index + 3) % 4])}
+          onClick={() =>
+            choose(
+              prototypeVariants[
+                (index + prototypeVariants.length - 1) %
+                  prototypeVariants.length
+              ],
+            )
+          }
           type="button"
         >
           ←
@@ -219,7 +230,9 @@ export default function PrototypeProportionsSwitcher({
         ))}
         <button
           aria-label={t('next')}
-          onClick={() => choose(prototypeVariants[(index + 1) % 4])}
+          onClick={() =>
+            choose(prototypeVariants[(index + 1) % prototypeVariants.length])
+          }
           type="button"
         >
           →

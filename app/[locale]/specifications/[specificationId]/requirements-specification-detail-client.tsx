@@ -3195,7 +3195,7 @@ export default function KravunderlagDetailClient({
         data-prototype-header={
           prototypeVariant === '0'
             ? '0'
-            : ((['A', 'B', 'C'].includes(searchParams.get('header') ?? '')
+            : ((['A', 'B', 'C', 'D'].includes(searchParams.get('header') ?? '')
                 ? searchParams.get('header')
                 : prototypeVariant) ?? undefined)
         }
@@ -3225,7 +3225,16 @@ export default function KravunderlagDetailClient({
               className="flex flex-col gap-3 xl:grid xl:grid-cols-[minmax(18rem,1fr)_minmax(0,2fr)] xl:items-start xl:gap-5"
               data-specification-detail-header-summary="true"
             >
-              <div className="min-w-0">
+              <div
+                className="min-w-0"
+                {...(prototypeVariant
+                  ? devMarker({
+                      context: 'requirements specification detail',
+                      name: 'prototype title and description',
+                      value: 'title and business needs reference',
+                    })
+                  : {})}
+              >
                 <div
                   className="flex items-center gap-3"
                   data-specification-detail-title-row="true"
@@ -3828,7 +3837,9 @@ export default function KravunderlagDetailClient({
                     onVisibleColumnsChange={setLeftVisibleCols}
                     prototypeLayout={
                       prototypeVariant && prototypeVariant !== '0'
-                        ? prototypeVariant
+                        ? prototypeVariant === 'D'
+                          ? 'A'
+                          : prototypeVariant
                         : undefined
                     }
                     renderExpanded={id => {
@@ -4438,7 +4449,9 @@ export default function KravunderlagDetailClient({
                       onVisibleColumnsChange={setRightVisibleCols}
                       prototypeLayout={
                         prototypeVariant && prototypeVariant !== '0'
-                          ? prototypeVariant
+                          ? prototypeVariant === 'D'
+                            ? 'A'
+                            : prototypeVariant
                           : undefined
                       }
                       renderExpanded={id => (

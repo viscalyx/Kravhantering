@@ -49,7 +49,12 @@ if (
       'specification-panel-width-v1',
       JSON.stringify({
         specificationId,
-        leftRatio: variant === 'A' ? 0.6 : variant === 'B' ? 0.55 : 0.5,
+        leftRatio:
+          variant === 'A' || variant === 'D'
+            ? 0.6
+            : variant === 'B'
+              ? 0.55
+              : 0.5,
       }),
     )
     localStorage.setItem(

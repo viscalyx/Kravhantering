@@ -46,7 +46,7 @@ console.log(
 )
 console.log('Before/after gallery: http://localhost:3136')
 console.log(
-  'Read-only preview. 0=baseline, A=wide table, B=text first, C=reading cards. Ctrl+C stops both servers.',
+  'Read-only preview. 0=baseline, A=wide table, B=text first, C=reading cards, D=title beside description. Ctrl+C stops both servers.',
 )
 const gallery = spawn(
   'python3',

@@ -18,7 +18,7 @@ await loginPage.waitForURL(
 const cookies = await login.cookies()
 await login.close()
 const results = []
-for (const variant of ['A', 'B', 'C']) {
+for (const variant of ['A', 'B', 'C', 'D']) {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
     reducedMotion: 'reduce',
@@ -185,7 +185,7 @@ for (const variant of ['A', 'B', 'C']) {
     throw Error('Write guard missing')
   await page.locator('body').click({ position: { x: 5, y: 5 } })
   await page.keyboard.press('ArrowRight')
-  const next = variant === 'A' ? 'B' : variant === 'B' ? 'C' : '0'
+  const next = { A: 'B', B: 'C', C: 'D', D: '0' }[variant]
   await expect(
     page.locator('[data-specification-detail-page-shell]'),
   ).toHaveAttribute('data-proportions-prototype', next)
