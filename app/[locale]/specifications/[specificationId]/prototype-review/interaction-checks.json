@@ -16,8 +16,8 @@
     "writeGuard": 403,
     "urlSwitchAndReload": true,
     "mobile": {
-      "width": 337.3125,
-      "scrollWidth": 337
+      "width": 340.0625,
+      "scrollWidth": 340
     }
   },
   {
@@ -37,8 +37,8 @@
     "writeGuard": 403,
     "urlSwitchAndReload": true,
     "mobile": {
-      "width": 343,
-      "scrollWidth": 343
+      "width": 341.8125,
+      "scrollWidth": 342
     }
   },
   {
@@ -58,8 +58,8 @@
     "writeGuard": 403,
     "urlSwitchAndReload": true,
     "mobile": {
-      "width": 340.078125,
-      "scrollWidth": 340
+      "width": 337.296875,
+      "scrollWidth": 337
     }
   },
   {
@@ -79,8 +79,29 @@
     "writeGuard": 403,
     "urlSwitchAndReload": true,
     "mobile": {
-      "width": 326.828125,
-      "scrollWidth": 327
+      "width": 333.109375,
+      "scrollWidth": 333
+    }
+  },
+  {
+    "variant": "E",
+    "englishTabsFit": true,
+    "pointerResize": true,
+    "rightTabsStable": true,
+    "expandDetail": true,
+    "mixedHeader": true,
+    "keyboardResize": "8 px without switching variants",
+    "collapseRestore": true,
+    "reset": true,
+    "stableTabs": true,
+    "independentScroll": true,
+    "stickyHeader": true,
+    "longText": true,
+    "writeGuard": 403,
+    "urlSwitchAndReload": true,
+    "mobile": {
+      "width": 333.109375,
+      "scrollWidth": 333
     }
   }
 ]

@@ -18,7 +18,7 @@ await loginPage.waitForURL(
 const cookies = await login.cookies()
 await login.close()
 const results = []
-for (const variant of ['A', 'B', 'C', 'D']) {
+for (const variant of ['A', 'B', 'C', 'D', 'E']) {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
     reducedMotion: 'reduce',
@@ -143,6 +143,17 @@ for (const variant of ['A', 'B', 'C', 'D']) {
     Math.abs((await right.getByRole('tablist').boundingBox()).y - headerY) > 1
   )
     throw Error('Header moved')
+  if (variant === 'E') {
+    await expect(
+      page.locator('[data-specification-detail-header-metadata]'),
+    ).toBeHidden()
+    await page
+      .getByRole('button', { name: /Show specification details$/ })
+      .click()
+    await expect(
+      page.locator('[data-specification-detail-header-metadata]'),
+    ).toBeVisible()
+  }
   await page.getByRole('button', { name: 'Long text', exact: true }).click()
   await expect
     .poll(async () => (await page.locator('h1').innerText()).length)
@@ -185,7 +196,7 @@ for (const variant of ['A', 'B', 'C', 'D']) {
     throw Error('Write guard missing')
   await page.locator('body').click({ position: { x: 5, y: 5 } })
   await page.keyboard.press('ArrowRight')
-  const next = { A: 'B', B: 'C', C: 'D', D: '0' }[variant]
+  const next = { A: 'B', B: 'C', C: 'D', D: 'E', E: '0' }[variant]
   await expect(
     page.locator('[data-specification-detail-page-shell]'),
   ).toHaveAttribute('data-proportions-prototype', next)

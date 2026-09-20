@@ -50,7 +50,7 @@ if (
       JSON.stringify({
         specificationId,
         leftRatio:
-          variant === 'A' || variant === 'D'
+          variant === 'A' || variant === 'D' || variant === 'E'
             ? 0.6
             : variant === 'B'
               ? 0.55

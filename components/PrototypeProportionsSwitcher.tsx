@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
 
-export const prototypeVariants = ['0', 'A', 'B', 'C', 'D'] as const
+export const prototypeVariants = ['0', 'A', 'B', 'C', 'D', 'E'] as const
 export type PrototypeVariant = (typeof prototypeVariants)[number]
 export function useProportionsPrototypeVariant(): PrototypeVariant | null {
   const params = useSearchParams()
@@ -21,6 +21,7 @@ function choose(key: PrototypeVariant) {
   const url = new URL(window.location.href)
   url.searchParams.set('variant', key)
   url.searchParams.delete('header')
+  url.searchParams.delete('headerDetails')
   url.searchParams.set(
     'previewReset',
     String(Number(url.searchParams.get('previewReset') ?? 0) + 1),
@@ -32,7 +33,12 @@ function choose(key: PrototypeVariant) {
     'specification-panel-width-v1',
     JSON.stringify({
       specificationId,
-      leftRatio: key === 'A' || key === 'D' ? 0.6 : key === 'B' ? 0.55 : 0.5,
+      leftRatio:
+        key === 'A' || key === 'D' || key === 'E'
+          ? 0.6
+          : key === 'B'
+            ? 0.55
+            : 0.5,
     }),
   )
   localStorage.setItem(
@@ -100,6 +106,9 @@ export default function PrototypeProportionsSwitcher({
         {
           variant,
           header: new URLSearchParams(location.search).get('header') ?? variant,
+          headerDetails:
+            new URLSearchParams(location.search).get('headerDetails') ??
+            'collapsed by default in E',
           viewport: `${innerWidth} × ${innerHeight}`,
           navigationWidth: document
             .querySelector('[data-global-navigation-rail="desktop"]')
@@ -183,7 +192,7 @@ export default function PrototypeProportionsSwitcher({
           {variant !== '0' && (
             <div className="prototype-bar">
               <span>{t('header')}</span>
-              {(['A', 'B', 'C', 'D'] as const).map(key => (
+              {(['A', 'B', 'C', 'D', 'E'] as const).map(key => (
                 <button
                   aria-pressed={(params.get('header') ?? variant) === key}
                   key={key}

@@ -5,6 +5,7 @@ import './proportions.prototype.css'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   AlertTriangle,
+  ChevronDown,
   ChevronRight,
   Download,
   Ellipsis,
@@ -536,7 +537,16 @@ export default function KravunderlagDetailClient({
   const { confirm } = useConfirmModal()
   const confirmDiscardChanges = useDiscardChangesConfirmation()
   const searchParams = useSearchParams()
+  const tp = useTranslations('proportionsPrototype')
   const prototypeVariant = useProportionsPrototypeVariant()
+  const prototypeHeader =
+    prototypeVariant === '0'
+      ? '0'
+      : ['A', 'B', 'C', 'D', 'E'].includes(searchParams.get('header') ?? '')
+        ? searchParams.get('header')
+        : prototypeVariant
+  const prototypeHeaderCollapsed =
+    prototypeHeader === 'E' && searchParams.get('headerDetails') !== 'expanded'
   const prototypeLong = Boolean(
     prototypeVariant && searchParams.get('sample') === 'long',
   )
@@ -3192,12 +3202,9 @@ export default function KravunderlagDetailClient({
       <div
         className={specificationDetailPageShellClassName}
         data-proportions-prototype={prototypeVariant ?? undefined}
-        data-prototype-header={
-          prototypeVariant === '0'
-            ? '0'
-            : ((['A', 'B', 'C', 'D'].includes(searchParams.get('header') ?? '')
-                ? searchParams.get('header')
-                : prototypeVariant) ?? undefined)
+        data-prototype-header={prototypeHeader ?? undefined}
+        data-prototype-header-collapsed={
+          prototypeHeader === 'E' ? prototypeHeaderCollapsed : undefined
         }
         data-specification-detail-page-shell="true"
         lang={prototypeVariant ? locale : undefined}
@@ -3247,9 +3254,45 @@ export default function KravunderlagDetailClient({
                       value: 'specification name',
                     })}
                   >
-                    {specName}
+                    {prototypeHeader === 'E' ? (
+                      <button
+                        aria-controls={
+                          prototypeLong || spec.businessNeedsReference
+                            ? 'prototype-header-description prototype-header-metadata'
+                            : 'prototype-header-metadata'
+                        }
+                        aria-expanded={!prototypeHeaderCollapsed}
+                        aria-label={`${specName}. ${tp(
+                          prototypeHeaderCollapsed
+                            ? 'expandHeader'
+                            : 'collapseHeader',
+                        )}`}
+                        className="flex min-h-8 w-full items-start gap-3 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500"
+                        {...devMarker({
+                          context: 'requirements specification detail',
+                          name: 'prototype header toggle',
+                          value: 'expand or collapse specification details',
+                        })}
+                        onClick={() => {
+                          const url = new URL(window.location.href)
+                          if (prototypeHeaderCollapsed)
+                            url.searchParams.set('headerDetails', 'expanded')
+                          else url.searchParams.delete('headerDetails')
+                          window.history.replaceState(null, '', url)
+                        }}
+                        type="button"
+                      >
+                        <span>{specName}</span>
+                        <ChevronDown
+                          aria-hidden="true"
+                          className={`mt-1 h-5 w-5 shrink-0 ${prototypeHeaderCollapsed ? '' : 'rotate-180'}`}
+                        />
+                      </button>
+                    ) : (
+                      specName
+                    )}
                   </h1>
-                  {canMutateSpecification ? (
+                  {canMutateSpecification && !prototypeHeaderCollapsed ? (
                     <button
                       aria-expanded={showEditSpecificationForm}
                       aria-haspopup="dialog"
@@ -3270,7 +3313,15 @@ export default function KravunderlagDetailClient({
                   ) : null}
                 </div>
                 {(prototypeLong || spec.businessNeedsReference) && (
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary-700 dark:text-secondary-200">
+                  <p
+                    className="mt-2 max-w-3xl text-sm leading-6 text-secondary-700 dark:text-secondary-200"
+                    hidden={prototypeHeaderCollapsed}
+                    id={
+                      prototypeHeader === 'E'
+                        ? 'prototype-header-description'
+                        : undefined
+                    }
+                  >
                     {prototypeLong
                       ? prototypeDescription
                       : spec.businessNeedsReference}
@@ -3280,6 +3331,12 @@ export default function KravunderlagDetailClient({
               <dl
                 className="grid grid-flow-col auto-cols-[minmax(12rem,1fr)] gap-3 overflow-x-auto pb-1 xl:auto-cols-fr"
                 data-specification-detail-header-metadata="true"
+                hidden={prototypeHeaderCollapsed}
+                id={
+                  prototypeHeader === 'E'
+                    ? 'prototype-header-metadata'
+                    : undefined
+                }
                 {...(prototypeVariant
                   ? devMarker({
                       name: 'metadata summary',
@@ -3837,7 +3894,7 @@ export default function KravunderlagDetailClient({
                     onVisibleColumnsChange={setLeftVisibleCols}
                     prototypeLayout={
                       prototypeVariant && prototypeVariant !== '0'
-                        ? prototypeVariant === 'D'
+                        ? prototypeVariant === 'D' || prototypeVariant === 'E'
                           ? 'A'
                           : prototypeVariant
                         : undefined
@@ -4449,7 +4506,7 @@ export default function KravunderlagDetailClient({
                       onVisibleColumnsChange={setRightVisibleCols}
                       prototypeLayout={
                         prototypeVariant && prototypeVariant !== '0'
-                          ? prototypeVariant === 'D'
+                          ? prototypeVariant === 'D' || prototypeVariant === 'E'
                             ? 'A'
                             : prototypeVariant
                           : undefined

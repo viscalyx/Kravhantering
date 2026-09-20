@@ -1,5 +1,5 @@
 /* biome-ignore-all lint/style/noDescendingSpecificity: throwaway variants deliberately override shared preview rules. */
-/* THROWAWAY #1352. Four structures on the existing page, selected by ?variant=. */
+/* THROWAWAY #1352. Five structures on the existing page, selected by ?variant=. */
 .prototype-review {
   position: fixed;
   bottom: 8px;
@@ -63,9 +63,9 @@
   white-space: pre-wrap;
 }
 
-/* A/B/C flatten metadata boxes; D keeps the original box styling. */
+/* A/B/C flatten metadata boxes; D/E keep the original box styling. */
 [data-prototype-header]:not([data-prototype-header="0"]):not(
-  [data-prototype-header="D"]
+  :is([data-prototype-header="D"], [data-prototype-header="E"])
 ) [data-specification-detail-header-metadata] {
   grid-auto-columns: auto;
   grid-auto-flow: row;
@@ -73,7 +73,7 @@
   overflow: visible;
 }
 [data-prototype-header]:not([data-prototype-header="0"]):not(
-    [data-prototype-header="D"]
+    :is([data-prototype-header="D"], [data-prototype-header="E"])
   )
   [data-specification-detail-header-metadata]
   > div {
@@ -85,7 +85,7 @@
   backdrop-filter: none;
 }
 [data-prototype-header]:not([data-prototype-header="0"]):not(
-    [data-prototype-header="D"]
+    :is([data-prototype-header="D"], [data-prototype-header="E"])
   )
   [data-specification-detail-header-metadata]
   dt {
@@ -97,14 +97,14 @@
   overflow-wrap: normal;
 }
 [data-prototype-header]:not([data-prototype-header="0"]):not(
-    [data-prototype-header="D"]
+    :is([data-prototype-header="D"], [data-prototype-header="E"])
   )
   [data-specification-detail-header-metadata]
   dd {
   overflow-wrap: anywhere;
 }
 [data-prototype-header]:not([data-prototype-header="0"]):not(
-    [data-prototype-header="D"]
+    :is([data-prototype-header="D"], [data-prototype-header="E"])
   )
   [data-specification-detail-header-metadata]
   dd
@@ -174,10 +174,11 @@
 }
 
 /* D: title and description share a row above the original metadata boxes. */
-[data-prototype-header="D"] [data-specification-detail-header-summary] {
+:is([data-prototype-header="D"], [data-prototype-header="E"])
+[data-specification-detail-header-summary] {
   display: block;
 }
-[data-prototype-header="D"]
+:is([data-prototype-header="D"], [data-prototype-header="E"])
   [data-specification-detail-header-summary]
   > div:has(> p) {
   display: grid;
@@ -185,10 +186,11 @@
   gap: 24px;
   align-items: start;
 }
-[data-prototype-header="D"] [data-specification-detail-title-row] {
+:is([data-prototype-header="D"], [data-prototype-header="E"])
+  [data-specification-detail-title-row] {
   align-items: flex-start;
 }
-[data-prototype-header="D"]
+:is([data-prototype-header="D"], [data-prototype-header="E"])
   [data-specification-detail-header-summary]
   > div
   > p {
@@ -197,18 +199,20 @@
   text-align: left;
   overflow-wrap: anywhere;
 }
-[data-prototype-header="D"] [data-specification-detail-header-metadata] {
+:is([data-prototype-header="D"], [data-prototype-header="E"])
+  [data-specification-detail-header-metadata] {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   grid-auto-flow: row;
   margin-top: 16px;
 }
 @media (max-width: 1023px) {
-  [data-prototype-header="D"] [data-specification-detail-header-metadata] {
+  :is([data-prototype-header="D"], [data-prototype-header="E"])
+    [data-specification-detail-header-metadata] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 639px) {
-  [data-prototype-header="D"]
+  :is([data-prototype-header="D"], [data-prototype-header="E"])
     [data-specification-detail-header-summary]
     > div:has(> p) {
     grid-template-columns: minmax(0, 1fr);
@@ -439,4 +443,16 @@
 /* English labels need less side padding in C's equal-width panels. */
 [data-proportions-prototype="C"][lang="en"] [role="tab"] {
   padding-inline: 4px;
+}
+
+/* E starts with only the title; expansion restores D's complete header. */
+[data-prototype-header="E"][data-prototype-header-collapsed="true"]
+  [data-specification-detail-header-summary]
+  > div {
+  display: block;
+}
+[data-prototype-header="E"][data-prototype-header-collapsed="true"]
+  [data-specification-detail-header-summary]
+  [hidden] {
+  display: none;
 }
