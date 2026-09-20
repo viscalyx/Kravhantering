@@ -15,7 +15,8 @@ Recreate a review checkout from the main repository:
 
 ```bash
 git fetch origin prototype/1352-proportions
-git worktree add --detach /mnt/krav-azure-dev-data/.worktrees/prototype-1352-proportions FETCH_HEAD
+git worktree add --detach \
+  /mnt/krav-azure-dev-data/.worktrees/prototype-1352-proportions FETCH_HEAD
 cd /mnt/krav-azure-dev-data/.worktrees/prototype-1352-proportions
 npm ci
 npm run prototype:1352
