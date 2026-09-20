@@ -1,0 +1,65 @@
+[
+  {
+    "variant": "A",
+    "englishTabsFit": true,
+    "pointerResize": true,
+    "rightTabsStable": true,
+    "expandDetail": true,
+    "mixedHeader": true,
+    "keyboardResize": "8 px without switching variants",
+    "collapseRestore": true,
+    "reset": true,
+    "stableTabs": true,
+    "independentScroll": true,
+    "stickyHeader": true,
+    "longText": true,
+    "writeGuard": 403,
+    "urlSwitchAndReload": true,
+    "mobile": {
+      "width": 343,
+      "scrollWidth": 343
+    }
+  },
+  {
+    "variant": "B",
+    "englishTabsFit": true,
+    "pointerResize": true,
+    "rightTabsStable": true,
+    "expandDetail": true,
+    "mixedHeader": true,
+    "keyboardResize": "8 px without switching variants",
+    "collapseRestore": true,
+    "reset": true,
+    "stableTabs": true,
+    "independentScroll": true,
+    "stickyHeader": true,
+    "longText": true,
+    "writeGuard": 403,
+    "urlSwitchAndReload": true,
+    "mobile": {
+      "width": 343,
+      "scrollWidth": 343
+    }
+  },
+  {
+    "variant": "C",
+    "englishTabsFit": true,
+    "pointerResize": true,
+    "rightTabsStable": true,
+    "expandDetail": true,
+    "mixedHeader": true,
+    "keyboardResize": "8 px without switching variants",
+    "collapseRestore": true,
+    "reset": true,
+    "stableTabs": true,
+    "independentScroll": true,
+    "stickyHeader": true,
+    "longText": true,
+    "writeGuard": 403,
+    "urlSwitchAndReload": true,
+    "mobile": {
+      "width": 343,
+      "scrollWidth": 343
+    }
+  }
+]

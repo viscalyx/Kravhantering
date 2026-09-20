@@ -4059,5 +4059,26 @@
     "hiddenCreatedNorm": "Sökningen döljer den nya normreferensen ”{name}”. Den är fortfarande markerad.",
     "creationPersistence": "Det nya objektet sparas direkt. Avbryt i väljdialogen kasserar endast urvalet.",
     "searchHelp": "Sök på namn, referens-ID eller paketets syfte. Markeringar behålls när du filtrerar listan."
+  },
+  "proportionsPrototype": {
+    "tag": "PROTOTYPE #1352",
+    "question": "Vilka proportioner gör båda panelerna läsbara?",
+    "name0": "Nuläge",
+    "nameA": "Bred tabell",
+    "nameB": "Text i fokus",
+    "nameC": "Läskort",
+    "description0": "Nuvarande sida: 50/50, kravtext på 809 px, versala metadataetiketter.",
+    "descriptionA": "60/40. Ett platt metadataband och kompakt tabell. Behovsreferens ligger intill kravtext; kravområde och användningsstatus finns till höger.",
+    "descriptionB": "55/45. Kompakt definitionslista bredvid rubriken. ID och kravområde ligger ovanför bred kravtext; behovsreferens och status under.",
+    "descriptionC": "50/50. Metadata följer under rubriken. Läskort samlar kravtext, behovsreferens och övriga metadata.",
+    "readOnly": "Tillfällig prototyp: ändringar av verksamhetsdata är spärrade. Vyval finns endast i minnet. Variantbyte återställer panelbredderna.",
+    "help": "Växla med ← / → utanför kontroller. H döljer/visar fältet. Ändra panelbredd som vanligt; Återställ återgår till variantens startläge.",
+    "previous": "Föregående variant",
+    "next": "Nästa variant",
+    "inspect": "Tillstånd och ändringar",
+    "hide": "Dölj · H",
+    "reset": "Återställ",
+    "sample": "Lång text",
+    "header": "Kombinera sidhuvud:"
   }
 }

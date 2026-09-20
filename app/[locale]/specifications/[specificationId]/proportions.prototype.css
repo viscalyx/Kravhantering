@@ -1,0 +1,390 @@
+/* biome-ignore-all lint/style/noDescendingSpecificity: throwaway variants deliberately override shared preview rules. */
+/* THROWAWAY #1352. Three structures on the existing page, selected by ?variant=. */
+.prototype-review {
+  position: fixed;
+  bottom: 8px;
+  left: 50%;
+  z-index: 90;
+  max-width: calc(100vw - 24px);
+  font: 13px / 1.4 system-ui;
+  color: white;
+  transform: translateX(-50%);
+}
+.prototype-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  background: #181b35;
+  border: 1px solid #a5b4fc;
+  border-radius: 14px;
+  box-shadow: 0 4px 22px #0005;
+}
+.prototype-bar button {
+  min-width: 30px;
+  min-height: 30px;
+  padding: 4px 9px;
+  border-radius: 8px;
+}
+.prototype-bar button:hover,
+.prototype-bar button[aria-pressed="true"] {
+  background: #4f46e5;
+}
+.prototype-bar button:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+.prototype-tag {
+  padding: 0 8px;
+  font-weight: 700;
+  color: #c7d2fe;
+}
+.prototype-inspector {
+  max-width: 840px;
+  max-height: 65vh;
+  padding: 16px;
+  margin: 0 auto 8px;
+  overflow: auto;
+  background: #181b35;
+  border: 1px solid #a5b4fc;
+  border-radius: 14px;
+}
+.prototype-inspector h2 {
+  font-size: 17px;
+  font-weight: 700;
+}
+.prototype-inspector p {
+  margin: 8px 0;
+}
+.prototype-inspector pre {
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+/* All proposals keep labels and data, remove individual decorative boxes. */
+[data-proportions-prototype]:not([data-proportions-prototype="0"])
+[data-specification-detail-header-metadata] {
+  grid-auto-columns: auto;
+  grid-auto-flow: row;
+  padding: 0;
+  overflow: visible;
+}
+[data-proportions-prototype]:not([data-proportions-prototype="0"])
+  [data-specification-detail-header-metadata]
+  > div {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+[data-proportions-prototype]:not([data-proportions-prototype="0"])
+  [data-specification-detail-header-metadata]
+  dt {
+  font-size: 12px;
+  line-height: 18px;
+  text-transform: none;
+  hyphens: auto;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+[data-proportions-prototype]:not([data-proportions-prototype="0"])
+  [data-specification-detail-header-metadata]
+  dd {
+  overflow-wrap: anywhere;
+}
+[data-proportions-prototype]:not([data-proportions-prototype="0"])
+  [data-specification-detail-header-metadata]
+  dd
+  + dd {
+  font-size: 11px;
+}
+/* A: full-width metadata band, familiar table. */
+[data-prototype-header="A"] [data-specification-detail-header-summary] {
+  display: block;
+}
+[data-prototype-header="A"] [data-specification-detail-header-metadata] {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  padding-block: 10px;
+  margin-top: 12px;
+  border-block: 1px solid #cbd5e1;
+}
+.dark [data-prototype-header="A"] [data-specification-detail-header-metadata] {
+  border-color: #334155;
+}
+/* B: title alongside a two-column definition list. */
+[data-prototype-header="B"] [data-specification-detail-header-summary] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(600px, 1.5fr);
+  gap: 24px;
+}
+[data-prototype-header="B"] [data-specification-detail-header-metadata] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 20px;
+}
+[data-prototype-header="B"] [data-specification-detail-header-metadata] > div {
+  display: grid;
+  grid-template-columns: minmax(135px, 0.9fr) minmax(0, 1fr);
+  column-gap: 10px;
+  align-content: start;
+}
+[data-prototype-header="B"] [data-specification-detail-header-metadata] dd {
+  margin-top: 0;
+}
+[data-prototype-header="B"]
+  [data-specification-detail-header-metadata]
+  dd
+  + dd {
+  grid-column: 2;
+}
+/* C: inline properties beneath a full-width title. */
+[data-prototype-header="C"] [data-specification-detail-header-summary] {
+  display: block;
+}
+[data-prototype-header="C"] [data-specification-detail-header-metadata] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  margin-top: 12px;
+}
+[data-prototype-header="C"] [data-specification-detail-header-metadata] > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  max-width: 100%;
+}
+[data-prototype-header="C"] [data-specification-detail-header-metadata] dd {
+  margin: 0;
+}
+
+/* B/C reflow the real table cells, preserving controls and row detail actions. */
+[data-prototype-layout="B"],
+[data-prototype-layout="C"],
+[data-prototype-layout="B"] > div,
+[data-prototype-layout="C"] > div {
+  width: 100%;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"]) colgroup {
+  display: none;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"]) table {
+  display: block;
+  width: 100%;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"]) tbody {
+  display: block;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"]) thead:not(.h-0) {
+  display: block;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"])
+  thead:not(.h-0)
+  tr {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"])
+  thead:not(.h-0)
+  th {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 4px 6px;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"])
+  thead:not(.h-0)
+  th:first-child {
+  display: none;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"])
+  thead:not(.h-0)
+  th
+  [data-developer-mode-name="column header controls"] {
+  flex-wrap: wrap;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"])
+  [data-scroll-fade] {
+  display: none;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"])
+  tbody
+  tr:has([data-prototype-column]) {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 8px;
+  padding: 8px;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"]) tbody td {
+  min-width: 0;
+  border-right: 0;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"])
+  tbody
+  td:not([data-prototype-column]):not([colspan]) {
+  grid-row: 1;
+  grid-column: 1;
+  align-self: center;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"])
+  tbody
+  [data-prototype-column="uniqueId"] {
+  grid-row: 1;
+  grid-column: 2;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"])
+  tbody
+  [data-prototype-column="description"] {
+  grid-row: 2;
+  grid-column: 2 / -1;
+  padding: 0 8px 8px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"])
+  tbody
+  [data-prototype-column="needsReference"] {
+  grid-row: 3;
+  grid-column: 2;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"])
+  tbody
+  [data-prototype-column="area"] {
+  grid-row: 1;
+  grid-column: 3;
+  align-self: center;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"])
+  tbody
+  [data-prototype-column="specificationItemStatus"] {
+  grid-row: 3;
+  grid-column: 3;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"])
+  tbody
+  :is(
+    [data-prototype-column="needsReference"],
+    [data-prototype-column="specificationItemStatus"]
+  )::before {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 12px;
+  line-height: 18px;
+  color: #475569;
+  content: attr(data-prototype-label);
+}
+.dark
+  :is([data-prototype-layout="B"], [data-prototype-layout="C"])
+  tbody
+  :is(
+    [data-prototype-column="needsReference"],
+    [data-prototype-column="specificationItemStatus"]
+  )::before {
+  color: #cbd5e1;
+}
+:is([data-prototype-layout="B"], [data-prototype-layout="C"]) select {
+  width: 100%;
+  min-width: 0;
+}
+/* C cards group the same fields within a bounded reading surface. */
+[data-prototype-layout="C"] tbody {
+  padding: 10px;
+  background: #f1f5f9;
+}
+.dark [data-prototype-layout="C"] tbody {
+  background: #0f172a;
+}
+[data-prototype-layout="C"] tbody tr:has([data-prototype-column]) {
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+}
+.dark [data-prototype-layout="C"] tbody tr:has([data-prototype-column]) {
+  background: #172033;
+  border-color: #334155;
+}
+[data-prototype-layout="C"] tbody [data-prototype-column="description"] {
+  grid-column: 1 / -1;
+  padding: 8px 4px 14px;
+}
+[data-prototype-layout="C"] tbody [data-prototype-column="needsReference"] {
+  grid-row: 3;
+  grid-column: 1 / -1;
+  padding-top: 10px;
+  border-top: 1px solid #cbd5e1;
+}
+[data-prototype-layout="C"]
+  tbody
+  [data-prototype-column="specificationItemStatus"] {
+  grid-row: 4;
+  grid-column: 1 / -1;
+}
+[data-prototype-layout="C"]
+  tbody
+  :is(
+    [data-prototype-column="needsReference"],
+    [data-prototype-column="specificationItemStatus"]
+  ) {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+[data-prototype-layout="C"]
+  tbody
+  :is(
+    [data-prototype-column="needsReference"],
+    [data-prototype-column="specificationItemStatus"]
+  )::before {
+  flex: 0 0 130px;
+}
+.dark
+  [data-prototype-layout="C"]
+  tbody
+  [data-prototype-column="needsReference"] {
+  border-color: #334155;
+}
+@media (max-width: 1279px) {
+  [data-prototype-header="B"] [data-specification-detail-header-summary] {
+    display: block;
+  }
+  [data-prototype-header="B"] [data-specification-detail-header-metadata] {
+    margin-top: 12px;
+  }
+}
+@media (max-width: 639px) {
+  [data-proportions-prototype]:not([data-proportions-prototype="0"])
+    [data-specification-detail-header-metadata] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  [data-prototype-header="B"]
+    [data-specification-detail-header-metadata]
+    > div {
+    grid-template-columns: 1fr;
+  }
+  [data-prototype-header="B"]
+    [data-specification-detail-header-metadata]
+    dd
+    + dd {
+    grid-column: 1;
+  }
+}
+/* Narrower right panes must let the filter/action row wrap rather than overlap. */
+[data-proportions-prototype]:not([data-proportions-prototype="0"])
+  .requirements-panel-toolbar
+  > .flex-1 {
+  flex-basis: 250px;
+}
+/* English labels need less side padding in C's equal-width panels. */
+[data-proportions-prototype="C"][lang="en"] [role="tab"] {
+  padding-inline: 4px;
+}

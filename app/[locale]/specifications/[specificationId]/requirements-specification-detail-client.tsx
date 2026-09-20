@@ -1,5 +1,7 @@
 'use client'
 
+import './proportions.prototype.css'
+
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   AlertTriangle,
@@ -52,6 +54,9 @@ import LazyAiRequirementGenerator from '@/components/LazyAiRequirementGenerator'
 import LazyRequirementsImportDialog, {
   type InitialRequirementsImport,
 } from '@/components/LazyRequirementsImportDialog'
+import PrototypeProportionsSwitcher, {
+  useProportionsPrototypeVariant,
+} from '@/components/PrototypeProportionsSwitcher'
 import RequirementRemovalButton from '@/components/RequirementRemovalButton'
 import RequirementsPanelHeader from '@/components/RequirementsPanelHeader'
 import RequirementsTable, {
@@ -531,6 +536,14 @@ export default function KravunderlagDetailClient({
   const { confirm } = useConfirmModal()
   const confirmDiscardChanges = useDiscardChangesConfirmation()
   const searchParams = useSearchParams()
+  const prototypeVariant = useProportionsPrototypeVariant()
+  const prototypeLong = Boolean(
+    prototypeVariant && searchParams.get('sample') === 'long',
+  )
+  const prototypeText =
+    locale === 'sv'
+      ? 'Tillfälligt långt exempel: Systemet ska ge användaren tillgång till fullständig information även vid långa beskrivningar, radbrytningar och ovanligt långa benämningar.\nInformationen ska kunna läsas utan att viktiga delar försvinner eller att andra arbetsytor blir oanvändbara.'
+      : 'Temporary long example: The system must make complete information available even with long descriptions, line breaks and unusually long names.\nPeople must be able to read it without losing important details or making the other workspace unusable.'
   const shouldReduceMotion = useReducedMotion()
   const libraryDetailCache = useMemo(createLibraryRequirementDetailCache, [])
   const localDetailCache = useMemo(
@@ -2421,7 +2434,11 @@ export default function KravunderlagDetailClient({
     ],
   )
 
-  const specName = spec ? spec.name : '…'
+  const specName = spec
+    ? prototypeLong
+      ? `${spec.name} — ${prototypeText.split(': ')[1]}`
+      : spec.name
+    : '…'
   const canMutateSpecification =
     permissions.canEditContent === true ||
     permissions.canManageAssignments === true
@@ -3164,9 +3181,21 @@ export default function KravunderlagDetailClient({
 
   return (
     <>
+      {prototypeVariant && (
+        <PrototypeProportionsSwitcher variant={prototypeVariant} />
+      )}
       <div
         className={specificationDetailPageShellClassName}
+        data-proportions-prototype={prototypeVariant ?? undefined}
+        data-prototype-header={
+          prototypeVariant === '0'
+            ? '0'
+            : ((['A', 'B', 'C'].includes(searchParams.get('header') ?? '')
+                ? searchParams.get('header')
+                : prototypeVariant) ?? undefined)
+        }
         data-specification-detail-page-shell="true"
+        lang={prototypeVariant ? locale : undefined}
       >
         <div className={specificationDetailContainerClassName}>
           {loadWarning ? (
@@ -3235,6 +3264,13 @@ export default function KravunderlagDetailClient({
               <dl
                 className="grid grid-flow-col auto-cols-[minmax(12rem,1fr)] gap-3 overflow-x-auto pb-1 xl:auto-cols-fr"
                 data-specification-detail-header-metadata="true"
+                {...(prototypeVariant
+                  ? devMarker({
+                      name: 'metadata summary',
+                      context: 'requirements specification detail',
+                      value: `prototype ${prototypeVariant}`,
+                    })
+                  : {})}
               >
                 <SpecificationAgreementBox
                   itemRefs={leftExpandedItemRef ?? ''}
@@ -3312,7 +3348,11 @@ export default function KravunderlagDetailClient({
                 ? null
                 : initialData.specificationItems.items.length > 0
             }
-            key={specificationId}
+            key={
+              prototypeVariant
+                ? `${specificationId}-${prototypeVariant}-${searchParams.get('previewReset')}`
+                : specificationId
+            }
             leftLabel={
               leftTab === 'items'
                 ? t('itemsInSpecification')
@@ -3779,6 +3819,11 @@ export default function KravunderlagDetailClient({
                         : undefined
                     }
                     onVisibleColumnsChange={setLeftVisibleCols}
+                    prototypeLayout={
+                      prototypeVariant && prototypeVariant !== '0'
+                        ? prototypeVariant
+                        : undefined
+                    }
                     renderExpanded={id => {
                       const item = specificationItems.find(r => r.id === id)
                       const agreementItem = agreementContext?.items.find(
@@ -3989,7 +4034,21 @@ export default function KravunderlagDetailClient({
                     }
                     requirementPackageFilterPresentation="compact-band"
                     requirementPackages={leftRequirementPackages}
-                    rows={filteredSpecificationItems}
+                    rows={
+                      prototypeLong
+                        ? filteredSpecificationItems.map((row, index) =>
+                            index < 2 && row.version
+                              ? {
+                                  ...row,
+                                  version: {
+                                    ...row.version,
+                                    description: prototypeText,
+                                  },
+                                }
+                              : row,
+                          )
+                        : filteredSpecificationItems
+                    }
                     selectable={
                       canChangeContent || canFollowUp || canManageDeviations
                     }
@@ -4370,6 +4429,11 @@ export default function KravunderlagDetailClient({
                       onSelectionChange={setRightSelectedIds}
                       onSortChange={setRightSort}
                       onVisibleColumnsChange={setRightVisibleCols}
+                      prototypeLayout={
+                        prototypeVariant && prototypeVariant !== '0'
+                          ? prototypeVariant
+                          : undefined
+                      }
                       renderExpanded={id => (
                         <RequirementDetailClient
                           currentActorName={currentActorName}
@@ -4386,7 +4450,21 @@ export default function KravunderlagDetailClient({
                       }
                       requirementPackageFilterPresentation="compact-band"
                       requirementPackages={requirementPackages}
-                      rows={rightRows}
+                      rows={
+                        prototypeLong
+                          ? rightRows.map((row, index) =>
+                              index < 2 && row.version
+                                ? {
+                                    ...row,
+                                    version: {
+                                      ...row.version,
+                                      description: prototypeText,
+                                    },
+                                  }
+                                : row,
+                            )
+                          : rightRows
+                      }
                       selectable
                       selectedIds={rightSelectedIds}
                       sortState={rightSort}

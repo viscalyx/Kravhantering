@@ -4059,5 +4059,26 @@
     "hiddenCreatedNorm": "The search hides the new norm reference “{name}”. It is still checked.",
     "creationPersistence": "The new object is saved immediately. Cancel in the selection dialog only discards the selection.",
     "searchHelp": "Search by name, reference ID or package purpose. Selections are kept when you filter the list."
+  },
+  "proportionsPrototype": {
+    "tag": "PROTOTYPE #1352",
+    "question": "Which proportions make both panels readable?",
+    "name0": "Baseline",
+    "nameA": "Wide table",
+    "nameB": "Text first",
+    "nameC": "Reading cards",
+    "description0": "Current page: 50/50 panels, 809 px requirement text, uppercase metadata.",
+    "descriptionA": "60/40. A flat metadata band and a conventional compact table. Needs reference moves beside requirement text; area and status remain to the right.",
+    "descriptionB": "55/45. A compact definition list beside the title. ID and area sit above full-width text, with needs reference and status below.",
+    "descriptionC": "50/50. Metadata flows inline below the title. Reading cards group the text, needs reference and supporting metadata.",
+    "readOnly": "Throwaway preview: application writes blocked; view preferences live in memory only. Switching variants resets the panel widths.",
+    "help": "Use ← / → outside controls to switch. H hides/shows this bar. Resize panels normally; Reset restores this variant.",
+    "previous": "Previous variant",
+    "next": "Next variant",
+    "inspect": "State & changes",
+    "hide": "Hide · H",
+    "reset": "Reset",
+    "sample": "Long text",
+    "header": "Mix header:"
   }
 }

@@ -131,6 +131,8 @@ export interface RequirementsTableProps {
   onVisibleColumnsChange?: (value: RequirementColumnId[]) => void
   pinnedIds?: Set<number>
   priorityLevels?: PriorityLevelOption[]
+  // THROWAWAY #1352: only used by the isolated preview route.
+  prototypeLayout?: 'A' | 'B' | 'C'
   qualityCharacteristics?: QualityCharacteristicOption[]
   renderExpanded?: (id: number) => ReactNode
   requirementPackageCatalogStatus?: 'failed' | 'loaded' | 'loading'
@@ -1506,6 +1508,7 @@ function FilterChips({
 export default function RequirementsTable({
   areas = [],
   categories = [],
+  prototypeLayout,
   columnDefaults,
   columnPickerPlacement = 'betweenActions',
   columnWidths = {},
@@ -1604,10 +1607,36 @@ export default function RequirementsTable({
   const columnDefinitions = allColumns.filter(column =>
     visibleColumnSet.has(column.id),
   )
+  if (prototypeLayout) {
+    const order = [
+      'uniqueId',
+      'description',
+      'needsReference',
+      'area',
+      'specificationItemStatus',
+    ]
+    columnDefinitions.sort(
+      (a, b) =>
+        (order.indexOf(a.id) < 0 ? 99 : order.indexOf(a.id)) -
+        (order.indexOf(b.id) < 0 ? 99 : order.indexOf(b.id)),
+    )
+  }
   const configuredColumnWidths = Object.fromEntries(
     columnDefinitions.map(column => [
       column.id,
-      getRequirementColumnWidth(column.id, columnWidths),
+      getRequirementColumnWidth(
+        column.id,
+        prototypeLayout
+          ? {
+              uniqueId: 112,
+              description: 280,
+              area: 120,
+              needsReference: 160,
+              specificationItemStatus: 110,
+              ...columnWidths,
+            }
+          : columnWidths,
+      ),
     ]),
   ) as Record<RequirementColumnId, number>
   const tableRootRef = useRef<HTMLDivElement>(null)
@@ -2399,6 +2428,10 @@ export default function RequirementsTable({
         return (
           <td
             className={`font-mono font-medium text-primary-700 dark:text-primary-300 whitespace-nowrap ${archivedContentClass} ${dividerClass}`}
+            data-prototype-column={prototypeLayout ? columnId : undefined}
+            data-prototype-label={
+              prototypeLayout ? getColumnLabel(columnId) : undefined
+            }
           >
             <button
               aria-controls={renderExpanded ? expandedDetailCellId : undefined}
@@ -2445,6 +2478,10 @@ export default function RequirementsTable({
         return (
           <td
             className={`py-2 px-2 ${descriptionWrapped ? 'whitespace-normal wrap-break-word' : 'truncate'} ${archivedContentClass} ${dividerClass}`}
+            data-prototype-column={prototypeLayout ? columnId : undefined}
+            data-prototype-label={
+              prototypeLayout ? getColumnLabel(columnId) : undefined
+            }
             title={
               !descriptionWrapped
                 ? (row.version?.description ?? undefined)
@@ -2480,6 +2517,10 @@ export default function RequirementsTable({
         return (
           <td
             className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
+            data-prototype-column={prototypeLayout ? columnId : undefined}
+            data-prototype-label={
+              prototypeLayout ? getColumnLabel(columnId) : undefined
+            }
           >
             {row.isSpecificationLocal ? '-' : (row.area?.name ?? '—')}
           </td>
@@ -2488,6 +2529,10 @@ export default function RequirementsTable({
         return (
           <td
             className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
+            data-prototype-column={prototypeLayout ? columnId : undefined}
+            data-prototype-label={
+              prototypeLayout ? getColumnLabel(columnId) : undefined
+            }
           >
             {(locale === 'sv'
               ? row.version?.categoryNameSv
@@ -2498,6 +2543,10 @@ export default function RequirementsTable({
         return (
           <td
             className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
+            data-prototype-column={prototypeLayout ? columnId : undefined}
+            data-prototype-label={
+              prototypeLayout ? getColumnLabel(columnId) : undefined
+            }
           >
             {(locale === 'sv'
               ? row.version?.typeNameSv
@@ -2508,6 +2557,10 @@ export default function RequirementsTable({
         return (
           <td
             className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
+            data-prototype-column={prototypeLayout ? columnId : undefined}
+            data-prototype-label={
+              prototypeLayout ? getColumnLabel(columnId) : undefined
+            }
           >
             {(locale === 'sv'
               ? row.version?.qualityCharacteristicNameSv
@@ -2537,6 +2590,10 @@ export default function RequirementsTable({
         return (
           <td
             className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
+            data-prototype-column={prototypeLayout ? columnId : undefined}
+            data-prototype-label={
+              prototypeLayout ? getColumnLabel(columnId) : undefined
+            }
           >
             {priorityLevelLabel ? (
               <StatusBadge
@@ -2634,6 +2691,10 @@ export default function RequirementsTable({
         return (
           <td
             className={`py-2 px-2 text-center ${archivedContentClass} ${dividerClass}`}
+            data-prototype-column={prototypeLayout ? columnId : undefined}
+            data-prototype-label={
+              prototypeLayout ? getColumnLabel(columnId) : undefined
+            }
           >
             {row.version ? (
               <span
@@ -2666,6 +2727,10 @@ export default function RequirementsTable({
         return (
           <td
             className={`py-2 px-2 text-center text-secondary-600 dark:text-secondary-400 ${archivedContentClass} ${dividerClass}`}
+            data-prototype-column={prototypeLayout ? columnId : undefined}
+            data-prototype-label={
+              prototypeLayout ? getColumnLabel(columnId) : undefined
+            }
           >
             v{row.version?.versionNumber ?? 1}
           </td>
@@ -2674,6 +2739,10 @@ export default function RequirementsTable({
         return (
           <td
             className={`${onNeedsReferenceChange && row.itemRef ? 'py-1 px-1' : 'py-2 px-2'} truncate text-secondary-600 dark:text-secondary-400 ${archivedContentClass} ${dividerClass}`}
+            data-prototype-column={prototypeLayout ? columnId : undefined}
+            data-prototype-label={
+              prototypeLayout ? getColumnLabel(columnId) : undefined
+            }
           >
             {onNeedsReferenceChange && row.itemRef ? (
               <select
@@ -2725,6 +2794,10 @@ export default function RequirementsTable({
           return (
             <td
               className={`py-1 px-1 ${archivedContentClass} ${dividerClass}`}
+              data-prototype-column={prototypeLayout ? columnId : undefined}
+              data-prototype-label={
+                prototypeLayout ? getColumnLabel(columnId) : undefined
+              }
               title={selectTooltip}
             >
               <SpecificationItemStatusSelect
@@ -2744,6 +2817,10 @@ export default function RequirementsTable({
         return (
           <td
             className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
+            data-prototype-column={prototypeLayout ? columnId : undefined}
+            data-prototype-label={
+              prototypeLayout ? getColumnLabel(columnId) : undefined
+            }
             title={statusDescription}
           >
             {statusLabel ? (
@@ -2763,6 +2840,10 @@ export default function RequirementsTable({
         return (
           <td
             className={`py-2 px-2 truncate text-secondary-600 dark:text-secondary-400 ${archivedContentClass} ${dividerClass}`}
+            data-prototype-column={prototypeLayout ? columnId : undefined}
+            data-prototype-label={
+              prototypeLayout ? getColumnLabel(columnId) : undefined
+            }
           >
             {row.normReferenceIds && row.normReferenceIds.length > 0
               ? row.normReferenceIds.join(', ')
@@ -2775,6 +2856,10 @@ export default function RequirementsTable({
         return (
           <td
             className={`py-2 px-2 text-secondary-600 dark:text-secondary-400 ${archivedContentClass} ${dividerClass}`}
+            data-prototype-column={prototypeLayout ? columnId : undefined}
+            data-prototype-label={
+              prototypeLayout ? getColumnLabel(columnId) : undefined
+            }
           >
             {rowPackages.length > 0 ? (
               <span className="flex min-w-0 flex-wrap gap-x-1 gap-y-0.5">
@@ -2803,6 +2888,10 @@ export default function RequirementsTable({
         return (
           <td
             className={`py-2 px-2 text-center ${archivedContentClass} ${dividerClass}`}
+            data-prototype-column={prototypeLayout ? columnId : undefined}
+            data-prototype-label={
+              prototypeLayout ? getColumnLabel(columnId) : undefined
+            }
           >
             {row.suggestionCount != null && row.suggestionCount > 0 ? (
               <span className="inline-flex items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-medium min-w-6 h-6 px-1.5">
@@ -3056,6 +3145,7 @@ export default function RequirementsTable({
                   ? `h-0 overflow-hidden p-0 ${headerAlignClass}`
                   : `${thBase} ${headerCellSurfaceClassName} py-2 ${headerAlignClass} ${dividerClass}`
               }
+              data-prototype-column={prototypeLayout ? column.id : undefined}
               data-requirement-semantic-header-label={
                 mode === 'semantic' ? column.id : undefined
               }
@@ -3471,9 +3561,16 @@ export default function RequirementsTable({
         <div className="overflow-hidden border-b border-secondary-200/35 bg-secondary-50 dark:border-secondary-700/35 dark:bg-secondary-900">
           <div
             className="relative"
+            data-prototype-layout={prototypeLayout}
             data-sticky-table-header="true"
             ref={stickyHeaderContentRef}
-            style={{ width: `${tableWidth}px`, willChange: 'transform' }}
+            style={{
+              width:
+                prototypeLayout === 'B' || prototypeLayout === 'C'
+                  ? '100%'
+                  : `${tableWidth}px`,
+              willChange: 'transform',
+            }}
           >
             <table
               className="w-full table-fixed text-sm"
@@ -3505,6 +3602,7 @@ export default function RequirementsTable({
           name: 'table space',
           priority: 330,
         })}
+        data-prototype-layout={prototypeLayout}
         data-requirements-scroll-container="true"
         ref={scrollContainerRef}
       >
@@ -3525,7 +3623,12 @@ export default function RequirementsTable({
         <div
           className="relative"
           ref={tableContentRef}
-          style={{ width: `${tableWidth}px` }}
+          style={{
+            width:
+              prototypeLayout === 'B' || prototypeLayout === 'C'
+                ? '100%'
+                : `${tableWidth}px`,
+          }}
         >
           {shouldRenderResizeHandles
             ? resizeHandleOffsets.map(({ columnId, left }) => {
@@ -3591,7 +3694,12 @@ export default function RequirementsTable({
                         }`}
                         {...devMarker({
                           context: 'requirements table',
-                          name: 'table row',
+                          name:
+                            prototypeLayout === 'C'
+                              ? 'prototype reading card'
+                              : prototypeLayout === 'B'
+                                ? 'prototype text-first record'
+                                : 'table row',
                           priority: 300,
                           value: row.uniqueId,
                         })}
