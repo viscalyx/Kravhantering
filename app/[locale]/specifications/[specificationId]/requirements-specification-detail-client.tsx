@@ -3397,9 +3397,23 @@ export default function KravunderlagDetailClient({
                   </div>
                 )}
                 {spec.lifecycleStatus && (
-                  <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
+                  <div
+                    className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40"
+                    data-prototype-lifecycle-status={
+                      prototypeVariant ? true : undefined
+                    }
+                    {...(prototypeVariant
+                      ? devMarker({
+                          context: 'requirements specification detail',
+                          name: 'metadata card',
+                          value: 'specification lifecycle status',
+                        })
+                      : {})}
+                  >
                     <dt className="text-[11px] font-semibold uppercase tracking-normal text-secondary-500 wrap-break-word dark:text-secondary-400">
-                      {t('lifecycleStatus')}
+                      {prototypeHeaderCollapsed
+                        ? tp('collapsedLifecycleStatus')
+                        : t('lifecycleStatus')}
                     </dt>
                     <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">
                       {localName(spec.lifecycleStatus)}

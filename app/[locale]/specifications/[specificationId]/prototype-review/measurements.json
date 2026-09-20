@@ -7759,11 +7759,11 @@
       {
         "text": "Avtal",
         "bounds": {
-          "x": 1181,
+          "x": 1187,
           "y": 43,
           "right": 1395,
           "bottom": 59.5,
-          "width": 214,
+          "width": 208,
           "height": 16.5
         },
         "size": "11px",
@@ -7809,14 +7809,14 @@
         "transform": "uppercase"
       },
       {
-        "text": "Kravunderlagets livscykelstatus",
+        "text": "Livscykelstatus",
         "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
+          "x": 941,
+          "y": 43,
+          "right": 1149,
+          "bottom": 59.5,
+          "width": 208,
+          "height": 16.5
         },
         "size": "11px",
         "transform": "uppercase"
@@ -7954,11 +7954,11 @@
       {
         "text": "Avtal",
         "bounds": {
-          "x": 1181,
+          "x": 1187,
           "y": 43,
           "right": 1395,
           "bottom": 59.5,
-          "width": 214,
+          "width": 208,
           "height": 16.5
         },
         "size": "11px",
@@ -8004,14 +8004,14 @@
         "transform": "uppercase"
       },
       {
-        "text": "Kravunderlagets livscykelstatus",
+        "text": "Livscykelstatus",
         "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
+          "x": 941,
+          "y": 43,
+          "right": 1149,
+          "bottom": 59.5,
+          "width": 208,
+          "height": 16.5
         },
         "size": "11px",
         "transform": "uppercase"
@@ -8149,11 +8149,11 @@
       {
         "text": "Avtal",
         "bounds": {
-          "x": 1198.609375,
+          "x": 1204.59375,
           "y": 43,
           "right": 1395,
           "bottom": 59.5,
-          "width": 196.390625,
+          "width": 190.40625,
           "height": 16.5
         },
         "size": "11px",
@@ -8199,14 +8199,14 @@
         "transform": "uppercase"
       },
       {
-        "text": "Kravunderlagets livscykelstatus",
+        "text": "Livscykelstatus",
         "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
+          "x": 976.203125,
+          "y": 43,
+          "right": 1166.59375,
+          "bottom": 59.5,
+          "width": 190.390625,
+          "height": 16.5
         },
         "size": "11px",
         "transform": "uppercase"
@@ -8344,11 +8344,11 @@
       {
         "text": "Avtal",
         "bounds": {
-          "x": 1198.609375,
+          "x": 1204.59375,
           "y": 43,
           "right": 1395,
           "bottom": 59.5,
-          "width": 196.390625,
+          "width": 190.40625,
           "height": 16.5
         },
         "size": "11px",
@@ -8394,14 +8394,14 @@
         "transform": "uppercase"
       },
       {
-        "text": "Kravunderlagets livscykelstatus",
+        "text": "Livscykelstatus",
         "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
+          "x": 976.203125,
+          "y": 43,
+          "right": 1166.59375,
+          "bottom": 59.5,
+          "width": 190.390625,
+          "height": 16.5
         },
         "size": "11px",
         "transform": "uppercase"
@@ -8539,11 +8539,11 @@
       {
         "text": "Avtal",
         "bounds": {
-          "x": 1661,
+          "x": 1667,
           "y": 43,
           "right": 1875,
           "bottom": 59.5,
-          "width": 214,
+          "width": 208,
           "height": 16.5
         },
         "size": "11px",
@@ -8589,14 +8589,14 @@
         "transform": "uppercase"
       },
       {
-        "text": "Kravunderlagets livscykelstatus",
+        "text": "Livscykelstatus",
         "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
+          "x": 1421,
+          "y": 43,
+          "right": 1629,
+          "bottom": 59.5,
+          "width": 208,
+          "height": 16.5
         },
         "size": "11px",
         "transform": "uppercase"
@@ -8734,11 +8734,11 @@
       {
         "text": "Avtal",
         "bounds": {
-          "x": 1661,
+          "x": 1667,
           "y": 43,
           "right": 1875,
           "bottom": 59.5,
-          "width": 214,
+          "width": 208,
           "height": 16.5
         },
         "size": "11px",
@@ -8784,14 +8784,14 @@
         "transform": "uppercase"
       },
       {
-        "text": "Kravunderlagets livscykelstatus",
+        "text": "Livscykelstatus",
         "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
+          "x": 1421,
+          "y": 43,
+          "right": 1629,
+          "bottom": 59.5,
+          "width": 208,
+          "height": 16.5
         },
         "size": "11px",
         "transform": "uppercase"
@@ -8929,11 +8929,11 @@
       {
         "text": "Avtal",
         "bounds": {
-          "x": 1661,
+          "x": 1667,
           "y": 43,
           "right": 1875,
           "bottom": 59.5,
-          "width": 214,
+          "width": 208,
           "height": 16.5
         },
         "size": "11px",
@@ -8979,14 +8979,14 @@
         "transform": "uppercase"
       },
       {
-        "text": "Kravunderlagets livscykelstatus",
+        "text": "Livscykelstatus",
         "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
+          "x": 1421,
+          "y": 43,
+          "right": 1629,
+          "bottom": 59.5,
+          "width": 208,
+          "height": 16.5
         },
         "size": "11px",
         "transform": "uppercase"
@@ -9124,11 +9124,11 @@
       {
         "text": "Avtal",
         "bounds": {
-          "x": 1661,
+          "x": 1667,
           "y": 43,
           "right": 1875,
           "bottom": 59.5,
-          "width": 214,
+          "width": 208,
           "height": 16.5
         },
         "size": "11px",
@@ -9174,14 +9174,14 @@
         "transform": "uppercase"
       },
       {
-        "text": "Kravunderlagets livscykelstatus",
+        "text": "Livscykelstatus",
         "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
+          "x": 1421,
+          "y": 43,
+          "right": 1629,
+          "bottom": 59.5,
+          "width": 208,
+          "height": 16.5
         },
         "size": "11px",
         "transform": "uppercase"

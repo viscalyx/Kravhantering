@@ -155,7 +155,7 @@ for (const variant of ['A', 'B', 'C', 'D', 'E'].filter(
   if (variant === 'E') {
     await expect(
       page.locator('[data-specification-detail-header-metadata] > div:visible'),
-    ).toHaveCount(1)
+    ).toHaveCount(2)
     await expect(
       page.getByRole('button', {
         name: 'Edit requirements specification',

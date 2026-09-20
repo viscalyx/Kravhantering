@@ -445,7 +445,7 @@
   padding-inline: 4px;
 }
 
-/* E keeps the edit action and agreement visible, with other details expandable. */
+/* E keeps editing, lifecycle status and agreement visible while collapsed. */
 [data-prototype-header="E"]
   [data-specification-detail-header-summary]
   > div:has(> p) {
@@ -460,28 +460,40 @@
 [data-prototype-header="E"][data-prototype-header-collapsed="true"]
   [data-specification-detail-header-summary] {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(9rem, 20%, 15rem);
+  grid-template-columns: minmax(0, 1fr) clamp(18rem, 40%, 30rem);
   gap: 24px;
   align-items: start;
 }
 [data-prototype-header="E"][data-prototype-header-collapsed="true"]
   [data-specification-detail-header-metadata] {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   padding: 0;
   margin: 0;
   overflow: visible;
 }
 [data-prototype-header="E"][data-prototype-header-collapsed="true"]
   [data-specification-detail-header-metadata]
-  > div:not(:first-child),
+  > div:not(:first-child):not([data-prototype-lifecycle-status]),
 [data-prototype-header="E"][data-prototype-header-collapsed="true"]
   [data-specification-detail-header-summary]
   [hidden] {
   display: none;
 }
+[data-prototype-header="E"][data-prototype-header-collapsed="true"]
+  [data-specification-detail-header-metadata]
+  > div:first-child {
+  grid-row: 1;
+  grid-column: 2;
+}
+[data-prototype-header="E"][data-prototype-header-collapsed="true"]
+  [data-prototype-lifecycle-status] {
+  grid-row: 1;
+  grid-column: 1;
+}
 @media (max-width: 639px) {
   [data-prototype-header="E"][data-prototype-header-collapsed="true"]
     [data-specification-detail-header-summary] {
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
   }
 }
