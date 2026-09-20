@@ -81,6 +81,12 @@ permanent list modes or a new manual column-resize feature.
   inline metadata. Switching the main variant clears this override.
 - **Long text** temporarily replaces the title with exactly 150 characters
   and the description below it with exactly 300 characters in both languages.
+  It also previews a registered mock Agreement with reference, effective
+  date and current status. Open Agreement details for its description,
+  registration/confirmation information and correction history. The selector
+  includes a previous mock agreement. Mock selection does not change the
+  requirement lists, and mock actions never call the API. Toggling Long text
+  off restores the real Agreement display.
   It also replaces the first two requirement descriptions with multiline
   examples. It affects both the baseline and proposals, never saves, and can
   be toggled off.
@@ -220,7 +226,8 @@ npm run type-check
 
 Capture regenerates 48 comparison images, measurements and the offline
 gallery. Verify exercises browser interactions and writes additional English
-long-text/mobile captures and a JSON report. These are prototype review
+long-text/mobile captures and JSON reports, including mock Agreement
+details, selection and network isolation. These are prototype review
 scripts, not production acceptance tests.
 
 ## Measured results
@@ -281,6 +288,11 @@ ship as product behavior.
 
 All files below are on the throwaway branch only.
 
+- `verify-agreement.prototype.mjs`: mock Agreement browser checks and
+  screenshots, included in `npm run prototype:1352:verify`.
+- `components/specification-agreement.prototype.ts`: mock current/previous
+  agreement records and correction history. The Agreement box displays them
+  in Long text mode while keeping real list context separate.
 - Detail client: gated variant activation, header selection, long-text data,
   table-preview props and panel remount on variant Reset.
 - `components/RequirementsTable.tsx`: preview column order/defaults, cell
@@ -322,6 +334,9 @@ are unchanged; this branch supplies its own throwaway review guide instead.
   mobile stacking. A Swedish long-text capture supplements the English one.
 - E passes mouse/Enter/Space, reset, reload and mobile checks in Swedish
   and English, light and dark themes. See [header checks](expandable-header-checks.json).
+- Mock agreement checks cover registration details, correction history,
+  previous-agreement selection and restoring real data. No mutation or
+  mock-ID API requests occur; see [mock checks](mock-agreement-checks.json).
 - Application mutation attempts return the preview-specific 403 response.
 - The isolated launcher's stop and restart commands are verified.
 

@@ -3358,6 +3358,7 @@ export default function KravunderlagDetailClient({
                     if (refreshItems || stateChanged)
                       void fetchSpecificationItems()
                   }}
+                  prototypeMockAgreement={prototypeLong}
                   refreshKey={agreementRefreshKey}
                   specificationId={specificationId}
                 />

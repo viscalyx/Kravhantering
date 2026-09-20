@@ -4076,6 +4076,7 @@
     "descriptionD": "60/40 med A:s kompakta tabeller. Rubriken ligger överst till vänster med vänsterställd beskrivning bredvid. De ursprungliga metadatarutorna ligger under.",
     "descriptionE": "Rubrik och redigeringsknapp ligger till vänster, med Livscykelstatus och Avtal till höger i hopfällt läge. Fäll ut för att visa beskrivningen under rubriken och alla ursprungliga metadatarutor nedanför.",
     "collapsedLifecycleStatus": "Livscykelstatus",
+    "mockAgreementReadOnly": "Detta är ett exempelavtal i prototypen. Ändringar sparas inte.",
     "expandHeader": "Visa underlagsdetaljer",
     "collapseHeader": "Dölj underlagsdetaljer",
     "readOnly": "Tillfällig prototyp: ändringar av verksamhetsdata är spärrade. Vyval finns endast i minnet. Variantbyte återställer panelbredderna.",

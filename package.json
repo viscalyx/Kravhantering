@@ -176,7 +176,7 @@
     "prototype:1352": "node \"app/[locale]/specifications/[specificationId]/run-proportions.prototype.mjs\"",
     "prototype:1352:stop": "node \"app/[locale]/specifications/[specificationId]/run-proportions.prototype.mjs\" --stop",
     "prototype:1352:capture": "node \"app/[locale]/specifications/[specificationId]/capture-proportions.prototype.mjs\" && node \"app/[locale]/specifications/[specificationId]/build-gallery.prototype.mjs\"",
-    "prototype:1352:verify": "node \"app/[locale]/specifications/[specificationId]/verify-proportions.prototype.mjs\""
+    "prototype:1352:verify": "node \"app/[locale]/specifications/[specificationId]/verify-proportions.prototype.mjs\" && node \"app/[locale]/specifications/[specificationId]/verify-agreement.prototype.mjs\""
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",

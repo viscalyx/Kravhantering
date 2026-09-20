@@ -4076,6 +4076,7 @@
     "descriptionD": "60/40 with A’s compact tables. The title sits at the top left, with a left-aligned description beside it. The original metadata boxes sit underneath.",
     "descriptionE": "Title and edit button stay on the left, with Lifecycle status and Agreement on the right when collapsed. Expand to show the description below the title and all original metadata boxes underneath.",
     "collapsedLifecycleStatus": "Lifecycle status",
+    "mockAgreementReadOnly": "This is a mock agreement in the prototype. Changes are not saved.",
     "expandHeader": "Show specification details",
     "collapseHeader": "Hide specification details",
     "readOnly": "Throwaway preview: application writes blocked; view preferences live in memory only. Switching variants resets the panel widths.",

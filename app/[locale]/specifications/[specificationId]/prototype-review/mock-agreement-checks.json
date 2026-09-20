@@ -1,0 +1,17 @@
+{
+  "locales": [
+    "en",
+    "sv"
+  ],
+  "referenceDateStatus": true,
+  "details": true,
+  "registration": true,
+  "correctionHistory": true,
+  "previousSelector": true,
+  "mutationBlockedBeforeNetwork": true,
+  "endPreviewInMemory": true,
+  "toggleRestoresRealAgreement": true,
+  "modalActionsUnobstructed": true,
+  "mobile": true,
+  "unexpectedRequests": []
+}

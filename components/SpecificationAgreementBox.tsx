@@ -15,6 +15,7 @@ import { createPortal } from 'react-dom'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FormModal from '@/components/FormModal'
+import { prototypeAgreementView } from '@/components/specification-agreement.prototype'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
@@ -37,6 +38,7 @@ interface ComponentProps {
     view: SpecificationAgreementView,
     refreshItems?: boolean,
   ) => void
+  prototypeMockAgreement?: boolean
   refreshKey?: number
   specificationId: number
 }
@@ -63,12 +65,23 @@ export default function SpecificationAgreementBox({
   onContextChange,
   refreshKey = 0,
   itemRefs = '',
+  prototypeMockAgreement = false,
 }: ComponentProps) {
+  const tp = useTranslations('proportionsPrototype')
   const t = useTranslations('agreement')
   const tc = useTranslations('common')
   const locale = useLocale()
   const { confirm } = useConfirmModal()
-  const [view, setView] = useState<SpecificationAgreementView | null>(null)
+  const [realView, setView] = useState<SpecificationAgreementView | null>(null)
+  const mockAgreement =
+    prototypeMockAgreement &&
+    process.env.NODE_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_PROTOTYPE_1352 === 'true'
+  const [mockSelectedId, setMockSelectedId] = useState(-135201)
+  const view =
+    mockAgreement && realView
+      ? prototypeAgreementView(realView, locale, mockSelectedId)
+      : realView
   const [endPreview, setEndPreview] = useState<Array<{
     id: number
     itemRef: string
@@ -81,6 +94,13 @@ export default function SpecificationAgreementBox({
     'create' | 'details' | 'cancel' | 'end' | 'correct' | null
   >(null)
   const [selectorOpen, setSelectorOpen] = useState(false)
+  useEffect(() => {
+    if (!mockAgreement) setMockSelectedId(-135201)
+    setDialog(null)
+    setSelectorOpen(false)
+    setEndPreview(null)
+    setError(null)
+  }, [mockAgreement])
   const selectorTrigger = useRef<HTMLButtonElement>(null)
   const selectorPanel = useRef<HTMLDivElement>(null)
   const [selectorPosition, setSelectorPosition] = useState({
@@ -200,6 +220,10 @@ export default function SpecificationAgreementBox({
   }, [load, refreshKey, specificationId])
 
   const mutate = async (input: AgreementMutationInput) => {
+    if (mockAgreement) {
+      setError(tp('mockAgreementReadOnly'))
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -292,7 +316,10 @@ export default function SpecificationAgreementBox({
         disabled={busy}
         onClick={() => {
           setSelectorOpen(false)
-          void load(agreement.id)
+          if (mockAgreement) {
+            setError(null)
+            setMockSelectedId(agreement.id)
+          } else void load(agreement.id)
         }}
         type="button"
       >
@@ -916,6 +943,11 @@ export default function SpecificationAgreementBox({
                           onClick={async () => {
                             setReason('')
                             setDate('')
+                            if (mockAgreement) {
+                              setEndPreview([])
+                              setDialog('end')
+                              return
+                            }
                             setEndPreview(null)
                             setBusy(true)
                             setError(null)
