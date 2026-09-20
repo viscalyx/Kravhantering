@@ -551,3 +551,9 @@ body:has([aria-modal="true"]) .prototype-review {
     gap: 12px;
   }
 }
+@media (min-width: 640px) {
+  [data-prototype-header="E"][data-prototype-header-collapsed="true"]
+    [data-specification-detail-header-metadata] {
+    margin-top: -16px;
+  }
+}

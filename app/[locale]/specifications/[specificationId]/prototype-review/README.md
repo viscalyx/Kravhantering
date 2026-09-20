@@ -175,7 +175,8 @@ D is also available through the header mixer, for example `?variant=B&header=D`.
 
 Open `?variant=E`. The title, disclosure chevron and specification edit button
 sit on the left. A single compact box on the right fits its content and
-contains two rows:
+contains two rows. On desktop it sits 16 px above the title's top edge,
+leaving a 16 px margin below the viewport top:
 
 - **Livscykelstatus** (English: **Lifecycle status**) with its value on the right.
 - **Avtal** (English: **Agreement**) with **Inget** / **None**, or its effective
@@ -254,7 +255,7 @@ At 1440 × 900, navigation expanded, light theme:
 | B | 629 / 515 px | Yes | 3 / 5 | 0 / 0 px | 164 px |
 | C | 572 / 572 px | Yes | 2 / 4 | 0 / 0 px | 182 px |
 | D | 686 / 458 px | Yes | 7 / 8 | 134 / 92 px | 189 px |
-| E (collapsed) | 686 / 458 px | Yes | 8 / 9 | 134 / 92 px | 112 px |
+| E (collapsed) | 686 / 458 px | Yes | 8 / 9 | 134 / 92 px | 96 px |
 <!-- markdownlint-enable MD013 -->
 
 All three left tab labels fit across the Swedish capture matrix. All proposals

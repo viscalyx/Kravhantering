@@ -180,5 +180,39 @@
       "dropdownMatchesBox": true,
       "keyboardFocusRestored": true
     }
+  ],
+  "raisedBox": [
+    {
+      "width": 1440,
+      "locale": "sv",
+      "boxTop": 16,
+      "titleTop": 32,
+      "dropdownBelowBox": true,
+      "expandedUnaffected": true
+    },
+    {
+      "width": 1440,
+      "locale": "en",
+      "boxTop": 16,
+      "titleTop": 32,
+      "dropdownBelowBox": true,
+      "expandedUnaffected": true
+    },
+    {
+      "width": 375,
+      "locale": "sv",
+      "boxTop": 204,
+      "titleTop": 24,
+      "dropdownBelowBox": true,
+      "expandedUnaffected": true
+    },
+    {
+      "width": 375,
+      "locale": "en",
+      "boxTop": 204,
+      "titleTop": 24,
+      "dropdownBelowBox": true,
+      "expandedUnaffected": true
+    }
   ]
 }
