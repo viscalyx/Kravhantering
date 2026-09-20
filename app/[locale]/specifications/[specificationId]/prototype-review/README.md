@@ -205,7 +205,8 @@ The desktop document has no excess vertical overflow in the capture matrix.
 
 See [all measurements](measurements.json) and
 [interaction results](interaction-checks.json). Browser checks cover pointer
-and keyboard resize, collapse/restore, variant Reset, stable left tabs, independent scroll,
+and keyboard resize, collapse/restore, variant Reset, stable left tabs,
+independent scroll,
 fixed headers, expanded details, both tab groups, long-text mode, mutation
 rejection, URL switching, reload, mixed headers and the stacked mobile layout.
 Focused browser review also checks all gallery controls and loaded images.
