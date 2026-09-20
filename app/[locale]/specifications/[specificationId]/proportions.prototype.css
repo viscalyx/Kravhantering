@@ -464,7 +464,7 @@ body:has([aria-modal="true"]) .prototype-review {
 [data-prototype-header="E"][data-prototype-header-collapsed="true"]
   [data-specification-detail-header-summary] {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(19rem, 32%, 25rem);
+  grid-template-columns: minmax(0, 1fr) fit-content(25rem);
   gap: 24px;
   align-items: start;
 }
@@ -472,6 +472,9 @@ body:has([aria-modal="true"]) .prototype-review {
   [data-specification-detail-header-metadata] {
   grid-template-columns: minmax(0, 1fr);
   gap: 2px;
+  justify-self: end;
+  width: fit-content;
+  max-width: 100%;
   padding: 8px 12px;
   margin: 0;
   overflow: visible;
@@ -538,6 +541,10 @@ body:has([aria-modal="true"]) .prototype-review {
   grid-column: 1;
 }
 @media (max-width: 639px) {
+  [data-prototype-header="E"][data-prototype-header-collapsed="true"]
+    [data-specification-detail-header-metadata] {
+    justify-self: start;
+  }
   [data-prototype-header="E"][data-prototype-header-collapsed="true"]
     [data-specification-detail-header-summary] {
     grid-template-columns: minmax(0, 1fr);

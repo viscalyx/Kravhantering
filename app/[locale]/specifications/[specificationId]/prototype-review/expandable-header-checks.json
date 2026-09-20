@@ -7,12 +7,11 @@
       "oneBox": true,
       "statusAboveAgreement": true,
       "noDivider": true,
-      "labelValueGaps": [
-        6,
-        6
-      ],
+      "boxWidth": 226.4375,
       "boxHeight": 64,
+      "unusedRight": 13,
       "overflow": 0,
+      "arrowGap": 4,
       "dropdownMatchesBox": true,
       "keyboardFocusRestored": true
     },
@@ -23,12 +22,11 @@
       "oneBox": true,
       "statusAboveAgreement": true,
       "noDivider": true,
-      "labelValueGaps": [
-        6,
-        6
-      ],
+      "boxWidth": 226.4375,
       "boxHeight": 64,
+      "unusedRight": 13,
       "overflow": 0,
+      "arrowGap": 4,
       "dropdownMatchesBox": true,
       "keyboardFocusRestored": true
     },
@@ -39,12 +37,11 @@
       "oneBox": true,
       "statusAboveAgreement": true,
       "noDivider": true,
-      "labelValueGaps": [
-        6,
-        6
-      ],
+      "boxWidth": 261.65625,
       "boxHeight": 64,
+      "unusedRight": 13,
       "overflow": 0,
+      "arrowGap": 4,
       "dropdownMatchesBox": true,
       "keyboardFocusRestored": true
     },
@@ -55,12 +52,11 @@
       "oneBox": true,
       "statusAboveAgreement": true,
       "noDivider": true,
-      "labelValueGaps": [
-        6,
-        6
-      ],
+      "boxWidth": 261.65625,
       "boxHeight": 64,
+      "unusedRight": 13,
       "overflow": 0,
+      "arrowGap": 4,
       "dropdownMatchesBox": true,
       "keyboardFocusRestored": true
     },
@@ -71,12 +67,11 @@
       "oneBox": true,
       "statusAboveAgreement": true,
       "noDivider": true,
-      "labelValueGaps": [
-        6,
-        6
-      ],
+      "boxWidth": 226.4375,
       "boxHeight": 64,
+      "unusedRight": 13,
       "overflow": 0,
+      "arrowGap": 4,
       "dropdownMatchesBox": true,
       "keyboardFocusRestored": true
     },
@@ -87,12 +82,11 @@
       "oneBox": true,
       "statusAboveAgreement": true,
       "noDivider": true,
-      "labelValueGaps": [
-        6,
-        6
-      ],
+      "boxWidth": 226.4375,
       "boxHeight": 64,
+      "unusedRight": 13,
       "overflow": 0,
+      "arrowGap": 4,
       "dropdownMatchesBox": true,
       "keyboardFocusRestored": true
     },
@@ -103,12 +97,11 @@
       "oneBox": true,
       "statusAboveAgreement": true,
       "noDivider": true,
-      "labelValueGaps": [
-        6,
-        6
-      ],
+      "boxWidth": 261.65625,
       "boxHeight": 64,
+      "unusedRight": 13,
       "overflow": 0,
+      "arrowGap": 4,
       "dropdownMatchesBox": true,
       "keyboardFocusRestored": true
     },
@@ -119,12 +112,11 @@
       "oneBox": true,
       "statusAboveAgreement": true,
       "noDivider": true,
-      "labelValueGaps": [
-        6,
-        6
-      ],
+      "boxWidth": 261.65625,
       "boxHeight": 64,
+      "unusedRight": 13,
       "overflow": 0,
+      "arrowGap": 4,
       "dropdownMatchesBox": true,
       "keyboardFocusRestored": true
     },
@@ -135,12 +127,11 @@
       "oneBox": true,
       "statusAboveAgreement": true,
       "noDivider": true,
-      "labelValueGaps": [
-        6,
-        6
-      ],
+      "boxWidth": 226.4375,
       "boxHeight": 64,
+      "unusedRight": 13,
       "overflow": 0,
+      "arrowGap": 4,
       "dropdownMatchesBox": true,
       "keyboardFocusRestored": true
     },
@@ -151,12 +142,11 @@
       "oneBox": true,
       "statusAboveAgreement": true,
       "noDivider": true,
-      "labelValueGaps": [
-        6,
-        6
-      ],
+      "boxWidth": 226.4375,
       "boxHeight": 64,
+      "unusedRight": 13,
       "overflow": 0,
+      "arrowGap": 4,
       "dropdownMatchesBox": true,
       "keyboardFocusRestored": true
     },
@@ -167,12 +157,11 @@
       "oneBox": true,
       "statusAboveAgreement": true,
       "noDivider": true,
-      "labelValueGaps": [
-        6,
-        6
-      ],
+      "boxWidth": 261.65625,
       "boxHeight": 64,
+      "unusedRight": 13,
       "overflow": 0,
+      "arrowGap": 4,
       "dropdownMatchesBox": true,
       "keyboardFocusRestored": true
     },
@@ -183,12 +172,11 @@
       "oneBox": true,
       "statusAboveAgreement": true,
       "noDivider": true,
-      "labelValueGaps": [
-        6,
-        6
-      ],
+      "boxWidth": 261.65625,
       "boxHeight": 64,
+      "unusedRight": 13,
       "overflow": 0,
+      "arrowGap": 4,
       "dropdownMatchesBox": true,
       "keyboardFocusRestored": true
     }

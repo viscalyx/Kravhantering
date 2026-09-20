@@ -174,7 +174,8 @@ D is also available through the header mixer, for example `?variant=B&header=D`.
 ### Variant E: expandable header based on D
 
 Open `?variant=E`. The title, disclosure chevron and specification edit button
-sit on the left. A single compact box on the right contains two rows:
+sit on the left. A single compact box on the right fits its content and
+contains two rows:
 
 - **Livscykelstatus** (English: **Lifecycle status**) with its value on the right.
 - **Avtal** (English: **Agreement**) with **Inget** / **None**, or its effective
@@ -188,7 +189,8 @@ Specification editing remains available in both states.
 
 Use **Long text** to inspect the mock registered Agreement. Confirm that the
 compact rows place bold values directly after their labels, inside one
-outer border with no divider. Only the arrow opens the selector; the menu
+outer border with no divider. The arrow sits directly after the Agreement
+value. Only the arrow opens the selector; the menu
 matches the full box width. Use Tab to focus the arrow, then Enter or Space.
 Confirm that selecting a previous agreement changes the date/status without
 expanding the header. Toggle Long text off to verify the empty Agreement row

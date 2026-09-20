@@ -358,7 +358,13 @@ export default function SpecificationAgreementBox({
         {compact ? ':' : null}
       </dt>
       <dd className="mt-1 text-sm text-secondary-800 dark:text-secondary-100">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2">
+        <div
+          className={
+            compact
+              ? 'flex w-fit max-w-full items-center gap-1'
+              : 'grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2'
+          }
+        >
           <div
             className="min-w-0"
             id={compact ? `agreement-summary-${specificationId}` : undefined}

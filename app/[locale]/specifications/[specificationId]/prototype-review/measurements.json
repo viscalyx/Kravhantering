@@ -7759,9 +7759,9 @@
       {
         "text": "Avtal:",
         "bounds": {
-          "x": 1021,
+          "x": 1216.46875,
           "y": 63,
-          "right": 1054.5625,
+          "right": 1250.03125,
           "bottom": 83,
           "width": 33.5625,
           "height": 20
@@ -7811,9 +7811,9 @@
       {
         "text": "Livscykelstatus:",
         "bounds": {
-          "x": 1021,
+          "x": 1216.46875,
           "y": 41,
-          "right": 1118.046875,
+          "right": 1313.515625,
           "bottom": 61,
           "width": 97.046875,
           "height": 20
@@ -7954,9 +7954,9 @@
       {
         "text": "Avtal:",
         "bounds": {
-          "x": 1021,
+          "x": 1216.46875,
           "y": 63,
-          "right": 1054.5625,
+          "right": 1250.03125,
           "bottom": 83,
           "width": 33.5625,
           "height": 20
@@ -8006,9 +8006,9 @@
       {
         "text": "Livscykelstatus:",
         "bounds": {
-          "x": 1021,
+          "x": 1216.46875,
           "y": 41,
-          "right": 1118.046875,
+          "right": 1313.515625,
           "bottom": 61,
           "width": 97.046875,
           "height": 20
@@ -8149,9 +8149,9 @@
       {
         "text": "Avtal:",
         "bounds": {
-          "x": 1065.171875,
+          "x": 1216.46875,
           "y": 63,
-          "right": 1098.734375,
+          "right": 1250.03125,
           "bottom": 83,
           "width": 33.5625,
           "height": 20
@@ -8201,9 +8201,9 @@
       {
         "text": "Livscykelstatus:",
         "bounds": {
-          "x": 1065.171875,
+          "x": 1216.46875,
           "y": 41,
-          "right": 1162.21875,
+          "right": 1313.515625,
           "bottom": 61,
           "width": 97.046875,
           "height": 20
@@ -8344,9 +8344,9 @@
       {
         "text": "Avtal:",
         "bounds": {
-          "x": 1065.171875,
+          "x": 1216.46875,
           "y": 63,
-          "right": 1098.734375,
+          "right": 1250.03125,
           "bottom": 83,
           "width": 33.5625,
           "height": 20
@@ -8396,9 +8396,9 @@
       {
         "text": "Livscykelstatus:",
         "bounds": {
-          "x": 1065.171875,
+          "x": 1216.46875,
           "y": 41,
-          "right": 1162.21875,
+          "right": 1313.515625,
           "bottom": 61,
           "width": 97.046875,
           "height": 20
@@ -8539,9 +8539,9 @@
       {
         "text": "Avtal:",
         "bounds": {
-          "x": 1501,
+          "x": 1696.46875,
           "y": 63,
-          "right": 1534.5625,
+          "right": 1730.03125,
           "bottom": 83,
           "width": 33.5625,
           "height": 20
@@ -8591,9 +8591,9 @@
       {
         "text": "Livscykelstatus:",
         "bounds": {
-          "x": 1501,
+          "x": 1696.46875,
           "y": 41,
-          "right": 1598.046875,
+          "right": 1793.515625,
           "bottom": 61,
           "width": 97.046875,
           "height": 20
@@ -8734,9 +8734,9 @@
       {
         "text": "Avtal:",
         "bounds": {
-          "x": 1501,
+          "x": 1696.46875,
           "y": 63,
-          "right": 1534.5625,
+          "right": 1730.03125,
           "bottom": 83,
           "width": 33.5625,
           "height": 20
@@ -8786,9 +8786,9 @@
       {
         "text": "Livscykelstatus:",
         "bounds": {
-          "x": 1501,
+          "x": 1696.46875,
           "y": 41,
-          "right": 1598.046875,
+          "right": 1793.515625,
           "bottom": 61,
           "width": 97.046875,
           "height": 20
@@ -8929,9 +8929,9 @@
       {
         "text": "Avtal:",
         "bounds": {
-          "x": 1501,
+          "x": 1696.46875,
           "y": 63,
-          "right": 1534.5625,
+          "right": 1730.03125,
           "bottom": 83,
           "width": 33.5625,
           "height": 20
@@ -8981,9 +8981,9 @@
       {
         "text": "Livscykelstatus:",
         "bounds": {
-          "x": 1501,
+          "x": 1696.46875,
           "y": 41,
-          "right": 1598.046875,
+          "right": 1793.515625,
           "bottom": 61,
           "width": 97.046875,
           "height": 20
@@ -9124,9 +9124,9 @@
       {
         "text": "Avtal:",
         "bounds": {
-          "x": 1501,
+          "x": 1696.46875,
           "y": 63,
-          "right": 1534.5625,
+          "right": 1730.03125,
           "bottom": 83,
           "width": 33.5625,
           "height": 20
@@ -9176,9 +9176,9 @@
       {
         "text": "Livscykelstatus:",
         "bounds": {
-          "x": 1501,
+          "x": 1696.46875,
           "y": 41,
-          "right": 1598.046875,
+          "right": 1793.515625,
           "bottom": 61,
           "width": 97.046875,
           "height": 20
