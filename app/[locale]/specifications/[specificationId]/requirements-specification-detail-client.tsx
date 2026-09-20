@@ -540,6 +540,15 @@ export default function KravunderlagDetailClient({
   const prototypeLong = Boolean(
     prototypeVariant && searchParams.get('sample') === 'long',
   )
+  // Throwaway maximum-length header samples: title 150, description 300.
+  const prototypeTitle =
+    locale === 'sv'
+      ? 'Kravunderlag för upphandling av ett delat system för verksamhetens planering, dokumentation, uppföljning samt samspel mellan verksamheter och utförare'
+      : 'Requirements specification for a joint system supporting operational planning, documentation, follow-up and collaboration across departments and teams'
+  const prototypeDescription =
+    locale === 'sv'
+      ? 'Underlaget beskriver verksamhetens behov av ett gemensamt och tillgängligt stöd för planering, dokumentation och uppföljning. Lösningen ska ge tydlig information, förenkla samarbetet mellan berörda roller och göra det möjligt att följa upp kvalitet, ansvar och resultat under avtalets hela livscykel.'
+      : 'This specification describes the need for an accessible shared system for planning, documentation and follow-up. The solution should provide clear information, support collaboration across roles and enable teams to evaluate quality, responsibilities and outcomes throughout the full agreement period.'
   const prototypeText =
     locale === 'sv'
       ? 'Tillfälligt långt exempel: Systemet ska ge användaren tillgång till fullständig information även vid långa beskrivningar, radbrytningar och ovanligt långa benämningar.\nInformationen ska kunna läsas utan att viktiga delar försvinner eller att andra arbetsytor blir oanvändbara.'
@@ -2434,11 +2443,7 @@ export default function KravunderlagDetailClient({
     ],
   )
 
-  const specName = spec
-    ? prototypeLong
-      ? `${spec.name} — ${prototypeText.split(': ')[1]}`
-      : spec.name
-    : '…'
+  const specName = spec ? (prototypeLong ? prototypeTitle : spec.name) : '…'
   const canMutateSpecification =
     permissions.canEditContent === true ||
     permissions.canManageAssignments === true
@@ -3255,9 +3260,11 @@ export default function KravunderlagDetailClient({
                     </button>
                   ) : null}
                 </div>
-                {spec.businessNeedsReference && (
+                {(prototypeLong || spec.businessNeedsReference) && (
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary-700 dark:text-secondary-200">
-                    {spec.businessNeedsReference}
+                    {prototypeLong
+                      ? prototypeDescription
+                      : spec.businessNeedsReference}
                   </p>
                 )}
               </div>

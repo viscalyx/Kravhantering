@@ -144,7 +144,19 @@ for (const variant of ['A', 'B', 'C']) {
   )
     throw Error('Header moved')
   await page.getByRole('button', { name: 'Long text', exact: true }).click()
-  await expect(page.locator('h1')).toContainText('complete information')
+  await expect
+    .poll(async () => (await page.locator('h1').innerText()).length)
+    .toBe(150)
+  await expect
+    .poll(
+      async () =>
+        (
+          await page
+            .locator('[data-specification-detail-header-summary] > div > p')
+            .innerText()
+        ).length,
+    )
+    .toBe(300)
   await expect(left.locator('tbody tr').first()).toContainText(
     'Temporary long example',
   )

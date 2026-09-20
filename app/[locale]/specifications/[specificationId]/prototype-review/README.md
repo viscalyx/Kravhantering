@@ -76,9 +76,11 @@ permanent list modes or a new manual column-resize feature.
 - Inside State & changes, **Mix header** selects A, B or C independently.
   For example, `?variant=A&header=C` combines the conventional table with
   inline metadata. Switching the main variant clears this override.
-- **Long text** temporarily replaces the title and the first two requirement
-  descriptions with multiline examples. It affects both the baseline and
-  proposals, never saves, and can be toggled off.
+- **Long text** temporarily replaces the title with exactly 150 characters
+  and the description below it with exactly 300 characters in both languages.
+  It also replaces the first two requirement descriptions with multiline
+  examples. It affects both the baseline and proposals, never saves, and can
+  be toggled off.
 - **Reset** restores the chosen variant's panel proportions and opens both
   panels. It also clears a mixed header selection.
 - **H** hides/shows the floating bar. Add `review=clean` for clean captures.
@@ -141,8 +143,9 @@ and filters without attempting to save business changes.
 
 ### 7. Long content, locales, themes and narrow screens
 
-Use Long text in both 0 and a proposal. Check the longer title and multiline
-requirement descriptions. The gallery links to English long-text captures.
+Use Long text in both 0 and a proposal. Check the 150-character title,
+300-character description below it and multiline requirement descriptions.
+The gallery links to English long-text captures.
 Check both 1440 × 900 and 1920 × 1080, navigation expanded/collapsed and
 light/dark themes. At 375 px, the panels stack rather than share a row.
 
