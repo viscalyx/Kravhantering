@@ -4,15 +4,20 @@ This is a throwaway visual experiment on the existing specification detail
 route. It compares five answers to: **how can needs reference and both
 requirement texts remain readable without cramped header metadata?**
 
-No design is approved. Keep issue 1352 open. This branch is reference material;
-rewrite the chosen design with normal production tests before merging it.
+**Prototype E is the selected design for issue 1352.** Keep the issue open
+until production implementation is complete. This branch preserves the
+reviewed prototype; implement E with normal production tests.
 
 ## Open the review
 
-From this worktree:
+The review worktree and preview servers were removed after approval.
+Recreate a review checkout from the main repository:
 
 ```bash
+git fetch origin prototype/1352-proportions
+git worktree add --detach /mnt/krav-azure-dev-data/.worktrees/prototype-1352-proportions FETCH_HEAD
 cd /mnt/krav-azure-dev-data/.worktrees/prototype-1352-proportions
+npm ci
 npm run prototype:1352
 ```
 
@@ -272,18 +277,17 @@ Focused browser review also checks all gallery controls and loaded images.
 
 ## Verdict and limits
 
-**A is the closest starting point for this issue.** It brings reference into
-view while retaining the most list density. Its right panel is narrower and
-some secondary columns still need horizontal scrolling at 1440. The flat
-header also costs 17 px of height in the narrowest sample.
+**Prototype E was selected by the user.** Use its 60/40 starting panel ratio,
+compact tables and expandable header for implementation. The collapsed
+header keeps title/editing on the left and one content-sized box on the right.
+Lifecycle status and Agreement occupy two tight rows. The Agreement arrow
+sits directly after the value; only the arrow opens the full-box-width menu.
+The desktop box starts 16 px below the viewport top. Expanded view shows the
+description under the title, the original metadata boxes and full Agreement
+actions. See the Variant E review steps above for the complete behavior.
 
-B and C expose all default fields without horizontal scrolling, but their
-larger records give up much of the list density recovered in issue 1351.
-A's table with C's inline metadata is a useful combination to review.
-D adds the requested title/description row above the original metadata boxes
-and is ready for review. E explores the same header with the description and other
-metadata collapsed initially, keeping lifecycle status, Agreement and editing available.
-No winner is approved and no production implementation is included.
+The other variants remain comparison evidence. The choice supersedes the
+earlier provisional preference for A. No production implementation is included.
 
 The prototype does not prove production preference migration/preservation,
 screen-reader table semantics after CSS reflow, every filter combination,
@@ -352,4 +356,4 @@ are unchanged; this branch supplies its own throwaway review guide instead.
 - The isolated launcher's stop and restart commands are verified.
 
 Source branch: `prototype/1352-proportions`. The implementation issue remains
-open; the verdict above is provisional.
+open for implementation; Prototype E is the approved design.
