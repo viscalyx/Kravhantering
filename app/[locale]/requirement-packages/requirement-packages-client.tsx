@@ -48,6 +48,7 @@ import {
   formatActorDisplayNameSummaryForLocale,
 } from '@/lib/privacy/display-name'
 import { resolveStatusLabel } from '@/lib/requirements/status-label'
+import PackageLayoutPrototype from './package-layout.prototype'
 
 const REQUIREMENT_PACKAGES_HELP: HelpContent = {
   sections: [
@@ -951,6 +952,19 @@ export default function RequirementPackagesClient() {
       )}
     </div>
   )
+
+  // Throwaway UI review: the existing hooks load data; preview actions stay in memory.
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_PACKAGE_LAYOUT_PROTOTYPE === 'true'
+  ) {
+    return (
+      <PackageLayoutPrototype
+        items={controller.items}
+        loading={controller.loading}
+      />
+    )
+  }
 
   const isEditing = controller.showForm && controller.editId != null
   const formModalTitle = isEditing

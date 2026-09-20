@@ -4066,5 +4066,90 @@
     "hiddenCreatedNorm": "The search hides the new norm reference “{name}”. It is still checked.",
     "creationPersistence": "The new object is saved immediately. Cancel in the selection dialog only discards the selection.",
     "searchHelp": "Search by name, reference ID or package purpose. Selections are kept when you filter the list."
+  },
+  "packagePrototype": {
+    "title": "Requirements packages",
+    "question": "Which layout makes names, purpose and responsibility easiest to compare?",
+    "badge": "PROTOTYPE #1353",
+    "guide": "Review guide · changes and how to check them",
+    "instructions": "Use Before, A, B and C below with the same data. Try 1440 × 900 and 1920 × 1080, both navigation widths and both themes. Arrow keys switch layouts outside text fields. Decisions are pending your review.",
+    "switcher": "Prototype layout switcher",
+    "previous": "Previous layout",
+    "next": "Next layout",
+    "variant": {
+      "before": "Before",
+      "A": "A · Compact table",
+      "B": "B · Purpose rows",
+      "C": "C · Split view"
+    },
+    "description": {
+      "before": "Current column structure and 44px actions, reproduced for comparison.",
+      "A": "Keep seven columns; return space to name and purpose.",
+      "B": "Name and purpose together; responsibility in a side column.",
+      "C": "Scan names on the left; read one complete package on the right."
+    },
+    "actions": "Actions",
+    "stress": "Long-text samples",
+    "reset": "Reset previews",
+    "state": "Inspect state · variant, data and preview changes",
+    "memoryOnly": "Preview only. No package changes are saved. Reload or Reset previews to restore the data.",
+    "visible": "{count} packages",
+    "count": "{count, plural, one {# requirement} other {# requirements}}",
+    "countPreview": "This package has {count} linked requirements. This prototype previews the dialog entry point; it does not load or change the linked requirements.",
+    "stub": "This control previews placement and focus. The real workflow is outside this prototype.",
+    "applyPreview": "Apply in preview",
+    "checks": [
+      {
+        "change": "A: more room for the main text",
+        "verify": "Compare Before with A at the same viewport. Name and purpose retain separate columns; the action column shrinks from about 220px to 142px. All text remains available."
+      },
+      {
+        "change": "B: group name and purpose",
+        "verify": "Compare several packages without moving between columns. Name, status and count head each row; responsibility and actions sit to the right. Expect taller rows."
+      },
+      {
+        "change": "C: separate scanning from reading",
+        "verify": "Select different packages in the left list. Read the full purpose and responsibility on the right. This is exploratory: comparing full purposes now requires selection."
+      },
+      {
+        "change": "Counts stay together",
+        "verify": "Enable Long-text samples. Find 0, 1, 14 and 209 requirements. In A/B/C, each number and its noun stay on one line. Open the count by mouse and Enter."
+      },
+      {
+        "change": "Compact, consistent actions",
+        "verify": "Check co-authors → edit → archive/reactivate → delete. A/B/C use 28px targets. The fourth sample hides the co-author action. Tab to each control; check its tooltip and focus."
+      },
+      {
+        "change": "Package status has text and an icon",
+        "verify": "In the samples, find Active and Archived. Preview archive/reactivate, then Reset previews. Status stays distinct from a requirement version status."
+      },
+      {
+        "change": "Responsibility remains readable",
+        "verify": "Inspect the long HSA identifier using mouse or keyboard scrolling. Check the anonymous sample shows Anonymous, and that co-author names remain available. Name and HSA identifier retain their meaning."
+      },
+      {
+        "change": "Safe, reversible interaction previews",
+        "verify": "Edit text, archive or remove a row using Apply in preview. Inspect state shows the change. Reset or reload restores it. Create and co-author controls are explicit stubs."
+      },
+      {
+        "change": "Navigation, theme, language and small screens",
+        "verify": "Use the real navigation and theme controls. Open the English and Swedish URLs. Check 1440px, 1920px and a narrow viewport. The create button and bottom switcher must stay accessible."
+      },
+      {
+        "change": "Traceable variants and developer markers",
+        "verify": "Switch layouts, copy the URL and reload. The selected variant remains in ?variant=. Inspect state updates. Developer Mode identifies the prototype workspace, identity, status, count and actions."
+      }
+    ],
+    "fixture": {
+      "name1": "Accessibility and inclusive digital services",
+      "purpose1": "Requirements for clear navigation, readable content and predictable interaction. Applies to desktop and mobile services; excludes internal training material.",
+      "name2": "Coordinated information exchange across several organizations with long names and a deliberately extensive delivery scope",
+      "purpose2": "This sample keeps the full purpose visible. It covers information exchange, traceability, authorization and recovery across organizational boundaries.\n\nIncluded: user-facing services, background integrations, operational follow-up and documented exception handling. Excluded: local requirements that belong only to one specification. Compare the reading experience with the other packages; no ellipsis or hover is needed to read this text.",
+      "name3": "Archived package with anonymized responsibility",
+      "purpose3": "Historical scope remains readable even when a package is archived. This example also checks zero linked requirements and no co-authors.",
+      "name4": "One requirement, restricted assignment control",
+      "purpose4": "A small package with one linked requirement. The co-author action is absent, while the remaining actions retain their order.",
+      "longPerson": "Alexandra Exempelsson with a deliberately long display name"
+    }
   }
 }

@@ -1,0 +1,211 @@
+.surface {
+  overflow: hidden;
+  background: white;
+  border: 1px solid var(--color-secondary-200);
+  border-radius: 1rem;
+}
+[class~="dark"] .surface {
+  background: var(--color-secondary-900);
+  border-color: var(--color-secondary-700);
+}
+.scroll {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+}
+.table th {
+  font-weight: 500;
+  text-align: left;
+}
+.table th,
+.table td {
+  padding: 0.75rem 1rem;
+}
+.table thead {
+  background: var(--color-secondary-50);
+}
+[class~="dark"] .table thead {
+  background: var(--color-secondary-800);
+}
+.table tr {
+  border-bottom: 1px solid var(--color-secondary-200);
+}
+[class~="dark"] .table tr {
+  border-color: var(--color-secondary-700);
+}
+.table tbody tr:last-child {
+  border-bottom: 0;
+}
+.table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-primary-500) 4%, transparent);
+}
+.compact {
+  min-width: 960px;
+  table-layout: fixed;
+}
+.compact th,
+.compact td {
+  padding: 0.75rem;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.compact td:last-child,
+.compact th:last-child {
+  border-left: 1px solid var(--color-secondary-200);
+}
+[class~="dark"] .compact td:last-child,
+[class~="dark"] .compact th:last-child {
+  border-color: var(--color-secondary-700);
+}
+.purpose {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.identity {
+  min-width: 0;
+  overflow: hidden;
+}
+.identityName {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.hsa {
+  display: block;
+  max-width: 100%;
+  margin-top: 0.25rem;
+  overflow-x: auto;
+  font-family: monospace;
+  font-size: 0.6875rem;
+  white-space: nowrap;
+}
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  justify-content: flex-end;
+}
+.action {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 0.5rem;
+}
+.action:hover {
+  background: var(--color-secondary-100);
+}
+[class~="dark"] .action:hover {
+  background: var(--color-secondary-700);
+}
+.action:focus-visible,
+.count:focus-visible,
+.selection:focus-visible,
+.hsa:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+.beforeActions {
+  gap: 4px;
+}
+.beforeActions .action {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+}
+.count {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0 0.25rem;
+  font-weight: 500;
+  color: var(--color-primary-700);
+  white-space: nowrap;
+  border-radius: 0.5rem;
+}
+[class~="dark"] .count {
+  color: var(--color-primary-300);
+}
+.beforeCount {
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: 0.5rem;
+  white-space: normal;
+}
+.band {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 1rem 2rem;
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--color-secondary-200);
+}
+[class~="dark"] .band {
+  border-color: var(--color-secondary-700);
+}
+.band:last-child {
+  border-bottom: 0;
+}
+.bandAside {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+  padding-left: 1.25rem;
+  border-left: 1px solid var(--color-secondary-200);
+}
+[class~="dark"] .bandAside {
+  border-color: var(--color-secondary-700);
+}
+.split {
+  display: grid;
+  grid-template-columns: minmax(240px, 32%) minmax(0, 1fr);
+}
+.selectionList {
+  max-height: 640px;
+  overflow: auto;
+  border-right: 1px solid var(--color-secondary-200);
+}
+[class~="dark"] .selectionList {
+  border-color: var(--color-secondary-700);
+}
+.selection {
+  width: 100%;
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-secondary-200);
+}
+[class~="dark"] .selection {
+  border-color: var(--color-secondary-700);
+}
+.selection[aria-pressed="true"] {
+  background: var(--color-primary-50);
+  box-shadow: inset 3px 0 var(--color-primary-600);
+}
+[class~="dark"] .selection[aria-pressed="true"] {
+  background: var(--color-primary-950);
+}
+.detail {
+  min-width: 0;
+  padding: 1.5rem;
+}
+@media (max-width: 767px) {
+  .band,
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bandAside {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .selectionList {
+    max-height: 250px;
+    border-right: 0;
+  }
+}

@@ -4066,5 +4066,90 @@
     "hiddenCreatedNorm": "Sökningen döljer den nya normreferensen ”{name}”. Den är fortfarande markerad.",
     "creationPersistence": "Det nya objektet sparas direkt. Avbryt i väljdialogen kasserar endast urvalet.",
     "searchHelp": "Sök på namn, referens-ID eller paketets syfte. Markeringar behålls när du filtrerar listan."
+  },
+  "packagePrototype": {
+    "title": "Kravpaket",
+    "question": "Vilken layout gör det enklast att jämföra namn, syfte och ansvar?",
+    "badge": "PROTOTYP #1353",
+    "guide": "Granskningsguide · ändringar och hur du kontrollerar dem",
+    "instructions": "Växla mellan Före, A, B och C nedan med samma data. Prova 1 440 × 900 och 1 920 × 1 080, båda navigationsbredderna och båda temana. Piltangenter växlar layout utanför textfält. Utformningen väntar på din bedömning.",
+    "switcher": "Växla prototyplayout",
+    "previous": "Föregående layout",
+    "next": "Nästa layout",
+    "variant": {
+      "before": "Före",
+      "A": "A · Kompakt tabell",
+      "B": "B · Syftesrader",
+      "C": "C · Delad vy"
+    },
+    "description": {
+      "before": "Nuvarande kolumnstruktur och 44 px åtgärder, återskapade för jämförelse.",
+      "A": "Behåll sju kolumner; ge namn och syfte mer plats.",
+      "B": "Samla namn och syfte; placera ansvar i en sidokolumn.",
+      "C": "Överblicka namn till vänster; läs ett helt paket till höger."
+    },
+    "actions": "Åtgärder",
+    "stress": "Långa exempeltexter",
+    "reset": "Återställ förhandsvisning",
+    "state": "Visa tillstånd · variant, data och förhandsvisade ändringar",
+    "memoryOnly": "Endast förhandsvisning. Inga paketändringar sparas. Ladda om eller återställ för att återgå till ursprungliga data.",
+    "visible": "{count} paket",
+    "count": "{count} krav",
+    "countPreview": "Paketet har {count} kopplade krav. Prototypen visar ingången till dialogen; den läser eller ändrar inte de kopplade kraven.",
+    "stub": "Kontrollen visar placering och fokus. Det verkliga arbetsflödet ingår inte i prototypen.",
+    "applyPreview": "Tillämpa i förhandsvisning",
+    "checks": [
+      {
+        "change": "A: mer plats för huvudtexten",
+        "verify": "Jämför Före med A i samma fönster. Namn och syfte har separata kolumner; åtgärdskolumnen minskar från cirka 220 px till 142 px. All text finns kvar."
+      },
+      {
+        "change": "B: samla namn och syfte",
+        "verify": "Jämför flera paket utan att flytta blicken mellan kolumner. Namn, status och antal inleder raden; ansvar och åtgärder ligger till höger. Raderna blir högre."
+      },
+      {
+        "change": "C: skilj överblick från läsning",
+        "verify": "Välj olika paket i vänsterlistan. Läs fullständigt syfte och ansvar till höger. Detta är ett utforskande alternativ: jämförelse av hela syften kräver nu att du väljer paket."
+      },
+      {
+        "change": "Kravantal hålls ihop",
+        "verify": "Aktivera Långa exempeltexter. Leta upp 0, 1, 14 och 209 krav. I A/B/C ligger tal och ord på samma rad. Öppna antal med mus och Enter."
+      },
+      {
+        "change": "Kompakta, konsekventa åtgärder",
+        "verify": "Kontrollera medförfattare → redigera → arkivera/återaktivera → ta bort. A/B/C använder 28 px mål. Fjärde exemplet döljer medförfattaråtgärden. Tabba till kontrollerna; kontrollera verktygstips och fokus."
+      },
+      {
+        "change": "Paketstatus har text och ikon",
+        "verify": "Hitta Aktivt och Arkiverat bland exemplen. Förhandsvisa arkivering/återaktivering och återställ. Statusen är fortsatt skild från en kravversionsstatus."
+      },
+      {
+        "change": "Ansvarsinformation går att läsa",
+        "verify": "Rulla det långa HSA-id:t med mus eller tangentbord. Kontrollera att det anonymiserade exemplet visar Anonym och att medförfattarnas namn finns kvar. Namn och HSA-id behåller sin betydelse."
+      },
+      {
+        "change": "Reversibla interaktionsförhandsvisningar",
+        "verify": "Redigera text, arkivera eller ta bort en rad med Tillämpa i förhandsvisning. Visa tillstånd redovisar ändringen. Återställning eller omladdning återställer data. Skapa och medförfattare är uttryckliga platshållare."
+      },
+      {
+        "change": "Navigation, tema, språk och små skärmar",
+        "verify": "Använd den riktiga navigationen och temaväxlaren. Öppna svenska och engelska adresser. Kontrollera 1 440 px, 1 920 px och ett smalt fönster. Skapaknapp och variantväljare ska vara åtkomliga."
+      },
+      {
+        "change": "Spårbara varianter och utvecklarmarkörer",
+        "verify": "Växla layout, kopiera adressen och ladda om. Valet finns kvar i ?variant=. Visa tillstånd uppdateras. Developer Mode identifierar prototypyta, identitet, status, antal och åtgärder."
+      }
+    ],
+    "fixture": {
+      "name1": "Tillgänglighet och inkluderande digitala tjänster",
+      "purpose1": "Krav för tydlig navigation, läsbart innehåll och förutsägbar interaktion. Omfattar tjänster för dator och mobil; interna utbildningsmaterial ingår inte.",
+      "name2": "Samordnat informationsutbyte mellan flera organisationer med långa namn och en avsiktligt omfattande leveransavgränsning",
+      "purpose2": "Exemplet behåller hela syftet synligt. Det omfattar informationsutbyte, spårbarhet, behörighetsstyrning och återställning över organisationsgränser.\n\nIngår: användartjänster, bakgrundsintegrationer, driftuppföljning och dokumenterad undantagshantering. Ingår inte: lokala krav som bara hör till ett kravunderlag. Jämför läsupplevelsen med övriga paket; ingen avkortning eller hovring behövs för att läsa texten.",
+      "name3": "Arkiverat paket med anonymiserat ansvar",
+      "purpose3": "Historisk avgränsning går att läsa även när paketet är arkiverat. Exemplet kontrollerar också noll kopplade krav och inga medförfattare.",
+      "name4": "Ett krav och begränsad tilldelningskontroll",
+      "purpose4": "Ett litet paket med ett kopplat krav. Medförfattaråtgärden saknas medan övriga åtgärder behåller sin ordning.",
+      "longPerson": "Alexandra Exempelsson med ett avsiktligt långt visningsnamn"
+    }
   }
 }
