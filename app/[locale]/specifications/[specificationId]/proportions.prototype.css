@@ -445,14 +445,43 @@
   padding-inline: 4px;
 }
 
-/* E starts with only the title; expansion restores D's complete header. */
-[data-prototype-header="E"][data-prototype-header-collapsed="true"]
+/* E keeps the edit action and agreement visible, with other details expandable. */
+[data-prototype-header="E"]
   [data-specification-detail-header-summary]
-  > div {
+  > div:has(> p) {
   display: block;
 }
+[data-prototype-header="E"]
+  [data-specification-detail-header-summary]
+  > div
+  > p {
+  margin-top: 8px;
+}
+[data-prototype-header="E"][data-prototype-header-collapsed="true"]
+  [data-specification-detail-header-summary] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(9rem, 20%, 15rem);
+  gap: 24px;
+  align-items: start;
+}
+[data-prototype-header="E"][data-prototype-header-collapsed="true"]
+  [data-specification-detail-header-metadata] {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+}
+[data-prototype-header="E"][data-prototype-header-collapsed="true"]
+  [data-specification-detail-header-metadata]
+  > div:not(:first-child),
 [data-prototype-header="E"][data-prototype-header-collapsed="true"]
   [data-specification-detail-header-summary]
   [hidden] {
   display: none;
+}
+@media (max-width: 639px) {
+  [data-prototype-header="E"][data-prototype-header-collapsed="true"]
+    [data-specification-detail-header-summary] {
+    gap: 12px;
+  }
 }

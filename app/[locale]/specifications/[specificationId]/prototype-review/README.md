@@ -51,7 +51,7 @@ the comparison slider scales images to fit your current window.
 | B | 55/45 | Two-column definition list beside title | ID/area above text; reference/status below | Taller records, fewer visible rows |
 | C | 50/50 | Inline properties below title | Bounded cards with full-width text and labeled reference/status footer | Lowest row density |
 | D | 60/40 | Title left, description beside it; original metadata boxes underneath | Same compact table as A | Original boxes retain their styling and consume header space |
-| E | 60/40 | Title only initially; click to expand D’s complete header | Same compact table as D | More list space while metadata is hidden |
+| E | 60/40 | Collapsed: title/edit left, Agreement far right; expanded: description below title, then all boxes | Same compact table as D | Agreement stays available while other metadata is hidden |
 <!-- markdownlint-enable MD013 -->
 
 The proposals keep requirement text at 14 px. A/B/C metadata labels use normal
@@ -167,15 +167,18 @@ D is also available through the header mixer, for example `?variant=B&header=D`.
 
 ### Variant E: expandable header based on D
 
-Open `?variant=E`. Only the title and its disclosure chevron are visible.
-Click the title, or focus it and press Enter/Space, to show the description,
-edit action and original metadata boxes in D's arrangement. Click again to
-collapse. Lists stay available and gain height when the header collapses.
+Open `?variant=E`. The title, disclosure chevron and edit button sit on the
+left; the Agreement box stays at the far right on the same row. Click the
+title, or focus it and press Enter/Space, to show the description directly
+under the title and all metadata boxes underneath. Click again to collapse.
+The edit button remains available in both states, subject to permissions.
 
-Use **Long text** to check the 150-character title in both states, and the
-300-character description when expanded. Inspect `aria-expanded` and verify
-that hidden metadata actions are excluded from keyboard navigation. The
-agreement component remains mounted so hiding the boxes preserves its context.
+Use **Long text** to check the 150-character title and the 300-character
+description. Verify that the collapsed Agreement box aligns with the right
+edge of the header and that the description starts at the title's left edge
+when expanded. Open and close the edit dialog while collapsed. Agreement
+controls remain usable; the other four boxes are hidden until expansion.
+The same Agreement component stays mounted when changing header state.
 
 Expansion is preview URL state: `headerDetails=expanded` opens it directly
 and survives reload. Variant switching and **Reset** return to collapsed.
@@ -233,7 +236,7 @@ At 1440 × 900, navigation expanded, light theme:
 | B | 629 / 515 px | Yes | 3 / 5 | 0 / 0 px | 164 px |
 | C | 572 / 572 px | Yes | 2 / 4 | 0 / 0 px | 182 px |
 | D | 686 / 458 px | Yes | 7 / 8 | 134 / 92 px | 189 px |
-| E (collapsed) | 686 / 458 px | Yes | 8 / 10 | 134 / 92 px | 84 px |
+| E (collapsed) | 686 / 458 px | Yes | 8 / 9 | 134 / 92 px | 119 px |
 <!-- markdownlint-enable MD013 -->
 
 All three left tab labels fit across the Swedish capture matrix. All proposals
@@ -259,8 +262,8 @@ B and C expose all default fields without horizontal scrolling, but their
 larger records give up much of the list density recovered in issue 1351.
 A's table with C's inline metadata is a useful combination to review.
 D adds the requested title/description row above the original metadata boxes
-and is ready for review. E explores the same header with details collapsed
-initially, freeing more space for the lists.
+and is ready for review. E explores the same header with the description and other
+metadata collapsed initially, keeping Agreement and editing available.
 No winner is approved and no production implementation is included.
 
 The prototype does not prove production preference migration/preservation,

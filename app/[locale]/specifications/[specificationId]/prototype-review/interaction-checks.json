@@ -100,8 +100,8 @@
     "writeGuard": 403,
     "urlSwitchAndReload": true,
     "mobile": {
-      "width": 333.109375,
-      "scrollWidth": 333
+      "width": 343,
+      "scrollWidth": 343
     }
   }
 ]

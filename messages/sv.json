@@ -4074,7 +4074,7 @@
     "descriptionB": "55/45. Kompakt definitionslista bredvid rubriken. ID och kravområde ligger ovanför bred kravtext; behovsreferens och status under.",
     "descriptionC": "50/50. Metadata följer under rubriken. Läskort samlar kravtext, behovsreferens och övriga metadata.",
     "descriptionD": "60/40 med A:s kompakta tabeller. Rubriken ligger överst till vänster med vänsterställd beskrivning bredvid. De ursprungliga metadatarutorna ligger under.",
-    "descriptionE": "D:s layout med endast rubriken synlig från början. Klicka på rubriken för att visa beskrivningen och de ursprungliga metadatarutorna; klicka igen för att fälla ihop.",
+    "descriptionE": "Rubrik och redigeringsknapp ligger till vänster, med Avtal längst till höger i hopfällt läge. Fäll ut för att visa beskrivningen under rubriken och alla ursprungliga metadatarutor nedanför.",
     "expandHeader": "Visa underlagsdetaljer",
     "collapseHeader": "Dölj underlagsdetaljer",
     "readOnly": "Tillfällig prototyp: ändringar av verksamhetsdata är spärrade. Vyval finns endast i minnet. Variantbyte återställer panelbredderna.",

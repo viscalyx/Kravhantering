@@ -1,6 +1,6 @@
 // THROWAWAY browser review checklist. Does not mutate application data.
 
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { chromium, expect } from '@playwright/test'
 
 const directory =
@@ -17,8 +17,17 @@ await loginPage.waitForURL(
 )
 const cookies = await login.cookies()
 await login.close()
-const results = []
-for (const variant of ['A', 'B', 'C', 'D', 'E']) {
+const variantFilter = process.argv
+  .find(arg => arg.startsWith('--variant='))
+  ?.split('=')[1]
+const results = variantFilter
+  ? JSON.parse(
+      await readFile(`${directory}/interaction-checks.json`, 'utf8'),
+    ).filter(row => row.variant !== variantFilter)
+  : []
+for (const variant of ['A', 'B', 'C', 'D', 'E'].filter(
+  key => !variantFilter || key === variantFilter,
+)) {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
     reducedMotion: 'reduce',
@@ -145,8 +154,14 @@ for (const variant of ['A', 'B', 'C', 'D', 'E']) {
     throw Error('Header moved')
   if (variant === 'E') {
     await expect(
-      page.locator('[data-specification-detail-header-metadata]'),
-    ).toBeHidden()
+      page.locator('[data-specification-detail-header-metadata] > div:visible'),
+    ).toHaveCount(1)
+    await expect(
+      page.getByRole('button', {
+        name: 'Edit requirements specification',
+        exact: true,
+      }),
+    ).toBeVisible()
     await page
       .getByRole('button', { name: /Show specification details$/ })
       .click()

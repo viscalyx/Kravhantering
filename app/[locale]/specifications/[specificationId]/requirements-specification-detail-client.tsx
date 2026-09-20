@@ -539,8 +539,9 @@ export default function KravunderlagDetailClient({
   const searchParams = useSearchParams()
   const tp = useTranslations('proportionsPrototype')
   const prototypeVariant = useProportionsPrototypeVariant()
-  const prototypeHeader =
-    prototypeVariant === '0'
+  const prototypeHeader = !prototypeVariant
+    ? null
+    : prototypeVariant === '0'
       ? '0'
       : ['A', 'B', 'C', 'D', 'E'].includes(searchParams.get('header') ?? '')
         ? searchParams.get('header')
@@ -3292,7 +3293,7 @@ export default function KravunderlagDetailClient({
                       specName
                     )}
                   </h1>
-                  {canMutateSpecification && !prototypeHeaderCollapsed ? (
+                  {canMutateSpecification ? (
                     <button
                       aria-expanded={showEditSpecificationForm}
                       aria-haspopup="dialog"
@@ -3331,7 +3332,6 @@ export default function KravunderlagDetailClient({
               <dl
                 className="grid grid-flow-col auto-cols-[minmax(12rem,1fr)] gap-3 overflow-x-auto pb-1 xl:auto-cols-fr"
                 data-specification-detail-header-metadata="true"
-                hidden={prototypeHeaderCollapsed}
                 id={
                   prototypeHeader === 'E'
                     ? 'prototype-header-metadata'

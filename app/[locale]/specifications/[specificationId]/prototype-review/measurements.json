@@ -954,201 +954,6 @@
     "pageOverflow": 0
   },
   {
-    "name": "1440-collapsed-light-E",
-    "width": 1440,
-    "nav": "collapsed",
-    "theme": "light",
-    "variant": "E",
-    "panels": [
-      {
-        "side": "left",
-        "bounds": {
-          "x": 80,
-          "y": 84,
-          "right": 881.59375,
-          "bottom": 851,
-          "width": 801.59375,
-          "height": 767
-        },
-        "tabsFit": true,
-        "tabs": [
-          {
-            "label": "Krav i underlaget",
-            "bounds": {
-              "x": 137,
-              "y": 90,
-              "right": 274.890625,
-              "bottom": 122,
-              "width": 137.890625,
-              "height": 32
-            }
-          },
-          {
-            "label": "Behovsreferenser1",
-            "bounds": {
-              "x": 276.890625,
-              "y": 90,
-              "right": 434.78125,
-              "bottom": 122,
-              "width": 157.890625,
-              "height": 32
-            }
-          },
-          {
-            "label": "RFI-frågelista",
-            "bounds": {
-              "x": 436.78125,
-              "y": 90,
-              "right": 548.171875,
-              "bottom": 122,
-              "width": 111.390625,
-              "height": 32
-            }
-          }
-        ],
-        "horizontalOverflow": 18,
-        "needsBounds": {
-          "x": 509,
-          "y": 210,
-          "right": 669,
-          "bottom": 286.5,
-          "width": 160,
-          "height": 76.5
-        },
-        "needsVisible": true,
-        "textBounds": {
-          "x": 229,
-          "y": 210,
-          "right": 509,
-          "bottom": 286.5,
-          "width": 280,
-          "height": 76.5
-        },
-        "textSize": "14px",
-        "completeRows": 8
-      },
-      {
-        "side": "right",
-        "bounds": {
-          "x": 897.59375,
-          "y": 84,
-          "right": 1432,
-          "bottom": 851,
-          "width": 534.40625,
-          "height": 767
-        },
-        "tabsFit": true,
-        "tabs": [
-          {
-            "label": "Tillgängliga krav",
-            "bounds": {
-              "x": 954.59375,
-              "y": 90,
-              "right": 1085.171875,
-              "bottom": 122,
-              "width": 130.578125,
-              "height": 32
-            }
-          },
-          {
-            "label": "Kravurvalsfrågor",
-            "bounds": {
-              "x": 1087.171875,
-              "y": 90,
-              "right": 1219.640625,
-              "bottom": 122,
-              "width": 132.46875,
-              "height": 32
-            }
-          }
-        ],
-        "horizontalOverflow": 16,
-        "needsBounds": null,
-        "needsVisible": false,
-        "textBounds": {
-          "x": 1046.59375,
-          "y": 240,
-          "right": 1326.59375,
-          "bottom": 296.5,
-          "width": 280,
-          "height": 56.5
-        },
-        "textSize": "14px",
-        "completeRows": 10
-      }
-    ],
-    "metadata": [
-      {
-        "text": "Avtal",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Styrningsobjektstyp",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Kravunderlagsansvarig",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Genomförandeform",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Kravunderlagets livscykelstatus",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      }
-    ],
-    "navigationWidth": 72,
-    "dark": false,
-    "pageOverflow": 0
-  },
-  {
     "name": "1440-collapsed-dark-0",
     "width": 1440,
     "nav": "collapsed",
@@ -2093,201 +1898,6 @@
           "bottom": 107.5,
           "width": 225.1875,
           "height": 16.5
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      }
-    ],
-    "navigationWidth": 72,
-    "dark": true,
-    "pageOverflow": 0
-  },
-  {
-    "name": "1440-collapsed-dark-E",
-    "width": 1440,
-    "nav": "collapsed",
-    "theme": "dark",
-    "variant": "E",
-    "panels": [
-      {
-        "side": "left",
-        "bounds": {
-          "x": 80,
-          "y": 84,
-          "right": 881.59375,
-          "bottom": 851,
-          "width": 801.59375,
-          "height": 767
-        },
-        "tabsFit": true,
-        "tabs": [
-          {
-            "label": "Krav i underlaget",
-            "bounds": {
-              "x": 137,
-              "y": 90,
-              "right": 274.890625,
-              "bottom": 122,
-              "width": 137.890625,
-              "height": 32
-            }
-          },
-          {
-            "label": "Behovsreferenser1",
-            "bounds": {
-              "x": 276.890625,
-              "y": 90,
-              "right": 434.78125,
-              "bottom": 122,
-              "width": 157.890625,
-              "height": 32
-            }
-          },
-          {
-            "label": "RFI-frågelista",
-            "bounds": {
-              "x": 436.78125,
-              "y": 90,
-              "right": 548.171875,
-              "bottom": 122,
-              "width": 111.390625,
-              "height": 32
-            }
-          }
-        ],
-        "horizontalOverflow": 18,
-        "needsBounds": {
-          "x": 509,
-          "y": 210,
-          "right": 669,
-          "bottom": 286.5,
-          "width": 160,
-          "height": 76.5
-        },
-        "needsVisible": true,
-        "textBounds": {
-          "x": 229,
-          "y": 210,
-          "right": 509,
-          "bottom": 286.5,
-          "width": 280,
-          "height": 76.5
-        },
-        "textSize": "14px",
-        "completeRows": 8
-      },
-      {
-        "side": "right",
-        "bounds": {
-          "x": 897.59375,
-          "y": 84,
-          "right": 1432,
-          "bottom": 851,
-          "width": 534.40625,
-          "height": 767
-        },
-        "tabsFit": true,
-        "tabs": [
-          {
-            "label": "Tillgängliga krav",
-            "bounds": {
-              "x": 954.59375,
-              "y": 90,
-              "right": 1085.171875,
-              "bottom": 122,
-              "width": 130.578125,
-              "height": 32
-            }
-          },
-          {
-            "label": "Kravurvalsfrågor",
-            "bounds": {
-              "x": 1087.171875,
-              "y": 90,
-              "right": 1219.640625,
-              "bottom": 122,
-              "width": 132.46875,
-              "height": 32
-            }
-          }
-        ],
-        "horizontalOverflow": 16,
-        "needsBounds": null,
-        "needsVisible": false,
-        "textBounds": {
-          "x": 1046.59375,
-          "y": 240,
-          "right": 1326.59375,
-          "bottom": 296.5,
-          "width": 280,
-          "height": 56.5
-        },
-        "textSize": "14px",
-        "completeRows": 10
-      }
-    ],
-    "metadata": [
-      {
-        "text": "Avtal",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Styrningsobjektstyp",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Kravunderlagsansvarig",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Genomförandeform",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Kravunderlagets livscykelstatus",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
         },
         "size": "11px",
         "transform": "uppercase"
@@ -3252,201 +2862,6 @@
     "pageOverflow": 0
   },
   {
-    "name": "1440-expanded-light-E",
-    "width": 1440,
-    "nav": "expanded",
-    "theme": "light",
-    "variant": "E",
-    "panels": [
-      {
-        "side": "left",
-        "bounds": {
-          "x": 272,
-          "y": 84,
-          "right": 958.390625,
-          "bottom": 851,
-          "width": 686.390625,
-          "height": 767
-        },
-        "tabsFit": true,
-        "tabs": [
-          {
-            "label": "Krav i underlaget",
-            "bounds": {
-              "x": 329,
-              "y": 90,
-              "right": 466.890625,
-              "bottom": 122,
-              "width": 137.890625,
-              "height": 32
-            }
-          },
-          {
-            "label": "Behovsreferenser1",
-            "bounds": {
-              "x": 468.890625,
-              "y": 90,
-              "right": 626.78125,
-              "bottom": 122,
-              "width": 157.890625,
-              "height": 32
-            }
-          },
-          {
-            "label": "RFI-frågelista",
-            "bounds": {
-              "x": 628.78125,
-              "y": 90,
-              "right": 740.171875,
-              "bottom": 122,
-              "width": 111.390625,
-              "height": 32
-            }
-          }
-        ],
-        "horizontalOverflow": 134,
-        "needsBounds": {
-          "x": 701,
-          "y": 210,
-          "right": 861,
-          "bottom": 286.5,
-          "width": 160,
-          "height": 76.5
-        },
-        "needsVisible": true,
-        "textBounds": {
-          "x": 421,
-          "y": 210,
-          "right": 701,
-          "bottom": 286.5,
-          "width": 280,
-          "height": 76.5
-        },
-        "textSize": "14px",
-        "completeRows": 8
-      },
-      {
-        "side": "right",
-        "bounds": {
-          "x": 974.390625,
-          "y": 84,
-          "right": 1432,
-          "bottom": 851,
-          "width": 457.609375,
-          "height": 767
-        },
-        "tabsFit": true,
-        "tabs": [
-          {
-            "label": "Tillgängliga krav",
-            "bounds": {
-              "x": 1031.390625,
-              "y": 90,
-              "right": 1161.96875,
-              "bottom": 122,
-              "width": 130.578125,
-              "height": 32
-            }
-          },
-          {
-            "label": "Kravurvalsfrågor",
-            "bounds": {
-              "x": 1163.96875,
-              "y": 90,
-              "right": 1296.4375,
-              "bottom": 122,
-              "width": 132.46875,
-              "height": 32
-            }
-          }
-        ],
-        "horizontalOverflow": 92,
-        "needsBounds": null,
-        "needsVisible": false,
-        "textBounds": {
-          "x": 1123.390625,
-          "y": 240,
-          "right": 1403.390625,
-          "bottom": 296.5,
-          "width": 280,
-          "height": 56.5
-        },
-        "textSize": "14px",
-        "completeRows": 10
-      }
-    ],
-    "metadata": [
-      {
-        "text": "Avtal",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Styrningsobjektstyp",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Kravunderlagsansvarig",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Genomförandeform",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Kravunderlagets livscykelstatus",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      }
-    ],
-    "navigationWidth": 264,
-    "dark": false,
-    "pageOverflow": 0
-  },
-  {
     "name": "1440-expanded-dark-0",
     "width": 1440,
     "nav": "expanded",
@@ -4391,201 +3806,6 @@
           "bottom": 124,
           "width": 186.8125,
           "height": 33
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      }
-    ],
-    "navigationWidth": 264,
-    "dark": true,
-    "pageOverflow": 0
-  },
-  {
-    "name": "1440-expanded-dark-E",
-    "width": 1440,
-    "nav": "expanded",
-    "theme": "dark",
-    "variant": "E",
-    "panels": [
-      {
-        "side": "left",
-        "bounds": {
-          "x": 272,
-          "y": 84,
-          "right": 958.390625,
-          "bottom": 851,
-          "width": 686.390625,
-          "height": 767
-        },
-        "tabsFit": true,
-        "tabs": [
-          {
-            "label": "Krav i underlaget",
-            "bounds": {
-              "x": 329,
-              "y": 90,
-              "right": 466.890625,
-              "bottom": 122,
-              "width": 137.890625,
-              "height": 32
-            }
-          },
-          {
-            "label": "Behovsreferenser1",
-            "bounds": {
-              "x": 468.890625,
-              "y": 90,
-              "right": 626.78125,
-              "bottom": 122,
-              "width": 157.890625,
-              "height": 32
-            }
-          },
-          {
-            "label": "RFI-frågelista",
-            "bounds": {
-              "x": 628.78125,
-              "y": 90,
-              "right": 740.171875,
-              "bottom": 122,
-              "width": 111.390625,
-              "height": 32
-            }
-          }
-        ],
-        "horizontalOverflow": 134,
-        "needsBounds": {
-          "x": 701,
-          "y": 210,
-          "right": 861,
-          "bottom": 286.5,
-          "width": 160,
-          "height": 76.5
-        },
-        "needsVisible": true,
-        "textBounds": {
-          "x": 421,
-          "y": 210,
-          "right": 701,
-          "bottom": 286.5,
-          "width": 280,
-          "height": 76.5
-        },
-        "textSize": "14px",
-        "completeRows": 8
-      },
-      {
-        "side": "right",
-        "bounds": {
-          "x": 974.390625,
-          "y": 84,
-          "right": 1432,
-          "bottom": 851,
-          "width": 457.609375,
-          "height": 767
-        },
-        "tabsFit": true,
-        "tabs": [
-          {
-            "label": "Tillgängliga krav",
-            "bounds": {
-              "x": 1031.390625,
-              "y": 90,
-              "right": 1161.96875,
-              "bottom": 122,
-              "width": 130.578125,
-              "height": 32
-            }
-          },
-          {
-            "label": "Kravurvalsfrågor",
-            "bounds": {
-              "x": 1163.96875,
-              "y": 90,
-              "right": 1296.4375,
-              "bottom": 122,
-              "width": 132.46875,
-              "height": 32
-            }
-          }
-        ],
-        "horizontalOverflow": 92,
-        "needsBounds": null,
-        "needsVisible": false,
-        "textBounds": {
-          "x": 1123.390625,
-          "y": 240,
-          "right": 1403.390625,
-          "bottom": 296.5,
-          "width": 280,
-          "height": 56.5
-        },
-        "textSize": "14px",
-        "completeRows": 10
-      }
-    ],
-    "metadata": [
-      {
-        "text": "Avtal",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Styrningsobjektstyp",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Kravunderlagsansvarig",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Genomförandeform",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Kravunderlagets livscykelstatus",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
         },
         "size": "11px",
         "transform": "uppercase"
@@ -5550,201 +4770,6 @@
     "pageOverflow": 0
   },
   {
-    "name": "1920-collapsed-light-E",
-    "width": 1920,
-    "nav": "collapsed",
-    "theme": "light",
-    "variant": "E",
-    "panels": [
-      {
-        "side": "left",
-        "bounds": {
-          "x": 80,
-          "y": 84,
-          "right": 1169.59375,
-          "bottom": 1031,
-          "width": 1089.59375,
-          "height": 947
-        },
-        "tabsFit": true,
-        "tabs": [
-          {
-            "label": "Krav i underlaget",
-            "bounds": {
-              "x": 137,
-              "y": 90,
-              "right": 274.890625,
-              "bottom": 122,
-              "width": 137.890625,
-              "height": 32
-            }
-          },
-          {
-            "label": "Behovsreferenser1",
-            "bounds": {
-              "x": 276.890625,
-              "y": 90,
-              "right": 434.78125,
-              "bottom": 122,
-              "width": 157.890625,
-              "height": 32
-            }
-          },
-          {
-            "label": "RFI-frågelista",
-            "bounds": {
-              "x": 436.78125,
-              "y": 90,
-              "right": 548.171875,
-              "bottom": 122,
-              "width": 111.390625,
-              "height": 32
-            }
-          }
-        ],
-        "horizontalOverflow": 0,
-        "needsBounds": {
-          "x": 779,
-          "y": 210,
-          "right": 939,
-          "bottom": 266.5,
-          "width": 160,
-          "height": 56.5
-        },
-        "needsVisible": true,
-        "textBounds": {
-          "x": 229,
-          "y": 210,
-          "right": 779,
-          "bottom": 266.5,
-          "width": 550,
-          "height": 56.5
-        },
-        "textSize": "14px",
-        "completeRows": 14
-      },
-      {
-        "side": "right",
-        "bounds": {
-          "x": 1185.59375,
-          "y": 84,
-          "right": 1912,
-          "bottom": 1031,
-          "width": 726.40625,
-          "height": 947
-        },
-        "tabsFit": true,
-        "tabs": [
-          {
-            "label": "Tillgängliga krav",
-            "bounds": {
-              "x": 1242.59375,
-              "y": 90,
-              "right": 1373.171875,
-              "bottom": 122,
-              "width": 130.578125,
-              "height": 32
-            }
-          },
-          {
-            "label": "Kravurvalsfrågor",
-            "bounds": {
-              "x": 1375.171875,
-              "y": 90,
-              "right": 1507.640625,
-              "bottom": 122,
-              "width": 132.46875,
-              "height": 32
-            }
-          }
-        ],
-        "horizontalOverflow": 0,
-        "needsBounds": null,
-        "needsVisible": false,
-        "textBounds": {
-          "x": 1334.59375,
-          "y": 210,
-          "right": 1790.59375,
-          "bottom": 266.5,
-          "width": 456,
-          "height": 56.5
-        },
-        "textSize": "14px",
-        "completeRows": 15
-      }
-    ],
-    "metadata": [
-      {
-        "text": "Avtal",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Styrningsobjektstyp",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Kravunderlagsansvarig",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Genomförandeform",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Kravunderlagets livscykelstatus",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      }
-    ],
-    "navigationWidth": 72,
-    "dark": false,
-    "pageOverflow": 0
-  },
-  {
     "name": "1920-collapsed-dark-0",
     "width": 1920,
     "nav": "collapsed",
@@ -6689,201 +5714,6 @@
           "bottom": 107.5,
           "width": 321.203125,
           "height": 16.5
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      }
-    ],
-    "navigationWidth": 72,
-    "dark": true,
-    "pageOverflow": 0
-  },
-  {
-    "name": "1920-collapsed-dark-E",
-    "width": 1920,
-    "nav": "collapsed",
-    "theme": "dark",
-    "variant": "E",
-    "panels": [
-      {
-        "side": "left",
-        "bounds": {
-          "x": 80,
-          "y": 84,
-          "right": 1169.59375,
-          "bottom": 1031,
-          "width": 1089.59375,
-          "height": 947
-        },
-        "tabsFit": true,
-        "tabs": [
-          {
-            "label": "Krav i underlaget",
-            "bounds": {
-              "x": 137,
-              "y": 90,
-              "right": 274.890625,
-              "bottom": 122,
-              "width": 137.890625,
-              "height": 32
-            }
-          },
-          {
-            "label": "Behovsreferenser1",
-            "bounds": {
-              "x": 276.890625,
-              "y": 90,
-              "right": 434.78125,
-              "bottom": 122,
-              "width": 157.890625,
-              "height": 32
-            }
-          },
-          {
-            "label": "RFI-frågelista",
-            "bounds": {
-              "x": 436.78125,
-              "y": 90,
-              "right": 548.171875,
-              "bottom": 122,
-              "width": 111.390625,
-              "height": 32
-            }
-          }
-        ],
-        "horizontalOverflow": 0,
-        "needsBounds": {
-          "x": 779,
-          "y": 210,
-          "right": 939,
-          "bottom": 266.5,
-          "width": 160,
-          "height": 56.5
-        },
-        "needsVisible": true,
-        "textBounds": {
-          "x": 229,
-          "y": 210,
-          "right": 779,
-          "bottom": 266.5,
-          "width": 550,
-          "height": 56.5
-        },
-        "textSize": "14px",
-        "completeRows": 14
-      },
-      {
-        "side": "right",
-        "bounds": {
-          "x": 1185.59375,
-          "y": 84,
-          "right": 1912,
-          "bottom": 1031,
-          "width": 726.40625,
-          "height": 947
-        },
-        "tabsFit": true,
-        "tabs": [
-          {
-            "label": "Tillgängliga krav",
-            "bounds": {
-              "x": 1242.59375,
-              "y": 90,
-              "right": 1373.171875,
-              "bottom": 122,
-              "width": 130.578125,
-              "height": 32
-            }
-          },
-          {
-            "label": "Kravurvalsfrågor",
-            "bounds": {
-              "x": 1375.171875,
-              "y": 90,
-              "right": 1507.640625,
-              "bottom": 122,
-              "width": 132.46875,
-              "height": 32
-            }
-          }
-        ],
-        "horizontalOverflow": 0,
-        "needsBounds": null,
-        "needsVisible": false,
-        "textBounds": {
-          "x": 1334.59375,
-          "y": 210,
-          "right": 1790.59375,
-          "bottom": 266.5,
-          "width": 456,
-          "height": 56.5
-        },
-        "textSize": "14px",
-        "completeRows": 15
-      }
-    ],
-    "metadata": [
-      {
-        "text": "Avtal",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Styrningsobjektstyp",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Kravunderlagsansvarig",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Genomförandeform",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Kravunderlagets livscykelstatus",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
         },
         "size": "11px",
         "transform": "uppercase"
@@ -7848,201 +6678,6 @@
     "pageOverflow": 0
   },
   {
-    "name": "1920-expanded-light-E",
-    "width": 1920,
-    "nav": "expanded",
-    "theme": "light",
-    "variant": "E",
-    "panels": [
-      {
-        "side": "left",
-        "bounds": {
-          "x": 272,
-          "y": 84,
-          "right": 1246.390625,
-          "bottom": 1031,
-          "width": 974.390625,
-          "height": 947
-        },
-        "tabsFit": true,
-        "tabs": [
-          {
-            "label": "Krav i underlaget",
-            "bounds": {
-              "x": 329,
-              "y": 90,
-              "right": 466.890625,
-              "bottom": 122,
-              "width": 137.890625,
-              "height": 32
-            }
-          },
-          {
-            "label": "Behovsreferenser1",
-            "bounds": {
-              "x": 468.890625,
-              "y": 90,
-              "right": 626.78125,
-              "bottom": 122,
-              "width": 157.890625,
-              "height": 32
-            }
-          },
-          {
-            "label": "RFI-frågelista",
-            "bounds": {
-              "x": 628.78125,
-              "y": 90,
-              "right": 740.171875,
-              "bottom": 122,
-              "width": 111.390625,
-              "height": 32
-            }
-          }
-        ],
-        "horizontalOverflow": 0,
-        "needsBounds": {
-          "x": 855,
-          "y": 210,
-          "right": 1015,
-          "bottom": 266.5,
-          "width": 160,
-          "height": 56.5
-        },
-        "needsVisible": true,
-        "textBounds": {
-          "x": 421,
-          "y": 210,
-          "right": 855,
-          "bottom": 266.5,
-          "width": 434,
-          "height": 56.5
-        },
-        "textSize": "14px",
-        "completeRows": 14
-      },
-      {
-        "side": "right",
-        "bounds": {
-          "x": 1262.390625,
-          "y": 84,
-          "right": 1912,
-          "bottom": 1031,
-          "width": 649.609375,
-          "height": 947
-        },
-        "tabsFit": true,
-        "tabs": [
-          {
-            "label": "Tillgängliga krav",
-            "bounds": {
-              "x": 1319.390625,
-              "y": 90,
-              "right": 1449.96875,
-              "bottom": 122,
-              "width": 130.578125,
-              "height": 32
-            }
-          },
-          {
-            "label": "Kravurvalsfrågor",
-            "bounds": {
-              "x": 1451.96875,
-              "y": 90,
-              "right": 1584.4375,
-              "bottom": 122,
-              "width": 132.46875,
-              "height": 32
-            }
-          }
-        ],
-        "horizontalOverflow": 0,
-        "needsBounds": null,
-        "needsVisible": false,
-        "textBounds": {
-          "x": 1411.390625,
-          "y": 210,
-          "right": 1791.390625,
-          "bottom": 266.5,
-          "width": 380,
-          "height": 56.5
-        },
-        "textSize": "14px",
-        "completeRows": 14
-      }
-    ],
-    "metadata": [
-      {
-        "text": "Avtal",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Styrningsobjektstyp",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Kravunderlagsansvarig",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Genomförandeform",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      },
-      {
-        "text": "Kravunderlagets livscykelstatus",
-        "bounds": {
-          "x": 0,
-          "y": 0,
-          "right": 0,
-          "bottom": 0,
-          "width": 0,
-          "height": 0
-        },
-        "size": "11px",
-        "transform": "uppercase"
-      }
-    ],
-    "navigationWidth": 264,
-    "dark": false,
-    "pageOverflow": 0
-  },
-  {
     "name": "1920-expanded-dark-0",
     "width": 1920,
     "nav": "expanded",
@@ -8997,21 +7632,411 @@
     "pageOverflow": 0
   },
   {
-    "name": "1920-expanded-dark-E",
-    "width": 1920,
-    "nav": "expanded",
+    "name": "1440-collapsed-light-E",
+    "width": 1440,
+    "nav": "collapsed",
+    "theme": "light",
+    "variant": "E",
+    "panels": [
+      {
+        "side": "left",
+        "bounds": {
+          "x": 80,
+          "y": 118.5,
+          "right": 881.59375,
+          "bottom": 851,
+          "width": 801.59375,
+          "height": 732.5
+        },
+        "tabsFit": true,
+        "tabs": [
+          {
+            "label": "Krav i underlaget",
+            "bounds": {
+              "x": 137,
+              "y": 124.5,
+              "right": 274.890625,
+              "bottom": 156.5,
+              "width": 137.890625,
+              "height": 32
+            }
+          },
+          {
+            "label": "Behovsreferenser1",
+            "bounds": {
+              "x": 276.890625,
+              "y": 124.5,
+              "right": 434.78125,
+              "bottom": 156.5,
+              "width": 157.890625,
+              "height": 32
+            }
+          },
+          {
+            "label": "RFI-frågelista",
+            "bounds": {
+              "x": 436.78125,
+              "y": 124.5,
+              "right": 548.171875,
+              "bottom": 156.5,
+              "width": 111.390625,
+              "height": 32
+            }
+          }
+        ],
+        "horizontalOverflow": 18,
+        "needsBounds": {
+          "x": 509,
+          "y": 244.5,
+          "right": 669,
+          "bottom": 321,
+          "width": 160,
+          "height": 76.5
+        },
+        "needsVisible": true,
+        "textBounds": {
+          "x": 229,
+          "y": 244.5,
+          "right": 509,
+          "bottom": 321,
+          "width": 280,
+          "height": 76.5
+        },
+        "textSize": "14px",
+        "completeRows": 8
+      },
+      {
+        "side": "right",
+        "bounds": {
+          "x": 897.59375,
+          "y": 118.5,
+          "right": 1432,
+          "bottom": 851,
+          "width": 534.40625,
+          "height": 732.5
+        },
+        "tabsFit": true,
+        "tabs": [
+          {
+            "label": "Tillgängliga krav",
+            "bounds": {
+              "x": 954.59375,
+              "y": 124.5,
+              "right": 1085.171875,
+              "bottom": 156.5,
+              "width": 130.578125,
+              "height": 32
+            }
+          },
+          {
+            "label": "Kravurvalsfrågor",
+            "bounds": {
+              "x": 1087.171875,
+              "y": 124.5,
+              "right": 1219.640625,
+              "bottom": 156.5,
+              "width": 132.46875,
+              "height": 32
+            }
+          }
+        ],
+        "horizontalOverflow": 16,
+        "needsBounds": null,
+        "needsVisible": false,
+        "textBounds": {
+          "x": 1046.59375,
+          "y": 274.5,
+          "right": 1326.59375,
+          "bottom": 331,
+          "width": 280,
+          "height": 56.5
+        },
+        "textSize": "14px",
+        "completeRows": 9
+      }
+    ],
+    "metadata": [
+      {
+        "text": "Avtal",
+        "bounds": {
+          "x": 1181,
+          "y": 43,
+          "right": 1395,
+          "bottom": 59.5,
+          "width": 214,
+          "height": 16.5
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Styrningsobjektstyp",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Kravunderlagsansvarig",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Genomförandeform",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Kravunderlagets livscykelstatus",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      }
+    ],
+    "navigationWidth": 72,
+    "dark": false,
+    "pageOverflow": 0
+  },
+  {
+    "name": "1440-collapsed-dark-E",
+    "width": 1440,
+    "nav": "collapsed",
     "theme": "dark",
     "variant": "E",
     "panels": [
       {
         "side": "left",
         "bounds": {
+          "x": 80,
+          "y": 118.5,
+          "right": 881.59375,
+          "bottom": 851,
+          "width": 801.59375,
+          "height": 732.5
+        },
+        "tabsFit": true,
+        "tabs": [
+          {
+            "label": "Krav i underlaget",
+            "bounds": {
+              "x": 137,
+              "y": 124.5,
+              "right": 274.890625,
+              "bottom": 156.5,
+              "width": 137.890625,
+              "height": 32
+            }
+          },
+          {
+            "label": "Behovsreferenser1",
+            "bounds": {
+              "x": 276.890625,
+              "y": 124.5,
+              "right": 434.78125,
+              "bottom": 156.5,
+              "width": 157.890625,
+              "height": 32
+            }
+          },
+          {
+            "label": "RFI-frågelista",
+            "bounds": {
+              "x": 436.78125,
+              "y": 124.5,
+              "right": 548.171875,
+              "bottom": 156.5,
+              "width": 111.390625,
+              "height": 32
+            }
+          }
+        ],
+        "horizontalOverflow": 18,
+        "needsBounds": {
+          "x": 509,
+          "y": 244.5,
+          "right": 669,
+          "bottom": 321,
+          "width": 160,
+          "height": 76.5
+        },
+        "needsVisible": true,
+        "textBounds": {
+          "x": 229,
+          "y": 244.5,
+          "right": 509,
+          "bottom": 321,
+          "width": 280,
+          "height": 76.5
+        },
+        "textSize": "14px",
+        "completeRows": 8
+      },
+      {
+        "side": "right",
+        "bounds": {
+          "x": 897.59375,
+          "y": 118.5,
+          "right": 1432,
+          "bottom": 851,
+          "width": 534.40625,
+          "height": 732.5
+        },
+        "tabsFit": true,
+        "tabs": [
+          {
+            "label": "Tillgängliga krav",
+            "bounds": {
+              "x": 954.59375,
+              "y": 124.5,
+              "right": 1085.171875,
+              "bottom": 156.5,
+              "width": 130.578125,
+              "height": 32
+            }
+          },
+          {
+            "label": "Kravurvalsfrågor",
+            "bounds": {
+              "x": 1087.171875,
+              "y": 124.5,
+              "right": 1219.640625,
+              "bottom": 156.5,
+              "width": 132.46875,
+              "height": 32
+            }
+          }
+        ],
+        "horizontalOverflow": 16,
+        "needsBounds": null,
+        "needsVisible": false,
+        "textBounds": {
+          "x": 1046.59375,
+          "y": 274.5,
+          "right": 1326.59375,
+          "bottom": 331,
+          "width": 280,
+          "height": 56.5
+        },
+        "textSize": "14px",
+        "completeRows": 9
+      }
+    ],
+    "metadata": [
+      {
+        "text": "Avtal",
+        "bounds": {
+          "x": 1181,
+          "y": 43,
+          "right": 1395,
+          "bottom": 59.5,
+          "width": 214,
+          "height": 16.5
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Styrningsobjektstyp",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Kravunderlagsansvarig",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Genomförandeform",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Kravunderlagets livscykelstatus",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      }
+    ],
+    "navigationWidth": 72,
+    "dark": true,
+    "pageOverflow": 0
+  },
+  {
+    "name": "1440-expanded-light-E",
+    "width": 1440,
+    "nav": "expanded",
+    "theme": "light",
+    "variant": "E",
+    "panels": [
+      {
+        "side": "left",
+        "bounds": {
           "x": 272,
-          "y": 84,
-          "right": 1246.390625,
-          "bottom": 1031,
-          "width": 974.390625,
-          "height": 947
+          "y": 118.5,
+          "right": 958.390625,
+          "bottom": 851,
+          "width": 686.390625,
+          "height": 732.5
         },
         "tabsFit": true,
         "tabs": [
@@ -9019,9 +8044,9 @@
             "label": "Krav i underlaget",
             "bounds": {
               "x": 329,
-              "y": 90,
+              "y": 124.5,
               "right": 466.890625,
-              "bottom": 122,
+              "bottom": 156.5,
               "width": 137.890625,
               "height": 32
             }
@@ -9030,9 +8055,9 @@
             "label": "Behovsreferenser1",
             "bounds": {
               "x": 468.890625,
-              "y": 90,
+              "y": 124.5,
               "right": 626.78125,
-              "bottom": 122,
+              "bottom": 156.5,
               "width": 157.890625,
               "height": 32
             }
@@ -9041,9 +8066,789 @@
             "label": "RFI-frågelista",
             "bounds": {
               "x": 628.78125,
-              "y": 90,
+              "y": 124.5,
               "right": 740.171875,
-              "bottom": 122,
+              "bottom": 156.5,
+              "width": 111.390625,
+              "height": 32
+            }
+          }
+        ],
+        "horizontalOverflow": 134,
+        "needsBounds": {
+          "x": 701,
+          "y": 244.5,
+          "right": 861,
+          "bottom": 321,
+          "width": 160,
+          "height": 76.5
+        },
+        "needsVisible": true,
+        "textBounds": {
+          "x": 421,
+          "y": 244.5,
+          "right": 701,
+          "bottom": 321,
+          "width": 280,
+          "height": 76.5
+        },
+        "textSize": "14px",
+        "completeRows": 8
+      },
+      {
+        "side": "right",
+        "bounds": {
+          "x": 974.390625,
+          "y": 118.5,
+          "right": 1432,
+          "bottom": 851,
+          "width": 457.609375,
+          "height": 732.5
+        },
+        "tabsFit": true,
+        "tabs": [
+          {
+            "label": "Tillgängliga krav",
+            "bounds": {
+              "x": 1031.390625,
+              "y": 124.5,
+              "right": 1161.96875,
+              "bottom": 156.5,
+              "width": 130.578125,
+              "height": 32
+            }
+          },
+          {
+            "label": "Kravurvalsfrågor",
+            "bounds": {
+              "x": 1163.96875,
+              "y": 124.5,
+              "right": 1296.4375,
+              "bottom": 156.5,
+              "width": 132.46875,
+              "height": 32
+            }
+          }
+        ],
+        "horizontalOverflow": 92,
+        "needsBounds": null,
+        "needsVisible": false,
+        "textBounds": {
+          "x": 1123.390625,
+          "y": 274.5,
+          "right": 1403.390625,
+          "bottom": 331,
+          "width": 280,
+          "height": 56.5
+        },
+        "textSize": "14px",
+        "completeRows": 9
+      }
+    ],
+    "metadata": [
+      {
+        "text": "Avtal",
+        "bounds": {
+          "x": 1198.609375,
+          "y": 43,
+          "right": 1395,
+          "bottom": 59.5,
+          "width": 196.390625,
+          "height": 16.5
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Styrningsobjektstyp",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Kravunderlagsansvarig",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Genomförandeform",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Kravunderlagets livscykelstatus",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      }
+    ],
+    "navigationWidth": 264,
+    "dark": false,
+    "pageOverflow": 0
+  },
+  {
+    "name": "1440-expanded-dark-E",
+    "width": 1440,
+    "nav": "expanded",
+    "theme": "dark",
+    "variant": "E",
+    "panels": [
+      {
+        "side": "left",
+        "bounds": {
+          "x": 272,
+          "y": 118.5,
+          "right": 958.390625,
+          "bottom": 851,
+          "width": 686.390625,
+          "height": 732.5
+        },
+        "tabsFit": true,
+        "tabs": [
+          {
+            "label": "Krav i underlaget",
+            "bounds": {
+              "x": 329,
+              "y": 124.5,
+              "right": 466.890625,
+              "bottom": 156.5,
+              "width": 137.890625,
+              "height": 32
+            }
+          },
+          {
+            "label": "Behovsreferenser1",
+            "bounds": {
+              "x": 468.890625,
+              "y": 124.5,
+              "right": 626.78125,
+              "bottom": 156.5,
+              "width": 157.890625,
+              "height": 32
+            }
+          },
+          {
+            "label": "RFI-frågelista",
+            "bounds": {
+              "x": 628.78125,
+              "y": 124.5,
+              "right": 740.171875,
+              "bottom": 156.5,
+              "width": 111.390625,
+              "height": 32
+            }
+          }
+        ],
+        "horizontalOverflow": 134,
+        "needsBounds": {
+          "x": 701,
+          "y": 244.5,
+          "right": 861,
+          "bottom": 321,
+          "width": 160,
+          "height": 76.5
+        },
+        "needsVisible": true,
+        "textBounds": {
+          "x": 421,
+          "y": 244.5,
+          "right": 701,
+          "bottom": 321,
+          "width": 280,
+          "height": 76.5
+        },
+        "textSize": "14px",
+        "completeRows": 8
+      },
+      {
+        "side": "right",
+        "bounds": {
+          "x": 974.390625,
+          "y": 118.5,
+          "right": 1432,
+          "bottom": 851,
+          "width": 457.609375,
+          "height": 732.5
+        },
+        "tabsFit": true,
+        "tabs": [
+          {
+            "label": "Tillgängliga krav",
+            "bounds": {
+              "x": 1031.390625,
+              "y": 124.5,
+              "right": 1161.96875,
+              "bottom": 156.5,
+              "width": 130.578125,
+              "height": 32
+            }
+          },
+          {
+            "label": "Kravurvalsfrågor",
+            "bounds": {
+              "x": 1163.96875,
+              "y": 124.5,
+              "right": 1296.4375,
+              "bottom": 156.5,
+              "width": 132.46875,
+              "height": 32
+            }
+          }
+        ],
+        "horizontalOverflow": 92,
+        "needsBounds": null,
+        "needsVisible": false,
+        "textBounds": {
+          "x": 1123.390625,
+          "y": 274.5,
+          "right": 1403.390625,
+          "bottom": 331,
+          "width": 280,
+          "height": 56.5
+        },
+        "textSize": "14px",
+        "completeRows": 9
+      }
+    ],
+    "metadata": [
+      {
+        "text": "Avtal",
+        "bounds": {
+          "x": 1198.609375,
+          "y": 43,
+          "right": 1395,
+          "bottom": 59.5,
+          "width": 196.390625,
+          "height": 16.5
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Styrningsobjektstyp",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Kravunderlagsansvarig",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Genomförandeform",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Kravunderlagets livscykelstatus",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      }
+    ],
+    "navigationWidth": 264,
+    "dark": true,
+    "pageOverflow": 0
+  },
+  {
+    "name": "1920-collapsed-light-E",
+    "width": 1920,
+    "nav": "collapsed",
+    "theme": "light",
+    "variant": "E",
+    "panels": [
+      {
+        "side": "left",
+        "bounds": {
+          "x": 80,
+          "y": 118.5,
+          "right": 1169.59375,
+          "bottom": 1031,
+          "width": 1089.59375,
+          "height": 912.5
+        },
+        "tabsFit": true,
+        "tabs": [
+          {
+            "label": "Krav i underlaget",
+            "bounds": {
+              "x": 137,
+              "y": 124.5,
+              "right": 274.890625,
+              "bottom": 156.5,
+              "width": 137.890625,
+              "height": 32
+            }
+          },
+          {
+            "label": "Behovsreferenser1",
+            "bounds": {
+              "x": 276.890625,
+              "y": 124.5,
+              "right": 434.78125,
+              "bottom": 156.5,
+              "width": 157.890625,
+              "height": 32
+            }
+          },
+          {
+            "label": "RFI-frågelista",
+            "bounds": {
+              "x": 436.78125,
+              "y": 124.5,
+              "right": 548.171875,
+              "bottom": 156.5,
+              "width": 111.390625,
+              "height": 32
+            }
+          }
+        ],
+        "horizontalOverflow": 0,
+        "needsBounds": {
+          "x": 779,
+          "y": 244.5,
+          "right": 939,
+          "bottom": 301,
+          "width": 160,
+          "height": 56.5
+        },
+        "needsVisible": true,
+        "textBounds": {
+          "x": 229,
+          "y": 244.5,
+          "right": 779,
+          "bottom": 301,
+          "width": 550,
+          "height": 56.5
+        },
+        "textSize": "14px",
+        "completeRows": 14
+      },
+      {
+        "side": "right",
+        "bounds": {
+          "x": 1185.59375,
+          "y": 118.5,
+          "right": 1912,
+          "bottom": 1031,
+          "width": 726.40625,
+          "height": 912.5
+        },
+        "tabsFit": true,
+        "tabs": [
+          {
+            "label": "Tillgängliga krav",
+            "bounds": {
+              "x": 1242.59375,
+              "y": 124.5,
+              "right": 1373.171875,
+              "bottom": 156.5,
+              "width": 130.578125,
+              "height": 32
+            }
+          },
+          {
+            "label": "Kravurvalsfrågor",
+            "bounds": {
+              "x": 1375.171875,
+              "y": 124.5,
+              "right": 1507.640625,
+              "bottom": 156.5,
+              "width": 132.46875,
+              "height": 32
+            }
+          }
+        ],
+        "horizontalOverflow": 0,
+        "needsBounds": null,
+        "needsVisible": false,
+        "textBounds": {
+          "x": 1334.59375,
+          "y": 244.5,
+          "right": 1790.59375,
+          "bottom": 301,
+          "width": 456,
+          "height": 56.5
+        },
+        "textSize": "14px",
+        "completeRows": 15
+      }
+    ],
+    "metadata": [
+      {
+        "text": "Avtal",
+        "bounds": {
+          "x": 1661,
+          "y": 43,
+          "right": 1875,
+          "bottom": 59.5,
+          "width": 214,
+          "height": 16.5
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Styrningsobjektstyp",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Kravunderlagsansvarig",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Genomförandeform",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Kravunderlagets livscykelstatus",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      }
+    ],
+    "navigationWidth": 72,
+    "dark": false,
+    "pageOverflow": 0
+  },
+  {
+    "name": "1920-collapsed-dark-E",
+    "width": 1920,
+    "nav": "collapsed",
+    "theme": "dark",
+    "variant": "E",
+    "panels": [
+      {
+        "side": "left",
+        "bounds": {
+          "x": 80,
+          "y": 118.5,
+          "right": 1169.59375,
+          "bottom": 1031,
+          "width": 1089.59375,
+          "height": 912.5
+        },
+        "tabsFit": true,
+        "tabs": [
+          {
+            "label": "Krav i underlaget",
+            "bounds": {
+              "x": 137,
+              "y": 124.5,
+              "right": 274.890625,
+              "bottom": 156.5,
+              "width": 137.890625,
+              "height": 32
+            }
+          },
+          {
+            "label": "Behovsreferenser1",
+            "bounds": {
+              "x": 276.890625,
+              "y": 124.5,
+              "right": 434.78125,
+              "bottom": 156.5,
+              "width": 157.890625,
+              "height": 32
+            }
+          },
+          {
+            "label": "RFI-frågelista",
+            "bounds": {
+              "x": 436.78125,
+              "y": 124.5,
+              "right": 548.171875,
+              "bottom": 156.5,
+              "width": 111.390625,
+              "height": 32
+            }
+          }
+        ],
+        "horizontalOverflow": 0,
+        "needsBounds": {
+          "x": 779,
+          "y": 244.5,
+          "right": 939,
+          "bottom": 301,
+          "width": 160,
+          "height": 56.5
+        },
+        "needsVisible": true,
+        "textBounds": {
+          "x": 229,
+          "y": 244.5,
+          "right": 779,
+          "bottom": 301,
+          "width": 550,
+          "height": 56.5
+        },
+        "textSize": "14px",
+        "completeRows": 14
+      },
+      {
+        "side": "right",
+        "bounds": {
+          "x": 1185.59375,
+          "y": 118.5,
+          "right": 1912,
+          "bottom": 1031,
+          "width": 726.40625,
+          "height": 912.5
+        },
+        "tabsFit": true,
+        "tabs": [
+          {
+            "label": "Tillgängliga krav",
+            "bounds": {
+              "x": 1242.59375,
+              "y": 124.5,
+              "right": 1373.171875,
+              "bottom": 156.5,
+              "width": 130.578125,
+              "height": 32
+            }
+          },
+          {
+            "label": "Kravurvalsfrågor",
+            "bounds": {
+              "x": 1375.171875,
+              "y": 124.5,
+              "right": 1507.640625,
+              "bottom": 156.5,
+              "width": 132.46875,
+              "height": 32
+            }
+          }
+        ],
+        "horizontalOverflow": 0,
+        "needsBounds": null,
+        "needsVisible": false,
+        "textBounds": {
+          "x": 1334.59375,
+          "y": 244.5,
+          "right": 1790.59375,
+          "bottom": 301,
+          "width": 456,
+          "height": 56.5
+        },
+        "textSize": "14px",
+        "completeRows": 15
+      }
+    ],
+    "metadata": [
+      {
+        "text": "Avtal",
+        "bounds": {
+          "x": 1661,
+          "y": 43,
+          "right": 1875,
+          "bottom": 59.5,
+          "width": 214,
+          "height": 16.5
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Styrningsobjektstyp",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Kravunderlagsansvarig",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Genomförandeform",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Kravunderlagets livscykelstatus",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      }
+    ],
+    "navigationWidth": 72,
+    "dark": true,
+    "pageOverflow": 0
+  },
+  {
+    "name": "1920-expanded-light-E",
+    "width": 1920,
+    "nav": "expanded",
+    "theme": "light",
+    "variant": "E",
+    "panels": [
+      {
+        "side": "left",
+        "bounds": {
+          "x": 272,
+          "y": 118.5,
+          "right": 1246.390625,
+          "bottom": 1031,
+          "width": 974.390625,
+          "height": 912.5
+        },
+        "tabsFit": true,
+        "tabs": [
+          {
+            "label": "Krav i underlaget",
+            "bounds": {
+              "x": 329,
+              "y": 124.5,
+              "right": 466.890625,
+              "bottom": 156.5,
+              "width": 137.890625,
+              "height": 32
+            }
+          },
+          {
+            "label": "Behovsreferenser1",
+            "bounds": {
+              "x": 468.890625,
+              "y": 124.5,
+              "right": 626.78125,
+              "bottom": 156.5,
+              "width": 157.890625,
+              "height": 32
+            }
+          },
+          {
+            "label": "RFI-frågelista",
+            "bounds": {
+              "x": 628.78125,
+              "y": 124.5,
+              "right": 740.171875,
+              "bottom": 156.5,
               "width": 111.390625,
               "height": 32
             }
@@ -9052,18 +8857,18 @@
         "horizontalOverflow": 0,
         "needsBounds": {
           "x": 855,
-          "y": 210,
+          "y": 244.5,
           "right": 1015,
-          "bottom": 266.5,
+          "bottom": 301,
           "width": 160,
           "height": 56.5
         },
         "needsVisible": true,
         "textBounds": {
           "x": 421,
-          "y": 210,
+          "y": 244.5,
           "right": 855,
-          "bottom": 266.5,
+          "bottom": 301,
           "width": 434,
           "height": 56.5
         },
@@ -9074,11 +8879,11 @@
         "side": "right",
         "bounds": {
           "x": 1262.390625,
-          "y": 84,
+          "y": 118.5,
           "right": 1912,
           "bottom": 1031,
           "width": 649.609375,
-          "height": 947
+          "height": 912.5
         },
         "tabsFit": true,
         "tabs": [
@@ -9086,9 +8891,9 @@
             "label": "Tillgängliga krav",
             "bounds": {
               "x": 1319.390625,
-              "y": 90,
+              "y": 124.5,
               "right": 1449.96875,
-              "bottom": 122,
+              "bottom": 156.5,
               "width": 130.578125,
               "height": 32
             }
@@ -9097,9 +8902,9 @@
             "label": "Kravurvalsfrågor",
             "bounds": {
               "x": 1451.96875,
-              "y": 90,
+              "y": 124.5,
               "right": 1584.4375,
-              "bottom": 122,
+              "bottom": 156.5,
               "width": 132.46875,
               "height": 32
             }
@@ -9110,9 +8915,9 @@
         "needsVisible": false,
         "textBounds": {
           "x": 1411.390625,
-          "y": 210,
+          "y": 244.5,
           "right": 1791.390625,
-          "bottom": 266.5,
+          "bottom": 301,
           "width": 380,
           "height": 56.5
         },
@@ -9124,12 +8929,207 @@
       {
         "text": "Avtal",
         "bounds": {
+          "x": 1661,
+          "y": 43,
+          "right": 1875,
+          "bottom": 59.5,
+          "width": 214,
+          "height": 16.5
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Styrningsobjektstyp",
+        "bounds": {
           "x": 0,
           "y": 0,
           "right": 0,
           "bottom": 0,
           "width": 0,
           "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Kravunderlagsansvarig",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Genomförandeform",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      },
+      {
+        "text": "Kravunderlagets livscykelstatus",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        "size": "11px",
+        "transform": "uppercase"
+      }
+    ],
+    "navigationWidth": 264,
+    "dark": false,
+    "pageOverflow": 0
+  },
+  {
+    "name": "1920-expanded-dark-E",
+    "width": 1920,
+    "nav": "expanded",
+    "theme": "dark",
+    "variant": "E",
+    "panels": [
+      {
+        "side": "left",
+        "bounds": {
+          "x": 272,
+          "y": 118.5,
+          "right": 1246.390625,
+          "bottom": 1031,
+          "width": 974.390625,
+          "height": 912.5
+        },
+        "tabsFit": true,
+        "tabs": [
+          {
+            "label": "Krav i underlaget",
+            "bounds": {
+              "x": 329,
+              "y": 124.5,
+              "right": 466.890625,
+              "bottom": 156.5,
+              "width": 137.890625,
+              "height": 32
+            }
+          },
+          {
+            "label": "Behovsreferenser1",
+            "bounds": {
+              "x": 468.890625,
+              "y": 124.5,
+              "right": 626.78125,
+              "bottom": 156.5,
+              "width": 157.890625,
+              "height": 32
+            }
+          },
+          {
+            "label": "RFI-frågelista",
+            "bounds": {
+              "x": 628.78125,
+              "y": 124.5,
+              "right": 740.171875,
+              "bottom": 156.5,
+              "width": 111.390625,
+              "height": 32
+            }
+          }
+        ],
+        "horizontalOverflow": 0,
+        "needsBounds": {
+          "x": 855,
+          "y": 244.5,
+          "right": 1015,
+          "bottom": 301,
+          "width": 160,
+          "height": 56.5
+        },
+        "needsVisible": true,
+        "textBounds": {
+          "x": 421,
+          "y": 244.5,
+          "right": 855,
+          "bottom": 301,
+          "width": 434,
+          "height": 56.5
+        },
+        "textSize": "14px",
+        "completeRows": 14
+      },
+      {
+        "side": "right",
+        "bounds": {
+          "x": 1262.390625,
+          "y": 118.5,
+          "right": 1912,
+          "bottom": 1031,
+          "width": 649.609375,
+          "height": 912.5
+        },
+        "tabsFit": true,
+        "tabs": [
+          {
+            "label": "Tillgängliga krav",
+            "bounds": {
+              "x": 1319.390625,
+              "y": 124.5,
+              "right": 1449.96875,
+              "bottom": 156.5,
+              "width": 130.578125,
+              "height": 32
+            }
+          },
+          {
+            "label": "Kravurvalsfrågor",
+            "bounds": {
+              "x": 1451.96875,
+              "y": 124.5,
+              "right": 1584.4375,
+              "bottom": 156.5,
+              "width": 132.46875,
+              "height": 32
+            }
+          }
+        ],
+        "horizontalOverflow": 0,
+        "needsBounds": null,
+        "needsVisible": false,
+        "textBounds": {
+          "x": 1411.390625,
+          "y": 244.5,
+          "right": 1791.390625,
+          "bottom": 301,
+          "width": 380,
+          "height": 56.5
+        },
+        "textSize": "14px",
+        "completeRows": 14
+      }
+    ],
+    "metadata": [
+      {
+        "text": "Avtal",
+        "bounds": {
+          "x": 1661,
+          "y": 43,
+          "right": 1875,
+          "bottom": 59.5,
+          "width": 214,
+          "height": 16.5
         },
         "size": "11px",
         "transform": "uppercase"

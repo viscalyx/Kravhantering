@@ -1,59 +1,191 @@
 {
   "results": [
     {
+      "width": 1440,
       "locale": "sv",
       "theme": "light",
-      "titleLength": 150,
-      "descriptionLength": 300,
-      "aligned": true,
-      "boxesBelow": true,
-      "gap": 24,
-      "overflow": 0,
-      "listHeightRecovered": 188.5,
+      "collapsed": {
+        "sameRow": true,
+        "agreementAtRight": true,
+        "editAfterTitle": true,
+        "notOverlapping": true,
+        "overflow": 0
+      },
+      "expanded": {
+        "titleLength": 150,
+        "descriptionLength": 300,
+        "descriptionBelow": true,
+        "alignedLeft": true,
+        "boxesBelow": true,
+        "overflow": 0
+      },
+      "listHeightRecovered": 150,
       "keyboard": true,
       "reloadExpanded": true
     },
     {
+      "width": 1440,
       "locale": "sv",
       "theme": "dark",
-      "titleLength": 150,
-      "descriptionLength": 300,
-      "aligned": true,
-      "boxesBelow": true,
-      "gap": 24,
-      "overflow": 0,
-      "listHeightRecovered": 188.5,
+      "collapsed": {
+        "sameRow": true,
+        "agreementAtRight": true,
+        "editAfterTitle": true,
+        "notOverlapping": true,
+        "overflow": 0
+      },
+      "expanded": {
+        "titleLength": 150,
+        "descriptionLength": 300,
+        "descriptionBelow": true,
+        "alignedLeft": true,
+        "boxesBelow": true,
+        "overflow": 0
+      },
+      "listHeightRecovered": 150,
       "keyboard": true,
       "reloadExpanded": true
     },
     {
+      "width": 1440,
       "locale": "en",
       "theme": "light",
-      "titleLength": 150,
-      "descriptionLength": 300,
-      "aligned": true,
-      "boxesBelow": true,
-      "gap": 24,
-      "overflow": 0,
-      "listHeightRecovered": 188.5,
+      "collapsed": {
+        "sameRow": true,
+        "agreementAtRight": true,
+        "editAfterTitle": true,
+        "notOverlapping": true,
+        "overflow": 0
+      },
+      "expanded": {
+        "titleLength": 150,
+        "descriptionLength": 300,
+        "descriptionBelow": true,
+        "alignedLeft": true,
+        "boxesBelow": true,
+        "overflow": 0
+      },
+      "listHeightRecovered": 150,
       "keyboard": true,
       "reloadExpanded": true
     },
     {
+      "width": 1440,
       "locale": "en",
       "theme": "dark",
-      "titleLength": 150,
-      "descriptionLength": 300,
-      "aligned": true,
-      "boxesBelow": true,
-      "gap": 24,
-      "overflow": 0,
-      "listHeightRecovered": 188.5,
+      "collapsed": {
+        "sameRow": true,
+        "agreementAtRight": true,
+        "editAfterTitle": true,
+        "notOverlapping": true,
+        "overflow": 0
+      },
+      "expanded": {
+        "titleLength": 150,
+        "descriptionLength": 300,
+        "descriptionBelow": true,
+        "alignedLeft": true,
+        "boxesBelow": true,
+        "overflow": 0
+      },
+      "listHeightRecovered": 150,
+      "keyboard": true,
+      "reloadExpanded": true
+    },
+    {
+      "width": 1920,
+      "locale": "sv",
+      "theme": "light",
+      "collapsed": {
+        "sameRow": true,
+        "agreementAtRight": true,
+        "editAfterTitle": true,
+        "notOverlapping": true,
+        "overflow": 0
+      },
+      "expanded": {
+        "titleLength": 150,
+        "descriptionLength": 300,
+        "descriptionBelow": true,
+        "alignedLeft": true,
+        "boxesBelow": true,
+        "overflow": 0
+      },
+      "listHeightRecovered": 126,
+      "keyboard": true,
+      "reloadExpanded": true
+    },
+    {
+      "width": 1920,
+      "locale": "sv",
+      "theme": "dark",
+      "collapsed": {
+        "sameRow": true,
+        "agreementAtRight": true,
+        "editAfterTitle": true,
+        "notOverlapping": true,
+        "overflow": 0
+      },
+      "expanded": {
+        "titleLength": 150,
+        "descriptionLength": 300,
+        "descriptionBelow": true,
+        "alignedLeft": true,
+        "boxesBelow": true,
+        "overflow": 0
+      },
+      "listHeightRecovered": 126,
+      "keyboard": true,
+      "reloadExpanded": true
+    },
+    {
+      "width": 1920,
+      "locale": "en",
+      "theme": "light",
+      "collapsed": {
+        "sameRow": true,
+        "agreementAtRight": true,
+        "editAfterTitle": true,
+        "notOverlapping": true,
+        "overflow": 0
+      },
+      "expanded": {
+        "titleLength": 150,
+        "descriptionLength": 300,
+        "descriptionBelow": true,
+        "alignedLeft": true,
+        "boxesBelow": true,
+        "overflow": 0
+      },
+      "listHeightRecovered": 126,
+      "keyboard": true,
+      "reloadExpanded": true
+    },
+    {
+      "width": 1920,
+      "locale": "en",
+      "theme": "dark",
+      "collapsed": {
+        "sameRow": true,
+        "agreementAtRight": true,
+        "editAfterTitle": true,
+        "notOverlapping": true,
+        "overflow": 0
+      },
+      "expanded": {
+        "titleLength": 150,
+        "descriptionLength": 300,
+        "descriptionBelow": true,
+        "alignedLeft": true,
+        "boxesBelow": true,
+        "overflow": 0
+      },
+      "listHeightRecovered": 126,
       "keyboard": true,
       "reloadExpanded": true
     }
   ],
+  "collapsedEditDialog": true,
   "reset": true,
-  "variantWrap": true,
   "mobile": true
 }

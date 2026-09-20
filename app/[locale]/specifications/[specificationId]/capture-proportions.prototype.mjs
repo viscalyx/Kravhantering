@@ -1,6 +1,6 @@
 // THROWAWAY visual evidence, not a production acceptance suite.
 
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { chromium, expect } from '@playwright/test'
 
 const directory =
@@ -17,7 +17,14 @@ await loginPage.getByRole('button', { name: 'Sign In', exact: true }).click()
 await loginPage.waitForURL(`${base}/sv/specifications/8?variant=0`)
 const cookies = await login.cookies()
 await login.close()
-const measurements = []
+const variantFilter = process.argv
+  .find(arg => arg.startsWith('--variant='))
+  ?.split('=')[1]
+const measurements = variantFilter
+  ? JSON.parse(await readFile(`${directory}/measurements.json`, 'utf8')).filter(
+      row => row.variant !== variantFilter,
+    )
+  : []
 for (const width of process.argv.includes('--quick') ? [1440] : [1440, 1920]) {
   for (const nav of process.argv.includes('--quick')
     ? ['expanded']
@@ -25,7 +32,9 @@ for (const width of process.argv.includes('--quick') ? [1440] : [1440, 1920]) {
     for (const theme of process.argv.includes('--quick')
       ? ['light']
       : ['light', 'dark']) {
-      for (const variant of ['0', 'A', 'B', 'C', 'D', 'E']) {
+      for (const variant of ['0', 'A', 'B', 'C', 'D', 'E'].filter(
+        key => !variantFilter || key === variantFilter,
+      )) {
         const context = await browser.newContext({
           viewport: { width, height: width === 1440 ? 900 : 1080 },
           reducedMotion: 'reduce',
