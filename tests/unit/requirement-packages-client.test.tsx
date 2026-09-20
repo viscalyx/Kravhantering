@@ -9,13 +9,30 @@ import {
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const i18nState = vi.hoisted(() => ({ commonSuffix: '' }))
+import en from '@/messages/en.json'
+import sv from '@/messages/sv.json'
+
+const i18nState = vi.hoisted(() => ({
+  commonSuffix: '',
+  locale: 'en',
+  localizedStatus: false,
+}))
 const confirmMock = vi.fn()
 
 vi.mock('next-intl', () => ({
-  useLocale: () => 'en',
-  useTranslations: (ns?: string) => (key: string) =>
-    ns ? `${ns}.${key}${ns === 'common' ? i18nState.commonSuffix : ''}` : key,
+  useLocale: () => i18nState.locale,
+  useTranslations: (ns?: string) => (key: string) => {
+    if (
+      i18nState.localizedStatus &&
+      ns === 'requirementPackage' &&
+      (key === 'active' || key === 'archived')
+    ) {
+      return (i18nState.locale === 'sv' ? sv : en).requirementPackage[key]
+    }
+    return ns
+      ? `${ns}.${key}${ns === 'common' ? i18nState.commonSuffix : ''}`
+      : key
+  },
 }))
 
 vi.mock('@/i18n/routing', () => ({
@@ -179,6 +196,8 @@ describe('RequirementPackagesClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     i18nState.commonSuffix = ''
+    i18nState.locale = 'en'
+    i18nState.localizedStatus = false
     fetchMock.mockImplementation(async (url: string) => {
       const urlString = requestUrl(url)
       if (urlString === '/api/auth/me') return okJson(currentAuthMe)
@@ -192,6 +211,51 @@ describe('RequirementPackagesClient', () => {
       return okJson({})
     })
   })
+
+  it.each([
+    ['sv', false, 'Aktiv', 'circle-check'],
+    ['sv', true, 'Arkiverad', 'archive'],
+    ['en', false, 'Active', 'circle-check'],
+    ['en', true, 'Archived', 'archive'],
+  ] as const)(
+    'shows a localized package status with an icon (%s, archived=%s)',
+    async (locale, isArchived, label, icon) => {
+      i18nState.locale = locale
+      i18nState.localizedStatus = true
+      fetchMock.mockImplementation(async (input: unknown) => {
+        if (requestUrl(input) === '/api/auth/me') return okJson(currentAuthMe)
+        if (requestUrl(input).startsWith('/api/requirement-packages?')) {
+          return okJson({
+            requirementPackages: [
+              { ...sampleRequirementPackages[0], isArchived },
+            ],
+          })
+        }
+        return okJson({})
+      })
+      render(<RequirementPackagesClient />)
+
+      const row = await screen.findByRole('row', { name: /Mobile use/ })
+      const status = within(row).getByRole('status')
+      expect(status).toHaveTextContent(label)
+      expect(status.querySelector(`svg.lucide-${icon}`)).toHaveAttribute(
+        'aria-hidden',
+        'true',
+      )
+      expect(status).toHaveAttribute(
+        'data-developer-mode-name',
+        'package status',
+      )
+      expect(status).toHaveAttribute(
+        'data-developer-mode-context',
+        'requirementPackages',
+      )
+      expect(status).toHaveAttribute(
+        'data-developer-mode-value',
+        isArchived ? 'archived' : 'active',
+      )
+    },
+  )
 
   it('renders heading and create button', async () => {
     render(<RequirementPackagesClient />)
@@ -1124,7 +1188,13 @@ describe('RequirementPackagesClient', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+      expect(
+        within(
+          screen.getByRole('dialog', {
+            name: /requirementPackage\.linkedRequirementsTitle/i,
+          }),
+        ).getByRole('status'),
+      ).toHaveTextContent('common.loading')
     })
     expect(
       screen.getByRole('dialog', {

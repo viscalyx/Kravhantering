@@ -438,3 +438,255 @@ for (const viewport of viewports) {
     })
   })
 }
+
+for (const locale of ['sv', 'en'] as const) {
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 1920, height: 1080 },
+  ]) {
+    for (const navigation of ['collapsed', 'expanded']) {
+      for (const theme of ['light', 'dark']) {
+        test.describe(`Package status ${locale} ${viewport.width} ${navigation} ${theme}`, () => {
+          test.use({ viewport })
+
+          test('REQ-14a: shows package status and preserves list actions through archive and reactivation', async ({
+            page,
+          }, testInfo) => {
+            const labels =
+              locale === 'sv'
+                ? {
+                    active: 'Aktiv',
+                    archived: 'Arkiverad',
+                    archive: 'Arkivera',
+                    reactivate: 'Återaktivera',
+                    coAuthors: 'Hantera medförfattare',
+                    edit: 'Redigera',
+                    delete: 'Ta bort',
+                    close: 'Stäng',
+                    review: 'Granskning',
+                  }
+                : {
+                    active: 'Active',
+                    archived: 'Archived',
+                    archive: 'Archive',
+                    reactivate: 'Reactivate',
+                    coAuthors: 'Manage co-authors',
+                    edit: 'Edit',
+                    delete: 'Delete',
+                    close: 'Close',
+                    review: 'Review',
+                  }
+            const purpose =
+              'Complete purpose and scope for shared digital services, including mobile access, identity management and accessible information across organizational boundaries.'
+            const packages = [
+              {
+                id: 135301,
+                name: 'Shared digital services with a long package name',
+                purposeAndScope: purpose,
+                isArchived: false,
+                leadDisplayName: 'Anna Johansson',
+                leadHsaId: 'SE5560000001-annaj',
+                linkedRequirementCount: 1,
+                coAuthors: [
+                  {
+                    displayName: 'Paul PkgCoAuthor',
+                    hsaId: 'SE5560000001-pkgco1',
+                  },
+                ],
+                permissions: { canManageAssignments: true },
+              },
+              {
+                id: 135302,
+                name: 'Archived package',
+                purposeAndScope: purpose,
+                isArchived: true,
+                leadDisplayName: 'Anna Johansson',
+                leadHsaId: 'SE5560000001-annaj',
+                linkedRequirementCount: 0,
+                coAuthors: [],
+                permissions: { canManageAssignments: false },
+              },
+            ]
+            const linkedRequirements = [
+              {
+                id: 135303,
+                uniqueId: 'REQ-135303',
+                description: 'Linked requirement retains its version status',
+                versionNumber: 2,
+                statusId: 2,
+                statusNameSv: 'Granskning',
+                statusNameEn: 'Review',
+                statusColor: '#f59e0b',
+                statusIconName: 'Clock',
+                archiveInitiatedAt: null,
+              },
+            ]
+
+            await test.step('open identical active and archived packages in the selected theme and navigation mode', async () => {
+              await page.addInitScript(
+                ({ theme, navigation }) => {
+                  localStorage.setItem('theme', theme)
+                  localStorage.setItem(
+                    'requirements.navigationRail.expanded.v1',
+                    navigation,
+                  )
+                },
+                { theme, navigation },
+              )
+              await page.route('**/api/requirement-packages**', async route => {
+                const url = new URL(route.request().url())
+                if (url.pathname === '/api/requirement-packages') {
+                  await route.fulfill({
+                    json: { requirementPackages: packages },
+                  })
+                } else if (
+                  url.pathname === '/api/requirement-packages/135301'
+                ) {
+                  await route.fulfill({
+                    json: { ...packages[0], linkedRequirements },
+                  })
+                } else if (
+                  /\/135301\/(archive|reactivate)$/.test(url.pathname) &&
+                  route.request().method() === 'POST'
+                ) {
+                  packages[0].isArchived = url.pathname.endsWith('/archive')
+                  await route.fulfill({ json: packages[0] })
+                } else {
+                  await route.continue()
+                }
+              })
+              await page.goto(
+                `/${locale}/requirements/stewardship?tab=packages`,
+              )
+              await expect(page.locator('html')).toHaveClass(new RegExp(theme))
+            })
+
+            const activeRow = page.getByRole('row', {
+              name: /Shared digital services with a long package name/,
+            })
+            const archivedRow = page.getByRole('row', {
+              name: /Archived package/,
+            })
+            const status = activeRow.getByRole('status')
+
+            await test.step('read text and icons while retaining complete text, responsibility, counts and row actions', async () => {
+              await expect(status).toHaveText(labels.active)
+              await expect(
+                status.locator('svg.lucide-circle-check'),
+              ).toHaveAttribute('aria-hidden', 'true')
+              await expect(archivedRow.getByRole('status')).toHaveText(
+                labels.archived,
+              )
+              await expect(
+                archivedRow.getByRole('status').locator('svg.lucide-archive'),
+              ).toHaveAttribute('aria-hidden', 'true')
+              await expect(status).toHaveAttribute(
+                'data-developer-mode-name',
+                'package status',
+              )
+              await expect(status).toHaveAttribute(
+                'data-developer-mode-context',
+                'requirementPackages',
+              )
+              await expect(status).toHaveAttribute(
+                'data-developer-mode-value',
+                'active',
+              )
+              await expect(archivedRow.getByRole('status')).toHaveAttribute(
+                'data-developer-mode-value',
+                'archived',
+              )
+              await expect(activeRow.getByRole('cell').nth(1)).toHaveText(
+                purpose,
+              )
+              await expect(activeRow.getByRole('cell').nth(2)).toContainText(
+                'Anna Johansson',
+              )
+              await expect(activeRow.getByRole('cell').nth(2)).toContainText(
+                'SE5560000001-annaj',
+              )
+              await expect(activeRow.getByRole('cell').nth(3)).toHaveText(
+                'Paul PkgCoAuthor',
+              )
+              await expect(activeRow.getByRole('cell').nth(5)).toHaveText(
+                locale === 'sv' ? '1 krav' : '1 requirement',
+              )
+              await expect(
+                archivedRow.getByRole('button', { name: labels.coAuthors }),
+              ).toHaveCount(0)
+              const actions = activeRow
+                .getByRole('cell')
+                .last()
+                .getByRole('button')
+              for (const [index, name] of [
+                labels.coAuthors,
+                labels.edit,
+                labels.archive,
+                labels.delete,
+              ].entries()) {
+                const action = actions.nth(index)
+                await expect(action).toHaveAccessibleName(name)
+                const box = await action.boundingBox()
+                expect(box?.width).toBe(44)
+                expect(box?.height).toBe(44)
+              }
+              expect(
+                await page
+                  .getByRole('table')
+                  .evaluate(table => getComputedStyle(table).tableLayout),
+              ).toBe('auto')
+              await testInfo.attach('package-status', {
+                body: await page.screenshot({ fullPage: true }),
+                contentType: 'image/png',
+              })
+            })
+
+            const checkLinkedStatus = async () => {
+              const count = activeRow
+                .getByRole('cell')
+                .nth(5)
+                .getByRole('button')
+              await count.focus()
+              await count.press('Enter')
+              const dialog = page.getByRole('dialog')
+              await expect(
+                dialog.getByRole('row', { name: /REQ-135303/ }),
+              ).toContainText(labels.review)
+              await dialog
+                .getByRole('button', { name: labels.close, exact: true })
+                .last()
+                .click()
+              await expect(dialog).toHaveCount(0)
+            }
+
+            await test.step('archive by mouse and reactivate by keyboard without changing linked requirement status', async () => {
+              await checkLinkedStatus()
+              await activeRow
+                .getByRole('button', { name: labels.archive, exact: true })
+                .click()
+              await expect(status).toHaveText(labels.archived)
+              await expect(status).toHaveAttribute(
+                'data-developer-mode-value',
+                'archived',
+              )
+              await expect(status.locator('svg.lucide-archive')).toHaveCount(1)
+              await checkLinkedStatus()
+              const reactivate = activeRow.getByRole('button', {
+                name: labels.reactivate,
+                exact: true,
+              })
+              await reactivate.focus()
+              await expect(reactivate).toBeFocused()
+              await reactivate.press('Enter')
+              await expect(status).toHaveText(labels.active)
+              await expect(
+                status.locator('svg.lucide-circle-check'),
+              ).toHaveCount(1)
+              await checkLinkedStatus()
+            })
+          })
+        })
+      }
+    }
+  }
+}

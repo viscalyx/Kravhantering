@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   confirmModalMock,
@@ -61,7 +67,10 @@ describe('requirement-package client branches', () => {
 
   it('archives and reactivates packages while preserving compact state actions', async () => {
     render(<RequirementPackagesClient />)
-    await screen.findByText('Package')
+    const row = await screen.findByRole('row', { name: /^Package / })
+    expect(within(row).getByRole('status')).toHaveTextContent(
+      'requirementPackage.active',
+    )
     fetchMock
       .mockResolvedValueOnce(
         okJsonResponse({ ...requirementPackage, isArchived: true }),
@@ -83,6 +92,9 @@ describe('requirement-package client branches', () => {
     const reactivate = await screen.findByRole('button', {
       name: 'requirementPackage.reactivate',
     })
+    expect(within(row).getByRole('status')).toHaveTextContent(
+      'requirementPackage.archived',
+    )
     fetchMock
       .mockResolvedValueOnce(okJsonResponse(requirementPackage))
       .mockResolvedValueOnce(
@@ -93,6 +105,11 @@ describe('requirement-package client branches', () => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/requirement-packages/1/reactivate',
         expect.objectContaining({ method: 'POST' }),
+      ),
+    )
+    await waitFor(() =>
+      expect(within(row).getByRole('status')).toHaveTextContent(
+        'requirementPackage.active',
       ),
     )
   })
@@ -324,12 +341,21 @@ describe('requirement-package client branches', () => {
         name: /requirementPackage\.requirementCount/i,
       }),
     )
-    await screen.findByRole('status')
+    const dialog = await screen.findByRole('dialog', {
+      name: /requirementPackage\.linkedRequirementsTitle/,
+    })
+    expect(within(dialog).getByRole('status')).toHaveTextContent(
+      'common.loading',
+    )
     const closeButtons = screen.getAllByRole('button', { name: 'common.close' })
     fireEvent.click(closeButtons.at(-1) as HTMLElement)
     resolveLinked(okJsonResponse({ linkedRequirements: [] }))
     await waitFor(() =>
-      expect(screen.queryByRole('status')).not.toBeInTheDocument(),
+      expect(
+        screen.queryByRole('dialog', {
+          name: /requirementPackage\.linkedRequirementsTitle/,
+        }),
+      ).not.toBeInTheDocument(),
     )
   })
 

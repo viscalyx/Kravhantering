@@ -866,10 +866,16 @@ skrivskyddade medförfattarkolumn visar namn utan HSA-id eller e-postadress. Gö
 uppslaget mot en testperson markerad med skyddade personuppgifter.
 Stäng därefter av HSA-topologin och öppna dialogen för byte av
 kravpaketsansvarig igen. Ange HSA-id för en redan lokalt sparad
-Kravansvarsperson och lämna fältet.
+Kravansvarsperson och lämna fältet. Kontrollera statusbrickorna på svenska
+och engelska. Arkivera och återaktivera ett testpaket via radåtgärderna,
+även med tangentbord. Öppna kopplade krav och jämför
+deras kravversionsstatus före och efter.
 
 **Förväntat resultat:** Paketlistan filtreras och återställs korrekt. Den som
 skapar kravpaketet visas som kravpaketsansvarig utan redigerbart ansvarsfält.
+Statusbrickan visar `Aktiv` eller `Arkiverad` på svenska och `Active` eller
+`Archived` på engelska, tillsammans med en ikon. Arkivering och återaktivering
+uppdaterar paketets bricka; kopplade krav behåller sina kravversionsstatusar.
 Kopplade krav öppnas i en skrivskyddad dialog utan att redigeringsformuläret
 försvinner. Medförfattare hanteras i separat dialog, och byte av
 kravpaketsansvarig verifierar HSA-id och visar namn och e-post som text.

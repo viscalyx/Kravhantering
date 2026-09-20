@@ -1382,9 +1382,9 @@
     }
   },
   "requirementPackage": {
-    "active": "Aktivt",
+    "active": "Aktiv",
     "archive": "Arkivera",
-    "archived": "Arkiverat",
+    "archived": "Arkiverad",
     "name": "Namn",
     "nameHelp": "Ange kravpaketets namn. Namnet skrivs i ett språk och visas som samma för svenska och engelska tills översättning införs.",
     "nameSvLabel": "Namn (svenska)",

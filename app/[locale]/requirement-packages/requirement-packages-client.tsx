@@ -2,6 +2,7 @@
 
 import {
   Archive,
+  CheckCircle2,
   Info,
   ListChecks,
   Pencil,
@@ -1303,9 +1304,26 @@ export default function RequirementPackagesClient() {
                           {coAuthorSummary}
                         </td>
                         <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
-                          {requirementPackage.isArchived
-                            ? t('archived')
-                            : t('active')}
+                          <span
+                            className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-1 text-xs font-medium ${requirementPackage.isArchived ? 'bg-secondary-100 text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200' : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'}`}
+                            role="status"
+                            {...devMarker({
+                              context: 'requirementPackages',
+                              name: 'package status',
+                              value: requirementPackage.isArchived
+                                ? 'archived'
+                                : 'active',
+                            })}
+                          >
+                            {requirementPackage.isArchived ? (
+                              <Archive aria-hidden="true" size={13} />
+                            ) : (
+                              <CheckCircle2 aria-hidden="true" size={13} />
+                            )}
+                            {requirementPackage.isArchived
+                              ? t('archived')
+                              : t('active')}
+                          </span>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <button
