@@ -24,6 +24,7 @@ interface RequirementSelectionQuestionResponse {
   }>
   id: number
   questionCode: string
+  sortOrder: number
 }
 
 async function getRequirementSelectionQuestions(request: APIRequestContext) {
@@ -45,6 +46,25 @@ async function getDriftQuestion(request: APIRequestContext) {
   const question = questions.find(item => item.questionCode === 'DRF-KUF001')
   expect(question).toBeTruthy()
   return question as RequirementSelectionQuestionResponse
+}
+
+async function expectPersistedQuestionOrder(
+  request: APIRequestContext,
+  questionCodes: readonly string[],
+) {
+  await expect
+    .poll(async () => {
+      const questions = await getRequirementSelectionQuestions(request)
+      return questions
+        .filter(question => questionCodes.includes(question.questionCode))
+        .map(({ questionCode, sortOrder }) => ({ questionCode, sortOrder }))
+    })
+    .toEqual(
+      questionCodes.map((questionCode, sortOrder) => ({
+        questionCode,
+        sortOrder,
+      })),
+    )
 }
 
 async function resetDriftQuestionOrder(request: APIRequestContext) {
@@ -153,6 +173,12 @@ test.describe('Requirement selection answer drag and drop', () => {
       await expect(questionRows.nth(0)).toContainText('DRF-KUF002')
       await expect(questionRows.nth(1)).toContainText('DRF-KUF001')
       await test.step('verify saved pointer and keyboard question order after reload', async () => {
+        await expectPersistedQuestionOrder(page.request, [
+          'DRF-KUF002',
+          'DRF-KUF001',
+          'DRF-KUF003',
+          'DRF-KUF004',
+        ])
         await page.reload()
         await expect(questionRows.nth(0)).toContainText('DRF-KUF002')
         await expect(questionRows.nth(1)).toContainText('DRF-KUF001')
@@ -162,6 +188,10 @@ test.describe('Requirement selection answer drag and drop', () => {
           .focus()
         await page.keyboard.press('ArrowUp')
         await expect(questionRows.nth(0)).toContainText('DRF-KUF001')
+        await expectPersistedQuestionOrder(
+          page.request,
+          DRF_QUESTION_CODE_ORDER,
+        )
         await page.reload()
         await expect(questionRows.nth(0)).toContainText('DRF-KUF001')
         await expect(questionRows.nth(1)).toContainText('DRF-KUF002')
