@@ -1,24 +1,39 @@
 # Question layout prototype for issue 1355
 
-This guide is for reviewing the visual design before choosing an implementation.
+This guide records the selected visual design and how to revisit the comparison.
 The question is: **which compact question layout makes comparison easier while
 keeping question text, metadata and controls readable?**
 
 This is throwaway code on `prototype/issue-1355-question-layouts`, based on
-`4b268d39`. No design is approved yet. The provisional recommendation is A,
-because it gives question text priority with the smallest structural change.
-B and C expose alternatives worth comparing with real, long question text.
+`4b268d39`. **The maintainer selects prototype B (split row) for issue 1355.**
+This supersedes the provisional recommendation of A. The approved direction is
+question text on the left, a separate metadata column on the right, compact
+rows on a shared requirement-area surface, and stable control positions.
+
+Keep the original, A and C as comparison evidence on this throwaway branch.
+Production implementation should follow B while retaining the issue's behavior,
+accessibility and verification requirements. Prototype-only controls, temporary
+reordering and blocked saves are not part of the production design.
 
 ## Open the prototype
 
-The worktree is separate from the normal development checkout:
+The prototype branch is preserved upstream. To recreate the separate worktree
+from the normal development checkout after cleanup:
+
+```sh
+git fetch origin prototype/issue-1355-question-layouts
+git worktree add /mnt/krav-azure-dev-data/.worktrees/issue-1355-prototype \
+  prototype/issue-1355-question-layouts
+```
+
+Then prepare dependencies and environment links as described below and start it:
 
 ```sh
 cd /mnt/krav-azure-dev-data/.worktrees/issue-1355-prototype
 npm run prototype:1355
 ```
 
-Open the [live prototype](http://localhost:3135/sv/requirements/stewardship?tab=questions&variant=A).
+Open the [live prototype](http://localhost:3135/sv/requirements/stewardship?tab=questions&variant=B).
 Forward port **3135** in VS Code if you access the workspace remotely.
 The normal development services and port 3000 remain undisturbed.
 Stop this server with Ctrl+C in its terminal.
@@ -166,5 +181,6 @@ branch. The implementation still needs the issue's regression coverage and
 manual/Playwright synchronization after a design is selected. Geometry belongs
 in automated checks, not manual cases. This review guide is for the prototype.
 
-The next decision is to select A, B or C, or specify a combination. Capture that
-decision on issue 1355 before rewriting the winner as production code.
+The visual decision is B. The next step is a production implementation of that
+layout under issue 1355. The throwaway branch is the visual reference; its
+review tools and temporary persistence behavior should not be merged directly.
