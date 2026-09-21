@@ -894,12 +894,15 @@ namn och e-post visas utan ett externt uppslag.
 seedade kravurvalsfrågor och kravurvalsvar med respektive draghandtag. Växla
 därefter mellan `Kravurvalsfrågor`, `RFI-frågor` och `Normbibliotek` och använd
 webbläsarens bakåt- och framåtknappar för att gå genom arbetsytorna. Kontrollera
-att den valda arbetsytans rubrik visas under varje navigeringssteg.
+att den valda arbetsytans rubrik visas under varje navigeringssteg. Ladda om
+sidan efter frågeomordning och kontrollera att ordningen består. Fokusera en
+frågas ordningshandtag, flytta frågan med uppåtpilen och ladda om igen.
 
 **Förväntat resultat:** Direktlänken tillbaka till
 `Kravbiblioteksförvaltning` öppnar den ihågkomna fliken. Drag-och-släpp sparar
 ny ordning för både frågor och svar. Rätt arbetsyta visas vid direktlänk,
-växling och varje historiksteg.
+växling och varje historiksteg. Frågeordningen består efter omladdning även
+när den ändras med tangentbord.
 
 ### REQ-14c: kravurvalsförhandsvisning visar skrivskyddat krav
 
@@ -922,6 +925,21 @@ att spara.
 **Förväntat resultat:** Båda knapparna har tydliga tillgängliga namn, synlig
 fokusmarkering och går att använda med tangentbord. Valet tas bort från det
 aktuella svaret utan att kravpaketet eller kravet tas bort från kravbiblioteket.
+
+### REQ-14e: kravurvalsfrågornas sammanfattningar är läsbara och åtkomliga
+
+**Steg:** Öppna `Kravurvalsfrågor` och läs en frågas text, ID, kravområde,
+svarstyp, status, antal svar och eventuella synlighetsvillkor. Använd både
+ljust och mörkt tema med infälld respektive utfälld navigering. Tabba till
+frågans detaljknapp och öppna och stäng den med Enter. Öppna hierarkin med
+dess separata knapp, fokusera dialogens stängknapp och stäng med Escape.
+Upprepa med lång frågetext och på smal skärm. Dra i frågans ordningshandtag
+och läs förhandsvisningen.
+
+**Förväntat resultat:** Hela frågetexten och dess uppgifter går att läsa.
+Knapparna är åtkomliga med synligt tangentbordsfokus. Hierarkin öppnas utan
+att frågans detaljer fälls ut. Lång text förblir läsbar även under dragning
+och på smal skärm.
 
 ### REQ-15: AI-kravgenerator lämnar kandidater till importgranskning
 

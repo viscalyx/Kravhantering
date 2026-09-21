@@ -577,6 +577,74 @@ function statusText(
   return item.isActive ? copy.active : copy.inactive
 }
 
+function QuestionSummary({
+  question,
+  copy,
+  metadataId,
+}: {
+  question: RequirementSelectionQuestion
+  copy: Record<string, string>
+  metadataId?: string
+}) {
+  const StatusIcon = question.isArchived
+    ? Archive
+    : question.isActive
+      ? CheckCircle2
+      : PauseCircle
+
+  return (
+    <span className="grid min-w-0 flex-1 grid-cols-1 items-center gap-1 min-[1101px]:grid-cols-[minmax(0,1fr)_minmax(15rem,38%)] min-[1101px]:gap-4">
+      <span
+        className="block min-w-0 wrap-anywhere text-[0.9375rem] leading-snug font-semibold text-secondary-950 dark:text-secondary-50"
+        {...devMarker({
+          context: 'requirementSelectionQuestions',
+          name: 'question text',
+          value: question.questionCode,
+        })}
+      >
+        {question.text}
+      </span>
+      <span
+        className="min-w-0 wrap-anywhere text-xs leading-normal text-secondary-600 dark:text-secondary-300 min-[1101px]:border-l min-[1101px]:border-secondary-200 min-[1101px]:pl-3 dark:min-[1101px]:border-secondary-700"
+        id={metadataId}
+        {...devMarker({
+          context: 'requirementSelectionQuestions',
+          name: 'question metadata',
+          value: question.questionCode,
+        })}
+      >
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="font-mono">{question.questionCode}</span>
+          <span>{question.areaName}</span>
+        </span>
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>
+            {question.selectionType === 'multiple'
+              ? copy.multiple
+              : copy.single}
+          </span>
+          <span className="inline-flex items-center gap-1" role="status">
+            <StatusIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+            {statusText(question, copy)}
+          </span>
+          <span>
+            {question.answers.length}{' '}
+            {question.answers.length === 1
+              ? copy.answerCountSingular
+              : copy.answerCountPlural}
+          </span>
+          {question.visibilityGroups.length > 0 ? (
+            <span className="inline-flex items-center gap-1 text-primary-800 dark:text-primary-200">
+              <Eye aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+              {copy.visibilityButtonText}
+            </span>
+          ) : null}
+        </span>
+      </span>
+    </span>
+  )
+}
+
 function asSelectedRequirement(
   requirement: Pick<MatchedRequirement, 'description' | 'id' | 'uniqueId'>,
 ): SelectedRequirement {
@@ -3498,7 +3566,7 @@ export default function RequirementSelectionQuestionsClient() {
   const questionDropMarkerContent = questionDropMarker ? (
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed z-90 rounded-2xl bg-secondary-200/45 ring-2 ring-inset ring-secondary-500/75 dark:bg-secondary-700/45 dark:ring-secondary-400/70"
+      className="pointer-events-none fixed z-90 rounded-lg bg-secondary-200/45 ring-2 ring-inset ring-secondary-500/75 dark:bg-secondary-700/45 dark:ring-secondary-400/70"
       data-question-drop-marker="true"
       style={{
         height: questionDropMarker.height,
@@ -3512,16 +3580,11 @@ export default function RequirementSelectionQuestionsClient() {
   const questionDragPreviewContent = questionDragPreview
     ? (() => {
         const { question } = questionDragPreview
-        const answerCountText = `${question.answers.length} ${
-          question.answers.length === 1
-            ? copy.answerCountSingular
-            : copy.answerCountPlural
-        }`
 
         return (
           <div
             aria-hidden="true"
-            className="pointer-events-none fixed z-80 overflow-hidden rounded-2xl border border-primary-200 bg-white/95 text-left shadow-2xl ring-2 ring-primary-300/70 backdrop-blur-sm dark:border-primary-800 dark:bg-secondary-900/95 dark:ring-primary-700/70"
+            className="pointer-events-none fixed z-80 overflow-hidden rounded-lg border border-primary-200 bg-white/95 text-left shadow-2xl ring-2 ring-primary-300/70 backdrop-blur-sm dark:border-primary-800 dark:bg-secondary-900/95 dark:ring-primary-700/70"
             data-question-drag-preview="true"
             style={{
               left: questionDragPreview.x,
@@ -3530,47 +3593,27 @@ export default function RequirementSelectionQuestionsClient() {
               width: questionDragPreview.width,
             }}
           >
-            <div className="flex items-stretch">
-              <div className="inline-flex min-h-16 w-11 shrink-0 items-center justify-center border-r border-secondary-200 text-secondary-700 dark:border-secondary-800 dark:text-secondary-200">
+            <div className="flex flex-wrap items-stretch min-[601px]:flex-nowrap">
+              <div className="inline-flex min-h-10 w-8 shrink-0 items-center justify-center border-r border-secondary-200 text-secondary-700 dark:border-secondary-800 dark:text-secondary-200">
                 <GripVertical aria-hidden="true" className="h-4 w-4" />
               </div>
-              <div className="min-w-0 flex-1 px-4 py-4">
+              <div className="min-w-0 flex-1 px-3 py-2">
                 <div className="flex items-start gap-3">
                   <ChevronRight
                     aria-hidden="true"
                     className="mt-1 h-4 w-4 shrink-0 text-secondary-500 dark:text-secondary-400"
                   />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-md bg-secondary-100 px-2 py-1 font-mono text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
-                        {question.questionCode}
-                      </span>
-                      <span className="text-xs text-secondary-500">
-                        {question.areaName}
-                      </span>
-                      <span className="text-xs text-secondary-500">
-                        {question.selectionType === 'multiple'
-                          ? copy.multiple
-                          : copy.single}
-                      </span>
-                      <span className="text-xs font-medium text-secondary-700 dark:text-secondary-300">
-                        {statusText(question, copy)}
-                      </span>
-                      <span className="text-xs text-secondary-500 dark:text-secondary-400">
-                        {answerCountText}
-                      </span>
-                      {question.visibilityGroups.length > 0 ? (
-                        <span className="inline-flex items-center gap-1 rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
-                          <Eye aria-hidden="true" className="h-3 w-3" />
-                          {copy.visibilityButtonText}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="mt-2 truncate font-medium text-secondary-950 dark:text-secondary-50">
-                      {question.text}
-                    </div>
-                  </div>
+                  <QuestionSummary copy={copy} question={question} />
                 </div>
+              </div>
+              <div className="flex w-full shrink-0 items-center pb-2 pl-11 pr-3 empty:hidden min-[601px]:w-32 min-[601px]:py-2 min-[601px]:pl-0 min-[601px]:empty:flex">
+                {(hierarchyBadgeCounts.get(question.id) ?? 0) > 0 ? (
+                  <span className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-primary-200 bg-primary-50 px-2.5 text-xs font-medium text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
+                    <GitBranch aria-hidden="true" className="h-3.5 w-3.5" />
+                    {copy.hierarchyBadgeLabel} ·{' '}
+                    {hierarchyBadgeCounts.get(question.id)}
+                  </span>
+                ) : null}
               </div>
             </div>
           </div>
@@ -3736,7 +3779,7 @@ export default function RequirementSelectionQuestionsClient() {
               </div>
             ) : (
               groupedQuestions.map(group => (
-                <section className="space-y-3" key={group.areaId}>
+                <section className="space-y-2" key={group.areaId}>
                   <div
                     className="sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-primary-200 bg-primary-50/95 px-3 py-2 shadow-[0_8px_18px_-14px_rgba(67,56,202,0.45)] backdrop-blur dark:border-primary-800/70 dark:bg-primary-950/80"
                     {...devMarker({
@@ -3752,15 +3795,17 @@ export default function RequirementSelectionQuestionsClient() {
                       {group.areaPrefix}
                     </span>
                   </div>
-                  <ul className="space-y-3">
+                  <ul
+                    className="overflow-hidden rounded-lg border border-secondary-200 dark:border-secondary-700"
+                    {...devMarker({
+                      context: 'requirementSelectionQuestions',
+                      name: 'requirement area question list',
+                      value: group.areaPrefix,
+                    })}
+                  >
                     {group.questions.map(question => {
                       const isExpanded = expandedQuestionIds.has(question.id)
                       const detailsId = `requirement-selection-question-details-${question.id}`
-                      const answerCountText = `${question.answers.length} ${
-                        question.answers.length === 1
-                          ? copy.answerCountSingular
-                          : copy.answerCountPlural
-                      }`
                       const hierarchyCount =
                         hierarchyBadgeCounts.get(question.id) ?? 0
                       const questionReorderEnabled =
@@ -3783,9 +3828,9 @@ export default function RequirementSelectionQuestionsClient() {
 
                       return (
                         <li
-                          className={`overflow-hidden rounded-2xl border shadow-sm transition-all duration-150 dark:border-secondary-800 ${questionDragSurfaceClass} ${
+                          className={`overflow-hidden border-b border-secondary-200 transition-all duration-150 last:border-b-0 dark:border-secondary-700 ${questionDragSurfaceClass} ${
                             selectedQuestionId === question.id
-                              ? 'ring-2 ring-primary-500'
+                              ? 'ring-2 ring-inset ring-primary-500'
                               : ''
                           } ${
                             reorderingQuestionId === question.id
@@ -3805,7 +3850,7 @@ export default function RequirementSelectionQuestionsClient() {
                           }
                         >
                           <div
-                            className={`flex items-stretch ${
+                            className={`flex flex-wrap items-stretch min-[601px]:flex-nowrap ${
                               draggedQuestionId === question.id
                                 ? 'invisible'
                                 : ''
@@ -3816,7 +3861,7 @@ export default function RequirementSelectionQuestionsClient() {
                                 <button
                                   aria-describedby={`kuf-question-reorder-hint-${question.id}`}
                                   aria-label={copy.reorderQuestion}
-                                  className="inline-flex min-h-16 w-11 shrink-0 touch-none select-none self-stretch items-center justify-center border-r border-secondary-200 p-0 text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-950 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-800 dark:text-secondary-200 dark:hover:bg-secondary-800 dark:hover:text-secondary-50"
+                                  className="inline-flex min-h-10 w-8 shrink-0 touch-none select-none self-stretch items-center justify-center border-r border-secondary-200 p-0 text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-400/60 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-800 dark:text-secondary-200 dark:hover:bg-secondary-800 dark:hover:text-secondary-50"
                                   data-question-drag-handle="true"
                                   disabled={!questionReorderEnabled}
                                   onKeyDown={event =>
@@ -3852,7 +3897,7 @@ export default function RequirementSelectionQuestionsClient() {
                                 >
                                   <span
                                     aria-hidden="true"
-                                    className="flex h-full min-h-16 w-full cursor-grab items-center justify-center active:cursor-grabbing"
+                                    className="flex h-full min-h-10 w-full cursor-grab items-center justify-center active:cursor-grabbing"
                                     data-question-drag-handle="true"
                                     role="presentation"
                                   >
@@ -3872,8 +3917,10 @@ export default function RequirementSelectionQuestionsClient() {
                             ) : null}
                             <button
                               aria-controls={detailsId}
+                              aria-describedby={`${detailsId}-metadata`}
                               aria-expanded={isExpanded}
-                              className="block min-w-0 flex-1 px-4 py-4 text-left transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-400/60 dark:hover:bg-secondary-800/50"
+                              aria-label={`${isExpanded ? copy.hideQuestionDetails : copy.showQuestionDetails} ${question.questionCode}: ${question.text}`}
+                              className="block min-w-0 flex-1 px-3 py-2 text-left transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-400/60 dark:hover:bg-secondary-800/50"
                               onClick={() =>
                                 toggleQuestionExpansion(question.id)
                               }
@@ -3891,48 +3938,22 @@ export default function RequirementSelectionQuestionsClient() {
                                     isExpanded ? 'rotate-90' : ''
                                   }`}
                                 />
-                                <span className="sr-only">
-                                  {isExpanded
-                                    ? copy.hideQuestionDetails
-                                    : copy.showQuestionDetails}
-                                </span>
-                                <span className="min-w-0 flex-1">
-                                  <span className="flex flex-wrap items-center gap-2">
-                                    <span className="rounded-md bg-secondary-100 px-2 py-1 font-mono text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
-                                      {question.questionCode}
-                                    </span>
-                                    <span className="text-xs text-secondary-500">
-                                      {question.areaName}
-                                    </span>
-                                    <span className="text-xs text-secondary-500">
-                                      {question.selectionType === 'multiple'
-                                        ? copy.multiple
-                                        : copy.single}
-                                    </span>
-                                    <span className="text-xs font-medium text-secondary-700 dark:text-secondary-300">
-                                      {statusText(question, copy)}
-                                    </span>
-                                    <span className="text-xs text-secondary-500 dark:text-secondary-400">
-                                      {answerCountText}
-                                    </span>
-                                    {question.visibilityGroups.length > 0 ? (
-                                      <span className="inline-flex items-center gap-1 rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
-                                        <Eye
-                                          aria-hidden="true"
-                                          className="h-3 w-3"
-                                        />
-                                        {copy.visibilityButtonText}
-                                      </span>
-                                    ) : null}
-                                  </span>
-                                  <span className="mt-2 block font-medium text-secondary-950 dark:text-secondary-50">
-                                    {question.text}
-                                  </span>
-                                </span>
+                                <QuestionSummary
+                                  copy={copy}
+                                  metadataId={`${detailsId}-metadata`}
+                                  question={question}
+                                />
                               </div>
                             </button>
-                            {hierarchyCount > 0 ? (
-                              <div className="flex shrink-0 items-start px-4 py-4 pl-0">
+                            <div
+                              className="flex w-full shrink-0 items-center pb-2 pl-11 pr-3 empty:hidden min-[601px]:w-32 min-[601px]:py-2 min-[601px]:pl-0 min-[601px]:empty:flex"
+                              {...devMarker({
+                                context: 'requirementSelectionQuestions',
+                                name: 'question hierarchy slot',
+                                value: question.questionCode,
+                              })}
+                            >
+                              {hierarchyCount > 0 ? (
                                 <button
                                   aria-label={`${copy.hierarchyBadgeAria}: ${
                                     question.questionCode
@@ -3956,8 +3977,8 @@ export default function RequirementSelectionQuestionsClient() {
                                   />
                                   {copy.hierarchyBadgeLabel} · {hierarchyCount}
                                 </button>
-                              </div>
-                            ) : null}
+                              ) : null}
+                            </div>
                           </div>
                           {isExpanded ? (
                             <div

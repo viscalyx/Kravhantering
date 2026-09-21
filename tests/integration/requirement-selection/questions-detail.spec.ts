@@ -162,3 +162,217 @@ test.describe('Requirement selection question detail preview', () => {
     }
   })
 })
+
+test.describe('Compact requirement selection question summaries', () => {
+  for (const [width, height] of [
+    [1440, 900],
+    [1920, 1080],
+  ]) {
+    for (const theme of ['light', 'dark']) {
+      for (const navigation of ['collapsed', 'expanded']) {
+        test(`REQ-14e: readable split summaries at ${width}, ${theme}, navigation ${navigation}`, async ({
+          page,
+        }) => {
+          await test.step('open the selected theme and navigation layout', async () => {
+            await page.setViewportSize({ width, height })
+            await page.addInitScript(
+              ({ theme, navigation }) => {
+                localStorage.setItem('theme', theme)
+                localStorage.setItem(
+                  'requirements.navigationRail.expanded.v1',
+                  navigation,
+                )
+              },
+              { theme, navigation },
+            )
+            await page.goto('/sv/requirements/stewardship?tab=questions')
+          })
+          const rows = page.locator('[data-question-id]')
+          const row = rows.filter({ hasText: 'DRF-KUF001' }).first()
+          const text = row.locator('[data-developer-mode-name="question text"]')
+          const facts = row.locator(
+            '[data-developer-mode-name="question metadata"]',
+          )
+          await test.step('read compact facts and measure rows and controls', async () => {
+            await expect(facts).toContainText('KUF')
+            await expect(row.getByRole('status')).toHaveText(
+              /Aktiv|Inaktiv|Arkiverad/,
+            )
+            await expect
+              .poll(async () => {
+                const [textBox, factsBox, rowBox] = await Promise.all([
+                  text.boundingBox(),
+                  facts.boundingBox(),
+                  row.boundingBox(),
+                ])
+                return (
+                  !!textBox &&
+                  !!factsBox &&
+                  !!rowBox &&
+                  textBox.x + textBox.width <= factsBox.x &&
+                  rowBox.height < 90
+                )
+              })
+              .toBe(true)
+            const list = row.locator('..')
+            await expect(list).toHaveAttribute(
+              'data-developer-mode-name',
+              'requirement area question list',
+            )
+            const nextRow = list.locator(':scope > li').nth(1)
+            await expect
+              .poll(async () => {
+                const [first, next] = await Promise.all([
+                  row.boundingBox(),
+                  nextRow.boundingBox(),
+                ])
+                return first && next
+                  ? Math.abs(first.y + first.height - next.y)
+                  : Infinity
+              })
+              .toBeLessThanOrEqual(1)
+            for (const control of await row.getByRole('button').all()) {
+              await expect
+                .poll(async () => {
+                  const box = await control.boundingBox()
+                  return box ? Math.min(box.width, box.height) : 0
+                })
+                .toBeGreaterThanOrEqual(24)
+            }
+          })
+          await test.step('expand and collapse with the keyboard', async () => {
+            const disclosure = row.locator(
+              '[data-developer-mode-name="question disclosure"]',
+            )
+            await disclosure.focus()
+            await expect(disclosure).toBeFocused()
+            await page.keyboard.press('Enter')
+            await expect(disclosure).toHaveAttribute('aria-expanded', 'true')
+            await page.keyboard.press('Enter')
+            await expect(disclosure).toHaveAttribute('aria-expanded', 'false')
+          })
+        })
+      }
+    }
+  }
+
+  test('REQ-14e: wraps long question text and keeps hierarchy independent on narrow screens and in the drag preview', async ({
+    page,
+  }) => {
+    const longText =
+      'Vilka förutsättningar gäller för informationshantering och tillgänglighet? '.repeat(
+        9,
+      )
+    await page.route(
+      '**/api/requirement-selection-questions?includeArchived=true',
+      async route => {
+        const response = await route.fetch()
+        const body = await response.json()
+        body.questions.find(
+          (question: { questionCode: string }) =>
+            question.questionCode === 'DRF-KUF001',
+        ).text = longText
+        await route.fulfill({ response, json: body })
+      },
+    )
+    for (const width of [1440, 768, 320]) {
+      await test.step(`read the long question at ${width}px`, async () => {
+        await page.setViewportSize({ width, height: 900 })
+        await page.goto('/sv/requirements/stewardship?tab=questions')
+        const row = page
+          .locator('[data-question-id]')
+          .filter({ hasText: 'DRF-KUF001' })
+          .first()
+        const text = row.locator('[data-developer-mode-name="question text"]')
+        const facts = row.locator(
+          '[data-developer-mode-name="question metadata"]',
+        )
+        await expect(text).toHaveText(longText)
+        await expect
+          .poll(() =>
+            row.evaluate(element => element.scrollWidth <= element.clientWidth),
+          )
+          .toBe(true)
+        await expect
+          .poll(() =>
+            text.evaluate(
+              element => element.scrollHeight <= element.clientHeight,
+            ),
+          )
+          .toBe(true)
+        if (width <= 768) {
+          await expect
+            .poll(async () => {
+              const [textBox, factsBox] = await Promise.all([
+                text.boundingBox(),
+                facts.boundingBox(),
+              ])
+              return (
+                !!textBox &&
+                !!factsBox &&
+                textBox.y + textBox.height <= factsBox.y
+              )
+            })
+            .toBe(true)
+        }
+        await test.step('open and close hierarchy without expanding details', async () => {
+          const hierarchy = row.getByRole('button', {
+            name: /^Visa kravurvalsfrågehierarki/,
+          })
+          // Seeded DRF-KUF001 has dependent questions.
+          await expect(hierarchy).toHaveCount(1)
+          await hierarchy.focus()
+          await page.keyboard.press('Enter')
+          const dialog = page.getByRole('dialog')
+          await expect(dialog).toContainText('DRF-KUF001')
+          await dialog
+            .getByRole('button', { name: 'Stäng', exact: true })
+            .focus()
+          await page.keyboard.press('Escape')
+          await expect(dialog).toHaveCount(0)
+          await expect(
+            row.getByRole('button', { name: /^Visa detaljer/ }),
+          ).toHaveAttribute('aria-expanded', 'false')
+        })
+        if (width === 1440) {
+          await test.step('read the full text in the matching drag preview', async () => {
+            const handle = row.getByRole('button', {
+              name: 'Ändra frågeordning',
+            })
+            const box = await handle.boundingBox()
+            if (!box) throw new Error('Missing question reorder handle')
+            await page.mouse.move(box.x + box.width / 2, box.y + 20)
+            await page.mouse.down()
+            await page.mouse.move(box.x + box.width / 2 + 15, box.y + 20, {
+              steps: 3,
+            })
+            const preview = page.locator('[data-question-drag-preview]')
+            await expect(preview).toContainText(longText)
+            const previewText = preview.locator(
+              '[data-developer-mode-name="question text"]',
+            )
+            await expect
+              .poll(() =>
+                previewText.evaluate(
+                  element => element.scrollHeight <= element.clientHeight,
+                ),
+              )
+              .toBe(true)
+            await expect
+              .poll(async () => {
+                const [source, floating] = await Promise.all([
+                  row.boundingBox(),
+                  preview.boundingBox(),
+                ])
+                return source && floating
+                  ? Math.abs(source.height - floating.height)
+                  : Infinity
+              })
+              .toBeLessThanOrEqual(2)
+            await page.mouse.up()
+          })
+        }
+      })
+    }
+  })
+})

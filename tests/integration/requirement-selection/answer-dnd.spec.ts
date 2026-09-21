@@ -152,6 +152,20 @@ test.describe('Requirement selection answer drag and drop', () => {
 
       await expect(questionRows.nth(0)).toContainText('DRF-KUF002')
       await expect(questionRows.nth(1)).toContainText('DRF-KUF001')
+      await test.step('verify saved pointer and keyboard question order after reload', async () => {
+        await page.reload()
+        await expect(questionRows.nth(0)).toContainText('DRF-KUF002')
+        await expect(questionRows.nth(1)).toContainText('DRF-KUF001')
+        await questionRows
+          .nth(1)
+          .getByRole('button', { name: 'Ändra frågeordning' })
+          .focus()
+        await page.keyboard.press('ArrowUp')
+        await expect(questionRows.nth(0)).toContainText('DRF-KUF001')
+        await page.reload()
+        await expect(questionRows.nth(0)).toContainText('DRF-KUF001')
+        await expect(questionRows.nth(1)).toContainText('DRF-KUF002')
+      })
     } finally {
       await resetDriftQuestionOrder(page.request)
     }

@@ -521,6 +521,36 @@ describe('RequirementSelectionQuestionsClient', () => {
     ).toBeInTheDocument()
   })
 
+  it.each([
+    { isActive: true, isArchived: false, status: 'Active' },
+    { isActive: false, isArchived: false, status: 'Inactive' },
+    { isActive: false, isArchived: true, status: 'Archived' },
+  ])(
+    'exposes question facts and announced $status status in the compact summary',
+    async ({ isActive, isArchived, status }) => {
+      setupMutableQuestions([{ ...sampleQuestion, isActive, isArchived }])
+      render(<RequirementSelectionQuestionsClient />)
+
+      await screen.findByText(sampleQuestion.text)
+      const disclosure = getQuestionDisclosure(sampleQuestion.text)
+      expect(within(disclosure).getByRole('status')).toHaveTextContent(status)
+      const metadata = within(disclosure)
+        .getByText(sampleQuestion.questionCode)
+        .closest('[data-developer-mode-name="question metadata"]')
+      expect(metadata).toHaveTextContent(sampleArea.name)
+      expect(metadata).toHaveTextContent('Single choice')
+      expect(metadata).toHaveTextContent('0 answers')
+      expect(screen.getByText(sampleQuestion.text)).toHaveAttribute(
+        'data-developer-mode-name',
+        'question text',
+      )
+      expect(disclosure.closest('ul')).toHaveAttribute(
+        'data-developer-mode-name',
+        'requirement area question list',
+      )
+    },
+  )
+
   it('groups questions by requirement area and keeps question details collapsed by default', async () => {
     const architectureArea = {
       description: 'Architecture ownership.',
@@ -1922,7 +1952,6 @@ describe('RequirementSelectionQuestionsClient', () => {
     const dragHandle = within(sourceCard).getByRole('button', {
       name: 'Reorder question',
     })
-    expect(dragHandle).toHaveClass('self-stretch', 'w-11')
     expect(dragHandle).not.toHaveAttribute('draggable')
 
     fireEvent.pointerDown(dragHandle, {
