@@ -7,9 +7,11 @@ Question: which layout makes requirement-area descriptions and responsibility
 easier to read while keeping names, prefixes, HSA IDs and actions available?
 
 This is throwaway work on `prototype/issue-1354`, based on `4b268d39`.
-No variant is approved for production. A is the recommended starting point
-for review because it stays closest to the issue's table layout. B prioritizes
-reading each description; C explores grouping information into cards.
+Maintainer decision: close #1354 as not planned. No layout variant is selected
+for production. The only remaining desired improvement is to show the full
+Kravområde description without shortening it; that improvement is deferred
+because it is not worth the time now. The branch preserves the explored
+alternatives and their evidence for possible future reference.
 
 ## Open it
 
@@ -196,9 +198,14 @@ tests or manual-case definitions are changed. Before implementation, select a
 direction, rewrite the chosen layout under normal production constraints and
 add the issue's required automated and manual coverage.
 
-## Decision to record after review
+## Maintainer decision
 
-No winner is validated yet. Record the preferred variant or combination,
-acceptable row height, name/description proportions and any responsibility
-details to change. Keep the captured prototype branch as the primary source;
-implement the approved decision separately.
+The layout redesign is not planned. No variant is selected or promoted to
+production. Showing the full Kravområde description without shortening it
+remains desirable, but implementation is deferred because it is not worth
+the time now. This is not a decision to remove description content or a
+permanent rejection of natural wrapping.
+
+The prototype branch and review evidence remain upstream. The local prototype
+server and worktree are removed after capture. The launch instructions above
+apply after recreating the worktree and installing its dependencies.
