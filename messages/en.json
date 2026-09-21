@@ -4066,5 +4066,38 @@
     "hiddenCreatedNorm": "The search hides the new norm reference “{name}”. It is still checked.",
     "creationPersistence": "The new object is saved immediately. Cancel in the selection dialog only discards the selection.",
     "searchHelp": "Search by name, reference ID or package purpose. Selections are kept when you filter the list."
+  },
+  "questionLayoutPrototype": {
+    "notice": "THROWAWAY PROTOTYPE · #1355",
+    "memory": "Reordering is temporary. Saving is disabled.",
+    "names": {
+      "original": "Current layout",
+      "A": "Text first",
+      "B": "Split row",
+      "C": "Ledger"
+    },
+    "previous": "Previous layout",
+    "next": "Next layout",
+    "review": "Review & state",
+    "close": "Close review",
+    "longText": "Toggle long text",
+    "reset": "Reset data & filters",
+    "measure": "Measure rows",
+    "measurementHint": "Measurements are a snapshot. Close this panel when judging the layout; reopen and measure after resizing or changing navigation. All variants include the same prototype controls.",
+    "state": "Current state",
+    "longTextSuffix": " — Include several business contexts, external parties, international collaboration and changing responsibilities throughout the entire lifetime of the information, including archiving and follow-up.",
+    "descriptions": {
+      "original": "The existing cards, spacing and metadata-first order. Use this as the comparison baseline.",
+      "A": "Question first, with a compact metadata line below. Small gaps retain separate rows. A conservative candidate for implementation.",
+      "B": "Question on the left; ID, area and metadata in a fixed facts column on the right. Rows share one group surface.",
+      "C": "An aligned ledger: ID column, question and area column, and metadata column. Alternating rows aid scanning. Wraps to one column on narrow screens."
+    },
+    "checks": {
+      "density": "Switch between original and A/B/C with the same data. Count fully visible collapsed questions.",
+      "content": "Read ID, type, status, answer count and area. Toggle long text and check wrapping.",
+      "controls": "Expand two questions. Open the hierarchy badge separately. Inspect visibility conditions.",
+      "themes": "Try both themes and both navigation states at 1440 × 900 and 1920 × 1080.",
+      "drag": "Drag a question by its handle, then try keyboard arrow reordering. Refresh to restore saved order."
+    }
   }
 }

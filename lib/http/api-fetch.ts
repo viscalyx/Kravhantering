@@ -89,6 +89,18 @@ export async function apiFetch(
     return reportUnauthorizedResponse(input, await fetch(input, init))
   }
 
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_ISSUE_1355_PROTOTYPE === 'true'
+  ) {
+    const message =
+      typeof window !== 'undefined' &&
+      window.location.pathname.startsWith('/sv')
+        ? 'Prototyp: sparande är avstängt. Endast omordning kan provas i minnet.'
+        : 'Prototype: saving is disabled. Only reordering can be tried in memory.'
+    return Response.json({ error: message, message }, { status: 409 })
+  }
+
   const headers = buildHeaders(input, init)
   const xRequestedWith = headers.get('x-requested-with')
   if (xRequestedWith?.toLowerCase() !== 'xmlhttprequest') {

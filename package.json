@@ -17,6 +17,8 @@
     }
   },
   "scripts": {
+    "prototype:1355:capture": "node scripts/prototype-1355-capture.mjs",
+    "prototype:1355": "node scripts/prototype-1355.mjs",
     "predev": "npm run dev:prepare",
     "dev": "next dev",
     "dev:fresh": "npm run kill:port && npm run clean && npm run dev",

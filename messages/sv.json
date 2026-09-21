@@ -4066,5 +4066,38 @@
     "hiddenCreatedNorm": "Sökningen döljer den nya normreferensen ”{name}”. Den är fortfarande markerad.",
     "creationPersistence": "Det nya objektet sparas direkt. Avbryt i väljdialogen kasserar endast urvalet.",
     "searchHelp": "Sök på namn, referens-ID eller paketets syfte. Markeringar behålls när du filtrerar listan."
+  },
+  "questionLayoutPrototype": {
+    "notice": "TILLFÄLLIG PROTOTYP · #1355",
+    "memory": "Omordning är tillfällig. Sparande är avstängt.",
+    "names": {
+      "original": "Nuvarande layout",
+      "A": "Texten först",
+      "B": "Delad rad",
+      "C": "Kolumnlista"
+    },
+    "previous": "Föregående layout",
+    "next": "Nästa layout",
+    "review": "Granska och visa tillstånd",
+    "close": "Stäng granskning",
+    "longText": "Växla lång frågetext",
+    "reset": "Återställ data och filter",
+    "measure": "Mät rader",
+    "measurementHint": "Mätningen är en ögonblicksbild. Stäng panelen när du bedömer layouten. Öppna och mät igen när du ändrat fönster eller navigation. Alla varianter har samma prototypkontroller.",
+    "state": "Aktuellt tillstånd",
+    "longTextSuffix": " — Ta hänsyn till flera verksamhetssammanhang, externa parter, internationellt samarbete och förändrade ansvarsförhållanden under informationens hela livslängd, inklusive arkivering och uppföljning.",
+    "descriptions": {
+      "original": "Befintliga kort, mellanrum och metadata före frågetexten. Använd som utgångspunkt för jämförelsen.",
+      "A": "Frågan först med en kompakt metadatarad under. Små mellanrum skiljer raderna åt. Ett försiktigt förstahandsförslag.",
+      "B": "Frågan till vänster; ID, kravområde och metadata i en egen kolumn till höger. Raderna delar en gemensam yta.",
+      "C": "En kolumnlista med ID, fråga och kravområde samt metadata. Växlande radbakgrund underlättar läsning. En kolumn på smala skärmar."
+    },
+    "checks": {
+      "density": "Växla mellan original och A/B/C med samma data. Räkna helt synliga hopfällda frågor.",
+      "content": "Läs ID, svarstyp, status, antal svar och kravområde. Växla lång frågetext och kontrollera radbrytning.",
+      "controls": "Expandera två frågor. Öppna hierarkin separat. Kontrollera synlighetsvillkor.",
+      "themes": "Prova båda teman och båda navigationslägena vid 1440 × 900 och 1920 × 1080.",
+      "drag": "Dra en fråga i handtaget och prova sedan omordning med piltangenter. Ladda om för att återställa sparad ordning."
+    }
   }
 }

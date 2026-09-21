@@ -20,6 +20,12 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import QuestionLayoutPrototypeSwitcher from '@/components/QuestionLayoutPrototypeSwitcher'
+import QuestionPrototypeSummary, {
+  type QuestionPrototypeVariant,
+} from './question-layout.prototype'
+import './question-layout.prototype.css'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
@@ -812,6 +818,29 @@ function CompactRequirementDetail({
 }
 
 export default function RequirementSelectionQuestionsClient() {
+  const prototypeEnabled =
+    process.env.NODE_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_ISSUE_1355_PROTOTYPE === 'true'
+  const searchParams = useSearchParams()
+  const requestedVariant = searchParams.get('variant')
+  const prototypeVariant: QuestionPrototypeVariant =
+    prototypeEnabled &&
+    (requestedVariant === 'A' ||
+      requestedVariant === 'B' ||
+      requestedVariant === 'C')
+      ? requestedVariant
+      : 'original'
+  const prototypeCopy = useTranslations('questionLayoutPrototype')
+  const [prototypeLongText, setPrototypeLongText] = useState(false)
+  const prototypeOriginalTexts = useRef(new Map<number, string>())
+  const changePrototypeVariant = useCallback(
+    (variant: QuestionPrototypeVariant) => {
+      const url = new URL(window.location.href)
+      url.searchParams.set('variant', variant)
+      window.history.replaceState(null, '', url)
+    },
+    [],
+  )
   useHelpContent(REQUIREMENT_SELECTION_QUESTIONS_STEWARDSHIP_HELP)
   const { confirm } = useConfirmModal()
   const confirmDiscardChanges = useDiscardChangesConfirmation()
@@ -1706,6 +1735,10 @@ export default function RequirementSelectionQuestionsClient() {
       setAreas(areasData.areas ?? [])
       setPackages(packagesData.requirementPackages ?? [])
       const nextQuestions = questionsData.questions ?? []
+      prototypeOriginalTexts.current = new Map(
+        nextQuestions.map(question => [question.id, question.text]),
+      )
+      setPrototypeLongText(false)
       const nextQuestionIds = new Set(
         nextQuestions.map(question => question.id),
       )
@@ -1966,6 +1999,7 @@ export default function RequirementSelectionQuestionsClient() {
       questionsRef.current = nextQuestions
       return nextQuestions
     })
+    if (prototypeEnabled) return
     setReorderingQuestionId(movedQuestionId)
     setSubmitting(true)
     setError(null)
@@ -2047,6 +2081,7 @@ export default function RequirementSelectionQuestionsClient() {
           : item,
       ),
     )
+    if (prototypeEnabled) return
     setReorderingAnswerId(movedAnswerId)
     setSubmitting(true)
     setError(null)
@@ -3531,47 +3566,87 @@ export default function RequirementSelectionQuestionsClient() {
             }}
           >
             <div className="flex items-stretch">
-              <div className="inline-flex min-h-16 w-11 shrink-0 items-center justify-center border-r border-secondary-200 text-secondary-700 dark:border-secondary-800 dark:text-secondary-200">
+              <div
+                className="inline-flex min-h-16 w-11 shrink-0 items-center justify-center border-r border-secondary-200 text-secondary-700 dark:border-secondary-800 dark:text-secondary-200"
+                data-prototype-preview-handle
+              >
                 <GripVertical aria-hidden="true" className="h-4 w-4" />
               </div>
-              <div className="min-w-0 flex-1 px-4 py-4">
+              <div
+                className="min-w-0 flex-1 px-4 py-4"
+                data-prototype-preview-content
+              >
                 <div className="flex items-start gap-3">
                   <ChevronRight
                     aria-hidden="true"
                     className="mt-1 h-4 w-4 shrink-0 text-secondary-500 dark:text-secondary-400"
                   />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-md bg-secondary-100 px-2 py-1 font-mono text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
-                        {question.questionCode}
-                      </span>
-                      <span className="text-xs text-secondary-500">
-                        {question.areaName}
-                      </span>
-                      <span className="text-xs text-secondary-500">
-                        {question.selectionType === 'multiple'
+                  {prototypeVariant !== 'original' ? (
+                    <QuestionPrototypeSummary
+                      active={question.isActive}
+                      answers={answerCountText}
+                      archived={question.isArchived}
+                      area={question.areaName}
+                      code={question.questionCode}
+                      conditional={question.visibilityGroups.length > 0}
+                      status={statusText(question, copy)}
+                      text={question.text}
+                      type={
+                        question.selectionType === 'multiple'
                           ? copy.multiple
-                          : copy.single}
-                      </span>
-                      <span className="text-xs font-medium text-secondary-700 dark:text-secondary-300">
-                        {statusText(question, copy)}
-                      </span>
-                      <span className="text-xs text-secondary-500 dark:text-secondary-400">
-                        {answerCountText}
-                      </span>
-                      {question.visibilityGroups.length > 0 ? (
-                        <span className="inline-flex items-center gap-1 rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
-                          <Eye aria-hidden="true" className="h-3 w-3" />
-                          {copy.visibilityButtonText}
+                          : copy.single
+                      }
+                      variant={prototypeVariant}
+                      visibility={copy.visibilityButtonText}
+                    />
+                  ) : (
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-md bg-secondary-100 px-2 py-1 font-mono text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                          {question.questionCode}
                         </span>
-                      ) : null}
+                        <span className="text-xs text-secondary-500">
+                          {question.areaName}
+                        </span>
+                        <span className="text-xs text-secondary-500">
+                          {question.selectionType === 'multiple'
+                            ? copy.multiple
+                            : copy.single}
+                        </span>
+                        <span className="text-xs font-medium text-secondary-700 dark:text-secondary-300">
+                          {statusText(question, copy)}
+                        </span>
+                        <span className="text-xs text-secondary-500 dark:text-secondary-400">
+                          {answerCountText}
+                        </span>
+                        {question.visibilityGroups.length > 0 ? (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
+                            <Eye aria-hidden="true" className="h-3 w-3" />
+                            {copy.visibilityButtonText}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-2 truncate font-medium text-secondary-950 dark:text-secondary-50">
+                        {question.text}
+                      </div>
                     </div>
-                    <div className="mt-2 truncate font-medium text-secondary-950 dark:text-secondary-50">
-                      {question.text}
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
+              {prototypeVariant !== 'original' && (
+                <div
+                  className="flex shrink-0 items-center"
+                  data-prototype-hierarchy-slot
+                >
+                  {(hierarchyBadgeCounts.get(question.id) ?? 0) > 0 && (
+                    <span className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-primary-200 bg-primary-50 px-2.5 text-xs text-primary-900 dark:border-primary-900 dark:bg-primary-950 dark:text-primary-100">
+                      <GitBranch aria-hidden="true" className="h-3.5 w-3.5" />
+                      {copy.hierarchyBadgeLabel} ·{' '}
+                      {hierarchyBadgeCounts.get(question.id)}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )
@@ -3579,12 +3654,57 @@ export default function RequirementSelectionQuestionsClient() {
     : null
 
   return (
-    <div className="section-padding">
+    <div
+      className={`section-padding ${prototypeEnabled ? 'question-layout-prototype' : ''}`}
+      data-prototype-variant={prototypeVariant}
+    >
       <ListWorkspace
         context="requirement selection questions"
         ref={contentRef}
         reserveActions
       >
+        {prototypeEnabled && (
+          <QuestionLayoutPrototypeSwitcher
+            longText={prototypeLongText}
+            onLongText={() => {
+              const next = !prototypeLongText
+              setPrototypeLongText(next)
+              setQuestions(current =>
+                current.map((question, index) => ({
+                  ...question,
+                  text: `${prototypeOriginalTexts.current.get(question.id) ?? question.text}${next && index < 3 ? prototypeCopy('longTextSuffix') : ''}`,
+                })),
+              )
+            }}
+            onReset={() => {
+              setExpandedQuestionIds(new Set())
+              setQuestionSearch('')
+              setAreaFilter('')
+              setStatusFilter('')
+              void reload()
+            }}
+            onVariant={changePrototypeVariant}
+            state={{
+              questionSearch,
+              areaFilter,
+              statusFilter,
+              expandedQuestionIds: [...expandedQuestionIds],
+              hierarchyQuestionId,
+              visibilityPanelQuestionId,
+              draggedQuestionId,
+              questions: questions.map(question => ({
+                id: question.id,
+                code: question.questionCode,
+                text: question.text,
+                area: question.areaName,
+                sortOrder: question.sortOrder,
+                canManage: question.permissions.canManage,
+                answerOrder: question.answers.map(answer => answer.id),
+              })),
+            }}
+            variant={prototypeVariant}
+          />
+        )}
         {questionDragPreviewContent}
         {questionDropMarkerContent}
         <FloatingActionRail
@@ -3752,7 +3872,7 @@ export default function RequirementSelectionQuestionsClient() {
                       {group.areaPrefix}
                     </span>
                   </div>
-                  <ul className="space-y-3">
+                  <ul className="space-y-3" data-prototype-question-list>
                     {group.questions.map(question => {
                       const isExpanded = expandedQuestionIds.has(question.id)
                       const detailsId = `requirement-selection-question-details-${question.id}`
@@ -3810,6 +3930,7 @@ export default function RequirementSelectionQuestionsClient() {
                                 ? 'invisible'
                                 : ''
                             }`}
+                            data-prototype-row-header
                           >
                             {question.permissions.canManage ? (
                               <>
@@ -3874,6 +3995,7 @@ export default function RequirementSelectionQuestionsClient() {
                               aria-controls={detailsId}
                               aria-expanded={isExpanded}
                               className="block min-w-0 flex-1 px-4 py-4 text-left transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-400/60 dark:hover:bg-secondary-800/50"
+                              data-prototype-disclosure
                               onClick={() =>
                                 toggleQuestionExpansion(question.id)
                               }
@@ -3896,66 +4018,98 @@ export default function RequirementSelectionQuestionsClient() {
                                     ? copy.hideQuestionDetails
                                     : copy.showQuestionDetails}
                                 </span>
-                                <span className="min-w-0 flex-1">
-                                  <span className="flex flex-wrap items-center gap-2">
-                                    <span className="rounded-md bg-secondary-100 px-2 py-1 font-mono text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
-                                      {question.questionCode}
-                                    </span>
-                                    <span className="text-xs text-secondary-500">
-                                      {question.areaName}
-                                    </span>
-                                    <span className="text-xs text-secondary-500">
-                                      {question.selectionType === 'multiple'
+                                {prototypeVariant !== 'original' ? (
+                                  <QuestionPrototypeSummary
+                                    active={question.isActive}
+                                    answers={answerCountText}
+                                    archived={question.isArchived}
+                                    area={question.areaName}
+                                    code={question.questionCode}
+                                    conditional={
+                                      question.visibilityGroups.length > 0
+                                    }
+                                    status={statusText(question, copy)}
+                                    text={question.text}
+                                    type={
+                                      question.selectionType === 'multiple'
                                         ? copy.multiple
-                                        : copy.single}
-                                    </span>
-                                    <span className="text-xs font-medium text-secondary-700 dark:text-secondary-300">
-                                      {statusText(question, copy)}
-                                    </span>
-                                    <span className="text-xs text-secondary-500 dark:text-secondary-400">
-                                      {answerCountText}
-                                    </span>
-                                    {question.visibilityGroups.length > 0 ? (
-                                      <span className="inline-flex items-center gap-1 rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
-                                        <Eye
-                                          aria-hidden="true"
-                                          className="h-3 w-3"
-                                        />
-                                        {copy.visibilityButtonText}
+                                        : copy.single
+                                    }
+                                    variant={prototypeVariant}
+                                    visibility={copy.visibilityButtonText}
+                                  />
+                                ) : (
+                                  <span className="min-w-0 flex-1">
+                                    <span className="flex flex-wrap items-center gap-2">
+                                      <span className="rounded-md bg-secondary-100 px-2 py-1 font-mono text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                                        {question.questionCode}
                                       </span>
-                                    ) : null}
+                                      <span className="text-xs text-secondary-500">
+                                        {question.areaName}
+                                      </span>
+                                      <span className="text-xs text-secondary-500">
+                                        {question.selectionType === 'multiple'
+                                          ? copy.multiple
+                                          : copy.single}
+                                      </span>
+                                      <span className="text-xs font-medium text-secondary-700 dark:text-secondary-300">
+                                        {statusText(question, copy)}
+                                      </span>
+                                      <span className="text-xs text-secondary-500 dark:text-secondary-400">
+                                        {answerCountText}
+                                      </span>
+                                      {question.visibilityGroups.length > 0 ? (
+                                        <span className="inline-flex items-center gap-1 rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
+                                          <Eye
+                                            aria-hidden="true"
+                                            className="h-3 w-3"
+                                          />
+                                          {copy.visibilityButtonText}
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                    <span className="mt-2 block font-medium text-secondary-950 dark:text-secondary-50">
+                                      {question.text}
+                                    </span>
                                   </span>
-                                  <span className="mt-2 block font-medium text-secondary-950 dark:text-secondary-50">
-                                    {question.text}
-                                  </span>
-                                </span>
+                                )}
                               </div>
                             </button>
-                            {hierarchyCount > 0 ? (
-                              <div className="flex shrink-0 items-start px-4 py-4 pl-0">
-                                <button
-                                  aria-label={`${copy.hierarchyBadgeAria}: ${
-                                    question.questionCode
-                                  }, ${hierarchyCount} ${
-                                    hierarchyCount === 1
-                                      ? copy.hierarchyQuestionCountSingular
-                                      : copy.hierarchyQuestionCountPlural
-                                  }`}
-                                  className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-primary-200 bg-primary-50 px-2.5 text-xs font-medium text-primary-900 transition-colors hover:border-primary-300 hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100 dark:hover:border-primary-800 dark:hover:bg-primary-950/70"
-                                  onClick={() => openHierarchyDialog(question)}
-                                  type="button"
-                                  {...devMarker({
-                                    context: 'requirementSelectionQuestions',
-                                    name: 'hierarchy badge',
-                                    value: question.questionCode,
-                                  })}
-                                >
-                                  <GitBranch
-                                    aria-hidden="true"
-                                    className="h-3.5 w-3.5"
-                                  />
-                                  {copy.hierarchyBadgeLabel} · {hierarchyCount}
-                                </button>
+                            {hierarchyCount > 0 ||
+                            (prototypeEnabled &&
+                              prototypeVariant !== 'original') ? (
+                              <div
+                                className="flex shrink-0 items-start px-4 py-4 pl-0"
+                                data-prototype-hierarchy-slot
+                              >
+                                {hierarchyCount > 0 && (
+                                  <button
+                                    aria-label={`${copy.hierarchyBadgeAria}: ${
+                                      question.questionCode
+                                    }, ${hierarchyCount} ${
+                                      hierarchyCount === 1
+                                        ? copy.hierarchyQuestionCountSingular
+                                        : copy.hierarchyQuestionCountPlural
+                                    }`}
+                                    className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-primary-200 bg-primary-50 px-2.5 text-xs font-medium text-primary-900 transition-colors hover:border-primary-300 hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100 dark:hover:border-primary-800 dark:hover:bg-primary-950/70"
+                                    onClick={() =>
+                                      openHierarchyDialog(question)
+                                    }
+                                    type="button"
+                                    {...devMarker({
+                                      context: 'requirementSelectionQuestions',
+                                      name: 'hierarchy badge',
+                                      value: question.questionCode,
+                                    })}
+                                  >
+                                    <GitBranch
+                                      aria-hidden="true"
+                                      className="h-3.5 w-3.5"
+                                    />
+                                    {copy.hierarchyBadgeLabel} ·{' '}
+                                    {hierarchyCount}
+                                  </button>
+                                )}
                               </div>
                             ) : null}
                           </div>
