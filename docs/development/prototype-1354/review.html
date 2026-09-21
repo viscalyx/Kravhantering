@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width,initial-scale=1" name="viewport" >
+  <title>#1354 · Requirement area layout review</title>
+  <link href="review.css" rel="stylesheet" >
+</head>
+<body><main>
+  <span class="badge">THROWAWAY PROTOTYPE · ISSUE #1354</span>
+  <h1>Read the meaning. Find the responsible people.</h1>
+  <p>Compare the same six examples in the real application shell. Choose a screen size, navigation state and theme. These are captured browser images; no server or login is needed.</p>
+  <p><a href="README.md">Launch instructions and complete verification checklist</a> · <a href="evidence/observations.json">Recorded measurements and interaction checks</a> · <a href="http://localhost:3001/sv/requirement-areas?variant=A&amp;sample=stress">Open interactive prototype</a></p>
+  <div class="controls">
+    <label>Viewport <select id="viewport"><option value="1440">1440 × 900</option><option value="1920">1920 × 1080</option></select></label>
+    <label>Navigation <select id="navigation"><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></label>
+    <label>Theme <select id="theme"><option value="light">Light</option><option value="dark">Dark</option></select></label>
+    <button aria-pressed="false" id="arrange" type="button" >Stack images</button>
+    <button aria-pressed="false" id="zoom" type="button" >Actual pixel size</button>
+  </div>
+  <p class="hint" id="case" role="status"></p>
+  <div class="comparison" id="comparison">
+    <section class="pane"><header><label>Left <select id="left"><option value="before">Before · Current table</option><option value="A">A · Compact table</option><option value="B">B · Description rows</option><option value="C">C · Area cards</option></select></label><a href="evidence/1440-collapsed-light-sv-stress-before.png" id="left-full" rel="noopener" target="_blank" >Open full image</a></header><div class="image-frame"><img alt="" id="left-image" ></div><p class="notes" id="left-note"></p></section>
+    <section class="pane"><header><label>Right <select id="right"><option value="A">A · Compact table</option><option value="B">B · Description rows</option><option value="C">C · Area cards</option><option value="before">Before · Current table</option></select></label><a href="evidence/1440-collapsed-light-sv-stress-A.png" id="right-full" rel="noopener" target="_blank" >Open full image</a></header><div class="image-frame"><img alt="" id="right-image" ></div><p class="notes" id="right-note"></p></section>
+  </div>
+  <div class="cards">
+    <article><h2>A · Compact table</h2><p>Closest to the issue brief. Narrow prefix, stronger name, wrapping description, aligned responsibility and compact actions.</p><p><strong>Tradeoff:</strong> long descriptions and many co-authors still make a row tall. Small screens use internal table scrolling.</p></article>
+    <article><h2>B · Description rows</h2><p>Prefix, name and actions lead each row. The description spans the reading area; owner and co-authors sit below it.</p><p><strong>Tradeoff:</strong> easier reading of long text, but fewer areas visible and weaker comparison down columns.</p></article>
+    <article><h2>C · Area cards</h2><p>Each area groups its name, full description and responsibility. Two columns on desktop; one on narrow screens.</p><p><strong>Tradeoff:</strong> natural grouping, but variable card heights leave gaps. This explores a departure from the requested table structure.</p></article>
+  </div>
+  <h2>What to inspect</h2>
+  <table><thead><tr><th>Example</th><th>Check</th></tr></thead><tbody>
+    <tr><td>ANV</td><td>Short description and compact spacing; the name should lead.</td></tr>
+    <tr><td>INF</td><td>Read the entire long description and name. Compare line lengths and row height.</td></tr>
+    <tr><td>SAM</td><td>Five co-authors remain readable; owner and co-author information starts at the same height.</td></tr>
+    <tr><td>TOM</td><td>Empty description, missing owner display name, visible HSA ID, and no co-author management action.</td></tr>
+    <tr><td>IDN</td><td>The unbroken reference wraps without widening the page or covering actions.</td></tr>
+    <tr><td>PRV</td><td>Names read “Anonym” or “Anonymous”; HSA IDs remain visible.</td></tr>
+  </tbody></table>
+  <h2>Additional views</h2>
+  <div class="extras">
+    <a href="evidence/320-collapsed-light-en-stress-A.png">320px / English / A</a>
+    <a href="evidence/320-collapsed-light-en-stress-B.png">320px / English / B</a>
+    <a href="evidence/320-collapsed-light-en-stress-C.png">320px / English / C</a>
+    <a href="evidence/1440-collapsed-light-sv-empty-A.png">Empty list</a>
+    <a href="evidence/1920-expanded-dark-sv-live-A.png">Existing development data / A</a>
+  </div>
+  <p><strong>Provisional recommendation:</strong> start discussion with A. B and C explore how much reading space is worth giving up column scanning. No design has been approved for production.</p>
+  <p class="hint">The purple review controls are prototype tooling. All record actions in the prototype produce feedback only. Existing navigation and theme controls belong to the real application. Before reuses current column renderers; its actions are stubs too.</p>
+</main>
+<script>
+  const get = id => document.getElementById(id);
+  const notes = {
+    before: 'Before: single-line descriptions with ellipsis, standard name text, mixed owner/co-author alignment and 44px row controls.',
+    A: 'A: fixed compact prefix, emphasized names, flexible multiline description, aligned responsibility and 28px row controls.',
+    B: 'B: description gets a full reading row; responsibility moves below it. Compare how many areas fit on screen.',
+    C: 'C: two independent cards per desktop row, with responsibility grouped within each card. Compare gaps and reading order.'
+  };
+  function render() {
+    const viewport = get('viewport').value;
+    const navigation = get('navigation').value;
+    const theme = get('theme').value;
+    for (const side of ['left', 'right']) {
+      const variant = get(side).value;
+      const src = `evidence/${viewport}-${navigation}-${theme}-sv-stress-${variant}.png`;
+      get(`${side}-image`).src = src;
+      get(`${side}-image`).alt = `${variant}, ${viewport}px, ${navigation} navigation, ${theme} theme, same six examples`;
+      get(`${side}-full`).href = src;
+      get(`${side}-note`).textContent = notes[variant];
+    }
+    get('case').textContent = `${viewport}px · ${navigation} navigation · ${theme} theme · Swedish · same six in-memory examples`;
+  }
+  for (const id of ['viewport', 'navigation', 'theme', 'left', 'right']) get(id).addEventListener('change', render);
+  get('arrange').addEventListener('click', () => {
+    const active = get('comparison').classList.toggle('stacked');
+    get('arrange').setAttribute('aria-pressed', String(active));
+    get('arrange').textContent = active ? 'Side by side' : 'Stack images';
+  });
+  get('zoom').addEventListener('click', () => {
+    const active = get('comparison').classList.toggle('natural');
+    get('zoom').setAttribute('aria-pressed', String(active));
+    get('zoom').textContent = active ? 'Fit images' : 'Actual pixel size';
+  });
+  render();
+</script>
+</body>
+</html>

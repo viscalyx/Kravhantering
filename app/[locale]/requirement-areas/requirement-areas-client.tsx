@@ -1,6 +1,7 @@
 'use client'
 
 import { UserRoundCog, UsersRound } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useState } from 'react'
 import CoAuthorsManagementModal from '@/components/CoAuthorsManagementModal'
@@ -23,6 +24,7 @@ import {
   formatActorDisplayNameForLocale,
   formatActorDisplayNameSummaryForLocale,
 } from '@/lib/privacy/display-name'
+import RequirementAreasPrototype from './requirement-areas-prototype'
 
 const REQUIREMENT_AREAS_HELP: HelpContent = {
   sections: [
@@ -43,7 +45,7 @@ const REQUIREMENT_AREAS_HELP: HelpContent = {
 const AREA_INPUT_CLASS_NAME =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
 
-interface Area {
+export interface Area {
   coAuthors: Array<{
     displayName: string | null
     hsaId: string
@@ -114,6 +116,7 @@ const toUpdatePayload = (form: AreaForm) => ({
 })
 
 export default function RequirementAreasClient() {
+  const prototypeParams = useSearchParams()
   useHelpContent(REQUIREMENT_AREAS_HELP)
   const t = useTranslations('area')
   const tn = useTranslations('nav')
@@ -238,6 +241,18 @@ export default function RequirementAreasClient() {
         ),
     },
   ]
+
+  // Throwaway #1354 rendering only. The normal route and production stay intact.
+  if (process.env.NODE_ENV !== 'production' && prototypeParams.has('variant')) {
+    return (
+      <RequirementAreasPrototype
+        areas={controller.items}
+        columns={columns}
+        error={controller.loadError}
+        loading={controller.loading}
+      />
+    )
+  }
 
   return (
     <CrudAdminPanel

@@ -1,0 +1,148 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font:
+    16px / 1.5 system-ui,
+    sans-serif;
+  color: #182033;
+  background: #f5f6fa;
+}
+main {
+  max-width: 1900px;
+  padding: 24px;
+  margin: auto;
+}
+h1 {
+  margin: 8px 0;
+  font-size: 28px;
+}
+h2 {
+  font-size: 20px;
+}
+a {
+  color: #4730a5;
+}
+button,
+select {
+  padding: 7px 12px;
+  font: inherit;
+  color: #182033;
+  background: white;
+  border: 1px solid #a8afbf;
+  border-radius: 8px;
+}
+label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+button:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 3px solid #7249db;
+  outline-offset: 3px;
+}
+.badge {
+  font-size: 13px;
+  font-weight: 700;
+  color: #5b21b6;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 16px;
+  margin: 20px 0;
+  background: #fff;
+  border: 1px solid #d9deea;
+  border-radius: 12px;
+}
+.comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.comparison.stacked {
+  grid-template-columns: 1fr;
+}
+.pane {
+  min-width: 0;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #d9deea;
+  border-radius: 12px;
+}
+.pane header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #d9deea;
+}
+.image-frame {
+  max-height: 85vh;
+  overflow: auto;
+}
+.image-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.natural .image-frame img {
+  width: auto;
+  max-width: none;
+}
+.notes {
+  padding: 16px;
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 20px 0;
+}
+.cards article {
+  padding: 16px;
+  background: white;
+  border: 1px solid #d9deea;
+  border-radius: 12px;
+}
+.cards p {
+  margin: 8px 0;
+}
+code {
+  padding: 2px 5px;
+  background: #e9e5f5;
+  border-radius: 4px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+td,
+th {
+  padding: 10px;
+  text-align: left;
+  border: 1px solid #d9deea;
+}
+.hint {
+  color: #58627a;
+}
+.extras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+@media (max-width: 800px) {
+  .comparison,
+  .cards {
+    grid-template-columns: 1fr;
+  }
+  main {
+    padding: 12px;
+  }
+}

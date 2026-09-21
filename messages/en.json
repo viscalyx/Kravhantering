@@ -4066,5 +4066,34 @@
     "hiddenCreatedNorm": "The search hides the new norm reference “{name}”. It is still checked.",
     "creationPersistence": "The new object is saved immediately. Cancel in the selection dialog only discards the selection.",
     "searchHelp": "Search by name, reference ID or package purpose. Selections are kept when you filter the list."
+  },
+  "prototype1354": {
+    "badge": "Throwaway prototype · #1354",
+    "question": "Which layout makes descriptions and responsibility easiest to read?",
+    "switcher": "Prototype layout switcher",
+    "previous": "Previous variant",
+    "next": "Next variant",
+    "before": "Before",
+    "dataset": "Review data",
+    "live": "Existing data",
+    "stress": "Long and short examples",
+    "empty": "Empty list",
+    "state": "Review state and notes",
+    "notes": "Review notes (memory only)",
+    "readOnly": "Preview actions show feedback only. They do not save, create or delete records.",
+    "keyboard": "Use ← and → to change variant. Arrow keys inside these notes keep editing text. Reload preserves the variant and data choice, but clears notes and action feedback.",
+    "actionFeedback": "Preview: {action} · {name}. No changes saved.",
+    "names": {
+      "before": "Current table",
+      "A": "Compact table",
+      "B": "Description rows",
+      "C": "Area cards"
+    },
+    "summaries": {
+      "before": "Before: the current columns and cell styles, with preview-only actions.",
+      "A": "A · Keep column scanning; give descriptions flexible width and align responsibility at the top.",
+      "B": "B · Read each description across the row; place owner and co-authors together below it.",
+      "C": "C · Browse two columns of area cards; group description and responsibility within each card."
+    }
   }
 }

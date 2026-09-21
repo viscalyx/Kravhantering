@@ -4066,5 +4066,34 @@
     "hiddenCreatedNorm": "Sökningen döljer den nya normreferensen ”{name}”. Den är fortfarande markerad.",
     "creationPersistence": "Det nya objektet sparas direkt. Avbryt i väljdialogen kasserar endast urvalet.",
     "searchHelp": "Sök på namn, referens-ID eller paketets syfte. Markeringar behålls när du filtrerar listan."
+  },
+  "prototype1354": {
+    "badge": "Prototyp för utvärdering · #1354",
+    "question": "Vilken layout gör beskrivning och ansvar lättast att läsa?",
+    "switcher": "Välj prototyplayout",
+    "previous": "Föregående variant",
+    "next": "Nästa variant",
+    "before": "Före",
+    "dataset": "Granskningsdata",
+    "live": "Befintliga data",
+    "stress": "Långa och korta exempel",
+    "empty": "Tom lista",
+    "state": "Granskningsläge och anteckningar",
+    "notes": "Anteckningar (endast i minnet)",
+    "readOnly": "Åtgärderna visar endast återkoppling. De sparar, skapar eller tar inte bort poster.",
+    "keyboard": "Använd ← och → för att byta variant. Piltangenter i anteckningarna flyttar markören i texten. Omladdning bevarar variant och dataval men tömmer anteckningar och återkoppling.",
+    "actionFeedback": "Förhandsvisning: {action} · {name}. Inga ändringar sparade.",
+    "names": {
+      "before": "Nuvarande tabell",
+      "A": "Kompakt tabell",
+      "B": "Beskrivningsrader",
+      "C": "Kravområdeskort"
+    },
+    "summaries": {
+      "before": "Före: nuvarande kolumner och cellstilar, med åtgärder som endast visar återkoppling.",
+      "A": "A · Behåll kolumnöverblicken, ge beskrivningen flexibel bredd och toppjustera ansvarsinformationen.",
+      "B": "B · Läs beskrivningen över hela raden och samla ägare och medförfattare under den.",
+      "C": "C · Bläddra bland kravområdeskort i två kolumner med beskrivning och ansvar samlade på varje kort."
+    }
   }
 }

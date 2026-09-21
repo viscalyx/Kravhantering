@@ -1,0 +1,5853 @@
+{
+  "capturedAt": "2026-09-21T15:04:33.165Z",
+  "observations": [
+    {
+      "id": "1440-collapsed-light-sv-stress-before",
+      "width": 1440,
+      "navigation": "collapsed",
+      "theme": "light",
+      "variant": "before",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1304,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": false,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 85,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 85,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": false,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1440-collapsed-light-sv-stress-A",
+      "width": 1440,
+      "navigation": "collapsed",
+      "theme": "light",
+      "variant": "A",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1304,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 66,
+          "descriptionWidth": 435,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 323.5,
+          "coAuthorsTop": 323.5
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 159,
+          "descriptionWidth": 435,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 389.5,
+          "coAuthorsTop": 389.5
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 130,
+          "descriptionWidth": 435,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 548.84375,
+          "coAuthorsTop": 548.84375
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 53,
+          "descriptionWidth": 435,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 678.84375,
+          "coAuthorsTop": 678.84375
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 115,
+          "descriptionWidth": 435,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 731.84375,
+          "coAuthorsTop": 731.84375
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 66,
+          "descriptionWidth": 435,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 846.40625,
+          "coAuthorsTop": 846.40625
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1440-collapsed-light-sv-stress-B",
+      "width": 1440,
+      "navigation": "collapsed",
+      "theme": "light",
+      "variant": "B",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1304,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 184,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 376.390625,
+          "coAuthorsTop": 376.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 229,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 605.5625,
+          "coAuthorsTop": 605.5625
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 185,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 789.953125,
+          "coAuthorsTop": 789.953125
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 164,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 975.34375,
+          "coAuthorsTop": 975.34375
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 229,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1184.515625,
+          "coAuthorsTop": 1184.515625
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 183,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1368.90625,
+          "coAuthorsTop": 1368.90625
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1440-collapsed-light-sv-stress-C",
+      "width": 1440,
+      "navigation": "collapsed",
+      "theme": "light",
+      "variant": "C",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1304,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 246,
+          "descriptionWidth": 602,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 437.390625,
+          "coAuthorsTop": 437.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 314,
+          "descriptionWidth": 602,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 504.5625,
+          "coAuthorsTop": 504.5625
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 268,
+          "descriptionWidth": 602,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 766.953125,
+          "coAuthorsTop": 766.953125
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 226,
+          "descriptionWidth": 602,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 766.953125,
+          "coAuthorsTop": 766.953125
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 291,
+          "descriptionWidth": 602,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1096.125,
+          "coAuthorsTop": 1096.125
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 246,
+          "descriptionWidth": 602,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1051.34375,
+          "coAuthorsTop": 1051.34375
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1440-collapsed-dark-sv-stress-before",
+      "width": 1440,
+      "navigation": "collapsed",
+      "theme": "dark",
+      "variant": "before",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1304,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": false,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 85,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 85,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": false,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1440-collapsed-dark-sv-stress-A",
+      "width": 1440,
+      "navigation": "collapsed",
+      "theme": "dark",
+      "variant": "A",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1304,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 66,
+          "descriptionWidth": 435,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 323.5,
+          "coAuthorsTop": 323.5
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 159,
+          "descriptionWidth": 435,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 389.5,
+          "coAuthorsTop": 389.5
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 130,
+          "descriptionWidth": 435,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 548.84375,
+          "coAuthorsTop": 548.84375
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 53,
+          "descriptionWidth": 435,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 678.84375,
+          "coAuthorsTop": 678.84375
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 115,
+          "descriptionWidth": 435,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 731.84375,
+          "coAuthorsTop": 731.84375
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 66,
+          "descriptionWidth": 435,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 846.40625,
+          "coAuthorsTop": 846.40625
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1440-collapsed-dark-sv-stress-B",
+      "width": 1440,
+      "navigation": "collapsed",
+      "theme": "dark",
+      "variant": "B",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1304,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 184,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 376.390625,
+          "coAuthorsTop": 376.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 229,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 605.5625,
+          "coAuthorsTop": 605.5625
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 185,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 789.953125,
+          "coAuthorsTop": 789.953125
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 164,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 975.34375,
+          "coAuthorsTop": 975.34375
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 229,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1184.515625,
+          "coAuthorsTop": 1184.515625
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 183,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1368.90625,
+          "coAuthorsTop": 1368.90625
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1440-collapsed-dark-sv-stress-C",
+      "width": 1440,
+      "navigation": "collapsed",
+      "theme": "dark",
+      "variant": "C",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1304,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 246,
+          "descriptionWidth": 602,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 437.390625,
+          "coAuthorsTop": 437.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 314,
+          "descriptionWidth": 602,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 504.5625,
+          "coAuthorsTop": 504.5625
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 268,
+          "descriptionWidth": 602,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 766.953125,
+          "coAuthorsTop": 766.953125
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 226,
+          "descriptionWidth": 602,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 766.953125,
+          "coAuthorsTop": 766.953125
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 291,
+          "descriptionWidth": 602,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1096.125,
+          "coAuthorsTop": 1096.125
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 246,
+          "descriptionWidth": 602,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1051.34375,
+          "coAuthorsTop": 1051.34375
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1440-expanded-light-sv-stress-before",
+      "width": 1440,
+      "navigation": "expanded",
+      "theme": "light",
+      "variant": "before",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1179.9375,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": false,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 105,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 105,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": false,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1440-expanded-light-sv-stress-A",
+      "width": 1440,
+      "navigation": "expanded",
+      "theme": "light",
+      "variant": "A",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1115.21875,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 66,
+          "descriptionWidth": 341,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 323.5,
+          "coAuthorsTop": 323.5
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 204,
+          "descriptionWidth": 341,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 389.5,
+          "coAuthorsTop": 389.5
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 151,
+          "descriptionWidth": 341,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 593.625,
+          "coAuthorsTop": 593.625
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 53,
+          "descriptionWidth": 341,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 744.625,
+          "coAuthorsTop": 744.625
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 115,
+          "descriptionWidth": 341,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 797.625,
+          "coAuthorsTop": 797.625
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 69,
+          "descriptionWidth": 341,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 912.1875,
+          "coAuthorsTop": 912.1875
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1440-expanded-light-sv-stress-B",
+      "width": 1440,
+      "navigation": "expanded",
+      "theme": "light",
+      "variant": "B",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1138.46875,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 184,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 376.390625,
+          "coAuthorsTop": 376.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 229,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 605.5625,
+          "coAuthorsTop": 605.5625
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 185,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 789.953125,
+          "coAuthorsTop": 789.953125
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 164,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 975.34375,
+          "coAuthorsTop": 975.34375
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 229,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1184.515625,
+          "coAuthorsTop": 1184.515625
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 183,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1368.90625,
+          "coAuthorsTop": 1368.90625
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1440-expanded-light-sv-stress-C",
+      "width": 1440,
+      "navigation": "expanded",
+      "theme": "light",
+      "variant": "C",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1127.21875,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 246,
+          "descriptionWidth": 514,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 437.390625,
+          "coAuthorsTop": 437.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 336,
+          "descriptionWidth": 514,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 526.953125,
+          "coAuthorsTop": 526.953125
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 268,
+          "descriptionWidth": 514,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 789.34375,
+          "coAuthorsTop": 789.34375
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 226,
+          "descriptionWidth": 514,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 789.34375,
+          "coAuthorsTop": 789.34375
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 291,
+          "descriptionWidth": 514,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1118.515625,
+          "coAuthorsTop": 1118.515625
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 246,
+          "descriptionWidth": 514,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1073.734375,
+          "coAuthorsTop": 1073.734375
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1440-expanded-dark-sv-stress-before",
+      "width": 1440,
+      "navigation": "expanded",
+      "theme": "dark",
+      "variant": "before",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1138.4375,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": false,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 105,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 105,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": false,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1440-expanded-dark-sv-stress-A",
+      "width": 1440,
+      "navigation": "expanded",
+      "theme": "dark",
+      "variant": "A",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1119.8125,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 66,
+          "descriptionWidth": 343,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 323.5,
+          "coAuthorsTop": 323.5
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 204,
+          "descriptionWidth": 343,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 389.5,
+          "coAuthorsTop": 389.5
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 151,
+          "descriptionWidth": 343,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 593.625,
+          "coAuthorsTop": 593.625
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 53,
+          "descriptionWidth": 343,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 744.625,
+          "coAuthorsTop": 744.625
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 115,
+          "descriptionWidth": 343,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 797.625,
+          "coAuthorsTop": 797.625
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 69,
+          "descriptionWidth": 343,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 912.1875,
+          "coAuthorsTop": 912.1875
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1440-expanded-dark-sv-stress-B",
+      "width": 1440,
+      "navigation": "expanded",
+      "theme": "dark",
+      "variant": "B",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1119.796875,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 184,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 376.390625,
+          "coAuthorsTop": 376.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 229,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 605.5625,
+          "coAuthorsTop": 605.5625
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 185,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 789.953125,
+          "coAuthorsTop": 789.953125
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 164,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 975.34375,
+          "coAuthorsTop": 975.34375
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 229,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1184.515625,
+          "coAuthorsTop": 1184.515625
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 183,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1368.90625,
+          "coAuthorsTop": 1368.90625
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1440-expanded-dark-sv-stress-C",
+      "width": 1440,
+      "navigation": "expanded",
+      "theme": "dark",
+      "variant": "C",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1127.21875,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 246,
+          "descriptionWidth": 514,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 437.390625,
+          "coAuthorsTop": 437.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 336,
+          "descriptionWidth": 514,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 526.953125,
+          "coAuthorsTop": 526.953125
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 268,
+          "descriptionWidth": 514,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 789.34375,
+          "coAuthorsTop": 789.34375
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 226,
+          "descriptionWidth": 514,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 789.34375,
+          "coAuthorsTop": 789.34375
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 291,
+          "descriptionWidth": 514,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1118.515625,
+          "coAuthorsTop": 1118.515625
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 246,
+          "descriptionWidth": 514,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1073.734375,
+          "coAuthorsTop": 1073.734375
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-collapsed-light-sv-stress-before",
+      "width": 1920,
+      "navigation": "collapsed",
+      "theme": "light",
+      "variant": "before",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1784,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": false,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 81,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": false,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-collapsed-light-sv-stress-A",
+      "width": 1920,
+      "navigation": "collapsed",
+      "theme": "light",
+      "variant": "A",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1784,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 66,
+          "descriptionWidth": 675,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 323.5,
+          "coAuthorsTop": 323.5
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 115,
+          "descriptionWidth": 675,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 389.5,
+          "coAuthorsTop": 389.5
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 88,
+          "descriptionWidth": 675,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 504.0625,
+          "coAuthorsTop": 504.0625
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 53,
+          "descriptionWidth": 675,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 592.0625,
+          "coAuthorsTop": 592.0625
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 92,
+          "descriptionWidth": 675,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 645.0625,
+          "coAuthorsTop": 645.0625
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 66,
+          "descriptionWidth": 675,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 737.234375,
+          "coAuthorsTop": 737.234375
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-collapsed-light-sv-stress-B",
+      "width": 1920,
+      "navigation": "collapsed",
+      "theme": "light",
+      "variant": "B",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1784,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 184,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 376.390625,
+          "coAuthorsTop": 376.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 229,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 605.5625,
+          "coAuthorsTop": 605.5625
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 184,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 789.953125,
+          "coAuthorsTop": 789.953125
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 164,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 974.34375,
+          "coAuthorsTop": 974.34375
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 229,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1183.515625,
+          "coAuthorsTop": 1183.515625
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 183,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1367.90625,
+          "coAuthorsTop": 1367.90625
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-collapsed-light-sv-stress-C",
+      "width": 1920,
+      "navigation": "collapsed",
+      "theme": "light",
+      "variant": "C",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1784,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 246,
+          "descriptionWidth": 842,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 437.390625,
+          "coAuthorsTop": 437.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 291,
+          "descriptionWidth": 842,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 482.171875,
+          "coAuthorsTop": 482.171875
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 247,
+          "descriptionWidth": 842,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 744.5625,
+          "coAuthorsTop": 744.5625
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 226,
+          "descriptionWidth": 842,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 744.5625,
+          "coAuthorsTop": 744.5625
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 269,
+          "descriptionWidth": 842,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1030.34375,
+          "coAuthorsTop": 1030.34375
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 246,
+          "descriptionWidth": 842,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1007.953125,
+          "coAuthorsTop": 1007.953125
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-collapsed-dark-sv-stress-before",
+      "width": 1920,
+      "navigation": "collapsed",
+      "theme": "dark",
+      "variant": "before",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1784,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": false,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 81,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": false,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-collapsed-dark-sv-stress-A",
+      "width": 1920,
+      "navigation": "collapsed",
+      "theme": "dark",
+      "variant": "A",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1784,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 66,
+          "descriptionWidth": 675,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 323.5,
+          "coAuthorsTop": 323.5
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 115,
+          "descriptionWidth": 675,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 389.5,
+          "coAuthorsTop": 389.5
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 88,
+          "descriptionWidth": 675,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 504.0625,
+          "coAuthorsTop": 504.0625
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 53,
+          "descriptionWidth": 675,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 592.0625,
+          "coAuthorsTop": 592.0625
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 92,
+          "descriptionWidth": 675,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 645.0625,
+          "coAuthorsTop": 645.0625
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 66,
+          "descriptionWidth": 675,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 737.234375,
+          "coAuthorsTop": 737.234375
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-collapsed-dark-sv-stress-B",
+      "width": 1920,
+      "navigation": "collapsed",
+      "theme": "dark",
+      "variant": "B",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1784,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 184,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 376.390625,
+          "coAuthorsTop": 376.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 229,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 605.5625,
+          "coAuthorsTop": 605.5625
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 184,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 789.953125,
+          "coAuthorsTop": 789.953125
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 164,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 974.34375,
+          "coAuthorsTop": 974.34375
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 229,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1183.515625,
+          "coAuthorsTop": 1183.515625
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 183,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1367.90625,
+          "coAuthorsTop": 1367.90625
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-collapsed-dark-sv-stress-C",
+      "width": 1920,
+      "navigation": "collapsed",
+      "theme": "dark",
+      "variant": "C",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1784,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 246,
+          "descriptionWidth": 842,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 437.390625,
+          "coAuthorsTop": 437.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 291,
+          "descriptionWidth": 842,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 482.171875,
+          "coAuthorsTop": 482.171875
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 247,
+          "descriptionWidth": 842,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 744.5625,
+          "coAuthorsTop": 744.5625
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 226,
+          "descriptionWidth": 842,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 744.5625,
+          "coAuthorsTop": 744.5625
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 269,
+          "descriptionWidth": 842,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1030.34375,
+          "coAuthorsTop": 1030.34375
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 246,
+          "descriptionWidth": 842,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1007.953125,
+          "coAuthorsTop": 1007.953125
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-expanded-light-sv-stress-before",
+      "width": 1920,
+      "navigation": "expanded",
+      "theme": "light",
+      "variant": "before",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1696.21875,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": false,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 81,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": false,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-expanded-light-sv-stress-A",
+      "width": 1920,
+      "navigation": "expanded",
+      "theme": "light",
+      "variant": "A",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1592,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 323.5,
+          "coAuthorsTop": 323.5
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 137,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 389.5,
+          "coAuthorsTop": 389.5
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 109,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 526.453125,
+          "coAuthorsTop": 526.453125
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 53,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 635.453125,
+          "coAuthorsTop": 635.453125
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 92,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 688.453125,
+          "coAuthorsTop": 688.453125
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 780.625,
+          "coAuthorsTop": 780.625
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-expanded-light-sv-stress-B",
+      "width": 1920,
+      "navigation": "expanded",
+      "theme": "light",
+      "variant": "B",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1592.75,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 184,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 376.390625,
+          "coAuthorsTop": 376.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 229,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 605.5625,
+          "coAuthorsTop": 605.5625
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 184,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 789.953125,
+          "coAuthorsTop": 789.953125
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 164,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 974.34375,
+          "coAuthorsTop": 974.34375
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 229,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1183.515625,
+          "coAuthorsTop": 1183.515625
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 183,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1367.90625,
+          "coAuthorsTop": 1367.90625
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-expanded-light-sv-stress-C",
+      "width": 1920,
+      "navigation": "expanded",
+      "theme": "light",
+      "variant": "C",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1607.21875,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 246,
+          "descriptionWidth": 754,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 437.390625,
+          "coAuthorsTop": 437.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 314,
+          "descriptionWidth": 754,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 504.5625,
+          "coAuthorsTop": 504.5625
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 247,
+          "descriptionWidth": 754,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 766.953125,
+          "coAuthorsTop": 766.953125
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 226,
+          "descriptionWidth": 754,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 766.953125,
+          "coAuthorsTop": 766.953125
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 291,
+          "descriptionWidth": 754,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1075.125,
+          "coAuthorsTop": 1075.125
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 246,
+          "descriptionWidth": 754,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1030.34375,
+          "coAuthorsTop": 1030.34375
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-expanded-dark-sv-stress-before",
+      "width": 1920,
+      "navigation": "expanded",
+      "theme": "dark",
+      "variant": "before",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1635.109375,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": false,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 81,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": false,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 69,
+          "descriptionWidth": 320,
+          "clipped": true,
+          "whiteSpace": "nowrap",
+          "textOverflow": "ellipsis"
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-expanded-dark-sv-stress-A",
+      "width": 1920,
+      "navigation": "expanded",
+      "theme": "dark",
+      "variant": "A",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1635.109375,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 66,
+          "descriptionWidth": 601,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 323.5,
+          "coAuthorsTop": 323.5
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 115,
+          "descriptionWidth": 601,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 389.5,
+          "coAuthorsTop": 389.5
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 109,
+          "descriptionWidth": 601,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 504.0625,
+          "coAuthorsTop": 504.0625
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 53,
+          "descriptionWidth": 601,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 613.0625,
+          "coAuthorsTop": 613.0625
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 92,
+          "descriptionWidth": 601,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 666.0625,
+          "coAuthorsTop": 666.0625
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 66,
+          "descriptionWidth": 601,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 758.234375,
+          "coAuthorsTop": 758.234375
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-expanded-dark-sv-stress-B",
+      "width": 1920,
+      "navigation": "expanded",
+      "theme": "dark",
+      "variant": "B",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1607.1875,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 184,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 376.390625,
+          "coAuthorsTop": 376.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 229,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 605.5625,
+          "coAuthorsTop": 605.5625
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 184,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 789.953125,
+          "coAuthorsTop": 789.953125
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 164,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 974.34375,
+          "coAuthorsTop": 974.34375
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 229,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1183.515625,
+          "coAuthorsTop": 1183.515625
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 183,
+          "descriptionWidth": 839,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1367.90625,
+          "coAuthorsTop": 1367.90625
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-expanded-dark-sv-stress-C",
+      "width": 1920,
+      "navigation": "expanded",
+      "theme": "dark",
+      "variant": "C",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1599.8125,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 246,
+          "descriptionWidth": 750,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 437.390625,
+          "coAuthorsTop": 437.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 314,
+          "descriptionWidth": 750,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 504.5625,
+          "coAuthorsTop": 504.5625
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 247,
+          "descriptionWidth": 750,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 766.953125,
+          "coAuthorsTop": 766.953125
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 226,
+          "descriptionWidth": 750,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 766.953125,
+          "coAuthorsTop": 766.953125
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 291,
+          "descriptionWidth": 750,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1075.125,
+          "coAuthorsTop": 1075.125
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 246,
+          "descriptionWidth": 750,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1030.34375,
+          "coAuthorsTop": 1030.34375
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "320-collapsed-light-en-stress-A",
+      "width": 320,
+      "navigation": "collapsed",
+      "theme": "light",
+      "locale": "en",
+      "variant": "A",
+      "pageWidth": 320,
+      "pageScrollWidth": 320,
+      "workspaceWidth": 288,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 84,
+          "descriptionWidth": 224,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 501.5,
+          "coAuthorsTop": 501.5
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 316,
+          "descriptionWidth": 224,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 585.5,
+          "coAuthorsTop": 585.5
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 172,
+          "descriptionWidth": 224,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 901.578125,
+          "coAuthorsTop": 901.578125
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 73,
+          "descriptionWidth": 224,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1073.578125,
+          "coAuthorsTop": 1073.578125
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 182,
+          "descriptionWidth": 224,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1146.578125,
+          "coAuthorsTop": 1146.578125
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 84,
+          "descriptionWidth": 224,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1328.3125,
+          "coAuthorsTop": 1328.3125
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "320-collapsed-light-en-stress-B",
+      "width": 320,
+      "navigation": "collapsed",
+      "theme": "light",
+      "locale": "en",
+      "variant": "B",
+      "pageWidth": 320,
+      "pageScrollWidth": 320,
+      "workspaceWidth": 288,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 268,
+          "descriptionWidth": 254,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 560.1875,
+          "coAuthorsTop": 641.1875
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 538,
+          "descriptionWidth": 254,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1097.890625,
+          "coAuthorsTop": 1178.890625
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 333,
+          "descriptionWidth": 254,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1388.46875,
+          "coAuthorsTop": 1469.46875
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 247,
+          "descriptionWidth": 254,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1698.65625,
+          "coAuthorsTop": 1758.65625
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 400,
+          "descriptionWidth": 254,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2077.796875,
+          "coAuthorsTop": 2158.796875
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 310,
+          "descriptionWidth": 254,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2388.375,
+          "coAuthorsTop": 2469.375
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "320-collapsed-light-en-stress-C",
+      "width": 320,
+      "navigation": "collapsed",
+      "theme": "light",
+      "locale": "en",
+      "variant": "C",
+      "pageWidth": 320,
+      "pageScrollWidth": 320,
+      "workspaceWidth": 288,
+      "rows": [
+        {
+          "prefix": "ANV",
+          "rowHeight": 307,
+          "descriptionWidth": 246,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 594.390625,
+          "coAuthorsTop": 675.390625
+        },
+        {
+          "prefix": "INF",
+          "rowHeight": 533,
+          "descriptionWidth": 246,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1143.296875,
+          "coAuthorsTop": 1224.296875
+        },
+        {
+          "prefix": "SAM",
+          "rowHeight": 372,
+          "descriptionWidth": 246,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1489.078125,
+          "coAuthorsTop": 1570.078125
+        },
+        {
+          "prefix": "TOM",
+          "rowHeight": 286,
+          "descriptionWidth": 246,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1854.46875,
+          "coAuthorsTop": 1914.46875
+        },
+        {
+          "prefix": "IDN",
+          "rowHeight": 419,
+          "descriptionWidth": 246,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2268.8125,
+          "coAuthorsTop": 2349.8125
+        },
+        {
+          "prefix": "PRV",
+          "rowHeight": 330,
+          "descriptionWidth": 246,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2614.59375,
+          "coAuthorsTop": 2695.59375
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": true,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1440-collapsed-light-sv-empty-A",
+      "width": 1440,
+      "navigation": "collapsed",
+      "theme": "light",
+      "variant": "A",
+      "sample": "empty",
+      "pageWidth": 1440,
+      "pageScrollWidth": 1440,
+      "workspaceWidth": 1304,
+      "rows": [],
+      "actionTargets": [],
+      "anonymousVisible": false,
+      "sentinelVisible": false
+    },
+    {
+      "id": "1920-expanded-dark-sv-live-A",
+      "width": 1920,
+      "navigation": "expanded",
+      "theme": "dark",
+      "variant": "A",
+      "sample": "live",
+      "pageWidth": 1920,
+      "pageScrollWidth": 1920,
+      "workspaceWidth": 1592,
+      "rows": [
+        {
+          "prefix": "record-1",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 323.5,
+          "coAuthorsTop": 323.5
+        },
+        {
+          "prefix": "record-2",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 389.5,
+          "coAuthorsTop": 389.5
+        },
+        {
+          "prefix": "record-3",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 455.5,
+          "coAuthorsTop": 455.5
+        },
+        {
+          "prefix": "record-4",
+          "rowHeight": 67,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 521.5,
+          "coAuthorsTop": 521.5
+        },
+        {
+          "prefix": "record-5",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 588.5,
+          "coAuthorsTop": 588.5
+        },
+        {
+          "prefix": "record-6",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 661.5,
+          "coAuthorsTop": 661.5
+        },
+        {
+          "prefix": "record-7",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 734.5,
+          "coAuthorsTop": 734.5
+        },
+        {
+          "prefix": "record-8",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 807.5,
+          "coAuthorsTop": 807.5
+        },
+        {
+          "prefix": "record-9",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 880.5,
+          "coAuthorsTop": 880.5
+        },
+        {
+          "prefix": "record-10",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 953.5,
+          "coAuthorsTop": 953.5
+        },
+        {
+          "prefix": "record-11",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1026.5,
+          "coAuthorsTop": 1026.5
+        },
+        {
+          "prefix": "record-12",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1099.5,
+          "coAuthorsTop": 1099.5
+        },
+        {
+          "prefix": "record-13",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1172.5,
+          "coAuthorsTop": 1172.5
+        },
+        {
+          "prefix": "record-14",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1245.5,
+          "coAuthorsTop": 1245.5
+        },
+        {
+          "prefix": "record-15",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1318.5,
+          "coAuthorsTop": 1318.5
+        },
+        {
+          "prefix": "record-16",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1391.5,
+          "coAuthorsTop": 1391.5
+        },
+        {
+          "prefix": "record-17",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1464.5,
+          "coAuthorsTop": 1464.5
+        },
+        {
+          "prefix": "record-18",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1537.5,
+          "coAuthorsTop": 1537.5
+        },
+        {
+          "prefix": "record-19",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1610.5,
+          "coAuthorsTop": 1610.5
+        },
+        {
+          "prefix": "record-20",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1683.5,
+          "coAuthorsTop": 1683.5
+        },
+        {
+          "prefix": "record-21",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1756.5,
+          "coAuthorsTop": 1756.5
+        },
+        {
+          "prefix": "record-22",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1829.5,
+          "coAuthorsTop": 1829.5
+        },
+        {
+          "prefix": "record-23",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1895.5,
+          "coAuthorsTop": 1895.5
+        },
+        {
+          "prefix": "record-24",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 1961.5,
+          "coAuthorsTop": 1961.5
+        },
+        {
+          "prefix": "record-25",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2027.5,
+          "coAuthorsTop": 2027.5
+        },
+        {
+          "prefix": "record-26",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2093.5,
+          "coAuthorsTop": 2093.5
+        },
+        {
+          "prefix": "record-27",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2159.5,
+          "coAuthorsTop": 2159.5
+        },
+        {
+          "prefix": "record-28",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2225.5,
+          "coAuthorsTop": 2225.5
+        },
+        {
+          "prefix": "record-29",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2291.5,
+          "coAuthorsTop": 2291.5
+        },
+        {
+          "prefix": "record-30",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2357.5,
+          "coAuthorsTop": 2357.5
+        },
+        {
+          "prefix": "record-31",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2423.5,
+          "coAuthorsTop": 2423.5
+        },
+        {
+          "prefix": "record-32",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2496.5,
+          "coAuthorsTop": 2496.5
+        },
+        {
+          "prefix": "record-33",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2562.5,
+          "coAuthorsTop": 2562.5
+        },
+        {
+          "prefix": "record-34",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2628.5,
+          "coAuthorsTop": 2628.5
+        },
+        {
+          "prefix": "record-35",
+          "rowHeight": 73,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2701.5,
+          "coAuthorsTop": 2701.5
+        },
+        {
+          "prefix": "record-36",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2774.5,
+          "coAuthorsTop": 2774.5
+        },
+        {
+          "prefix": "record-37",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2840.5,
+          "coAuthorsTop": 2840.5
+        },
+        {
+          "prefix": "record-38",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2906.5,
+          "coAuthorsTop": 2906.5
+        },
+        {
+          "prefix": "record-39",
+          "rowHeight": 66,
+          "descriptionWidth": 579,
+          "clipped": false,
+          "whiteSpace": "normal",
+          "textOverflow": "clip",
+          "ownerTop": 2972.5,
+          "coAuthorsTop": 2972.5
+        }
+      ],
+      "actionTargets": [
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        },
+        {
+          "width": 28,
+          "height": 28
+        }
+      ],
+      "anonymousVisible": false,
+      "sentinelVisible": false
+    }
+  ],
+  "interactions": [
+    "Direct switch, URL persistence, reload, keyboard forward/backward wrap passed.",
+    "Arrow keys inside the notes field keep the current variant.",
+    "Create, edit, delete and co-author previews give feedback; keyboard activation works.",
+    "Empty-list choice survives reload; rows disappear.",
+    "In-memory notes clear on reload.",
+    "Normal route without variant retains the original page."
+  ],
+  "unsafeRequests": [],
+  "browserErrors": [],
+  "failures": []
+}
