@@ -27,9 +27,9 @@ the approved RFI layout; the selection-question fix remains implementation work.
 
 ## Start and open
 
-The prototype branch is preserved upstream. The review worktree is removed
-and its development servers are stopped. Recreate a worktree using the steps
-below, then start with one command from that worktree:
+The prototype branch is preserved upstream. The review worktree is removed.
+Recreate a worktree using the steps below, then start with one command from
+that worktree:
 
 ```sh
 cd /mnt/krav-azure-dev-data/.worktrees/issue-1357-rfi-layouts
