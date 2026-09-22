@@ -67,6 +67,21 @@ export async function apiFetch(
     init?.method ?? (input instanceof Request ? input.method : 'GET')
   ).toUpperCase()
 
+  // THROWAWAY #1357: keep live reads/auth, block product writes in this worktree.
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_ISSUE_1357_PROTOTYPE === 'true' &&
+    !SAFE_METHODS.has(method)
+  ) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('prototype-1357-write-blocked'))
+    }
+    return Response.json(
+      { error: 'PROTOTYPE #1357: saving is disabled. No data was changed.' },
+      { status: 409 },
+    )
+  }
+
   if (SAFE_METHODS.has(method)) {
     if (init === undefined) {
       return reportUnauthorizedResponse(input, await fetch(input))

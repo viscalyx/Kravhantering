@@ -13,13 +13,19 @@ import {
   Search,
   X,
 } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import RfiPrototypeSummary, {
+  RFI_PROTOTYPE_ENABLED,
+  RFI_PROTOTYPE_VARIANTS,
+} from '@/app/[locale]/requirements/stewardship/rfi-layout.prototype'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import FormModal from '@/components/FormModal'
 import ListWorkspace from '@/components/ListWorkspace'
+import PrototypeSwitcher from '@/components/PrototypeSwitcher'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
@@ -215,6 +221,14 @@ interface RfiCopy {
 
 export default function RfiQuestionsClient() {
   const locale = useLocale()
+  const searchParams = useSearchParams()
+  const requestedVariant = searchParams.get('variant') ?? 'A'
+  const prototypeVariant = RFI_PROTOTYPE_VARIANTS.some(
+    item => item.key === requestedVariant,
+  )
+    ? requestedVariant
+    : 'A'
+  const [prototypeExamples, setPrototypeExamples] = useState(false)
   const t = useTranslations('rfiQuestions')
   const tc = useTranslations('common')
   const { confirm } = useConfirmModal()
@@ -375,12 +389,23 @@ export default function RfiQuestionsClient() {
 
   const orderedQuestions = useMemo(
     () =>
-      [...questions].sort((left, right) => {
-        const areaComparison = left.areaName.localeCompare(right.areaName)
-        if (areaComparison !== 0) return areaComparison
-        return left.questionCode.localeCompare(right.questionCode)
-      }),
-    [questions],
+      questions
+        .map((question, index) =>
+          RFI_PROTOTYPE_ENABLED && prototypeExamples && index < 3
+            ? {
+                ...question,
+                questionText: `${question.questionText} — PROTOTYPE: Beskriv hur lösningen hanterar många samtidiga användare, dokumenterade undantag och spårbar uppföljning över organisationsgränser. Förklara även hur ett mycket långt referensvärde som ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ hanteras utan att information eller åtgärder försvinner.`,
+                isArchived: index === 1,
+                versionNumber: index === 1 ? 12 : question.versionNumber,
+              }
+            : question,
+        )
+        .sort((left, right) => {
+          const areaComparison = left.areaName.localeCompare(right.areaName)
+          if (areaComparison !== 0) return areaComparison
+          return left.questionCode.localeCompare(right.questionCode)
+        }),
+    [questions, prototypeExamples],
   )
 
   const areaById = useMemo(() => {
@@ -1172,7 +1197,10 @@ export default function RfiQuestionsClient() {
   )
 
   return (
-    <main className="section-padding">
+    <main
+      className="section-padding"
+      data-rfi-prototype={RFI_PROTOTYPE_ENABLED ? prototypeVariant : undefined}
+    >
       <ListWorkspace context="rfiQuestions" reserveActions>
         <FloatingActionRail
           anchorRef={listAnchorRef}
@@ -1301,7 +1329,14 @@ export default function RfiQuestionsClient() {
           </p>
         ) : null}
 
-        <div className="mb-5 grid gap-3 rounded-2xl border bg-white/80 p-4 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60 md:grid-cols-[minmax(0,1fr)_220px_180px_180px_190px]">
+        <div
+          data-rfi-filters=""
+          {...devMarker({
+            context: 'rfiQuestions',
+            name: 'prototype filter row',
+          })}
+          className="mb-5 grid gap-3 rounded-2xl border bg-white/80 p-4 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60 md:grid-cols-[minmax(0,1fr)_220px_180px_180px_190px]"
+        >
           <label className="relative block">
             <Search
               aria-hidden="true"
@@ -1411,7 +1446,14 @@ export default function RfiQuestionsClient() {
                       </div>
                     </div>
                     {group.questions.length > 0 ? (
-                      <ul className="space-y-3">
+                      <ul
+                        className="space-y-3"
+                        data-rfi-list=""
+                        {...devMarker({
+                          context: 'rfiQuestions',
+                          name: 'prototype area list',
+                        })}
+                      >
                         {group.questions.map(question => {
                           const isExpanded = expandedQuestionIds.has(
                             question.id,
@@ -1432,6 +1474,7 @@ export default function RfiQuestionsClient() {
                               className={`overflow-hidden rounded-2xl border bg-white/80 shadow-sm transition-all duration-150 hover:bg-secondary-50 dark:border-secondary-800 dark:bg-secondary-900/60 dark:hover:bg-secondary-800/50 ${
                                 isExpanded ? 'ring-2 ring-primary-500' : ''
                               }`}
+                              data-rfi-row={question.questionCode}
                               key={question.id}
                             >
                               <div className="flex items-stretch">
@@ -1439,6 +1482,7 @@ export default function RfiQuestionsClient() {
                                   aria-controls={detailsId}
                                   aria-expanded={isExpanded}
                                   className="block min-w-0 flex-1 px-4 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-400/60"
+                                  data-rfi-disclosure=""
                                   onClick={() =>
                                     toggleQuestionExpansion(question.id)
                                   }
@@ -1461,35 +1505,57 @@ export default function RfiQuestionsClient() {
                                         ? copy.hideQuestionDetails
                                         : copy.showQuestionDetails}
                                     </span>
-                                    <span className="min-w-0 flex-1">
-                                      <span className="flex flex-wrap items-center gap-2">
-                                        <span className="rounded-md bg-secondary-100 px-2 py-1 font-mono text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
-                                          {question.questionCode}
+                                    {RFI_PROTOTYPE_ENABLED &&
+                                    prototypeVariant !== 'original' ? (
+                                      <RfiPrototypeSummary
+                                        archived={question.isArchived}
+                                        area={question.areaName}
+                                        code={question.questionCode}
+                                        status={questionStatusLabel(
+                                          question,
+                                          copy,
+                                        )}
+                                        text={question.questionText}
+                                        variant={prototypeVariant}
+                                        version={question.versionNumber}
+                                      />
+                                    ) : (
+                                      <span className="min-w-0 flex-1">
+                                        <span className="flex flex-wrap items-center gap-2">
+                                          <span className="rounded-md bg-secondary-100 px-2 py-1 font-mono text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                                            {question.questionCode}
+                                          </span>
+                                          <span className="text-xs text-secondary-500">
+                                            {question.areaName}
+                                          </span>
+                                          <span className="rounded-md bg-secondary-100 px-2 py-1 text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                                            v{question.versionNumber ?? '-'}
+                                          </span>
+                                          <span
+                                            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ${
+                                              question.isArchived
+                                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200'
+                                                : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
+                                            }`}
+                                          >
+                                            {questionStatusIcon(question)}
+                                            {questionStatusLabel(
+                                              question,
+                                              copy,
+                                            )}
+                                          </span>
                                         </span>
-                                        <span className="text-xs text-secondary-500">
-                                          {question.areaName}
-                                        </span>
-                                        <span className="rounded-md bg-secondary-100 px-2 py-1 text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
-                                          v{question.versionNumber ?? '-'}
-                                        </span>
-                                        <span
-                                          className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ${
-                                            question.isArchived
-                                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200'
-                                              : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
-                                          }`}
-                                        >
-                                          {questionStatusIcon(question)}
-                                          {questionStatusLabel(question, copy)}
+                                        <span className="mt-2 block font-medium text-secondary-950 dark:text-secondary-50">
+                                          {question.questionText}
                                         </span>
                                       </span>
-                                      <span className="mt-2 block font-medium text-secondary-950 dark:text-secondary-50">
-                                        {question.questionText}
-                                      </span>
-                                    </span>
+                                    )}
                                   </div>
                                 </button>
-                                <div className="flex shrink-0 items-start justify-end gap-1 px-4 py-4 pl-0">
+                                <div
+                                  className="flex shrink-0 items-start justify-end gap-1 px-4 py-4 pl-0"
+                                  data-rfi-actions=""
+                                >
                                   {canManageQuestion ? (
                                     <>
                                       <button
@@ -1601,6 +1667,47 @@ export default function RfiQuestionsClient() {
           </div>
         </div>
       </ListWorkspace>
+      {RFI_PROTOTYPE_ENABLED && (
+        <PrototypeSwitcher
+          current={prototypeVariant}
+          examples={prototypeExamples}
+          onReset={() => {
+            setPrototypeExamples(false)
+            setAreaFilter('')
+            setStatusFilter('')
+            setSuggestionFilter('')
+            setQuestionSearch('')
+            setExpandedQuestionIds(new Set())
+            setSuggestionTarget(null)
+            setShowQuestionForm(false)
+            setError(null)
+          }}
+          onToggleExamples={() => setPrototypeExamples(value => !value)}
+          state={{
+            filters: {
+              areaFilter,
+              statusFilter,
+              suggestionFilter,
+              questionSearch,
+            },
+            expandedQuestionIds: [...expandedQuestionIds],
+            editableAreaIds: [...editableAreaIds],
+            visibleQuestionCodes: filteredQuestions.map(
+              question => question.questionCode,
+            ),
+            questions: orderedQuestions,
+            suggestionTarget,
+            suggestionCounts: {
+              total: suggestions.length,
+              untreated: suggestions.filter(isUntreatedSuggestion).length,
+            },
+            showQuestionForm,
+            form,
+            resolutionText,
+          }}
+          variants={RFI_PROTOTYPE_VARIANTS}
+        />
+      )}
     </main>
   )
 }
