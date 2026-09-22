@@ -4074,13 +4074,15 @@
       "original": "Original",
       "A": "Inline actions",
       "B": "Question sidebar",
-      "C": "Answer ledger"
+      "C": "Answer ledger",
+      "D": "Answer comparison board"
     },
     "descriptions": {
       "original": "Existing expanded layout.",
       "A": "A question toolbar and compact actions beside each answer.",
       "B": "Question actions on the left, answer actions below the content.",
-      "C": "Aligned content and action columns with alternating rows."
+      "C": "Aligned content and action columns with alternating rows.",
+      "D": "Compare answer cards side by side. Edit at the top; lifecycle controls in the footer."
     },
     "previous": "Previous variant",
     "next": "Next variant",
@@ -4101,7 +4103,7 @@
     "reset": "Reset examples and order",
     "checklist": "What to verify",
     "checks": {
-      "scope": "Compare original, A, B and C. Identify which controls affect the question and which affect one answer.",
+      "scope": "Compare original, A, B, C and D. Identify which controls affect the question and which affect one answer.",
       "content": "Try long text and mixed states. Check description and source alignment without clipped text.",
       "actions": "Open editors, visibility conditions and source previews. Cancel destructive confirmations. Saving should show the prototype notice.",
       "access": "Tab through controls, inspect focus and use Enter. Reorder answers with the handle and arrow keys; reset restores order.",
@@ -4111,6 +4113,10 @@
     "state": "Current state and blocked saves",
     "longQuestion": "Include external partners, geographically distributed teams and information with different confidentiality and availability needs.",
     "longAnswer": "Information shared between several organizations, integrations and external suppliers during the entire service lifecycle",
-    "longDescription": "The answer includes ordinary internal information, documents with longer descriptions and several independent requirement sources. Read the full explanation before deciding which protection level fits the planned service. Confirm that actions remain easy to find when this text wraps across several lines."
+    "longDescription": "The answer includes ordinary internal information, documents with longer descriptions and several independent requirement sources. Read the full explanation before deciding which protection level fits the planned service. Confirm that actions remain easy to find when this text wraps across several lines.",
+    "boardHeading": "Compare answer options",
+    "boardHelp": "Read each answer and the requirements it selects side by side.",
+    "editAnswer": "Edit answer",
+    "selectedRequirements": "Requirements selected by this answer"
   }
 }

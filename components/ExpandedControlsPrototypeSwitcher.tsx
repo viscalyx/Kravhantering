@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { ControlsPrototypeVariant } from '@/app/[locale]/requirements/stewardship/expanded-controls.prototype'
 import { devMarker } from '@/lib/developer-mode-markers'
 
-const variants: ControlsPrototypeVariant[] = ['original', 'A', 'B', 'C']
+const variants: ControlsPrototypeVariant[] = ['original', 'A', 'B', 'C', 'D']
 const buttonClass =
   'inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg border border-secondary-500 px-3 text-sm hover:bg-secondary-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white'
 interface Props {
@@ -43,7 +43,9 @@ export default function ExpandedControlsPrototypeSwitcher({
           row => ({
             height: Math.round(row.getBoundingClientRect().height),
             actions: Array.from(
-              row.querySelectorAll('.prototype-answer-actions button'),
+              row.querySelectorAll(
+                '.prototype-answer-actions button, .prototype-d-edit',
+              ),
             ).map(button => ({
               label: button.textContent?.trim(),
               width: Math.round(button.getBoundingClientRect().width),
@@ -82,7 +84,9 @@ export default function ExpandedControlsPrototypeSwitcher({
       event.preventDefault()
       onVariant(
         variants[
-          (variants.indexOf(variant) + (event.key === 'ArrowRight' ? 1 : 3)) % 4
+          (variants.indexOf(variant) +
+            (event.key === 'ArrowRight' ? 1 : variants.length - 1)) %
+            variants.length
         ],
       )
     }
@@ -113,7 +117,12 @@ export default function ExpandedControlsPrototypeSwitcher({
           aria-label={t('previous')}
           className={buttonClass}
           onClick={() =>
-            onVariant(variants[(variants.indexOf(variant) + 3) % 4])
+            onVariant(
+              variants[
+                (variants.indexOf(variant) + variants.length - 1) %
+                  variants.length
+              ],
+            )
           }
           type="button"
         >
@@ -126,7 +135,9 @@ export default function ExpandedControlsPrototypeSwitcher({
           aria-label={t('next')}
           className={buttonClass}
           onClick={() =>
-            onVariant(variants[(variants.indexOf(variant) + 1) % 4])
+            onVariant(
+              variants[(variants.indexOf(variant) + 1) % variants.length],
+            )
           }
           type="button"
         >

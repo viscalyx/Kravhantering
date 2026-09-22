@@ -27,6 +27,7 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import ExpandedControlsPrototypeSwitcher from '@/components/ExpandedControlsPrototypeSwitcher'
 import ExpandedControlsPrototype, {
   type ControlsPrototypeVariant,
+  PrototypeDAnswerHeader,
 } from './expanded-controls.prototype'
 import './expanded-controls.prototype.css'
 import DirtyStateButton from '@/components/DirtyStateButton'
@@ -896,7 +897,8 @@ export default function RequirementSelectionQuestionsClient() {
     prototypeEnabled &&
     (requestedVariant === 'A' ||
       requestedVariant === 'B' ||
-      requestedVariant === 'C')
+      requestedVariant === 'C' ||
+      requestedVariant === 'D')
       ? requestedVariant
       : 'original'
   const prototypeCopy = useTranslations('expandedControlsPrototype')
@@ -4269,7 +4271,7 @@ export default function RequirementSelectionQuestionsClient() {
                                       name: 'prototype answer list',
                                     })}
                                   >
-                                    {question.answers.map(answer => {
+                                    {question.answers.map((answer, i) => {
                                       const answerReorderEnabled =
                                         question.permissions.canManage &&
                                         !submitting &&
@@ -4398,6 +4400,23 @@ export default function RequirementSelectionQuestionsClient() {
                                               </>
                                             ) : null}
                                             <div className="prototype-answer-main flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                              {prototypeVariant === 'D' && (
+                                                <PrototypeDAnswerHeader
+                                                  disabled={submitting}
+                                                  onEdit={
+                                                    question.permissions
+                                                      .canManage
+                                                      ? () => editAnswer(answer)
+                                                      : undefined
+                                                  }
+                                                  position={i + 1}
+                                                  status={statusText(
+                                                    answer,
+                                                    copy,
+                                                  )}
+                                                  text={answer.text}
+                                                />
+                                              )}
                                               <div
                                                 className="prototype-answer-content min-w-0 sm:flex-1"
                                                 {...devMarker({
@@ -4406,20 +4425,39 @@ export default function RequirementSelectionQuestionsClient() {
                                                   name: 'prototype answer content',
                                                 })}
                                               >
-                                                <p className="font-medium">
-                                                  {answer.text}
-                                                </p>
-                                                <p className="text-xs text-secondary-500">
-                                                  {statusText(answer, copy)}
-                                                  {answer.isNoRequirementSelection
-                                                    ? ` · ${copy.noRequirementSelection}`
-                                                    : ''}
-                                                </p>
+                                                {prototypeVariant !== 'D' && (
+                                                  <p className="font-medium">
+                                                    {answer.text}
+                                                  </p>
+                                                )}
+                                                {prototypeVariant !== 'D' && (
+                                                  <p className="text-xs text-secondary-500">
+                                                    {statusText(answer, copy)}
+                                                    {answer.isNoRequirementSelection
+                                                      ? ` · ${copy.noRequirementSelection}`
+                                                      : ''}
+                                                  </p>
+                                                )}
                                                 {answer.description && (
                                                   <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">
                                                     {answer.description}
                                                   </p>
                                                 )}
+                                                {prototypeVariant === 'D' && (
+                                                  <div className="prototype-card-requirements-heading">
+                                                    {prototypeCopy(
+                                                      'selectedRequirements',
+                                                    )}
+                                                  </div>
+                                                )}
+                                                {prototypeVariant === 'D' &&
+                                                  answer.isNoRequirementSelection && (
+                                                    <p className="text-sm">
+                                                      {
+                                                        copy.noRequirementSelection
+                                                      }
+                                                    </p>
+                                                  )}
                                                 {!answer.isNoRequirementSelection
                                                   ? (() => {
                                                       const packageNames =
@@ -4839,20 +4877,22 @@ export default function RequirementSelectionQuestionsClient() {
                                                     name: 'prototype answer actions',
                                                   })}
                                                 >
-                                                  <button
-                                                    className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
-                                                    disabled={submitting}
-                                                    onClick={() =>
-                                                      editAnswer(answer)
-                                                    }
-                                                    type="button"
-                                                  >
-                                                    <Pencil
-                                                      aria-hidden="true"
-                                                      className="h-4 w-4"
-                                                    />
-                                                    {copy.edit}
-                                                  </button>
+                                                  {prototypeVariant !== 'D' && (
+                                                    <button
+                                                      className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
+                                                      disabled={submitting}
+                                                      onClick={() =>
+                                                        editAnswer(answer)
+                                                      }
+                                                      type="button"
+                                                    >
+                                                      <Pencil
+                                                        aria-hidden="true"
+                                                        className="h-4 w-4"
+                                                      />
+                                                      {copy.edit}
+                                                    </button>
+                                                  )}
                                                   <button
                                                     className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
                                                     disabled={submitting}

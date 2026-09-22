@@ -84,7 +84,9 @@ async function metrics(page) {
     rows: Array.from(el.querySelectorAll('.prototype-answer-row')).map(row => ({
       height: Math.round(row.getBoundingClientRect().height),
       actions: Array.from(
-        row.querySelectorAll('.prototype-answer-actions button'),
+        row.querySelectorAll(
+          '.prototype-answer-actions button, .prototype-d-edit',
+        ),
       ).map(button => ({
         text: button.textContent.trim(),
         width: Math.round(button.getBoundingClientRect().width),
@@ -118,7 +120,7 @@ try {
           { theme, navigation },
         )
         for (const example of ['live', 'long'])
-          for (const variant of ['original', 'A', 'B', 'C']) {
+          for (const variant of ['original', 'A', 'B', 'C', 'D']) {
             await open(page, variant)
             if (example !== 'live') await scenario(page, example)
             await page.waitForFunction(
@@ -241,12 +243,14 @@ try {
     'Arrow keys in search do not switch variants',
   )
   await search.fill('')
-  for (const variant of ['A', 'B', 'C']) {
+  for (const variant of ['A', 'B', 'C', 'D']) {
     await open(page, variant)
     await scenario(page, 'readonly')
     check(
       (await page
-        .locator('.prototype-question-actions,.prototype-answer-actions')
+        .locator(
+          '.prototype-question-actions,.prototype-answer-actions,.prototype-d-edit',
+        )
         .count()) === 0,
       `${variant}: read-only example hides management controls`,
     )
@@ -290,6 +294,99 @@ try {
     }
     await page.setViewportSize({ width: 1440, height: 900 })
   }
+  await open(page, 'D')
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.waitForTimeout(400)
+  const cards = page.locator('.prototype-answer-row')
+  const cardTops = await cards.evaluateAll(els =>
+    els.map(el => Math.round(el.getBoundingClientRect().top)),
+  )
+  check(
+    new Set(cardTops).size === 1,
+    'D: three answer cards sit side by side on a wide screen',
+  )
+  check(
+    (await page.locator('.prototype-d-edit').count()) === 3,
+    'D: each card has a direct edit action in its heading',
+  )
+  await cards
+    .first()
+    .getByRole('button', { name: 'Redigera svar', exact: true })
+    .click()
+  check(
+    await page
+      .getByRole('dialog', { name: 'Redigera kravurvalsvar' })
+      .isVisible(),
+    'D: heading edit opens the existing answer editor',
+  )
+  await page
+    .getByRole('dialog', { name: 'Redigera kravurvalsvar' })
+    .getByRole('button', { name: 'Avbryt', exact: true })
+    .click()
+  await scenario(page, 'live')
+  const cardTitles = await cards.locator('h4').allTextContents()
+  const cardHandle = cards
+    .first()
+    .getByRole('button', { name: 'Ändra svarsordning', exact: true })
+  await cardHandle.focus()
+  await cardHandle.press('ArrowDown')
+  check(
+    (await cards.locator('h4').allTextContents())[1] === cardTitles[0],
+    'D: keyboard reordering moves the complete answer card',
+  )
+  await scenario(page, 'live')
+  await cardHandle.dragTo(cards.nth(1), { targetPosition: { x: 60, y: 80 } })
+  check(
+    (await cards.locator('h4').allTextContents())[1] === cardTitles[0],
+    'D: pointer reordering moves the complete answer card',
+  )
+  await scenario(page, 'live')
+  const dPreview = cards
+    .first()
+    .getByRole('button', { name: /Visa krav i urvalet för/ })
+  await dPreview.click()
+  check(
+    (await cards
+      .first()
+      .getByRole('button', { name: /Dölj krav i urvalet för/ })
+      .getAttribute('aria-expanded')) === 'true',
+    'D: requirement preview opens inside the card',
+  )
+  await page.setViewportSize({ width: 320, height: 900 })
+  await page.waitForTimeout(400)
+  const cardLefts = await cards.evaluateAll(els =>
+    els.map(el => Math.round(el.getBoundingClientRect().left)),
+  )
+  check(
+    new Set(cardLefts).size === 1,
+    'D: narrow screens stack cards into one column',
+  )
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(`${base}/en/requirements/stewardship?tab=questions&variant=D`)
+  await page.locator('[data-prototype-expanded]').waitFor()
+  check(
+    await page
+      .getByRole('heading', { name: 'Compare answer options' })
+      .isVisible(),
+    'D: English board heading renders',
+  )
+  check(
+    (await page
+      .locator('[data-developer-mode-name="prototype answer card heading"]')
+      .count()) === 3,
+    'D: card headings have Developer Mode markers',
+  )
+  await page.locator('body').click({ position: { x: 4, y: 4 } })
+  await page.keyboard.press('ArrowRight')
+  check(
+    new URL(page.url()).searchParams.get('variant') === 'original',
+    'D: forward switching wraps to original',
+  )
+  await page.keyboard.press('ArrowLeft')
+  check(
+    new URL(page.url()).searchParams.get('variant') === 'D',
+    'Original: backward switching wraps to D',
+  )
   await open(page, 'A')
   const rows = page.locator('.prototype-answer-row')
   const before = await rows
@@ -436,7 +533,7 @@ const escaped = text =>
     .replaceAll('"', '&quot;')
 await writeFile(
   `${output}/gallery.html`,
-  `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>#1356 expanded controls</title><style>body{font:16px system-ui;margin:24px;background:#eef1f5;color:#172033}header{position:sticky;top:0;background:#fff;padding:16px;border:1px solid #cbd5e1;border-radius:12px;z-index:1}h1{font-size:22px;margin:0}select{padding:8px;margin:4px}main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}figure{margin:16px 0;background:white;padding:12px;border-radius:12px}img{width:100%;border:1px solid #cbd5e1}figcaption{margin-bottom:10px}a{color:#4338ca}[hidden]{display:none!important}@media(max-width:900px){main{grid-template-columns:1fr}}</style><header><h1>#1356 · Expanded question controls</h1><p>Original / A inline actions / B question sidebar / C answer ledger. Throwaway alternatives; no approved design.</p><label>Viewport <select id="width"><option>1440</option><option>1920</option></select></label><label>Theme <select id="theme"><option>light</option><option>dark</option></select></label><label>Navigation <select id="navigation"><option>collapsed</option><option>expanded</option></select></label><label>Content <select id="example"><option>live</option><option>long</option></select></label><p><a href="${base}/sv/requirements/stewardship?tab=questions&variant=A">Open interactive prototype</a> · <a href="measurements.json">Measurements</a> · <a href="verification.json">Verification log</a>. Captured ${escaped(new Date().toISOString())}. Click a screenshot for native size; use Full question for content below the viewport.</p></header><main>${captures.map(c => `<figure data-width="${c.width}" data-theme="${c.theme}" data-navigation="${c.navigation}" data-example="${c.example}"><figcaption><b>${c.variant}</b> · expanded content ${c.metrics.height}px · answer heights ${c.metrics.rows.map(r => r.height).join(' / ')}px · <a href="${c.name}-detail.png" target="_blank">Full question</a></figcaption><a href="${c.name}.png" target="_blank"><img alt="${escaped(c.name)}" src="data:image/png;base64,${c.image}"></a></figure>`).join('')}</main><script>function filter(){document.querySelectorAll('figure').forEach(f=>f.hidden=!['width','theme','navigation','example'].every(k=>f.dataset[k]===document.getElementById(k).value))}document.querySelectorAll('select').forEach(s=>s.addEventListener('change',filter));filter()</script></html>`,
+  `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>#1356 expanded controls</title><style>body{font:16px system-ui;margin:24px;background:#eef1f5;color:#172033}header{position:sticky;top:0;background:#fff;padding:16px;border:1px solid #cbd5e1;border-radius:12px;z-index:1}h1{font-size:22px;margin:0}select{padding:8px;margin:4px}main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}figure{margin:16px 0;background:white;padding:12px;border-radius:12px}img{width:100%;border:1px solid #cbd5e1}figcaption{margin-bottom:10px}a{color:#4338ca}[hidden]{display:none!important}@media(max-width:900px){main{grid-template-columns:1fr}}</style><header><h1>#1356 · Expanded question controls</h1><p>Original / A inline actions / B question sidebar / C answer ledger / D answer comparison board. Throwaway alternatives; no approved design.</p><label>Viewport <select id="width"><option>1440</option><option>1920</option></select></label><label>Theme <select id="theme"><option>light</option><option>dark</option></select></label><label>Navigation <select id="navigation"><option>collapsed</option><option>expanded</option></select></label><label>Content <select id="example"><option>live</option><option>long</option></select></label><p><a href="${base}/sv/requirements/stewardship?tab=questions&variant=D">Open interactive prototype</a> · <a href="measurements.json">Measurements</a> · <a href="verification.json">Verification log</a>. Captured ${escaped(new Date().toISOString())}. Click a screenshot for native size; use Full question for content below the viewport.</p></header><main>${captures.map(c => `<figure data-width="${c.width}" data-theme="${c.theme}" data-navigation="${c.navigation}" data-example="${c.example}"><figcaption><b>${c.variant}</b> · expanded content ${c.metrics.height}px · answer heights ${c.metrics.rows.map(r => r.height).join(' / ')}px · <a href="${c.name}-detail.png" target="_blank">Full question</a></figcaption><a href="${c.name}.png" target="_blank"><img alt="${escaped(c.name)}" src="data:image/png;base64,${c.image}"></a></figure>`).join('')}</main><script>function filter(){document.querySelectorAll('figure').forEach(f=>f.hidden=!['width','theme','navigation','example'].every(k=>f.dataset[k]===document.getElementById(k).value))}document.querySelectorAll('select').forEach(s=>s.addEventListener('change',filter));filter()</script></html>`,
 )
 console.log(
   `Open ${output}/gallery.html. ${captures.length} comparisons; ${observations.length} checks; ${mutationRequests.length} API mutation requests.`,

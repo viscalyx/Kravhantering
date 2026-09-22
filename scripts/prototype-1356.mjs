@@ -27,7 +27,7 @@ probe.listen(port, '0.0.0.0', () =>
     )
     if (prepared.status !== 0) process.exit(prepared.status ?? 1)
     console.log(
-      `\n#1356 throwaway prototype\nOpen the prototype and sign in if prompted:\nhttp://localhost:${port}/sv/requirements/stewardship?tab=questions&variant=A\nVariants: original, A, B, C. Review panel contains measurements and current state.\nQuestion and answer reordering is in memory. Other API writes are blocked.\nCtrl+C stops only this prototype.\n`,
+      `\n#1356 throwaway prototype\nOpen the prototype and sign in if prompted:\nhttp://localhost:${port}/sv/requirements/stewardship?tab=questions&variant=D\nVariants: original, A, B, C, D. Review panel contains measurements and current state.\nQuestion and answer reordering is in memory. Other API writes are blocked.\nCtrl+C stops only this prototype.\n`,
     )
     const child = spawn(
       process.execPath,

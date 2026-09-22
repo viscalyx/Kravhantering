@@ -4074,13 +4074,15 @@
       "original": "Original",
       "A": "Åtgärder bredvid",
       "B": "Frågans sidopanel",
-      "C": "Svar i kolumner"
+      "C": "Svar i kolumner",
+      "D": "Jämför svarsalternativ"
     },
     "descriptions": {
       "original": "Befintlig expanderad layout.",
       "A": "Frågans verktygsrad och kompakta åtgärder bredvid varje svar.",
       "B": "Frågeåtgärder till vänster, svarsåtgärder under innehållet.",
-      "C": "Gemensamma innehålls- och åtgärdskolumner med växlande radbakgrund."
+      "C": "Gemensamma innehålls- och åtgärdskolumner med växlande radbakgrund.",
+      "D": "Jämför svarskort sida vid sida. Redigera överst; hantera status längst ned."
     },
     "previous": "Föregående variant",
     "next": "Nästa variant",
@@ -4101,7 +4103,7 @@
     "reset": "Återställ exempel och ordning",
     "checklist": "Detta ska granskas",
     "checks": {
-      "scope": "Jämför original, A, B och C. Identifiera vilka kontroller som gäller frågan respektive ett svar.",
+      "scope": "Jämför original, A, B, C och D. Identifiera vilka kontroller som påverkar frågan respektive ett svar.",
       "content": "Prova lång text och blandade tillstånd. Kontrollera indragning och kravkopplingar utan avklippt text.",
       "actions": "Öppna redigering, synlighetsvillkor och kravförhandsvisning. Avbryt borttagning. Sparande ska visa prototypmeddelandet.",
       "access": "Navigera med Tab, granska fokus och använd Enter. Flytta svar med handtaget och piltangenter; återställ ordningen efteråt.",
@@ -4111,6 +4113,10 @@
     "state": "Aktuellt tillstånd och stoppade sparanden",
     "longQuestion": "Inkludera externa samarbetspartner, geografiskt spridda team och information med olika krav på sekretess och tillgänglighet.",
     "longAnswer": "Information som delas mellan flera organisationer, integrationer och externa leverantörer under tjänstens hela livscykel",
-    "longDescription": "Svaret omfattar vanlig intern information, dokument med längre beskrivningar och flera oberoende kravkällor. Läs hela förklaringen innan du avgör vilken skyddsnivå som passar den planerade tjänsten. Kontrollera att åtgärderna går att hitta även när texten bryts över flera rader."
+    "longDescription": "Svaret omfattar vanlig intern information, dokument med längre beskrivningar och flera oberoende kravkällor. Läs hela förklaringen innan du avgör vilken skyddsnivå som passar den planerade tjänsten. Kontrollera att åtgärderna går att hitta även när texten bryts över flera rader.",
+    "boardHeading": "Jämför svarsalternativ",
+    "boardHelp": "Läs svaren och de krav de väljer sida vid sida.",
+    "editAnswer": "Redigera svar",
+    "selectedRequirements": "Krav som väljs av svaret"
   }
 }
