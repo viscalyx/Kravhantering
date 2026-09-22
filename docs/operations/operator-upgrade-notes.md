@@ -13,7 +13,12 @@ changes.
 
 ## Unreleased
 
+### curl security update
 
+Deploy the complete new release images to receive the curl security fix for
+CVE-2026-8458. Restarting existing containers does not apply the fix. For
+disconnected sites, transfer and verify the new images and matching release
+locks before rollout. Check the release vulnerability evidence before deployment.
 
 ## v0.8.1 - 2026-09-18
 

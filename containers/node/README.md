@@ -41,7 +41,21 @@ license URL below, and the public UBI RPM repositories at
 Disconnected deployments import completed release images; they do not repeat
 those build-time downloads.
 
-## OpenSSL runtime package
+## Runtime security packages
+
+The shared helper updates the inherited `curl` and `libcurl-minimal` packages
+from the public UBI 10 BaseOS repository and removes package-manager metadata.
+These updates apply during an uncached helper build; cached layers retain the
+packages installed when they were built. Rebuild without cache when checking
+for newly published RPM fixes.
+
+This covers `CVE-2026-8458`: the selected base contains
+`8.12.1-4.el10_2.4`, while the repository provides the fixed
+`8.12.1-4.el10_2.6` packages from
+[Red Hat advisory RHSA-2026:69125](https://access.redhat.com/errata/RHSA-2026:69125).
+The update targets these two packages because RPM security fixes can arrive
+before a refreshed base image. Workload packages and the provisioner's locked
+toolchain remain the responsibility of their consuming Dockerfiles.
 
 The selected minimal base includes `openssl-libs-3.5.8-1.el10_2`, which fixes
 `CVE-2026-14456` according to
@@ -50,8 +64,9 @@ The shared helper uses that inherited library. The provisioner additionally
 installs its locked OpenSSL CLI package from the public UBI 10 BaseOS
 repository. The container vulnerability policy evaluates the completed images.
 
-Deploy a new immutable project release to receive the updated base. Existing
-release images and installed containers do not change when a base pin changes.
+Deploy a new immutable project release to receive the updated runtime packages.
+Existing release images and installed containers do not change when a base pin
+or a public RPM repository changes.
 
 ## Licenses and image identity
 

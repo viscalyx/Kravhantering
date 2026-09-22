@@ -1,10 +1,17 @@
 #!/bin/sh
-# Shared filesystem adaptation for the selected UBI Node.js minimal runtime.
-# Consumers declare their own packages, environment, entrypoint and final user.
+# Shared security updates and filesystem adaptation for the UBI Node.js runtime.
+# Consumers declare workload packages, environment, entrypoint and final user.
 set -eu
 
 [ "$(id -u)" = 0 ]
 [ "$(node -p 'process.versions.node.split(".")[0]')" = 24 ]
+
+# Public RPM fixes can precede refreshed base images (CVE-2026-8458).
+# Update only the inherited curl packages; leave workload/toolchain RPMs alone.
+microdnf --disablerepo='*' --enablerepo=ubi-10-baseos-rpms \
+  upgrade -y curl libcurl-minimal
+microdnf clean all
+
 # Fail closed if a replacement base assigns the supported identity elsewhere.
 if getent passwd node >/dev/null || getent passwd 1000 >/dev/null \
   || getent group node >/dev/null || getent group 1000 >/dev/null; then
