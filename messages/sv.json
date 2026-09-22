@@ -4102,7 +4102,7 @@
       "A": "Nio kolumner, kompakt metadata, bredare benämning och utfärdare samt statusbrickor. Närmast ärendets omfattning.",
       "B": "Benämning, ID, referens och version tillsammans; utfärdare och åtgärder bredvid. Mer läsutrymme men högre rader.",
       "C": "Bläddra bland namn till vänster och läs en hel norm till höger. Mer plats för läsning men sämre direkt jämförelse.",
-      "D": "Benämning och URI-ikon överst; utfärdare längst ned i cellen. Identifiering med ID, referens, version och typ i en egen kolumn."
+      "D": "Benämning och URI-ikon överst; utfärdare vertikalt centrerad i cellen. Identifiering med ID, referens, version och typ i en egen kolumn. Status och radåtgärder ligger överst, med kravantal under."
     },
     "checks": {
       "space": "A: jämför NIS2-raden med Före vid 1440 × 900 och utfälld navigation. Läs hela benämningen och utfärdaren; jämför radbrytning och radhöjd. Benämning och utfärdare får mer plats, metadatans marginaler minskar.",
@@ -4110,7 +4110,7 @@
       "links": "Jämför rader med och utan länk. Ikonen stannar vid benämningen, öppnar samma externa adress och har en 44px aktiveringsyta (24px i D). URN-exemplet saknar avsiktligt klickbar länk. I D följer ikonen direkt efter benämningens text i stället för att ligga vid kolumnkanten.",
       "statuses": "A/B/C/D: aktiv och arkiverad status har både text och ikon enligt kravpaketslistans mönster. Aktivera gränsfall för att se en arkiverad norm. Växla tema i navigationen.",
       "actions": "Alla varianter: redigera namn, arkivera/återaktivera, radera och skapa en rad. Bekräfta förhandsvisningen, granska tillståndspanelen och återställ. Radknappar är fortsatt 44 × 44px. Escape stänger dialogen; Tab når kontroller.",
-      "alternatives": "B grupperar fält men behåller alla värden. C kräver att varje norm väljs för att läsa all information. Bedöm nyttan av dessa avvägningar; alternativen går utanför ärendets aktuella omfattning. D skiljer identifiering från benämning och flyttar utfärdaren under benämningen. Jämför B/D och kontrollera ID, referens, version och typ i mittenkolumnen. Utfärdare ligger längst ned i benämningscellen.",
+      "alternatives": "B grupperar fält men behåller alla värden. C kräver att varje norm väljs för att läsa all information. Bedöm nyttan av dessa avvägningar; alternativen går utanför ärendets aktuella omfattning. D skiljer identifiering från benämning och flyttar utfärdaren under benämningen. Jämför B/D och kontrollera ID, referens, version och typ i mittenkolumnen. Utfärdare är vertikalt centrerad i benämningscellen.",
       "matrix": "Jämför vid 1440 × 900 och 1920 × 1080, infälld/utfälld navigation och ljust/mörkt tema. Byt sedan /sv/ till /en/. Vid 320/375px rullar tabellen i sidled eller C läses lodrätt. Behåll samma data mellan varianterna.",
       "state": "Tillståndspanelen visar variant, filter, gränsfall, synliga ID:n, urval och alla lokala ändringar. Variantbyte behåller ändringar; omladdning tar bort dem. Kopiera en adress med variant=before, A, B, C eller D för att öppna layouten igen."
     },

@@ -1,22 +1,22 @@
 {
-  "date": "2026-09-22T16:12:44.953Z",
+  "date": "2026-09-22T16:15:38.616Z",
   "checks": [
-    "Separate identification with ID/reference/version/type; issuer at bottom of name cell; missing version; archived state; local edit; D-to-Before wrapping; C-to-D arrows; reload"
+    "Separate identification with ID/reference/version/type; issuer vertically centered in name cell; missing version; archived state; local edit; D-to-Before wrapping; C-to-D arrows; reload"
   ],
   "mobile": [
     {
       "width": 375,
       "page": 375,
       "client": 285,
-      "scroll": 900,
-      "scrollLeft": 615
+      "scroll": 1000,
+      "scrollLeft": 715
     },
     {
       "width": 320,
       "page": 320,
       "client": 230,
-      "scroll": 900,
-      "scrollLeft": 670
+      "scroll": 1000,
+      "scrollLeft": 770
     }
   ],
   "errors": [],

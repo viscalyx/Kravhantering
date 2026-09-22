@@ -415,7 +415,7 @@ export function VariantD({ rows, act }: VariantProps) {
         value: 'D',
       })}
     >
-      <table className="w-full min-w-[900px] table-fixed text-left text-sm">
+      <table className="w-full min-w-[1000px] table-fixed text-left text-sm">
         <colgroup>
           <col style={{ width: '47%' }} />
           <col style={{ width: '27%' }} />
@@ -443,7 +443,7 @@ export function VariantD({ rows, act }: VariantProps) {
             >
               <td className="h-px p-4 align-top">
                 <div
-                  className="flex h-full flex-col justify-between gap-3"
+                  className="grid h-full grid-rows-[1fr_auto_1fr] gap-3"
                   data-prototype-name-cell
                 >
                   <div className="font-medium leading-6">
@@ -451,7 +451,7 @@ export function VariantD({ rows, act }: VariantProps) {
                   </div>
                   <div
                     className="text-sm text-secondary-600 dark:text-secondary-400"
-                    data-prototype-bottom-metadata
+                    data-prototype-centered-metadata
                   >
                     <p
                       className="[overflow-wrap:anywhere]"
@@ -484,16 +484,16 @@ export function VariantD({ rows, act }: VariantProps) {
                 </dl>
               </td>
               <td className="p-4 align-top">
-                <div className="flex flex-wrap items-center gap-3">
-                  <NormStatus row={row} />
-                  <span className="whitespace-nowrap text-xs">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1">
+                  <div>
+                    <NormStatus row={row} />
+                  </div>
+                  <Actions act={act} row={row} />
+                  <span className="col-span-2 whitespace-nowrap text-xs">
                     {t('requirementCount', {
                       count: row.linkedRequirementCount,
                     })}
                   </span>
-                </div>
-                <div className="mt-4">
-                  <Actions act={act} row={row} />
                 </div>
               </td>
             </tr>

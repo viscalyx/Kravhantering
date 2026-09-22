@@ -205,23 +205,30 @@ Verify: run the command above, open the five links, and compare the captures
 in [screenshots](screenshots). Read [desktop measurements](verification.json)
 and [interaction checks](interaction-verification.json).
 
-### 13. Separate identification and bottom-aligned issuer in D
+### 13. Separate identification and vertically centered issuer in D
 
 D retains B's 47/27/26 column proportions but uses **Name / Identification /
 Status and actions**. The name stays at the top, aligned with the first
-identification value. The issuer sits at the bottom of the name cell. A
-minimum 12px gap separates the name and issuer; taller rows put extra space
-between them. Identification contains separately labelled norm reference
+identification value. The issuer is vertically centered in the name cell. Equal
+flexible space
+above and below its block keeps it centered; the name stays at the top of
+the upper area, with at least 12px separation. Identification contains
+separately labelled norm reference
 ID, reference, version and type. Type is the last value in that column.
 
 The external link flows immediately after the name text with a 24px target.
 The name and first identification value share a 24px line height. The issuer
 label uses 12px, matching Reference; the issuer value stays 14px. Status
-badges, counts and 44px row actions keep their pattern.
+badges and 44px row actions sit at the top of their cell; the requirement
+count occupies a full-width line below. D has a 1000px minimum table width
+to fit the status and actions side by side.
 
 Verify: open `variant=D` and compare B/D. Check NIS2 and a row with a long
-reference: the name remains at the top while Issuer sits at the bottom,
-with the cell's normal 16px padding beneath it. Confirm ID, reference,
+reference: the name remains at the top while the center of the Issuer block
+lines up
+with the vertical center of the row. Check that action buttons start at the
+same top padding as the name and identification, beside the status badge.
+Confirm ID, reference,
 version and type remain in the middle column. Enable examples to check
 wrapping, missing version and long references. Check the URI icon, 24px
 target and top alignment in both languages/themes and navigation modes.
