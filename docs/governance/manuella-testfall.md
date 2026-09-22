@@ -934,12 +934,15 @@ ljust och mörkt tema med infälld respektive utfälld navigering. Tabba till
 frågans detaljknapp och öppna och stäng den med Enter. Öppna hierarkin med
 dess separata knapp, fokusera dialogens stängknapp och stäng med Escape.
 Upprepa med lång frågetext och på smal skärm. Dra i frågans ordningshandtag
-och läs förhandsvisningen.
+och läs förhandsvisningen. Läs status för aktiva, inaktiva och arkiverade
+frågor.
 
 **Förväntat resultat:** Hela frågetexten och dess uppgifter går att läsa.
 Knapparna är åtkomliga med synligt tangentbordsfokus. Hierarkin öppnas utan
 att frågans detaljer fälls ut. Lång text förblir läsbar även under dragning
-och på smal skärm.
+och på smal skärm. Aktiva, ej arkiverade frågor visar en grön `Aktiv`-bricka
+med checkikon i båda teman, även i dragförhandsvisningen. `Inaktiv` och
+`Arkiverad` har egna texter och ikoner utan grön aktivmarkering.
 
 ### REQ-15: AI-kravgenerator lämnar kandidater till importgranskning
 
@@ -1964,6 +1967,21 @@ behandlade visas ingen räknare för obehandlade förslag. Modalen visar `Nya`,
 `I granskning` och `Behandlade`, inklusive kravunderlagskälla och skapande
 person. Ett förslag kan inte beslutas före granskning och kan bara beslutas en
 gång.
+
+### SPEC-16d: läs och använd RFI-frågornas sammanfattningar
+
+**Steg:** Öppna `RFI-frågor` i förvaltningen. Läs frågetext, frågekod,
+kravområde, version och status för aktiva och arkiverade frågor i båda teman
+med infälld och utfälld navigering. Upprepa med lång text och på smal skärm.
+Tabba till en fråga och öppna och stäng detaljerna med Enter. Öppna redigering
+på en hopfälld fråga och stäng dialogen. Sök på frågekod och växla mellan
+aktiva och arkiverade frågor med statusfiltret.
+
+**Förväntat resultat:** Hela texten och all metadata går att läsa. Aktiva
+frågor visar en grön `Aktiv`-bricka med checkikon. Arkiverade frågor visar
+`Arkiverad` med arkivikon och korrekt version. Tangentbordsfokus syns och
+detaljer kan öppnas med mus och tangentbord. Redigering fäller inte ut frågan.
+Sökning och statusfilter visar rätt frågor i befintlig visningsordning.
 
 ### SPEC-17: importera unika krav till kravunderlag
 

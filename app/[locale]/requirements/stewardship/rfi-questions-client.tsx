@@ -114,7 +114,7 @@ const inputClassName =
 const textareaClassName = `${inputClassName} min-h-28`
 
 const rowActionButtonClassName =
-  'inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
+  'inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
 
 function apiJson(method: string, body: unknown) {
   return {
@@ -1301,8 +1301,11 @@ export default function RfiQuestionsClient() {
           </p>
         ) : null}
 
-        <div className="mb-5 grid gap-3 rounded-2xl border bg-white/80 p-4 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60 md:grid-cols-[minmax(0,1fr)_220px_180px_180px_190px]">
-          <label className="relative block">
+        <div
+          className="mb-5 grid grid-cols-1 gap-3 rounded-2xl border bg-white/80 p-4 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60 min-[768px]:grid-cols-3 min-[1100px]:grid-cols-[minmax(0,1fr)_220px_180px_180px]"
+          {...devMarker({ context: 'rfiQuestions', name: 'question filters' })}
+        >
+          <label className="relative block min-w-0 min-[768px]:col-span-3 min-[1100px]:col-span-1">
             <Search
               aria-hidden="true"
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
@@ -1411,7 +1414,14 @@ export default function RfiQuestionsClient() {
                       </div>
                     </div>
                     {group.questions.length > 0 ? (
-                      <ul className="space-y-3">
+                      <ul
+                        className="divide-y divide-secondary-200 overflow-hidden rounded-xl border border-secondary-200 dark:divide-secondary-800 dark:border-secondary-800"
+                        {...devMarker({
+                          context: 'rfiQuestions',
+                          name: 'requirement area question list',
+                          value: group.areaPrefix,
+                        })}
+                      >
                         {group.questions.map(question => {
                           const isExpanded = expandedQuestionIds.has(
                             question.id,
@@ -1429,16 +1439,18 @@ export default function RfiQuestionsClient() {
 
                           return (
                             <li
-                              className={`overflow-hidden rounded-2xl border bg-white/80 shadow-sm transition-all duration-150 hover:bg-secondary-50 dark:border-secondary-800 dark:bg-secondary-900/60 dark:hover:bg-secondary-800/50 ${
-                                isExpanded ? 'ring-2 ring-primary-500' : ''
+                              className={`bg-white/80 transition-colors duration-150 hover:bg-secondary-50 dark:border-secondary-800 dark:bg-secondary-900/60 dark:hover:bg-secondary-800/50 ${
+                                isExpanded
+                                  ? 'ring-2 ring-inset ring-primary-500'
+                                  : ''
                               }`}
                               key={question.id}
                             >
-                              <div className="flex items-stretch">
+                              <div className="flex flex-col items-stretch min-[601px]:flex-row">
                                 <button
                                   aria-controls={detailsId}
                                   aria-expanded={isExpanded}
-                                  className="block min-w-0 flex-1 px-4 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-400/60"
+                                  className="block min-h-13 min-w-0 flex-1 px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-400/60"
                                   onClick={() =>
                                     toggleQuestionExpansion(question.id)
                                   }
@@ -1461,15 +1473,29 @@ export default function RfiQuestionsClient() {
                                         ? copy.hideQuestionDetails
                                         : copy.showQuestionDetails}
                                     </span>
-                                    <span className="min-w-0 flex-1">
-                                      <span className="flex flex-wrap items-center gap-2">
-                                        <span className="rounded-md bg-secondary-100 px-2 py-1 font-mono text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                                    <span className="grid min-w-0 flex-1 items-center gap-2 wrap-anywhere min-[1100px]:grid-cols-[minmax(0,1fr)_minmax(15rem,38%)]">
+                                      <span
+                                        className="block text-[0.9375rem] leading-[1.45] font-semibold text-secondary-950 dark:text-secondary-50"
+                                        {...devMarker({
+                                          context: 'rfiQuestions',
+                                          name: 'question text',
+                                          value: question.questionCode,
+                                        })}
+                                      >
+                                        {question.questionText}
+                                      </span>
+                                      <span
+                                        className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs leading-normal text-secondary-600 dark:text-secondary-300 min-[1100px]:self-stretch min-[1100px]:border-l min-[1100px]:border-secondary-200 min-[1100px]:pl-3 dark:min-[1100px]:border-secondary-700"
+                                        {...devMarker({
+                                          context: 'rfiQuestions',
+                                          name: 'question metadata',
+                                          value: question.questionCode,
+                                        })}
+                                      >
+                                        <span className="font-mono">
                                           {question.questionCode}
                                         </span>
-                                        <span className="text-xs text-secondary-500">
-                                          {question.areaName}
-                                        </span>
-                                        <span className="rounded-md bg-secondary-100 px-2 py-1 text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                                        <span>
                                           v{question.versionNumber ?? '-'}
                                         </span>
                                         <span
@@ -1478,18 +1504,22 @@ export default function RfiQuestionsClient() {
                                               ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200'
                                               : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
                                           }`}
+                                          role="status"
+                                          {...devMarker({
+                                            context: 'rfiQuestions',
+                                            name: 'question status',
+                                            value: question.questionCode,
+                                          })}
                                         >
                                           {questionStatusIcon(question)}
                                           {questionStatusLabel(question, copy)}
                                         </span>
-                                      </span>
-                                      <span className="mt-2 block font-medium text-secondary-950 dark:text-secondary-50">
-                                        {question.questionText}
+                                        <span>{question.areaName}</span>
                                       </span>
                                     </span>
                                   </div>
                                 </button>
-                                <div className="flex shrink-0 items-start justify-end gap-1 px-4 py-4 pl-0">
+                                <div className="flex shrink-0 flex-wrap items-center gap-1 pr-3 pb-2 pl-10 min-[601px]:justify-end min-[601px]:py-2 min-[601px]:pl-0">
                                   {canManageQuestion ? (
                                     <>
                                       <button

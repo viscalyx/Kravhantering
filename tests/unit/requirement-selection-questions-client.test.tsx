@@ -525,6 +525,7 @@ describe('RequirementSelectionQuestionsClient', () => {
     { isActive: true, isArchived: false, status: 'Active' },
     { isActive: false, isArchived: false, status: 'Inactive' },
     { isActive: false, isArchived: true, status: 'Archived' },
+    { isActive: true, isArchived: true, status: 'Archived' },
   ])(
     'exposes question facts and announced $status status in the compact summary',
     async ({ isActive, isArchived, status }) => {
@@ -533,7 +534,16 @@ describe('RequirementSelectionQuestionsClient', () => {
 
       await screen.findByText(sampleQuestion.text)
       const disclosure = getQuestionDisclosure(sampleQuestion.text)
-      expect(within(disclosure).getByRole('status')).toHaveTextContent(status)
+      const badge = within(disclosure).getByRole('status')
+      expect(badge).toHaveTextContent(status)
+      expect(badge).toHaveAttribute(
+        'data-developer-mode-name',
+        'question status',
+      )
+      expect(badge.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+      expect(badge.classList.contains('bg-emerald-100')).toBe(
+        isActive && !isArchived,
+      )
       const metadata = within(disclosure)
         .getByText(sampleQuestion.questionCode)
         .closest('[data-developer-mode-name="question metadata"]')

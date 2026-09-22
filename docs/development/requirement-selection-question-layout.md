@@ -11,6 +11,9 @@ area. The production list and drag preview use the same `QuestionSummary`.
   12px type with secondary foreground colors in both themes.
 - Above 1100px, the facts column takes 38% of the summary width, with a 15rem
   minimum and a dividing border. At narrower widths, facts follow the text.
+- Active, unarchived questions use the original green badge with a check icon
+  in both the list and drag preview. Inactive and archived questions retain
+  their distinct text and icons without green active styling.
 - Summary padding is 8px vertically and 12px horizontally. The reorder handle
   is 32px wide with a 40px minimum height. Hierarchy buttons remain at least
   36px high, within a reserved 8rem slot.
@@ -23,7 +26,7 @@ area. The production list and drag preview use the same `QuestionSummary`.
   persistent question/answer ordering retain their existing behavior. Expanded
   answer controls and the RFI list have separate scope in #1356 and #1357.
 
-Developer Mode identifies the area question list, question text, metadata,
+Developer Mode identifies the area question list, question text, metadata, status,
 reorder handle, disclosure and hierarchy slot. Metadata also supplies the
 accessible description of the disclosure button.
 

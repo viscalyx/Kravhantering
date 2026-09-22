@@ -623,7 +623,15 @@ function QuestionSummary({
               ? copy.multiple
               : copy.single}
           </span>
-          <span className="inline-flex items-center gap-1" role="status">
+          <span
+            className={`inline-flex items-center gap-1 ${question.isActive && !question.isArchived ? 'rounded-md bg-emerald-100 px-2 py-1 font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : ''}`}
+            role="status"
+            {...devMarker({
+              context: 'requirementSelectionQuestions',
+              name: 'question status',
+              value: question.questionCode,
+            })}
+          >
             <StatusIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
             {statusText(question, copy)}
           </span>

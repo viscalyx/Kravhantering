@@ -7,7 +7,7 @@
     "areasPerChunk": 1,
     "targetSpecs": 10
   },
-  "discoveredSpecCount": 55,
+  "discoveredSpecCount": 56,
   "suites": {
     "dev": {
       "chunks": [
@@ -91,7 +91,7 @@
         {
           "id": "dev-stewardship",
           "paths": ["tests/integration/stewardship"],
-          "specCount": 1
+          "specCount": 2
         }
       ],
       "ignoredSpecs": [
@@ -104,7 +104,7 @@
         "tests/integration/platform/error-boundary-smoke.spec.ts",
         "tests/integration/platform/smoke.spec.ts"
       ],
-      "includedSpecCount": 47
+      "includedSpecCount": 48
     },
     "prodlike": {
       "chunks": [
@@ -170,7 +170,8 @@
         "tests/integration/specifications/list.spec.ts",
         "tests/integration/specifications/panel-layout.spec.ts",
         "tests/integration/specifications/requirement-detail.spec.ts",
-        "tests/integration/stewardship/navigation.spec.ts"
+        "tests/integration/stewardship/navigation.spec.ts",
+        "tests/integration/stewardship/rfi-layout.spec.ts"
       ],
       "includedSpecCount": 6
     }

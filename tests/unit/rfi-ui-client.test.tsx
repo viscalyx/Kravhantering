@@ -272,6 +272,50 @@ describe('RFI client UI states', () => {
     vi.unstubAllGlobals()
   })
 
+  it('exposes question text, metadata and announced status while actions leave details collapsed', async () => {
+    mockRfiClientFetch()
+    await renderRfiQuestionsClient()
+    await screen.findByText('SEC-RFI001')
+    for (const question of rfiQuestions) {
+      const disclosure = screen.getByRole('button', {
+        name: new RegExp(question.questionCode),
+        expanded: false,
+      })
+      const status = within(disclosure).getByRole('status')
+      expect(status).toHaveTextContent(
+        question.isArchived ? 'rfiQuestions.archived' : 'rfiQuestions.active',
+      )
+      expect(status.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+      expect(status).toHaveAttribute(
+        'data-developer-mode-name',
+        'question status',
+      )
+      expect(
+        within(disclosure).getByText(question.questionText),
+      ).toHaveAttribute('data-developer-mode-name', 'question text')
+      expect(
+        within(disclosure)
+          .getByText(question.questionCode)
+          .closest('[data-developer-mode-name="question metadata"]'),
+      ).toHaveTextContent(`v${question.versionNumber}`)
+      expect(disclosure.closest('ul')).toHaveAttribute(
+        'data-developer-mode-name',
+        'requirement area question list',
+      )
+    }
+    const disclosure = screen.getByRole('button', {
+      name: /SEC-RFI001/,
+      expanded: false,
+    })
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'rfiQuestions.editQuestion: SEC-RFI001',
+      }),
+    )
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(disclosure).toHaveAttribute('aria-expanded', 'false')
+  })
+
   it('leaves loading state when no requirement areas are available', async () => {
     fetchMock.mockImplementation((url: RequestInfo | URL) => {
       const href = String(url)
