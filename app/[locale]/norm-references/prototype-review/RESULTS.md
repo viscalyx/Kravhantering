@@ -26,6 +26,26 @@ requires selection to compare full metadata. C's detail-panel height is not
 comparable to a table-row height. Both are exploratory alternatives to the
 current issue brief.
 
+## Requested variant D
+
+D follows the maintainer's request to give identification its own column and
+place the issuer beneath the name. It is based on B and retains the same
+column proportions, status/count presentation and action sizes. ID,
+reference, version and type remain separately labelled in the middle column.
+The URI icon follows the name text inline with a 24px target. The name
+and first identification value share a 24px line height. A 4px margin
+keeps the issuer close beneath the name. Row actions remain 44px.
+No choice between A and D is assumed by adding the prototype.
+
+Compare [D in Swedish](screenshots/D-sv-1440-expanded-light.png) with
+[B](screenshots/B-1440-expanded-light.png). Inspect
+[D in English and dark theme](screenshots/D-en-1440-expanded-dark.png).
+The added [D verification](D-verification.json) covers 16 combinations of
+language, desktop size, navigation and theme. It checks the issuer/name
+relationship and the separate identification cell, alongside geometry and
+API writes. [D interaction checks](D-interaction-verification.json) cover
+variant cycling, local edits, reload and narrow-screen scrolling.
+
 ## Before/A measurements
 
 NIS2 row heights in CSS pixels; themes give the same results:

@@ -1,0 +1,1383 @@
+{
+  "date": "2026-09-22T16:07:11.382Z",
+  "results": [
+    {
+      "key": "D-sv-1440-collapsed-light",
+      "issuerLabelSize": "12px",
+      "referenceLabelSize": "12px",
+      "nameTextTop": 685,
+      "identificationTextTop": 686,
+      "link": {
+        "x": 522,
+        "y": 682,
+        "width": 24,
+        "height": 24
+      },
+      "lastTextRight": 518,
+      "issuer": {
+        "x": 121,
+        "y": 710,
+        "width": 554,
+        "height": 20
+      },
+      "row": {
+        "x": 105,
+        "y": 666,
+        "width": 1246,
+        "height": 129
+      },
+      "name": {
+        "x": 121,
+        "y": 685,
+        "width": 397,
+        "height": 17
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Benämning",
+          "x": 105,
+          "y": 355,
+          "width": 586,
+          "height": 53
+        },
+        {
+          "text": "Identifiering",
+          "x": 691,
+          "y": 355,
+          "width": 336,
+          "height": 53
+        },
+        {
+          "text": "Status och åtgärder",
+          "x": 1027,
+          "y": 355,
+          "width": 324,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1195,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1243,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1291,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1246,
+          "scroll": 1246
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "D-sv-1440-collapsed-dark",
+      "issuerLabelSize": "12px",
+      "referenceLabelSize": "12px",
+      "nameTextTop": 685,
+      "identificationTextTop": 686,
+      "link": {
+        "x": 522,
+        "y": 682,
+        "width": 24,
+        "height": 24
+      },
+      "lastTextRight": 518,
+      "issuer": {
+        "x": 121,
+        "y": 710,
+        "width": 554,
+        "height": 20
+      },
+      "row": {
+        "x": 105,
+        "y": 666,
+        "width": 1246,
+        "height": 129
+      },
+      "name": {
+        "x": 121,
+        "y": 685,
+        "width": 397,
+        "height": 17
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Benämning",
+          "x": 105,
+          "y": 355,
+          "width": 586,
+          "height": 53
+        },
+        {
+          "text": "Identifiering",
+          "x": 691,
+          "y": 355,
+          "width": 336,
+          "height": 53
+        },
+        {
+          "text": "Status och åtgärder",
+          "x": 1027,
+          "y": 355,
+          "width": 324,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1195,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1243,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1291,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1246,
+          "scroll": 1246
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "D-sv-1440-expanded-light",
+      "issuerLabelSize": "12px",
+      "referenceLabelSize": "12px",
+      "nameTextTop": 685,
+      "identificationTextTop": 686,
+      "link": {
+        "x": 714,
+        "y": 682,
+        "width": 24,
+        "height": 24
+      },
+      "lastTextRight": 710,
+      "issuer": {
+        "x": 313,
+        "y": 710,
+        "width": 463,
+        "height": 20
+      },
+      "row": {
+        "x": 297,
+        "y": 666,
+        "width": 1054,
+        "height": 129
+      },
+      "name": {
+        "x": 313,
+        "y": 685,
+        "width": 397,
+        "height": 17
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Benämning",
+          "x": 297,
+          "y": 355,
+          "width": 495,
+          "height": 53
+        },
+        {
+          "text": "Identifiering",
+          "x": 792,
+          "y": 355,
+          "width": 285,
+          "height": 53
+        },
+        {
+          "text": "Status och åtgärder",
+          "x": 1077,
+          "y": 355,
+          "width": 274,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1195,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1243,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1291,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1054,
+          "scroll": 1054
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "D-sv-1440-expanded-dark",
+      "issuerLabelSize": "12px",
+      "referenceLabelSize": "12px",
+      "nameTextTop": 685,
+      "identificationTextTop": 686,
+      "link": {
+        "x": 714,
+        "y": 682,
+        "width": 24,
+        "height": 24
+      },
+      "lastTextRight": 710,
+      "issuer": {
+        "x": 313,
+        "y": 710,
+        "width": 463,
+        "height": 20
+      },
+      "row": {
+        "x": 297,
+        "y": 666,
+        "width": 1054,
+        "height": 129
+      },
+      "name": {
+        "x": 313,
+        "y": 685,
+        "width": 397,
+        "height": 17
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Benämning",
+          "x": 297,
+          "y": 355,
+          "width": 495,
+          "height": 53
+        },
+        {
+          "text": "Identifiering",
+          "x": 792,
+          "y": 355,
+          "width": 285,
+          "height": 53
+        },
+        {
+          "text": "Status och åtgärder",
+          "x": 1077,
+          "y": 355,
+          "width": 274,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1195,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1243,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1291,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1054,
+          "scroll": 1054
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "D-sv-1920-collapsed-light",
+      "issuerLabelSize": "12px",
+      "referenceLabelSize": "12px",
+      "nameTextTop": 665,
+      "identificationTextTop": 666,
+      "link": {
+        "x": 522,
+        "y": 662,
+        "width": 24,
+        "height": 24
+      },
+      "lastTextRight": 518,
+      "issuer": {
+        "x": 121,
+        "y": 690,
+        "width": 779,
+        "height": 20
+      },
+      "row": {
+        "x": 105,
+        "y": 646,
+        "width": 1726,
+        "height": 129
+      },
+      "name": {
+        "x": 121,
+        "y": 665,
+        "width": 397,
+        "height": 17
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Benämning",
+          "x": 105,
+          "y": 335,
+          "width": 811,
+          "height": 53
+        },
+        {
+          "text": "Identifiering",
+          "x": 916,
+          "y": 335,
+          "width": 466,
+          "height": 53
+        },
+        {
+          "text": "Status och åtgärder",
+          "x": 1382,
+          "y": 335,
+          "width": 449,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1675,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1723,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1771,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1726,
+          "scroll": 1726
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "D-sv-1920-collapsed-dark",
+      "issuerLabelSize": "12px",
+      "referenceLabelSize": "12px",
+      "nameTextTop": 665,
+      "identificationTextTop": 666,
+      "link": {
+        "x": 522,
+        "y": 662,
+        "width": 24,
+        "height": 24
+      },
+      "lastTextRight": 518,
+      "issuer": {
+        "x": 121,
+        "y": 690,
+        "width": 779,
+        "height": 20
+      },
+      "row": {
+        "x": 105,
+        "y": 646,
+        "width": 1726,
+        "height": 129
+      },
+      "name": {
+        "x": 121,
+        "y": 665,
+        "width": 397,
+        "height": 17
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Benämning",
+          "x": 105,
+          "y": 335,
+          "width": 811,
+          "height": 53
+        },
+        {
+          "text": "Identifiering",
+          "x": 916,
+          "y": 335,
+          "width": 466,
+          "height": 53
+        },
+        {
+          "text": "Status och åtgärder",
+          "x": 1382,
+          "y": 335,
+          "width": 449,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1675,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1723,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1771,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1726,
+          "scroll": 1726
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "D-sv-1920-expanded-light",
+      "issuerLabelSize": "12px",
+      "referenceLabelSize": "12px",
+      "nameTextTop": 685,
+      "identificationTextTop": 686,
+      "link": {
+        "x": 714,
+        "y": 682,
+        "width": 24,
+        "height": 24
+      },
+      "lastTextRight": 710,
+      "issuer": {
+        "x": 313,
+        "y": 710,
+        "width": 689,
+        "height": 20
+      },
+      "row": {
+        "x": 297,
+        "y": 666,
+        "width": 1534,
+        "height": 129
+      },
+      "name": {
+        "x": 313,
+        "y": 685,
+        "width": 397,
+        "height": 17
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Benämning",
+          "x": 297,
+          "y": 355,
+          "width": 721,
+          "height": 53
+        },
+        {
+          "text": "Identifiering",
+          "x": 1018,
+          "y": 355,
+          "width": 414,
+          "height": 53
+        },
+        {
+          "text": "Status och åtgärder",
+          "x": 1432,
+          "y": 355,
+          "width": 399,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1675,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1723,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1771,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1534,
+          "scroll": 1534
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "D-sv-1920-expanded-dark",
+      "issuerLabelSize": "12px",
+      "referenceLabelSize": "12px",
+      "nameTextTop": 685,
+      "identificationTextTop": 686,
+      "link": {
+        "x": 714,
+        "y": 682,
+        "width": 24,
+        "height": 24
+      },
+      "lastTextRight": 710,
+      "issuer": {
+        "x": 313,
+        "y": 710,
+        "width": 689,
+        "height": 20
+      },
+      "row": {
+        "x": 297,
+        "y": 666,
+        "width": 1534,
+        "height": 129
+      },
+      "name": {
+        "x": 313,
+        "y": 685,
+        "width": 397,
+        "height": 17
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Benämning",
+          "x": 297,
+          "y": 355,
+          "width": 721,
+          "height": 53
+        },
+        {
+          "text": "Identifiering",
+          "x": 1018,
+          "y": 355,
+          "width": 414,
+          "height": 53
+        },
+        {
+          "text": "Status och åtgärder",
+          "x": 1432,
+          "y": 355,
+          "width": 399,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1675,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1723,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1771,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1534,
+          "scroll": 1534
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "D-en-1440-collapsed-light",
+      "issuerLabelSize": "12px",
+      "referenceLabelSize": "12px",
+      "nameTextTop": 685,
+      "identificationTextTop": 686,
+      "link": {
+        "x": 522,
+        "y": 682,
+        "width": 24,
+        "height": 24
+      },
+      "lastTextRight": 518,
+      "issuer": {
+        "x": 121,
+        "y": 710,
+        "width": 554,
+        "height": 20
+      },
+      "row": {
+        "x": 105,
+        "y": 666,
+        "width": 1246,
+        "height": 129
+      },
+      "name": {
+        "x": 121,
+        "y": 685,
+        "width": 397,
+        "height": 17
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Name",
+          "x": 105,
+          "y": 355,
+          "width": 586,
+          "height": 53
+        },
+        {
+          "text": "Identification",
+          "x": 691,
+          "y": 355,
+          "width": 336,
+          "height": 53
+        },
+        {
+          "text": "Status and actions",
+          "x": 1027,
+          "y": 355,
+          "width": 324,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1195,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1243,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1291,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1246,
+          "scroll": 1246
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Active",
+      "rows": 15
+    },
+    {
+      "key": "D-en-1440-collapsed-dark",
+      "issuerLabelSize": "12px",
+      "referenceLabelSize": "12px",
+      "nameTextTop": 685,
+      "identificationTextTop": 686,
+      "link": {
+        "x": 522,
+        "y": 682,
+        "width": 24,
+        "height": 24
+      },
+      "lastTextRight": 518,
+      "issuer": {
+        "x": 121,
+        "y": 710,
+        "width": 554,
+        "height": 20
+      },
+      "row": {
+        "x": 105,
+        "y": 666,
+        "width": 1246,
+        "height": 129
+      },
+      "name": {
+        "x": 121,
+        "y": 685,
+        "width": 397,
+        "height": 17
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Name",
+          "x": 105,
+          "y": 355,
+          "width": 586,
+          "height": 53
+        },
+        {
+          "text": "Identification",
+          "x": 691,
+          "y": 355,
+          "width": 336,
+          "height": 53
+        },
+        {
+          "text": "Status and actions",
+          "x": 1027,
+          "y": 355,
+          "width": 324,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1195,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1243,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1291,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1246,
+          "scroll": 1246
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Active",
+      "rows": 15
+    },
+    {
+      "key": "D-en-1440-expanded-light",
+      "issuerLabelSize": "12px",
+      "referenceLabelSize": "12px",
+      "nameTextTop": 685,
+      "identificationTextTop": 686,
+      "link": {
+        "x": 714,
+        "y": 682,
+        "width": 24,
+        "height": 24
+      },
+      "lastTextRight": 710,
+      "issuer": {
+        "x": 313,
+        "y": 710,
+        "width": 463,
+        "height": 20
+      },
+      "row": {
+        "x": 297,
+        "y": 666,
+        "width": 1054,
+        "height": 129
+      },
+      "name": {
+        "x": 313,
+        "y": 685,
+        "width": 397,
+        "height": 17
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Name",
+          "x": 297,
+          "y": 355,
+          "width": 495,
+          "height": 53
+        },
+        {
+          "text": "Identification",
+          "x": 792,
+          "y": 355,
+          "width": 285,
+          "height": 53
+        },
+        {
+          "text": "Status and actions",
+          "x": 1077,
+          "y": 355,
+          "width": 274,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1195,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1243,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1291,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1054,
+          "scroll": 1054
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Active",
+      "rows": 15
+    },
+    {
+      "key": "D-en-1440-expanded-dark",
+      "issuerLabelSize": "12px",
+      "referenceLabelSize": "12px",
+      "nameTextTop": 685,
+      "identificationTextTop": 686,
+      "link": {
+        "x": 714,
+        "y": 682,
+        "width": 24,
+        "height": 24
+      },
+      "lastTextRight": 710,
+      "issuer": {
+        "x": 313,
+        "y": 710,
+        "width": 463,
+        "height": 20
+      },
+      "row": {
+        "x": 297,
+        "y": 666,
+        "width": 1054,
+        "height": 129
+      },
+      "name": {
+        "x": 313,
+        "y": 685,
+        "width": 397,
+        "height": 17
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Name",
+          "x": 297,
+          "y": 355,
+          "width": 495,
+          "height": 53
+        },
+        {
+          "text": "Identification",
+          "x": 792,
+          "y": 355,
+          "width": 285,
+          "height": 53
+        },
+        {
+          "text": "Status and actions",
+          "x": 1077,
+          "y": 355,
+          "width": 274,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1195,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1243,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1291,
+          "y": 722,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1054,
+          "scroll": 1054
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Active",
+      "rows": 15
+    },
+    {
+      "key": "D-en-1920-collapsed-light",
+      "issuerLabelSize": "12px",
+      "referenceLabelSize": "12px",
+      "nameTextTop": 665,
+      "identificationTextTop": 666,
+      "link": {
+        "x": 522,
+        "y": 662,
+        "width": 24,
+        "height": 24
+      },
+      "lastTextRight": 518,
+      "issuer": {
+        "x": 121,
+        "y": 690,
+        "width": 779,
+        "height": 20
+      },
+      "row": {
+        "x": 105,
+        "y": 646,
+        "width": 1726,
+        "height": 129
+      },
+      "name": {
+        "x": 121,
+        "y": 665,
+        "width": 397,
+        "height": 17
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Name",
+          "x": 105,
+          "y": 335,
+          "width": 811,
+          "height": 53
+        },
+        {
+          "text": "Identification",
+          "x": 916,
+          "y": 335,
+          "width": 466,
+          "height": 53
+        },
+        {
+          "text": "Status and actions",
+          "x": 1382,
+          "y": 335,
+          "width": 449,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1675,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1723,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1771,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1726,
+          "scroll": 1726
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Active",
+      "rows": 15
+    },
+    {
+      "key": "D-en-1920-collapsed-dark",
+      "issuerLabelSize": "12px",
+      "referenceLabelSize": "12px",
+      "nameTextTop": 665,
+      "identificationTextTop": 666,
+      "link": {
+        "x": 522,
+        "y": 662,
+        "width": 24,
+        "height": 24
+      },
+      "lastTextRight": 518,
+      "issuer": {
+        "x": 121,
+        "y": 690,
+        "width": 779,
+        "height": 20
+      },
+      "row": {
+        "x": 105,
+        "y": 646,
+        "width": 1726,
+        "height": 129
+      },
+      "name": {
+        "x": 121,
+        "y": 665,
+        "width": 397,
+        "height": 17
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Name",
+          "x": 105,
+          "y": 335,
+          "width": 811,
+          "height": 53
+        },
+        {
+          "text": "Identification",
+          "x": 916,
+          "y": 335,
+          "width": 466,
+          "height": 53
+        },
+        {
+          "text": "Status and actions",
+          "x": 1382,
+          "y": 335,
+          "width": 449,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1675,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1723,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1771,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1726,
+          "scroll": 1726
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Active",
+      "rows": 15
+    },
+    {
+      "key": "D-en-1920-expanded-light",
+      "issuerLabelSize": "12px",
+      "referenceLabelSize": "12px",
+      "nameTextTop": 665,
+      "identificationTextTop": 666,
+      "link": {
+        "x": 714,
+        "y": 662,
+        "width": 24,
+        "height": 24
+      },
+      "lastTextRight": 710,
+      "issuer": {
+        "x": 313,
+        "y": 690,
+        "width": 689,
+        "height": 20
+      },
+      "row": {
+        "x": 297,
+        "y": 646,
+        "width": 1534,
+        "height": 129
+      },
+      "name": {
+        "x": 313,
+        "y": 665,
+        "width": 397,
+        "height": 17
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Name",
+          "x": 297,
+          "y": 335,
+          "width": 721,
+          "height": 53
+        },
+        {
+          "text": "Identification",
+          "x": 1018,
+          "y": 335,
+          "width": 414,
+          "height": 53
+        },
+        {
+          "text": "Status and actions",
+          "x": 1432,
+          "y": 335,
+          "width": 399,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1675,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1723,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1771,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1534,
+          "scroll": 1534
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Active",
+      "rows": 15
+    },
+    {
+      "key": "D-en-1920-expanded-dark",
+      "issuerLabelSize": "12px",
+      "referenceLabelSize": "12px",
+      "nameTextTop": 665,
+      "identificationTextTop": 666,
+      "link": {
+        "x": 714,
+        "y": 662,
+        "width": 24,
+        "height": 24
+      },
+      "lastTextRight": 710,
+      "issuer": {
+        "x": 313,
+        "y": 690,
+        "width": 689,
+        "height": 20
+      },
+      "row": {
+        "x": 297,
+        "y": 646,
+        "width": 1534,
+        "height": 129
+      },
+      "name": {
+        "x": 313,
+        "y": 665,
+        "width": 397,
+        "height": 17
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Name",
+          "x": 297,
+          "y": 335,
+          "width": 721,
+          "height": 53
+        },
+        {
+          "text": "Identification",
+          "x": 1018,
+          "y": 335,
+          "width": 414,
+          "height": 53
+        },
+        {
+          "text": "Status and actions",
+          "x": 1432,
+          "y": 335,
+          "width": 399,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1675,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1723,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1771,
+          "y": 702,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1534,
+          "scroll": 1534
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Active",
+      "rows": 15
+    }
+  ],
+  "errors": [],
+  "writes": []
+}

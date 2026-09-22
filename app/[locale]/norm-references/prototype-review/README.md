@@ -5,7 +5,7 @@ issuers easiest to compare while keeping identifiers and actions readable?**
 
 It is for maintainers reviewing visual design. No variant is approved.
 Variant A is the closest candidate to the current implementation brief.
-B and C deliberately explore alternatives outside that brief.
+B, C and D deliberately explore alternatives outside that brief.
 
 ## Open the prototype
 
@@ -58,6 +58,10 @@ different configured checkout. It does not install services or run migrations.
   The panel follows scrolling on desktop. On narrow screens it sits below
   the list, so reaching the detail may require scrolling past the list.
 
+- [D — Separate identification](http://localhost:3138/sv/requirements/stewardship?tab=norms&variant=D):
+  based on B, with name and issuer together in the first column,
+  identification in the middle, and status/actions on the right.
+
 Use `/en/` instead of `/sv/` for English controls. Norm names and synthetic
 source content remain in their source language, as required by ADR 0008.
 
@@ -109,7 +113,8 @@ through its preview action and observe the badge change.
 
 ### 5. External links beside the name
 
-All variants retain the name/link relationship and 44px link target. The
+All variants retain the name/link relationship. D uses a 24px link target;
+the earlier variants retain their 44px target. The
 existing URI helper decides whether a link is clickable. The icon has its
 existing translated name and opens its destination in a new tab.
 
@@ -159,7 +164,8 @@ On mobile, scroll below the list to inspect the selected detail.
 ### 9. Shareable comparison controls
 
 The bottom bar includes previous/next arrows and a labelled variant selector.
-It cycles Before → A → B → C → Before. The URL records `variant` and survives
+It cycles Before → A → B → C → D → Before. The URL records `variant` and
+survives
 reload. On mobile the bar sits above the development runtime indicator.
 Arrow keys do not change variants while editing, choosing a select
 option, or interacting with a dialog.
@@ -195,13 +201,36 @@ geometry results and screenshots. The comparison code is next to the norm
 page, named `norm-layout.prototype.tsx`. The shared prototype switcher is in
 `components/PrototypeVariantSwitcher.tsx`.
 
-Verify: run the command above, open the four links, and compare the captures
+Verify: run the command above, open the five links, and compare the captures
 in [screenshots](screenshots). Read [desktop measurements](verification.json)
 and [interaction checks](interaction-verification.json).
 
+### 13. Separate identification and issuer beneath the name in D
+
+D is the requested variation on B. It retains the 47/27/26 column proportions
+but uses **Name / Identification / Status and actions**. The issuer appears
+beneath the name, prefixed by its label. Identification contains separately
+labelled norm reference ID, reference, version and type. The external link
+flows immediately after the name text, rather than at the
+column edge. Its 24px target avoids stretching the name line. A 4px margin
+separates the name from the issuer. The name and first identification value
+share a 24px line height and align at the top. Status badges, counts and
+44px row actions keep their pattern. The issuer label uses the same 12px
+font size as the Reference label; the publisher name stays 14px.
+
+Verify: open `variant=D`, then switch B/D using the selector. Check NIS2 and
+GDPR: the publisher is directly beneath the name; ID, reference, version and
+type occupy the middle column. Check that the URI icon sits directly after
+the name, including short names and wrapped names. Check its 24px target,
+the closer issuer, and alignment with the first identification value.
+Enable examples for missing versions and long references. Repeat in both
+languages/themes and navigation modes. On narrow
+screens, scroll within the table. Try editing a name and switching variants;
+the preview still changes memory only. D follows C in the switcher cycle.
+
 ## Review matrix
 
-Use identical data for each Before/A/B/C comparison:
+Use identical data for each Before/A/B/C/D comparison:
 
 - 1440 × 900 and 1920 × 1080.
 - Navigation collapsed and expanded.
@@ -221,7 +250,8 @@ so the base comparison uses the same loaded development data as triage.
 See [RESULTS.md](RESULTS.md) for measured comparisons and representative
 screenshots. No winning design is selected. A is the preliminary recommendation
 because it addresses the issue while retaining nine-column comparison.
-B and C answer different reading needs and require an explicit scope decision.
+B, C and D answer different reading needs and require an explicit scope
+decision.
 
 This is throwaway code. No permanent unit or integration tests, manual cases,
 production migrations, environment-file changes or production behavior changes

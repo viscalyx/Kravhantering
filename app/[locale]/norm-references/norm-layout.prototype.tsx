@@ -1,6 +1,6 @@
 'use client'
 
-// THROWAWAY #1358: before + three structurally different norm-library layouts.
+// THROWAWAY #1358: before + four structurally different norm-library layouts.
 // Question: which layout makes long names and issuers easiest to compare?
 import {
   Archive,
@@ -122,18 +122,30 @@ function NormStatus({ row }: { row: Norm }) {
     </span>
   )
 }
-function NormName({ row }: { row: Norm }) {
+function NormName({
+  row,
+  inlineUri = false,
+}: {
+  row: Norm
+  inlineUri?: boolean
+}) {
   const t = useTranslations('normReference')
   const uri = getBrowserLinkUri(row.uri)
   return (
-    <span className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+    <span
+      className={
+        inlineUri
+          ? '[overflow-wrap:anywhere]'
+          : 'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2'
+      }
+    >
       <span className="min-w-0 wrap-break-word" data-prototype-name>
         {row.name}
       </span>
       {uri && (
         <a
           aria-label={t('openUri')}
-          className={`${actionClass} text-primary-700 dark:text-primary-300`}
+          className={`${inlineUri ? `${actionClass.replace('h-11 w-11', 'h-6 w-6')} ml-1 align-top` : actionClass} text-primary-700 dark:text-primary-300`}
           href={uri}
           rel="noopener noreferrer"
           target="_blank"
@@ -390,6 +402,94 @@ export function VariantB({ rows, act }: VariantProps) {
   )
 }
 
+export function VariantD({ rows, act }: VariantProps) {
+  const t = useTranslations('normReference')
+  const p = useTranslations('prototypeNormLayout')
+  return (
+    <div
+      className={surface}
+      data-prototype-scroll
+      {...devMarker({
+        context: 'normReferences',
+        name: 'prototype separate identification',
+        value: 'D',
+      })}
+    >
+      <table className="w-full min-w-[900px] table-fixed text-left text-sm">
+        <colgroup>
+          <col style={{ width: '47%' }} />
+          <col style={{ width: '27%' }} />
+          <col style={{ width: '26%' }} />
+        </colgroup>
+        <thead className="border-b bg-secondary-50 dark:bg-secondary-800/30">
+          <tr>
+            <th className="p-4" scope="col">
+              {t('name')}
+            </th>
+            <th className="p-4" scope="col">
+              {p('identification')}
+            </th>
+            <th className="p-4" scope="col">
+              {p('statusActions')}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(row => (
+            <tr
+              className={rowClass}
+              data-norm-id={row.normReferenceId}
+              key={row.id}
+            >
+              <td className="p-4 align-top">
+                <div className="mb-1 font-medium leading-6">
+                  <NormName inlineUri row={row} />
+                </div>
+                <p
+                  className="text-sm text-secondary-600 [overflow-wrap:anywhere] dark:text-secondary-400"
+                  data-prototype-issuer
+                >
+                  <span className="text-xs font-medium">{t('issuer')}:</span>{' '}
+                  {row.issuer}
+                </p>
+              </td>
+              <td className="p-4 align-top">
+                <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-xs">
+                  <dt className="leading-6">{t('normReferenceId')}</dt>
+                  <dd className="font-mono text-sm leading-6 [overflow-wrap:anywhere]">
+                    {row.normReferenceId}
+                  </dd>
+                  <dt>{t('reference')}</dt>
+                  <dd className="[overflow-wrap:anywhere]">{row.reference}</dd>
+                  <dt>{t('version')}</dt>
+                  <dd className="[overflow-wrap:anywhere]">
+                    {row.version ?? '-'}
+                  </dd>
+                  <dt>{t('type')}</dt>
+                  <dd className="[overflow-wrap:anywhere]">{row.type}</dd>
+                </dl>
+              </td>
+              <td className="p-4 align-top">
+                <div className="flex flex-wrap items-center gap-3">
+                  <NormStatus row={row} />
+                  <span className="whitespace-nowrap text-xs">
+                    {t('requirementCount', {
+                      count: row.linkedRequirementCount,
+                    })}
+                  </span>
+                </div>
+                <div className="mt-4">
+                  <Actions act={act} row={row} />
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export function VariantC({
   rows,
   act,
@@ -486,12 +586,12 @@ export default function NormLayoutPrototype({
   const c = useTranslations('common')
   const nav = useTranslations('nav')
   const params = useSearchParams()
-  const variant = ['before', 'A', 'B', 'C'].includes(
+  const variant = ['before', 'A', 'B', 'C', 'D'].includes(
     params.get('variant') ?? '',
   )
     ? (params.get('variant') ?? 'A')
     : 'A'
-  const variants = ['before', 'A', 'B', 'C'].map(key => ({
+  const variants = ['before', 'A', 'B', 'C', 'D'].map(key => ({
     key,
     label: p(`variants.${key}`),
   }))
@@ -663,6 +763,8 @@ export default function NormLayoutPrototype({
             <VariantA act={act} before={variant === 'before'} rows={rows} />
           ) : variant === 'B' ? (
             <VariantB act={act} rows={rows} />
+          ) : variant === 'D' ? (
+            <VariantD act={act} rows={rows} />
           ) : (
             <VariantC
               act={act}
