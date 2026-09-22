@@ -4102,7 +4102,7 @@
       "A": "Nine columns, compact metadata, wider name and issuer, status badges. Closest to issue scope.",
       "B": "Name, ID, reference and version together; issuer and actions beside them. Wider reading space, taller rows.",
       "C": "Browse names on the left and read one full norm on the right. More room for reading, less direct comparison.",
-      "D": "Name and URI icon at the top; issuer vertically centered in the cell. Identification has its own column with ID, reference, version and type.Status and row actions are top-aligned, with the requirement count below."
+      "D": "Name and URI icon at the top; issuer vertically centered in the cell. Identification has its own column with ID, reference, version and type. The requirement count follows the status badge on the same line; row-action icons align with the badge."
     },
     "checks": {
       "space": "A: compare the NIS2 row with Before at 1440 × 900, expanded navigation. Read the full name and issuer; compare wrapping and row height. Name and issuer gain space; metadata padding shrinks.",

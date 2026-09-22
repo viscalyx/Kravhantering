@@ -4102,7 +4102,7 @@
       "A": "Nio kolumner, kompakt metadata, bredare benämning och utfärdare samt statusbrickor. Närmast ärendets omfattning.",
       "B": "Benämning, ID, referens och version tillsammans; utfärdare och åtgärder bredvid. Mer läsutrymme men högre rader.",
       "C": "Bläddra bland namn till vänster och läs en hel norm till höger. Mer plats för läsning men sämre direkt jämförelse.",
-      "D": "Benämning och URI-ikon överst; utfärdare vertikalt centrerad i cellen. Identifiering med ID, referens, version och typ i en egen kolumn. Status och radåtgärder ligger överst, med kravantal under."
+      "D": "Benämning och URI-ikon överst; utfärdare vertikalt centrerad i cellen. Identifiering med ID, referens, version och typ i en egen kolumn. Kravantal följer direkt efter statusbrickan på samma rad; åtgärdsikoner ligger i höjd med brickan."
     },
     "checks": {
       "space": "A: jämför NIS2-raden med Före vid 1440 × 900 och utfälld navigation. Läs hela benämningen och utfärdaren; jämför radbrytning och radhöjd. Benämning och utfärdare får mer plats, metadatans marginaler minskar.",

@@ -1,108 +1,168 @@
 {
-  "date": "2026-09-22T16:15:51.890Z",
+  "date": "2026-09-22T16:21:32.858Z",
   "results": [
     {
       "key": "D-sv-1440-collapsed-light",
       "allRows": [
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EN 301 549 v3.2.1",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EU 2016/679",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EU 2022/2555",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "ISO/IEC 25010:2023",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "ISO/IEC 27001:2022",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "MSBFS 2020:6",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "OpenID Connect Core 1.0",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "OWASP ASVS 4.0.3",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-FRESH",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-UNUSED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-USED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RFC 6749",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RFC 9700",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "SFS 2018:218",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "WCAG 2.2",
           "centerDelta": 0.25,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         }
       ],
       "centeredMetadata": {
         "x": 121,
         "y": 720,
-        "width": 554,
+        "width": 558,
         "height": 20
       },
       "type": {
-        "x": 805,
+        "x": 809,
         "y": 762,
         "width": 206,
         "height": 16
@@ -121,7 +181,7 @@
       "issuer": {
         "x": 121,
         "y": 720,
-        "width": 554,
+        "width": 558,
         "height": 20
       },
       "row": {
@@ -142,40 +202,40 @@
           "text": "Benämning",
           "x": 105,
           "y": 355,
-          "width": 586,
+          "width": 590,
           "height": 53
         },
         {
           "text": "Identifiering",
-          "x": 691,
+          "x": 695,
           "y": 355,
           "width": 336,
           "height": 53
         },
         {
           "text": "Status och åtgärder",
-          "x": 1027,
+          "x": 1031,
           "y": 355,
-          "width": 324,
+          "width": 320,
           "height": 53
         }
       ],
       "actions": [
         {
           "x": 1195,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1243,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1291,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         }
@@ -195,104 +255,164 @@
       "key": "D-sv-1440-collapsed-dark",
       "allRows": [
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EN 301 549 v3.2.1",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EU 2016/679",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EU 2022/2555",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "ISO/IEC 25010:2023",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "ISO/IEC 27001:2022",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "MSBFS 2020:6",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "OpenID Connect Core 1.0",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "OWASP ASVS 4.0.3",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-FRESH",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-UNUSED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-USED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RFC 6749",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RFC 9700",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "SFS 2018:218",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "WCAG 2.2",
           "centerDelta": 0.25,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         }
       ],
       "centeredMetadata": {
         "x": 121,
         "y": 720,
-        "width": 554,
+        "width": 558,
         "height": 20
       },
       "type": {
-        "x": 805,
+        "x": 809,
         "y": 762,
         "width": 206,
         "height": 16
@@ -311,7 +431,7 @@
       "issuer": {
         "x": 121,
         "y": 720,
-        "width": 554,
+        "width": 558,
         "height": 20
       },
       "row": {
@@ -332,40 +452,40 @@
           "text": "Benämning",
           "x": 105,
           "y": 355,
-          "width": 586,
+          "width": 590,
           "height": 53
         },
         {
           "text": "Identifiering",
-          "x": 691,
+          "x": 695,
           "y": 355,
           "width": 336,
           "height": 53
         },
         {
           "text": "Status och åtgärder",
-          "x": 1027,
+          "x": 1031,
           "y": 355,
-          "width": 324,
+          "width": 320,
           "height": 53
         }
       ],
       "actions": [
         {
           "x": 1195,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1243,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1291,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         }
@@ -385,104 +505,164 @@
       "key": "D-sv-1440-expanded-light",
       "allRows": [
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EN 301 549 v3.2.1",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EU 2016/679",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EU 2022/2555",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "ISO/IEC 25010:2023",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "ISO/IEC 27001:2022",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "MSBFS 2020:6",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "OpenID Connect Core 1.0",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "OWASP ASVS 4.0.3",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-FRESH",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-UNUSED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-USED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RFC 6749",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RFC 9700",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "SFS 2018:218",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "WCAG 2.2",
           "centerDelta": 0.25,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         }
       ],
       "centeredMetadata": {
         "x": 313,
-        "y": 720,
-        "width": 463,
+        "y": 742,
+        "width": 417,
         "height": 20
       },
       "type": {
-        "x": 906,
+        "x": 860,
         "y": 762,
         "width": 155,
         "height": 16
@@ -492,23 +672,23 @@
       "nameTextTop": 685,
       "identificationTextTop": 686,
       "link": {
-        "x": 714,
-        "y": 682,
+        "x": 317,
+        "y": 706,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 710,
       "issuer": {
         "x": 313,
-        "y": 720,
-        "width": 463,
+        "y": 742,
+        "width": 417,
         "height": 20
       },
       "row": {
         "x": 297,
         "y": 666,
         "width": 1054,
-        "height": 129
+        "height": 173
       },
       "name": {
         "x": 313,
@@ -522,40 +702,40 @@
           "text": "Benämning",
           "x": 297,
           "y": 355,
-          "width": 495,
+          "width": 449,
           "height": 53
         },
         {
           "text": "Identifiering",
-          "x": 792,
+          "x": 746,
           "y": 355,
           "width": 285,
           "height": 53
         },
         {
           "text": "Status och åtgärder",
-          "x": 1077,
+          "x": 1031,
           "y": 355,
-          "width": 274,
+          "width": 320,
           "height": 53
         }
       ],
       "actions": [
         {
           "x": 1195,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1243,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1291,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         }
@@ -575,104 +755,164 @@
       "key": "D-sv-1440-expanded-dark",
       "allRows": [
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EN 301 549 v3.2.1",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EU 2016/679",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EU 2022/2555",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "ISO/IEC 25010:2023",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "ISO/IEC 27001:2022",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "MSBFS 2020:6",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "OpenID Connect Core 1.0",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "OWASP ASVS 4.0.3",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-FRESH",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-UNUSED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-USED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RFC 6749",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RFC 9700",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "SFS 2018:218",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "WCAG 2.2",
           "centerDelta": 0.25,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         }
       ],
       "centeredMetadata": {
         "x": 313,
-        "y": 720,
-        "width": 463,
+        "y": 742,
+        "width": 417,
         "height": 20
       },
       "type": {
-        "x": 906,
+        "x": 860,
         "y": 762,
         "width": 155,
         "height": 16
@@ -682,23 +922,23 @@
       "nameTextTop": 685,
       "identificationTextTop": 686,
       "link": {
-        "x": 714,
-        "y": 682,
+        "x": 317,
+        "y": 706,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 710,
       "issuer": {
         "x": 313,
-        "y": 720,
-        "width": 463,
+        "y": 742,
+        "width": 417,
         "height": 20
       },
       "row": {
         "x": 297,
         "y": 666,
         "width": 1054,
-        "height": 129
+        "height": 173
       },
       "name": {
         "x": 313,
@@ -712,40 +952,40 @@
           "text": "Benämning",
           "x": 297,
           "y": 355,
-          "width": 495,
+          "width": 449,
           "height": 53
         },
         {
           "text": "Identifiering",
-          "x": 792,
+          "x": 746,
           "y": 355,
           "width": 285,
           "height": 53
         },
         {
           "text": "Status och åtgärder",
-          "x": 1077,
+          "x": 1031,
           "y": 355,
-          "width": 274,
+          "width": 320,
           "height": 53
         }
       ],
       "actions": [
         {
           "x": 1195,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1243,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1291,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         }
@@ -765,104 +1005,164 @@
       "key": "D-sv-1920-collapsed-light",
       "allRows": [
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EN 301 549 v3.2.1",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EU 2016/679",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EU 2022/2555",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "ISO/IEC 25010:2023",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "ISO/IEC 27001:2022",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "MSBFS 2020:6",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "OpenID Connect Core 1.0",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "OWASP ASVS 4.0.3",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-FRESH",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-UNUSED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-USED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RFC 6749",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RFC 9700",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "SFS 2018:218",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "WCAG 2.2",
           "centerDelta": 0.25,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         }
       ],
       "centeredMetadata": {
         "x": 121,
         "y": 700,
-        "width": 779,
+        "width": 908,
         "height": 20
       },
       "type": {
-        "x": 1030,
+        "x": 1159,
         "y": 742,
         "width": 336,
         "height": 16
@@ -881,7 +1181,7 @@
       "issuer": {
         "x": 121,
         "y": 700,
-        "width": 779,
+        "width": 908,
         "height": 20
       },
       "row": {
@@ -902,40 +1202,40 @@
           "text": "Benämning",
           "x": 105,
           "y": 335,
-          "width": 811,
+          "width": 940,
           "height": 53
         },
         {
           "text": "Identifiering",
-          "x": 916,
+          "x": 1045,
           "y": 335,
           "width": 466,
           "height": 53
         },
         {
           "text": "Status och åtgärder",
-          "x": 1382,
+          "x": 1511,
           "y": 335,
-          "width": 449,
+          "width": 320,
           "height": 53
         }
       ],
       "actions": [
         {
           "x": 1675,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         },
         {
           "x": 1723,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         },
         {
           "x": 1771,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         }
@@ -955,104 +1255,164 @@
       "key": "D-sv-1920-collapsed-dark",
       "allRows": [
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EN 301 549 v3.2.1",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EU 2016/679",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EU 2022/2555",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "ISO/IEC 25010:2023",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "ISO/IEC 27001:2022",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "MSBFS 2020:6",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "OpenID Connect Core 1.0",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "OWASP ASVS 4.0.3",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-FRESH",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-UNUSED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-USED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RFC 6749",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RFC 9700",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "SFS 2018:218",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "WCAG 2.2",
           "centerDelta": 0.25,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         }
       ],
       "centeredMetadata": {
         "x": 121,
         "y": 700,
-        "width": 779,
+        "width": 908,
         "height": 20
       },
       "type": {
-        "x": 1030,
+        "x": 1159,
         "y": 742,
         "width": 336,
         "height": 16
@@ -1071,7 +1431,7 @@
       "issuer": {
         "x": 121,
         "y": 700,
-        "width": 779,
+        "width": 908,
         "height": 20
       },
       "row": {
@@ -1092,40 +1452,40 @@
           "text": "Benämning",
           "x": 105,
           "y": 335,
-          "width": 811,
+          "width": 940,
           "height": 53
         },
         {
           "text": "Identifiering",
-          "x": 916,
+          "x": 1045,
           "y": 335,
           "width": 466,
           "height": 53
         },
         {
           "text": "Status och åtgärder",
-          "x": 1382,
+          "x": 1511,
           "y": 335,
-          "width": 449,
+          "width": 320,
           "height": 53
         }
       ],
       "actions": [
         {
           "x": 1675,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         },
         {
           "x": 1723,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         },
         {
           "x": 1771,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         }
@@ -1145,104 +1505,164 @@
       "key": "D-sv-1920-expanded-light",
       "allRows": [
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EN 301 549 v3.2.1",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EU 2016/679",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EU 2022/2555",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "ISO/IEC 25010:2023",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "ISO/IEC 27001:2022",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "MSBFS 2020:6",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "OpenID Connect Core 1.0",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "OWASP ASVS 4.0.3",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-FRESH",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-UNUSED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-USED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RFC 6749",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RFC 9700",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "SFS 2018:218",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "WCAG 2.2",
           "centerDelta": 0.25,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         }
       ],
       "centeredMetadata": {
         "x": 313,
         "y": 700,
-        "width": 689,
+        "width": 768,
         "height": 20
       },
       "type": {
-        "x": 1132,
+        "x": 1211,
         "y": 742,
         "width": 284,
         "height": 16
@@ -1261,7 +1681,7 @@
       "issuer": {
         "x": 313,
         "y": 700,
-        "width": 689,
+        "width": 768,
         "height": 20
       },
       "row": {
@@ -1282,40 +1702,40 @@
           "text": "Benämning",
           "x": 297,
           "y": 335,
-          "width": 721,
+          "width": 800,
           "height": 53
         },
         {
           "text": "Identifiering",
-          "x": 1018,
+          "x": 1097,
           "y": 335,
           "width": 414,
           "height": 53
         },
         {
           "text": "Status och åtgärder",
-          "x": 1432,
+          "x": 1511,
           "y": 335,
-          "width": 399,
+          "width": 320,
           "height": 53
         }
       ],
       "actions": [
         {
           "x": 1675,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         },
         {
           "x": 1723,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         },
         {
           "x": 1771,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         }
@@ -1335,104 +1755,164 @@
       "key": "D-sv-1920-expanded-dark",
       "allRows": [
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EN 301 549 v3.2.1",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EU 2016/679",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "EU 2022/2555",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "ISO/IEC 25010:2023",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "ISO/IEC 27001:2022",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "MSBFS 2020:6",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "OpenID Connect Core 1.0",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "OWASP ASVS 4.0.3",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-FRESH",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-UNUSED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RETENTION-SEED-NORM-USED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RFC 6749",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "RFC 9700",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "SFS 2018:218",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 53.921875,
           "id": "WCAG 2.2",
           "centerDelta": 0.25,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         }
       ],
       "centeredMetadata": {
         "x": 313,
         "y": 700,
-        "width": 689,
+        "width": 768,
         "height": 20
       },
       "type": {
-        "x": 1132,
+        "x": 1211,
         "y": 742,
         "width": 284,
         "height": 16
@@ -1451,7 +1931,7 @@
       "issuer": {
         "x": 313,
         "y": 700,
-        "width": 689,
+        "width": 768,
         "height": 20
       },
       "row": {
@@ -1472,40 +1952,40 @@
           "text": "Benämning",
           "x": 297,
           "y": 335,
-          "width": 721,
+          "width": 800,
           "height": 53
         },
         {
           "text": "Identifiering",
-          "x": 1018,
+          "x": 1097,
           "y": 335,
           "width": 414,
           "height": 53
         },
         {
           "text": "Status och åtgärder",
-          "x": 1432,
+          "x": 1511,
           "y": 335,
-          "width": 399,
+          "width": 320,
           "height": 53
         }
       ],
       "actions": [
         {
           "x": 1675,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         },
         {
           "x": 1723,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         },
         {
           "x": 1771,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         }
@@ -1525,104 +2005,164 @@
       "key": "D-en-1440-collapsed-light",
       "allRows": [
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 76.265625,
           "id": "EN 301 549 v3.2.1",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "EU 2016/679",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 76.265625,
           "id": "EU 2022/2555",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "ISO/IEC 25010:2023",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "ISO/IEC 27001:2022",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "MSBFS 2020:6",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "OpenID Connect Core 1.0",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "OWASP ASVS 4.0.3",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-FRESH",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-UNUSED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-USED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RFC 6749",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RFC 9700",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "SFS 2018:218",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "WCAG 2.2",
           "centerDelta": 0.25,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         }
       ],
       "centeredMetadata": {
         "x": 121,
         "y": 720,
-        "width": 554,
+        "width": 488,
         "height": 20
       },
       "type": {
-        "x": 814,
+        "x": 748,
         "y": 762,
         "width": 197,
         "height": 16
@@ -1641,7 +2181,7 @@
       "issuer": {
         "x": 121,
         "y": 720,
-        "width": 554,
+        "width": 488,
         "height": 20
       },
       "row": {
@@ -1662,40 +2202,40 @@
           "text": "Name",
           "x": 105,
           "y": 355,
-          "width": 586,
+          "width": 520,
           "height": 53
         },
         {
           "text": "Identification",
-          "x": 691,
+          "x": 625,
           "y": 355,
           "width": 336,
           "height": 53
         },
         {
           "text": "Status and actions",
-          "x": 1027,
+          "x": 961,
           "y": 355,
-          "width": 324,
+          "width": 390,
           "height": 53
         }
       ],
       "actions": [
         {
           "x": 1195,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1243,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1291,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         }
@@ -1715,104 +2255,164 @@
       "key": "D-en-1440-collapsed-dark",
       "allRows": [
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 76.265625,
           "id": "EN 301 549 v3.2.1",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "EU 2016/679",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 76.265625,
           "id": "EU 2022/2555",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "ISO/IEC 25010:2023",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "ISO/IEC 27001:2022",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "MSBFS 2020:6",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "OpenID Connect Core 1.0",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "OWASP ASVS 4.0.3",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-FRESH",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-UNUSED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-USED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RFC 6749",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RFC 9700",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "SFS 2018:218",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "WCAG 2.2",
           "centerDelta": 0.25,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         }
       ],
       "centeredMetadata": {
         "x": 121,
         "y": 720,
-        "width": 554,
+        "width": 488,
         "height": 20
       },
       "type": {
-        "x": 814,
+        "x": 748,
         "y": 762,
         "width": 197,
         "height": 16
@@ -1831,7 +2431,7 @@
       "issuer": {
         "x": 121,
         "y": 720,
-        "width": 554,
+        "width": 488,
         "height": 20
       },
       "row": {
@@ -1852,40 +2452,40 @@
           "text": "Name",
           "x": 105,
           "y": 355,
-          "width": 586,
+          "width": 520,
           "height": 53
         },
         {
           "text": "Identification",
-          "x": 691,
+          "x": 625,
           "y": 355,
           "width": 336,
           "height": 53
         },
         {
           "text": "Status and actions",
-          "x": 1027,
+          "x": 961,
           "y": 355,
-          "width": 324,
+          "width": 390,
           "height": 53
         }
       ],
       "actions": [
         {
           "x": 1195,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1243,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1291,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         }
@@ -1905,104 +2505,164 @@
       "key": "D-en-1440-expanded-light",
       "allRows": [
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 76.265625,
           "id": "EN 301 549 v3.2.1",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "EU 2016/679",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 76.265625,
           "id": "EU 2022/2555",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "ISO/IEC 25010:2023",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "ISO/IEC 27001:2022",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "MSBFS 2020:6",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "OpenID Connect Core 1.0",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "OWASP ASVS 4.0.3",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-FRESH",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-UNUSED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-USED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RFC 6749",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RFC 9700",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "SFS 2018:218",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "WCAG 2.2",
           "centerDelta": 0.25,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         }
       ],
       "centeredMetadata": {
         "x": 313,
-        "y": 720,
-        "width": 463,
+        "y": 742,
+        "width": 347,
         "height": 20
       },
       "type": {
-        "x": 916,
+        "x": 800,
         "y": 762,
         "width": 145,
         "height": 16
@@ -2012,70 +2672,70 @@
       "nameTextTop": 685,
       "identificationTextTop": 686,
       "link": {
-        "x": 714,
-        "y": 682,
+        "x": 434,
+        "y": 706,
         "width": 24,
         "height": 24
       },
-      "lastTextRight": 710,
+      "lastTextRight": 430,
       "issuer": {
         "x": 313,
-        "y": 720,
-        "width": 463,
+        "y": 742,
+        "width": 347,
         "height": 20
       },
       "row": {
         "x": 297,
         "y": 666,
         "width": 1054,
-        "height": 129
+        "height": 173
       },
       "name": {
         "x": 313,
         "y": 685,
-        "width": 397,
-        "height": 17
+        "width": 275,
+        "height": 41
       },
-      "nameLines": 1,
+      "nameLines": 2,
       "columns": [
         {
           "text": "Name",
           "x": 297,
           "y": 355,
-          "width": 495,
+          "width": 379,
           "height": 53
         },
         {
           "text": "Identification",
-          "x": 792,
+          "x": 676,
           "y": 355,
           "width": 285,
           "height": 53
         },
         {
           "text": "Status and actions",
-          "x": 1077,
+          "x": 961,
           "y": 355,
-          "width": 274,
+          "width": 390,
           "height": 53
         }
       ],
       "actions": [
         {
           "x": 1195,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1243,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1291,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         }
@@ -2095,104 +2755,164 @@
       "key": "D-en-1440-expanded-dark",
       "allRows": [
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 76.265625,
           "id": "EN 301 549 v3.2.1",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "EU 2016/679",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 76.265625,
           "id": "EU 2022/2555",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "ISO/IEC 25010:2023",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "ISO/IEC 27001:2022",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "MSBFS 2020:6",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "OpenID Connect Core 1.0",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "OWASP ASVS 4.0.3",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-FRESH",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-UNUSED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-USED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RFC 6749",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RFC 9700",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "SFS 2018:218",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "WCAG 2.2",
           "centerDelta": 0.25,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         }
       ],
       "centeredMetadata": {
         "x": 313,
-        "y": 720,
-        "width": 463,
+        "y": 742,
+        "width": 347,
         "height": 20
       },
       "type": {
-        "x": 916,
+        "x": 800,
         "y": 762,
         "width": 145,
         "height": 16
@@ -2202,70 +2922,70 @@
       "nameTextTop": 685,
       "identificationTextTop": 686,
       "link": {
-        "x": 714,
-        "y": 682,
+        "x": 434,
+        "y": 706,
         "width": 24,
         "height": 24
       },
-      "lastTextRight": 710,
+      "lastTextRight": 430,
       "issuer": {
         "x": 313,
-        "y": 720,
-        "width": 463,
+        "y": 742,
+        "width": 347,
         "height": 20
       },
       "row": {
         "x": 297,
         "y": 666,
         "width": 1054,
-        "height": 129
+        "height": 173
       },
       "name": {
         "x": 313,
         "y": 685,
-        "width": 397,
-        "height": 17
+        "width": 275,
+        "height": 41
       },
-      "nameLines": 1,
+      "nameLines": 2,
       "columns": [
         {
           "text": "Name",
           "x": 297,
           "y": 355,
-          "width": 495,
+          "width": 379,
           "height": 53
         },
         {
           "text": "Identification",
-          "x": 792,
+          "x": 676,
           "y": 355,
           "width": 285,
           "height": 53
         },
         {
           "text": "Status and actions",
-          "x": 1077,
+          "x": 961,
           "y": 355,
-          "width": 274,
+          "width": 390,
           "height": 53
         }
       ],
       "actions": [
         {
           "x": 1195,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1243,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1291,
-          "y": 682,
+          "y": 672,
           "width": 44,
           "height": 44
         }
@@ -2285,104 +3005,164 @@
       "key": "D-en-1920-collapsed-light",
       "allRows": [
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 76.265625,
           "id": "EN 301 549 v3.2.1",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "EU 2016/679",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 76.265625,
           "id": "EU 2022/2555",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "ISO/IEC 25010:2023",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "ISO/IEC 27001:2022",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "MSBFS 2020:6",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "OpenID Connect Core 1.0",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "OWASP ASVS 4.0.3",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-FRESH",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-UNUSED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-USED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RFC 6749",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RFC 9700",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "SFS 2018:218",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "WCAG 2.2",
           "centerDelta": 0.25,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         }
       ],
       "centeredMetadata": {
         "x": 121,
         "y": 700,
-        "width": 779,
+        "width": 838,
         "height": 20
       },
       "type": {
-        "x": 1040,
+        "x": 1099,
         "y": 742,
         "width": 326,
         "height": 16
@@ -2401,7 +3181,7 @@
       "issuer": {
         "x": 121,
         "y": 700,
-        "width": 779,
+        "width": 838,
         "height": 20
       },
       "row": {
@@ -2422,40 +3202,40 @@
           "text": "Name",
           "x": 105,
           "y": 335,
-          "width": 811,
+          "width": 870,
           "height": 53
         },
         {
           "text": "Identification",
-          "x": 916,
+          "x": 975,
           "y": 335,
           "width": 466,
           "height": 53
         },
         {
           "text": "Status and actions",
-          "x": 1382,
+          "x": 1441,
           "y": 335,
-          "width": 449,
+          "width": 390,
           "height": 53
         }
       ],
       "actions": [
         {
           "x": 1675,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         },
         {
           "x": 1723,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         },
         {
           "x": 1771,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         }
@@ -2475,104 +3255,164 @@
       "key": "D-en-1920-collapsed-dark",
       "allRows": [
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 76.265625,
           "id": "EN 301 549 v3.2.1",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "EU 2016/679",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 76.265625,
           "id": "EU 2022/2555",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "ISO/IEC 25010:2023",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "ISO/IEC 27001:2022",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "MSBFS 2020:6",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "OpenID Connect Core 1.0",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "OWASP ASVS 4.0.3",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-FRESH",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-UNUSED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-USED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RFC 6749",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RFC 9700",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "SFS 2018:218",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "WCAG 2.2",
           "centerDelta": 0.25,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         }
       ],
       "centeredMetadata": {
         "x": 121,
         "y": 700,
-        "width": 779,
+        "width": 838,
         "height": 20
       },
       "type": {
-        "x": 1040,
+        "x": 1099,
         "y": 742,
         "width": 326,
         "height": 16
@@ -2591,7 +3431,7 @@
       "issuer": {
         "x": 121,
         "y": 700,
-        "width": 779,
+        "width": 838,
         "height": 20
       },
       "row": {
@@ -2612,40 +3452,40 @@
           "text": "Name",
           "x": 105,
           "y": 335,
-          "width": 811,
+          "width": 870,
           "height": 53
         },
         {
           "text": "Identification",
-          "x": 916,
+          "x": 975,
           "y": 335,
           "width": 466,
           "height": 53
         },
         {
           "text": "Status and actions",
-          "x": 1382,
+          "x": 1441,
           "y": 335,
-          "width": 449,
+          "width": 390,
           "height": 53
         }
       ],
       "actions": [
         {
           "x": 1675,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         },
         {
           "x": 1723,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         },
         {
           "x": 1771,
-          "y": 662,
+          "y": 652,
           "width": 44,
           "height": 44
         }
@@ -2665,134 +3505,194 @@
       "key": "D-en-1920-expanded-light",
       "allRows": [
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 76.265625,
           "id": "EN 301 549 v3.2.1",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "EU 2016/679",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 76.265625,
           "id": "EU 2022/2555",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "ISO/IEC 25010:2023",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "ISO/IEC 27001:2022",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "MSBFS 2020:6",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "OpenID Connect Core 1.0",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "OWASP ASVS 4.0.3",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-FRESH",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-UNUSED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-USED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RFC 6749",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RFC 9700",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "SFS 2018:218",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "WCAG 2.2",
           "centerDelta": 0.25,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         }
       ],
       "centeredMetadata": {
         "x": 313,
-        "y": 700,
-        "width": 689,
+        "y": 720,
+        "width": 698,
         "height": 20
       },
       "type": {
-        "x": 1142,
-        "y": 742,
+        "x": 1150,
+        "y": 762,
         "width": 275,
         "height": 16
       },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 665,
-      "identificationTextTop": 666,
+      "nameTextTop": 685,
+      "identificationTextTop": 686,
       "link": {
         "x": 714,
-        "y": 662,
+        "y": 682,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 710,
       "issuer": {
         "x": 313,
-        "y": 700,
-        "width": 689,
+        "y": 720,
+        "width": 698,
         "height": 20
       },
       "row": {
         "x": 297,
-        "y": 646,
+        "y": 666,
         "width": 1534,
         "height": 129
       },
       "name": {
         "x": 313,
-        "y": 665,
+        "y": 685,
         "width": 397,
         "height": 17
       },
@@ -2801,41 +3701,41 @@
         {
           "text": "Name",
           "x": 297,
-          "y": 335,
-          "width": 721,
+          "y": 355,
+          "width": 730,
           "height": 53
         },
         {
           "text": "Identification",
-          "x": 1018,
-          "y": 335,
+          "x": 1027,
+          "y": 355,
           "width": 414,
           "height": 53
         },
         {
           "text": "Status and actions",
-          "x": 1432,
-          "y": 335,
-          "width": 399,
+          "x": 1441,
+          "y": 355,
+          "width": 390,
           "height": 53
         }
       ],
       "actions": [
         {
           "x": 1675,
-          "y": 662,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1723,
-          "y": 662,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1771,
-          "y": 662,
+          "y": 672,
           "width": 44,
           "height": 44
         }
@@ -2855,134 +3755,194 @@
       "key": "D-en-1920-expanded-dark",
       "allRows": [
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 76.265625,
           "id": "EN 301 549 v3.2.1",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "EU 2016/679",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 76.265625,
           "id": "EU 2022/2555",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "ISO/IEC 25010:2023",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "ISO/IEC 27001:2022",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "MSBFS 2020:6",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "OpenID Connect Core 1.0",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "OWASP ASVS 4.0.3",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-FRESH",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-UNUSED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RETENTION-SEED-NORM-USED",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RFC 6749",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "RFC 9700",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "SFS 2018:218",
           "centerDelta": 0,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         },
         {
+          "actionIconCenterDelta": 0,
+          "countGap": 8,
+          "countCenterDelta": 0,
+          "actionGap": 70.03125,
           "id": "WCAG 2.2",
           "centerDelta": 0.25,
           "nameTop": 19.5,
-          "actionTop": 16.5
+          "actionTop": 6.5
         }
       ],
       "centeredMetadata": {
         "x": 313,
-        "y": 700,
-        "width": 689,
+        "y": 720,
+        "width": 698,
         "height": 20
       },
       "type": {
-        "x": 1142,
-        "y": 742,
+        "x": 1150,
+        "y": 762,
         "width": 275,
         "height": 16
       },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 665,
-      "identificationTextTop": 666,
+      "nameTextTop": 685,
+      "identificationTextTop": 686,
       "link": {
         "x": 714,
-        "y": 662,
+        "y": 682,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 710,
       "issuer": {
         "x": 313,
-        "y": 700,
-        "width": 689,
+        "y": 720,
+        "width": 698,
         "height": 20
       },
       "row": {
         "x": 297,
-        "y": 646,
+        "y": 666,
         "width": 1534,
         "height": 129
       },
       "name": {
         "x": 313,
-        "y": 665,
+        "y": 685,
         "width": 397,
         "height": 17
       },
@@ -2991,41 +3951,41 @@
         {
           "text": "Name",
           "x": 297,
-          "y": 335,
-          "width": 721,
+          "y": 355,
+          "width": 730,
           "height": 53
         },
         {
           "text": "Identification",
-          "x": 1018,
-          "y": 335,
+          "x": 1027,
+          "y": 355,
           "width": 414,
           "height": 53
         },
         {
           "text": "Status and actions",
-          "x": 1432,
-          "y": 335,
-          "width": 399,
+          "x": 1441,
+          "y": 355,
+          "width": 390,
           "height": 53
         }
       ],
       "actions": [
         {
           "x": 1675,
-          "y": 662,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1723,
-          "y": 662,
+          "y": 672,
           "width": 44,
           "height": 44
         },
         {
           "x": 1771,
-          "y": 662,
+          "y": 672,
           "width": 44,
           "height": 44
         }

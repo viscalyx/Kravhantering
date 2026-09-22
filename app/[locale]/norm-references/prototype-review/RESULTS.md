@@ -34,8 +34,10 @@ version and type. The URI icon follows the name text inline with a 24px
 click target. The name and first identification value share a 24px line
 height. Equal flexible space above and below the issuer centers it vertically,
 with at least 12px separation from the name.
-Row actions remain 44px and sit at the top beside the status badge, with
-the requirement count on a separate line below. No winning variant is assumed by
+Row actions retain 44px targets; their visible icons align with the status
+badge center. The targets extend 10px above the badge within cell padding, with
+the requirement count immediately after the badge on the same line. No winning
+variant is assumed by
 these refinements.
 
 Compare [D in Swedish](screenshots/D-sv-1440-expanded-light.png) with

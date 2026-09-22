@@ -1,6 +1,7 @@
 {
-  "date": "2026-09-22T16:15:38.616Z",
+  "date": "2026-09-22T16:21:19.904Z",
   "checks": [
+    "Counts follow status on the same line with 8px gap; action icons align with badge center without overlap, including 0/1/14/209 examples",
     "Separate identification with ID/reference/version/type; issuer vertically centered in name cell; missing version; archived state; local edit; D-to-Before wrapping; C-to-D arrows; reload"
   ],
   "mobile": [

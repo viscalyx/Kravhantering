@@ -405,6 +405,7 @@ export function VariantB({ rows, act }: VariantProps) {
 export function VariantD({ rows, act }: VariantProps) {
   const t = useTranslations('normReference')
   const p = useTranslations('prototypeNormLayout')
+  const english = useLocale() === 'en'
   return (
     <div
       className={surface}
@@ -417,9 +418,9 @@ export function VariantD({ rows, act }: VariantProps) {
     >
       <table className="w-full min-w-[1000px] table-fixed text-left text-sm">
         <colgroup>
-          <col style={{ width: '47%' }} />
+          <col />
           <col style={{ width: '27%' }} />
-          <col style={{ width: '26%' }} />
+          <col style={{ width: english ? 390 : 320 }} />
         </colgroup>
         <thead className="border-b bg-secondary-50 dark:bg-secondary-800/30">
           <tr>
@@ -484,16 +485,24 @@ export function VariantD({ rows, act }: VariantProps) {
                 </dl>
               </td>
               <td className="p-4 align-top">
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1">
-                  <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div
+                    className="flex shrink-0 items-center gap-2"
+                    data-prototype-status-count
+                  >
                     <NormStatus row={row} />
+                    <span
+                      className="whitespace-nowrap text-xs"
+                      data-prototype-count
+                    >
+                      {t('requirementCount', {
+                        count: row.linkedRequirementCount,
+                      })}
+                    </span>
                   </div>
-                  <Actions act={act} row={row} />
-                  <span className="col-span-2 whitespace-nowrap text-xs">
-                    {t('requirementCount', {
-                      count: row.linkedRequirementCount,
-                    })}
-                  </span>
+                  <div className="-mt-2.5">
+                    <Actions act={act} row={row} />
+                  </div>
                 </div>
               </td>
             </tr>
