@@ -7,11 +7,23 @@ matching the requirement selection question list?**
 
 This is throwaway code on `prototype/issue-1357-rfi-layouts`, based on
 `e486c01f`. **The maintainer selects A with the original green active status
-badge for issue #1357.** This is the approved visual direction: the completed
-#1355 split-row design, with a green background, explicit active label and
+badge for issue #1357.** This is the approved visual direction: the completed #1355
+split-row design, with a green background, explicit active label and
 check icon in both themes. Keep the full comparison on this throwaway branch;
 implement A with production tests and the existing business behavior. The
 switcher, example data and blocked saves are not part of the production design.
+
+## Additional implementation scope
+
+The maintainer also includes the active-status badge regression in requirement
+selection questions in #1357. The current `QuestionSummary` retains the active
+text and check icon but omits the original green badge styling. Restore that
+styling for active, non-archived selection questions in both themes, including
+the shared drag preview. Preserve inactive/archived status distinctions and
+the approved split layout, behavior and permissions. This addition supersedes
+the earlier brief's exclusion of changes to the completed selection-question
+work, only for this status presentation fix. The prototype itself demonstrates
+the approved RFI layout; the selection-question fix remains implementation work.
 
 ## Start and open
 
@@ -196,7 +208,8 @@ B measures 55.8px except at 1440 with expanded navigation, where it measures
 alternatives reduce that to zero. These measurements describe this dataset,
 not fixed requirements for row heights or counts.
 
-**Decision: use A with the original green active badge.** A best satisfies the issue's request to coordinate
+**Decision: use A with the original green active badge.**
+A best satisfies the issue's request to coordinate
 with #1355 while improving density consistently. B is useful for scanning
 codes but is sensitive to available text width. C offers more question-text
 width and individual separation at the cost of consistency with #1355.
