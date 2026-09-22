@@ -6,16 +6,18 @@ layout best preserves readable question text, version, status and actions while
 matching the requirement selection question list?**
 
 This is throwaway code on `prototype/issue-1357-rfi-layouts`, based on
-`e486c01f`. The maintainer prefers A and requests the original green active
-status badge. A includes that refinement for visual review: it follows the
-completed #1355 split-row design, with a green background, explicit active
-label and check icon in both themes. Keep the prototype on its separate branch;
-implement the selected design with production tests after review.
+`e486c01f`. **The maintainer selects A with the original green active status
+badge for issue #1357.** This is the approved visual direction: the completed
+#1355 split-row design, with a green background, explicit active label and
+check icon in both themes. Keep the full comparison on this throwaway branch;
+implement A with production tests and the existing business behavior. The
+switcher, example data and blocked saves are not part of the production design.
 
 ## Start and open
 
-The prepared worktree has local dependencies and links to the existing
-development environment files. Start with one command from that worktree:
+The prototype branch is preserved upstream. The review worktree is removed
+and its development servers are stopped. Recreate a worktree using the steps
+below, then start with one command from that worktree:
 
 ```sh
 cd /mnt/krav-azure-dev-data/.worktrees/issue-1357-rfi-layouts
@@ -130,10 +132,9 @@ configuration. It records:
 
 These artifacts contain development data and remain local and Git-ignored.
 They are not included in the published prototype branch. Regenerate them to
-compare against your current dataset. The prepared worktree also contains
-three `stress-320-*.png` captures and `interaction-results.json` from the
-interactive verification; those are local evidence, not outputs of the
-32-image capture command.
+compare against your current dataset. The interactive verification also covers
+long-text examples at 320px and blocked writes. Those checks are separate
+from the repeatable 32-image capture command.
 
 ## Complete change and verification checklist
 
@@ -195,12 +196,13 @@ B measures 55.8px except at 1440 with expanded navigation, where it measures
 alternatives reduce that to zero. These measurements describe this dataset,
 not fixed requirements for row heights or counts.
 
-**Provisional verdict:** A best satisfies the issue's request to coordinate
+**Decision: use A with the original green active badge.** A best satisfies the issue's request to coordinate
 with #1355 while improving density consistently. B is useful for scanning
 codes but is sensitive to available text width. C offers more question-text
 width and individual separation at the cost of consistency with #1355.
-The maintainer prefers A with the original green active badge; that refinement
-is available for visual review before production implementation.
+This decision supersedes the earlier provisional recommendation. Preserve
+question text on the left, facts on the right, shared area surfaces, readable
+RFI versions and the original green active badge when implementing A.
 
 ## Verification status and implementation boundary
 
