@@ -935,14 +935,16 @@ frågans detaljknapp och öppna och stäng den med Enter. Öppna hierarkin med
 dess separata knapp, fokusera dialogens stängknapp och stäng med Escape.
 Upprepa med lång frågetext och på smal skärm. Dra i frågans ordningshandtag
 och läs förhandsvisningen. Läs status för aktiva, inaktiva och arkiverade
-frågor.
+frågor. Med skärmläsare, inaktivera och aktivera en fråga, arkivera den och
+återaktivera den. Lyssna efter statusändringen efter varje åtgärd.
 
 **Förväntat resultat:** Hela frågetexten och dess uppgifter går att läsa.
 Knapparna är åtkomliga med synligt tangentbordsfokus. Hierarkin öppnas utan
 att frågans detaljer fälls ut. Lång text förblir läsbar även under dragning
 och på smal skärm. Aktiva, ej arkiverade frågor visar en grön `Aktiv`-bricka
 med checkikon i båda teman, även i dragförhandsvisningen. `Inaktiv` och
-`Arkiverad` har egna texter och ikoner utan grön aktivmarkering.
+`Arkiverad` har egna texter och ikoner utan grön aktivmarkering. Skärmläsaren
+meddelar den nya statusen utan att fokus behöver flyttas till statusbrickan.
 
 ### REQ-15: AI-kravgenerator lämnar kandidater till importgranskning
 
@@ -1975,13 +1977,16 @@ kravområde, version och status för aktiva och arkiverade frågor i båda teman
 med infälld och utfälld navigering. Upprepa med lång text och på smal skärm.
 Tabba till en fråga och öppna och stäng detaljerna med Enter. Öppna redigering
 på en hopfälld fråga och stäng dialogen. Sök på frågekod och växla mellan
-aktiva och arkiverade frågor med statusfiltret.
+aktiva och arkiverade frågor med statusfiltret. Välj sedan alla statusar och,
+med skärmläsare, arkivera och återaktivera en fråga.
 
 **Förväntat resultat:** Hela texten och all metadata går att läsa. Aktiva
 frågor visar en grön `Aktiv`-bricka med checkikon. Arkiverade frågor visar
 `Arkiverad` med arkivikon och korrekt version. Tangentbordsfokus syns och
 detaljer kan öppnas med mus och tangentbord. Redigering fäller inte ut frågan.
 Sökning och statusfilter visar rätt frågor i befintlig visningsordning.
+Skärmläsaren meddelar den nya statusen efter arkivering och återaktivering
+utan att fokus behöver flyttas till statusbrickan.
 
 ### SPEC-17: importera unika krav till kravunderlag
 

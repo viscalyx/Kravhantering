@@ -13,7 +13,9 @@ area. The production list and drag preview use the same `QuestionSummary`.
   minimum and a dividing border. At narrower widths, facts follow the text.
 - Active, unarchived questions use the original green badge with a check icon
   in both the list and drag preview. Inactive and archived questions retain
-  their distinct text and icons without green active styling.
+  their distinct text and icons without green active styling. Each disclosure
+  has a persistent, visually hidden sibling status region for announcements.
+  Loaded rows stay mounted during refresh so the region receives updates.
 - Summary padding is 8px vertically and 12px horizontally. The reorder handle
   is 32px wide with a 40px minimum height. Hierarchy buttons remain at least
   36px high, within a reserved 8rem slot.

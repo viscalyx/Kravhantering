@@ -23,7 +23,9 @@ specification's RFI list is a separate surface.
   intended cascade.
 - Active questions retain the original green badge, explicit text and check
   icon in both themes. Archived questions retain their amber badge and archive
-  icon. Status containers announce updates with `role="status"`.
+  icon. Persistent, visually hidden status regions after the disclosure buttons
+  announce updates with `role="status"` and `aria-live="polite"`. Loaded rows
+  stay mounted during refresh so the existing regions receive status changes.
 - Area grouping, existing display order, expansion, editing, suggestions and
   permissions retain their behavior. RFI questions have no business ordering
   or hierarchy controls.

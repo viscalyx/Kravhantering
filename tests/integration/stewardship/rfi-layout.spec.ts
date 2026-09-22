@@ -62,10 +62,17 @@ for (const [width, height] of [
           await expect(rows).toHaveCount(32)
           await expect(first).toContainText('PWM-RFI001')
           await expect(first).toContainText('v1')
-          await expectActiveQuestionBadge(first.getByRole('status'), theme)
+          await expectActiveQuestionBadge(
+            first.locator('[data-developer-mode-name="question status"]'),
+            theme,
+          )
           await expect(rows.last().getByRole('status')).toHaveText('Arkiverad')
           await expect(
-            rows.last().getByRole('status').locator('svg.lucide-archive'),
+            rows
+              .last()
+              .locator(
+                '[data-developer-mode-name="question status"] svg.lucide-archive',
+              ),
           ).toHaveCount(1)
           await expect(rows.last()).toContainText('v12')
         })
@@ -234,6 +241,75 @@ test('SPEC-16d: long RFI text wraps and metadata stacks on narrow screens', asyn
       await expect(
         page.getByText('Beskriv hur informationen skyddas.'),
       ).toHaveCount(1)
+    })
+  }
+})
+
+test('SPEC-16d: keeps the RFI status live region mounted through archive and reactivation', async ({
+  page,
+}) => {
+  let question = { ...questions[0] }
+  await page.route('**/api/requirement-areas', route =>
+    route.fulfill({ json: { areas: [area] } }),
+  )
+  await page.route('**/api/rfi-questions?includeArchived=true', route =>
+    route.fulfill({ json: { questions: [question] } }),
+  )
+  await page.route('**/api/rfi-question-suggestions', route =>
+    route.fulfill({ json: { suggestions: [] } }),
+  )
+  await page.route(`**/api/rfi-questions/${question.id}`, async route => {
+    question = { ...question, isArchived: true }
+    await route.fulfill({ json: { id: question.id } })
+  })
+  await page.route(
+    `**/api/rfi-questions/${question.id}/reactivate`,
+    async route => {
+      question = { ...question, isArchived: false }
+      await route.fulfill({ json: { id: question.id } })
+    },
+  )
+  await page.goto('/sv/requirements/stewardship?tab=information-requests')
+  const row = page
+    .getByRole('listitem')
+    .filter({ hasText: question.questionCode })
+  const announcement = row.getByRole('status')
+  await expect(announcement).toHaveText('Aktiv')
+  await expect(announcement).toHaveAttribute('aria-live', 'polite')
+  await expect(announcement).toHaveAttribute(
+    'data-developer-mode-name',
+    'question status announcement',
+  )
+  await expect(row.locator('button [role="status"]')).toHaveCount(0)
+  const original = await announcement.elementHandle()
+  if (!original) throw new Error('Missing RFI status live region')
+  for (const [action, status] of [
+    ['Arkivera', 'Arkiverad'],
+    ['Återaktivera', 'Aktiv'],
+  ]) {
+    await test.step(`update the existing announcement to ${status}`, async () => {
+      await row
+        .getByRole('button', { name: `${action}: ${question.questionCode}` })
+        .click()
+      if (action === 'Arkivera')
+        await page
+          .getByRole('alertdialog')
+          .getByRole('button', { name: action, exact: true })
+          .click()
+      await expect(announcement).toHaveText(status)
+      await expect
+        .poll(() =>
+          original.evaluate(
+            (element, status) =>
+              element.isConnected && element.textContent === status,
+            status,
+          ),
+        )
+        .toBe(true)
+      await expect(
+        row.locator('[data-developer-mode-name="question status"]'),
+      ).toHaveText(status)
+      await expect(row.getByRole('button', { expanded: false })).toHaveCount(1)
     })
   }
 })

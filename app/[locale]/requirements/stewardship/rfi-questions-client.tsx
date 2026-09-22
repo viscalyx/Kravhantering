@@ -1358,7 +1358,7 @@ export default function RfiQuestionsClient() {
 
         <div className="grid grid-cols-1 gap-6" ref={listAnchorRef}>
           <div className="space-y-4">
-            {loading ? (
+            {loading && questions.length === 0 ? (
               <p
                 className="text-secondary-600 dark:text-secondary-400"
                 role="status"
@@ -1504,7 +1504,6 @@ export default function RfiQuestionsClient() {
                                               ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200'
                                               : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
                                           }`}
-                                          role="status"
                                           {...devMarker({
                                             context: 'rfiQuestions',
                                             name: 'question status',
@@ -1519,6 +1518,18 @@ export default function RfiQuestionsClient() {
                                     </span>
                                   </div>
                                 </button>
+                                <span
+                                  aria-live="polite"
+                                  className="sr-only"
+                                  role="status"
+                                  {...devMarker({
+                                    context: 'rfiQuestions',
+                                    name: 'question status announcement',
+                                    value: question.questionCode,
+                                  })}
+                                >
+                                  {questionStatusLabel(question, copy)}
+                                </span>
                                 <div className="flex shrink-0 flex-wrap items-center gap-1 pr-3 pb-2 pl-10 min-[601px]:justify-end min-[601px]:py-2 min-[601px]:pl-0">
                                   {canManageQuestion ? (
                                     <>

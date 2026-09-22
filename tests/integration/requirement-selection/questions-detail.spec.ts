@@ -196,7 +196,10 @@ test.describe('Compact requirement selection question summaries', () => {
           )
           await test.step('read compact facts and measure rows and controls', async () => {
             await expect(facts).toContainText('KUF')
-            await expectActiveQuestionBadge(row.getByRole('status'), theme)
+            await expectActiveQuestionBadge(
+              row.locator('[data-developer-mode-name="question status"]'),
+              theme,
+            )
             await expect
               .poll(async () => {
                 const [textBox, factsBox, rowBox] = await Promise.all([
@@ -360,7 +363,7 @@ test.describe('Compact requirement selection question summaries', () => {
                   element.classList.contains('dark') ? 'dark' : 'light',
                 )
               await expectActiveQuestionBadge(
-                preview.getByRole('status', { includeHidden: true }),
+                preview.locator('[data-developer-mode-name="question status"]'),
                 theme,
               )
               const previewText = preview.locator(
@@ -421,7 +424,7 @@ for (const theme of ['light', 'dark']) {
       await test.step(`read the ${label} label and icon without active styling`, async () => {
         const badge = page
           .locator('[data-question-id]')
-          .getByRole('status')
+          .locator('[data-developer-mode-name="question status"]')
           .filter({ hasText: new RegExp(`^${label}$`) })
         await expect(badge).toHaveCount(1)
         await expect(badge.locator(`svg.${icon}`)).toHaveAttribute(
@@ -433,3 +436,75 @@ for (const theme of ['light', 'dark']) {
     }
   })
 }
+
+test('REQ-14e: keeps the question status live region mounted through lifecycle changes', async ({
+  page,
+}) => {
+  const response = await page.request.get(
+    '/api/requirement-selection-questions?includeArchived=true',
+  )
+  const body = await response.json()
+  const question = body.questions.find(
+    (item: { questionCode: string }) => item.questionCode === 'DRF-KUF001',
+  )
+  question.answers = []
+  question.isActive = true
+  question.isArchived = false
+  await page.route(
+    '**/api/requirement-selection-questions?includeArchived=true',
+    route => route.fulfill({ json: { questions: [question] } }),
+  )
+  await page.route(
+    `**/api/requirement-selection-questions/${question.id}/*`,
+    async route => {
+      const action = route.request().url().split('/').at(-1)
+      question.isActive = action === 'activate' || action === 'reactivate'
+      question.isArchived = action === 'archive'
+      await route.fulfill({ json: question })
+    },
+  )
+  await page.goto('/sv/requirements/stewardship?tab=questions')
+  const row = page
+    .locator('[data-question-id]')
+    .filter({ hasText: 'DRF-KUF001' })
+  const disclosure = row.getByRole('button', { expanded: false })
+  const announcement = row.getByRole('status')
+  await expect(announcement).toHaveText('Aktiv')
+  await expect(announcement).toHaveAttribute('aria-live', 'polite')
+  await expect(announcement).toHaveAttribute(
+    'data-developer-mode-name',
+    'question status announcement',
+  )
+  await expect(row.locator('button [role="status"]')).toHaveCount(0)
+  const original = await announcement.elementHandle()
+  if (!original) throw new Error('Missing question status live region')
+  await disclosure.click()
+  for (const [action, status] of [
+    ['Inaktivera', 'Inaktiv'],
+    ['Aktivera', 'Aktiv'],
+    ['Arkivera', 'Arkiverad'],
+    ['Återaktivera', 'Aktiv'],
+  ]) {
+    await test.step(`update the existing announcement to ${status}`, async () => {
+      await row.getByRole('button', { name: action, exact: true }).click()
+      if (action === 'Arkivera')
+        await page
+          .getByRole('alertdialog')
+          .getByRole('button', { name: action, exact: true })
+          .click()
+      await expect(announcement).toHaveText(status)
+      await expect
+        .poll(() =>
+          original.evaluate(
+            (element, status) =>
+              element.isConnected && element.textContent === status,
+            status,
+          ),
+        )
+        .toBe(true)
+      await expect(
+        row.locator('[data-developer-mode-name="question status"]'),
+      ).toHaveText(status)
+    })
+  }
+})
