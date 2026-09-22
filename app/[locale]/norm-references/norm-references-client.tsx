@@ -2,6 +2,7 @@
 
 import {
   Archive,
+  CheckCircle2,
   ExternalLink,
   Pencil,
   Plus,
@@ -88,7 +89,7 @@ interface LinkedRequirement {
 }
 
 const DESCRIPTION_TRUNCATE = 80
-const NORM_REFERENCE_TABLE_COLUMN_COUNT = 9
+const NORM_REFERENCE_TABLE_COLUMN_COUNT = 3
 
 const getInitialForm = (): NormReferenceForm => ({
   issuer: '',
@@ -124,7 +125,7 @@ const rowActionButtonClassName =
   'inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
 
 const externalUriLinkClassName =
-  'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-primary-300 dark:hover:bg-primary-950/30 dark:hover:text-primary-200'
+  'inline-flex h-6 w-6 ml-1 align-top items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-primary-300 dark:hover:bg-primary-950/30 dark:hover:text-primary-200'
 
 export default function NormReferencesClient() {
   useHelpContent(NORM_REFERENCES_HELP)
@@ -610,23 +611,22 @@ export default function NormReferencesClient() {
             })}
             ref={tableAnchorRef}
           >
-            <table className="w-full text-sm">
+            <table className="w-full min-w-250 table-fixed text-sm">
+              <colgroup>
+                <col />
+                <col style={{ width: '27%' }} />
+                <col style={{ width: locale === 'en' ? 390 : 320 }} />
+              </colgroup>
               <thead>
                 <tr className="border-b bg-secondary-50/80 text-left text-secondary-700 dark:bg-secondary-800/30 dark:text-secondary-300">
-                  <th className="px-4 py-3 font-medium">
-                    {t('normReferenceId')}
+                  <th className="p-4 font-medium" scope="col">
+                    {t('name')}
                   </th>
-                  <th className="px-4 py-3 font-medium">{t('name')}</th>
-                  <th className="px-4 py-3 font-medium">{t('type')}</th>
-                  <th className="px-4 py-3 font-medium">{t('reference')}</th>
-                  <th className="px-4 py-3 font-medium">{t('version')}</th>
-                  <th className="px-4 py-3 font-medium">{t('issuer')}</th>
-                  <th className="px-4 py-3 font-medium">{t('status')}</th>
-                  <th className="px-4 py-3 text-center font-medium">
-                    {t('linkedRequirements')}
+                  <th className="p-4 font-medium" scope="col">
+                    {t('identification')}
                   </th>
-                  <th className="px-4 py-3">
-                    <span className="sr-only">{tc('actions')}</span>
+                  <th className="p-4 font-medium" scope="col">
+                    {t('statusActions')}
                   </th>
                 </tr>
               </thead>
@@ -689,144 +689,194 @@ export default function NormReferencesClient() {
                         className="border-b transition-colors last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-950/20"
                         key={normReference.id}
                       >
-                        <td className="px-4 py-3 font-mono text-xs font-medium text-secondary-700 dark:text-secondary-300">
-                          {normReference.normReferenceId}
+                        <td className="h-px p-4 align-top">
+                          <div
+                            className="grid h-full grid-rows-[1fr_auto_1fr] gap-3"
+                            {...devMarker({
+                              context: 'normReferences',
+                              name: 'norm name and issuer',
+                            })}
+                          >
+                            <div className="font-medium leading-6 wrap-anywhere">
+                              <span>{normReference.name}</span>
+                              {browserLinkUri && (
+                                <a
+                                  aria-label={t('openUri')}
+                                  className={externalUriLinkClassName}
+                                  {...devMarker({
+                                    context: 'normReferences',
+                                    name: 'table action',
+                                    value: 'open URI',
+                                  })}
+                                  href={browserLinkUri}
+                                  rel="noopener noreferrer"
+                                  target="_blank"
+                                  title={t('openUri')}
+                                >
+                                  <ExternalLink
+                                    aria-hidden="true"
+                                    className="h-4 w-4"
+                                    focusable={false}
+                                  />
+                                </a>
+                              )}
+                            </div>
+                            <p className="text-sm text-secondary-600 dark:text-secondary-400 wrap-anywhere">
+                              <span className="text-xs font-medium">
+                                {t('issuer')}:
+                              </span>{' '}
+                              {normReference.issuer}
+                            </p>
+                          </div>
                         </td>
-                        <td className="px-4 py-3 font-medium">
-                          <span className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                            <span className="min-w-0 wrap-break-word">
-                              {normReference.name}
-                            </span>
-                            {browserLinkUri && (
-                              <a
-                                aria-label={t('openUri')}
-                                className={externalUriLinkClassName}
+                        <td className="p-4 align-top">
+                          <dl
+                            className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-xs"
+                            {...devMarker({
+                              context: 'normReferences',
+                              name: 'norm identification',
+                            })}
+                          >
+                            <dt className="leading-6">
+                              {t('normReferenceId')}
+                            </dt>
+                            <dd className="font-mono text-sm leading-6 wrap-anywhere">
+                              {normReference.normReferenceId}
+                            </dd>
+                            <dt>{t('reference')}</dt>
+                            <dd className="wrap-anywhere">
+                              {normReference.reference}
+                            </dd>
+                            <dt>{t('version')}</dt>
+                            <dd className="wrap-anywhere">
+                              {normReference.version ?? '-'}
+                            </dd>
+                            <dt>{t('type')}</dt>
+                            <dd className="wrap-anywhere">
+                              {normReference.type}
+                            </dd>
+                          </dl>
+                        </td>
+                        <td className="p-4 align-top">
+                          <div
+                            className="flex items-start justify-between gap-2"
+                            {...devMarker({
+                              context: 'normReferences',
+                              name: 'norm status and actions',
+                            })}
+                          >
+                            <div className="flex shrink-0 items-center gap-2">
+                              <span
+                                className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-1 text-xs font-medium ${normReference.isArchived ? 'bg-secondary-100 text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200' : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'}`}
+                                role="status"
+                                {...devMarker({
+                                  context: 'normReferences',
+                                  name: 'norm status',
+                                  value: normReference.isArchived
+                                    ? 'archived'
+                                    : 'active',
+                                })}
+                              >
+                                {normReference.isArchived ? (
+                                  <Archive aria-hidden="true" size={13} />
+                                ) : (
+                                  <CheckCircle2 aria-hidden="true" size={13} />
+                                )}
+                                {normReference.isArchived
+                                  ? t('archived')
+                                  : t('active')}
+                              </span>
+                              <span className="whitespace-nowrap text-xs text-secondary-600 dark:text-secondary-400">
+                                {t('requirementCount', {
+                                  count: normReference.linkedRequirementCount,
+                                })}
+                              </span>
+                            </div>
+                            <div className="-mt-2.5 flex shrink-0 justify-end gap-1">
+                              <button
+                                aria-label={tc('edit')}
+                                className={`${rowActionButtonClassName} text-primary-700 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-950/30`}
                                 {...devMarker({
                                   context: 'normReferences',
                                   name: 'table action',
-                                  value: 'open URI',
+                                  value: 'edit',
                                 })}
-                                href={browserLinkUri}
-                                rel="noopener noreferrer"
-                                target="_blank"
-                                title={t('openUri')}
+                                disabled={busy}
+                                onClick={event => {
+                                  void openEdit(
+                                    normReference,
+                                    event.currentTarget,
+                                  )
+                                }}
+                                title={tc('edit')}
+                                type="button"
                               >
-                                <ExternalLink
+                                <Pencil
                                   aria-hidden="true"
                                   className="h-4 w-4"
                                   focusable={false}
                                 />
-                              </a>
-                            )}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
-                          {normReference.type}
-                        </td>
-                        <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
-                          {normReference.reference}
-                        </td>
-                        <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
-                          {normReference.version ?? '-'}
-                        </td>
-                        <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
-                          {normReference.issuer}
-                        </td>
-                        <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
-                          {normReference.isArchived
-                            ? t('archived')
-                            : t('active')}
-                        </td>
-                        <td className="px-4 py-3 text-center text-secondary-600 dark:text-secondary-400">
-                          {t('requirementCount', {
-                            count: normReference.linkedRequirementCount,
-                          })}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex justify-end gap-1">
-                            <button
-                              aria-label={tc('edit')}
-                              className={`${rowActionButtonClassName} text-primary-700 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-950/30`}
-                              {...devMarker({
-                                context: 'normReferences',
-                                name: 'table action',
-                                value: 'edit',
-                              })}
-                              disabled={busy}
-                              onClick={event => {
-                                void openEdit(
-                                  normReference,
-                                  event.currentTarget,
-                                )
-                              }}
-                              title={tc('edit')}
-                              type="button"
-                            >
-                              <Pencil
-                                aria-hidden="true"
-                                className="h-4 w-4"
-                                focusable={false}
-                              />
-                            </button>
-                            <button
-                              aria-label={archiveActionLabel}
-                              className={`${rowActionButtonClassName} text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800/70`}
-                              {...devMarker({
-                                context: 'normReferences',
-                                name: 'table action',
-                                value: archiveActionValue,
-                              })}
-                              disabled={busy}
-                              onClick={event => {
-                                void requestArchivedStateChange(
-                                  normReference,
-                                  normReference.isArchived
-                                    ? 'reactivate'
-                                    : 'archive',
-                                  event.currentTarget,
-                                )
-                              }}
-                              title={archiveActionLabel}
-                              type="button"
-                            >
-                              {normReference.isArchived ? (
-                                <RotateCcw
+                              </button>
+                              <button
+                                aria-label={archiveActionLabel}
+                                className={`${rowActionButtonClassName} text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800/70`}
+                                {...devMarker({
+                                  context: 'normReferences',
+                                  name: 'table action',
+                                  value: archiveActionValue,
+                                })}
+                                disabled={busy}
+                                onClick={event => {
+                                  void requestArchivedStateChange(
+                                    normReference,
+                                    normReference.isArchived
+                                      ? 'reactivate'
+                                      : 'archive',
+                                    event.currentTarget,
+                                  )
+                                }}
+                                title={archiveActionLabel}
+                                type="button"
+                              >
+                                {normReference.isArchived ? (
+                                  <RotateCcw
+                                    aria-hidden="true"
+                                    className="h-4 w-4"
+                                    focusable={false}
+                                  />
+                                ) : (
+                                  <Archive
+                                    aria-hidden="true"
+                                    className="h-4 w-4"
+                                    focusable={false}
+                                  />
+                                )}
+                              </button>
+                              <button
+                                aria-label={tc('delete')}
+                                className={`${rowActionButtonClassName} text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30`}
+                                {...devMarker({
+                                  context: 'normReferences',
+                                  name: 'table action',
+                                  value: 'delete',
+                                })}
+                                disabled={busy}
+                                onClick={event => {
+                                  void remove(
+                                    normReference.id,
+                                    event.currentTarget,
+                                  )
+                                }}
+                                title={tc('delete')}
+                                type="button"
+                              >
+                                <Trash2
                                   aria-hidden="true"
                                   className="h-4 w-4"
                                   focusable={false}
                                 />
-                              ) : (
-                                <Archive
-                                  aria-hidden="true"
-                                  className="h-4 w-4"
-                                  focusable={false}
-                                />
-                              )}
-                            </button>
-                            <button
-                              aria-label={tc('delete')}
-                              className={`${rowActionButtonClassName} text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30`}
-                              {...devMarker({
-                                context: 'normReferences',
-                                name: 'table action',
-                                value: 'delete',
-                              })}
-                              disabled={busy}
-                              onClick={event => {
-                                void remove(
-                                  normReference.id,
-                                  event.currentTarget,
-                                )
-                              }}
-                              title={tc('delete')}
-                              type="button"
-                            >
-                              <Trash2
-                                aria-hidden="true"
-                                className="h-4 w-4"
-                                focusable={false}
-                              />
-                            </button>
+                              </button>
+                            </div>
                           </div>
                         </td>
                       </tr>

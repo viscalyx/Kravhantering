@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   confirmModalMock,
@@ -165,7 +171,8 @@ describe('norm-reference client branches', () => {
     render(<NormReferencesClient />)
     await screen.findByText('Security Standard')
     fireEvent.click(screen.getByRole('button', { name: 'common.edit' }))
-    expect(await screen.findByRole('status')).toHaveTextContent(
+    const dialog = await screen.findByRole('dialog')
+    expect(await within(dialog).findByRole('status')).toHaveTextContent(
       'common.loading',
     )
     resolveLinked(okJsonResponse({}))

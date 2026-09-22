@@ -7,7 +7,7 @@
     "areasPerChunk": 1,
     "targetSpecs": 10
   },
-  "discoveredSpecCount": 56,
+  "discoveredSpecCount": 57,
   "suites": {
     "dev": {
       "chunks": [
@@ -19,7 +19,7 @@
         {
           "id": "dev-admin",
           "paths": ["tests/integration/admin"],
-          "specCount": 8
+          "specCount": 9
         },
         {
           "id": "dev-archiving",
@@ -104,7 +104,7 @@
         "tests/integration/platform/error-boundary-smoke.spec.ts",
         "tests/integration/platform/smoke.spec.ts"
       ],
-      "includedSpecCount": 48
+      "includedSpecCount": 49
     },
     "prodlike": {
       "chunks": [
@@ -128,6 +128,7 @@
         "tests/integration/admin/audit-log.spec.ts",
         "tests/integration/admin/entrypoint.spec.ts",
         "tests/integration/admin/norm-reference-create-layout.spec.ts",
+        "tests/integration/admin/norm-reference-list.spec.ts",
         "tests/integration/admin/permissions.spec.ts",
         "tests/integration/admin/requirement-types-recovery.spec.ts",
         "tests/integration/admin/statuses.spec.ts",

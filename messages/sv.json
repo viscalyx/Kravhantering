@@ -1454,6 +1454,8 @@
     "title": "Kategorier"
   },
   "normReference": {
+    "identification": "Identifiering",
+    "statusActions": "Status och åtgärder",
     "active": "Aktiv",
     "archive": "Arkivera",
     "archiveConfirm": "Vill du arkivera den här normreferensen?",

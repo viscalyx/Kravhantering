@@ -1454,6 +1454,8 @@
     "title": "Categories"
   },
   "normReference": {
+    "identification": "Identification",
+    "statusActions": "Status and actions",
     "active": "Active",
     "archive": "Archive",
     "archiveConfirm": "Archive this norm reference?",

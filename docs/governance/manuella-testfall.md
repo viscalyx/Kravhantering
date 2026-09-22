@@ -2575,6 +2575,26 @@ med ett angivet Normreferens-ID och försök skapa samma ID igen.
 visar att Normreferens-ID:t redan finns i stället för ett generellt tekniskt
 fel.
 
+### ADMIN-06B: normbibliotekets uppgifter och radåtgärder
+
+**Steg:** Öppna Normbibliotek på svenska och engelska. Läs en normreferens
+med långt namn och lång utfärdare, en med lång obruten referens och en utan
+version eller klickbar URI. Kontrollera både aktiva och arkiverade normer
+samt 0, 1, 14 och 209 kopplade krav. Filtrera till en norm och till ett värde
+utan träffar, och rensa filtret. Använd Tab för att nå extern länk och
+radåtgärder. Öppna redigering även i ett smalt fönster och stäng med Escape.
+Skapa en tillfällig norm, redigera dess namn, avbryt först arkivering och
+bekräfta sedan. Återaktivera och radera normen med bekräftelse.
+
+**Förväntat resultat:** Benämning och utfärdare är kompletta. Identifiering
+visar Normreferens-ID, referens, version och typ som separat märkta uppgifter.
+Saknad version visas som `-`. Status har text och ikon och följs av kravantal.
+Extern länk hör till rätt benämning, öppnas i ny flik och visar tangentbordsfokus.
+Redigera, arkivera/återaktivera och radera kan nås med mus och tangentbord.
+Bekräftelser och ändringar gäller rätt norm. Filtrering och tomt sökresultat
+fungerar. Innehåll och åtgärder går att nå genom tabellens rullning i smala
+fönster. Skapaåtgärden är åtkomlig.
+
 ### ADMIN-07: åtgärdslogg filtrerar och exporterar CSV
 
 **Steg:** Öppna åtgärdslogg direkt och via fliken `Åtgärdslogg` i

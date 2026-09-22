@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -87,13 +88,53 @@ describe('NormReferencesClient', () => {
     })
   })
 
+  it('groups complete norm information into name, identification and status/actions', async () => {
+    render(<NormReferencesClient />)
+    const row = (await screen.findByText('BBR')).closest('tr')
+    if (!row) throw new Error('Norm row missing')
+    expect(
+      screen.getAllByRole('columnheader').map(header => header.textContent),
+    ).toEqual([
+      'normReference.name',
+      'normReference.identification',
+      'normReference.statusActions',
+    ])
+    const cells = within(row).getAllByRole('cell')
+    expect(cells[0]).toHaveTextContent('BBR')
+    expect(cells[0]).toHaveTextContent('normReference.issuer: Boverket')
+    expect(
+      within(cells[1])
+        .getAllByRole('term')
+        .map(term => term.textContent),
+    ).toEqual([
+      'normReference.normReferenceId',
+      'normReference.reference',
+      'normReference.version',
+      'normReference.type',
+    ])
+    expect(
+      within(cells[1])
+        .getAllByRole('definition')
+        .map(value => value.textContent),
+    ).toEqual(['Reference 2011-6', 'Section 1', '29', 'Regulation'])
+    const status = within(cells[2]).getByRole('status')
+    expect(status).toHaveTextContent('normReference.active')
+    expect(status.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+    expect(status).toHaveAttribute('data-developer-mode-name', 'norm status')
+    expect(
+      within(cells[2])
+        .getAllByRole('button')
+        .map(button => button.getAttribute('aria-label')),
+    ).toEqual(['common.edit', 'normReference.archive', 'common.delete'])
+  })
+
   it('renders an empty-state row with a create CTA', async () => {
     fetchMock.mockResolvedValue(okJson({ normReferences: [] }))
 
     render(<NormReferencesClient />)
 
     const emptyState = await screen.findByText('normReference.emptyState')
-    expect(emptyState.closest('td')).toHaveAttribute('colspan', '9')
+    expect(emptyState.closest('td')).toHaveAttribute('colspan', '3')
 
     const createButtons = [
       screen.getByRole('button', {
@@ -135,12 +176,7 @@ describe('NormReferencesClient', () => {
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     expect(link).toHaveAttribute('title', 'normReference.openUri')
-    expect(screen.getByText(longName)).toHaveClass('wrap-break-word')
-    expect(screen.getByText(longName).parentElement).toHaveClass(
-      'grid',
-      'grid-cols-[minmax(0,1fr)_auto]',
-      'items-center',
-    )
+    expect(link.closest('td')).toContainElement(screen.getByText(longName))
   })
 
   it('does not show external URI icons for empty or non-browser-link URIs', async () => {
