@@ -20,18 +20,18 @@ cd /mnt/krav-azure-dev-data/.worktrees/prototype-issue-1356
 npm run prototype:1356
 ```
 
-Open the [interactive prototype](http://localhost:3136/sv/requirements/stewardship?tab=questions&variant=A).
-Forward port **3136** in VS Code if accessing the workspace remotely. The
+Open the [interactive prototype](http://localhost:3000/sv/requirements/stewardship?tab=questions&variant=A).
+Forward port **3000** in VS Code if accessing the workspace remotely. The
 launcher refuses to replace a process already using that port. Ctrl+C stops
 only the prototype server. An alternative port is supported with
 `PROTOTYPE_PORT=3137 npm run prototype:1356`.
 
 The app uses normal development authentication and the existing SQL Server and
-Keycloak services. Sign in at [the development app](http://localhost:3000) first
-if necessary, using `ada.admin` / `devpass`, then return to port 3136. Use
-`localhost` for both; session cookies are shared across ports. If the normal
-app is stopped, start it with `npm run dev` in the normal checkout. No identity
-provider registrations or environment-file edits are required.
+Keycloak services. Stop any development app currently using port 3000 before
+starting this prototype. Sign in directly on the prototype if necessary, using
+`ada.admin` / `devpass`. The registered local authentication callback already
+uses port 3000. No identity provider registrations or environment-file edits
+are required. The screenshot gallery remains on port 3138.
 
 The sample security question `SÄK-KUF001` opens automatically with its three
 answers. The area filter initially selects Säkerhet. Clear it to explore the
@@ -151,7 +151,7 @@ npm run prototype:1356:capture -- --verify-only
 | Keyboard navigation | Tab through actions and press Enter; use Left/Right in a text field and outside controls. | Focus remains visible; editing keys do not change variants; page-level arrows cycle variants. |
 | Developer Mode markers | Enable the existing Developer Mode overlay and inspect the expanded area. | English markers identify the expanded question, question actions, answer list/content/actions and variant switcher. |
 | Swedish and English copy | Repeat a comparison on the equivalent `/en/` URL. | Prototype controls and new group labels use the selected language. |
-| One-command launch and capture | Run the three commands above from the worktree. | A separate app runs on 3136, captures are generated locally, and the gallery runs on 3138. |
+| One-command launch and capture | Run the three commands above from the worktree. | A separate app runs on 3000, captures are generated locally, and the gallery runs on 3138. |
 
 <!-- markdownlint-enable MD013 -->
 

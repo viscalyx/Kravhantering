@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { chromium } from 'playwright'
 import { login } from './lib/dev-login-core.mjs'
 
-const base = `http://localhost:${process.env.PROTOTYPE_PORT ?? 3136}`
+const base = `http://localhost:${process.env.PROTOTYPE_PORT ?? 3000}`
 const output = 'tmp/prototype-1356'
 await mkdir(output, { recursive: true })
 const jar = await login(

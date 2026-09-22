@@ -4,7 +4,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { createServer } from 'node:net'
 
-const port = Number(process.env.PROTOTYPE_PORT ?? 3136)
+const port = Number(process.env.PROTOTYPE_PORT ?? 3000)
 if (!existsSync('.env.development.local')) {
   console.error(
     'Link the existing read-only .env.development.local into this worktree before starting. See docs/development/issue-1356-prototype.md.',
@@ -27,7 +27,7 @@ probe.listen(port, '0.0.0.0', () =>
     )
     if (prepared.status !== 0) process.exit(prepared.status ?? 1)
     console.log(
-      `\n#1356 throwaway prototype\nSign in at http://localhost:3000 first, then open:\nhttp://localhost:${port}/sv/requirements/stewardship?tab=questions&variant=A\nVariants: original, A, B, C. Review panel contains measurements and current state.\nQuestion and answer reordering is in memory. Other API writes are blocked.\nCtrl+C stops only this prototype.\n`,
+      `\n#1356 throwaway prototype\nOpen the prototype and sign in if prompted:\nhttp://localhost:${port}/sv/requirements/stewardship?tab=questions&variant=A\nVariants: original, A, B, C. Review panel contains measurements and current state.\nQuestion and answer reordering is in memory. Other API writes are blocked.\nCtrl+C stops only this prototype.\n`,
     )
     const child = spawn(
       process.execPath,
