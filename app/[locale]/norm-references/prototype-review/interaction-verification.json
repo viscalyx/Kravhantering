@@ -1,0 +1,92 @@
+{
+  "date": "2026-09-22T13:08:05.312Z",
+  "checks": [
+    "English labels; 0/1/14/209 fixtures; archived badge; no link for URN",
+    "Memory edits survive variant switches; arrow buttons wrap; keyboard cycles; input arrows do not switch",
+    "Archive/reactivate preview via mouse and keyboard; Escape closes dialog and restores focus",
+    "Delete/create/reset; full state visible; no-results filter",
+    "URL variant survives reload; local examples/edits reset"
+  ],
+  "mobile": [
+    {
+      "variant": "before",
+      "width": 375,
+      "page": 375,
+      "areas": [
+        {
+          "client": 285,
+          "scroll": 978
+        }
+      ]
+    },
+    {
+      "variant": "A",
+      "width": 375,
+      "page": 375,
+      "areas": [
+        {
+          "client": 285,
+          "scroll": 1140
+        }
+      ]
+    },
+    {
+      "variant": "B",
+      "width": 375,
+      "page": 375,
+      "areas": [
+        {
+          "client": 285,
+          "scroll": 900
+        }
+      ]
+    },
+    {
+      "variant": "C",
+      "width": 375,
+      "page": 375,
+      "areas": []
+    },
+    {
+      "variant": "before",
+      "width": 320,
+      "page": 320,
+      "areas": [
+        {
+          "client": 230,
+          "scroll": 978
+        }
+      ]
+    },
+    {
+      "variant": "A",
+      "width": 320,
+      "page": 320,
+      "areas": [
+        {
+          "client": 230,
+          "scroll": 1140
+        }
+      ]
+    },
+    {
+      "variant": "B",
+      "width": 320,
+      "page": 320,
+      "areas": [
+        {
+          "client": 230,
+          "scroll": 900
+        }
+      ]
+    },
+    {
+      "variant": "C",
+      "width": 320,
+      "page": 320,
+      "areas": []
+    }
+  ],
+  "errors": [],
+  "writes": []
+}

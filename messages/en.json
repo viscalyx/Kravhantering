@@ -4066,5 +4066,51 @@
     "hiddenCreatedNorm": "The search hides the new norm reference “{name}”. It is still checked.",
     "creationPersistence": "The new object is saved immediately. Cancel in the selection dialog only discards the selection.",
     "searchHelp": "Search by name, reference ID or package purpose. Selections are kept when you filter the list."
+  },
+  "prototypeNormLayout": {
+    "prototype": "PROTOTYPE #1358",
+    "notice": "Throwaway prototype · norm actions change memory only",
+    "question": "Which layout makes long norm names and issuers easiest to compare without losing identifiers or actions?",
+    "switcher": "Prototype variants",
+    "previous": "Previous variant",
+    "next": "Next variant",
+    "variant": "Layout variant",
+    "examples": "Add edge-case examples",
+    "reset": "Reset local changes",
+    "guide": "Review guide · changes and verification",
+    "guideIntro": "Use Before and A with identical data first. B and C deliberately explore structures beyond the current implementation brief. Arrow keys switch layouts unless you are editing a field. No variant is approved yet.",
+    "identity": "Name and identification",
+    "statusActions": "Status and actions",
+    "selectNorm": "Select a norm reference",
+    "selectedNorm": "Selected norm reference",
+    "state": "Current prototype state",
+    "preview": "Preview",
+    "memoryOnly": "This action is a visual preview. It only changes this page in memory. Reload to restore the loaded data.",
+    "apply": "Apply in memory",
+    "newName": "New example norm",
+    "fieldHelp": "Help for prototype name",
+    "nameHelp": "Try a longer or shorter name to see how the row responds. This does not save a norm reference.",
+    "variants": {
+      "before": "Current table",
+      "A": "Weighted table",
+      "B": "Grouped rows",
+      "C": "List and detail"
+    },
+    "descriptions": {
+      "before": "Current nine-column structure, padding and text status; actions are safe previews.",
+      "A": "Nine columns, compact metadata, wider name and issuer, status badges. Closest to issue scope.",
+      "B": "Name, ID, reference and version together; issuer and actions beside them. Wider reading space, taller rows.",
+      "C": "Browse names on the left and read one full norm on the right. More room for reading, less direct comparison."
+    },
+    "checks": {
+      "space": "A: compare the NIS2 row with Before at 1440 × 900, expanded navigation. Read the full name and issuer; compare wrapping and row height. Name and issuer gain space; metadata padding shrinks.",
+      "fields": "All variants: verify ID, reference and version remain separately labelled and complete. Enable examples to inspect a missing version, a long unbroken reference and 0/1/14/209 requirements.",
+      "links": "Compare rows with and without a link. The icon stays next to the name, opens the same external URL and has a 44px target. A URN example intentionally has no clickable link.",
+      "statuses": "A/B/C: active and archived states have both text and an icon, using the package-list style. Enable examples to see an archived norm. Use the theme control in the navigation.",
+      "actions": "All variants: edit a name, archive/reactivate, delete, and create a row. Confirm the preview dialog; inspect the state panel, then reset. Row buttons stay 44 × 44px. Escape closes a dialog; Tab reaches controls.",
+      "alternatives": "B groups fields but retains every value. C requires selecting each norm to see its full detail. Decide whether either tradeoff is useful; these are alternatives beyond the current issue scope.",
+      "matrix": "Compare at 1440 × 900 and 1920 × 1080, navigation collapsed/expanded, light/dark, then switch /sv/ to /en/. At 320/375px scroll the table horizontally or read C vertically. Keep the same data between variants.",
+      "state": "The state panel shows variant, filter, examples, visible IDs, selection and all local edits. Variant switches keep local edits; reload clears them. Copy a URL with variant=before, A, B or C to reopen a layout."
+    }
   }
 }

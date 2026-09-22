@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useDeferredValue, useRef, useState } from 'react'
+import NormLayoutPrototype from '@/app/[locale]/norm-references/norm-layout.prototype'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FloatingActionRail from '@/components/FloatingActionRail'
@@ -474,6 +475,18 @@ export default function NormReferencesClient() {
   const formModalTitle = isEditing
     ? t('editNormReference')
     : t('newNormReference')
+
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_NORM_LAYOUT_PROTOTYPE === 'true'
+  ) {
+    return (
+      <NormLayoutPrototype
+        items={controller.items}
+        loading={controller.loading}
+      />
+    )
+  }
 
   return (
     <div className="section-padding">

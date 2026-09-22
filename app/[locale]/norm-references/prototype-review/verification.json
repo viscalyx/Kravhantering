@@ -1,0 +1,2663 @@
+{
+  "date": "2026-09-22T13:07:13.921Z",
+  "results": [
+    {
+      "key": "before-1440-collapsed-light",
+      "row": {
+        "x": 105,
+        "y": 570,
+        "width": 1246,
+        "height": 105
+      },
+      "name": {
+        "x": 268,
+        "y": 582,
+        "width": 149,
+        "height": 80
+      },
+      "nameLines": 4,
+      "columns": [
+        {
+          "text": "Normreferens-ID",
+          "x": 105,
+          "y": 335,
+          "width": 147,
+          "height": 65
+        },
+        {
+          "text": "Benämning",
+          "x": 252,
+          "y": 335,
+          "width": 233,
+          "height": 65
+        },
+        {
+          "text": "Typ",
+          "x": 485,
+          "y": 335,
+          "width": 96,
+          "height": 65
+        },
+        {
+          "text": "Referens",
+          "x": 580,
+          "y": 335,
+          "width": 146,
+          "height": 65
+        },
+        {
+          "text": "Version",
+          "x": 727,
+          "y": 335,
+          "width": 78,
+          "height": 65
+        },
+        {
+          "text": "Utfärdare",
+          "x": 804,
+          "y": 335,
+          "width": 206,
+          "height": 65
+        },
+        {
+          "text": "Status",
+          "x": 1010,
+          "y": 335,
+          "width": 72,
+          "height": 65
+        },
+        {
+          "text": "Kopplade krav",
+          "x": 1082,
+          "y": 335,
+          "width": 97,
+          "height": 65
+        },
+        {
+          "text": "Åtgärder",
+          "x": 1179,
+          "y": 335,
+          "width": 172,
+          "height": 65
+        }
+      ],
+      "actions": [
+        {
+          "x": 1195,
+          "y": 600,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1243,
+          "y": 600,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1291,
+          "y": 600,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1246,
+          "scroll": 1246
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "rows": 15
+    },
+    {
+      "key": "A-1440-collapsed-light",
+      "row": {
+        "x": 105,
+        "y": 514,
+        "width": 1246,
+        "height": 61
+      },
+      "name": {
+        "x": 205,
+        "y": 524,
+        "width": 240,
+        "height": 40
+      },
+      "nameLines": 2,
+      "columns": [
+        {
+          "text": "Normreferens-ID",
+          "x": 105,
+          "y": 335,
+          "width": 94,
+          "height": 57
+        },
+        {
+          "text": "Benämning",
+          "x": 199,
+          "y": 335,
+          "width": 304,
+          "height": 57
+        },
+        {
+          "text": "Typ",
+          "x": 503,
+          "y": 335,
+          "width": 72,
+          "height": 57
+        },
+        {
+          "text": "Referens",
+          "x": 575,
+          "y": 335,
+          "width": 104,
+          "height": 57
+        },
+        {
+          "text": "Version",
+          "x": 679,
+          "y": 335,
+          "width": 64,
+          "height": 57
+        },
+        {
+          "text": "Utfärdare",
+          "x": 743,
+          "y": 335,
+          "width": 304,
+          "height": 57
+        },
+        {
+          "text": "Status",
+          "x": 1047,
+          "y": 335,
+          "width": 84,
+          "height": 57
+        },
+        {
+          "text": "Kopplade krav",
+          "x": 1131,
+          "y": 335,
+          "width": 72,
+          "height": 57
+        },
+        {
+          "text": "Åtgärder",
+          "x": 1203,
+          "y": 335,
+          "width": 148,
+          "height": 57
+        }
+      ],
+      "actions": [
+        {
+          "x": 1205,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1253,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1301,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1246,
+          "scroll": 1246
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "B-1440-collapsed-light",
+      "row": {
+        "x": 105,
+        "y": 670,
+        "width": 1246,
+        "height": 141
+      },
+      "name": {
+        "x": 121,
+        "y": 698,
+        "width": 502,
+        "height": 20
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Benämning och identifiering",
+          "x": 105,
+          "y": 335,
+          "width": 586,
+          "height": 53
+        },
+        {
+          "text": "Utfärdare",
+          "x": 691,
+          "y": 335,
+          "width": 336,
+          "height": 53
+        },
+        {
+          "text": "Status och åtgärder",
+          "x": 1027,
+          "y": 335,
+          "width": 324,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1195,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1243,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1291,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1246,
+          "scroll": 1246
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "C-1440-collapsed-light",
+      "row": {
+        "x": 613,
+        "y": 334,
+        "width": 739,
+        "height": 395
+      },
+      "name": {
+        "x": 634,
+        "y": 403,
+        "width": 645,
+        "height": 28
+      },
+      "nameLines": 1,
+      "columns": [],
+      "actions": [
+        {
+          "x": 1191,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1239,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1287,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Aktiv",
+      "rows": 1
+    },
+    {
+      "key": "before-1440-collapsed-dark",
+      "row": {
+        "x": 105,
+        "y": 570,
+        "width": 1246,
+        "height": 105
+      },
+      "name": {
+        "x": 268,
+        "y": 582,
+        "width": 149,
+        "height": 80
+      },
+      "nameLines": 4,
+      "columns": [
+        {
+          "text": "Normreferens-ID",
+          "x": 105,
+          "y": 335,
+          "width": 147,
+          "height": 65
+        },
+        {
+          "text": "Benämning",
+          "x": 252,
+          "y": 335,
+          "width": 233,
+          "height": 65
+        },
+        {
+          "text": "Typ",
+          "x": 485,
+          "y": 335,
+          "width": 96,
+          "height": 65
+        },
+        {
+          "text": "Referens",
+          "x": 580,
+          "y": 335,
+          "width": 146,
+          "height": 65
+        },
+        {
+          "text": "Version",
+          "x": 727,
+          "y": 335,
+          "width": 78,
+          "height": 65
+        },
+        {
+          "text": "Utfärdare",
+          "x": 804,
+          "y": 335,
+          "width": 206,
+          "height": 65
+        },
+        {
+          "text": "Status",
+          "x": 1010,
+          "y": 335,
+          "width": 72,
+          "height": 65
+        },
+        {
+          "text": "Kopplade krav",
+          "x": 1082,
+          "y": 335,
+          "width": 97,
+          "height": 65
+        },
+        {
+          "text": "Åtgärder",
+          "x": 1179,
+          "y": 335,
+          "width": 172,
+          "height": 65
+        }
+      ],
+      "actions": [
+        {
+          "x": 1195,
+          "y": 600,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1243,
+          "y": 600,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1291,
+          "y": 600,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1246,
+          "scroll": 1246
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "rows": 15
+    },
+    {
+      "key": "A-1440-collapsed-dark",
+      "row": {
+        "x": 105,
+        "y": 514,
+        "width": 1246,
+        "height": 61
+      },
+      "name": {
+        "x": 205,
+        "y": 524,
+        "width": 240,
+        "height": 40
+      },
+      "nameLines": 2,
+      "columns": [
+        {
+          "text": "Normreferens-ID",
+          "x": 105,
+          "y": 335,
+          "width": 94,
+          "height": 57
+        },
+        {
+          "text": "Benämning",
+          "x": 199,
+          "y": 335,
+          "width": 304,
+          "height": 57
+        },
+        {
+          "text": "Typ",
+          "x": 503,
+          "y": 335,
+          "width": 72,
+          "height": 57
+        },
+        {
+          "text": "Referens",
+          "x": 575,
+          "y": 335,
+          "width": 104,
+          "height": 57
+        },
+        {
+          "text": "Version",
+          "x": 679,
+          "y": 335,
+          "width": 64,
+          "height": 57
+        },
+        {
+          "text": "Utfärdare",
+          "x": 743,
+          "y": 335,
+          "width": 304,
+          "height": 57
+        },
+        {
+          "text": "Status",
+          "x": 1047,
+          "y": 335,
+          "width": 84,
+          "height": 57
+        },
+        {
+          "text": "Kopplade krav",
+          "x": 1131,
+          "y": 335,
+          "width": 72,
+          "height": 57
+        },
+        {
+          "text": "Åtgärder",
+          "x": 1203,
+          "y": 335,
+          "width": 148,
+          "height": 57
+        }
+      ],
+      "actions": [
+        {
+          "x": 1205,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1253,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1301,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1246,
+          "scroll": 1246
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "B-1440-collapsed-dark",
+      "row": {
+        "x": 105,
+        "y": 670,
+        "width": 1246,
+        "height": 141
+      },
+      "name": {
+        "x": 121,
+        "y": 698,
+        "width": 502,
+        "height": 20
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Benämning och identifiering",
+          "x": 105,
+          "y": 335,
+          "width": 586,
+          "height": 53
+        },
+        {
+          "text": "Utfärdare",
+          "x": 691,
+          "y": 335,
+          "width": 336,
+          "height": 53
+        },
+        {
+          "text": "Status och åtgärder",
+          "x": 1027,
+          "y": 335,
+          "width": 324,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1195,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1243,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1291,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1246,
+          "scroll": 1246
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "C-1440-collapsed-dark",
+      "row": {
+        "x": 613,
+        "y": 334,
+        "width": 739,
+        "height": 395
+      },
+      "name": {
+        "x": 634,
+        "y": 403,
+        "width": 645,
+        "height": 28
+      },
+      "nameLines": 1,
+      "columns": [],
+      "actions": [
+        {
+          "x": 1191,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1239,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1287,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Aktiv",
+      "rows": 1
+    },
+    {
+      "key": "before-1440-expanded-light",
+      "row": {
+        "x": 297,
+        "y": 730,
+        "width": 1054,
+        "height": 225
+      },
+      "name": {
+        "x": 440,
+        "y": 742,
+        "width": 51,
+        "height": 200
+      },
+      "nameLines": 10,
+      "columns": [
+        {
+          "text": "Normreferens-ID",
+          "x": 297,
+          "y": 335,
+          "width": 127,
+          "height": 65
+        },
+        {
+          "text": "Benämning",
+          "x": 424,
+          "y": 335,
+          "width": 135,
+          "height": 65
+        },
+        {
+          "text": "Typ",
+          "x": 558,
+          "y": 335,
+          "width": 96,
+          "height": 65
+        },
+        {
+          "text": "Referens",
+          "x": 654,
+          "y": 335,
+          "width": 121,
+          "height": 65
+        },
+        {
+          "text": "Version",
+          "x": 775,
+          "y": 335,
+          "width": 78,
+          "height": 65
+        },
+        {
+          "text": "Utfärdare",
+          "x": 853,
+          "y": 335,
+          "width": 163,
+          "height": 65
+        },
+        {
+          "text": "Status",
+          "x": 1016,
+          "y": 335,
+          "width": 72,
+          "height": 65
+        },
+        {
+          "text": "Kopplade krav",
+          "x": 1088,
+          "y": 335,
+          "width": 91,
+          "height": 65
+        },
+        {
+          "text": "Åtgärder",
+          "x": 1179,
+          "y": 335,
+          "width": 172,
+          "height": 65
+        }
+      ],
+      "actions": [
+        {
+          "x": 1195,
+          "y": 820,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1243,
+          "y": 820,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1291,
+          "y": 820,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1054,
+          "scroll": 1054
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "rows": 15
+    },
+    {
+      "key": "A-1440-expanded-light",
+      "row": {
+        "x": 297,
+        "y": 546,
+        "width": 1054,
+        "height": 97
+      },
+      "name": {
+        "x": 397,
+        "y": 554,
+        "width": 144,
+        "height": 80
+      },
+      "nameLines": 4,
+      "columns": [
+        {
+          "text": "Normreferens-ID",
+          "x": 297,
+          "y": 335,
+          "width": 94,
+          "height": 57
+        },
+        {
+          "text": "Benämning",
+          "x": 391,
+          "y": 335,
+          "width": 208,
+          "height": 57
+        },
+        {
+          "text": "Typ",
+          "x": 599,
+          "y": 335,
+          "width": 72,
+          "height": 57
+        },
+        {
+          "text": "Referens",
+          "x": 671,
+          "y": 335,
+          "width": 104,
+          "height": 57
+        },
+        {
+          "text": "Version",
+          "x": 775,
+          "y": 335,
+          "width": 64,
+          "height": 57
+        },
+        {
+          "text": "Utfärdare",
+          "x": 839,
+          "y": 335,
+          "width": 208,
+          "height": 57
+        },
+        {
+          "text": "Status",
+          "x": 1047,
+          "y": 335,
+          "width": 84,
+          "height": 57
+        },
+        {
+          "text": "Kopplade krav",
+          "x": 1131,
+          "y": 335,
+          "width": 72,
+          "height": 57
+        },
+        {
+          "text": "Åtgärder",
+          "x": 1203,
+          "y": 335,
+          "width": 148,
+          "height": 57
+        }
+      ],
+      "actions": [
+        {
+          "x": 1205,
+          "y": 572,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1253,
+          "y": 572,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1301,
+          "y": 572,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1054,
+          "scroll": 1054
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "B-1440-expanded-light",
+      "row": {
+        "x": 297,
+        "y": 670,
+        "width": 1054,
+        "height": 141
+      },
+      "name": {
+        "x": 313,
+        "y": 698,
+        "width": 411,
+        "height": 20
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Benämning och identifiering",
+          "x": 297,
+          "y": 335,
+          "width": 495,
+          "height": 53
+        },
+        {
+          "text": "Utfärdare",
+          "x": 792,
+          "y": 335,
+          "width": 285,
+          "height": 53
+        },
+        {
+          "text": "Status och åtgärder",
+          "x": 1077,
+          "y": 335,
+          "width": 274,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1195,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1243,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1291,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1054,
+          "scroll": 1054
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "C-1440-expanded-light",
+      "row": {
+        "x": 728,
+        "y": 334,
+        "width": 624,
+        "height": 407
+      },
+      "name": {
+        "x": 749,
+        "y": 395,
+        "width": 530,
+        "height": 56
+      },
+      "nameLines": 2,
+      "columns": [],
+      "actions": [
+        {
+          "x": 1191,
+          "y": 676,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1239,
+          "y": 676,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1287,
+          "y": 676,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Aktiv",
+      "rows": 1
+    },
+    {
+      "key": "before-1440-expanded-dark",
+      "row": {
+        "x": 297,
+        "y": 730,
+        "width": 1054,
+        "height": 225
+      },
+      "name": {
+        "x": 440,
+        "y": 742,
+        "width": 51,
+        "height": 200
+      },
+      "nameLines": 10,
+      "columns": [
+        {
+          "text": "Normreferens-ID",
+          "x": 297,
+          "y": 335,
+          "width": 127,
+          "height": 65
+        },
+        {
+          "text": "Benämning",
+          "x": 424,
+          "y": 335,
+          "width": 135,
+          "height": 65
+        },
+        {
+          "text": "Typ",
+          "x": 558,
+          "y": 335,
+          "width": 96,
+          "height": 65
+        },
+        {
+          "text": "Referens",
+          "x": 654,
+          "y": 335,
+          "width": 121,
+          "height": 65
+        },
+        {
+          "text": "Version",
+          "x": 775,
+          "y": 335,
+          "width": 78,
+          "height": 65
+        },
+        {
+          "text": "Utfärdare",
+          "x": 853,
+          "y": 335,
+          "width": 163,
+          "height": 65
+        },
+        {
+          "text": "Status",
+          "x": 1016,
+          "y": 335,
+          "width": 72,
+          "height": 65
+        },
+        {
+          "text": "Kopplade krav",
+          "x": 1088,
+          "y": 335,
+          "width": 91,
+          "height": 65
+        },
+        {
+          "text": "Åtgärder",
+          "x": 1179,
+          "y": 335,
+          "width": 172,
+          "height": 65
+        }
+      ],
+      "actions": [
+        {
+          "x": 1195,
+          "y": 820,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1243,
+          "y": 820,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1291,
+          "y": 820,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1054,
+          "scroll": 1054
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "rows": 15
+    },
+    {
+      "key": "A-1440-expanded-dark",
+      "row": {
+        "x": 297,
+        "y": 546,
+        "width": 1054,
+        "height": 97
+      },
+      "name": {
+        "x": 397,
+        "y": 554,
+        "width": 144,
+        "height": 80
+      },
+      "nameLines": 4,
+      "columns": [
+        {
+          "text": "Normreferens-ID",
+          "x": 297,
+          "y": 335,
+          "width": 94,
+          "height": 57
+        },
+        {
+          "text": "Benämning",
+          "x": 391,
+          "y": 335,
+          "width": 208,
+          "height": 57
+        },
+        {
+          "text": "Typ",
+          "x": 599,
+          "y": 335,
+          "width": 72,
+          "height": 57
+        },
+        {
+          "text": "Referens",
+          "x": 671,
+          "y": 335,
+          "width": 104,
+          "height": 57
+        },
+        {
+          "text": "Version",
+          "x": 775,
+          "y": 335,
+          "width": 64,
+          "height": 57
+        },
+        {
+          "text": "Utfärdare",
+          "x": 839,
+          "y": 335,
+          "width": 208,
+          "height": 57
+        },
+        {
+          "text": "Status",
+          "x": 1047,
+          "y": 335,
+          "width": 84,
+          "height": 57
+        },
+        {
+          "text": "Kopplade krav",
+          "x": 1131,
+          "y": 335,
+          "width": 72,
+          "height": 57
+        },
+        {
+          "text": "Åtgärder",
+          "x": 1203,
+          "y": 335,
+          "width": 148,
+          "height": 57
+        }
+      ],
+      "actions": [
+        {
+          "x": 1205,
+          "y": 572,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1253,
+          "y": 572,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1301,
+          "y": 572,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1054,
+          "scroll": 1054
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "B-1440-expanded-dark",
+      "row": {
+        "x": 297,
+        "y": 670,
+        "width": 1054,
+        "height": 141
+      },
+      "name": {
+        "x": 313,
+        "y": 698,
+        "width": 411,
+        "height": 20
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Benämning och identifiering",
+          "x": 297,
+          "y": 335,
+          "width": 495,
+          "height": 53
+        },
+        {
+          "text": "Utfärdare",
+          "x": 792,
+          "y": 335,
+          "width": 285,
+          "height": 53
+        },
+        {
+          "text": "Status och åtgärder",
+          "x": 1077,
+          "y": 335,
+          "width": 274,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1195,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1243,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1291,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1054,
+          "scroll": 1054
+        }
+      ],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "C-1440-expanded-dark",
+      "row": {
+        "x": 728,
+        "y": 334,
+        "width": 624,
+        "height": 407
+      },
+      "name": {
+        "x": 749,
+        "y": 395,
+        "width": 530,
+        "height": 56
+      },
+      "nameLines": 2,
+      "columns": [],
+      "actions": [
+        {
+          "x": 1191,
+          "y": 676,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1239,
+          "y": 676,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1287,
+          "y": 676,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [],
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "status": "Aktiv",
+      "rows": 1
+    },
+    {
+      "key": "before-1920-collapsed-light",
+      "row": {
+        "x": 105,
+        "y": 538,
+        "width": 1726,
+        "height": 69
+      },
+      "name": {
+        "x": 318,
+        "y": 552,
+        "width": 394,
+        "height": 40
+      },
+      "nameLines": 2,
+      "columns": [
+        {
+          "text": "Normreferens-ID",
+          "x": 105,
+          "y": 335,
+          "width": 197,
+          "height": 65
+        },
+        {
+          "text": "Benämning",
+          "x": 302,
+          "y": 335,
+          "width": 478,
+          "height": 65
+        },
+        {
+          "text": "Typ",
+          "x": 780,
+          "y": 335,
+          "width": 96,
+          "height": 65
+        },
+        {
+          "text": "Referens",
+          "x": 875,
+          "y": 335,
+          "width": 210,
+          "height": 65
+        },
+        {
+          "text": "Version",
+          "x": 1086,
+          "y": 335,
+          "width": 78,
+          "height": 65
+        },
+        {
+          "text": "Utfärdare",
+          "x": 1163,
+          "y": 335,
+          "width": 312,
+          "height": 65
+        },
+        {
+          "text": "Status",
+          "x": 1475,
+          "y": 335,
+          "width": 72,
+          "height": 65
+        },
+        {
+          "text": "Kopplade krav",
+          "x": 1547,
+          "y": 335,
+          "width": 112,
+          "height": 65
+        },
+        {
+          "text": "Åtgärder",
+          "x": 1659,
+          "y": 335,
+          "width": 172,
+          "height": 65
+        }
+      ],
+      "actions": [
+        {
+          "x": 1675,
+          "y": 550,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1723,
+          "y": 550,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1771,
+          "y": 550,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1726,
+          "scroll": 1726
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "rows": 15
+    },
+    {
+      "key": "A-1920-collapsed-light",
+      "row": {
+        "x": 105,
+        "y": 514,
+        "width": 1726,
+        "height": 61
+      },
+      "name": {
+        "x": 205,
+        "y": 534,
+        "width": 480,
+        "height": 20
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Normreferens-ID",
+          "x": 105,
+          "y": 335,
+          "width": 94,
+          "height": 57
+        },
+        {
+          "text": "Benämning",
+          "x": 199,
+          "y": 335,
+          "width": 544,
+          "height": 57
+        },
+        {
+          "text": "Typ",
+          "x": 743,
+          "y": 335,
+          "width": 72,
+          "height": 57
+        },
+        {
+          "text": "Referens",
+          "x": 815,
+          "y": 335,
+          "width": 104,
+          "height": 57
+        },
+        {
+          "text": "Version",
+          "x": 919,
+          "y": 335,
+          "width": 64,
+          "height": 57
+        },
+        {
+          "text": "Utfärdare",
+          "x": 983,
+          "y": 335,
+          "width": 544,
+          "height": 57
+        },
+        {
+          "text": "Status",
+          "x": 1527,
+          "y": 335,
+          "width": 84,
+          "height": 57
+        },
+        {
+          "text": "Kopplade krav",
+          "x": 1611,
+          "y": 335,
+          "width": 72,
+          "height": 57
+        },
+        {
+          "text": "Åtgärder",
+          "x": 1683,
+          "y": 335,
+          "width": 148,
+          "height": 57
+        }
+      ],
+      "actions": [
+        {
+          "x": 1685,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1733,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1781,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1726,
+          "scroll": 1726
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "B-1920-collapsed-light",
+      "row": {
+        "x": 105,
+        "y": 670,
+        "width": 1726,
+        "height": 141
+      },
+      "name": {
+        "x": 121,
+        "y": 698,
+        "width": 727,
+        "height": 20
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Benämning och identifiering",
+          "x": 105,
+          "y": 335,
+          "width": 811,
+          "height": 53
+        },
+        {
+          "text": "Utfärdare",
+          "x": 916,
+          "y": 335,
+          "width": 466,
+          "height": 53
+        },
+        {
+          "text": "Status och åtgärder",
+          "x": 1382,
+          "y": 335,
+          "width": 449,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1675,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1723,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1771,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1726,
+          "scroll": 1726
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "C-1920-collapsed-light",
+      "row": {
+        "x": 805,
+        "y": 334,
+        "width": 1027,
+        "height": 395
+      },
+      "name": {
+        "x": 826,
+        "y": 403,
+        "width": 933,
+        "height": 28
+      },
+      "nameLines": 1,
+      "columns": [],
+      "actions": [
+        {
+          "x": 1671,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1719,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1767,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Aktiv",
+      "rows": 1
+    },
+    {
+      "key": "before-1920-collapsed-dark",
+      "row": {
+        "x": 105,
+        "y": 538,
+        "width": 1726,
+        "height": 69
+      },
+      "name": {
+        "x": 318,
+        "y": 552,
+        "width": 394,
+        "height": 40
+      },
+      "nameLines": 2,
+      "columns": [
+        {
+          "text": "Normreferens-ID",
+          "x": 105,
+          "y": 335,
+          "width": 197,
+          "height": 65
+        },
+        {
+          "text": "Benämning",
+          "x": 302,
+          "y": 335,
+          "width": 478,
+          "height": 65
+        },
+        {
+          "text": "Typ",
+          "x": 780,
+          "y": 335,
+          "width": 96,
+          "height": 65
+        },
+        {
+          "text": "Referens",
+          "x": 875,
+          "y": 335,
+          "width": 210,
+          "height": 65
+        },
+        {
+          "text": "Version",
+          "x": 1086,
+          "y": 335,
+          "width": 78,
+          "height": 65
+        },
+        {
+          "text": "Utfärdare",
+          "x": 1163,
+          "y": 335,
+          "width": 312,
+          "height": 65
+        },
+        {
+          "text": "Status",
+          "x": 1475,
+          "y": 335,
+          "width": 72,
+          "height": 65
+        },
+        {
+          "text": "Kopplade krav",
+          "x": 1547,
+          "y": 335,
+          "width": 112,
+          "height": 65
+        },
+        {
+          "text": "Åtgärder",
+          "x": 1659,
+          "y": 335,
+          "width": 172,
+          "height": 65
+        }
+      ],
+      "actions": [
+        {
+          "x": 1675,
+          "y": 550,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1723,
+          "y": 550,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1771,
+          "y": 550,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1726,
+          "scroll": 1726
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "rows": 15
+    },
+    {
+      "key": "A-1920-collapsed-dark",
+      "row": {
+        "x": 105,
+        "y": 514,
+        "width": 1726,
+        "height": 61
+      },
+      "name": {
+        "x": 205,
+        "y": 534,
+        "width": 480,
+        "height": 20
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Normreferens-ID",
+          "x": 105,
+          "y": 335,
+          "width": 94,
+          "height": 57
+        },
+        {
+          "text": "Benämning",
+          "x": 199,
+          "y": 335,
+          "width": 544,
+          "height": 57
+        },
+        {
+          "text": "Typ",
+          "x": 743,
+          "y": 335,
+          "width": 72,
+          "height": 57
+        },
+        {
+          "text": "Referens",
+          "x": 815,
+          "y": 335,
+          "width": 104,
+          "height": 57
+        },
+        {
+          "text": "Version",
+          "x": 919,
+          "y": 335,
+          "width": 64,
+          "height": 57
+        },
+        {
+          "text": "Utfärdare",
+          "x": 983,
+          "y": 335,
+          "width": 544,
+          "height": 57
+        },
+        {
+          "text": "Status",
+          "x": 1527,
+          "y": 335,
+          "width": 84,
+          "height": 57
+        },
+        {
+          "text": "Kopplade krav",
+          "x": 1611,
+          "y": 335,
+          "width": 72,
+          "height": 57
+        },
+        {
+          "text": "Åtgärder",
+          "x": 1683,
+          "y": 335,
+          "width": 148,
+          "height": 57
+        }
+      ],
+      "actions": [
+        {
+          "x": 1685,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1733,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1781,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1726,
+          "scroll": 1726
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "B-1920-collapsed-dark",
+      "row": {
+        "x": 105,
+        "y": 670,
+        "width": 1726,
+        "height": 141
+      },
+      "name": {
+        "x": 121,
+        "y": 698,
+        "width": 727,
+        "height": 20
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Benämning och identifiering",
+          "x": 105,
+          "y": 335,
+          "width": 811,
+          "height": 53
+        },
+        {
+          "text": "Utfärdare",
+          "x": 916,
+          "y": 335,
+          "width": 466,
+          "height": 53
+        },
+        {
+          "text": "Status och åtgärder",
+          "x": 1382,
+          "y": 335,
+          "width": 449,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1675,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1723,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1771,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1726,
+          "scroll": 1726
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "C-1920-collapsed-dark",
+      "row": {
+        "x": 805,
+        "y": 334,
+        "width": 1027,
+        "height": 395
+      },
+      "name": {
+        "x": 826,
+        "y": 403,
+        "width": 933,
+        "height": 28
+      },
+      "nameLines": 1,
+      "columns": [],
+      "actions": [
+        {
+          "x": 1671,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1719,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1767,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Aktiv",
+      "rows": 1
+    },
+    {
+      "key": "before-1920-expanded-light",
+      "row": {
+        "x": 297,
+        "y": 538,
+        "width": 1534,
+        "height": 69
+      },
+      "name": {
+        "x": 490,
+        "y": 552,
+        "width": 296,
+        "height": 40
+      },
+      "nameLines": 2,
+      "columns": [
+        {
+          "text": "Normreferens-ID",
+          "x": 297,
+          "y": 335,
+          "width": 177,
+          "height": 65
+        },
+        {
+          "text": "Benämning",
+          "x": 474,
+          "y": 335,
+          "width": 380,
+          "height": 65
+        },
+        {
+          "text": "Typ",
+          "x": 854,
+          "y": 335,
+          "width": 96,
+          "height": 65
+        },
+        {
+          "text": "Referens",
+          "x": 949,
+          "y": 335,
+          "width": 185,
+          "height": 65
+        },
+        {
+          "text": "Version",
+          "x": 1134,
+          "y": 335,
+          "width": 78,
+          "height": 65
+        },
+        {
+          "text": "Utfärdare",
+          "x": 1212,
+          "y": 335,
+          "width": 269,
+          "height": 65
+        },
+        {
+          "text": "Status",
+          "x": 1481,
+          "y": 335,
+          "width": 72,
+          "height": 65
+        },
+        {
+          "text": "Kopplade krav",
+          "x": 1553,
+          "y": 335,
+          "width": 106,
+          "height": 65
+        },
+        {
+          "text": "Åtgärder",
+          "x": 1659,
+          "y": 335,
+          "width": 172,
+          "height": 65
+        }
+      ],
+      "actions": [
+        {
+          "x": 1675,
+          "y": 550,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1723,
+          "y": 550,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1771,
+          "y": 550,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1534,
+          "scroll": 1534
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "rows": 15
+    },
+    {
+      "key": "A-1920-expanded-light",
+      "row": {
+        "x": 297,
+        "y": 514,
+        "width": 1534,
+        "height": 61
+      },
+      "name": {
+        "x": 397,
+        "y": 524,
+        "width": 384,
+        "height": 40
+      },
+      "nameLines": 2,
+      "columns": [
+        {
+          "text": "Normreferens-ID",
+          "x": 297,
+          "y": 335,
+          "width": 94,
+          "height": 57
+        },
+        {
+          "text": "Benämning",
+          "x": 391,
+          "y": 335,
+          "width": 448,
+          "height": 57
+        },
+        {
+          "text": "Typ",
+          "x": 839,
+          "y": 335,
+          "width": 72,
+          "height": 57
+        },
+        {
+          "text": "Referens",
+          "x": 911,
+          "y": 335,
+          "width": 104,
+          "height": 57
+        },
+        {
+          "text": "Version",
+          "x": 1015,
+          "y": 335,
+          "width": 64,
+          "height": 57
+        },
+        {
+          "text": "Utfärdare",
+          "x": 1079,
+          "y": 335,
+          "width": 448,
+          "height": 57
+        },
+        {
+          "text": "Status",
+          "x": 1527,
+          "y": 335,
+          "width": 84,
+          "height": 57
+        },
+        {
+          "text": "Kopplade krav",
+          "x": 1611,
+          "y": 335,
+          "width": 72,
+          "height": 57
+        },
+        {
+          "text": "Åtgärder",
+          "x": 1683,
+          "y": 335,
+          "width": 148,
+          "height": 57
+        }
+      ],
+      "actions": [
+        {
+          "x": 1685,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1733,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1781,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1534,
+          "scroll": 1534
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "B-1920-expanded-light",
+      "row": {
+        "x": 297,
+        "y": 670,
+        "width": 1534,
+        "height": 141
+      },
+      "name": {
+        "x": 313,
+        "y": 698,
+        "width": 637,
+        "height": 20
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Benämning och identifiering",
+          "x": 297,
+          "y": 335,
+          "width": 721,
+          "height": 53
+        },
+        {
+          "text": "Utfärdare",
+          "x": 1018,
+          "y": 335,
+          "width": 414,
+          "height": 53
+        },
+        {
+          "text": "Status och åtgärder",
+          "x": 1432,
+          "y": 335,
+          "width": 399,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1675,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1723,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1771,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1534,
+          "scroll": 1534
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "C-1920-expanded-light",
+      "row": {
+        "x": 920,
+        "y": 334,
+        "width": 912,
+        "height": 395
+      },
+      "name": {
+        "x": 941,
+        "y": 403,
+        "width": 818,
+        "height": 28
+      },
+      "nameLines": 1,
+      "columns": [],
+      "actions": [
+        {
+          "x": 1671,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1719,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1767,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Aktiv",
+      "rows": 1
+    },
+    {
+      "key": "before-1920-expanded-dark",
+      "row": {
+        "x": 297,
+        "y": 538,
+        "width": 1534,
+        "height": 69
+      },
+      "name": {
+        "x": 490,
+        "y": 552,
+        "width": 296,
+        "height": 40
+      },
+      "nameLines": 2,
+      "columns": [
+        {
+          "text": "Normreferens-ID",
+          "x": 297,
+          "y": 335,
+          "width": 177,
+          "height": 65
+        },
+        {
+          "text": "Benämning",
+          "x": 474,
+          "y": 335,
+          "width": 380,
+          "height": 65
+        },
+        {
+          "text": "Typ",
+          "x": 854,
+          "y": 335,
+          "width": 96,
+          "height": 65
+        },
+        {
+          "text": "Referens",
+          "x": 949,
+          "y": 335,
+          "width": 185,
+          "height": 65
+        },
+        {
+          "text": "Version",
+          "x": 1134,
+          "y": 335,
+          "width": 78,
+          "height": 65
+        },
+        {
+          "text": "Utfärdare",
+          "x": 1212,
+          "y": 335,
+          "width": 269,
+          "height": 65
+        },
+        {
+          "text": "Status",
+          "x": 1481,
+          "y": 335,
+          "width": 72,
+          "height": 65
+        },
+        {
+          "text": "Kopplade krav",
+          "x": 1553,
+          "y": 335,
+          "width": 106,
+          "height": 65
+        },
+        {
+          "text": "Åtgärder",
+          "x": 1659,
+          "y": 335,
+          "width": 172,
+          "height": 65
+        }
+      ],
+      "actions": [
+        {
+          "x": 1675,
+          "y": 550,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1723,
+          "y": 550,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1771,
+          "y": 550,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1534,
+          "scroll": 1534
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "rows": 15
+    },
+    {
+      "key": "A-1920-expanded-dark",
+      "row": {
+        "x": 297,
+        "y": 514,
+        "width": 1534,
+        "height": 61
+      },
+      "name": {
+        "x": 397,
+        "y": 524,
+        "width": 384,
+        "height": 40
+      },
+      "nameLines": 2,
+      "columns": [
+        {
+          "text": "Normreferens-ID",
+          "x": 297,
+          "y": 335,
+          "width": 94,
+          "height": 57
+        },
+        {
+          "text": "Benämning",
+          "x": 391,
+          "y": 335,
+          "width": 448,
+          "height": 57
+        },
+        {
+          "text": "Typ",
+          "x": 839,
+          "y": 335,
+          "width": 72,
+          "height": 57
+        },
+        {
+          "text": "Referens",
+          "x": 911,
+          "y": 335,
+          "width": 104,
+          "height": 57
+        },
+        {
+          "text": "Version",
+          "x": 1015,
+          "y": 335,
+          "width": 64,
+          "height": 57
+        },
+        {
+          "text": "Utfärdare",
+          "x": 1079,
+          "y": 335,
+          "width": 448,
+          "height": 57
+        },
+        {
+          "text": "Status",
+          "x": 1527,
+          "y": 335,
+          "width": 84,
+          "height": 57
+        },
+        {
+          "text": "Kopplade krav",
+          "x": 1611,
+          "y": 335,
+          "width": 72,
+          "height": 57
+        },
+        {
+          "text": "Åtgärder",
+          "x": 1683,
+          "y": 335,
+          "width": 148,
+          "height": 57
+        }
+      ],
+      "actions": [
+        {
+          "x": 1685,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1733,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1781,
+          "y": 522,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1534,
+          "scroll": 1534
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "B-1920-expanded-dark",
+      "row": {
+        "x": 297,
+        "y": 670,
+        "width": 1534,
+        "height": 141
+      },
+      "name": {
+        "x": 313,
+        "y": 698,
+        "width": 637,
+        "height": 20
+      },
+      "nameLines": 1,
+      "columns": [
+        {
+          "text": "Benämning och identifiering",
+          "x": 297,
+          "y": 335,
+          "width": 721,
+          "height": 53
+        },
+        {
+          "text": "Utfärdare",
+          "x": 1018,
+          "y": 335,
+          "width": 414,
+          "height": 53
+        },
+        {
+          "text": "Status och åtgärder",
+          "x": 1432,
+          "y": 335,
+          "width": 399,
+          "height": 53
+        }
+      ],
+      "actions": [
+        {
+          "x": 1675,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1723,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1771,
+          "y": 726,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [
+        {
+          "client": 1534,
+          "scroll": 1534
+        }
+      ],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Aktiv",
+      "rows": 15
+    },
+    {
+      "key": "C-1920-expanded-dark",
+      "row": {
+        "x": 920,
+        "y": 334,
+        "width": 912,
+        "height": 395
+      },
+      "name": {
+        "x": 941,
+        "y": 403,
+        "width": 818,
+        "height": 28
+      },
+      "nameLines": 1,
+      "columns": [],
+      "actions": [
+        {
+          "x": 1671,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1719,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 1767,
+          "y": 664,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "scrollAreas": [],
+      "pageWidth": 1920,
+      "viewport": 1920,
+      "status": "Aktiv",
+      "rows": 1
+    }
+  ],
+  "errors": [],
+  "writes": []
+}
