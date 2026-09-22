@@ -26,10 +26,18 @@ export interface RfiPrototypeSummaryProps {
   version: number | null
 }
 
-function Status(props: RfiPrototypeSummaryProps) {
+function Status(props: RfiPrototypeSummaryProps & { activeBadge?: boolean }) {
   const Icon = props.archived ? Archive : CheckCircle2
   return (
-    <span className="rfi-prototype-status" data-archived={props.archived}>
+    <span
+      className={`rfi-prototype-status ${props.activeBadge && !props.archived ? 'rounded-md bg-emerald-100 px-2 py-1 font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : ''}`}
+      data-archived={props.archived}
+      role="status"
+      {...devMarker({
+        context: 'rfiQuestions',
+        name: 'prototype question status',
+      })}
+    >
       <Icon aria-hidden="true" size={14} />
       {props.status}
     </span>
@@ -50,7 +58,7 @@ function Text({ text }: RfiPrototypeSummaryProps) {
   )
 }
 
-function Facts(props: RfiPrototypeSummaryProps) {
+function Facts(props: RfiPrototypeSummaryProps & { activeBadge?: boolean }) {
   return (
     <span
       className="rfi-prototype-facts"
@@ -71,7 +79,7 @@ export function VariantA(props: RfiPrototypeSummaryProps) {
   return (
     <span className="rfi-prototype-summary rfi-prototype-summary-a">
       <Text {...props} />
-      <Facts {...props} />
+      <Facts {...props} activeBadge />
     </span>
   )
 }

@@ -6,9 +6,10 @@ layout best preserves readable question text, version, status and actions while
 matching the requirement selection question list?**
 
 This is throwaway code on `prototype/issue-1357-rfi-layouts`, based on
-`e486c01f`. No design is approved yet. A is the provisional recommendation:
-it follows the completed #1355 split-row design and has consistent density
-with either navigation state. Keep the prototype on its separate branch;
+`e486c01f`. The maintainer prefers A and requests the original green active
+status badge. A includes that refinement for visual review: it follows the
+completed #1355 split-row design, with a green background, explicit active
+label and check icon in both themes. Keep the prototype on its separate branch;
 implement the selected design with production tests after review.
 
 ## Start and open
@@ -62,7 +63,7 @@ filters and expanded questions.
   The common prototype controls and blocked saves apply here too.
 - `A`: question text on the left, a separate facts column on the right, and
   compact rows sharing a bordered surface per requirement area. This follows
-  the approved #1355 direction.
+  the approved #1355 direction and retains the original green active badge.
 - `B`: aligned question-code, question-text and version/status columns,
   alternating row shading, and area metadata below the question. This favors
   scanning down columns but gives question text less space.
@@ -151,6 +152,7 @@ and 320px widths with example text enabled.
 | A split rows | Choose A and compare with the requirement selection question list | Shared area surface, text left, facts right, compact dividers |
 | B register | Choose B; compare navigation collapsed and expanded | Aligned code/text/facts columns and alternating shading; narrow text may wrap more |
 | C compact cards | Choose C | Individual compact cards, leading border, question before metadata |
+| Green active badge in A | Compare an active question in A and original, in light and dark themes | Matching green background, text, icon, padding and rounded corners |
 | Version and status | Enable examples; find version 12 and archived text/icon | Both remain readable and independent of color |
 | Long text and responsive layout | Enable examples; resize to desktop, 768px and 320px; scroll through full text | Rows grow; text remains available; no horizontal page overflow in A/B/C |
 | Compact action placement | Inspect edit/archive controls and suggestion controls where data provides them | Separate controls remain reachable; direct row action buttons are 32px in A/B/C |
@@ -197,7 +199,8 @@ not fixed requirements for row heights or counts.
 with #1355 while improving density consistently. B is useful for scanning
 codes but is sensitive to available text width. C offers more question-text
 width and individual separation at the cost of consistency with #1355.
-The maintainer still needs to choose a design or combination of elements.
+The maintainer prefers A with the original green active badge; that refinement
+is available for visual review before production implementation.
 
 ## Verification status and implementation boundary
 
