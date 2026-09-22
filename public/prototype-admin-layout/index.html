@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>#1359 · Admin layout review</title><link rel="stylesheet" href="review.css"><script src="data.js" defer></script><script src="review.js" defer></script></head>
+<body>
+<header><span class="eyebrow">THROWAWAY PROTOTYPE · ISSUE #1359</span><h1>Less framing. More settings.</h1><p>Compare the current administration page with three alternatives. These are real browser captures using the same data. Choose a structure, then try its controls in the live preview.</p><a id="live" href="http://localhost:3139/sv/admin?variant=A" target="_blank" rel="noreferrer">Open the live prototype ↗</a></header>
+<main>
+<div class="controls">
+<label>Layout<select id="variant"><option value="A">A · Compact rows</option><option value="B">B · Settings table</option><option value="C">C · Split workspace</option></select></label>
+<label>Window<select id="width"><option value="1440">1,440 × 900</option><option value="1920">1,920 × 1,080</option></select></label>
+<label>Navigation<select id="rail"><option value="expanded">Expanded</option><option value="collapsed">Collapsed</option></select></label>
+<label>Theme<select id="theme"><option value="light">Light</option><option value="dark">Dark</option></select></label>
+<label class="zoom"><input id="zoom" type="checkbox">Actual size (scroll to inspect)</label>
+</div>
+<p id="description"></p><div id="metrics" class="metrics" aria-live="polite"></div>
+<div class="compareLabels"><strong>Current layout</strong><strong id="afterLabel">A · Compact rows</strong></div>
+<label class="scrubber">Before / after divider<input id="divider" type="range" min="0" max="100" value="50"></label>
+<div class="imageScroll"><div id="comparison" class="comparison"><img id="before" alt="Current administration layout"><img id="after" alt="Proposed administration layout"><div id="line"></div></div></div>
+<p class="hint">Drag the divider: left is current, right is the selected option. The prototype toolbar is hidden in captures. Row counts exclude any overlaid action bar.</p>
+<h2>Check the difficult cases</h2><div class="samples"><a id="long" target="_blank">Long labels and technical keys ↗</a><a id="mobile" target="_blank">320-pixel mobile layout ↗</a><a id="english" target="_blank">English layout ↗</a></div>
+<h2>Changes and how to verify them</h2>
+<p>Tick items as you review. These checkmarks are temporary. The live preview’s bottom bar switches 0 / A / B / C; “State & question” reveals its full local column state.</p>
+<table class="checklist"><thead><tr><th>Done</th><th>Change</th><th>How to verify</th></tr></thead><tbody>
+<tr><td><input type="checkbox" aria-label="Review page spacing"></td><td>Smaller top spacing and header</td><td>Compare the title and first row against 0 at both window sizes. Read the header-height and visible-row measurements above.</td></tr>
+<tr><td><input type="checkbox" aria-label="Review decoration"></td><td>Large gradient card, shadow and nested tab frame removed</td><td>Slide across the header in light and dark themes. A uses an underline, B a tab edge, C an accent line and selected tab outline.</td></tr>
+<tr><td><input type="checkbox" aria-label="Review tabs"></td><td>More compact tabs, same names and permissions</td><td>All nine tabs fit at 1,920 pixels. Toggle the real navigation rail. In the preview, focus Columns and use arrow keys or Home/End; the active marker follows.</td></tr>
+<tr><td><input type="checkbox" aria-label="Review compact rows"></td><td>A: flat aligned rows with actions above</td><td>Compare row separators, 56-pixel rows, aligned arrows and unframed visibility labels. Save and Reset remain near the panel heading.</td></tr>
+<tr><td><input type="checkbox" aria-label="Review table"></td><td>B: numbered table with bottom actions</td><td>Check headings, alternating row backgrounds, 48-pixel rows and the bottom action bar while scrolling. On mobile, scroll within the table.</td></tr>
+<tr><td><input type="checkbox" aria-label="Review split workspace"></td><td>C: description, visible count and actions to the left</td><td>Compare the earlier start of the row list. Toggle visibility to update the count. At narrow widths the left block moves above the rows.</td></tr>
+<tr><td><input type="checkbox" aria-label="Review technical keys"></td><td>Names and technical keys keep their hierarchy</td><td>Turn on Long labels. Check wrapping in all options, especially the narrower column-name area in C. The keys remain secondary text.</td></tr>
+<tr><td><input type="checkbox" aria-label="Review ordering"></td><td>Smaller aligned ordering controls</td><td>Move Requirement area up/down. First Up and last Down are disabled. Locked visibility does not shift the arrow column.</td></tr>
+<tr><td><input type="checkbox" aria-label="Review visibility"></td><td>Plain visibility labels with lock icon/text</td><td>Toggle an editable checkbox. Requirement ID and Requirement text stay locked. Tab to a checkbox and use Space.</td></tr>
+<tr><td><input type="checkbox" aria-label="Review local save"></td><td>Save is simulated</td><td>Edit, Save, and inspect the state. “Saved in preview” appears and Save becomes disabled. Reload restores the original application data.</td></tr>
+<tr><td><input type="checkbox" aria-label="Review reset"></td><td>Reset changes the draft</td><td>Save a reordered draft, then Reset. Save becomes available again. Reset does not persist anything.</td></tr>
+<tr><td><input type="checkbox" aria-label="Review switcher"></td><td>Shareable variants and keyboard switching</td><td>Click 0/A/B/C, then reload. The URL keeps the layout. Left/Right cycles when outside inputs and the tab list. Existing draft edits survive a layout switch.</td></tr>
+<tr><td><input type="checkbox" aria-label="Review read-only panels"></td><td>Other admin panels can be visually sampled</td><td>Open Identity or Taxonomy. The shared compact header remains; panel controls are intentionally inert. Return to Columns to resume the interactive preview.</td></tr>
+<tr><td><input type="checkbox" aria-label="Review instrumentation"></td><td>Developer Mode markers and review state</td><td>Use Developer Mode to inspect prototype layout and row markers. Open State & question; change a row or variant and confirm the state updates. Hide tools for a clean view.</td></tr>
+<tr><td><input type="checkbox" aria-label="Review isolation"></td><td>Separate worktree and runtime</td><td>The main app stays on port 3000; the prototype uses 3139. Browser Network shows no admin write requests from prototype Save. Captured verification is linked below.</td></tr>
+</tbody></table>
+<h2>What this does and does not decide</h2><p>A stays closest to the issue’s proposed compact rows. B favors tabular scanning and bottom actions. C gives the row list more vertical room and makes the settings summary prominent, at the cost of horizontal space. No option has been selected for production.</p><p>The desktop capture matrix covers Swedish, two sizes, two navigation states, both themes and all four layouts. Additional captures cover English, long text and 320-pixel mobile layouts for A/B/C. Functional checks exercise local editing and keyboard controls; this is not a production accessibility audit or the full application test suite.</p><p><a href="measurements.json">Measurements and browser verification results</a> · <a href="https://github.com/viscalyx/Kravhantering/issues/1359" target="_blank" rel="noreferrer">Implementation issue</a></p>
+</main>
+</body></html>

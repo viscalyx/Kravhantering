@@ -21,6 +21,9 @@ import {
   resolveAdminTab,
   type TabFallbackReason,
 } from './admin-tabs'
+import AdminLayoutPrototype, {
+  adminPrototypeEnabled,
+} from './prototype/admin-layout-prototype'
 
 const ADMIN_HELP: HelpContent = {
   sections: [
@@ -325,95 +328,146 @@ export default function AdminClient({
     : null
 
   return (
-    <div className="section-padding">
-      <ListWorkspace className="space-y-6" context="admin">
-        <section className="overflow-hidden rounded-4xl border border-secondary-200/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(238,242,255,0.82))] p-6 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.55)] backdrop-blur-md dark:border-secondary-700/60 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.92),rgba(30,41,59,0.86))]">
-          <div className="space-y-4">
-            <div className="space-y-2 xl:flex xl:flex-row xl:items-center xl:justify-between xl:gap-6">
-              <h1 className="text-3xl font-semibold tracking-tight text-secondary-950 dark:text-secondary-50 xl:shrink-0">
-                {ta('title')}
-              </h1>
-              <p className="text-sm text-secondary-600 dark:text-secondary-300 xl:ml-auto xl:flex-1">
-                {ta('description')}
-              </p>
+    <AdminLayoutPrototype activeTab={activeTab}>
+      <div className="section-padding">
+        <ListWorkspace className="space-y-6" context="admin">
+          <section
+            className="overflow-hidden rounded-4xl border border-secondary-200/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(238,242,255,0.82))] p-6 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.55)] backdrop-blur-md dark:border-secondary-700/60 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.92),rgba(30,41,59,0.86))]"
+            data-admin-prototype-header="true"
+          >
+            <div className="space-y-4">
+              <div className="space-y-2 xl:flex xl:flex-row xl:items-center xl:justify-between xl:gap-6">
+                <h1 className="text-3xl font-semibold tracking-tight text-secondary-950 dark:text-secondary-50 xl:shrink-0">
+                  {ta('title')}
+                </h1>
+                <p className="text-sm text-secondary-600 dark:text-secondary-300 xl:ml-auto xl:flex-1">
+                  {ta('description')}
+                </p>
+              </div>
+              <div
+                aria-label={ta('title')}
+                className="flex max-w-full flex-wrap items-center gap-1 rounded-3xl border border-secondary-200/80 bg-white/80 p-1 dark:border-secondary-700/70 dark:bg-secondary-900/70"
+                onKeyDown={
+                  adminPrototypeEnabled
+                    ? event => {
+                        const tabs = Array.from(
+                          event.currentTarget.querySelectorAll<HTMLButtonElement>(
+                            '[role="tab"]',
+                          ),
+                        )
+                        const index = tabs.indexOf(
+                          event.target as HTMLButtonElement,
+                        )
+                        if (
+                          index < 0 ||
+                          !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(
+                            event.key,
+                          )
+                        )
+                          return
+                        event.preventDefault()
+                        const next =
+                          event.key === 'Home'
+                            ? 0
+                            : event.key === 'End'
+                              ? tabs.length - 1
+                              : (index +
+                                  (event.key === 'ArrowLeft' ? -1 : 1) +
+                                  tabs.length) %
+                                tabs.length
+                        tabs[next].click()
+                        tabs[next].focus()
+                      }
+                    : undefined
+                }
+                role="tablist"
+                {...(process.env.NODE_ENV !== 'production' &&
+                  devMarker({
+                    name: 'navigation',
+                    priority: 320,
+                    value: 'admin center tabs',
+                  }))}
+              >
+                {authorizedTabs.map(tab => {
+                  const label = adminTabLabel(tab.id, ta)
+
+                  return (
+                    <button
+                      aria-controls={`${tab.id}-panel`}
+                      aria-selected={activeTab === tab.id}
+                      className={`inline-flex min-h-11 min-w-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
+                        activeTab === tab.id
+                          ? 'bg-primary-700 text-white'
+                          : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-200 dark:hover:bg-secondary-800'
+                      }`}
+                      id={`${tab.id}-tab`}
+                      key={`admin-tab-${tab.id}`}
+                      onClick={() => selectTab(tab.id)}
+                      role="tab"
+                      tabIndex={activeTab === tab.id ? 0 : -1}
+                      type="button"
+                      {...(process.env.NODE_ENV !== 'production' &&
+                        devMarker({
+                          context: 'admin center',
+                          name: 'edge tab',
+                          priority: 360,
+                          value: ADMIN_TAB_DEVELOPER_MODE_VALUES[tab.id],
+                        }))}
+                    >
+                      <tab.icon aria-hidden="true" className="h-4 w-4" />
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
+          </section>
+
+          {fallbackReason ? (
             <div
-              aria-label={ta('title')}
-              className="flex max-w-full flex-wrap items-center gap-1 rounded-3xl border border-secondary-200/80 bg-white/80 p-1 dark:border-secondary-700/70 dark:bg-secondary-900/70"
-              role="tablist"
+              className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100"
+              role="status"
               {...(process.env.NODE_ENV !== 'production' &&
                 devMarker({
-                  name: 'navigation',
-                  priority: 320,
-                  value: 'admin center tabs',
+                  context: 'admin center',
+                  name: 'tab fallback notice',
+                  priority: 350,
+                  value: fallbackReason,
                 }))}
             >
-              {authorizedTabs.map(tab => {
-                const label = adminTabLabel(tab.id, ta)
-
-                return (
-                  <button
-                    aria-controls={`${tab.id}-panel`}
-                    aria-selected={activeTab === tab.id}
-                    className={`inline-flex min-h-11 min-w-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
-                      activeTab === tab.id
-                        ? 'bg-primary-700 text-white'
-                        : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-200 dark:hover:bg-secondary-800'
-                    }`}
-                    id={`${tab.id}-tab`}
-                    key={`admin-tab-${tab.id}`}
-                    onClick={() => selectTab(tab.id)}
-                    role="tab"
-                    tabIndex={activeTab === tab.id ? 0 : -1}
-                    type="button"
-                    {...(process.env.NODE_ENV !== 'production' &&
-                      devMarker({
-                        context: 'admin center',
-                        name: 'edge tab',
-                        priority: 360,
-                        value: ADMIN_TAB_DEVELOPER_MODE_VALUES[tab.id],
-                      }))}
-                  >
-                    <tab.icon aria-hidden="true" className="h-4 w-4" />
-                    {label}
-                  </button>
-                )
-              })}
+              {ta(
+                fallbackReason === 'unauthorized'
+                  ? 'tabAccessFallback'
+                  : 'tabUnavailableFallback',
+                { tab: activeTabLabel },
+              )}
             </div>
-          </div>
-        </section>
+          ) : null}
 
-        {fallbackReason ? (
+          {adminPrototypeEnabled && activeTab !== 'columns' ? (
+            <p className="text-xs text-secondary-500 dark:text-secondary-400">
+              {ta('prototypeReadOnly')}
+            </p>
+          ) : null}
           <div
-            className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100"
-            role="status"
-            {...(process.env.NODE_ENV !== 'production' &&
-              devMarker({
-                context: 'admin center',
-                name: 'tab fallback notice',
-                priority: 350,
-                value: fallbackReason,
-              }))}
+            inert={
+              adminPrototypeEnabled && activeTab !== 'columns'
+                ? true
+                : undefined
+            }
           >
-            {ta(
-              fallbackReason === 'unauthorized'
-                ? 'tabAccessFallback'
-                : 'tabUnavailableFallback',
-              { tab: activeTabLabel },
-            )}
+            {panel ? (
+              <AdminLazyPanel
+                key={activeTab}
+                tabId={activeTab}
+                tabLabel={activeTabLabel}
+              >
+                {panel}
+              </AdminLazyPanel>
+            ) : null}
           </div>
-        ) : null}
-
-        {panel ? (
-          <AdminLazyPanel
-            key={activeTab}
-            tabId={activeTab}
-            tabLabel={activeTabLabel}
-          >
-            {panel}
-          </AdminLazyPanel>
-        ) : null}
-      </ListWorkspace>
-    </div>
+        </ListWorkspace>
+      </div>
+    </AdminLayoutPrototype>
   )
 }

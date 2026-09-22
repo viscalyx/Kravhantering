@@ -2952,7 +2952,8 @@
     "implementationTypesDescription": "Hantera genomförandeformer för kravunderlag.",
     "lifecycleStatusesDescription": "Hantera kravunderlagets livscykelstatusar.",
     "priorityLevelsDescription": "Hantera prioritetsskalan som kan tilldelas krav.",
-    "specificationItemStatusesDescription": "Hantera användningsstatusar för kravtillämpningar."
+    "specificationItemStatusesDescription": "Hantera användningsstatusar för kravtillämpningar.",
+    "prototypeReadOnly": "Prototyp: övriga paneler visas skrivskyddade för visuell granskning."
   },
   "requirements": {
     "catalogTitles": {
@@ -4068,5 +4069,38 @@
     "hiddenCreatedNorm": "Sökningen döljer den nya normreferensen ”{name}”. Den är fortfarande markerad.",
     "creationPersistence": "Det nya objektet sparas direkt. Avbryt i väljdialogen kasserar endast urvalet.",
     "searchHelp": "Sök på namn, referens-ID eller paketets syfte. Markeringar behålls när du filtrerar listan."
+  },
+  "adminLayoutPrototype": {
+    "question": "Vilken layout gör kolumninställningarna lättast att överblicka och ändra?",
+    "explanation": "Tillfällig prototyp för #1359. Befintliga data läses från appen. Spara ändrar bara den lokala jämförelsen i minnet. Ladda om återläser appens data. Övriga paneler visas endast för granskning.",
+    "previous": "Föregående layout",
+    "next": "Nästa layout",
+    "tools": "Verktyg för prototypgranskning",
+    "variants": {
+      "0": "0 · Nuvarande",
+      "A": "A · Rader",
+      "B": "B · Tabell",
+      "C": "C · Delad"
+    },
+    "notes": {
+      "0": "Ursprunglig layout för jämförelse",
+      "A": "Rader utan kort, åtgärder ovanför",
+      "B": "Numrerad tabell, åtgärder nedanför",
+      "C": "Sammanfattning och åtgärder bredvid raderna"
+    },
+    "inspect": "Tillstånd och fråga",
+    "longLabels": "Långa texter",
+    "reload": "Ladda om data",
+    "hide": "Dölj verktyg",
+    "showTools": "Visa prototypverktyg",
+    "memoryOnly": "PROTOTYP · Spara gäller bara denna flik",
+    "savedLocally": "Sparat i prototypen",
+    "longSuffix": "Utökad beskrivning för en gemensam administrationsinställning",
+    "columnCount": "{count} kolumner",
+    "column": "Kolumn",
+    "order": "Ordning",
+    "visibility": "Synlighet",
+    "visibleColumns": "Synliga som standard",
+    "changesPending": "{count} kolumner synliga som standard"
   }
 }

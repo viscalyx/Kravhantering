@@ -2952,7 +2952,8 @@
     "implementationTypesDescription": "Manage implementation types for requirements specifications.",
     "lifecycleStatusesDescription": "Manage specification lifecycle statuses.",
     "priorityLevelsDescription": "Manage the priority scale that can be assigned to requirements.",
-    "specificationItemStatusesDescription": "Manage usage statuses for requirement applications."
+    "specificationItemStatusesDescription": "Manage usage statuses for requirement applications.",
+    "prototypeReadOnly": "Prototype: other panels are read-only for visual review."
   },
   "requirements": {
     "catalogTitles": {
@@ -4068,5 +4069,38 @@
     "hiddenCreatedNorm": "The search hides the new norm reference “{name}”. It is still checked.",
     "creationPersistence": "The new object is saved immediately. Cancel in the selection dialog only discards the selection.",
     "searchHelp": "Search by name, reference ID or package purpose. Selections are kept when you filter the list."
+  },
+  "adminLayoutPrototype": {
+    "question": "Which layout makes column settings easiest to scan and adjust?",
+    "explanation": "Throwaway prototype for #1359. Real application data is loaded. Save only changes the in-memory baseline. Reload restores application data. Other panels are read-only previews.",
+    "previous": "Previous layout",
+    "next": "Next layout",
+    "tools": "Prototype review tools",
+    "variants": {
+      "0": "0 · Current",
+      "A": "A · Rows",
+      "B": "B · Table",
+      "C": "C · Split"
+    },
+    "notes": {
+      "0": "Original layout for comparison",
+      "A": "Flat rows, actions above",
+      "B": "Numbered table, actions below",
+      "C": "Summary and actions beside the rows"
+    },
+    "inspect": "State & question",
+    "longLabels": "Long labels",
+    "reload": "Reload data",
+    "hide": "Hide tools",
+    "showTools": "Show prototype tools",
+    "memoryOnly": "PROTOTYPE · Save stays in this tab",
+    "savedLocally": "Saved in preview",
+    "longSuffix": "Extended description for a shared administration setting",
+    "columnCount": "{count} columns",
+    "column": "Column",
+    "order": "Order",
+    "visibility": "Visibility",
+    "visibleColumns": "Visible by default",
+    "changesPending": "{count} columns visible by default"
   }
 }

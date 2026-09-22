@@ -19,6 +19,8 @@
   "scripts": {
     "predev": "npm run dev:prepare",
     "dev": "next dev",
+    "prototype:admin": "node scripts/prototype-admin.mjs",
+    "prototype:admin:capture": "node scripts/prototype-admin-capture.mjs",
     "dev:fresh": "npm run kill:port && npm run clean && npm run dev",
     "storage-report:install": "bash scripts/azure-dev/install-storage-report.sh",
     "dev:prepare": "node ./scripts/prebuild.js --metadata-only && npm run openapi:hsa-person-lookup:generate:public",

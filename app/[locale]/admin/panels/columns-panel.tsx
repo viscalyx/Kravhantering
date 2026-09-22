@@ -13,6 +13,12 @@ import {
   normalizeRequirementListColumnDefaults,
   type RequirementListColumnDefault,
 } from '@/lib/requirements/list-view'
+import { useAdminPrototype } from '../prototype/admin-layout-prototype'
+import {
+  VariantA,
+  VariantB,
+  VariantC,
+} from '../prototype/column-layout-variants'
 
 type LoadState = 'error' | 'loaded' | 'loading'
 type SaveState = 'error' | 'idle' | 'saved' | 'saving'
@@ -34,6 +40,8 @@ function requirementColumnDefaultsSnapshot(
 }
 
 export default function ColumnsPanel() {
+  const prototype = useAdminPrototype()
+  const tp = useTranslations('adminLayoutPrototype')
   const ta = useTranslations('admin')
   const tc = useTranslations('common')
   const tr = useTranslations('requirement')
@@ -141,6 +149,13 @@ export default function ColumnsPanel() {
 
   const saveColumns = async () => {
     if (!columnDefaultsDirty) return
+    if (prototype) {
+      setColumnDefaultsBaseline(
+        requirementColumnDefaultsSnapshot(columnDefaults),
+      )
+      setColumnSaveState('saved')
+      return
+    }
     const requestToken = columnSaveTokenRef.current + 1
     columnSaveTokenRef.current = requestToken
     setColumnSaveState('saving')
@@ -176,6 +191,70 @@ export default function ColumnsPanel() {
     }
   }
 
+  const reportPrototypeState = prototype?.reportState
+  useEffect(() => {
+    reportPrototypeState?.(
+      JSON.stringify({
+        columns: columnDefaults,
+        baseline: columnDefaultsBaseline
+          ? JSON.parse(columnDefaultsBaseline)
+          : null,
+        dirty: columnDefaultsDirty,
+        loadState,
+        saveState: columnSaveState,
+        persistence: 'memory only; reload restores application data',
+      }),
+    )
+  }, [
+    reportPrototypeState,
+    columnDefaults,
+    columnDefaultsBaseline,
+    columnDefaultsDirty,
+    loadState,
+    columnSaveState,
+  ])
+
+  if (prototype && prototype.variant !== '0' && loadState === 'loaded') {
+    const Variant =
+      prototype.variant === 'B'
+        ? VariantB
+        : prototype.variant === 'C'
+          ? VariantC
+          : VariantA
+    return (
+      <Variant
+        dirty={columnDefaultsDirty}
+        move={moveColumn}
+        reset={() => {
+          setColumnDefaults(createShippedColumnDefaults())
+          setColumnSaveState('idle')
+        }}
+        rows={orderedColumns.map(column => ({
+          id: column.id,
+          label:
+            (column.labelNamespace === 'common'
+              ? tc(column.labelKey)
+              : column.labelNamespace === 'improvementSuggestion'
+                ? tis(column.labelKey)
+                : tr(column.labelKey)) +
+            (prototype.longLabels ? ` — ${tp('longSuffix')}` : ''),
+          keyLabel:
+            column.id +
+            (prototype.longLabels
+              ? '_prototype_long_technical_key_for_layout_review'
+              : ''),
+          locked: !column.canHide,
+          visible:
+            columnDefaults.find(value => value.columnId === column.id)
+              ?.defaultVisible ?? false,
+        }))}
+        save={saveColumns}
+        saved={columnSaveState === 'saved'}
+        toggle={toggleColumnVisibility}
+      />
+    )
+  }
+
   return (
     <section
       aria-labelledby="columns-tab"
@@ -202,7 +281,7 @@ export default function ColumnsPanel() {
           <div className="flex flex-wrap items-center gap-3">
             {columnSaveState === 'saved' ? (
               <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                {ta('saved')}
+                {prototype ? tp('savedLocally') : ta('saved')}
               </span>
             ) : null}
             {columnSaveState === 'error' ? (
@@ -283,9 +362,13 @@ export default function ColumnsPanel() {
                 <div>
                   <div className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
                     {label}
+                    {prototype?.longLabels ? ` — ${tp('longSuffix')}` : ''}
                   </div>
                   <div className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
                     {column.id}
+                    {prototype?.longLabels
+                      ? '_prototype_long_technical_key_for_layout_review'
+                      : ''}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
