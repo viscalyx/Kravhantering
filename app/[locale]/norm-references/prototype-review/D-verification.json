@@ -1,34 +1,46 @@
 {
-  "date": "2026-09-22T16:07:11.382Z",
+  "date": "2026-09-22T16:10:43.958Z",
   "results": [
     {
       "key": "D-sv-1440-collapsed-light",
+      "bottomMetadata": {
+        "x": 121,
+        "y": 682,
+        "width": 554,
+        "height": 40
+      },
+      "type": {
+        "x": 121,
+        "y": 702,
+        "width": 554,
+        "height": 20
+      },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 685,
-      "identificationTextTop": 686,
+      "nameTextTop": 641,
+      "identificationTextTop": 642,
       "link": {
         "x": 522,
-        "y": 682,
+        "y": 638,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 518,
       "issuer": {
         "x": 121,
-        "y": 710,
+        "y": 682,
         "width": 554,
         "height": 20
       },
       "row": {
         "x": 105,
-        "y": 666,
+        "y": 622,
         "width": 1246,
-        "height": 129
+        "height": 117
       },
       "name": {
         "x": 121,
-        "y": 685,
+        "y": 641,
         "width": 397,
         "height": 17
       },
@@ -37,21 +49,21 @@
         {
           "text": "Benämning",
           "x": 105,
-          "y": 355,
+          "y": 335,
           "width": 586,
           "height": 53
         },
         {
           "text": "Identifiering",
           "x": 691,
-          "y": 355,
+          "y": 335,
           "width": 336,
           "height": 53
         },
         {
           "text": "Status och åtgärder",
           "x": 1027,
-          "y": 355,
+          "y": 335,
           "width": 324,
           "height": 53
         }
@@ -59,19 +71,19 @@
       "actions": [
         {
           "x": 1195,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1243,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1291,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         }
@@ -89,32 +101,44 @@
     },
     {
       "key": "D-sv-1440-collapsed-dark",
+      "bottomMetadata": {
+        "x": 121,
+        "y": 682,
+        "width": 554,
+        "height": 40
+      },
+      "type": {
+        "x": 121,
+        "y": 702,
+        "width": 554,
+        "height": 20
+      },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 685,
-      "identificationTextTop": 686,
+      "nameTextTop": 641,
+      "identificationTextTop": 642,
       "link": {
         "x": 522,
-        "y": 682,
+        "y": 638,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 518,
       "issuer": {
         "x": 121,
-        "y": 710,
+        "y": 682,
         "width": 554,
         "height": 20
       },
       "row": {
         "x": 105,
-        "y": 666,
+        "y": 622,
         "width": 1246,
-        "height": 129
+        "height": 117
       },
       "name": {
         "x": 121,
-        "y": 685,
+        "y": 641,
         "width": 397,
         "height": 17
       },
@@ -123,21 +147,21 @@
         {
           "text": "Benämning",
           "x": 105,
-          "y": 355,
+          "y": 335,
           "width": 586,
           "height": 53
         },
         {
           "text": "Identifiering",
           "x": 691,
-          "y": 355,
+          "y": 335,
           "width": 336,
           "height": 53
         },
         {
           "text": "Status och åtgärder",
           "x": 1027,
-          "y": 355,
+          "y": 335,
           "width": 324,
           "height": 53
         }
@@ -145,19 +169,19 @@
       "actions": [
         {
           "x": 1195,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1243,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1291,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         }
@@ -175,32 +199,44 @@
     },
     {
       "key": "D-sv-1440-expanded-light",
+      "bottomMetadata": {
+        "x": 313,
+        "y": 702,
+        "width": 463,
+        "height": 40
+      },
+      "type": {
+        "x": 313,
+        "y": 722,
+        "width": 463,
+        "height": 20
+      },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 685,
-      "identificationTextTop": 686,
+      "nameTextTop": 661,
+      "identificationTextTop": 662,
       "link": {
         "x": 714,
-        "y": 682,
+        "y": 658,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 710,
       "issuer": {
         "x": 313,
-        "y": 710,
+        "y": 702,
         "width": 463,
         "height": 20
       },
       "row": {
         "x": 297,
-        "y": 666,
+        "y": 642,
         "width": 1054,
-        "height": 129
+        "height": 117
       },
       "name": {
         "x": 313,
-        "y": 685,
+        "y": 661,
         "width": 397,
         "height": 17
       },
@@ -231,19 +267,19 @@
       "actions": [
         {
           "x": 1195,
-          "y": 722,
+          "y": 698,
           "width": 44,
           "height": 44
         },
         {
           "x": 1243,
-          "y": 722,
+          "y": 698,
           "width": 44,
           "height": 44
         },
         {
           "x": 1291,
-          "y": 722,
+          "y": 698,
           "width": 44,
           "height": 44
         }
@@ -261,32 +297,44 @@
     },
     {
       "key": "D-sv-1440-expanded-dark",
+      "bottomMetadata": {
+        "x": 313,
+        "y": 702,
+        "width": 463,
+        "height": 40
+      },
+      "type": {
+        "x": 313,
+        "y": 722,
+        "width": 463,
+        "height": 20
+      },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 685,
-      "identificationTextTop": 686,
+      "nameTextTop": 661,
+      "identificationTextTop": 662,
       "link": {
         "x": 714,
-        "y": 682,
+        "y": 658,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 710,
       "issuer": {
         "x": 313,
-        "y": 710,
+        "y": 702,
         "width": 463,
         "height": 20
       },
       "row": {
         "x": 297,
-        "y": 666,
+        "y": 642,
         "width": 1054,
-        "height": 129
+        "height": 117
       },
       "name": {
         "x": 313,
-        "y": 685,
+        "y": 661,
         "width": 397,
         "height": 17
       },
@@ -317,19 +365,19 @@
       "actions": [
         {
           "x": 1195,
-          "y": 722,
+          "y": 698,
           "width": 44,
           "height": 44
         },
         {
           "x": 1243,
-          "y": 722,
+          "y": 698,
           "width": 44,
           "height": 44
         },
         {
           "x": 1291,
-          "y": 722,
+          "y": 698,
           "width": 44,
           "height": 44
         }
@@ -347,32 +395,44 @@
     },
     {
       "key": "D-sv-1920-collapsed-light",
+      "bottomMetadata": {
+        "x": 121,
+        "y": 682,
+        "width": 779,
+        "height": 40
+      },
+      "type": {
+        "x": 121,
+        "y": 702,
+        "width": 779,
+        "height": 20
+      },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 665,
-      "identificationTextTop": 666,
+      "nameTextTop": 641,
+      "identificationTextTop": 642,
       "link": {
         "x": 522,
-        "y": 662,
+        "y": 638,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 518,
       "issuer": {
         "x": 121,
-        "y": 690,
+        "y": 682,
         "width": 779,
         "height": 20
       },
       "row": {
         "x": 105,
-        "y": 646,
+        "y": 622,
         "width": 1726,
-        "height": 129
+        "height": 117
       },
       "name": {
         "x": 121,
-        "y": 665,
+        "y": 641,
         "width": 397,
         "height": 17
       },
@@ -403,19 +463,19 @@
       "actions": [
         {
           "x": 1675,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1723,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1771,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         }
@@ -433,32 +493,44 @@
     },
     {
       "key": "D-sv-1920-collapsed-dark",
+      "bottomMetadata": {
+        "x": 121,
+        "y": 682,
+        "width": 779,
+        "height": 40
+      },
+      "type": {
+        "x": 121,
+        "y": 702,
+        "width": 779,
+        "height": 20
+      },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 665,
-      "identificationTextTop": 666,
+      "nameTextTop": 641,
+      "identificationTextTop": 642,
       "link": {
         "x": 522,
-        "y": 662,
+        "y": 638,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 518,
       "issuer": {
         "x": 121,
-        "y": 690,
+        "y": 682,
         "width": 779,
         "height": 20
       },
       "row": {
         "x": 105,
-        "y": 646,
+        "y": 622,
         "width": 1726,
-        "height": 129
+        "height": 117
       },
       "name": {
         "x": 121,
-        "y": 665,
+        "y": 641,
         "width": 397,
         "height": 17
       },
@@ -489,19 +561,19 @@
       "actions": [
         {
           "x": 1675,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1723,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1771,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         }
@@ -519,32 +591,44 @@
     },
     {
       "key": "D-sv-1920-expanded-light",
+      "bottomMetadata": {
+        "x": 313,
+        "y": 682,
+        "width": 689,
+        "height": 40
+      },
+      "type": {
+        "x": 313,
+        "y": 702,
+        "width": 689,
+        "height": 20
+      },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 685,
-      "identificationTextTop": 686,
+      "nameTextTop": 641,
+      "identificationTextTop": 642,
       "link": {
         "x": 714,
-        "y": 682,
+        "y": 638,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 710,
       "issuer": {
         "x": 313,
-        "y": 710,
+        "y": 682,
         "width": 689,
         "height": 20
       },
       "row": {
         "x": 297,
-        "y": 666,
+        "y": 622,
         "width": 1534,
-        "height": 129
+        "height": 117
       },
       "name": {
         "x": 313,
-        "y": 685,
+        "y": 641,
         "width": 397,
         "height": 17
       },
@@ -553,21 +637,21 @@
         {
           "text": "Benämning",
           "x": 297,
-          "y": 355,
+          "y": 335,
           "width": 721,
           "height": 53
         },
         {
           "text": "Identifiering",
           "x": 1018,
-          "y": 355,
+          "y": 335,
           "width": 414,
           "height": 53
         },
         {
           "text": "Status och åtgärder",
           "x": 1432,
-          "y": 355,
+          "y": 335,
           "width": 399,
           "height": 53
         }
@@ -575,19 +659,19 @@
       "actions": [
         {
           "x": 1675,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1723,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1771,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         }
@@ -605,32 +689,44 @@
     },
     {
       "key": "D-sv-1920-expanded-dark",
+      "bottomMetadata": {
+        "x": 313,
+        "y": 682,
+        "width": 689,
+        "height": 40
+      },
+      "type": {
+        "x": 313,
+        "y": 702,
+        "width": 689,
+        "height": 20
+      },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 685,
-      "identificationTextTop": 686,
+      "nameTextTop": 641,
+      "identificationTextTop": 642,
       "link": {
         "x": 714,
-        "y": 682,
+        "y": 638,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 710,
       "issuer": {
         "x": 313,
-        "y": 710,
+        "y": 682,
         "width": 689,
         "height": 20
       },
       "row": {
         "x": 297,
-        "y": 666,
+        "y": 622,
         "width": 1534,
-        "height": 129
+        "height": 117
       },
       "name": {
         "x": 313,
-        "y": 685,
+        "y": 641,
         "width": 397,
         "height": 17
       },
@@ -639,21 +735,21 @@
         {
           "text": "Benämning",
           "x": 297,
-          "y": 355,
+          "y": 335,
           "width": 721,
           "height": 53
         },
         {
           "text": "Identifiering",
           "x": 1018,
-          "y": 355,
+          "y": 335,
           "width": 414,
           "height": 53
         },
         {
           "text": "Status och åtgärder",
           "x": 1432,
-          "y": 355,
+          "y": 335,
           "width": 399,
           "height": 53
         }
@@ -661,19 +757,19 @@
       "actions": [
         {
           "x": 1675,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1723,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1771,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         }
@@ -691,32 +787,44 @@
     },
     {
       "key": "D-en-1440-collapsed-light",
+      "bottomMetadata": {
+        "x": 121,
+        "y": 682,
+        "width": 554,
+        "height": 40
+      },
+      "type": {
+        "x": 121,
+        "y": 702,
+        "width": 554,
+        "height": 20
+      },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 685,
-      "identificationTextTop": 686,
+      "nameTextTop": 641,
+      "identificationTextTop": 642,
       "link": {
         "x": 522,
-        "y": 682,
+        "y": 638,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 518,
       "issuer": {
         "x": 121,
-        "y": 710,
+        "y": 682,
         "width": 554,
         "height": 20
       },
       "row": {
         "x": 105,
-        "y": 666,
+        "y": 622,
         "width": 1246,
-        "height": 129
+        "height": 117
       },
       "name": {
         "x": 121,
-        "y": 685,
+        "y": 641,
         "width": 397,
         "height": 17
       },
@@ -725,21 +833,21 @@
         {
           "text": "Name",
           "x": 105,
-          "y": 355,
+          "y": 335,
           "width": 586,
           "height": 53
         },
         {
           "text": "Identification",
           "x": 691,
-          "y": 355,
+          "y": 335,
           "width": 336,
           "height": 53
         },
         {
           "text": "Status and actions",
           "x": 1027,
-          "y": 355,
+          "y": 335,
           "width": 324,
           "height": 53
         }
@@ -747,19 +855,19 @@
       "actions": [
         {
           "x": 1195,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1243,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1291,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         }
@@ -777,32 +885,44 @@
     },
     {
       "key": "D-en-1440-collapsed-dark",
+      "bottomMetadata": {
+        "x": 121,
+        "y": 682,
+        "width": 554,
+        "height": 40
+      },
+      "type": {
+        "x": 121,
+        "y": 702,
+        "width": 554,
+        "height": 20
+      },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 685,
-      "identificationTextTop": 686,
+      "nameTextTop": 641,
+      "identificationTextTop": 642,
       "link": {
         "x": 522,
-        "y": 682,
+        "y": 638,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 518,
       "issuer": {
         "x": 121,
-        "y": 710,
+        "y": 682,
         "width": 554,
         "height": 20
       },
       "row": {
         "x": 105,
-        "y": 666,
+        "y": 622,
         "width": 1246,
-        "height": 129
+        "height": 117
       },
       "name": {
         "x": 121,
-        "y": 685,
+        "y": 641,
         "width": 397,
         "height": 17
       },
@@ -811,21 +931,21 @@
         {
           "text": "Name",
           "x": 105,
-          "y": 355,
+          "y": 335,
           "width": 586,
           "height": 53
         },
         {
           "text": "Identification",
           "x": 691,
-          "y": 355,
+          "y": 335,
           "width": 336,
           "height": 53
         },
         {
           "text": "Status and actions",
           "x": 1027,
-          "y": 355,
+          "y": 335,
           "width": 324,
           "height": 53
         }
@@ -833,19 +953,19 @@
       "actions": [
         {
           "x": 1195,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1243,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1291,
-          "y": 722,
+          "y": 678,
           "width": 44,
           "height": 44
         }
@@ -863,32 +983,44 @@
     },
     {
       "key": "D-en-1440-expanded-light",
+      "bottomMetadata": {
+        "x": 313,
+        "y": 702,
+        "width": 463,
+        "height": 40
+      },
+      "type": {
+        "x": 313,
+        "y": 722,
+        "width": 463,
+        "height": 20
+      },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 685,
-      "identificationTextTop": 686,
+      "nameTextTop": 661,
+      "identificationTextTop": 662,
       "link": {
         "x": 714,
-        "y": 682,
+        "y": 658,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 710,
       "issuer": {
         "x": 313,
-        "y": 710,
+        "y": 702,
         "width": 463,
         "height": 20
       },
       "row": {
         "x": 297,
-        "y": 666,
+        "y": 642,
         "width": 1054,
-        "height": 129
+        "height": 117
       },
       "name": {
         "x": 313,
-        "y": 685,
+        "y": 661,
         "width": 397,
         "height": 17
       },
@@ -919,19 +1051,19 @@
       "actions": [
         {
           "x": 1195,
-          "y": 722,
+          "y": 698,
           "width": 44,
           "height": 44
         },
         {
           "x": 1243,
-          "y": 722,
+          "y": 698,
           "width": 44,
           "height": 44
         },
         {
           "x": 1291,
-          "y": 722,
+          "y": 698,
           "width": 44,
           "height": 44
         }
@@ -949,32 +1081,44 @@
     },
     {
       "key": "D-en-1440-expanded-dark",
+      "bottomMetadata": {
+        "x": 313,
+        "y": 702,
+        "width": 463,
+        "height": 40
+      },
+      "type": {
+        "x": 313,
+        "y": 722,
+        "width": 463,
+        "height": 20
+      },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 685,
-      "identificationTextTop": 686,
+      "nameTextTop": 661,
+      "identificationTextTop": 662,
       "link": {
         "x": 714,
-        "y": 682,
+        "y": 658,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 710,
       "issuer": {
         "x": 313,
-        "y": 710,
+        "y": 702,
         "width": 463,
         "height": 20
       },
       "row": {
         "x": 297,
-        "y": 666,
+        "y": 642,
         "width": 1054,
-        "height": 129
+        "height": 117
       },
       "name": {
         "x": 313,
-        "y": 685,
+        "y": 661,
         "width": 397,
         "height": 17
       },
@@ -1005,19 +1149,19 @@
       "actions": [
         {
           "x": 1195,
-          "y": 722,
+          "y": 698,
           "width": 44,
           "height": 44
         },
         {
           "x": 1243,
-          "y": 722,
+          "y": 698,
           "width": 44,
           "height": 44
         },
         {
           "x": 1291,
-          "y": 722,
+          "y": 698,
           "width": 44,
           "height": 44
         }
@@ -1035,32 +1179,44 @@
     },
     {
       "key": "D-en-1920-collapsed-light",
+      "bottomMetadata": {
+        "x": 121,
+        "y": 682,
+        "width": 779,
+        "height": 40
+      },
+      "type": {
+        "x": 121,
+        "y": 702,
+        "width": 779,
+        "height": 20
+      },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 665,
-      "identificationTextTop": 666,
+      "nameTextTop": 641,
+      "identificationTextTop": 642,
       "link": {
         "x": 522,
-        "y": 662,
+        "y": 638,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 518,
       "issuer": {
         "x": 121,
-        "y": 690,
+        "y": 682,
         "width": 779,
         "height": 20
       },
       "row": {
         "x": 105,
-        "y": 646,
+        "y": 622,
         "width": 1726,
-        "height": 129
+        "height": 117
       },
       "name": {
         "x": 121,
-        "y": 665,
+        "y": 641,
         "width": 397,
         "height": 17
       },
@@ -1091,19 +1247,19 @@
       "actions": [
         {
           "x": 1675,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1723,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1771,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         }
@@ -1121,32 +1277,44 @@
     },
     {
       "key": "D-en-1920-collapsed-dark",
+      "bottomMetadata": {
+        "x": 121,
+        "y": 682,
+        "width": 779,
+        "height": 40
+      },
+      "type": {
+        "x": 121,
+        "y": 702,
+        "width": 779,
+        "height": 20
+      },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 665,
-      "identificationTextTop": 666,
+      "nameTextTop": 641,
+      "identificationTextTop": 642,
       "link": {
         "x": 522,
-        "y": 662,
+        "y": 638,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 518,
       "issuer": {
         "x": 121,
-        "y": 690,
+        "y": 682,
         "width": 779,
         "height": 20
       },
       "row": {
         "x": 105,
-        "y": 646,
+        "y": 622,
         "width": 1726,
-        "height": 129
+        "height": 117
       },
       "name": {
         "x": 121,
-        "y": 665,
+        "y": 641,
         "width": 397,
         "height": 17
       },
@@ -1177,19 +1345,19 @@
       "actions": [
         {
           "x": 1675,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1723,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1771,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         }
@@ -1207,32 +1375,44 @@
     },
     {
       "key": "D-en-1920-expanded-light",
+      "bottomMetadata": {
+        "x": 313,
+        "y": 682,
+        "width": 689,
+        "height": 40
+      },
+      "type": {
+        "x": 313,
+        "y": 702,
+        "width": 689,
+        "height": 20
+      },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 665,
-      "identificationTextTop": 666,
+      "nameTextTop": 641,
+      "identificationTextTop": 642,
       "link": {
         "x": 714,
-        "y": 662,
+        "y": 638,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 710,
       "issuer": {
         "x": 313,
-        "y": 690,
+        "y": 682,
         "width": 689,
         "height": 20
       },
       "row": {
         "x": 297,
-        "y": 646,
+        "y": 622,
         "width": 1534,
-        "height": 129
+        "height": 117
       },
       "name": {
         "x": 313,
-        "y": 665,
+        "y": 641,
         "width": 397,
         "height": 17
       },
@@ -1263,19 +1443,19 @@
       "actions": [
         {
           "x": 1675,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1723,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1771,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         }
@@ -1293,32 +1473,44 @@
     },
     {
       "key": "D-en-1920-expanded-dark",
+      "bottomMetadata": {
+        "x": 313,
+        "y": 682,
+        "width": 689,
+        "height": 40
+      },
+      "type": {
+        "x": 313,
+        "y": 702,
+        "width": 689,
+        "height": 20
+      },
       "issuerLabelSize": "12px",
       "referenceLabelSize": "12px",
-      "nameTextTop": 665,
-      "identificationTextTop": 666,
+      "nameTextTop": 641,
+      "identificationTextTop": 642,
       "link": {
         "x": 714,
-        "y": 662,
+        "y": 638,
         "width": 24,
         "height": 24
       },
       "lastTextRight": 710,
       "issuer": {
         "x": 313,
-        "y": 690,
+        "y": 682,
         "width": 689,
         "height": 20
       },
       "row": {
         "x": 297,
-        "y": 646,
+        "y": 622,
         "width": 1534,
-        "height": 129
+        "height": 117
       },
       "name": {
         "x": 313,
-        "y": 665,
+        "y": 641,
         "width": 397,
         "height": 17
       },
@@ -1349,19 +1541,19 @@
       "actions": [
         {
           "x": 1675,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1723,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         },
         {
           "x": 1771,
-          "y": 702,
+          "y": 678,
           "width": 44,
           "height": 44
         }

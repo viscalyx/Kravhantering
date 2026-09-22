@@ -1,7 +1,7 @@
 {
-  "date": "2026-09-22T16:05:31.762Z",
+  "date": "2026-09-22T16:10:30.559Z",
   "checks": [
-    "Separate identification with ID/reference/version/type; issuer below name; missing version; archived state; local edit; D-to-Before wrapping; C-to-D arrows; reload"
+    "Separate identification with ID/reference/version; issuer and type at bottom of name cell; missing version; archived state; local edit; D-to-Before wrapping; C-to-D arrows; reload"
   ],
   "mobile": [
     {

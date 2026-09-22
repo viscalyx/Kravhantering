@@ -205,28 +205,29 @@ Verify: run the command above, open the five links, and compare the captures
 in [screenshots](screenshots). Read [desktop measurements](verification.json)
 and [interaction checks](interaction-verification.json).
 
-### 13. Separate identification and issuer beneath the name in D
+### 13. Separate identification and bottom-aligned issuer/type in D
 
-D is the requested variation on B. It retains the 47/27/26 column proportions
-but uses **Name / Identification / Status and actions**. The issuer appears
-beneath the name, prefixed by its label. Identification contains separately
-labelled norm reference ID, reference, version and type. The external link
-flows immediately after the name text, rather than at the
-column edge. Its 24px target avoids stretching the name line. A 4px margin
-separates the name from the issuer. The name and first identification value
-share a 24px line height and align at the top. Status badges, counts and
-44px row actions keep their pattern. The issuer label uses the same 12px
-font size as the Reference label; the publisher name stays 14px.
+D retains B's 47/27/26 column proportions but uses **Name / Identification /
+Status and actions**. The name stays at the top, aligned with the first
+identification value. The issuer and type form a group at the bottom of the
+name cell, with Type directly below Issuer. A minimum 12px gap separates the
+name from that group; taller rows place any extra space between them.
+Identification contains separately labelled norm reference ID, reference and
+version. Type no longer appears in that column.
 
-Verify: open `variant=D`, then switch B/D using the selector. Check NIS2 and
-GDPR: the publisher is directly beneath the name; ID, reference, version and
-type occupy the middle column. Check that the URI icon sits directly after
-the name, including short names and wrapped names. Check its 24px target,
-the closer issuer, and alignment with the first identification value.
-Enable examples for missing versions and long references. Repeat in both
-languages/themes and navigation modes. On narrow
-screens, scroll within the table. Try editing a name and switching variants;
-the preview still changes memory only. D follows C in the switcher cycle.
+The external link flows immediately after the name text with a 24px target.
+The name and first identification value share a 24px line height. Issuer and
+Type labels use 12px, matching Reference; their values stay 14px. Status
+badges, counts and 44px row actions keep their pattern.
+
+Verify: open `variant=D` and compare B/D. Check NIS2 and a row with a long
+reference: the name remains at the top while Issuer/Type sit together at the
+bottom, with the cell's normal 16px padding beneath Type. Confirm ID,
+reference and version remain in the middle column and Type appears only
+under Issuer. Enable examples to check wrapping, missing version and long
+references. Check the URI icon, 24px target and top alignment in both
+languages/themes and navigation modes. On narrow screens, scroll inside the
+table. Editing and variant switching still change memory only.
 
 ## Review matrix
 

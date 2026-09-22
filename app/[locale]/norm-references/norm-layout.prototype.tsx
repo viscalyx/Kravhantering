@@ -441,17 +441,33 @@ export function VariantD({ rows, act }: VariantProps) {
               data-norm-id={row.normReferenceId}
               key={row.id}
             >
-              <td className="p-4 align-top">
-                <div className="mb-1 font-medium leading-6">
-                  <NormName inlineUri row={row} />
-                </div>
-                <p
-                  className="text-sm text-secondary-600 [overflow-wrap:anywhere] dark:text-secondary-400"
-                  data-prototype-issuer
+              <td className="h-px p-4 align-top">
+                <div
+                  className="flex h-full flex-col justify-between gap-3"
+                  data-prototype-name-cell
                 >
-                  <span className="text-xs font-medium">{t('issuer')}:</span>{' '}
-                  {row.issuer}
-                </p>
+                  <div className="font-medium leading-6">
+                    <NormName inlineUri row={row} />
+                  </div>
+                  <div
+                    className="text-sm text-secondary-600 dark:text-secondary-400"
+                    data-prototype-bottom-metadata
+                  >
+                    <p
+                      className="[overflow-wrap:anywhere]"
+                      data-prototype-issuer
+                    >
+                      <span className="text-xs font-medium">
+                        {t('issuer')}:
+                      </span>{' '}
+                      {row.issuer}
+                    </p>
+                    <p className="[overflow-wrap:anywhere]" data-prototype-type>
+                      <span className="text-xs font-medium">{t('type')}:</span>{' '}
+                      {row.type}
+                    </p>
+                  </div>
+                </div>
               </td>
               <td className="p-4 align-top">
                 <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-xs">
@@ -465,8 +481,6 @@ export function VariantD({ rows, act }: VariantProps) {
                   <dd className="[overflow-wrap:anywhere]">
                     {row.version ?? '-'}
                   </dd>
-                  <dt>{t('type')}</dt>
-                  <dd className="[overflow-wrap:anywhere]">{row.type}</dd>
                 </dl>
               </td>
               <td className="p-4 align-top">
