@@ -4066,5 +4066,51 @@
     "hiddenCreatedNorm": "The search hides the new norm reference “{name}”. It is still checked.",
     "creationPersistence": "The new object is saved immediately. Cancel in the selection dialog only discards the selection.",
     "searchHelp": "Search by name, reference ID or package purpose. Selections are kept when you filter the list."
+  },
+  "expandedControlsPrototype": {
+    "notice": "THROWAWAY PROTOTYPE #1356",
+    "memory": "Reordering stays in memory. Saving is disabled.",
+    "names": {
+      "original": "Original",
+      "A": "Inline actions",
+      "B": "Question sidebar",
+      "C": "Answer ledger"
+    },
+    "descriptions": {
+      "original": "Existing expanded layout.",
+      "A": "A question toolbar and compact actions beside each answer.",
+      "B": "Question actions on the left, answer actions below the content.",
+      "C": "Aligned content and action columns with alternating rows."
+    },
+    "previous": "Previous variant",
+    "next": "Next variant",
+    "review": "Review and compare",
+    "close": "Close review",
+    "question": "Which layout makes it easiest to distinguish question actions from answer actions?",
+    "questionActions": "Question actions",
+    "answerActions": "Answer actions",
+    "contentHeading": "Answer and requirement selection",
+    "scenario": "Review scenario",
+    "scenarioHelp": "Examples only affect this tab. Reset restores the loaded catalog and sample question.",
+    "scenarios": {
+      "live": "Existing data",
+      "long": "Long question, answers and descriptions",
+      "mixed": "No selection, missing selection and archived answer",
+      "readonly": "Read-only question controls"
+    },
+    "reset": "Reset examples and order",
+    "checklist": "What to verify",
+    "checks": {
+      "scope": "Compare original, A, B and C. Identify which controls affect the question and which affect one answer.",
+      "content": "Try long text and mixed states. Check description and source alignment without clipped text.",
+      "actions": "Open editors, visibility conditions and source previews. Cancel destructive confirmations. Saving should show the prototype notice.",
+      "access": "Tab through controls, inspect focus and use Enter. Reorder answers with the handle and arrow keys; reset restores order.",
+      "compare": "Compare both themes, both navigation states and 1440 × 900 / 1920 × 1080. Check narrow widths too."
+    },
+    "measure": "Refresh measurements",
+    "state": "Current state and blocked saves",
+    "longQuestion": "Include external partners, geographically distributed teams and information with different confidentiality and availability needs.",
+    "longAnswer": "Information shared between several organizations, integrations and external suppliers during the entire service lifecycle",
+    "longDescription": "The answer includes ordinary internal information, documents with longer descriptions and several independent requirement sources. Read the full explanation before deciding which protection level fits the planned service. Confirm that actions remain easy to find when this text wraps across several lines."
   }
 }

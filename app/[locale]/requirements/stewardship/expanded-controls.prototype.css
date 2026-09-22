@@ -1,0 +1,263 @@
+/* THROWAWAY #1356. All alternative styles are scoped; original is the control. */
+.controls-prototype-page {
+  padding-bottom: 8rem;
+}
+.controls-variant {
+  --prototype-line: #d8dee8;
+  --prototype-muted: #f5f7fa;
+  --prototype-ink: #334155;
+  --prototype-accent: #4338ca;
+  --prototype-accent-bg: #eef2ff;
+  --prototype-danger: #b91c1c;
+  min-width: 0;
+}
+.dark .controls-variant {
+  --prototype-line: #344155;
+  --prototype-muted: #141e30;
+  --prototype-ink: #cbd5e1;
+  --prototype-accent: #c7d2fe;
+  --prototype-accent-bg: #25264d;
+  --prototype-danger: #fca5a5;
+}
+.controls-variant .prototype-question-actions {
+  gap: 4px;
+  align-items: center;
+  padding: 8px 10px;
+  margin: 0 0 12px;
+  background: var(--prototype-muted);
+  border-radius: 6px;
+}
+.prototype-group-label {
+  width: 100%;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--prototype-ink);
+  letter-spacing: 0.04em;
+}
+.controls-variant .prototype-question-actions > button,
+.controls-variant .prototype-answer-actions > button {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--prototype-ink);
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: 5px;
+}
+.controls-variant .prototype-question-actions > button:first-of-type,
+.controls-variant .prototype-answer-actions > button:first-child {
+  font-weight: 600;
+  color: var(--prototype-accent);
+  background: var(--prototype-accent-bg);
+}
+.controls-variant .prototype-question-actions > button:last-child,
+.controls-variant .prototype-answer-actions > button:last-child {
+  margin-left: 4px;
+  color: var(--prototype-danger);
+  border-left-color: var(--prototype-line);
+}
+.controls-variant .prototype-question-actions > button:hover,
+.controls-variant .prototype-answer-actions > button:hover {
+  border-color: currentColor;
+}
+.controls-variant button:focus-visible {
+  outline: 2px solid var(--prototype-accent);
+  outline-offset: 2px;
+}
+.controls-variant .prototype-answer-list {
+  margin-top: 0;
+  border: 0;
+  border-radius: 0;
+}
+.controls-variant .prototype-answer-row {
+  gap: 10px;
+  padding: 12px 0;
+}
+.controls-variant .prototype-answer-row > button {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.controls-variant .prototype-answer-content {
+  overflow-wrap: anywhere;
+}
+.controls-variant .prototype-answer-content > p:first-child {
+  font-size: 14px;
+  font-weight: 600;
+}
+.controls-variant .prototype-answer-content > p {
+  margin-left: 0;
+}
+.controls-variant .prototype-answer-actions {
+  gap: 2px;
+  align-items: start;
+}
+.controls-variant .prototype-add-answer > button {
+  min-height: 32px;
+  font-size: 12px;
+}
+/* A: horizontal question band; compact single-line actions alongside answers. */
+.variant-a .prototype-answer-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+.variant-a .prototype-answer-actions {
+  flex-wrap: nowrap;
+  width: auto;
+}
+/* B: question controls in a left rail, answer actions below each answer. */
+.variant-b {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 0 22px;
+}
+.variant-b .prototype-question-help {
+  grid-column: 1 / -1;
+}
+.variant-b .prototype-question-actions {
+  display: flex;
+  flex-direction: column;
+  grid-row: 2 / span 2;
+  grid-column: 1;
+  align-items: stretch;
+  align-self: start;
+  padding: 12px;
+}
+.variant-b .prototype-question-actions > button {
+  justify-content: flex-start;
+}
+.variant-b .prototype-question-actions > button:last-child {
+  margin: 8px 0 0;
+  border-top-color: var(--prototype-line);
+  border-left: 0;
+}
+.variant-b .prototype-answer-list {
+  grid-column: 2;
+}
+.variant-b .prototype-answer-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.variant-b .prototype-answer-actions {
+  justify-content: flex-start;
+  width: 100%;
+}
+.variant-b .prototype-add-answer {
+  grid-column: 2;
+}
+/* C: shared ledger with content/action columns and a compact 2 by 2 action grid. */
+.variant-c {
+  display: flex;
+  flex-direction: column;
+}
+.variant-c .prototype-question-help {
+  order: 0;
+}
+.variant-c .prototype-question-actions {
+  order: 1;
+  padding: 0 0 12px;
+  background: transparent;
+  border-bottom: 2px solid var(--prototype-line);
+  border-radius: 0;
+}
+.variant-c .prototype-ledger-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 206px;
+  order: 2;
+  padding: 8px 10px 8px 52px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--prototype-ink);
+  background: var(--prototype-muted);
+}
+.variant-c .prototype-answer-list {
+  order: 3;
+}
+.variant-c .prototype-add-answer {
+  order: 4;
+}
+.variant-c .prototype-answer-row {
+  padding: 10px;
+}
+.variant-c .prototype-answer-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 206px;
+}
+.variant-c .prototype-answer-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  padding-left: 10px;
+  border-left: 1px solid var(--prototype-line);
+}
+.variant-c .prototype-answer-actions > button:last-child {
+  margin-left: 0;
+  border-left-color: transparent;
+}
+.variant-c .prototype-answer-list > li:nth-child(even) {
+  background: var(--prototype-muted);
+}
+@media (max-width: 1100px) {
+  .variant-a .prototype-answer-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .variant-a .prototype-answer-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .variant-b {
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 0 12px;
+  }
+}
+@media (max-width: 700px) {
+  .variant-b {
+    display: block;
+  }
+  .variant-b .prototype-question-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .variant-b .prototype-question-actions > button:last-child {
+    margin: 0;
+    border-top: 0;
+  }
+  .variant-c .prototype-ledger-heading {
+    display: none;
+  }
+  .variant-c .prototype-answer-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .variant-c .prototype-answer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    padding: 0;
+    border: 0;
+  }
+  .controls-variant .prototype-answer-row {
+    padding-inline: 0;
+  }
+  .controls-variant .prototype-question-actions {
+    padding-inline: 4px;
+  }
+}
+.controls-variant fieldset {
+  min-width: 0;
+}
+.variant-b:not(:has(.prototype-question-actions)) {
+  display: block;
+}
+.variant-c:not(:has(.prototype-answer-actions)) .prototype-answer-main,
+.variant-c:not(:has(.prototype-answer-actions)) .prototype-ledger-heading {
+  grid-template-columns: minmax(0, 1fr);
+}
+.variant-c:not(:has(.prototype-answer-actions))
+  .prototype-ledger-heading
+  > span:last-child {
+  display: none;
+}

@@ -20,9 +20,15 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import ExpandedControlsPrototypeSwitcher from '@/components/ExpandedControlsPrototypeSwitcher'
+import ExpandedControlsPrototype, {
+  type ControlsPrototypeVariant,
+} from './expanded-controls.prototype'
+import './expanded-controls.prototype.css'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
@@ -880,6 +886,32 @@ function CompactRequirementDetail({
 }
 
 export default function RequirementSelectionQuestionsClient() {
+  // THROWAWAY #1356: explore expanded controls; real saves are blocked.
+  const prototypeEnabled =
+    process.env.NODE_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_ISSUE_1356_PROTOTYPE === 'true'
+  const prototypeParams = useSearchParams()
+  const requestedVariant = prototypeParams.get('variant')
+  const prototypeVariant: ControlsPrototypeVariant =
+    prototypeEnabled &&
+    (requestedVariant === 'A' ||
+      requestedVariant === 'B' ||
+      requestedVariant === 'C')
+      ? requestedVariant
+      : 'original'
+  const prototypeCopy = useTranslations('expandedControlsPrototype')
+  const prototypeBase = useRef<RequirementSelectionQuestion[]>([])
+  const prototypeInitialLoad = useRef(false)
+  const [prototypeScenario, setPrototypeScenario] = useState('live')
+  const changePrototypeVariant = useCallback(
+    (variant: ControlsPrototypeVariant) => {
+      const url = new URL(window.location.href)
+      url.searchParams.set('variant', variant)
+      window.history.replaceState(null, '', url)
+    },
+    [],
+  )
+
   useHelpContent(REQUIREMENT_SELECTION_QUESTIONS_STEWARDSHIP_HELP)
   const { confirm } = useConfirmModal()
   const confirmDiscardChanges = useDiscardChangesConfirmation()
@@ -1774,6 +1806,17 @@ export default function RequirementSelectionQuestionsClient() {
       setAreas(areasData.areas ?? [])
       setPackages(packagesData.requirementPackages ?? [])
       const nextQuestions = questionsData.questions ?? []
+      if (prototypeEnabled) {
+        prototypeBase.current = structuredClone(nextQuestions)
+        const focus =
+          nextQuestions.find(
+            question => question.questionCode === 'SÄK-KUF001',
+          ) ?? nextQuestions.find(question => question.answers.length > 1)
+        if (focus) {
+          setAreaFilter(String(focus.areaId))
+          setExpandedQuestionIds(new Set([focus.id]))
+        }
+      }
       const nextQuestionIds = new Set(
         nextQuestions.map(question => question.id),
       )
@@ -1801,11 +1844,63 @@ export default function RequirementSelectionQuestionsClient() {
     } finally {
       setLoading(false)
     }
-  }, [copy.error, resetAnswerEditingState])
+  }, [copy.error, resetAnswerEditingState, prototypeEnabled])
 
   useEffect(() => {
+    // Keep one catalog snapshot in the prototype, including Strict Mode mounts.
+    if (prototypeEnabled) {
+      if (prototypeInitialLoad.current) return
+      prototypeInitialLoad.current = true
+    }
     void reload()
-  }, [reload])
+  }, [reload, prototypeEnabled])
+
+  const previewScenario = (scenario: string) => {
+    setPrototypeScenario(scenario)
+    const next = structuredClone(prototypeBase.current)
+    const focus =
+      next.find(question => question.questionCode === 'SÄK-KUF001') ??
+      next.find(question => question.answers.length > 1)
+    if (focus) {
+      if (scenario === 'long') {
+        focus.text += ` — ${prototypeCopy('longQuestion')}`
+        focus.answers.forEach(answer => {
+          answer.text += ` — ${prototypeCopy('longAnswer')}`
+          answer.description = prototypeCopy('longDescription')
+        })
+      }
+      if (scenario === 'mixed') {
+        focus.answers.forEach((answer, index) => {
+          answer.description = index === 0 ? null : answer.description
+          answer.isActive = index === 0
+          answer.isArchived = index === 2
+          answer.isNoRequirementSelection = index === 0
+          answer.healthState =
+            index === 1 ? 'missing_requirement_selection' : 'ok'
+          answer.packageIds = []
+          answer.requirementIds = []
+          answer.matchingRequirements = []
+          answer.matchingRequirementCount = 0
+        })
+      }
+      if (scenario === 'readonly')
+        next.forEach(question => {
+          question.permissions.canManage = false
+        })
+      setAreaFilter(String(focus.areaId))
+      setQuestionSearch('')
+      setStatusFilter('')
+      setExpandedQuestionIds(new Set([focus.id]))
+    }
+    setExpandedAnswerSelection(null)
+    setVisibilityPanelQuestionId(null)
+    setHierarchyQuestionId(null)
+    setShowQuestionForm(false)
+    resetAnswerEditingState()
+    setError(null)
+    questionsRef.current = next
+    setQuestions(next)
+  }
 
   const submitQuestion = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -2034,6 +2129,7 @@ export default function RequirementSelectionQuestionsClient() {
       questionsRef.current = nextQuestions
       return nextQuestions
     })
+    if (prototypeEnabled) return
     setReorderingQuestionId(movedQuestionId)
     setSubmitting(true)
     setError(null)
@@ -2115,6 +2211,7 @@ export default function RequirementSelectionQuestionsClient() {
           : item,
       ),
     )
+    if (prototypeEnabled) return
     setReorderingAnswerId(movedAnswerId)
     setSubmitting(true)
     setError(null)
@@ -3622,7 +3719,35 @@ export default function RequirementSelectionQuestionsClient() {
     : null
 
   return (
-    <div className="section-padding">
+    <div
+      className={`section-padding ${prototypeEnabled ? 'controls-prototype-page' : ''}`}
+      data-prototype-variant={prototypeVariant}
+    >
+      {prototypeEnabled && (
+        <ExpandedControlsPrototypeSwitcher
+          onScenario={previewScenario}
+          onVariant={changePrototypeVariant}
+          scenario={prototypeScenario}
+          state={{
+            variant: prototypeVariant,
+            scenario: prototypeScenario,
+            areaFilter,
+            questionSearch,
+            statusFilter,
+            expandedQuestions: [...expandedQuestionIds],
+            expandedAnswerSelection,
+            visibilityPanelQuestionId,
+            editingQuestionId,
+            editingAnswerId,
+            questionForm: showQuestionForm ? questionForm : null,
+            answerForm: showAnswerForm ? answerForm : null,
+            questions: questions.filter(
+              q => !areaFilter || String(q.areaId) === areaFilter,
+            ),
+          }}
+          variant={prototypeVariant}
+        />
+      )}
       <ListWorkspace
         context="requirement selection questions"
         ref={contentRef}
@@ -3993,14 +4118,30 @@ export default function RequirementSelectionQuestionsClient() {
                               }`}
                               id={detailsId}
                             >
-                              <div className="min-w-0">
+                              <ExpandedControlsPrototype
+                                variant={prototypeVariant}
+                              >
                                 {question.helpText && (
-                                  <p className="mb-3 text-sm text-secondary-600 dark:text-secondary-400">
+                                  <p className="prototype-question-help mb-3 text-sm text-secondary-600 dark:text-secondary-400">
                                     {question.helpText}
                                   </p>
                                 )}
                                 {question.permissions.canManage ? (
-                                  <div className="mt-3 flex flex-wrap gap-2">
+                                  <fieldset
+                                    aria-label={prototypeCopy(
+                                      'questionActions',
+                                    )}
+                                    className="prototype-question-actions mt-3 flex flex-wrap gap-2"
+                                    {...devMarker({
+                                      context: 'requirementSelectionQuestions',
+                                      name: 'prototype question actions',
+                                    })}
+                                  >
+                                    {prototypeVariant !== 'original' && (
+                                      <span className="prototype-group-label">
+                                        {prototypeCopy('questionActions')}
+                                      </span>
+                                    )}
                                     <button
                                       className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
                                       disabled={submitting}
@@ -4118,10 +4259,16 @@ export default function RequirementSelectionQuestionsClient() {
                                       />
                                       {copy.delete}
                                     </button>
-                                  </div>
+                                  </fieldset>
                                 ) : null}
                                 {question.answers.length > 0 && (
-                                  <ul className="mt-4 divide-y rounded-xl border dark:border-secondary-800">
+                                  <ul
+                                    className="prototype-answer-list mt-4 divide-y rounded-xl border dark:border-secondary-800"
+                                    {...devMarker({
+                                      context: 'requirementSelectionQuestions',
+                                      name: 'prototype answer list',
+                                    })}
+                                  >
                                     {question.answers.map(answer => {
                                       const answerReorderEnabled =
                                         question.permissions.canManage &&
@@ -4181,7 +4328,7 @@ export default function RequirementSelectionQuestionsClient() {
                                           }
                                         >
                                           <div
-                                            className={`flex gap-3 p-3 ${
+                                            className={`prototype-answer-row flex gap-3 p-3 ${
                                               draggedAnswerId === answer.id
                                                 ? 'invisible'
                                                 : ''
@@ -4250,8 +4397,15 @@ export default function RequirementSelectionQuestionsClient() {
                                                 </span>
                                               </>
                                             ) : null}
-                                            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                              <div className="min-w-0 sm:flex-1">
+                                            <div className="prototype-answer-main flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                              <div
+                                                className="prototype-answer-content min-w-0 sm:flex-1"
+                                                {...devMarker({
+                                                  context:
+                                                    'requirementSelectionQuestions',
+                                                  name: 'prototype answer content',
+                                                })}
+                                              >
                                                 <p className="font-medium">
                                                   {answer.text}
                                                 </p>
@@ -4676,7 +4830,15 @@ export default function RequirementSelectionQuestionsClient() {
                                               </div>
                                               {question.permissions
                                                 .canManage ? (
-                                                <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+                                                <fieldset
+                                                  aria-label={`${prototypeCopy('answerActions')}: ${answer.text}`}
+                                                  className="prototype-answer-actions flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end"
+                                                  {...devMarker({
+                                                    context:
+                                                      'requirementSelectionQuestions',
+                                                    name: 'prototype answer actions',
+                                                  })}
+                                                >
                                                   <button
                                                     className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
                                                     disabled={submitting}
@@ -4769,7 +4931,7 @@ export default function RequirementSelectionQuestionsClient() {
                                                     />
                                                     {copy.delete}
                                                   </button>
-                                                </div>
+                                                </fieldset>
                                               ) : null}
                                             </div>
                                           </div>
@@ -4782,8 +4944,8 @@ export default function RequirementSelectionQuestionsClient() {
                                   <div
                                     className={
                                       question.answers.length > 0
-                                        ? 'mt-3'
-                                        : 'mt-4'
+                                        ? 'prototype-add-answer mt-3'
+                                        : 'prototype-add-answer mt-4'
                                     }
                                   >
                                     <button
@@ -4807,7 +4969,7 @@ export default function RequirementSelectionQuestionsClient() {
                                     </button>
                                   </div>
                                 ) : null}
-                              </div>
+                              </ExpandedControlsPrototype>
                               {visibilityPanelQuestionId === question.id ? (
                                 <aside
                                   aria-labelledby={`requirement-selection-visibility-title-${question.id}`}

@@ -4066,5 +4066,51 @@
     "hiddenCreatedNorm": "Sökningen döljer den nya normreferensen ”{name}”. Den är fortfarande markerad.",
     "creationPersistence": "Det nya objektet sparas direkt. Avbryt i väljdialogen kasserar endast urvalet.",
     "searchHelp": "Sök på namn, referens-ID eller paketets syfte. Markeringar behålls när du filtrerar listan."
+  },
+  "expandedControlsPrototype": {
+    "notice": "ENGÅNGSPROTOTYP #1356",
+    "memory": "Sortering stannar i minnet. Sparande är avstängt.",
+    "names": {
+      "original": "Original",
+      "A": "Åtgärder bredvid",
+      "B": "Frågans sidopanel",
+      "C": "Svar i kolumner"
+    },
+    "descriptions": {
+      "original": "Befintlig expanderad layout.",
+      "A": "Frågans verktygsrad och kompakta åtgärder bredvid varje svar.",
+      "B": "Frågeåtgärder till vänster, svarsåtgärder under innehållet.",
+      "C": "Gemensamma innehålls- och åtgärdskolumner med växlande radbakgrund."
+    },
+    "previous": "Föregående variant",
+    "next": "Nästa variant",
+    "review": "Granska och jämför",
+    "close": "Stäng granskning",
+    "question": "Vilken layout gör det lättast att skilja frågans åtgärder från svarens?",
+    "questionActions": "Frågans åtgärder",
+    "answerActions": "Svarets åtgärder",
+    "contentHeading": "Svar och kravurval",
+    "scenario": "Granskningsscenario",
+    "scenarioHelp": "Exemplen påverkar bara denna flik. Återställ hämtat innehåll och exempelfrågan med knappen nedan.",
+    "scenarios": {
+      "live": "Befintliga data",
+      "long": "Lång fråga, långa svar och beskrivningar",
+      "mixed": "Utan kravurval, saknat kravurval och arkiverat svar",
+      "readonly": "Skrivskyddade frågekontroller"
+    },
+    "reset": "Återställ exempel och ordning",
+    "checklist": "Detta ska granskas",
+    "checks": {
+      "scope": "Jämför original, A, B och C. Identifiera vilka kontroller som gäller frågan respektive ett svar.",
+      "content": "Prova lång text och blandade tillstånd. Kontrollera indragning och kravkopplingar utan avklippt text.",
+      "actions": "Öppna redigering, synlighetsvillkor och kravförhandsvisning. Avbryt borttagning. Sparande ska visa prototypmeddelandet.",
+      "access": "Navigera med Tab, granska fokus och använd Enter. Flytta svar med handtaget och piltangenter; återställ ordningen efteråt.",
+      "compare": "Jämför båda teman, båda navigationslägena och 1440 × 900 / 1920 × 1080. Kontrollera också smala fönster."
+    },
+    "measure": "Uppdatera mått",
+    "state": "Aktuellt tillstånd och stoppade sparanden",
+    "longQuestion": "Inkludera externa samarbetspartner, geografiskt spridda team och information med olika krav på sekretess och tillgänglighet.",
+    "longAnswer": "Information som delas mellan flera organisationer, integrationer och externa leverantörer under tjänstens hela livscykel",
+    "longDescription": "Svaret omfattar vanlig intern information, dokument med längre beskrivningar och flera oberoende kravkällor. Läs hela förklaringen innan du avgör vilken skyddsnivå som passar den planerade tjänsten. Kontrollera att åtgärderna går att hitta även när texten bryts över flera rader."
   }
 }

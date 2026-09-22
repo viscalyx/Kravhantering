@@ -67,6 +67,30 @@ export async function apiFetch(
     init?.method ?? (input instanceof Request ? input.method : 'GET')
   ).toUpperCase()
 
+  // THROWAWAY #1356: no client API writes in the prototype build.
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_ISSUE_1356_PROTOTYPE === 'true' &&
+    !SAFE_METHODS.has(method)
+  ) {
+    const locale =
+      typeof window !== 'undefined' &&
+      window.location.pathname.startsWith('/sv')
+        ? 'sv'
+        : 'en'
+    const message =
+      locale === 'sv'
+        ? 'Prototyp: sparande är avstängt. Inga data har ändrats.'
+        : 'Prototype: saving is disabled. No data has changed.'
+    if (typeof window !== 'undefined')
+      window.dispatchEvent(
+        new CustomEvent('prototype-1356-blocked', {
+          detail: { method, path: requestUrl(input) },
+        }),
+      )
+    return Response.json({ error: message, message }, { status: 409 })
+  }
+
   if (SAFE_METHODS.has(method)) {
     if (init === undefined) {
       return reportUnauthorizedResponse(input, await fetch(input))
