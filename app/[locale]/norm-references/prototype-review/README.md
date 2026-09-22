@@ -205,29 +205,28 @@ Verify: run the command above, open the five links, and compare the captures
 in [screenshots](screenshots). Read [desktop measurements](verification.json)
 and [interaction checks](interaction-verification.json).
 
-### 13. Separate identification and bottom-aligned issuer/type in D
+### 13. Separate identification and bottom-aligned issuer in D
 
 D retains B's 47/27/26 column proportions but uses **Name / Identification /
 Status and actions**. The name stays at the top, aligned with the first
-identification value. The issuer and type form a group at the bottom of the
-name cell, with Type directly below Issuer. A minimum 12px gap separates the
-name from that group; taller rows place any extra space between them.
-Identification contains separately labelled norm reference ID, reference and
-version. Type no longer appears in that column.
+identification value. The issuer sits at the bottom of the name cell. A
+minimum 12px gap separates the name and issuer; taller rows put extra space
+between them. Identification contains separately labelled norm reference
+ID, reference, version and type. Type is the last value in that column.
 
 The external link flows immediately after the name text with a 24px target.
-The name and first identification value share a 24px line height. Issuer and
-Type labels use 12px, matching Reference; their values stay 14px. Status
+The name and first identification value share a 24px line height. The issuer
+label uses 12px, matching Reference; the issuer value stays 14px. Status
 badges, counts and 44px row actions keep their pattern.
 
 Verify: open `variant=D` and compare B/D. Check NIS2 and a row with a long
-reference: the name remains at the top while Issuer/Type sit together at the
-bottom, with the cell's normal 16px padding beneath Type. Confirm ID,
-reference and version remain in the middle column and Type appears only
-under Issuer. Enable examples to check wrapping, missing version and long
-references. Check the URI icon, 24px target and top alignment in both
-languages/themes and navigation modes. On narrow screens, scroll inside the
-table. Editing and variant switching still change memory only.
+reference: the name remains at the top while Issuer sits at the bottom,
+with the cell's normal 16px padding beneath it. Confirm ID, reference,
+version and type remain in the middle column. Enable examples to check
+wrapping, missing version and long references. Check the URI icon, 24px
+target and top alignment in both languages/themes and navigation modes.
+On narrow screens, scroll inside the table. Editing and variant switching
+still change memory only.
 
 ## Review matrix
 

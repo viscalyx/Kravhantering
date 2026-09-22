@@ -462,10 +462,6 @@ export function VariantD({ rows, act }: VariantProps) {
                       </span>{' '}
                       {row.issuer}
                     </p>
-                    <p className="[overflow-wrap:anywhere]" data-prototype-type>
-                      <span className="text-xs font-medium">{t('type')}:</span>{' '}
-                      {row.type}
-                    </p>
                   </div>
                 </div>
               </td>
@@ -480,6 +476,10 @@ export function VariantD({ rows, act }: VariantProps) {
                   <dt>{t('version')}</dt>
                   <dd className="[overflow-wrap:anywhere]">
                     {row.version ?? '-'}
+                  </dd>
+                  <dt>{t('type')}</dt>
+                  <dd className="[overflow-wrap:anywhere]" data-prototype-type>
+                    {row.type}
                   </dd>
                 </dl>
               </td>

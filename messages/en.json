@@ -4102,7 +4102,7 @@
       "A": "Nine columns, compact metadata, wider name and issuer, status badges. Closest to issue scope.",
       "B": "Name, ID, reference and version together; issuer and actions beside them. Wider reading space, taller rows.",
       "C": "Browse names on the left and read one full norm on the right. More room for reading, less direct comparison.",
-      "D": "Name and URI icon at the top; issuer and type together at the bottom of the cell. Separate identification column, with status and actions on the right."
+      "D": "Name and URI icon at the top; issuer at the bottom of the cell. Identification has its own column with ID, reference, version and type."
     },
     "checks": {
       "space": "A: compare the NIS2 row with Before at 1440 × 900, expanded navigation. Read the full name and issuer; compare wrapping and row height. Name and issuer gain space; metadata padding shrinks.",
@@ -4110,7 +4110,7 @@
       "links": "Compare rows with and without a link. The icon stays next to the name, opens the same external URL and has a 44px target (24px in D). A URN example intentionally has no clickable link. In D the icon flows immediately after the name text instead of aligning with the column edge.",
       "statuses": "A/B/C/D: active and archived states have both text and an icon, using the package-list style. Enable examples to see an archived norm. Use the theme control in the navigation.",
       "actions": "All variants: edit a name, archive/reactivate, delete, and create a row. Confirm the preview dialog; inspect the state panel, then reset. Row buttons stay 44 × 44px. Escape closes a dialog; Tab reaches controls.",
-      "alternatives": "B groups fields but retains every value. C requires selecting each norm to see its full detail. Decide whether either tradeoff is useful; these are alternatives beyond the current issue scope. D separates identification from the name and moves the issuer beneath the name. Compare B/D and verify ID, reference and version in the middle column. Issuer and type sit together at the bottom of the name cell.",
+      "alternatives": "B groups fields but retains every value. C requires selecting each norm to see its full detail. Decide whether either tradeoff is useful; these are alternatives beyond the current issue scope. D separates identification from the name and moves the issuer beneath the name. Compare B/D and verify ID, reference, version and type in the middle column. Issuer sits at the bottom of the name cell.",
       "matrix": "Compare at 1440 × 900 and 1920 × 1080, navigation collapsed/expanded, light/dark, then switch /sv/ to /en/. At 320/375px scroll the table horizontally or read C vertically. Keep the same data between variants.",
       "state": "The state panel shows variant, filter, examples, visible IDs, selection and all local edits. Variant switches keep local edits; reload clears them. Copy a URL with variant=before, A, B, C or D to reopen a layout."
     },

@@ -28,17 +28,12 @@ current issue brief.
 
 ## Requested variant D
 
-D follows the maintainer's request to give identification its own column and
-place the issuer and type at the bottom of the name cell. It is based on B and
-retains the same
-column proportions, status/count presentation and action sizes. ID, reference
-and version remain separately labelled in the middle column.
-Type moves directly beneath Issuer in the bottom-aligned group.
-The URI icon follows the name text inline with a 24px target. The name
-and first identification value share a 24px line height. The name stays at
-the top; a minimum 12px gap separates it from the bottom-aligned group.
-Row actions remain 44px.
-No choice between A and D is assumed by adding the prototype.
+D places the name at the top and issuer at the bottom of the first column.
+Identification has its own column with separately labelled ID, reference,
+version and type. The URI icon follows the name text inline with a 24px
+click target. The name and first identification value share a 24px line
+height. A minimum 12px gap separates the name and bottom-aligned issuer.
+Row actions remain 44px. No winning variant is assumed by these refinements.
 
 Compare [D in Swedish](screenshots/D-sv-1440-expanded-light.png) with
 [B](screenshots/B-1440-expanded-light.png). Inspect
