@@ -21,9 +21,15 @@ Sign in to the normal development app on localhost:3000 first.
 The comparison guide is `import-layout-prototype.md` beside the requirements
 page. A screenshot gallery and repeatable browser walkthrough accompany it.
 
-Verdict: pending maintainer review. No layout is approved or promoted.
+Verdict: the maintainer approves **variant A** on 2026-09-23. Its 960 px
+desktop dialog places the main form on the left and visible supporting
+material in a quieter right sidebar. Production implementation is separate.
 Import interactions and downloads are simulated in memory; real backend
 import behavior is outside the prototype's verification.
 
 The branch preserves the prototype as a primary source. Its guide contains
 the complete change inventory and instructions for verifying each change.
+
+After approval, the review server on port 3136 is stopped and the temporary
+worktree is removed. Recreate it from the preserved upstream branch using
+the comparison guide when another review is needed.

@@ -7,11 +7,25 @@ main task, while keeping schema and instructions visible?**
 This is a throwaway prototype, preserved on branch
 [`prototype/issue-1360-import-layout`](https://github.com/viscalyx/Kravhantering/tree/prototype/issue-1360-import-layout)
 based on `daaf0d50`.
-No variant is approved. Production implementation remains a separate step.
+Variant **A** is approved by the maintainer on 2026-09-23. Use its
+960 px desktop dialog, main form on the left, and quieter support sidebar
+on the right as the design reference. Production implementation remains a
+separate step; preserve the real import behavior and existing contracts.
 
 ## Open it
 
-From the prototype worktree:
+The review server is stopped and its temporary worktree is removed after
+approval. The branch, source, guide, and screenshots remain on upstream.
+To recreate the worktree from a repository checkout:
+
+```sh
+git fetch origin prototype/issue-1360-import-layout
+git worktree add \
+  /mnt/krav-azure-dev-data/.worktrees/issue-1360-import-layout \
+  prototype/issue-1360-import-layout
+```
+
+From the recreated prototype worktree:
 
 ```sh
 npm run prototype:import
@@ -60,9 +74,9 @@ real requirements page, navigation, and available requirement areas. If no
 authorable areas load, a clearly reported demo fallback keeps the layout
 review runnable. The **Tillstånd** inspector reports which source is in use.
 
-Start with A, then compare B and C before choosing. A is a useful first
-candidate because support stays visible beside the form. That is a design
-hypothesis, not a validated usability result.
+A is the approved design direction. B, C, and the baseline remain on this
+branch for traceability. The selection is a maintainer design decision; it
+does not establish measured usability or time-saving results.
 
 ## Verify every visible change
 
@@ -157,9 +171,16 @@ only inspect version and nonempty candidate descriptions. Server-side schema
 validation, permissions, budgets beyond the sample file-size check, later
 review steps, and persistence are outside this prototype's evidence.
 
-## Decision to record after review
+## Approved decision
 
-Record the preferred variant or combination, what made the task clearer, and
-any problems at the required sizes. Then implement the selected design with
-the real import component and its existing behavior and test contracts.
+On 2026-09-23 the maintainer selects **variant A**: "Jag gillar prototyp A,
+vi kör på den."
+
+Implement its main form and visible right support sidebar in the real import
+component. Treat 960 px as the demonstrated desktop starting width; retain
+responsive stacking, long-title wrapping, both themes, keyboard access, and
+all original import behaviors. The comparison toolbar, fixtures, simulated
+validation, and placeholder downloads belong only to this prototype.
+
+Preserve the existing issue acceptance criteria and verification requirements.
 Keep these alternatives on the throwaway branch as the primary source.
