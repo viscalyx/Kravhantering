@@ -9,7 +9,7 @@ import { chromium } from 'playwright'
 
 const source = process.env.PROTOTYPE_SOURCE_ROOT || '/workspace'
 const origin = `http://localhost:${process.env.PROTOTYPE_PORT || '3136'}`
-const output = resolve('public/prototype-1360')
+const output = resolve('public/sv/prototype-1360')
 await mkdir(output, { recursive: true })
 execFileSync(process.execPath, [resolve(source, 'scripts/dev-login.mjs')], {
   cwd: source,
@@ -284,7 +284,7 @@ try {
     `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>#1360 — import layout comparison</title><style>body{font:16px system-ui;background:#f1f5f9;color:#0f172a;margin:32px}h1{font-size:26px}nav{position:sticky;top:0;background:#fff;padding:12px;border-radius:8px}a{color:#4338ca}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,620px),1fr));gap:24px}figure{margin:0;background:white;padding:12px;border-radius:12px}img{width:100%;height:auto}figcaption{padding:8px;font-weight:600}p{max-width:1000px;line-height:1.6}</style><h1>#1360 · Import layout comparison</h1><p>Throwaway prototype. Baseline reconstructs the old entry layout; A uses a support sidebar, B places support beneath the form, C splits file and pasted input. Preview and downloads are simulated. No design is approved yet. Click any image for full resolution.</p><nav><a href="${origin}/sv/requirements?prototype=import&variant=A">Open interactive prototype</a> · <a href="measurements.json">Geometry and verification evidence</a></nav><main>${screenshots.map(({ name, label }) => `<figure><a href="${name}.png"><img loading="lazy" src="${name}.png" alt="${label}"></a><figcaption>${label}</figcaption></figure>`).join('')}</main></html>`,
   )
   console.info(
-    `Verified interactions; ${screenshots.length} screenshots. Gallery: ${origin}/prototype-1360/index.html`,
+    `Verified interactions; ${screenshots.length} screenshots. Gallery: ${origin}/sv/prototype-1360/index.html`,
   )
 } finally {
   await browser.close()

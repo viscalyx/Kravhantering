@@ -101,7 +101,7 @@ temporary and do not update the stored theme preference.
 
 ## Screenshots and repeatable walkthrough
 
-Open the [screenshot gallery](http://localhost:3136/prototype-1360/index.html).
+Open the [screenshot gallery](http://localhost:3136/sv/prototype-1360/index.html).
 Click a screenshot to inspect its full resolution. The gallery's image files
 and index also work locally without a running server.
 
@@ -146,7 +146,7 @@ Paths below are relative to the prototype worktree.
 | `package.json` | Adds `prototype:import` and `prototype:import:capture`. | Run both commands. |
 | `scripts/prototype-import-layout.mjs` | Launches this worktree on its own port with existing settings. | Port 3136 opens; the original app on port 3000 remains available. |
 | `scripts/prototype-import-capture.mjs` | Repeatable browser walkthrough and screenshot gallery generation. | Run capture; inspect its exit status, gallery, and measurements. |
-| `public/prototype-1360/` | Screenshots, gallery, and geometry evidence. | Open the gallery and full-size images. |
+| `public/sv/prototype-1360/` | Screenshots, gallery, and geometry evidence. | Open the gallery and full-size images. |
 | `app/[locale]/requirements/import-layout-prototype.md` | This launch, change, and verification guide. | Follow the instructions from a new browser session. |
 | `app/[locale]/requirements/import-layout-prototype-issue-note.md` | Prepared context pointer for issue #1360. | Links the branch, design question, and pending verdict. |
 <!-- markdownlint-enable MD013 -->
