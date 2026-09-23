@@ -1829,7 +1829,7 @@ describe('trusted container release helpers', () => {
       'ghcr.io/viscalyx/kravhantering-app-runtime:replace-with-release-tag',
     )
     expect(releaseEnv).toContain(
-      'NGINX_IMAGE_REF=docker.io/library/nginx:1.31.6-alpine3.24@sha256:0530961ff0592b58c10f767535cc0abdfccf9e389ff7cc90f87320c1bc7e8506',
+      'NGINX_IMAGE_REF=docker.io/library/nginx:1.31.6-alpine3.24',
     )
     expect(releaseEnv).toContain(
       'SQLSERVER_IMAGE_REF=mcr.microsoft.com/mssql/server:2025-CU9-ubuntu-24.04',
