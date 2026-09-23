@@ -64,11 +64,6 @@ nginx has no env file in this phase. These mounted values are sensitive:
 ## Image Lock Updates
 
 `image.lock.json` pins the upstream image by tag, manifest digest and image ID.
-Use an explicit Alpine minor version, such as `1.31.6-alpine3.24`, with the
-locked manifest digest. Version-specific tags can still be rebuilt upstream.
-Keep the nginx references in Container PR Smoke, Container Release, the
-client-IP container tests, and the release environment template aligned when
-updating the lock.
 
 The normal update path is `.github/workflows/dependency-drift.yml`. It runs
 weekly from `main` and can also be started manually with `workflow_dispatch`.
