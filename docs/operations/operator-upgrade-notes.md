@@ -13,6 +13,10 @@ changes.
 
 ## Unreleased
 
+
+
+## v0.9.0 - 2026-09-23
+
 ### curl security update
 
 Deploy the complete new release images to receive the curl security fix for
