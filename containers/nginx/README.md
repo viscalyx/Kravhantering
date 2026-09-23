@@ -64,21 +64,11 @@ nginx has no env file in this phase. These mounted values are sensitive:
 ## Image Lock Updates
 
 `image.lock.json` pins the upstream image by tag, manifest digest and image ID.
-Use a tag that names both the nginx release and Alpine minor version, such as
-`1.31.6-alpine3.24`. This tag can still be rebuilt upstream. The Linux AMD64
-manifest digest selects the exact reviewed image.
-
-Container PR Smoke and Container Release derive the nginx pull reference from
-this lock as `image:tag@sha256:digest`. The client-IP container tests use the
-same reference. The local production-smoke debugger uses the vendor digests
-from the downloaded run's stack lock, so an upstream rebuild does not change
-the images used to reproduce that run.
-
-A controlled update changes the tag, manifest digest and image ID together in
-a pull request, including the direct-pull example in the release environment
-template. The drift detector reports newer nginx or Alpine versions and
-changed digests under the current tag. Detection does not advance the lock or
-change images pulled by unrelated pull requests.
+Use an explicit Alpine minor version, such as `1.31.6-alpine3.24`, with the
+locked manifest digest. Version-specific tags can still be rebuilt upstream.
+Keep the nginx references in Container PR Smoke, Container Release, the
+client-IP container tests, and the release environment template aligned when
+updating the lock.
 
 The normal update path is `.github/workflows/dependency-drift.yml`. It runs
 weekly from `main` and can also be started manually with `workflow_dispatch`.

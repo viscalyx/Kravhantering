@@ -89,7 +89,7 @@ describe('container stack helpers', () => {
             'nginx',
             'tls-proxy',
             'docker.io/library/nginx',
-            '1.31.6-alpine3.24',
+            '1.31.6-alpine',
             'sha256:nginx',
             'sha256:nginx-image',
           ),

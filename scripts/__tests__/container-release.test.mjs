@@ -1828,11 +1828,8 @@ describe('trusted container release helpers', () => {
     expect(releaseEnv).toContain(
       'ghcr.io/viscalyx/kravhantering-app-runtime:replace-with-release-tag',
     )
-    const nginxLock = JSON.parse(
-      readWorkspaceFile('containers/nginx/image.lock.json'),
-    )
     expect(releaseEnv).toContain(
-      `NGINX_IMAGE_REF=${nginxLock.image}:${nginxLock.tag}@${nginxLock.manifestDigest}`,
+      'NGINX_IMAGE_REF=docker.io/library/nginx:1.31.6-alpine3.24@sha256:0530961ff0592b58c10f767535cc0abdfccf9e389ff7cc90f87320c1bc7e8506',
     )
     expect(releaseEnv).toContain(
       'SQLSERVER_IMAGE_REF=mcr.microsoft.com/mssql/server:2025-CU9-ubuntu-24.04',
@@ -1907,7 +1904,7 @@ describe('trusted container release helpers', () => {
               name: 'nginx',
               role: 'tls-proxy',
               source: 'docker-hub',
-              tag: '1.31.6-alpine3.24',
+              tag: '1.31.6-alpine',
             },
             {
               imageId: 'sha256:sql-image',

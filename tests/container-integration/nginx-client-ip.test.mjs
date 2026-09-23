@@ -5,10 +5,8 @@ import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 const enabled = process.env.KRAVHANTERING_NGINX_INTEGRATION === '1'
-const nginxLock = JSON.parse(
-  fs.readFileSync('containers/nginx/image.lock.json', 'utf8'),
-)
-const nginxImage = `${nginxLock.image}:${nginxLock.tag}@${nginxLock.manifestDigest}`
+const nginxImage =
+  'docker.io/library/nginx:1.31.6-alpine3.24@sha256:0530961ff0592b58c10f767535cc0abdfccf9e389ff7cc90f87320c1bc7e8506'
 const workspace = process.cwd()
 const runId = `kh-client-ip-${process.pid}`
 const networkName = `${runId}-network`

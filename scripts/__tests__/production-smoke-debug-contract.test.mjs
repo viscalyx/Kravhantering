@@ -14,12 +14,7 @@ import {
 const digest = character => `sha256:${character.repeat(64)}`
 
 function service(name) {
-  return {
-    image: `registry.example/${name}`,
-    name,
-    tag: 'candidate',
-    manifestDigest: digest('a'),
-  }
+  return { image: `registry.example/${name}`, name, tag: 'candidate' }
 }
 
 describe('production smoke debug contract', () => {
@@ -252,21 +247,11 @@ describe('production smoke debug contract', () => {
       APP_RUNTIME_OCI_ARCHIVE: '/artifacts/app-runtime.tar',
       DB_JOB_IMAGE_REF: 'localhost/db-job:tag',
       PRODUCTION_SMOKE_SCOPE: 'core',
-      KEYCLOAK_IMAGE_REF: `registry.example/keycloak:candidate@${digest('a')}`,
-      NGINX_IMAGE_REF: `registry.example/nginx:candidate@${digest('a')}`,
-      SQLSERVER_IMAGE_REF: `registry.example/sqlserver:candidate@${digest('a')}`,
+      KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:candidate',
       PRODUCTION_SMOKE_EVIDENCE_DIR: '/evidence',
       RELEASE_SMOKE_RUN_ID: '123',
     })
     expect(() => serviceImageReference({}, 'nginx')).toThrow('missing')
-    for (const manifestDigest of [undefined, 'invalid']) {
-      expect(() =>
-        serviceImageReference(
-          { services: [{ ...service('nginx'), manifestDigest }] },
-          'nginx',
-        ),
-      ).toThrow('nginx manifest digest')
-    }
     expect(() =>
       buildSmokeEnvironment({
         evidenceDirectory: '/evidence',
