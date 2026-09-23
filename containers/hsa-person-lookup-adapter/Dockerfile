@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM registry.access.redhat.com/ubi10/nodejs-24:latest@sha256:dfc3e9630807d07cf21af3251c42bc1c26816f80b8feff8f300a01f61b15b8c4 AS dependencies
+FROM registry.access.redhat.com/ubi10/nodejs-24:latest@sha256:fbb6ecf7772c98d84a3cb741e26a601682ae0e97bedcb56744db41ceb5ba60ab AS dependencies
 
 USER 0:0
 ENTRYPOINT []
@@ -15,7 +15,7 @@ COPY containers/hsa-person-lookup-adapter/package.json containers/hsa-person-loo
 RUN npm install --global "npm@$(node -p 'require("./package.json").packageManager.slice(4)')"
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 
-FROM registry.access.redhat.com/ubi10/nodejs-24-minimal:latest@sha256:c2e4d56d102ebb99edaaeee9d4a17d4ebda67ecc192af57f12752b265e7a67a6
+FROM registry.access.redhat.com/ubi10/nodejs-24-minimal:latest@sha256:bf6efa8c27f5cda1595bf86e1455a6d217c68cd8f386e8e167623250ace053eb
 
 # Final-image identity; base component provenance and notices remain inherited.
 LABEL name="kravhantering/hsa-person-lookup-adapter" \

@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "baseImage": "registry.access.redhat.com/ubi10/nodejs-24-minimal",
   "baseTag": "latest",
-  "baseDigest": "sha256:c2e4d56d102ebb99edaaeee9d4a17d4ebda67ecc192af57f12752b265e7a67a6",
+  "baseDigest": "sha256:bf6efa8c27f5cda1595bf86e1455a6d217c68cd8f386e8e167623250ace053eb",
   "nodeVersion": "24",
   "opensslVersion": "3.5.8",
   "opensslPackageVersion": "3.5.8-1.el10_2",
