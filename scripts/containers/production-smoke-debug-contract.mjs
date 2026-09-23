@@ -130,7 +130,11 @@ export function serviceImageReference(lock, name) {
   if (!service?.image || !service?.tag) {
     throw new Error(`Stack lock is missing the ${name} image reference.`)
   }
-  return `${service.image}:${service.tag}`
+  const manifestDigest = assertDigest(
+    service.manifestDigest,
+    `${name} manifest digest`,
+  )
+  return `${service.image}:${service.tag}@${manifestDigest}`
 }
 
 export function buildSmokeEnvironment({

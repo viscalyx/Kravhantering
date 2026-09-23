@@ -116,7 +116,13 @@ export const IMAGE_CONFIGS = {
     parseTag: parseNginxTag,
     registryHost: 'registry-1.docker.io',
     registryRepository: 'library/nginx',
-    versionSortValue: version => [version.major, version.minor, version.patch],
+    versionSortValue: version => [
+      version.major,
+      version.minor,
+      version.patch,
+      version.alpineMajor,
+      version.alpineMinor,
+    ],
   },
   sqlserver: {
     image: 'mcr.microsoft.com/mssql/server',
@@ -246,10 +252,12 @@ export function parseKeycloakTag(tag) {
 
 export function parseNginxTag(tag) {
   const match = tag.match(
-    /^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)-alpine$/u,
+    /^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)-alpine(?<alpineMajor>[1-9]\d*)\.(?<alpineMinor>0|[1-9]\d*)$/u,
   )
   if (!match?.groups) return null
   return {
+    alpineMajor: Number(match.groups.alpineMajor),
+    alpineMinor: Number(match.groups.alpineMinor),
     major: Number(match.groups.major),
     minor: Number(match.groups.minor),
     patch: Number(match.groups.patch),

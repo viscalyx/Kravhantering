@@ -2,8 +2,8 @@
   "name": "nginx",
   "role": "tls-proxy",
   "image": "docker.io/library/nginx",
-  "tag": "1.31.6-alpine",
-  "manifestDigest": "sha256:7396be67b6f53012a5cf955fa9040619294c25ccacf11e22af5de1b572fc756e",
-  "imageId": "sha256:55fcc661c2cd4666d0e916410c029ae22042638bcdc8ed98805bfd9d29e08e38",
+  "tag": "1.31.6-alpine3.24",
+  "manifestDigest": "sha256:0530961ff0592b58c10f767535cc0abdfccf9e389ff7cc90f87320c1bc7e8506",
+  "imageId": "sha256:3dd08163706a20b20622f310ec10258cc96e9007ab357f7201955bc880ac17f4",
   "source": "https://hub.docker.com/_/nginx"
 }

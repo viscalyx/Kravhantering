@@ -53,7 +53,7 @@ function stackLock() {
         'nginx',
         'tls-proxy',
         'docker.io/library/nginx',
-        '1.31.6-alpine',
+        '1.31.6-alpine3.24',
         'sha256:nginx-manifest',
         'sha256:nginx-image',
       ),

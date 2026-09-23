@@ -135,7 +135,6 @@ jobs:
       DB_JOB_OCI_ARCHIVE: tmp/candidates/db-job/db-job.oci.tar
       KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.4-0
       NEXT_PUBLIC_SITE_URL: https://kravhantering.test
-      NGINX_IMAGE_REF: docker.io/library/nginx:1.31.6-alpine
       SQLSERVER_IMAGE_REF: mcr.microsoft.com/mssql/server:2025-CU9-ubuntu-24.04
       CI_RUNTIME_EVIDENCE_DIR: tmp/container-pr-artifacts/runtime-diagnostics
       CI_RUNTIME_RELATED_EVIDENCE_DIR: tmp/production-smoke-evidence
@@ -147,6 +146,11 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
+      - name: Resolve locked nginx image
+        run: |
+          jq -er '
+            "NGINX_IMAGE_REF=\(.image):\(.tag)@\(.manifestDigest)"
+          ' containers/nginx/image.lock.json >> "$GITHUB_ENV"
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
