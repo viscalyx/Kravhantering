@@ -1,0 +1,447 @@
+{
+  "captured": "2026-09-23T06:19:09.095Z",
+  "mutations": [],
+  "failures": [],
+  "measurements": [
+    {
+      "name": "baseline-1440-light-collapsed",
+      "x": 432,
+      "y": 20,
+      "width": 576,
+      "height": 756,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "A-1440-light-collapsed",
+      "x": 240,
+      "y": 64.15625,
+      "width": 960,
+      "height": 667.6875,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "B-1440-light-collapsed",
+      "x": 340,
+      "y": 22.109375,
+      "width": 760,
+      "height": 751.78125,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "C-1440-light-collapsed",
+      "x": 200,
+      "y": 48.40625,
+      "width": 1040,
+      "height": 699.1875,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "baseline-1440-dark-collapsed",
+      "x": 432,
+      "y": 20,
+      "width": 576,
+      "height": 756,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "A-1440-dark-collapsed",
+      "x": 240,
+      "y": 64.15625,
+      "width": 960,
+      "height": 667.6875,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "B-1440-dark-collapsed",
+      "x": 340,
+      "y": 22.109375,
+      "width": 760,
+      "height": 751.78125,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "C-1440-dark-collapsed",
+      "x": 200,
+      "y": 48.40625,
+      "width": 1040,
+      "height": 699.1875,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "baseline-1440-light-expanded",
+      "x": 432,
+      "y": 20,
+      "width": 576,
+      "height": 756,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "A-1440-light-expanded",
+      "x": 240,
+      "y": 64.15625,
+      "width": 960,
+      "height": 667.6875,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "B-1440-light-expanded",
+      "x": 340,
+      "y": 22.109375,
+      "width": 760,
+      "height": 751.78125,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "C-1440-light-expanded",
+      "x": 200,
+      "y": 48.40625,
+      "width": 1040,
+      "height": 699.1875,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "baseline-1440-dark-expanded",
+      "x": 432,
+      "y": 20,
+      "width": 576,
+      "height": 756,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "A-1440-dark-expanded",
+      "x": 240,
+      "y": 64.15625,
+      "width": 960,
+      "height": 667.6875,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "B-1440-dark-expanded",
+      "x": 340,
+      "y": 22.109375,
+      "width": 760,
+      "height": 751.78125,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "C-1440-dark-expanded",
+      "x": 200,
+      "y": 48.40625,
+      "width": 1040,
+      "height": 699.1875,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "baseline-1920-light-collapsed",
+      "x": 672,
+      "y": 98.15625,
+      "width": 576,
+      "height": 779.6875,
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "A-1920-light-collapsed",
+      "x": 480,
+      "y": 154.15625,
+      "width": 960,
+      "height": 667.6875,
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "B-1920-light-collapsed",
+      "x": 580,
+      "y": 112.109375,
+      "width": 760,
+      "height": 751.78125,
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "C-1920-light-collapsed",
+      "x": 440,
+      "y": 138.40625,
+      "width": 1040,
+      "height": 699.1875,
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "baseline-1920-dark-collapsed",
+      "x": 672,
+      "y": 98.15625,
+      "width": 576,
+      "height": 779.6875,
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "A-1920-dark-collapsed",
+      "x": 480,
+      "y": 154.15625,
+      "width": 960,
+      "height": 667.6875,
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "B-1920-dark-collapsed",
+      "x": 580,
+      "y": 112.109375,
+      "width": 760,
+      "height": 751.78125,
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "C-1920-dark-collapsed",
+      "x": 440,
+      "y": 138.40625,
+      "width": 1040,
+      "height": 699.1875,
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "baseline-1920-light-expanded",
+      "x": 672,
+      "y": 98.15625,
+      "width": 576,
+      "height": 779.6875,
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "A-1920-light-expanded",
+      "x": 480,
+      "y": 154.15625,
+      "width": 960,
+      "height": 667.6875,
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "B-1920-light-expanded",
+      "x": 580,
+      "y": 112.109375,
+      "width": 760,
+      "height": 751.78125,
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "C-1920-light-expanded",
+      "x": 440,
+      "y": 138.40625,
+      "width": 1040,
+      "height": 699.1875,
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "baseline-1920-dark-expanded",
+      "x": 672,
+      "y": 98.15625,
+      "width": 576,
+      "height": 779.6875,
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "A-1920-dark-expanded",
+      "x": 480,
+      "y": 154.15625,
+      "width": 960,
+      "height": 667.6875,
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "B-1920-dark-expanded",
+      "x": 580,
+      "y": 112.109375,
+      "width": 760,
+      "height": 751.78125,
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "C-1920-dark-expanded",
+      "x": 440,
+      "y": 138.40625,
+      "width": 1040,
+      "height": 699.1875,
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "baseline-1440-long",
+      "x": 432,
+      "y": 34.90625,
+      "width": 576,
+      "height": 726.1875,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "A-1440-long",
+      "x": 240,
+      "y": 76.0625,
+      "width": 960,
+      "height": 643.875,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "B-1440-long",
+      "x": 340,
+      "y": 20,
+      "width": 760,
+      "height": 756,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "C-1440-long",
+      "x": 200,
+      "y": 60.3125,
+      "width": 1040,
+      "height": 675.375,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "A-1440-preview",
+      "x": 240,
+      "y": 35.5625,
+      "width": 960,
+      "height": 724.875,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "A-1440-invalid",
+      "x": 240,
+      "y": 49.3125,
+      "width": 960,
+      "height": 697.375,
+      "viewportWidth": 1440,
+      "viewportHeight": 900,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "A-390",
+      "x": 8,
+      "y": 8,
+      "width": 374,
+      "height": 640,
+      "viewportWidth": 390,
+      "viewportHeight": 844,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "B-390",
+      "x": 8,
+      "y": 8,
+      "width": 374,
+      "height": 640,
+      "viewportWidth": 390,
+      "viewportHeight": 844,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "C-390",
+      "x": 8,
+      "y": 8,
+      "width": 374,
+      "height": 640,
+      "viewportWidth": 390,
+      "viewportHeight": 844,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "A-320",
+      "x": 8,
+      "y": 8,
+      "width": 304,
+      "height": 576,
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "B-320",
+      "x": 8,
+      "y": 8,
+      "width": 304,
+      "height": 576,
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "C-320",
+      "x": 8,
+      "y": 8,
+      "width": 304,
+      "height": 576,
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "horizontalOverflow": false
+    }
+  ]
+}

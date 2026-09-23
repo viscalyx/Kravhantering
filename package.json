@@ -172,7 +172,9 @@
     "db:browse": "node scripts/db-sqlserver-admin.mjs browse-config",
     "check:port": "node ./scripts/check-port.js",
     "kill:port": "bash ./scripts/kill-dev-server.sh",
-    "lint:py": "pyright --project pyrightconfig.json"
+    "lint:py": "pyright --project pyrightconfig.json",
+    "prototype:import": "node scripts/prototype-import-layout.mjs",
+    "prototype:import:capture": "node scripts/prototype-import-capture.mjs"
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",

@@ -1,0 +1,445 @@
+/* THROWAWAY #1360. Independent layouts; uses the application's theme tokens. */
+.switcher button,
+.switcher select {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 5px 8px;
+  font-size: 12px;
+  color: #f8fafc;
+  background: #1e293b;
+  border: 1px solid #64748b;
+  border-radius: 6px;
+}
+.prototype button {
+  cursor: pointer;
+}
+
+.prototype {
+  font-size: 14px;
+  color: var(--color-secondary-900);
+}
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 20px 124px;
+  background: #0006;
+  backdrop-filter: blur(4px);
+}
+.dialog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  background: white;
+  border: 1px solid var(--color-secondary-200);
+  border-radius: 12px;
+  box-shadow: 0 24px 70px #0003;
+}
+.header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--color-secondary-200);
+}
+.header > div {
+  min-width: 0;
+}
+.header h2 {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.eyebrow {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-primary-700);
+  letter-spacing: 0.08em;
+}
+.close {
+  display: grid;
+  place-items: center;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 8px;
+}
+.close:hover {
+  background: var(--color-secondary-100);
+}
+.body {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.destination label,
+.paste label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.destination label span,
+.paste label span {
+  color: var(--color-primary-700);
+}
+.destination select,
+.paste textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  color: inherit;
+  background: white;
+  border: 1px solid var(--color-secondary-300);
+  border-radius: 8px;
+}
+.paste textarea {
+  display: block;
+  height: 188px;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  resize: vertical;
+}
+.drop {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100px;
+  padding: 16px;
+  color: var(--color-secondary-700);
+  overflow-wrap: anywhere;
+  background: var(--color-secondary-50);
+  border: 1px dashed var(--color-secondary-300);
+  border-radius: 8px;
+}
+.drop:hover {
+  background: var(--color-primary-50);
+  border-color: var(--color-primary-500);
+}
+.support {
+  color: var(--color-secondary-600);
+}
+.support h3 {
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-secondary-800);
+}
+.support p {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.downloads button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 32px;
+  font-size: 13px;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.action {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.action > button {
+  align-self: flex-start;
+}
+.blocker {
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+}
+.preview {
+  padding: 12px;
+  color: var(--color-primary-800);
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-300);
+  border-radius: 8px;
+}
+.preview p {
+  margin-top: 4px;
+  font-size: 12px;
+}
+.baseline {
+  max-width: 576px;
+}
+.baseline .header {
+  padding: 12px 20px;
+}
+.baseline .header h2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 18px;
+  white-space: nowrap;
+}
+.baseline .body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+.baseline .downloads button {
+  min-height: 44px;
+  padding: 0 12px;
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid var(--color-secondary-300);
+  border-radius: 8px;
+}
+.baseline .action > button {
+  width: 100%;
+}
+.baseline .paste textarea {
+  height: 208px;
+}
+.A {
+  max-width: 960px;
+}
+.A .body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+}
+.A .main {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px;
+}
+.A .support {
+  padding: 24px 20px;
+  background: var(--color-secondary-50);
+  border-left: 1px solid var(--color-secondary-200);
+}
+.A .downloads {
+  flex-direction: column;
+}
+.B {
+  max-width: 760px;
+}
+.B .body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+}
+.B .main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.B .drop {
+  flex-direction: row;
+  justify-content: flex-start;
+  min-height: 64px;
+}
+.B .paste textarea {
+  height: 164px;
+}
+.B .support {
+  padding-top: 16px;
+  border-top: 1px solid var(--color-secondary-200);
+}
+.B .support h3 {
+  margin-bottom: 6px;
+}
+.C {
+  max-width: 1040px;
+}
+.C .body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+}
+.C .destination {
+  max-width: 620px;
+}
+.inputSplit {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 24px;
+}
+.C .uploadGroup {
+  display: flex;
+  padding-top: 27px;
+}
+.C .drop {
+  height: 100%;
+  min-height: 188px;
+}
+.C .support {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 4px 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-secondary-200);
+}
+.C .support h3 {
+  grid-column: 1 / -1;
+  margin-bottom: 4px;
+}
+.C .support p {
+  margin: 0;
+}
+.C .downloads {
+  flex-direction: column;
+  gap: 0;
+}
+.C .action {
+  padding-top: 16px;
+  border-top: 1px solid var(--color-secondary-200);
+}
+.toolbar {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  z-index: 90;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  padding: 10px 14px;
+  color: #f8fafc;
+  background: #111827;
+  border: 1px solid #64748b;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px #0005;
+  transform: translateX(-50%);
+}
+.switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+.switcher strong {
+  margin-right: 8px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.switcher button[aria-pressed="true"] {
+  background: #4338ca;
+}
+.summary {
+  max-width: 1100px;
+  margin-top: 8px;
+  font-size: 11px;
+  text-align: center;
+}
+.inspector {
+  max-height: 190px;
+  padding-top: 8px;
+  margin-top: 8px;
+  overflow: auto;
+  font-size: 11px;
+  white-space: pre-wrap;
+  border-top: 1px solid #475569;
+}
+.prototype button:disabled {
+  cursor: not-allowed;
+}
+.prototype :is(button, select, textarea):focus-visible {
+  outline: 3px solid var(--color-primary-400);
+  outline-offset: 3px;
+}
+[class~="dark"] .prototype {
+  color: var(--color-secondary-100);
+}
+[class~="dark"] .dialog,
+[class~="dark"] .destination select,
+[class~="dark"] .paste textarea {
+  background: var(--color-secondary-950);
+  border-color: var(--color-secondary-700);
+}
+[class~="dark"] .header,
+[class~="dark"] .support,
+[class~="dark"] .C .action {
+  border-color: var(--color-secondary-700);
+}
+[class~="dark"] .eyebrow,
+[class~="dark"] .destination label span,
+[class~="dark"] .paste label span {
+  color: var(--color-primary-300);
+}
+[class~="dark"] .support,
+[class~="dark"] .drop {
+  color: var(--color-secondary-300);
+}
+[class~="dark"] .support h3 {
+  color: var(--color-secondary-200);
+}
+[class~="dark"] .A .support,
+[class~="dark"] .drop,
+[class~="dark"] .close:hover {
+  background: var(--color-secondary-900);
+}
+[class~="dark"] .drop,
+[class~="dark"] .downloads button {
+  border-color: var(--color-secondary-600);
+}
+[class~="dark"] .blocker {
+  color: #fde68a;
+  background: #451a03;
+  border-color: #92400e;
+}
+[class~="dark"] .preview {
+  color: var(--color-primary-200);
+  background: var(--color-primary-950);
+  border-color: var(--color-primary-700);
+}
+@media (max-width: 700px) {
+  .backdrop {
+    padding: 8px 8px 196px;
+  }
+  .A .body,
+  .inputSplit,
+  .C .support {
+    display: flex;
+    flex-direction: column;
+  }
+  .A .support {
+    border-top: 1px solid var(--color-secondary-200);
+    border-left: 0;
+  }
+  .C .uploadGroup {
+    padding-top: 0;
+  }
+  .C .drop {
+    min-height: 100px;
+  }
+  .header h2 {
+    font-size: 18px;
+  }
+  .summary {
+    max-height: 32px;
+    overflow: auto;
+  }
+}
+
+@media (max-width: 380px) {
+  .backdrop {
+    padding-bottom: 260px;
+  }
+}

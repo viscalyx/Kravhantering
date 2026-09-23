@@ -21,6 +21,7 @@ import {
 } from 'react'
 import { useGeneratedOutputDownload } from '@/components/generated-output/useGeneratedOutputDownload'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import ImportLayoutPrototype from '@/components/ImportLayoutPrototype'
 import LazyAiRequirementGenerator from '@/components/LazyAiRequirementGenerator'
 import LazyRequirementsImportDialog, {
   type InitialRequirementsImport,
@@ -333,6 +334,9 @@ export default function RequirementsClient({
     INITIAL_REQUIREMENT_LIST_RESOURCE_STATE,
   )
   const searchParams = useSearchParams()
+  const isImportPrototype =
+    process.env.NODE_ENV !== 'production' &&
+    searchParams.get('prototype') === 'import'
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [pinnedRow, setPinnedRow] = useState<RequirementRow | null>(null)
   const [aiModalOpen, setAiModalOpen] = useState(false)
@@ -1491,20 +1495,24 @@ export default function RequirementsClient({
         open={aiModalOpen}
         returnFocusTarget={aiReturnFocusTargetRef.current}
       />
-      <LazyRequirementsImportDialog
-        areas={areas}
-        initialImport={aiInitialImport}
-        mode="library"
-        onClose={importSucceeded => {
-          setImportDialogOpen(false)
-          setAiInitialImport(null)
-          if (importSucceeded) {
-            void fetchData()
-          }
-        }}
-        open={importDialogOpen}
-        returnFocusTarget={importReturnFocusTargetRef.current}
-      />
+      {isImportPrototype ? (
+        <ImportLayoutPrototype areas={areas} />
+      ) : (
+        <LazyRequirementsImportDialog
+          areas={areas}
+          initialImport={aiInitialImport}
+          mode="library"
+          onClose={importSucceeded => {
+            setImportDialogOpen(false)
+            setAiInitialImport(null)
+            if (importSucceeded) {
+              void fetchData()
+            }
+          }}
+          open={importDialogOpen}
+          returnFocusTarget={importReturnFocusTargetRef.current}
+        />
+      )}
     </>
   )
 }
