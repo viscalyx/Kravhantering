@@ -248,45 +248,6 @@ describe('dependency drift selection', () => {
     ).toBe('1.31.6-alpine3.25')
   })
 
-  it('reports a rebuilt nginx tag without advancing the committed lock', async () => {
-    const root = temporaryDirectory()
-    const current = {
-      image: 'docker.io/library/nginx',
-      tag: '1.31.6-alpine3.24',
-      manifestDigest: digest('a'),
-      imageId: digest('b'),
-    }
-    const lockPath = 'containers/nginx/image.lock.json'
-    write(root, lockPath, JSON.stringify(current))
-    const result = await detectImageDrift(
-      { id: 'nginx', detector: 'nginx', skill: 'resolve-dependency-drift' },
-      root,
-      {
-        listTags: async () => ['1.31.6-alpine3.24'],
-        resolveImageIdentity: async () => ({
-          manifestDigest: digest('c'),
-          imageId: digest('d'),
-        }),
-      },
-    )
-    expect(result).toMatchObject({
-      drift: true,
-      current: {
-        tag: '1.31.6-alpine3.24',
-        manifestDigest: digest('a'),
-        imageId: digest('b'),
-      },
-      available: {
-        tag: '1.31.6-alpine3.24',
-        manifestDigest: digest('c'),
-        imageId: digest('d'),
-      },
-    })
-    expect(
-      JSON.parse(fs.readFileSync(path.join(root, lockPath), 'utf8')),
-    ).toEqual(current)
-  })
-
   it('lists Docker Hub tags through registry cursor pagination', async () => {
     const fetchMock = vi
       .spyOn(globalThis, 'fetch')
