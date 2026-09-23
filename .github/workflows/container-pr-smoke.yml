@@ -135,7 +135,7 @@ jobs:
       DB_JOB_OCI_ARCHIVE: tmp/candidates/db-job/db-job.oci.tar
       KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.4-0
       NEXT_PUBLIC_SITE_URL: https://kravhantering.test
-      NGINX_IMAGE_REF: docker.io/library/nginx:1.31.6-alpine3.24@sha256:0530961ff0592b58c10f767535cc0abdfccf9e389ff7cc90f87320c1bc7e8506
+      NGINX_IMAGE_REF: docker.io/library/nginx:1.31.6-alpine3.24
       SQLSERVER_IMAGE_REF: mcr.microsoft.com/mssql/server:2025-CU9-ubuntu-24.04
       CI_RUNTIME_EVIDENCE_DIR: tmp/container-pr-artifacts/runtime-diagnostics
       CI_RUNTIME_RELATED_EVIDENCE_DIR: tmp/production-smoke-evidence
