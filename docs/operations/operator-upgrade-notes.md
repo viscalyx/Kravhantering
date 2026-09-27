@@ -13,7 +13,13 @@ changes.
 
 ## Unreleased
 
+### libxml2 security update
 
+Deploy the complete new release images to receive the libxml2 security fixes for
+CVE-2026-74860 and CVE-2026-86140. Restarting existing containers does not apply
+the fixes. For disconnected sites, transfer and verify the new images and
+matching release locks before rollout. Check the release vulnerability evidence
+before deployment.
 
 ## v0.9.0 - 2026-09-23
 

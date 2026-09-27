@@ -80,9 +80,8 @@ disable-model-invocation: true
   development tag reference from that lock. Keep the devcontainer base lock's
   `manifestDigest` bound to the multi-platform index, not one platform
   manifest.
-- For a `ubi-node-runtime` update, remove each `security_update_packages`
-  entry in `containers/node/ubi-compat.sh` whose fixed version the unmodified
-  new base already contains. Keep the hook even when its list becomes empty.
+- For a `ubi-node-runtime` update, prune the shared helper's security package
+  list as `containers/node/README.md#runtime-security-packages` describes.
 - Never approve all lifecycle scripts or update an image lock tag without its
   required immutable identities.
 - Do not leave research artifacts in the repository.

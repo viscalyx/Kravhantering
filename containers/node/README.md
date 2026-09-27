@@ -55,8 +55,8 @@ upgrade.
 | `curl`, `libcurl-minimal` | `CVE-2026-8458` | `8.12.1-4.el10_2.6` | [RHSA-2026:69125](https://access.redhat.com/errata/RHSA-2026:69125) |
 | `libxml2` | `CVE-2026-74860`, `CVE-2026-86140` | `2.12.5-10.el10_2.4` | [RHSA-2026:71586](https://access.redhat.com/errata/RHSA-2026:71586) |
 
-Add a package to the list, with its CVEs and advisory in the helper comment and
-this table, when a fixable container finding affects an inherited base RPM and
+This table is the record for every list entry. Add a package to the list and
+this table when a fixable container finding affects an inherited base RPM and
 the fixed version is already in UBI 10 BaseOS. Prefer this over a
 vulnerability exception. Remove an entry when the unmodified pinned runtime
 base contains the fixed version, for example:

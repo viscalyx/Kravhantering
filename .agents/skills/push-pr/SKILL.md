@@ -1,6 +1,10 @@
 ---
 name: push-pr
-description: Push the current branch to `my` and open a pull request against `origin`.
+description: >-
+  Push the current committed branch to `my` and open a pull request against
+  `origin` with the repository template and an operator upgrade impact
+  decision. Use when asked to push a branch, open or create a pull request, or
+  publish committed work for review.
 argument-hint: "[PR title or related issue]"
 ---
 

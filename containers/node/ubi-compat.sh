@@ -6,11 +6,9 @@ set -eu
 [ "$(id -u)" = 0 ]
 [ "$(node -p 'process.versions.node.split(".")[0]')" = 24 ]
 
-# Public RPM fixes can precede refreshed base images. List only inherited
-# packages whose vendor fix is in UBI 10 BaseOS but not in the pinned base;
-# leave workload/toolchain RPMs alone. Keep this hook when the list is empty.
-# - curl, libcurl-minimal: CVE-2026-8458 (RHSA-2026:69125)
-# - libxml2: CVE-2026-74860, CVE-2026-86140 (RHSA-2026:71586)
+# Public RPM fixes can precede refreshed base images. Keep this hook when the
+# list is empty; README.md#runtime-security-packages owns the entry rules and
+# records each entry's vulnerabilities and advisory.
 security_update_packages='curl libcurl-minimal libxml2'
 if [ -n "$security_update_packages" ]; then
   # shellcheck disable=SC2086 # Split the package list into arguments.
