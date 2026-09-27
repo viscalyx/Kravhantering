@@ -202,7 +202,7 @@ reports changed digests. Every selected reference includes a SHA-256 digest;
 publishes an index, the selected digest identifies that index.
 
 Use the
-[resolve-dependency-drift skill](../../.github/skills/resolve-dependency-drift/SKILL.md)
+[resolve-dependency-drift skill](../../.agents/skills/resolve-dependency-drift/SKILL.md)
 for reviewed updates. Verify the exact replacement input through existing
 image and release checks, then deliver a new immutable project release through
 the normal publishing path. Installed releases do not follow moving base tags.

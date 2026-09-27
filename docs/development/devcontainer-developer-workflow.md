@@ -80,6 +80,21 @@ startup hooks. If the daemon cannot start, the startup command fails before
 database setup. Check the Dev Containers startup log and retry the command
 inside the container after correcting the cause.
 
+## Claude Code
+
+Creation and rebuilding also install the latest Claude Code release in
+`~/.local/bin` for the `vscode` user. If you use it, run `claude` in the
+container and sign in. Its sign-in, settings, and history stay in the
+container's `/home/vscode/.claude`, including its `.claude.json`, because both
+profiles set `CLAUDE_CONFIG_DIR` to that directory. The `claude-state` named
+volume keeps it across rebuilds. The host's Claude Code files are not shared.
+
+Shared project settings, including the status line, live in
+`.claude/settings.json` and `.claude/statusline.sh`. Repository skills live in
+`.agents/skills`; run the `sync-ai-skills` and `sync-ai-instructions` skills
+to copy them and `.github/instructions` into the ignored `.claude/skills` and
+`.claude/rules` folders that Claude Code reads.
+
 ## Local HTTPS Development
 
 The devcontainer includes `mkcert`. Use it inside the container to create the

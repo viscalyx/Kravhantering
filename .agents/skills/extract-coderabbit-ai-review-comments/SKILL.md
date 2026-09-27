@@ -24,13 +24,13 @@ Extract only the fenced code-block bodies that appear after each `Prompt for AI 
 Use `scripts/extract_prompt_blocks.sh` for deterministic extraction:
 
 ```bash
-bash .github/skills/extract-coderabbit-ai-review-comments/scripts/extract_prompt_blocks.sh <input-file|-> <output-file>
+bash .agents/skills/extract-coderabbit-ai-review-comments/scripts/extract_prompt_blocks.sh <input-file|-> <output-file>
 ```
 
 Example:
 
 ```bash
-bash .github/skills/extract-coderabbit-ai-review-comments/scripts/extract_prompt_blocks.sh \
+bash .agents/skills/extract-coderabbit-ai-review-comments/scripts/extract_prompt_blocks.sh \
   "app/[locale]/__tests__/Actionable-comments-posted.txt" \
   "app/[locale]/__tests__/Prompt-for-AI-Agents-findings.md"
 ```
@@ -38,7 +38,7 @@ bash .github/skills/extract-coderabbit-ai-review-comments/scripts/extract_prompt
 Use stdin when content is provided directly in the prompt:
 
 ```bash
-cat prompt-content.txt | bash .github/skills/extract-coderabbit-ai-review-comments/scripts/extract_prompt_blocks.sh - "output.md"
+cat prompt-content.txt | bash .agents/skills/extract-coderabbit-ai-review-comments/scripts/extract_prompt_blocks.sh - "output.md"
 ```
 
 ## Validation

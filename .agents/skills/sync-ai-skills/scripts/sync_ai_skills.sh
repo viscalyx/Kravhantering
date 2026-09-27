@@ -5,9 +5,8 @@ usage() {
   cat <<'USAGE'
 Usage: sync_ai_skills.sh [repo-root]
 
-Copy skill folders from .github/skills/ into:
-- ${CODEX_HOME:-$HOME/.codex}/skills when Codex home exists
-- .agent/skills inside the repository for Google Antigravity
+Copy skill folders from .agents/skills/ into .claude/skills/ inside the
+repository for Claude Code.
 USAGE
 }
 
@@ -23,9 +22,8 @@ fi
 
 repo_root="${1:-.}"
 repo_root="$(cd "$repo_root" && pwd -P)"
-source_dir="$repo_root/.github/skills"
-codex_root="${CODEX_HOME:-$HOME/.codex}"
-antigravity_target="$repo_root/.agent/skills"
+source_dir="$repo_root/.agents/skills"
+claude_target="$repo_root/.claude/skills"
 
 if [[ ! -d "$source_dir" ]]; then
   printf 'Source skills directory not found: %s\n' "$source_dir" >&2
@@ -128,21 +126,6 @@ copy_skills_to_target() {
   done
 }
 
-if [[ -d "$codex_root" ]]; then
-  codex_target="$codex_root/skills"
-  if ! mkdir -p "$codex_target" 2>/dev/null; then
-    printf 'Skipping Codex skills: Codex skills target could not be created: %s\n' \
-      "$codex_target"
-  elif [[ ! -w "$codex_target" ]]; then
-    printf 'Skipping Codex skills: Codex skills target is not writable: %s\n' \
-      "$codex_target"
-  else
-    copy_skills_to_target "$codex_target" "Codex skills"
-  fi
-else
-  printf 'Skipping Codex skills: Codex home does not exist: %s\n' "$codex_root"
-fi
-
-copy_skills_to_target "$antigravity_target" "Google Antigravity skills"
+copy_skills_to_target "$claude_target" "Claude Code skills"
 
 printf 'Synced %d skill(s) from %s\n' "${#skill_dirs[@]}" "$source_dir"

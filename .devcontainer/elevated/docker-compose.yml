@@ -45,6 +45,9 @@ services:
         source: ${HOME}/.codex/auth.json
         target: /home/vscode/.codex/auth.json
 
+      # Persist Claude Code sign-in, settings, and history across rebuilds
+      - claude-state:/home/vscode/.claude
+
       # Keep runtime temp wrappers container-local
       - codex-tmp:/home/vscode/.codex/tmp
       - hsa-mtls-app:/run/kravhantering/hsa-mtls:ro
@@ -63,6 +66,8 @@ services:
       HSA_PERSON_LOOKUP_CLIENT_CERT_PATH: /run/kravhantering/hsa-mtls/app-client.crt
       HSA_PERSON_LOOKUP_CLIENT_KEY_PATH: /run/kravhantering/hsa-mtls/app-client.key
       HSA_PERSON_LOOKUP_TLS_SERVER_NAME: kong
+      # Keep Claude Code's global .claude.json inside the persisted volume
+      CLAUDE_CONFIG_DIR: /home/vscode/.claude
       NODE_ENV: ${NODE_ENV:-development}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-1}
       DOTNET_CLI_TELEMETRY_OPTOUT: ${DOTNET_CLI_TELEMETRY_OPTOUT:-1}
@@ -280,6 +285,7 @@ volumes:
   sqlserver-elevated-devcontainer-data:
   codex-tmp:
   codex-state:
+  claude-state:
   hsa-mtls-state:
   hsa-mtls-app:
   hsa-mtls-kong:

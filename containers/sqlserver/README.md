@@ -59,7 +59,7 @@ weekly from `main` and can also be started manually with `workflow_dispatch`.
 The detector opens or refreshes one dependency-drift issue per
 SQL Server product-year lane.
 Resolve the issue with the
-[resolve-dependency-drift skill](../../.github/skills/resolve-dependency-drift/SKILL.md).
+[resolve-dependency-drift skill](../../.agents/skills/resolve-dependency-drift/SKILL.md).
 Update `tag`, `manifestDigest` and `imageId` together, and keep
 static SQL Server Compose references aligned with the lock.
 Let the normal pull request workflows, including Container PR Smoke, validate

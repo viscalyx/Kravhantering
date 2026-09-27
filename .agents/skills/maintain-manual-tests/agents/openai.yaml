@@ -1,0 +1,6 @@
+interface:
+  display_name: "Maintain Manual Tests"
+  short_description: "Keep manual cases and integration tests synchronized"
+  default_prompt: "Use $maintain-manual-tests to update manual cases, their Playwright integration test mappings, and the area index for the requested changes."
+policy:
+  allow_implicit_invocation: true

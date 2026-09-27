@@ -23,7 +23,7 @@ evidensbaserad markdownrapport.
 3. Normalisera kravraderna med scriptet när underlaget är en fil:
 
 ```bash
-python3 .github/skills/granska-informationssakerhetskrav/scripts/extract_requirements.py path/to/kravunderlag.csv --format markdown
+python3 .agents/skills/granska-informationssakerhetskrav/scripts/extract_requirements.py path/to/kravunderlag.csv --format markdown
 ```
 
 4. För inklistrat kravmaterial, strukturera kravraderna direkt utan scriptet.

@@ -12,7 +12,7 @@
     "!.github/copilot-instructions.md",
     "!.github/instructions/**",
     "!.github/prompts/**",
-    "!.github/skills/**",
+    "!.agents/skills/**",
     "!.github/ISSUE_TEMPLATE/**",
     "!.github/pull_request_template.md",
     "!.next/**",

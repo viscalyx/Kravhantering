@@ -1,6 +1,0 @@
-interface:
-  display_name: "Sync AI Instructions"
-  short_description: "Sync GitHub instructions to agent rules"
-  default_prompt: "Use $sync-ai-instructions to run the sync script and copy .github instructions into .agents/rules."
-policy:
-  allow_implicit_invocation: false

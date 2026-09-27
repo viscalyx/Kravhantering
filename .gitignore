@@ -261,7 +261,11 @@ __pycache__/
 
 # Test artifacts
 /temp-test-content/
-.claude
+
+# Claude Code: commit only shared project settings
+.claude/*
+!.claude/settings.json
+!.claude/statusline.sh
 
 # Sandbox runtime artifacts (bwrap copies these into workspace root temporarily)
 .bash_profile
@@ -281,8 +285,9 @@ __pycache__/
 # Locally provisioned AI provider-secret root keyring
 /.local/ai-provider-secret-keyring.json
 
-.agents
-.agent
+# AI agent runtime files: commit only shared skills
+.agents/*
+!.agents/skills/
 
 devcontainer-lock.json
 

@@ -301,6 +301,39 @@ describe('container image contract', () => {
     }
   })
 
+  it('installs Claude Code and keeps its state across devcontainer rebuilds', () => {
+    for (const profile of ['', 'elevated/']) {
+      const devcontainer = parseJsonc(
+        readWorkspaceFile(`.devcontainer/${profile}devcontainer.json`),
+      ) as { postCreateCommand: string }
+      const compose = parseYaml(
+        readWorkspaceFile(`.devcontainer/${profile}docker-compose.yml`),
+      ) as {
+        services: {
+          app: {
+            environment: Record<string, string>
+            volumes: unknown[]
+          }
+        }
+        volumes: Record<string, unknown>
+      }
+
+      expect(devcontainer.postCreateCommand).toContain(
+        'sudo chown -R vscode:vscode /home/vscode/.claude',
+      )
+      expect(devcontainer.postCreateCommand).toContain(
+        'bash .devcontainer/install-claude-code.sh',
+      )
+      expect(compose.services.app.volumes).toContain(
+        'claude-state:/home/vscode/.claude',
+      )
+      expect(compose.volumes).toHaveProperty('claude-state')
+      expect(compose.services.app.environment.CLAUDE_CONFIG_DIR).toBe(
+        '/home/vscode/.claude',
+      )
+    }
+  })
+
   it('installs Podman tooling for the local container stack', () => {
     const dockerfile = readWorkspaceFile('.devcontainer/Dockerfile')
     const defaultCompose = readWorkspaceFile('.devcontainer/docker-compose.yml')

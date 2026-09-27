@@ -1,0 +1,6 @@
+interface:
+  display_name: "Sync AI Instructions"
+  short_description: "Sync GitHub instructions to Claude Code rules"
+  default_prompt: "Use $sync-ai-instructions to run the sync script and convert .github instructions into .claude/rules."
+policy:
+  allow_implicit_invocation: false

@@ -4,7 +4,7 @@ For terminology, read [./CONTEXT-MAP.md](./CONTEXT-MAP.md) and load only the
 glossary that applies to the work. Load both glossaries when work crosses their
 boundary.
 
-Follow the rules in `.github/copilot-instructions.md` and the instructions in `.github/instructions/*.md`
+Follow the rules in @.github/copilot-instructions.md and the instructions in `.github/instructions/*.md`
 
 - Use quoted paths to avoid issues with brackets, e.g `app/[locale]/admin/audit-log/page.tsx`.
 - For visible UI element, label, or layout surface changes, see `.github/instructions/developer-mode.instructions.md`.

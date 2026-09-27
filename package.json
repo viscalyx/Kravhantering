@@ -130,7 +130,7 @@
     "test:integration:ui": "playwright test --ui-host 0.0.0.0 --ui",
     "lint:md": "markdownlint-cli2 \"**/*.md\"",
     "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\"",
-    "lint:links": "lychee --config .lychee.toml . .github",
+    "lint:links": "lychee --config .lychee.toml . .agents .github",
     "test:integration:report:dev": "playwright show-report --host 0.0.0.0 playwright-report-dev",
     "test:integration:report:prodlike": "playwright show-report --host 0.0.0.0 playwright-report-prodlike",
     "test:release-smoke:report": "playwright show-report --host 0.0.0.0 playwright-report-release-smoke",
