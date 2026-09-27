@@ -41,13 +41,17 @@ blockers, and the current frontier is explicit.
 For each frontier sub-issue:
 
 1. Assign it to the authenticated tracker user.
-2. Start one new background agent in its own worktree under the environment's
-   designated temporary worktree root outside the primary checkout, based on
-   the current integration `HEAD`.
-3. Give the agent both the **Spec** and sub-issue references. Require it to call the
-   Skill tool with "implement", commit its work, and return its branch, commit range,
-   summary, and verification results. Keep tracker comments and issue closure with the
-   orchestrator.
+2. Create its worktree from the current integration `HEAD` under the
+   environment's designated temporary worktree root outside the primary
+   checkout: `git worktree add <root>/<slug> -b <branch> HEAD`. Create it
+   yourself; built-in agent worktree isolation can branch from the default
+   branch and nest the worktree inside the primary checkout.
+3. Start one new background agent with that worktree's absolute path as its
+   working copy, and give it both the **Spec** and sub-issue references.
+   Require it to read, edit, and run commands inside that path, call the Skill
+   tool with "implement", commit its work, and return its branch, commit
+   range, summary, and verification results. Keep tracker comments and issue
+   closure with the orchestrator.
 
 Run independent frontier work in parallel up to the available agent capacity;
 queue the remainder. Answer agent questions from the **Spec**, issue discussion,
@@ -84,11 +88,10 @@ passed verification.
 - Run the repository's full required checks on the integration branch.
 - Call the Skill tool with "code-review" with the recorded starting commit as the fixed point
   and the **Spec** as the spec source.
-- For each actionable finding, dispatch a repair agent from the current
-  integration `HEAD` in a fresh worktree under the environment's designated
-  temporary worktree root outside the primary checkout. Give it the finding and
-  relevant issue context, require call the Skill tool with "implement", then
-  integrate and verify its commit.
+- For each actionable finding, create a fresh worktree from the current
+  integration `HEAD` and dispatch a repair agent into it, as in step 3. Give
+  it the finding and relevant issue context, require it to call the Skill tool
+  with "implement", then integrate and verify its commit.
 - Repeat the full checks and call the Skill tool with "code-review" after each
   repair wave until both the Standards and Spec axes have no unresolved findings.
 - Count a finding as resolved only when it is fixed or shown not to violate the

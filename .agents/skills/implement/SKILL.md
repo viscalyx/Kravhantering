@@ -1,7 +1,10 @@
 ---
 name: implement
-description: "Implement a piece of work based on a spec or set of tickets."
-disable-model-invocation: true
+description: >-
+  Implement a spec or ticket on the current branch: test-first where possible,
+  checks, code review, and a commit. Use when asked to implement a spec,
+  issue, or ticket, or when an orchestrating skill such as `implement-batch`
+  delegates one.
 ---
 
 Implement the work described by the user in the spec or tickets.
