@@ -108,13 +108,22 @@ test('AUTH-13: native CSP violations stay blocked and reach privacy-safe securit
               await page.evaluate(() => '__cspSensitiveProbe' in window),
             ).toBe(false)
             if (enabled) {
+              // Page-load reports for other directives can arrive first, so
+              // wait for the injected script's report instead of any new event.
               await expect
-                .poll(async () => (await cspEvents()).length)
-                .toBeGreaterThan(before)
+                .poll(async () => (await cspEvents()).slice(before))
+                .toEqual(
+                  expect.arrayContaining([
+                    expect.objectContaining({
+                      detail: expect.objectContaining({
+                        directive: 'script-src-elem',
+                      }),
+                    }),
+                  ]),
+                )
             }
             const events = (await cspEvents()).slice(before)
             if (enabled) {
-              expect(events.length).toBeGreaterThan(0)
               expect(events).toEqual(
                 expect.arrayContaining([
                   expect.objectContaining({
