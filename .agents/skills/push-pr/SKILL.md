@@ -2,7 +2,6 @@
 name: push-pr
 description: Push the current branch to `my` and open a pull request against `origin`.
 argument-hint: "[PR title or related issue]"
-disable-model-invocation: true
 ---
 
 # Push PR
