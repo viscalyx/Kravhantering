@@ -165,6 +165,8 @@ export async function handleRequirementsMcpRequest(
   const { service } = createRequirementsRuntime(db)
   const server = createKravhanteringMcpServer(service, request, mcpSettings)
   const transport = new WebStandardStreamableHTTPServerTransport({
+    // The SDK applies its own 4 MiB default; keep the configured limit authoritative.
+    maxRequestBodySize: mcpSettings.mcpMaxRequestBytes,
     sessionIdGenerator: undefined,
   })
 

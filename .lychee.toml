@@ -3,7 +3,8 @@
 offline = true
 include_fragments = "anchor-only"
 extensions = ["md"]
-exclude = ['\.txt(?:#.*)?$']
+# Template placeholders such as `{{filnamn}}` are filled in when a template is used.
+exclude = ['\.txt(?:#.*)?$', '%7B%7B']
 exclude_path = [
   "(^|/)node_modules(/|$)",
   "(^|/)(?:\\.next|\\.open-next|\\.wrangler|coverage|build|dist|out|bundled|playwright-report|playwright-report-dev|playwright-report-preview)(/|$)",

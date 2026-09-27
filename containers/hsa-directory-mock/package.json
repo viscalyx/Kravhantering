@@ -2,13 +2,13 @@
   "name": "@kravhantering/hsa-directory-mock",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "npm@12.0.2",
+  "packageManager": "npm@12.1.0",
   "type": "module",
   "description": "SOAP GetHsaPerson mock for the HSA directory",
   "devEngines": {
     "packageManager": {
       "name": "npm",
-      "version": "12.0.2",
+      "version": "12.1.0",
       "onFail": "error"
     }
   },

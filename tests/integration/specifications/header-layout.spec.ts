@@ -7,20 +7,16 @@ import { expectApiResponseOk } from '../api-response-assertions'
 for (const locale of ['sv', 'en'] as const) {
   const t = (locale === 'sv' ? sv : en).specification
   const common = (locale === 'sv' ? sv : en).common
-  const title =
-    (locale === 'sv'
+  const titleSegment =
+    locale === 'sv'
       ? 'Kravunderlag för samordnade digitala tjänster '
       : 'Requirements specification for coordinated digital services '
-    )
-      .repeat(4)
-      .slice(0, 149) + '…'
-  const description =
-    (locale === 'sv'
+  const descriptionSegment =
+    locale === 'sv'
       ? 'Beskrivningen förklarar verksamhetens behov och de resultat som ska följas upp. '
       : 'The description explains business needs and the outcomes that will be followed up. '
-    )
-      .repeat(5)
-      .slice(0, 299) + '…'
+  const title = `${titleSegment.repeat(4).slice(0, 149)}…`
+  const description = `${descriptionSegment.repeat(5).slice(0, 299)}…`
 
   test(`SPEC-02/SPEC-03: validates title and description when creating and editing in ${locale}`, async ({
     page,

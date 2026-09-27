@@ -681,9 +681,12 @@ FROM \${BASE_IMAGE}
   it('catches npm version drift and missing fail-closed policy', () => {
     const root = fixture()
     const npmVersion = expectedNpmVersion(root)
+    const driftedNpmVersion = npmVersion.replace(/\d+$/u, patch =>
+      String(Number(patch) + 1),
+    )
     const manifestPath = 'containers/hsa-directory-mock/package.json'
     const manifest = JSON.parse(fs.readFileSync(path.join(root, manifestPath)))
-    manifest.packageManager = 'npm@12.1.0'
+    manifest.packageManager = `npm@${driftedNpmVersion}`
     write(root, manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
     write(
       root,

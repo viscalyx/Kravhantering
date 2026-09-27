@@ -235,7 +235,7 @@ describe('SpecificationFormModal', () => {
             ? '/api/requirements-specifications'
             : '/api/requirements-specifications/1',
           expect.objectContaining({
-            body: expect.stringContaining('"name":"' + 'x'.repeat(150) + '"'),
+            body: expect.stringContaining(`"name":"${'x'.repeat(150)}"`),
           }),
         ),
       )
