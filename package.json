@@ -217,7 +217,7 @@
     "ajv": "^8.20.0",
     "autoprefixer": "^10.6.0",
     "cross-env": "^10.1.0",
-    "cspell": "^10.3.0",
+    "cspell": "^10.3.3",
     "dotenv-cli": "^11.0.0",
     "esbuild": "0.28.2",
     "fast-check": "^4.9.0",
