@@ -43,18 +43,32 @@ those build-time downloads.
 
 ## Runtime security packages
 
-The shared helper updates the inherited `curl` and `libcurl-minimal` packages
-from the public UBI 10 BaseOS repository and removes package-manager metadata.
+Red Hat can publish a fixed RPM in the public UBI 10 BaseOS repository before
+it publishes a refreshed base image. The shared helper's
+`security_update_packages` list closes that gap for inherited base packages:
+the helper upgrades only the listed packages from that repository and removes
+package-manager metadata. The hook is permanent; an empty list skips the
+upgrade.
+
+| Packages | Vulnerabilities | Fixed version | Advisory |
+| --- | --- | --- | --- |
+| `curl`, `libcurl-minimal` | `CVE-2026-8458` | `8.12.1-4.el10_2.6` | [RHSA-2026:69125](https://access.redhat.com/errata/RHSA-2026:69125) |
+| `libxml2` | `CVE-2026-74860`, `CVE-2026-86140` | `2.12.5-10.el10_2.4` | [RHSA-2026:71586](https://access.redhat.com/errata/RHSA-2026:71586) |
+
+Add a package to the list, with its CVEs and advisory in the helper comment and
+this table, when a fixable container finding affects an inherited base RPM and
+the fixed version is already in UBI 10 BaseOS. Prefer this over a
+vulnerability exception. Remove an entry when the unmodified pinned runtime
+base contains the fixed version, for example:
+
+```sh
+docker run --rm --platform linux/amd64 --entrypoint rpm \
+  "<pinned-runtime-reference>" -q libxml2
+```
+
 These updates apply during an uncached helper build; cached layers retain the
 packages installed when they were built. Rebuild without cache when checking
-for newly published RPM fixes.
-
-This covers `CVE-2026-8458`: the selected base contains
-`8.12.1-4.el10_2.4`, while the repository provides the fixed
-`8.12.1-4.el10_2.6` packages from
-[Red Hat advisory RHSA-2026:69125](https://access.redhat.com/errata/RHSA-2026:69125).
-The update targets these two packages because RPM security fixes can arrive
-before a refreshed base image. Workload packages and the provisioner's locked
+for newly published RPM fixes. Workload packages and the provisioner's locked
 toolchain remain the responsibility of their consuming Dockerfiles.
 
 The selected minimal base includes `openssl-libs-3.5.8-1.el10_2`, which fixes
