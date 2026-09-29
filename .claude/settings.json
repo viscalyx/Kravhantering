@@ -3,6 +3,18 @@
   "disableBundledSkills": true,
   "autoMemoryEnabled": false,
   "outputStyle": "Concise",
+  "permissions": {
+    "additionalDirectories": [
+      "/workspace",
+      "/mnt/krav-azure-dev-data/.worktrees"
+    ],
+    "allow": ["Bash", "Edit", "WebFetch"],
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(gh repo delete *)"
+    ]
+  },
   "statusLine": {
     "type": "command",
     "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/statusline.sh\""
