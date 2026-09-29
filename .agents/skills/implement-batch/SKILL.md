@@ -51,18 +51,23 @@ blockers, and the current frontier is explicit.
 For each frontier sub-issue:
 
 1. Assign it to the authenticated tracker user.
-2. Create its worktree yourself from the current integration `HEAD` under the
-   environment's designated worktree root outside the primary checkout:
-   `git worktree add <root>/<slug> -b <branch> HEAD`. Built-in agent worktree
-   isolation can branch from the default branch and nest the worktree inside
-   the primary checkout. Stay out of the new worktree; it belongs to the agent.
-3. Start one new background agent with that worktree's absolute path as its
-   working copy, and give it both the **Spec** and sub-issue references.
-   Require it to read, edit, and run commands inside that path, call the Skill
-   tool with "implement", commit its work, and return its branch, commit
-   range, summary, and verification results. The agent may edit inside the
-   linked worktree without entering it. Keep tracker comments and issue
-   closure with the orchestrator.
+2. Start one new background agent with worktree isolation
+   (`isolation: "worktree"`), and give it both the **Spec** and sub-issue
+   references. The project's `WorktreeCreate` hook
+   (`.claude/worktree-create.sh`) creates that worktree under the designated
+   worktree root from the primary checkout's current `HEAD`, so the agent
+   starts from everything integrated so far. Stay out of the new worktree; it
+   belongs to the agent.
+3. Require the agent to call the Skill tool with "implement", commit its work
+   in its worktree, and return its commit range, summary, and verification
+   results. Keep tracker comments and issue closure with the orchestrator.
+4. Take the worktree path from the completion notification and the branch
+   from `git -C <worktree> branch --show-current`.
+
+Without worktree isolation backed by that hook, create the worktree yourself
+first (`git worktree add <root>/<slug> -b <branch> HEAD`) and give the agent
+its absolute path as its working copy; the agent may edit inside the linked
+worktree without entering it.
 
 Run independent frontier work in parallel up to the available agent capacity;
 queue the remainder. Answer agent questions from the **Spec**, issue discussion,
@@ -90,8 +95,8 @@ For each completed sub-issue:
    with the summary, verification results, and integrated commit reference.
 5. Close the sub-issue.
 6. Remove its worktree and delete its branch:
-   `git worktree remove <worktree>` and `git branch -D <branch>`, so agent
-   worktrees do not pile up under the worktree root.
+   `git worktree remove <worktree>` and `git branch -D <branch>`. Claude Code
+   leaves hook-created worktrees in place.
 
 Refresh the tracker relationships after each wave, then dispatch the newly
 unblocked frontier. If open sub-issues remain but the frontier is empty, report

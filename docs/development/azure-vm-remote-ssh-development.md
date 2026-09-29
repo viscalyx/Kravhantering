@@ -788,6 +788,8 @@ git -C /workspace worktree add -b <branch> \
 Use normal `git -C /workspace worktree list`, `remove`, and `prune` commands.
 Git keeps linked-worktree administrative metadata in `/workspace/.git`; only
 the linked checkout belongs under the external worktree root.
+Claude Code creates its worktrees there automatically; see
+[Claude Code](devcontainer-developer-workflow.md#claude-code).
 
 Setup preserves correctly placed external worktrees on reruns. Repository-local
 worktree storage stops setup without moving or deleting content and requires a

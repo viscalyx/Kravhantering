@@ -266,6 +266,7 @@ __pycache__/
 .claude/*
 !.claude/settings.json
 !.claude/statusline.sh
+!.claude/worktree-create.sh
 
 # Sandbox runtime artifacts (bwrap copies these into workspace root temporarily)
 .bash_profile

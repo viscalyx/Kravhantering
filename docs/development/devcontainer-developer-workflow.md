@@ -95,6 +95,14 @@ Shared project settings, including the status line, live in
 to copy them and `.github/instructions` into the ignored `.claude/skills` and
 `.claude/rules` folders that Claude Code reads.
 
+The project's `WorktreeCreate` hook, `.claude/worktree-create.sh`, places every
+worktree Claude Code creates (subagent isolation, `claude --worktree`, and
+background sessions) outside the checkout: under
+`/mnt/krav-azure-dev-data/.worktrees` when that directory exists, otherwise
+under `${TMPDIR:-/tmp}/kravhantering-worktrees`. Each worktree gets the branch
+`wt/<name>` from the current `HEAD`. Claude Code leaves these worktrees in
+place; remove them with `git worktree remove <path>` and delete the branch.
+
 ## Local HTTPS Development
 
 The devcontainer includes `mkcert`. Use it inside the container to create the
