@@ -23,9 +23,9 @@ by its absolute path (`git -C <worktree> ...`).
 - Stop on a detached `HEAD` or a dirty checkout; ask the user how to proceed.
 - Create and switch to the local integration branch from the current `HEAD`:
   `git switch -c f/issue-<spec-number>`. If that branch already exists, ask the
-  user whether to resume on it.
-- Record the starting commit as the fixed point for the final review. On
-  resume, use the commit the integration branch was created from.
+  user whether to resume on it; on resume, switch to it and ask the user for
+  its starting commit.
+- Record the starting commit as the fixed point for the final review.
 - Keep the integration branch local unless the user asks to push it.
 
 Completion criterion: the primary checkout is on a clean integration branch and
@@ -55,7 +55,7 @@ For each frontier sub-issue:
    environment's designated worktree root outside the primary checkout:
    `git worktree add <root>/<slug> -b <branch> HEAD`. Built-in agent worktree
    isolation can branch from the default branch and nest the worktree inside
-   the primary checkout. The orchestrator does not enter the new worktree.
+   the primary checkout. Stay out of the new worktree; it belongs to the agent.
 3. Start one new background agent with that worktree's absolute path as its
    working copy, and give it both the **Spec** and sub-issue references.
    Require it to read, edit, and run commands inside that path, call the Skill
@@ -78,19 +78,20 @@ stays open.
 For each completed sub-issue:
 
 1. Inspect its commits and diff against the sub-issue acceptance criteria.
-2. Cherry-pick its returned commits onto `f/issue-<spec-number>` in the
+2. Cherry-pick its returned commits onto the integration branch in the
    primary checkout, in dependency order. Resolve conflicts in place without
    discarding accepted work already integrated. If a conflict cannot be
    resolved in place, run `git cherry-pick --abort`, have the sub-issue's
-   agent rebase its branch onto the current integration `HEAD` in its
-   worktree, then cherry-pick the rebased commits.
+   agent (continued, or a new agent in the same worktree) rebase its branch
+   onto the current integration `HEAD` in its worktree and return the new
+   commit range, then cherry-pick that range.
 3. Run the checks affected by the combined result.
 4. After the work and checks pass, comment on both the sub-issue and the **Spec**
    with the summary, verification results, and integrated commit reference.
 5. Close the sub-issue.
 6. Remove its worktree and delete its branch:
-   `git worktree remove <worktree>` and `git branch -D <branch>`. Worktrees
-   accumulate on the separate disk.
+   `git worktree remove <worktree>` and `git branch -D <branch>`, so agent
+   worktrees do not pile up under the worktree root.
 
 Refresh the tracker relationships after each wave, then dispatch the newly
 unblocked frontier. If open sub-issues remain but the frontier is empty, report
@@ -105,11 +106,9 @@ passed verification, and no closed sub-issue keeps a worktree or branch.
 - Run the repository's full required checks on the integration branch.
 - Call the Skill tool with "code-review" with the recorded starting commit as
   the fixed point and the **Spec** as the spec source.
-- For each actionable finding, dispatch a repair agent under the worktree
-  rules of steps 3 and 4: create a fresh worktree from the current
-  integration `HEAD`, give the agent the finding and relevant issue context,
-  and require it to call the Skill tool with "implement". Cherry-pick and
-  verify its commit, then remove its worktree and branch.
+- For each actionable finding, dispatch a repair agent into a fresh worktree
+  as in step 3, with the finding and relevant issue context instead of a
+  sub-issue. Integrate, verify, and clean up its work as in step 4.
 - Repeat the full checks and call the Skill tool with "code-review" after each
   repair wave until both the Standards and Spec axes have no unresolved findings.
 - Count a finding as resolved only when it is fixed or shown not to violate the
@@ -118,4 +117,5 @@ passed verification, and no closed sub-issue keeps a worktree or branch.
   sub-issue.
 
 Completion criterion: the full checks pass, both review axes have no unresolved
-findings, all sub-issues remain closed, and the **Spec** remains open.
+findings, no repair worktree or branch remains, all sub-issues remain closed,
+and the **Spec** remains open.
