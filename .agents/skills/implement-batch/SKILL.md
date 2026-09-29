@@ -64,11 +64,6 @@ For each frontier sub-issue:
 4. Take the worktree path from the completion notification and the branch
    from `git -C <worktree> branch --show-current`.
 
-Without worktree isolation backed by that hook, create the worktree yourself
-first (`git worktree add <root>/<slug> -b <branch> HEAD`) and give the agent
-its absolute path as its working copy; the agent may edit inside the linked
-worktree without entering it.
-
 Run independent frontier work in parallel up to the available agent capacity;
 queue the remainder. Answer agent questions from the **Spec**, issue discussion,
 and repository. Bring questions requiring a product or scope decision to the
@@ -86,10 +81,10 @@ For each completed sub-issue:
 2. Cherry-pick its returned commits onto the integration branch in the
    primary checkout, in dependency order. Resolve conflicts in place without
    discarding accepted work already integrated. If a conflict cannot be
-   resolved in place, run `git cherry-pick --abort`, have the sub-issue's
-   agent (continued, or a new agent in the same worktree) rebase its branch
-   onto the current integration `HEAD` in its worktree and return the new
-   commit range, then cherry-pick that range.
+   resolved in place, run `git cherry-pick --abort`, continue the sub-issue's
+   agent and have it rebase its branch onto the current integration `HEAD`
+   in its worktree and return the new commit range, then cherry-pick that
+   range.
 3. Run the checks affected by the combined result.
 4. After the work and checks pass, comment on both the sub-issue and the **Spec**
    with the summary, verification results, and integrated commit reference.
