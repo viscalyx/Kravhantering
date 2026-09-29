@@ -10,21 +10,17 @@ disable-model-invocation: true
 Orchestrate a **Spec** and its sub-issues to completion on a local integration
 branch in the primary checkout. The **Spec** is the parent issue; leave it open.
 
-Stay in the primary checkout for the whole run; the orchestrator never enters a
-worktree. Only dispatched agents work in worktrees. Address each agent worktree
-by its absolute path (`git -C <worktree> ...`).
+Stay in the primary checkout for the whole run and never enter a worktree;
+reach agent worktrees only by absolute path.
 
 ## Process
 
 ### 1. Establish the integration boundary
 
-- Resolve the **Spec**, current branch, and current `HEAD` of the primary
-  checkout.
 - Stop on a detached `HEAD` or a dirty checkout; ask the user how to proceed.
-- Create and switch to the local integration branch from the current `HEAD`:
-  `git switch -c f/issue-<spec-number>`. If that branch already exists, ask the
-  user whether to resume on it; on resume, switch to it and ask the user for
-  its starting commit.
+- Create the local integration branch `f/issue-<spec-number>` from the current
+  `HEAD`. If it already exists, ask the user whether to resume on it and, if
+  so, for its starting commit.
 - Record the starting commit as the fixed point for the final review.
 - Keep the integration branch local unless the user asks to push it.
 
@@ -51,18 +47,13 @@ blockers, and the current frontier is explicit.
 For each frontier sub-issue:
 
 1. Assign it to the authenticated tracker user.
-2. Start one new background agent with worktree isolation
-   (`isolation: "worktree"`), and give it both the **Spec** and sub-issue
-   references. The project's `WorktreeCreate` hook
-   (`.claude/worktree-create.sh`) creates that worktree under the designated
-   worktree root from the primary checkout's current `HEAD`, so the agent
-   starts from everything integrated so far. Stay out of the new worktree; it
-   belongs to the agent.
-3. Require the agent to call the Skill tool with "implement", commit its work
-   in its worktree, and return its commit range, summary, and verification
-   results. Keep tracker comments and issue closure with the orchestrator.
-4. Take the worktree path from the completion notification and the branch
-   from `git -C <worktree> branch --show-current`.
+2. Start one new background agent with `isolation: "worktree"`, and give it
+   both the **Spec** and sub-issue references. The project's `WorktreeCreate`
+   hook branches that worktree from the primary checkout's current `HEAD`, so
+   the agent starts from everything integrated so far.
+3. Require the agent to call the Skill tool with "implement", commit its work,
+   and return its commit range, summary, and verification results. Keep
+   tracker comments and issue closure with the orchestrator.
 
 Run independent frontier work in parallel up to the available agent capacity;
 queue the remainder. Run frontier sub-issues that will clearly touch the same
@@ -79,28 +70,18 @@ stays open.
 For each completed sub-issue:
 
 1. Inspect its commits and diff against the sub-issue acceptance criteria.
-2. Cherry-pick its returned commits onto the integration branch in the
-   primary checkout, in dependency order. Resolve conflicts in place without
-   discarding accepted work already integrated. If a conflict cannot be
-   resolved in place, run `git cherry-pick --abort` and have the work rebuilt
-   on the current integration `HEAD`:
-   - Continue the sub-issue's agent and have it rebase its branch onto the
-     integration branch in its worktree, resolve the conflicts, rerun its
-     checks, and return the new commit range.
-   - If that agent can no longer be continued, dispatch a new agent as in
-     step 3 to cherry-pick the old branch's commits into its fresh worktree,
-     resolve the conflicts, rerun the checks, and commit.
-
-   Integrate the rebuilt branch with `git merge --ff-only <branch>`. If the
-   integration branch moved in the meantime, cherry-pick its new commits
-   instead.
+2. Cherry-pick its commits onto the integration branch in dependency order.
+   Resolve conflicts in place without discarding accepted work already
+   integrated. When a conflict needs the sub-issue's context, abort and have
+   the work rebuilt on the current integration `HEAD`, preferably by
+   continuing the sub-issue's agent, otherwise by a new agent as in step 3.
+   Then integrate the rebuilt branch.
 3. Run the checks affected by the combined result.
 4. After the work and checks pass, comment on both the sub-issue and the **Spec**
    with the summary, verification results, and integrated commit reference.
 5. Close the sub-issue.
-6. Remove every worktree and branch created for it:
-   `git worktree remove <worktree>` and `git branch -D <branch>`. Claude Code
-   leaves hook-created worktrees in place.
+6. Remove every worktree and branch created for it; Claude Code leaves
+   hook-created worktrees in place.
 
 Refresh the tracker relationships after each wave, then dispatch the newly
 unblocked frontier. If open sub-issues remain but the frontier is empty, report
