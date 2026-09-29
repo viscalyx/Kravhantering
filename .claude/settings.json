@@ -8,7 +8,21 @@
       "/workspace",
       "/mnt/krav-azure-dev-data/.worktrees"
     ],
-    "allow": ["Bash", "Edit", "WebFetch"],
+    "allow": [
+      "Bash",
+      "Edit",
+      "WebFetch",
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(grep *)",
+      "Bash(wc *)",
+      "Bash(diff *)",
+      "Bash(npm ci)"
+    ],
     "deny": [
       "Bash(git push --force*)",
       "Bash(git push -f*)",
