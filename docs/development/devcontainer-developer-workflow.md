@@ -95,6 +95,42 @@ Shared project settings, including the status line, live in
 to copy them and `.github/instructions` into the ignored `.claude/skills` and
 `.claude/rules` folders that Claude Code reads.
 
+### Permissions and Auto Mode
+
+The project's `permissions.allow` list in `.claude/settings.json` allows
+`Bash`, `Edit`, and `WebFetch`, so those tools run without prompts in Manual
+and Accept edits mode. Auto mode, the starting permission mode for terminal
+sessions since Claude Code v2.1.283, drops the blanket `Bash` rule and sends
+shell commands to its classifier instead. The narrow rules in the same list,
+such as `Bash(git *)`, `Bash(gh *)`, read-only commands like `Bash(grep *)`,
+and `Bash(npm ci)`, stay in effect in auto mode and run without classifier
+review, including `git push` and `gh api` calls. The project's `deny` rules
+block force pushes and `gh repo delete` in every mode.
+
+Auto mode can still deny a command with `Classifier unavailable` when the
+classifier gives no verdict, or with a rule name such as `[PII Data Handling]`
+when it reads files outside the working directory. Retry the first; for the
+second, see [Review denials](https://code.claude.com/docs/en/auto-mode-config#review-denials).
+
+#### Optional: Skip Permission Checks in the Container
+
+You can start your Claude Code sessions in `bypassPermissions` mode instead.
+Nothing prompts and no classifier runs, apart from a few built-in exceptions;
+the project's `deny` rules still apply, and its `allow` rules have no effect.
+Claude Code ignores this mode in `.claude/settings.json`, so each developer
+decides whether to enable it in their personal settings. Enable it only in the
+dev container, where `CLAUDE_CONFIG_DIR` keeps the setting out of your host's
+Claude Code configuration:
+
+```bash
+jq '.permissions.defaultMode = "bypassPermissions"' ~/.claude/settings.json \
+  > ~/.claude/settings.json.new && mv ~/.claude/settings.json.new ~/.claude/settings.json
+```
+
+The setting applies to new sessions. A session started with
+`--permission-mode auto` still runs in auto mode. To undo it, remove
+`permissions.defaultMode` from `~/.claude/settings.json`.
+
 The project's `WorktreeCreate` hook, `.claude/worktree-create.sh`, places every
 worktree Claude Code creates (subagent isolation, `claude --worktree`, and
 background sessions) outside the checkout: under
