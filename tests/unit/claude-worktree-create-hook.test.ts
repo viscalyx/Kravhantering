@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -92,6 +92,57 @@ describe('Claude Code WorktreeCreate hook', () => {
 
     expect(result.status).toBe(0)
     expect(result.stdout).toBe(`${join(worktreeRoot, 'resumed')}\n`)
+  })
+
+  it('keeps slash-separated names as nested worktrees', () => {
+    const repository = createRepositoryOnIntegrationBranch()
+    const worktreeRoot = createTemporaryDirectory('krav-worktree-hook-root-')
+
+    const result = runHook(repository, 'feature/x', worktreeRoot)
+
+    const expectedPath = join(worktreeRoot, 'feature', 'x')
+    expect(result.status).toBe(0)
+    expect(result.stdout).toBe(`${expectedPath}\n`)
+    expect(git(expectedPath, 'branch', '--show-current')).toBe('wt/feature/x')
+  })
+
+  it.each([
+    '../escape',
+    'nested/../../escape',
+    './agent',
+    'agent/.',
+    '/absolute',
+    'double//slash',
+  ])('rejects the unsafe name %s without printing a path', name => {
+    const repository = createRepositoryOnIntegrationBranch()
+    const worktreeRoot = createTemporaryDirectory('krav-worktree-hook-root-')
+
+    const result = runHook(repository, name, worktreeRoot)
+
+    expect(result.status).not.toBe(0)
+    expect(result.stdout).toBe('')
+  })
+
+  it('rejects a traversal name that resolves to an existing repository', () => {
+    const repository = createRepositoryOnIntegrationBranch()
+    const worktreeRoot = join(repository, 'worktrees')
+    mkdirSync(worktreeRoot)
+
+    const result = runHook(repository, '..', worktreeRoot)
+
+    expect(result.status).not.toBe(0)
+    expect(result.stdout).toBe('')
+  })
+
+  it('rejects an existing directory that is not a worktree root', () => {
+    const repository = createRepositoryOnIntegrationBranch()
+    const worktreeRoot = join(repository, 'worktrees')
+    mkdirSync(join(worktreeRoot, 'agent-abc'), { recursive: true })
+
+    const result = runHook(repository, 'agent-abc', worktreeRoot)
+
+    expect(result.status).not.toBe(0)
+    expect(result.stdout).toBe('')
   })
 
   it('fails without printing a path outside a Git repository', () => {

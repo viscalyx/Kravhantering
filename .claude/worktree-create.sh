@@ -21,10 +21,21 @@ else
   worktree_root="${TMPDIR:-/tmp}/kravhantering-worktrees"
 fi
 
+case "/${name}/" in
+  *//* | */./* | */../*)
+    printf 'Unsafe worktree name: %s\n' "${name}" >&2
+    exit 1
+    ;;
+esac
+
 worktree="${worktree_root}/${name}"
 
 if [[ -e "${worktree}" ]]; then
-  git -C "${worktree}" rev-parse --is-inside-work-tree >/dev/null
+  toplevel="$(git -C "${worktree}" rev-parse --show-toplevel)"
+  if [[ "$(cd "${toplevel}" && pwd -P)" != "$(cd "${worktree}" && pwd -P)" ]]; then
+    printf 'Existing path is not a worktree root: %s\n' "${worktree}" >&2
+    exit 1
+  fi
 else
   git -C "${source_dir}" worktree add -q -b "wt/${name}" "${worktree}" HEAD >&2
 fi
