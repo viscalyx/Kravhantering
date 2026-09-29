@@ -65,9 +65,10 @@ For each frontier sub-issue:
    from `git -C <worktree> branch --show-current`.
 
 Run independent frontier work in parallel up to the available agent capacity;
-queue the remainder. Answer agent questions from the **Spec**, issue discussion,
-and repository. Bring questions requiring a product or scope decision to the
-user.
+queue the remainder. Run frontier sub-issues that will clearly touch the same
+files one after another. Answer agent questions from the **Spec**, issue
+discussion, and repository. Bring questions requiring a product or scope
+decision to the user.
 
 Completion criterion: every dispatched sub-issue returns committed work and
 verification evidence, or a concrete blocker remains visible and the issue
@@ -81,15 +82,23 @@ For each completed sub-issue:
 2. Cherry-pick its returned commits onto the integration branch in the
    primary checkout, in dependency order. Resolve conflicts in place without
    discarding accepted work already integrated. If a conflict cannot be
-   resolved in place, run `git cherry-pick --abort`, continue the sub-issue's
-   agent and have it rebase its branch onto the current integration `HEAD`
-   in its worktree and return the new commit range, then cherry-pick that
-   range.
+   resolved in place, run `git cherry-pick --abort` and have the work rebuilt
+   on the current integration `HEAD`:
+   - Continue the sub-issue's agent and have it rebase its branch onto the
+     integration branch in its worktree, resolve the conflicts, rerun its
+     checks, and return the new commit range.
+   - If that agent can no longer be continued, dispatch a new agent as in
+     step 3 to cherry-pick the old branch's commits into its fresh worktree,
+     resolve the conflicts, rerun the checks, and commit.
+
+   Integrate the rebuilt branch with `git merge --ff-only <branch>`. If the
+   integration branch moved in the meantime, cherry-pick its new commits
+   instead.
 3. Run the checks affected by the combined result.
 4. After the work and checks pass, comment on both the sub-issue and the **Spec**
    with the summary, verification results, and integrated commit reference.
 5. Close the sub-issue.
-6. Remove its worktree and delete its branch:
+6. Remove every worktree and branch created for it:
    `git worktree remove <worktree>` and `git branch -D <branch>`. Claude Code
    leaves hook-created worktrees in place.
 
