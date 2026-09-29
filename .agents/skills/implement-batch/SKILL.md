@@ -72,10 +72,10 @@ For each completed sub-issue:
 1. Inspect its commits and diff against the sub-issue acceptance criteria.
 2. Cherry-pick its commits onto the integration branch in dependency order.
    Resolve conflicts in place without discarding accepted work already
-   integrated. When a conflict needs the sub-issue's context, abort and have
-   the work rebuilt on the current integration `HEAD`, preferably by
-   continuing the sub-issue's agent, otherwise by a new agent as in step 3.
-   Then integrate the rebuilt branch.
+   integrated. When a conflict needs the sub-issue's context, abort and
+   dispatch a new agent as in step 3 to rebuild the work on the current
+   integration `HEAD` from the sub-issue's branch, then integrate the rebuilt
+   branch.
 3. Run the checks affected by the combined result.
 4. After the work and checks pass, comment on both the sub-issue and the **Spec**
    with the summary, verification results, and integrated commit reference.
