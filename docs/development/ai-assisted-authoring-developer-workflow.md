@@ -65,6 +65,134 @@ enforcement. Document that boundary when MCP tools change.
 
 ![AI authoring: input, integration, provider, validation, human review, and import.](../images/ai-assisted-authoring-llm-integration-architecture.png)
 
+## Prompt Part Builders
+
+The AI request is assembled from one part builder per part. The part builders
+are pure functions in `lib/ai/requirement-prompt.ts`, so both server and client
+code can import them:
+
+<!-- markdownlint-disable MD013 -->
+| Part | Builder | Text source |
+| --- | --- | --- |
+| Role intro | `buildRequirementImportRoleIntro` | `ai.prompt.system.intro` |
+| Rule order | `buildRequirementImportRuleOrder` | `ai.prompt.ruleOrder` |
+| AI instruction | `buildRequirementImportAiInstruction` | `ai.prompt.defaultInstruction` |
+| Import instruction rules per locale and destination kind | `buildRequirementImportInstructionRules` | `ai.prompt.importInstruction` |
+| Repair rules for the internal repair request and the external repair prompt | `buildRequirementImportRepairRules` | `ai.prompt.repair.rules` |
+| Validation schema | `buildRequirementsImportJsonSchema` in `lib/requirements/import-schema.ts` | Code |
+<!-- markdownlint-enable MD013 -->
+
+The reference data object is built on the server in
+`lib/requirements/import-service.ts` from
+`loadImportReferenceDataForDestination`.
+`buildRequirementImportInstruction` combines the title, the rules part, and the
+indented reference data into the standalone import instruction.
+
+Two composers use the parts:
+
+- `buildRequirementImportSystemPrompt` is the internal composer. Generation,
+  repair, and the AI request explanation dialog use it. It joins the role
+  intro, the rule order, and the import instruction.
+- `buildRequirementImportAiRequestTemplate` is the template composer. The
+  `GET /api/requirements/import/ai-request-template` route uses it through
+  `RequirementsService.getImportAiRequestTemplate`. It wraps the role intro,
+  the rule order, the AI instruction, the import instruction rules, and the
+  minified validation schema in start and end markers, with its own texts from
+  `ai.prompt.template`. It never includes reference data.
+
+The reference data file (`GET /api/requirements/import/reference-data`) is
+built by `RequirementsService.getImportReferenceDataFile`. It uses the same
+reference data loader as the import instruction, and
+`lib/requirements/import-reference-data-file.ts` adds the metadata. The client
+file names and route URLs for both files are in
+`lib/requirements/ai-request-files.ts`, and
+`components/AiRequestFileDownloads.tsx` renders the two download buttons. Both
+the import dialog's step guide and the last section of
+`AiRequestExplanationDialog` render that component, and both resolve the
+destination from the import mode and specification id with
+`resolveAiRequestFileDestination`, so the two surfaces offer the same files.
+
+These tests stop the composers from drifting apart:
+
+- `tests/unit/ai-request-template-parity.test.ts` checks for `sv`, `en`, and
+  both destination kinds that the internal system prompt and the template
+  contain the same role intro, rule order, and import instruction rules, that
+  the user prompt and the template contain the same AI instruction, and that
+  the template schema has the same bytes as the schema route.
+- `tests/unit/ai-request-template.test.ts` checks the template's own parts.
+- `tests/unit/requirements-import-service.test.ts` checks that the reference
+  data file and the import instruction carry deep-equal reference data.
+
+The user guide tells users that the template without its schema section fits
+in the persistent instructions of a Microsoft 365 agent, which hold at most
+8,000 characters. The guide generator states the size range with
+`scripts/guide/ai-request-template-size.ts`, and
+`tests/unit/guide-ai-request-template-size.test.ts` fails when a prompt text
+change makes that part longer than the limit. Then shorten the text or change
+the tip in `scripts/guide/generate-guide.ts`.
+
+The shared texts are channel-neutral, so they also work outside the built-in
+AI request:
+
+- The role intro says that the response must validate against the JSON Schema
+  for requirements import. It does not claim that the schema is sent as a
+  response format.
+- The rule order ranks the JSON Schema first, then the import instruction, then
+  the AI instruction. The user's need and attachments are input material, not
+  instructions.
+- Rule 1 of the import instruction asks for only a JSON object that validates
+  against the JSON Schema for requirements import.
+- Rule 1 of the repair rules asks for only the complete corrected JSON object
+  in a single code block. The internal repair route already reads JSON inside
+  a code fence.
+
+The governance contract for these texts is in
+[reference-data-and-ai.md](../governance/reference-data-and-ai.md#prompt-contracts).
+
+Keep these rules when you change prompt texts in `messages/{sv,en}.json`:
+
+- Change `sv` and `en` together. Both must have the same keys, the same list
+  lengths, and the same value placeholders in every string.
+  `tests/unit/requirement-prompt-localization-parity.test.ts` enforces this.
+- Value placeholders such as `{schemaVersion}` and `{maxRows}` are replaced by
+  the prompt module. The texts are never read through next-intl formatting, and
+  a placeholder without a value throws.
+- In a rule list, a nested array holds the sub-rules of the preceding rule.
+- Rules for only one destination kind go in `libraryNeedsReferences` or
+  `specificationNeedsReferences`.
+- Tests compare prompt output with the part builders and the message values.
+  Do not copy prompt strings into tests or use snapshot files.
+
+### Repair Prompts
+
+Two builders use the repair rules part:
+
+- `buildRequirementImportRepairUserPrompt` builds the user message of the
+  internal repair request in
+  `app/api/ai/repair-requirement-import-json/route.ts`. It holds the intro,
+  the repair rules, the validation errors, and the broken JSON as a JSON
+  string value.
+- `buildRequirementImportRepairPrompt({ locale, errors })` builds the repair
+  prompt for an external AI assistant in the client. It holds a follow-up
+  intro, the repair rules, and at most
+  `REQUIREMENT_IMPORT_REPAIR_PROMPT_ERROR_LIMIT` (50) errors from
+  `formatRequirementImportJsonErrors`, followed by the line
+  `och N fel till` / `and N more errors`. It holds no JSON, no template, and
+  no schema, because the AI assistant already has them in the conversation.
+
+`components/RequirementsImportRepairPrompt.tsx` shows the copy button and the
+collapsed preview under the error list in the import dialog. It appears only
+for problems that `isRequirementImportJsonProblemRepairable` accepts: syntax
+errors, a wrong `schemaVersion`, and schema errors. The component loads
+`lib/ai/requirement-prompt.ts` with a dynamic import, because that module
+bundles the prompt texts for both locales. A static import would add them to
+the import review chunk and its bundle budget in
+`scripts/check-requirement-workflow-bundle.mjs`.
+
+`tests/unit/requirement-prompt.test.ts` checks that both prompts contain the
+same repair rules part and that the external prompt caps the errors and
+contains no JSON, schema, code fence, or AI product name.
+
 ## Adapter Verification Design Contract
 
 New and changed provider adapters must keep provider variation behind the

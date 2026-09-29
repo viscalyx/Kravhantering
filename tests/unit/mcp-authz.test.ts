@@ -171,7 +171,17 @@ function createService() {
       mode: 'specification-local' as const,
       summary: { createdCount: 0 },
     })),
+    getImportAiRequestTemplate: vi.fn(async () => ({
+      aiRequestTemplate: '===== START OF AI REQUEST TEMPLATE =====',
+    })),
     getImportInstruction,
+    getImportReferenceDataFile: vi.fn(async () => ({
+      destination: { kind: 'requirements_library' as const },
+      generatedAt: '2026-09-29T08:30:00.000Z',
+      locale: 'en' as const,
+      referenceData: {},
+      schemaVersion: 'requirement-import.v4',
+    })),
     getImportSchema,
     getRequirement,
     getSpecificationItems,

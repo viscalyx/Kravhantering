@@ -24,6 +24,13 @@ import {
   type Route,
   test,
 } from '@playwright/test'
+import { DEFAULT_REQUIREMENT_CANDIDATE_COUNT } from '@/lib/ai/requirement-prompt'
+import { DEFAULT_REQUIREMENT_IMPORT_BUDGET } from '@/lib/requirements/import-budget'
+import {
+  aiRequestTemplateRulePartLengthRange,
+  formatApproximateCharacterCount,
+  PERSISTENT_INSTRUCTIONS_LIMIT,
+} from './ai-request-template-size'
 
 // ─── Lokalisering ──────────────────────────────────────────────────────────
 
@@ -151,6 +158,8 @@ const STATUS_REVIEW_ID = 2
 const STATUS_PUBLISHED_ID = 3
 const SPECIFICATION_ITEMS_PANEL_SELECTOR =
   '[data-specification-detail-list-panel="items"]'
+const AVAILABLE_REQUIREMENTS_PANEL_SELECTOR =
+  '[data-specification-detail-list-panel="available"]'
 const GUIDE_DEBUG = process.env.GUIDE_DEBUG !== '0'
 
 function loadImportSampleJson(): string | null {
@@ -693,7 +702,7 @@ async function snap(
   name: string,
   heading: string,
   description: string,
-  options: { fullPage?: boolean; selector?: string } = {},
+  options: { fullPage?: boolean; locator?: Locator; selector?: string } = {},
 ): Promise<void> {
   // Wait for any in-flight data fetches to finish before screenshotting
   await page
@@ -715,12 +724,18 @@ async function snap(
     seq,
     name,
     selector: options.selector,
-    fullPage: options.selector ? undefined : (options.fullPage ?? true),
+    fullPage:
+      options.selector || options.locator
+        ? undefined
+        : (options.fullPage ?? true),
     url: compactUrl(page.url()),
   })
   try {
-    if (options.selector) {
-      await page.locator(options.selector).screenshot({
+    const target =
+      options.locator ??
+      (options.selector ? page.locator(options.selector) : null)
+    if (target) {
+      await target.screenshot({
         path: filepath,
         animations: 'disabled',
       })
@@ -885,6 +900,9 @@ function wrapProse(text: string, width = 80): string {
       out.push(line)
       continue
     }
+    // Indent continuation lines of a list item under the item's text
+    const listMarker = /^(?:[-*]|\d+\.) /.exec(line)?.[0] ?? ''
+    const continuationIndent = ' '.repeat(listMarker.length)
     const words = line.split(' ')
     let current = ''
     for (const word of words) {
@@ -894,7 +912,7 @@ function wrapProse(text: string, width = 80): string {
         current += ` ${word}`
       } else {
         out.push(current)
-        current = word
+        current = `${continuationIndent}${word}`
       }
     }
     if (current !== '') out.push(current)
@@ -1578,7 +1596,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'kravunderlagslista',
         'Kravunderlagslista',
-        'Listan visar underlagens namn, ID, kravunderlagets livscykelstatus och genomförandeform. Klicka på ett underlag för att se dess detaljer.',
+        'Listan visar kravunderlagets namn och kod, ansvarigs namn och HSA-id samt klassningar. Klicka på namnet för att öppna underlaget och arbeta med dess krav. Underlagen sorteras i stigande namnordning enligt valt språk.\n\nKnapparna **Tabellvy**, **Tvåradersvy** och **Kortvy** bredvid rubriken väljer hur listan visas. Använd piltangenterna när vyvalet har fokus, eller Home och End för första respektive sista vyn. Sidan öppnar tabellvyn efter omladdning. Tillåtna åtgärder visas vid varje underlag; i kortvyn ligger de bredvid namnet.',
       )
     })
 
@@ -1595,7 +1613,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           page,
           'kravunderlagslista-sok',
           'Sökning bland kravunderlag',
-          'Filtrera kravunderlag genom att skriva i sökrutan. Listan uppdateras i realtid.',
+          'Filtrera kravunderlag genom att skriva hela eller delar av namnet i sökrutan. Sökningen följer med när du byter vy. Använd **Rensa sökning** för att visa hela listan igen. Frågetecknet i sökfältet öppnar hjälp om sökningen.',
         )
         await searchInput.clear()
         await page.waitForTimeout(300)
@@ -1645,69 +1663,67 @@ test.describe('Kravhantering — Guidegenerering', () => {
       await expect(leftRequirementPackageFilter).not.toContainText(
         'Kravpaketen kunde inte läsas in.',
       )
+      await expect(
+        page.getByText('Hämtar krav…').filter({ visible: true }),
+      ).toHaveCount(0, { timeout: 30_000 })
+      // Editing controls appear once the specification access has loaded.
+      await expect(
+        page.getByRole('button', { name: 'Nytt unikt krav' }),
+      ).toBeVisible({ timeout: 30_000 })
       await snap(
         page,
         'kravunderlagsdetalj',
         'Kravunderlagsdetalj — delad vy',
-        'Kravunderlagsdetaljsidan har en delad layout: **vänster panel** har tabbarna **Krav i underlaget** och **Behovsreferenser** i listans rubrik, och **höger panel** har tabbarna **Tillgängliga krav** och **Kravurvalsfrågor** i samma typ av sticky rubrik. I tabben för krav visas både bibliotekskrav och eventuella kravunderlagets unika krav med deras användningsstatus. Knapparna till höger i rubriken byts när du växlar tabb: tabben för krav har kravtabellens verktyg, medan tabben för behovsreferenser har åtgärden för att skapa en ny referens. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag. Knappen **"Fler åtgärder"** innehåller AI-assisterat författande, import, rapporter och exporter när de är tillgängliga. Klicka på en rad för att se kravets fullständiga detaljer.\n\nOvanför båda kravlistorna finns samma kompakta kravpaketsfilter som i kravbiblioteket. I **Tillgängliga krav** kan du välja bland alla aktiva kravpaket, även om ett paket inte ger någon träff med de övriga filtren. I **Krav i underlaget** visas bara aktiva paket som något bibliotekskrav i hela underlaget tillhör enligt kravets aktuella medlemskap. Unika krav i underlaget har inga kravpaket. Paketvalen är separata för vänster och höger lista och finns kvar när du byter tabb på detaljsidan.\n\nVänster katalog läses in oberoende av kravlistan i avgränsade omgångar. Om inläsningen tar längre än en sekund visas dess status direkt i kravpaketsfilterraden; kravlistan kan användas medan katalogen färdigställs.',
+        'Kravunderlagsdetaljsidan har en delad layout: **vänster panel** har tabbarna **Krav i underlaget**, **Behovsreferenser** och **RFI-frågelista** i listans rubrik, och **höger panel**, **Kravbibliotek**, har tabbarna **Tillgängliga krav** och **Kravurvalsfrågor** i samma typ av sticky rubrik. I tabben för krav visas både bibliotekskrav och eventuella kravunderlagets unika krav med deras användningsstatus. Knapparna till höger i rubriken byts när du växlar tabb: tabben för krav har kravtabellens verktyg, medan tabben för behovsreferenser har åtgärden för att skapa en ny referens. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag. Knappen **"Fler åtgärder"** innehåller AI-assisterat författande, import, rapporter och exporter när de är tillgängliga. Klicka på en rad för att se kravets fullständiga detaljer.\n\nAnvänd panelknappen till vänster om tabbarna för att fälla ihop hela panelen. Den andra panelen får mer utrymme. Öppna panelen igen med fliken vid kanten, eller med rubrikknappen på en smal skärm. Om du fäller ihop den enda öppna panelen öppnas den andra automatiskt. Sökning, filter, markeringar, aktiv tabb och osparad inmatning finns kvar under sidbesöket. Hopfällning sparar inga redigeringar.\n\nEtt tomt kravunderlag öppnar båda panelerna. Ett underlag med krav öppnar bara vänster panel. Din senaste layout för det senast besökta underlaget sparas i webbläsaren och används vid omladdning. Besöker du ett annat underlag ersätts minnet; när du återvänder används grundlayouten igen. Andra slags sidor raderar inte minnet. Layouten följer inte ditt konto till andra webbläsare eller enheter.\n\nNär båda panelerna står bredvid varandra kan du dra linjen mellan dem för att ändra deras bredder. Valet sparas för det senast besökta kravunderlaget på samma sätt som panelernas öppna eller hopfällda läge. Byten av tabb påverkar inte bredderna. Dubbelklicka på linjen för att återställa lika breda paneler.\n\nNär en panel blir smal visar linjen en uppmaning att fortsätta dra för att fälla ihop panelen. Dra vidare tills panelen tonas ned och släpp för att fälla ihop. Dra tillbaka för att avbryta hopfällningen, eller tryck Escape för att avbryta hela dragningen. När panelen öppnas igen återställs bredderna från före dragningen.\n\nMed tangentbord: fokusera linjen med Tab och använd vänster- eller högerpil. Håll Shift för större steg och tryck Enter för lika breda paneler. Piltangenterna fäller inte ihop paneler; använd panelknapparna för det.\n\nOvanför båda kravlistorna finns samma kompakta kravpaketsfilter som i kravbiblioteket. I **Tillgängliga krav** kan du välja bland alla aktiva kravpaket, även om ett paket inte ger någon träff med de övriga filtren. I **Krav i underlaget** visas bara aktiva paket som något bibliotekskrav i hela underlaget tillhör enligt kravets aktuella medlemskap. Unika krav i underlaget har inga kravpaket. Paketvalen är separata för vänster och höger lista och finns kvar när du byter tabb på detaljsidan.\n\nVänster katalog läses in oberoende av kravlistan i avgränsade omgångar. Om inläsningen tar längre än en sekund visas dess status direkt i kravpaketsfilterraden; kravlistan kan användas medan katalogen färdigställs.',
         { fullPage: false },
       )
     })
 
     await guideStep(page, 'Lägg till krav i underlag', async () => {
-      // The page has two tables side by side; right panel = second tbody.
-      const rightRows = page.locator('tbody').nth(1).locator('tr')
-      const hasRightRows = (await rightRows.count()) > 0
+      // A specification with requirements opens only the left panel, so
+      // open the library panel before selecting available requirements.
+      await page
+        .getByRole('button', { name: 'Öppna Kravbibliotek', exact: true })
+        .click()
+      const availablePanel = page.locator(AVAILABLE_REQUIREMENTS_PANEL_SELECTOR)
+      const firstRow = availablePanel.locator('tbody tr').first()
+      await expect(firstRow).toBeVisible({ timeout: 30_000 })
+      await firstRow.locator('input[type="checkbox"]').click()
+      await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+      await page.waitForTimeout(300)
 
-      if (hasRightRows) {
-        // Click the checkbox cell of the first row to select it
-        const firstCheckbox = rightRows
-          .first()
-          .locator('input[type="checkbox"]')
-        if ((await firstCheckbox.count()) > 0) {
-          await firstCheckbox.click()
-        } else {
-          await rightRows
-            .first()
-            .evaluate((el: Element) => (el as HTMLElement).click())
-        }
-        await page.evaluate(() =>
-          (document.activeElement as HTMLElement)?.blur(),
-        )
-        await page.waitForTimeout(300)
+      await snap(
+        page,
+        'lagg-till-krav-valt',
+        'Välj krav att lägga till',
+        'Öppna den högra panelen **Kravbibliotek** med fliken vid kanten. Markera ett eller flera krav i tabben **Tillgängliga krav**. Knappen **"Lägg till valda (N)"** visas i panelens rubrik när minst ett krav är markerat.',
+        { fullPage: false },
+      )
 
-        await snap(
-          page,
-          'lagg-till-krav-valt',
-          'Välj krav att lägga till',
-          'Markera ett eller flera krav i den högra panelen "Tillgängliga krav". Knappen **"Lägg till valda (N)"** visas i panelens rubrik när minst ett krav är markerat.',
-          { fullPage: false },
-        )
+      await page.getByRole('button', { name: /Lägg till valda/i }).click()
+      await expect(page.locator('[role="dialog"]')).toBeVisible({
+        timeout: 5_000,
+      })
 
-        const addBtn = page.getByRole('button', { name: /Lägg till valda/i })
-        if ((await addBtn.count()) > 0) {
-          await addBtn.click()
-          await expect(page.locator('[role="dialog"]')).toBeVisible({
-            timeout: 5_000,
-          })
+      await snap(
+        page,
+        'lagg-till-krav-modal',
+        'Lägg till krav — behovsreferens',
+        'När du lägger till krav i ett kravunderlag kan du koppla en **behovsreferens** till kravtillämpningen. En behovsreferens är en fritext som förklarar varför kravet behövs i just det här kravunderlaget och kan ge stöd för när kravet ska verifieras — t.ex. ett ärendenummer, ett mål eller ett avsnitt i ett kravunderlag. Du kan välja en befintlig referens eller skriva en ny med valfri beskrivning. I efter hand hanteras registret i tabben **Behovsreferenser**, medan kolumnen **Behovsreferens** används för att välja eller rensa befintliga referenser i tabellen.',
+        { fullPage: false },
+      )
 
-          await snap(
-            page,
-            'lagg-till-krav-modal',
-            'Lägg till krav — behovsreferens',
-            'När du lägger till krav i ett kravunderlag kan du koppla en **behovsreferens** till kravtillämpningen. En behovsreferens är en fritext som förklarar varför kravet behövs i just det här kravunderlaget och kan ge stöd för när kravet ska verifieras — t.ex. ett ärendenummer, ett mål eller ett avsnitt i ett kravunderlag. Du kan välja en befintlig referens eller skriva en ny med valfri beskrivning. I efter hand hanteras registret i tabben **Behovsreferenser**, medan kolumnen **Behovsreferens** används för att välja eller rensa befintliga referenser i tabellen.',
-            { fullPage: false },
-          )
+      await page.getByRole('button', { name: 'Avbryt' }).last().click()
+      await expect(page.locator('[role="dialog"]')).toBeHidden({
+        timeout: 5_000,
+      })
 
-          const cancelAddBtn = page
-            .getByRole('button', { name: 'Avbryt' })
-            .last()
-          await cancelAddBtn.click()
-          await expect(page.locator('[role="dialog"]')).toBeHidden({
-            timeout: 5_000,
-          })
-        }
-      }
+      // The layout is remembered for the specification; restore the default
+      // so later screenshots of it show only the left panel.
+      await page
+        .getByRole('button', { name: 'Fäll ihop Kravbibliotek', exact: true })
+        .click()
+      await expect(availablePanel).toBeHidden({ timeout: 5_000 })
     })
 
     await guideStep(page, 'Redigera kravunderlag', async () => {
@@ -1799,6 +1815,10 @@ test.describe('Kravhantering — Guidegenerering', () => {
         'Krav expanderat i underlagskontext',
         '**Steg 2 — Expandera ett krav.** Klicka på en rad i listan för att öppna kravets detaljpanel. Om inget aktivt avsteg finns visas knappen **"Begär ett avsteg"** — klicka på den för att starta avstegsprocessen.',
         { fullPage: false },
+      )
+      textEntry(
+        'Ta bort krav ur kravunderlaget',
+        'Bibliotekskrav och lokala krav kan bara tas bort med användningsstatus **Inkluderad**. Regeln gäller enskilda krav och markerade krav, både utan avtal och i redigerbara avtalsutkast. Alla markerade krav måste vara Inkluderad. Skrivbehörighet, avtalslåsning och avstegsregler gäller samtidigt. Ett väntande avsteg måste avslutas först; ett gällande godkännande kräver ansvarigs beslut om avstegsavslut. Den inaktiverade åtgärden förklarar hindret vid hovring eller tangentbordsfokus. Borttagningen sparas, men själva bibliotekskravet finns kvar i kravbiblioteket. Om status ändras i en annan session kan servern avvisa borttagningen; ladda då om och kontrollera statusen.',
       )
 
       await guideStep(page, 'Avstegsformulär — öppet', async () => {
@@ -2491,6 +2511,117 @@ test.describe('Kravhantering — Guidegenerering', () => {
         { fullPage: false },
       )
     })
+
+    // ── Sektion 7b: Låt en extern AI ta fram krav ─────────────────────────
+    const aiRequest = (key: string) => t(`requirementsImportAiRequest.${key}`)
+    currentSection = aiRequest('guideTitle')
+    setSectionIntro(
+      `Du kan låta en extern AI-assistent ta fram kravkandidater och sedan importera svaret. Stegguiden **"${aiRequest('guideTitle')}"** finns i importdialogen, både när du importerar krav till kravbiblioteket och när du importerar unika krav till ett kravunderlag. AI-anropsmallen ger AI-assistenten samma regler som det inbyggda AI-assisterade författandet. Kravhantering validerar svaret när du lägger in det, och du granskar kraven innan något sparas.\n\nAnvänd bara en AI-assistent som din organisation har godkänt för informationen i behovet och i referensdatan.`,
+    )
+
+    await guideStep(
+      page,
+      'Låt en extern AI ta fram krav — stegguide',
+      async () => {
+        await guideGoto(page, '/sv/requirements')
+        await expect(
+          page.locator('[data-sticky-table-header="true"]'),
+        ).toBeVisible({ timeout: 10_000 })
+
+        await page
+          .getByRole('button', { name: 'Importera krav' })
+          .first()
+          .click()
+        const dialog = dialogWithHeading(page, 'Importera krav')
+        await expect(dialog).toBeVisible({ timeout: 5_000 })
+        const stepGuide = dialog.getByRole('complementary', {
+          name: aiRequest('guideTitle'),
+        })
+        await expect(stepGuide).toBeVisible({ timeout: 5_000 })
+        for (const stepTitle of ['step1Title', 'step2Title', 'step3Title']) {
+          await expect(
+            stepGuide.getByText(aiRequest(stepTitle), { exact: true }),
+          ).toBeVisible()
+        }
+        await expect(
+          stepGuide.getByRole('button', {
+            exact: true,
+            name: aiRequest('downloadTemplate'),
+          }),
+        ).toBeEnabled()
+        await expect(
+          stepGuide.getByText('kravimport-ai-anropsmall-kravbibliotek.md'),
+        ).toBeVisible()
+        await expect(
+          stepGuide.getByRole('button', { name: aiRequest('ownPromptToggle') }),
+        ).toHaveAttribute('aria-expanded', 'false')
+
+        await snap(
+          page,
+          'extern-ai-stegguide',
+          'Stegguiden i importdialogen',
+          [
+            `Välj **"Importera krav"** i kravbiblioteket, eller **"Fler åtgärder"** och **"Importera unika krav"** i ett kravunderlag. Stegguiden har tre steg:`,
+            '',
+            `1. **${aiRequest('step1Title')}.** Välj **"${aiRequest('downloadTemplate')}"** och **"${aiRequest('downloadReferenceData')}"**. Filnamnet står under varje knapp, till exempel \`kravimport-ai-anropsmall-kravbibliotek.md\` och \`kravimport-referensdata-kravbibliotek.json\`. För ett kravunderlag slutar referensdatafilens namn med kravunderlagets id.`,
+            `2. **${aiRequest('step2Title')}.** Skriv behovet i chatten hos din AI-assistent, klistra in hela AI-anropsmallen och bifoga referensdatafilen eller lägg till den som kontext. Mallen har inga platshållare, så du ändrar ingenting i den. Skriv hur många krav du vill ha om du vill styra antalet; annars föreslår AI-assistenten ${DEFAULT_REQUIREMENT_CANDIDATE_COUNT} krav.`,
+            `3. **${aiRequest('step3Title')}.** Spara JSON-svaret som fil och släpp den i fältet, eller klistra in svaret. Om svaret har förklarande text och ett enda kodblock tar dialogen ut JSON ur kodblocket och lämnar texten i fältet orörd. Välj sedan **"Förhandsgranska krav"** och granska kraven som vid annan import.`,
+            '',
+            'Filerna följer gränssnittets språk. Om behovet eller referensdatafilen saknas, eller om filen hör till en annan destinationstyp eller schemaversion, svarar AI-assistenten kort utan JSON och förklarar vad som saknas.',
+          ].join('\n'),
+          { locator: stepGuide },
+        )
+
+        await closeImportDialog(dialog)
+
+        textEntry(
+          'Referensdatafilen och när du behöver en ny',
+          [
+            'Referensdatafilen är en ögonblicksbild av importens referensdata för destinationen: kategorier, kravtyper med kvalitetsegenskaper, prioriteter, normreferenser och kravpaket. För ett kravunderlag innehåller filen också kravunderlagets behovsreferenser. AI-assistenten använder referensdatan för att välja befintliga värden i stället för att gissa.',
+            '',
+            'Filen speglar destinationen när du hämtar den. Hämta en ny referensdatafil om normreferenser eller kravpaket har ändrats, och för ett kravunderlag även om behovsreferenserna har ändrats. En referensdatafil för ett kravunderlag gäller bara det kravunderlaget. Om Kravhantering får ett nytt importformat hämtar du både mallen och referensdatafilen igen, eftersom de ska ha samma `schemaVersion`.',
+          ].join('\n'),
+        )
+
+        textEntry(
+          'Om svaret inte kan läsas in — reparationsprompten',
+          [
+            'Dialogen kontrollerar svaret innan granskningen laddas och visar vad som är fel under fältet:',
+            '',
+            '- **Ingen JSON:** läs AI-assistentens svar. Behovet eller referensdatafilen kan saknas.',
+            '- **Avkortat svar:** be om färre krav per förfrågan.',
+            '- **Flera kodblock:** klistra in bara JSON eller ett svar med ett enda kodblock.',
+            '- **Syntaxfel, fel `schemaVersion` eller schemafel:** dialogen visar felen med JSON-sökväg, högst 20 åt gången, och knappen **"Kopiera reparationsprompt"**.',
+            '',
+            'Klistra in reparationsprompten i samma samtal med AI-assistenten och lägg in det nya svaret i fältet. Prompten innehåller reparationsreglerna och felen, men ingen JSON och inget schema, eftersom AI-assistenten redan har dem i samtalet. Öppna **"Förhandsvisa reparationsprompt"** om du vill läsa texten innan du kopierar den. Fel och varningar på enskilda rader i granskningen rättar du i granskningen som vid annan import.',
+          ].join('\n'),
+        )
+
+        textEntry(
+          'Egen prompt eller validering',
+          `Den infällda sektionen **"${aiRequest('ownPromptToggle')}"** under stegguiden är stängd från början. Där finns **"${aiRequest('downloadSchema')}"** och **"${aiRequest('downloadImportInstruction')}"**. Filerna innehåller bara formatregler och referensdata, inte AI-anropsmallens roll, regelordning, kontroller eller AI-instruktion. Använd dem när du skriver hela prompten själv, till exempel för en egen agent, eller när du validerar importfiler i ett eget verktyg. Kravhantering validerar filen vid import på samma sätt oavsett hur den har tagits fram.`,
+        )
+
+        textEntry(
+          'Fortsätt från AI-assisterat författande',
+          `I AI-assisterat författande öppnar **"${t('ai.requestExplanation.title')}"** en förklaring av det inbyggda AI-anropet. Sista sektionen, **"${t('ai.requestExplanation.externalAssistantTitle')}"**, har samma två knappar och filnamn som stegguidens första steg, för samma destination och språk. Lägg sedan in svaret i importdialogen.`,
+        )
+
+        const rulePartRange = aiRequestTemplateRulePartLengthRange(
+          DEFAULT_REQUIREMENT_IMPORT_BUDGET,
+        )
+        textEntry(
+          'Tips för olika AI-assistenter',
+          [
+            '- **Microsoft 365 Copilot Chat:** skriv behovet, klistra in hela AI-anropsmallen i samma meddelande och bifoga referensdatafilen. Om AI-assistenten svarar att referensdatafilen saknas, bifoga den igen i samma samtal.',
+            '- **GitHub Copilot Chat i Visual Studio Code:** spara båda filerna i arbetsytan och lägg till dem som kontext i chatten, till exempel genom att dra filerna till chatten. Skriv sedan behovet. Be gärna AI-assistenten spara JSON-svaret som fil, så att du kan släppa filen i importdialogen.',
+            '- **ChatGPT:** använd bara i undantagsfall och bara om din organisation tillåter det för informationen. Flödet är detsamma: klistra in mallen och bifoga referensdatafilen.',
+            '',
+            `Om du ofta tar fram krav kan du spara mallens regeldel i beständiga instruktioner, till exempel i fältet Instructions för en Microsoft 365-agent, som rymmer högst ${formatApproximateCharacterCount(PERSISTENT_INSTRUCTIONS_LIMIT)} tecken. Regeldelen är mallen utan avsnittet "${t('ai.prompt.template.schemaHeading')}", alltså utan schemarubriken, texten om utdatakontraktet och \`json\`-kodblocket. Den är cirka ${formatApproximateCharacterCount(rulePartRange.min)}–${formatApproximateCharacterCount(rulePartRange.max)} tecken beroende på språk och destination. Hämta schemat med **"${aiRequest('downloadSchema')}"** och lägg till det som kunskapskälla eller bifoga det i samtalet. Bifoga referensdatafilen i varje samtal. Byt ut instruktionerna när Kravhantering får ett nytt importformat.`,
+          ].join('\n'),
+        )
+      },
+    )
 
     // ── Sektion 8: Förbättringsförslag ────────────────────────────────────
     currentSection = 'Förbättringsförslag'

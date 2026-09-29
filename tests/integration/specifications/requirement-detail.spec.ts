@@ -12,7 +12,10 @@ import {
 } from '@playwright/test'
 import { extractText } from 'unpdf'
 import type { SpecificationAgreementView } from '@/components/SpecificationAgreementBox'
-import { requirementsImportPayloadSchema } from '@/lib/requirements/import-schema'
+import {
+  REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+  requirementsImportPayloadSchema,
+} from '@/lib/requirements/import-schema'
 import { delay } from '@/tests/helpers/common'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { expectApiResponseOk } from '../api-response-assertions'
@@ -3752,6 +3755,102 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await refreshedSpecificationItems
     await expect(dialog).toBeHidden()
     await expect(moreActionsTrigger).toBeFocused()
+  })
+
+  test('SPEC-17: downloads the AI request template and reference data file for the kravunderlag', async ({
+    page,
+  }) => {
+    const templateFileName = 'kravimport-ai-anropsmall-kravunderlag.md'
+    const referenceDataFileName = `kravimport-referensdata-kravunderlag-${editSpecificationId}.json`
+
+    await gotoSpecificationDetail(page, editSpecificationId)
+    await clickMenuItem(page, 'Fler åtgärder', 'Importera unika krav')
+    const dialog = page.getByRole('dialog', {
+      name: /Importera lokala krav för/,
+    })
+    await expect(dialog).toBeVisible()
+    const support = dialog.getByRole('complementary', {
+      name: 'Låt en extern AI ta fram krav',
+    })
+    const templateButton = support.getByRole('button', {
+      name: 'AI-anropsmall',
+    })
+    const referenceDataButton = support.getByRole('button', {
+      name: 'Referensdatafil',
+    })
+
+    await test.step('show both file names for the kravunderlag', async () => {
+      await expect(support).toContainText(
+        'Referensdatafilen speglar kravunderlaget just nu.',
+      )
+      await expect(templateButton).toBeEnabled()
+      await expect(templateButton).toHaveAccessibleDescription(templateFileName)
+      await expect(referenceDataButton).toBeEnabled()
+      await expect(referenceDataButton).toHaveAccessibleDescription(
+        referenceDataFileName,
+      )
+    })
+
+    await test.step('download the AI request template', async () => {
+      const downloading = page.waitForEvent('download')
+      await templateButton.click()
+      const download = await downloading
+      expect(download.suggestedFilename()).toBe(templateFileName)
+      const path = await download.path()
+      if (!path) throw new Error('Template download has no local path')
+      const bytes = await readFile(path)
+      expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
+      const template = bytes.subarray(3).toString('utf8')
+      const lines = template.replace(/\n$/u, '').split('\n')
+      expect(lines[0]).toBe(
+        '===== BÖRJAN PÅ AI-ANROPSMALL FÖR KRAVIMPORT =====',
+      )
+      expect(lines.at(-1)).toBe('===== SLUT PÅ AI-ANROPSMALL =====')
+      expect(template).toContain(`\`${REQUIREMENTS_IMPORT_SCHEMA_VERSION}\``)
+      expect(template).toContain('`requirements_specification` (kravunderlag)')
+      expect(template).toContain('`needsReferences[].id`')
+      expect(template.match(/```json\n/gu)).toHaveLength(1)
+      expect(template).not.toContain('## Referensdata')
+    })
+
+    await test.step('download the reference data file with the kravunderlag id and name', async () => {
+      const downloading = page.waitForEvent('download')
+      await referenceDataButton.click()
+      const download = await downloading
+      expect(download.suggestedFilename()).toBe(referenceDataFileName)
+      const path = await download.path()
+      if (!path) throw new Error('Reference data download has no local path')
+      const text = await readFile(path, 'utf8')
+      expect(text.startsWith('{')).toBe(true)
+      expect(text).not.toContain('\n')
+      const file = JSON.parse(text) as {
+        destination: { id: number; kind: string; name: string }
+        referenceData: Record<string, unknown>
+      }
+      expect(file).toMatchObject({
+        destination: {
+          id: editSpecificationId,
+          kind: 'requirements_specification',
+        },
+        locale: 'sv',
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      })
+      expect(Object.keys(file.destination)).toEqual(['kind', 'id', 'name'])
+      expect(file.destination.name).not.toBe('')
+      await expect(dialog).toHaveAccessibleName(
+        `Importera lokala krav för ${file.destination.name}`,
+      )
+      expect(Object.keys(file.referenceData).sort()).toEqual([
+        'categories',
+        'needsReferences',
+        'normReferences',
+        'priorityLevels',
+        'requirementPackages',
+        'types',
+      ])
+    })
+
+    await expect(dialog.getByRole('alert')).toHaveCount(0)
   })
 
   // cSpell:ignore relocks

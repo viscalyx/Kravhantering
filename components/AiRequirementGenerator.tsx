@@ -47,6 +47,7 @@ import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
+import { resolveAiRequestFileDestination } from '@/lib/requirements/ai-request-files'
 import type { ImportRequirementsPayload } from '@/lib/requirements/import-schema'
 
 type AiImportMode = 'library' | 'specification-local'
@@ -461,6 +462,10 @@ export default function AiRequirementGenerator({
     importInstructionScopeKey === currentImportInstructionScopeKey
       ? importInstruction
       : ''
+  const aiRequestFileDestination = resolveAiRequestFileDestination(
+    mode,
+    specificationId,
+  )
   const generationProfile =
     authoringProfiles?.profiles[
       images.length > 0 ? 'generate_with_images' : 'generate_without_images'
@@ -1695,7 +1700,7 @@ export default function AiRequirementGenerator({
                   {repairPromptText ? (
                     <div className="rounded-lg border border-secondary-200 p-4 dark:border-secondary-800">
                       <h3 className="text-sm font-semibold text-secondary-900 dark:text-secondary-50">
-                        {t('repairPrompt')}
+                        {t('repairRequestContent')}
                       </h3>
                       <textarea
                         className={`${textareaRows4ClassName} mt-2 font-mono text-xs`}
@@ -2243,6 +2248,7 @@ export default function AiRequirementGenerator({
         </motion.div>
         <AiRequestExplanationDialog
           candidateCount={candidateCount}
+          fileDestination={aiRequestFileDestination}
           imageCount={images.length}
           importInstruction={scopedImportInstruction}
           importInstructionLoading={importInstructionLoading}

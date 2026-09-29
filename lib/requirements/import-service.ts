@@ -1,5 +1,10 @@
 import { createHash, randomBytes } from 'node:crypto'
 import {
+  buildRequirementImportAiRequestTemplate,
+  buildRequirementImportInstruction,
+  type RequirementImportDestinationKind,
+} from '@/lib/ai/requirement-prompt'
+import {
   getMcpRuntimeSettings,
   type McpRuntimeSettings,
 } from '@/lib/dal/ai-settings'
@@ -73,6 +78,11 @@ import {
   validateImportContentBudget,
 } from '@/lib/requirements/import-budget'
 import { withRequirementImportCapacity } from '@/lib/requirements/import-capacity'
+import {
+  buildRequirementImportReferenceDataFile,
+  type RequirementImportReferenceDataFile,
+  type RequirementImportReferenceDataFileDestination,
+} from '@/lib/requirements/import-reference-data-file'
 import {
   buildRequirementsImportJsonSchema,
   buildRequirementsImportPayloadSchema,
@@ -800,6 +810,60 @@ function importPromptTypes(
       locale,
     ),
   }))
+}
+
+/**
+ * The reference data object that the import instruction embeds for one
+ * destination and locale.
+ */
+function importPromptReferenceData(
+  referenceData: ImportReferenceData,
+  locale: ImportPromptLocale,
+  destinationKind: RequirementImportDestinationKind,
+): Record<string, unknown> {
+  return {
+    categories: importPromptCategories(referenceData, locale),
+    ...(destinationKind === 'requirements_specification'
+      ? {
+          needsReferences: referenceData.needsReferences.map(item => ({
+            description: item.description,
+            id: item.id,
+            text: item.text,
+          })),
+        }
+      : {}),
+    normReferences: referenceData.normReferences.map(item => ({
+      issuer: item.issuer,
+      name: item.name,
+      normReferenceId: item.normReferenceId,
+      reference: item.reference,
+      type: item.type,
+      version: item.version,
+    })),
+    requirementPackages: referenceData.requirementPackages.map(item => ({
+      id: item.id,
+      name: item.name,
+      purposeAndScope: item.purposeAndScope,
+    })),
+    priorityLevels: importPromptPriorityLevels(referenceData, locale),
+    types: importPromptTypes(referenceData, locale),
+  }
+}
+
+/**
+ * Loads the reference data object for one destination and locale. The import
+ * instruction and the reference data file both use it, so they stay equal.
+ */
+async function loadImportPromptReferenceData(
+  db: SqlServerDatabase,
+  locale: ImportPromptLocale,
+  destination: McpImportInstructionDestinationRef,
+): Promise<Record<string, unknown>> {
+  return importPromptReferenceData(
+    await loadImportReferenceDataForDestination(db, destination),
+    locale,
+    destination.kind,
+  )
 }
 
 function warning(
@@ -1949,6 +2013,22 @@ async function resolveDestinationSnapshot(
   return specificationToDestination(specification)
 }
 
+/** Names the destination in a reference data file's metadata. */
+async function referenceDataFileDestination(
+  db: SqlServerDatabase,
+  destination: McpImportInstructionDestinationRef,
+): Promise<RequirementImportReferenceDataFileDestination> {
+  if (destination.kind === 'requirements_library') {
+    return { kind: destination.kind }
+  }
+  const snapshot = await resolveDestinationSnapshot(db, destination)
+  return {
+    kind: destination.kind,
+    id: destination.specificationId,
+    name: snapshot.name,
+  }
+}
+
 function destinationRefFromSnapshot(
   destination: McpImportDestination,
 ): McpImportDestinationRef {
@@ -1987,6 +2067,29 @@ async function assertMcpImportDestinationAuthorized(
     },
     context,
   )
+}
+
+/**
+ * Authorizes reading the import instruction or reference data file for a
+ * destination. A requirements specification destination also needs the right
+ * to import into that specification.
+ *
+ * The reference data file reuses the `get_import_instruction` permission on
+ * purpose: Spec #1559 requires the same permission as the instruction route.
+ */
+async function authorizeImportInstructionDestination(
+  authorization: AuthorizationService,
+  context: RequestContext,
+  destination: McpImportInstructionDestinationRef,
+): Promise<void> {
+  await authorize(authorization, { kind: 'get_import_instruction' }, context)
+  if (destination.kind === 'requirements_specification') {
+    await assertMcpImportDestinationAuthorized(
+      authorization,
+      context,
+      destination,
+    )
+  }
 }
 
 function createValidationToken(): { token: string; tokenHash: string } {
@@ -3218,18 +3321,11 @@ export function createRequirementsImportWorkflow({
         locale: 'en' | 'sv'
       },
     ): Promise<{ importInstruction: string }> {
-      await authorize(
+      await authorizeImportInstructionDestination(
         authorization,
-        { kind: 'get_import_instruction' },
         context,
+        input.destination,
       )
-      if (input.destination.kind === 'requirements_specification') {
-        await assertMcpImportDestinationAuthorized(
-          authorization,
-          context,
-          input.destination,
-        )
-      }
 
       return withLogging(
         logger,
@@ -3253,183 +3349,87 @@ export function createRequirementsImportWorkflow({
       destination: McpImportInstructionDestinationRef,
     ) {
       const [referenceData, budget] = await Promise.all([
-        loadImportReferenceDataForDestination(db, destination),
+        loadImportPromptReferenceData(db, locale, destination),
         loadRequirementImportBudget(db),
       ])
-      const isSpecificationDestination =
-        destination.kind === 'requirements_specification'
-      const isSv = locale === 'sv'
-      return [
-        isSv
-          ? '# Skapa JSON för kravimport'
-          : '# Create JSON for requirements import',
-        '',
-        isSv ? '## Regler' : '## Rules',
-        '',
-        isSv
-          ? '- Returnera endast ett JSON-objekt som följer det separata JSON Schema som skickas som tvingande svarsformat.'
-          : '- Return only a JSON object that follows the separate JSON Schema sent as the mandatory response format.',
-        isSv
-          ? `- Sätt toppnivåfältet \`schemaVersion\` till \`${REQUIREMENTS_IMPORT_SCHEMA_VERSION}\`.`
-          : `- Set the top-level \`schemaVersion\` field to \`${REQUIREMENTS_IMPORT_SCHEMA_VERSION}\`.`,
-        isSv
-          ? '- Använd inte U+2013 EN DASH i JSON-värden; använd vanligt bindestreck (-) i stället.'
-          : '- Do not use U+2013 EN DASH in JSON values; use a plain hyphen (-) instead.',
-        isSv
-          ? '- Skriv fria textvärden, till exempel `description`, `acceptanceCriteria`, `verificationMethod`, föreslagna normreferenser och föreslagna behovsreferenser på svenska om inte användarens indata uttryckligen anger ett annat språk.'
-          : "- Write free-text values, such as `description`, `acceptanceCriteria`, `verificationMethod`, proposed norm references, and proposed needs references, in English unless the user's input explicitly requests another language.",
-        isSv
-          ? '- Utelämna frivilliga fält eller sätt dem till `null` när värdet är osäkert.'
-          : '- Omit optional fields or set them to `null` when the value is uncertain.',
-        isSv
-          ? `- Håll importen inom aktuell budget: högst ${budget.maxRows} krav, ${budget.maxProposedNormReferences} föreslagna normreferenser, ${budget.maxProposedNeedsReferences} föreslagna behovsreferenser, ${budget.maxNestedItems} underposter per krav och JSON-djup ${budget.maxJsonDepth}.`
-          : `- Keep the import within the current budget: at most ${budget.maxRows} requirements, ${budget.maxProposedNormReferences} proposed norm references, ${budget.maxProposedNeedsReferences} proposed needs references, ${budget.maxNestedItems} nested items per requirement, and JSON depth ${budget.maxJsonDepth}.`,
-        '',
-        isSv ? '## Konflikter' : '## Conflicts',
-        '',
-        isSv
-          ? '- Följ användarens indata för sakligt behov, omfattning, kravinnehåll och sakvärden.'
-          : "- Follow the user's input for factual need, scope, requirement content, and factual values.",
-        isSv
-          ? '- Följ JSON Schema för tillåtna fält, datatyper, obligatoriska fält och resultatformat.'
-          : '- Follow JSON Schema for allowed fields, data types, required fields, and result format.',
-        isSv
-          ? '- Följ referensdata för kravstruktur, klassificering, ID:n och benämningar.'
-          : '- Follow reference data for requirement structure, classification, IDs, and labels.',
-        '',
-        isSv ? '## Fältval' : '## Field Selection',
-        '',
-        isSv
-          ? '- Använd `description` för kravtext.'
-          : '- Use `description` for the requirement text.',
-        isSv
-          ? '- Använd `acceptanceCriteria` för villkor och nivå av uppfyllelse som måste vara uppnådda för att kravet ska kunna godkännas vid granskning, test eller leverans.'
-          : '- Use `acceptanceCriteria` for the conditions and fulfillment level that must be met for the requirement to be approved during review, testing, or delivery.',
-        isSv
-          ? '- Välj `typeId` innan `qualityCharacteristicId`:'
-          : '- Choose `typeId` before `qualityCharacteristicId`:',
-        isSv
-          ? '  - Använd funktionell typ för krav på systembeteende eller förmåga.'
-          : '  - Use the functional type for required system behavior or capability.',
-        isSv
-          ? '  - Använd icke-funktionell typ för kvalitet, begränsning eller hur väl systemet ska fungera.'
-          : '  - Use the non-functional type for quality, constraint, or how well the system must work.',
-        isSv
-          ? '- Välj bara `qualityCharacteristicId` från den valda typens `qualityCharacteristics` i referensdatan.'
-          : "- Choose `qualityCharacteristicId` only from the selected type's `qualityCharacteristics` in the reference data.",
-        isSv
-          ? '- Använd ID-fält från referensdatan: `categoryId`, `typeId`, `qualityCharacteristicId`, `priorityLevelId` och `requirementPackageIds`.'
-          : '- Use ID fields from the reference data: `categoryId`, `typeId`, `qualityCharacteristicId`, `priorityLevelId`, and `requirementPackageIds`.',
-        isSv
-          ? '- Använd `normReferenceIds` med värden från `normReferences[].normReferenceId`.'
-          : '- Use `normReferenceIds` with values from `normReferences[].normReferenceId`.',
-        isSv
-          ? '- Använd `normReferenceIds` för befintliga normreferenser och `proposedNormReferences` bara för saknade källor.'
-          : '- Use `normReferenceIds` for existing norm references and `proposedNormReferences` only for missing sources.',
-        isSv
-          ? '- Koppla saknade källor med `proposedNormReferences[].key` och radens `proposedNormReferenceKeys`.'
-          : "- Link missing sources with `proposedNormReferences[].key` and the row's `proposedNormReferenceKeys`.",
-        isSpecificationDestination
-          ? isSv
-            ? '- Använd `needsReferenceId` med värden från `needsReferences[].id` bara när kravet har en tydlig saklig matchning mot en befintlig behovsreferens i kravunderlaget. Lös ordlikhet räcker inte.'
-            : '- Use `needsReferenceId` with values from `needsReferences[].id` only when the requirement has a clear factual match to an existing needs reference in the specification. Loose word similarity is not enough.'
-          : isSv
-            ? '- Ta inte fram behovsreferenser: sätt inte `needsReferenceId` eller `needsReferenceKey` och returnera `proposedNeedsReferences` som en tom lista.'
-            : '- Do not produce needs references: do not set `needsReferenceId` or `needsReferenceKey`, and return `proposedNeedsReferences` as an empty array.',
-        isSpecificationDestination
-          ? isSv
-            ? '- Föreslå ett fåtal `proposedNeedsReferences` när användarens indata ger tydliga mål, risker, förmågor, källor, ärenden eller scenarier som förklarar varför ett eller flera krav behövs i kravunderlaget.'
-            : '- Propose a small number of `proposedNeedsReferences` when the user input gives clear goals, risks, capabilities, sources, cases, or scenarios that explain why one or more requirements are needed in the specification.'
-          : null,
-        isSpecificationDestination
-          ? isSv
-            ? '  - Använd `proposedNeedsReferences[].text` som en kort återanvändbar behovsrubrik och `description` för att förklara kopplingen till verksamhetsbehovet, scenariot, risken eller källan.'
-            : '  - Use `proposedNeedsReferences[].text` as a short reusable need heading and `description` to explain the connection to the business need, scenario, risk, or source.'
-          : null,
-        isSpecificationDestination
-          ? isSv
-            ? '  - Syntetisera nya behovsreferenser bara från sakligt stöd i användarens indata. Hitta inte på affärsmål, externa källor, kundnamn eller ärendenummer.'
-            : "  - Synthesize new needs references only from factual support in the user's input. Do not invent business goals, external sources, customer names, or case numbers."
-          : null,
-        isSpecificationDestination
-          ? isSv
-            ? '  - Beskriv behovsreferenser utan namn eller andra uppgifter som identifierar en levande person. Använd ärendenummer bara om användarens indata uttryckligen anger dem och de inte identifierar en person.'
-            : "  - Describe needs references without names or other details that identify a living person. Use case numbers only if the user's input explicitly provides them and they do not identify a person."
-          : null,
-        isSpecificationDestination
-          ? isSv
-            ? '- Gruppera flera krav under samma behovsreferens när de delar samma behov, källa eller scenario. Skapa inte en behovsreferens per kravrad.'
-            : '- Group multiple requirements under the same needs reference when they share the same need, source, or scenario. Do not create one needs reference per requirement row.'
-          : null,
-        isSpecificationDestination
-          ? isSv
-            ? '- Använd `proposedNeedsReferences` och radens `needsReferenceKey` bara när en ny behovsreferens behöver lösas. Sätt `needsReferenceId` eller `needsReferenceKey` på en rad bara när kopplingen är tydlig; utelämna fälten när kopplingen vore en gissning.'
-            : "- Use `proposedNeedsReferences` and the row's `needsReferenceKey` only when a new needs reference must be resolved. Set `needsReferenceId` or `needsReferenceKey` on a row only when the connection is clear; omit the fields when the connection would be a guess."
-          : null,
-        isSpecificationDestination
-          ? isSv
-            ? '- Om både `needsReferenceId` och `needsReferenceKey` anges på samma rad används `needsReferenceId`.'
-            : '- If both `needsReferenceId` and `needsReferenceKey` are set on the same row, `needsReferenceId` is used.'
-          : null,
-        isSv
-          ? '- Välj `priorityLevelId` från `priorityLevels[].id`; jämför kravet med `priorityLevels[].assessmentCriteria` och välj bästa matchning. Använd `description` som stöd för verksamhetsmål, nytta, angelägenhet, kritikalitet, risker och intressenters behov.'
-          : '- Choose `priorityLevelId` from `priorityLevels[].id`; compare the requirement with `priorityLevels[].assessmentCriteria` and choose the best match. Use `description` as context for business goals, benefit, urgency, criticality, risks, and stakeholder needs.',
-        isSv
-          ? '- Välj `requirementPackageIds` från referensdatan genom att jämföra kravets behov, kravtext och acceptanskriterier med `requirementPackages[].purposeAndScope`; välj bara paket där kravet tydligt hör hemma i paketets syfte och avgränsning.'
-          : "- Choose `requirementPackageIds` from the reference data by comparing the requirement's need, requirement text, and acceptance criteria with `requirementPackages[].purposeAndScope`; choose only packages where the requirement clearly belongs within the package purpose and scope.",
-        isSv
-          ? '- Utelämna `requirementPackageIds` eller använd `[]` när inget kravpaket passar tydligt; svaga ordmatchningar mot paketnamn räcker inte.'
-          : '- Omit `requirementPackageIds` or use `[]` when no requirement package clearly fits; weak keyword matches against package names are not enough.',
-        isSv
-          ? '- Vid import av kravunderlagslokala krav ignoreras `requirementPackageIds`.'
-          : '- When importing specification-local requirements, `requirementPackageIds` is ignored.',
-        isSv
-          ? '- Sätt `verifiable` till `true` när kravversionen har objektiva villkor som kan kontrolleras; ange då `verificationMethod`.'
-          : '- Set `verifiable` to `true` when the requirement version has objective conditions that can be checked; then provide `verificationMethod`.',
-        isSv
-          ? '- Använd `verificationMethod` för verifieringssätt, inte för godkännandekriterier.'
-          : '- Use `verificationMethod` for the verification method, not acceptance criteria.',
-        '',
-        '## Reference Data',
-        '',
-        '```json',
-        JSON.stringify(
-          {
-            categories: importPromptCategories(referenceData, locale),
-            ...(isSpecificationDestination
-              ? {
-                  needsReferences: referenceData.needsReferences.map(item => ({
-                    description: item.description,
-                    id: item.id,
-                    text: item.text,
-                  })),
-                }
-              : {}),
-            normReferences: referenceData.normReferences.map(item => ({
-              issuer: item.issuer,
-              name: item.name,
-              normReferenceId: item.normReferenceId,
-              reference: item.reference,
-              type: item.type,
-              version: item.version,
-            })),
-            requirementPackages: referenceData.requirementPackages.map(
-              item => ({
-                id: item.id,
-                name: item.name,
-                purposeAndScope: item.purposeAndScope,
-              }),
-            ),
-            priorityLevels: importPromptPriorityLevels(referenceData, locale),
-            types: importPromptTypes(referenceData, locale),
-          },
-          null,
-          2,
-        ),
-        '```',
-      ]
-        .filter((line): line is string => line != null)
-        .join('\n')
+      return buildRequirementImportInstruction({
+        budget,
+        destinationKind: destination.kind,
+        locale,
+        referenceData,
+      })
+    },
+
+    async getImportAiRequestTemplate(
+      context: RequestContext,
+      input: {
+        destinationKind: RequirementImportDestinationKind
+        locale: 'en' | 'sv'
+      },
+    ): Promise<{ aiRequestTemplate: string }> {
+      // The template reuses the `get_import_instruction` permission on
+      // purpose: Spec #1559 requires the same permission as the instruction
+      // route. The template has no destination id, so there is no
+      // destination check.
+      await authorize(
+        authorization,
+        { kind: 'get_import_instruction' },
+        context,
+      )
+
+      const budget = await loadRequirementImportBudget(db)
+      return withLogging(
+        logger,
+        context,
+        'requirements.get_import_ai_request_template',
+        {
+          destination_kind: input.destinationKind,
+          locale: input.locale,
+        },
+        async () => ({
+          aiRequestTemplate: buildRequirementImportAiRequestTemplate({
+            budget,
+            destinationKind: input.destinationKind,
+            locale: input.locale,
+          }),
+        }),
+      )
+    },
+
+    async getImportReferenceDataFile(
+      context: RequestContext,
+      input: {
+        destination: McpImportInstructionDestinationRef
+        locale: 'en' | 'sv'
+      },
+    ): Promise<RequirementImportReferenceDataFile> {
+      await authorizeImportInstructionDestination(
+        authorization,
+        context,
+        input.destination,
+      )
+
+      return withLogging(
+        logger,
+        context,
+        'requirements.get_import_reference_data',
+        {
+          destination_kind: input.destination.kind,
+          locale: input.locale,
+        },
+        async () => {
+          const [destination, referenceData] = await Promise.all([
+            referenceDataFileDestination(db, input.destination),
+            loadImportPromptReferenceData(db, input.locale, input.destination),
+          ])
+          return buildRequirementImportReferenceDataFile({
+            destination,
+            generatedAt: new Date(),
+            locale: input.locale,
+            referenceData,
+          })
+        },
+      )
     },
 
     async executeLibraryImport(

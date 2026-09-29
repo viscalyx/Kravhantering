@@ -5,6 +5,12 @@ import {
   MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
   MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
 } from '@/lib/ai/generation-availability'
+import {
+  buildRequirementImportAiRequestTemplate,
+  buildRequirementImportInstruction,
+  buildRequirementImportInstructionRules,
+  getPromptMessage,
+} from '@/lib/ai/requirement-prompt'
 import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
 import { getMcpRuntimeSettings } from '@/lib/dal/ai-settings'
 import {
@@ -45,7 +51,10 @@ import {
 import { MCP_IMPORT_VALIDATION_MINIMUM_RESERVED_BYTES } from '@/lib/mcp/import-validation-storage'
 import type { RequestContext } from '@/lib/requirements/auth'
 import { forbiddenError } from '@/lib/requirements/errors'
-import { DEFAULT_REQUIREMENT_IMPORT_BUDGET } from '@/lib/requirements/import-budget'
+import {
+  DEFAULT_REQUIREMENT_IMPORT_BUDGET,
+  requirementImportBudgetFromSettings,
+} from '@/lib/requirements/import-budget'
 import { serializeRequirementImportCandidates } from '@/lib/requirements/import-candidates'
 import {
   buildRequirementsImportJsonSchema,
@@ -130,7 +139,7 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
 
 function extractReferenceData(instruction: string) {
   const referenceDataJson = instruction.match(
-    /## Reference Data\n\n```json\n([\s\S]*?)\n```/,
+    /\n## [^\n]+\n\n```json\n([\s\S]*?)\n```$/,
   )?.[1]
   expect(referenceDataJson).toBeTruthy()
   return JSON.parse(referenceDataJson ?? '{}') as {
@@ -2046,98 +2055,53 @@ describe('requirements import service', () => {
     )
   })
 
-  it('builds the import instruction without EN DASH in JSON values', async () => {
-    const authorization = { assertAuthorized: vi.fn() }
-    const workflow = createRequirementsImportWorkflow({
-      authorization,
-      db: {} as never,
-    })
+  it.each([
+    ['en', { kind: 'requirements_library' }],
+    ['en', { kind: 'requirements_specification', specificationId: 8 }],
+    ['sv', { kind: 'requirements_library' }],
+    ['sv', { kind: 'requirements_specification', specificationId: 8 }],
+  ] as const)(
+    'builds the %s import instruction for %o from the shared prompt parts',
+    async (locale, destination) => {
+      const authorization = { assertAuthorized: vi.fn() }
+      const workflow = createRequirementsImportWorkflow({
+        authorization,
+        db: {} as never,
+      })
+      const budget = requirementImportBudgetFromSettings(
+        DEFAULT_APPLICATION_SETTINGS,
+      )
 
-    const instructionEn = await workflow.buildImportInstruction('en', {
-      kind: 'requirements_library',
-    })
-    const instructionSv = await workflow.buildImportInstruction('sv', {
-      kind: 'requirements_library',
-    })
+      const instruction = await workflow.buildImportInstruction(
+        locale,
+        destination,
+      )
 
-    expect(instructionEn).toContain('Do not use U+2013 EN DASH in JSON values')
-    expect(instructionSv).toContain('Använd inte U+2013 EN DASH i JSON-värden')
-    expect(instructionEn).toContain(
-      "Write free-text values, such as `description`, `acceptanceCriteria`, `verificationMethod`, proposed norm references, and proposed needs references, in English unless the user's input explicitly requests another language.",
-    )
-    expect(instructionSv).toContain(
-      'Skriv fria textvärden, till exempel `description`, `acceptanceCriteria`, `verificationMethod`, föreslagna normreferenser och föreslagna behovsreferenser på svenska om inte användarens indata uttryckligen anger ett annat språk.',
-    )
-    expect(instructionEn).toContain(
-      '- Choose `typeId` before `qualityCharacteristicId`:\n  - Use the functional type for required system behavior or capability',
-    )
-    expect(instructionSv).toContain(
-      '- Välj `typeId` innan `qualityCharacteristicId`:\n  - Använd funktionell typ för krav på systembeteende eller förmåga',
-    )
-    expect(instructionEn).toContain(
-      "Choose `qualityCharacteristicId` only from the selected type's `qualityCharacteristics`",
-    )
-    expect(instructionSv).toContain(
-      'Välj bara `qualityCharacteristicId` från den valda typens `qualityCharacteristics`',
-    )
-    expect(instructionEn).toContain(
-      'Use `acceptanceCriteria` for the conditions and fulfillment level that must be met',
-    )
-    expect(instructionSv).toContain(
-      'Använd `acceptanceCriteria` för villkor och nivå av uppfyllelse som måste vara uppnådda',
-    )
-    expect(instructionEn).toContain(
-      'Use ID fields from the reference data: `categoryId`, `typeId`, `qualityCharacteristicId`, `priorityLevelId`, and `requirementPackageIds`',
-    )
-    expect(instructionEn).toContain('## Conflicts')
-    expect(instructionSv).toContain('## Konflikter')
-    expect(instructionEn).toContain(
-      "Follow the user's input for factual need, scope, requirement content, and factual values.",
-    )
-    expect(instructionSv).toContain(
-      'Följ användarens indata för sakligt behov, omfattning, kravinnehåll och sakvärden.',
-    )
-    expect(instructionEn).toContain(
-      'Follow JSON Schema for allowed fields, data types, required fields, and result format.',
-    )
-    expect(instructionSv).toContain(
-      'Följ JSON Schema för tillåtna fält, datatyper, obligatoriska fält och resultatformat.',
-    )
-    expect(instructionEn).toContain(
-      'Follow reference data for requirement structure, classification, IDs, and labels.',
-    )
-    expect(instructionSv).toContain(
-      'Följ referensdata för kravstruktur, klassificering, ID:n och benämningar.',
-    )
-    expect(instructionEn).toContain(
-      'Choose `priorityLevelId` from `priorityLevels[].id`; compare the requirement with `priorityLevels[].assessmentCriteria` and choose the best match',
-    )
-    expect(instructionSv).toContain(
-      'Välj `priorityLevelId` från `priorityLevels[].id`; jämför kravet med `priorityLevels[].assessmentCriteria` och välj bästa matchning',
-    )
-    expect(instructionEn).toContain(
-      'Return only a JSON object that follows the separate JSON Schema sent as the mandatory response format',
-    )
-    expect(instructionSv).toContain(
-      'Returnera endast ett JSON-objekt som följer det separata JSON Schema som skickas som tvingande svarsformat',
-    )
-    expect(instructionEn).not.toContain('## JSON Schema')
-    expect(instructionSv).not.toContain('## JSON Schema')
-    expect(instructionEn).not.toContain('"$schema"')
-    expect(instructionSv).not.toContain('"$schema"')
-    expect(instructionEn).toContain(
-      `Set the top-level \`schemaVersion\` field to \`${REQUIREMENTS_IMPORT_SCHEMA_VERSION}\``,
-    )
-    expect(instructionSv).toContain(
-      `Sätt toppnivåfältet \`schemaVersion\` till \`${REQUIREMENTS_IMPORT_SCHEMA_VERSION}\``,
-    )
-    expect(instructionSv).toContain(
-      'Använd `normReferenceIds` med värden från `normReferences[].normReferenceId`',
-    )
-    expect(instructionEn).toContain(
-      'Set `verifiable` to `true` when the requirement version has objective conditions that can be checked; then provide `verificationMethod`',
-    )
-  })
+      expect(instruction).toContain(
+        buildRequirementImportInstructionRules({
+          budget,
+          destinationKind: destination.kind,
+          locale,
+        }),
+      )
+      expect(instruction).toBe(
+        buildRequirementImportInstruction({
+          budget,
+          destinationKind: destination.kind,
+          locale,
+          referenceData: extractReferenceData(instruction),
+        }),
+      )
+      expect(instruction).toContain(
+        `\n## ${getPromptMessage(locale, [
+          'ai',
+          'prompt',
+          'importInstruction',
+          'referenceDataHeading',
+        ])}\n\n\`\`\`json\n{\n  "categories": [],`,
+      )
+    },
+  )
 
   it('keeps requirement package guidance in the shared import instruction', async () => {
     vi.mocked(listRequirementPackages).mockResolvedValue([
@@ -2675,6 +2639,326 @@ describe('requirements import service', () => {
     ])
     expect(referenceDataText).not.toContain('nameEn')
     expect(referenceDataText).not.toContain('nameSv')
+  })
+
+  it.each(['en', 'sv'] as const)(
+    'returns the %s reference data file with the reference data of the import instruction',
+    async locale => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-09-29T08:30:00.000Z'))
+      try {
+        vi.mocked(listCategories).mockResolvedValue([
+          { id: 3, nameEn: 'Supplier requirement', nameSv: 'Leverantörskrav' },
+        ])
+        vi.mocked(listRequirementPackages).mockResolvedValue([
+          {
+            coAuthors: [],
+            createdAt: '2026-06-01T00:00:00.000Z',
+            id: 3,
+            isArchived: false,
+            leadDisplayName: 'Paketansvarig',
+            leadEmail: null,
+            leadHsaId: 'SE5560000001-pkg1',
+            name: 'Integration med andra system',
+            purposeAndScope: 'Integrationskrav.',
+            updatedAt: '2026-06-01T00:00:00.000Z',
+          },
+        ])
+        vi.mocked(listPriorityLevels).mockResolvedValue([
+          {
+            assessmentCriteriaEn: 'High importance',
+            assessmentCriteriaSv: 'Stor betydelse',
+            code: 'P4',
+            color: '#f97316',
+            descriptionEn: 'High priority',
+            descriptionSv: 'Hög prioritet',
+            iconName: 'AlertCircle',
+            id: 4,
+            nameEn: 'High',
+            nameSv: 'Hög',
+            sortOrder: 2,
+          },
+        ])
+        vi.mocked(listTypes).mockResolvedValue([
+          {
+            id: 2,
+            nameEn: 'Non-functional',
+            nameSv: 'Icke-funktionellt',
+            qualityCharacteristics: [
+              {
+                chapterId: '3.2.1',
+                id: 21,
+                nameEn: 'Time behaviour',
+                nameSv: 'Tidsbeteende',
+                parentId: 20,
+                requirementTypeId: 2,
+              },
+            ],
+          },
+        ])
+        const authorization = { assertAuthorized: vi.fn() }
+        const logger = { error: vi.fn(), info: vi.fn() }
+        const workflow = createRequirementsImportWorkflow({
+          authorization,
+          db: {} as never,
+          logger,
+        })
+        const context = makeContext('requirements_get_import_instruction')
+
+        const file = await workflow.getImportReferenceDataFile(context, {
+          destination: { kind: 'requirements_library' },
+          locale,
+        })
+        const instructionReferenceData = extractReferenceData(
+          await workflow.buildImportInstruction(locale, {
+            kind: 'requirements_library',
+          }),
+        )
+
+        expect(file.referenceData).toEqual(instructionReferenceData)
+        expect(file).toEqual({
+          destination: { kind: 'requirements_library' },
+          generatedAt: '2026-09-29T08:30:00.000Z',
+          locale,
+          referenceData: file.referenceData,
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        })
+        expect(authorization.assertAuthorized).toHaveBeenCalledWith(
+          { kind: 'get_import_instruction' },
+          context,
+        )
+        expect(logger.info).toHaveBeenCalledWith(
+          'requirements.get_import_reference_data',
+          expect.objectContaining({
+            destination_kind: 'requirements_library',
+            locale,
+          }),
+        )
+      } finally {
+        vi.useRealTimers()
+      }
+    },
+  )
+
+  it('rejects the reference data file before loading reference data when authorization fails', async () => {
+    const authorization = {
+      assertAuthorized: vi.fn().mockRejectedValue(forbiddenError()),
+    }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+
+    await expect(
+      workflow.getImportReferenceDataFile(
+        makeContext('requirements_get_import_instruction'),
+        { destination: { kind: 'requirements_library' }, locale: 'sv' },
+      ),
+    ).rejects.toMatchObject({ code: 'forbidden' })
+    expect(listCategories).not.toHaveBeenCalled()
+  })
+
+  it.each(['en', 'sv'] as const)(
+    'returns the %s reference data file for a requirements specification with its id, name, and needs references',
+    async locale => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-09-29T08:30:00.000Z'))
+      try {
+        vi.mocked(getSpecificationById).mockResolvedValue({
+          id: 8,
+          name: 'Journalsystem 2027',
+          specificationCode: 'KU-8',
+        } as never)
+        vi.mocked(listSpecificationNeedsReferences).mockResolvedValue([
+          {
+            createdAt: '2026-07-05T10:00:00.000Z',
+            description: 'Stödjer införande av GDPR artikel 32.',
+            id: 12,
+            libraryItemCount: 1,
+            linkedItemCount: 1,
+            specificationLocalRequirementCount: 0,
+            text: 'Personuppgiftsbehandling behöver tekniskt skydd',
+            updatedAt: '2026-07-05T10:00:00.000Z',
+          },
+        ])
+        const authorization = { assertAuthorized: vi.fn() }
+        const logger = { error: vi.fn(), info: vi.fn() }
+        const workflow = createRequirementsImportWorkflow({
+          authorization,
+          db: {} as never,
+          logger,
+        })
+        const context = makeContext('requirements_get_import_instruction')
+        const destination = {
+          kind: 'requirements_specification',
+          specificationId: 8,
+        } as const
+
+        const file = await workflow.getImportReferenceDataFile(context, {
+          destination,
+          locale,
+        })
+        const instructionReferenceData = extractReferenceData(
+          await workflow.buildImportInstruction(locale, destination),
+        )
+
+        expect(file.referenceData).toEqual(instructionReferenceData)
+        expect(file.referenceData).toHaveProperty('needsReferences', [
+          {
+            description: 'Stödjer införande av GDPR artikel 32.',
+            id: 12,
+            text: 'Personuppgiftsbehandling behöver tekniskt skydd',
+          },
+        ])
+        expect(file).toEqual({
+          destination: {
+            id: 8,
+            kind: 'requirements_specification',
+            name: 'Journalsystem 2027',
+          },
+          generatedAt: '2026-09-29T08:30:00.000Z',
+          locale,
+          referenceData: file.referenceData,
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        })
+        expect(Object.keys(file.destination)).toEqual(['kind', 'id', 'name'])
+        expect(listSpecificationNeedsReferences).toHaveBeenCalledWith({}, 8)
+        expect(authorization.assertAuthorized).toHaveBeenCalledWith(
+          { kind: 'get_import_instruction' },
+          context,
+        )
+        expect(authorization.assertAuthorized).toHaveBeenCalledWith(
+          {
+            kind: 'manage_specification_local_requirement',
+            operation: 'create',
+            specificationId: 8,
+          },
+          context,
+        )
+        expect(logger.info).toHaveBeenCalledWith(
+          'requirements.get_import_reference_data',
+          expect.objectContaining({
+            destination_kind: 'requirements_specification',
+            locale,
+          }),
+        )
+      } finally {
+        vi.useRealTimers()
+      }
+    },
+  )
+
+  it('rejects the reference data file for a requirements specification the user may not import into', async () => {
+    const authorization = {
+      assertAuthorized: vi.fn(async (request: { kind: string }) => {
+        if (request.kind === 'manage_specification_local_requirement') {
+          throw forbiddenError()
+        }
+      }),
+    }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+
+    await expect(
+      workflow.getImportReferenceDataFile(
+        makeContext('requirements_get_import_instruction'),
+        {
+          destination: {
+            kind: 'requirements_specification',
+            specificationId: 8,
+          },
+          locale: 'sv',
+        },
+      ),
+    ).rejects.toMatchObject({ code: 'forbidden' })
+    expect(getSpecificationById).not.toHaveBeenCalled()
+    expect(listSpecificationNeedsReferences).not.toHaveBeenCalled()
+    expect(listCategories).not.toHaveBeenCalled()
+  })
+
+  it('rejects the reference data file for a requirements specification that does not exist', async () => {
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+
+    await expect(
+      workflow.getImportReferenceDataFile(
+        makeContext('requirements_get_import_instruction'),
+        {
+          destination: {
+            kind: 'requirements_specification',
+            specificationId: 404,
+          },
+          locale: 'en',
+        },
+      ),
+    ).rejects.toMatchObject({ code: 'not_found' })
+  })
+
+  it.each([
+    ['en', 'requirements_library'],
+    ['sv', 'requirements_specification'],
+  ] as const)(
+    'returns the %s AI request template for %s with the current import budget',
+    async (locale, destinationKind) => {
+      vi.mocked(getApplicationSettings).mockResolvedValue({
+        ...DEFAULT_APPLICATION_SETTINGS,
+        requirementImportMaxRows: 42,
+      })
+      const authorization = { assertAuthorized: vi.fn() }
+      const logger = { error: vi.fn(), info: vi.fn() }
+      const workflow = createRequirementsImportWorkflow({
+        authorization,
+        db: {} as never,
+        logger,
+      })
+      const context = makeContext('requirements_get_import_instruction')
+
+      const { aiRequestTemplate } = await workflow.getImportAiRequestTemplate(
+        context,
+        { destinationKind, locale },
+      )
+
+      expect(aiRequestTemplate).toBe(
+        buildRequirementImportAiRequestTemplate({
+          budget: requirementImportBudgetFromSettings({
+            ...DEFAULT_APPLICATION_SETTINGS,
+            requirementImportMaxRows: 42,
+          }),
+          destinationKind,
+          locale,
+        }),
+      )
+      expect(authorization.assertAuthorized).toHaveBeenCalledWith(
+        { kind: 'get_import_instruction' },
+        context,
+      )
+      expect(logger.info).toHaveBeenCalledWith(
+        'requirements.get_import_ai_request_template',
+        expect.objectContaining({ destination_kind: destinationKind, locale }),
+      )
+    },
+  )
+
+  it('rejects the AI request template when authorization fails', async () => {
+    const authorization = {
+      assertAuthorized: vi.fn().mockRejectedValue(forbiddenError()),
+    }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+
+    await expect(
+      workflow.getImportAiRequestTemplate(
+        makeContext('requirements_get_import_instruction'),
+        { destinationKind: 'requirements_library', locale: 'en' },
+      ),
+    ).rejects.toMatchObject({ code: 'forbidden' })
   })
 
   it('returns localized taxonomy labels in preview rows', async () => {

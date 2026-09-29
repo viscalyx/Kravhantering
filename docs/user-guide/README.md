@@ -1,7 +1,7 @@
 <!-- AUTO-GENERERAD — redigera inte manuellt. Kör: npm run generate:guide -->
 # Kravhantering — Användarguide
 
-> Guiden genererades automatiskt av Playwright 2026-09-15.
+> Guiden genererades automatiskt av Playwright 2026-09-29.
 > Alla skärmdumpar visar det svenska gränssnittet.
 
 ## Innehållsförteckning
@@ -13,10 +13,11 @@
 5. [Kravunderlag](#kravunderlag)
 6. [Avsteg](#avsteg)
 7. [Import av krav](#import-av-krav)
-8. [Förbättringsförslag](#förbättringsförslag)
-9. [Administrationscenter](#administrationscenter)
-10. [Taxonomi och statusar](#taxonomi-och-statusar)
-11. [Rapporter](#rapporter)
+8. [Låt en extern AI ta fram krav](#låt-en-extern-ai-ta-fram-krav)
+9. [Förbättringsförslag](#förbättringsförslag)
+10. [Administrationscenter](#administrationscenter)
+11. [Taxonomi och statusar](#taxonomi-och-statusar)
+12. [Rapporter](#rapporter)
 
 ## Översikt och navigering
 
@@ -228,19 +229,23 @@ och generera granskningsrapporter direkt från underlaget.
 ### Kravunderlagslista
 
 Listan visar kravunderlagets namn och kod, ansvarigs namn och HSA-id samt
-klassningar. Klicka på namnet för att öppna underlaget och arbeta med dess
-krav. Underlagen sorteras i stigande namnordning enligt valt språk.
+klassningar. Klicka på namnet för att öppna underlaget och arbeta med dess krav.
+Underlagen sorteras i stigande namnordning enligt valt språk.
 
 Knapparna **Tabellvy**, **Tvåradersvy** och **Kortvy** bredvid rubriken väljer
 hur listan visas. Använd piltangenterna när vyvalet har fokus, eller Home och
 End för första respektive sista vyn. Sidan öppnar tabellvyn efter omladdning.
 Tillåtna åtgärder visas vid varje underlag; i kortvyn ligger de bredvid namnet.
 
+![Kravunderlagslista](images/021-kravunderlagslista.png)
+
 ### Sökning bland kravunderlag
 
 Filtrera kravunderlag genom att skriva hela eller delar av namnet i sökrutan.
-Sökningen följer med när du byter vy. Använd **Rensa sökning** för att visa
-hela listan igen. Frågetecknet i sökfältet öppnar hjälp om sökningen.
+Sökningen följer med när du byter vy. Använd **Rensa sökning** för att visa hela
+listan igen. Frågetecknet i sökfältet öppnar hjälp om sökningen.
+
+![Sökning bland kravunderlag](images/022-kravunderlagslista-sok.png)
 
 ### Skapa nytt kravunderlag
 
@@ -255,16 +260,15 @@ leverans.
 
 Kravunderlagsdetaljsidan har en delad layout: **vänster panel** har tabbarna
 **Krav i underlaget**, **Behovsreferenser** och **RFI-frågelista** i listans
-rubrik, och **höger
-panel** har tabbarna **Tillgängliga krav** och **Kravurvalsfrågor** i samma typ
-av sticky rubrik. I tabben för krav visas både bibliotekskrav och eventuella
-kravunderlagets unika krav med deras användningsstatus. Knapparna till höger i
-rubriken byts när du växlar tabb: tabben för krav har kravtabellens verktyg,
-medan tabben för behovsreferenser har åtgärden för att skapa en ny referens.
-Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag.
-Knappen **"Fler åtgärder"** innehåller AI-assisterat författande, import,
-rapporter och exporter när de är tillgängliga. Klicka på en rad för att se
-kravets fullständiga detaljer.
+rubrik, och **höger panel**, **Kravbibliotek**, har tabbarna **Tillgängliga
+krav** och **Kravurvalsfrågor** i samma typ av sticky rubrik. I tabben för krav
+visas både bibliotekskrav och eventuella kravunderlagets unika krav med deras
+användningsstatus. Knapparna till höger i rubriken byts när du växlar tabb:
+tabben för krav har kravtabellens verktyg, medan tabben för behovsreferenser har
+åtgärden för att skapa en ny referens. Knappen **"Nytt unikt krav"** skapar krav
+som bara finns i detta kravunderlag. Knappen **"Fler åtgärder"** innehåller
+AI-assisterat författande, import, rapporter och exporter när de är
+tillgängliga. Klicka på en rad för att se kravets fullständiga detaljer.
 
 Använd panelknappen till vänster om tabbarna för att fälla ihop hela panelen.
 Den andra panelen får mer utrymme. Öppna panelen igen med fliken vid kanten,
@@ -277,18 +281,19 @@ Ett tomt kravunderlag öppnar båda panelerna. Ett underlag med krav öppnar bar
 vänster panel. Din senaste layout för det senast besökta underlaget sparas i
 webbläsaren och används vid omladdning. Besöker du ett annat underlag ersätts
 minnet; när du återvänder används grundlayouten igen. Andra slags sidor raderar
-inte minnet. Layouten följer inte ditt konto till andra webbläsare eller enheter.
+inte minnet. Layouten följer inte ditt konto till andra webbläsare eller
+enheter.
 
 När båda panelerna står bredvid varandra kan du dra linjen mellan dem för att
-ändra deras bredder. Valet sparas för det senast besökta kravunderlaget på
-samma sätt som panelernas öppna eller hopfällda läge. Byten av tabb påverkar
-inte bredderna. Dubbelklicka på linjen för att återställa lika breda paneler.
+ändra deras bredder. Valet sparas för det senast besökta kravunderlaget på samma
+sätt som panelernas öppna eller hopfällda läge. Byten av tabb påverkar inte
+bredderna. Dubbelklicka på linjen för att återställa lika breda paneler.
 
-När en panel blir smal visar linjen en uppmaning att fortsätta dra för att
-fälla ihop panelen. Dra vidare tills panelen tonas ned och släpp för att
-fälla ihop. Dra tillbaka för att avbryta hopfällningen, eller tryck Escape
-för att avbryta hela dragningen. När panelen öppnas igen återställs bredderna
-från före dragningen.
+När en panel blir smal visar linjen en uppmaning att fortsätta dra för att fälla
+ihop panelen. Dra vidare tills panelen tonas ned och släpp för att fälla ihop.
+Dra tillbaka för att avbryta hopfällningen, eller tryck Escape för att avbryta
+hela dragningen. När panelen öppnas igen återställs bredderna från före
+dragningen.
 
 Med tangentbord: fokusera linjen med Tab och använd vänster- eller högerpil.
 Håll Shift för större steg och tryck Enter för lika breda paneler.
@@ -310,9 +315,9 @@ kravpaketsfilterraden; kravlistan kan användas medan katalogen färdigställs.
 
 ### Välj krav att lägga till
 
-Markera ett eller flera krav i den högra panelen "Tillgängliga krav". Knappen
-**"Lägg till valda (N)"** visas i panelens rubrik när minst ett krav är
-markerat.
+Öppna den högra panelen **Kravbibliotek** med fliken vid kanten. Markera ett
+eller flera krav i tabben **Tillgängliga krav**. Knappen **"Lägg till valda
+(N)"** visas i panelens rubrik när minst ett krav är markerat.
 
 ![Välj krav att lägga till](images/025-lagg-till-krav-valt.png)
 
@@ -366,8 +371,8 @@ Bibliotekskrav och lokala krav kan bara tas bort med användningsstatus
 **Inkluderad**. Regeln gäller enskilda krav och markerade krav, både utan avtal
 och i redigerbara avtalsutkast. Alla markerade krav måste vara Inkluderad.
 Skrivbehörighet, avtalslåsning och avstegsregler gäller samtidigt. Ett väntande
-avsteg måste avslutas först; ett gällande godkännande kräver ansvarigs beslut
-om avstegsavslut. Den inaktiverade åtgärden förklarar hindret vid hovring eller
+avsteg måste avslutas först; ett gällande godkännande kräver ansvarigs beslut om
+avstegsavslut. Den inaktiverade åtgärden förklarar hindret vid hovring eller
 tangentbordsfokus. Borttagningen sparas, men själva bibliotekskravet finns kvar
 i kravbiblioteket. Om status ändras i en annan session kan servern avvisa
 borttagningen; ladda då om och kontrollera statusen.
@@ -378,14 +383,14 @@ borttagningen; ladda då om och kontrollera statusen.
 kravet inte kan uppfyllas som specificerat och vilka kompenserande åtgärder som
 vidtas. Begärande användare registreras automatiskt.
 
-![Formulär för avstegsansökan](images/030-avstegsformular-tomt.png)
+![Formulär för avstegsansökan](images/031-avstegsformular-tomt.png)
 
 ### Avstegsformulär ifyllt
 
 Klicka på **"Registrera avsteg"** för att spara. Motiveringstexten ingår sedan i
 avstegsgranskningsrapporten.
 
-![Avstegsformulär ifyllt](images/031-avstegsformular-ifyllt.png)
+![Avstegsformulär ifyllt](images/032-avstegsformular-ifyllt.png)
 
 ### Avsteg registrerat — Utkast
 
@@ -408,7 +413,7 @@ visar datumet; efter avslutet visas **Avslutat** med datum och det ursprungliga
 beslutet finns kvar i detaljerna. Fel vid registrering eller ändring visas i
 dialogen med inmatningen kvar.
 
-![Avsteg registrerat — Utkast](images/032-avsteg-registrerat.png)
+![Avsteg registrerat — Utkast](images/033-avsteg-registrerat.png)
 
 ### Avsteg — granskning begärd
 
@@ -417,7 +422,7 @@ beslut. En behörig kravgranskare klickar **"Registrera beslut"** för att
 registrera ett beslut. En behörig författare kan välja **"← Utkast"** om
 komplettering behövs.
 
-![Avsteg — granskning begärd](images/033-avsteg-granskning.png)
+![Avsteg — granskning begärd](images/034-avsteg-granskning.png)
 
 ### Registrera beslut
 
@@ -425,7 +430,7 @@ komplettering behövs.
 vem som fattat beslutet och datum. Välj sedan **"Godkänn"** eller **"Avslå"**
 för att slutföra beslutet.
 
-![Registrera beslut](images/034-avsteg-beslut-formular.png)
+![Registrera beslut](images/035-avsteg-beslut-formular.png)
 
 ## Import av krav
 
@@ -471,7 +476,7 @@ krav.", och välj kravområdet **Betygshantering**. Anslutning, modell,
 förmågepolicy och datapolicy kan inte väljas i dialogen. Guiden mockar AI-svaret
 men använder applikationens riktiga importförhandsgranskning.
 
-![AI-assisterat författande — behov och AI-anslutning](images/035-ai-oppna.png)
+![AI-assisterat författande — behov och AI-anslutning](images/036-ai-oppna.png)
 
 ### AI-assisterat författande — kravkandidater
 
@@ -479,7 +484,7 @@ Kravkandidaterna visas först i AI-dialogen. Användaren kan markera bort en
 kandidat, justera prompten och skapa nya kandidater innan resultatet skickas
 vidare till importgranskningen.
 
-![AI-assisterat författande — kravkandidater](images/036-ai-kravkandidater.png)
+![AI-assisterat författande — kravkandidater](images/037-ai-kravkandidater.png)
 
 ### AI-assisterat författande — föreslagna normreferenser
 
@@ -488,7 +493,7 @@ normbiblioteket. Här föreslås **Riktlinje för spårbar betygshantering** med
 nyckeln `EDU-GRADE-TRACE-2026`; användaren kan välja bort förslaget innan
 importgranskningen öppnas.
 
-![AI-assisterat författande — föreslagna normreferenser](images/037-ai-normforslag.png)
+![AI-assisterat författande — föreslagna normreferenser](images/038-ai-normforslag.png)
 
 ### AI-assisterat författande — AI-analys
 
@@ -497,7 +502,7 @@ Markdown-formatering, till exempel rubriker, listor och kodblock. Den är till
 för granskning och förbättring av prompten, inte som en del av de krav som
 importeras.
 
-![AI-assisterat författande — AI-analys](images/038-ai-analys.png)
+![AI-assisterat författande — AI-analys](images/039-ai-analys.png)
 
 ### AI-assisterat författande — råresultat
 
@@ -505,7 +510,7 @@ Fliken **Råresultat** visar den JSON som modellen returnerade. Det hjälper
 felsökning och transparens, men användaren fortsätter ändå via
 importgranskningen där värden valideras mot applikationens referensdata.
 
-![AI-assisterat författande — råresultat](images/039-ai-raresultat.png)
+![AI-assisterat författande — råresultat](images/040-ai-raresultat.png)
 
 ### AI-assisterat författande — förhandsgranska krav i import
 
@@ -513,7 +518,7 @@ När kravkandidater skickas vidare öppnas den redigerbara importgranskningen. H
 är AI-resultatet omvandlat till samma granskningsyta som JSON-importen använder,
 med kravrader och föreslagna normreferenser som separata flikar.
 
-![AI-assisterat författande — förhandsgranska krav i import](images/040-ai-importgranskning.png)
+![AI-assisterat författande — förhandsgranska krav i import](images/041-ai-importgranskning.png)
 
 ### AI-assisterat författande — föreslagen normreferens
 
@@ -521,7 +526,7 @@ Föreslagna normreferenser visas innan importen körs. Ett olöst förslag spara
 inte automatiskt, men kan skapas eller länkas till en befintlig normreferens så
 att kopplingen följer med kravet.
 
-![AI-assisterat författande — föreslagen normreferens](images/041-ai-import-normforslag.png)
+![AI-assisterat författande — föreslagen normreferens](images/042-ai-import-normforslag.png)
 
 ### AI-assisterat författande — skapa normreferens
 
@@ -529,7 +534,7 @@ När användaren väljer **"Skapa normreferens"** öppnas normbibliotekets formu
 med värden förifyllda från AI-resultatet. Användaren kan granska och justera
 uppgifterna innan källan sparas.
 
-![AI-assisterat författande — skapa normreferens](images/042-ai-import-normreferens-skapa.png)
+![AI-assisterat författande — skapa normreferens](images/043-ai-import-normreferens-skapa.png)
 
 ### AI-assisterat författande — normreferens löst
 
@@ -537,7 +542,7 @@ När normreferensen har skapats markeras förslaget som **Löst**. Kravrader som
 hänvisade till förslaget uppdateras så att den skapade normreferensen följer med
 vid import.
 
-![AI-assisterat författande — normreferens löst](images/043-ai-import-normreferens-lost.png)
+![AI-assisterat författande — normreferens löst](images/044-ai-import-normreferens-lost.png)
 
 ### AI-assisterat författande — kravrad löst
 
@@ -545,7 +550,7 @@ Tillbaka i fliken **Krav** visas kravraden som hänvisade till den föreslagna
 normreferensen utan varning. Den skapade normreferensen är nu kopplad till
 kravet och följer med vid import.
 
-![AI-assisterat författande — kravrad löst](images/044-ai-import-krav-normreferens-lost.png)
+![AI-assisterat författande — kravrad löst](images/045-ai-import-krav-normreferens-lost.png)
 
 ### AI-assisterat författande — redigera krav före import
 
@@ -553,7 +558,7 @@ Importgranskningen är redigerbar. I exemplet preciseras första kravkandidaten
 innan import, så användaren kan korrigera AI-förslaget utan att gå tillbaka till
 prompten.
 
-![AI-assisterat författande — redigera krav före import](images/045-ai-import-redigera-krav.png)
+![AI-assisterat författande — redigera krav före import](images/046-ai-import-redigera-krav.png)
 
 ### AI-assisterat författande — importkvitto
 
@@ -561,7 +566,7 @@ När **"Importera valda"** körs skapas de valda kandidaterna som nya utkast i
 kravbiblioteket. Kvittot visar hur många rader som importerades och CSV-kvittot
 innehåller de Krav-ID:n som skapades.
 
-![AI-assisterat författande — importkvitto](images/046-ai-import-kvitto.png)
+![AI-assisterat författande — importkvitto](images/047-ai-import-kvitto.png)
 
 ### AI-assisterat författande — importerade krav i kravbiblioteket
 
@@ -569,7 +574,7 @@ Efter importen visas de skapade kraven i kravbiblioteket. Krav-ID:n skapas av
 applikationen med kravområdets prefix, till exempel `BET0001`, `BET0002`,
 `BET0003`.
 
-![AI-assisterat författande — importerade krav i kravbiblioteket](images/047-ai-import-resultat-kravbibliotek.png)
+![AI-assisterat författande — importerade krav i kravbiblioteket](images/048-ai-import-resultat-kravbibliotek.png)
 
 ### Kravbiblioteksimport — välj mål och importfil
 
@@ -577,7 +582,7 @@ Klicka på **"Importera krav"** i kravbiblioteket, välj kravområde och klistra
 eller välj en JSON-fil. Exemplet använder importfilen `/tmp/krav-import.json`,
 som innehåller DICOM-krav och en föreslagen normreferens.
 
-![Kravbiblioteksimport — välj mål och importfil](images/048-import-kravbibliotek-fil.png)
+![Kravbiblioteksimport — välj mål och importfil](images/049-import-kravbibliotek-fil.png)
 
 ### Kravbiblioteksimport — granska krav
 
@@ -586,7 +591,7 @@ kan expanderas för att justera kravtext, acceptanskriterier, kategori, typ,
 kvalitetsegenskap, prioritet, normreferenser, kravpaket och
 verifieringsuppgifter innan importen körs.
 
-![Kravbiblioteksimport — granska krav](images/049-import-kravbibliotek-granskning.png)
+![Kravbiblioteksimport — granska krav](images/050-import-kravbibliotek-granskning.png)
 
 ### Föreslagen normreferens
 
@@ -594,7 +599,7 @@ Importfilen kan innehålla **föreslagna normreferenser** för källor som ännu
 finns i normbiblioteket. Förslaget kopplas till de kravrader som hänvisar till
 samma nyckel, men sparas inte automatiskt.
 
-![Föreslagen normreferens](images/050-import-normforslag.png)
+![Föreslagen normreferens](images/051-import-normforslag.png)
 
 ### Skapa normreferens från importförslag
 
@@ -602,7 +607,7 @@ Knappen **"Skapa normreferens"** öppnar samma formulär som normbiblioteket
 använder. Fälten fylls i från importförslaget, så användaren kan kontrollera och
 spara källan innan kraven importeras.
 
-![Skapa normreferens från importförslag](images/051-import-normreferens-skapa.png)
+![Skapa normreferens från importförslag](images/052-import-normreferens-skapa.png)
 
 ### Normreferens löst
 
@@ -610,7 +615,7 @@ När normreferensen har skapats markeras förslaget som **Löst** och importens
 kravrader uppdateras så att den nya normreferensen följer med när raderna
 importeras.
 
-![Normreferens löst](images/052-import-normreferens-lost.png)
+![Normreferens löst](images/053-import-normreferens-lost.png)
 
 ### Kravbiblioteksimport — importerade rader
 
@@ -618,7 +623,7 @@ När **"Importera valda"** körs skapas valda rader som nya utkast i
 kravbiblioteket. Kvittonotisen visar hur många rader som skapades och
 CSV-kvittot kan laddas ned vid behov.
 
-![Kravbiblioteksimport — importerade rader](images/053-import-kravbibliotek-kvitto.png)
+![Kravbiblioteksimport — importerade rader](images/054-import-kravbibliotek-kvitto.png)
 
 ### Kravunderlagsimport — importfil
 
@@ -626,7 +631,7 @@ I ett kravunderlag öppnar du **"Fler åtgärder"** och väljer **"Importera uni
 krav"**. Importen använder samma importfilformat, men målet är det aktuella
 kravunderlaget. Därför väljs inget kravområde i dialogen.
 
-![Kravunderlagsimport — importfil](images/054-import-kravunderlag-fil.png)
+![Kravunderlagsimport — importfil](images/055-import-kravunderlag-fil.png)
 
 ### Kravunderlagsimport — granska unika krav
 
@@ -634,7 +639,7 @@ Kravunderlagsimporten skapar **unika krav** som bara finns i detta kravunderlag.
 Kravpaket används inte för lokala krav, medan normreferenser, prioritet,
 verifierbarhet och behovsreferens kan granskas per rad.
 
-![Kravunderlagsimport — granska unika krav](images/055-import-kravunderlag-granskning.png)
+![Kravunderlagsimport — granska unika krav](images/056-import-kravunderlag-granskning.png)
 
 ### Kravunderlagsimport — importerade unika krav
 
@@ -642,7 +647,7 @@ När importen körs skapas valda rader som kravunderlagslokala krav. Raderna tas
 bort från granskningen efter lyckad import, och kvittot visar hur många unika
 krav som skapades i kravunderlaget.
 
-![Kravunderlagsimport — importerade unika krav](images/056-import-kravunderlag-kvitto.png)
+![Kravunderlagsimport — importerade unika krav](images/057-import-kravunderlag-kvitto.png)
 
 ### Importerade unika krav i kravunderlag
 
@@ -650,7 +655,118 @@ Efter att dialogen stängs uppdateras kravunderlaget. De importerade kraven
 hanteras som unika krav i underlaget och kan senare granskas, följas upp eller
 lyftas till kravbiblioteket vid behov.
 
-![Importerade unika krav i kravunderlag](images/057-import-kravunderlag-resultat.png)
+![Importerade unika krav i kravunderlag](images/058-import-kravunderlag-resultat.png)
+
+## Låt en extern AI ta fram krav
+
+Du kan låta en extern AI-assistent ta fram kravkandidater och sedan importera
+svaret. Stegguiden **"Låt en extern AI ta fram krav"** finns i importdialogen,
+både när du importerar krav till kravbiblioteket och när du importerar unika
+krav till ett kravunderlag. AI-anropsmallen ger AI-assistenten samma regler som
+det inbyggda AI-assisterade författandet. Kravhantering validerar svaret när du
+lägger in det, och du granskar kraven innan något sparas.
+
+Använd bara en AI-assistent som din organisation har godkänt för informationen i
+behovet och i referensdatan.
+
+### Stegguiden i importdialogen
+
+Välj **"Importera krav"** i kravbiblioteket, eller **"Fler åtgärder"** och
+**"Importera unika krav"** i ett kravunderlag. Stegguiden har tre steg:
+
+1. **Hämta två filer.** Välj **"AI-anropsmall"** och **"Referensdatafil"**.
+   Filnamnet står under varje knapp, till exempel
+   `kravimport-ai-anropsmall-kravbibliotek.md` och
+   `kravimport-referensdata-kravbibliotek.json`. För ett kravunderlag slutar
+   referensdatafilens namn med kravunderlagets id.
+2. **Fråga AI-assistenten.** Skriv behovet i chatten hos din AI-assistent,
+   klistra in hela AI-anropsmallen och bifoga referensdatafilen eller lägg till
+   den som kontext. Mallen har inga platshållare, så du ändrar ingenting i den.
+   Skriv hur många krav du vill ha om du vill styra antalet; annars föreslår
+   AI-assistenten 8 krav.
+3. **Lägg in svaret här.** Spara JSON-svaret som fil och släpp den i fältet,
+   eller klistra in svaret. Om svaret har förklarande text och ett enda kodblock
+   tar dialogen ut JSON ur kodblocket och lämnar texten i fältet orörd. Välj
+   sedan **"Förhandsgranska krav"** och granska kraven som vid annan import.
+
+Filerna följer gränssnittets språk. Om behovet eller referensdatafilen saknas,
+eller om filen hör till en annan destinationstyp eller schemaversion, svarar
+AI-assistenten kort utan JSON och förklarar vad som saknas.
+
+![Stegguiden i importdialogen](images/059-extern-ai-stegguide.png)
+
+### Referensdatafilen och när du behöver en ny
+
+Referensdatafilen är en ögonblicksbild av importens referensdata för
+destinationen: kategorier, kravtyper med kvalitetsegenskaper, prioriteter,
+normreferenser och kravpaket. För ett kravunderlag innehåller filen också
+kravunderlagets behovsreferenser. AI-assistenten använder referensdatan för att
+välja befintliga värden i stället för att gissa.
+
+Filen speglar destinationen när du hämtar den. Hämta en ny referensdatafil om
+normreferenser eller kravpaket har ändrats, och för ett kravunderlag även om
+behovsreferenserna har ändrats. En referensdatafil för ett kravunderlag gäller
+bara det kravunderlaget. Om Kravhantering får ett nytt importformat hämtar du
+både mallen och referensdatafilen igen, eftersom de ska ha samma
+`schemaVersion`.
+
+### Om svaret inte kan läsas in — reparationsprompten
+
+Dialogen kontrollerar svaret innan granskningen laddas och visar vad som är fel
+under fältet:
+
+- **Ingen JSON:** läs AI-assistentens svar. Behovet eller referensdatafilen kan
+  saknas.
+- **Avkortat svar:** be om färre krav per förfrågan.
+- **Flera kodblock:** klistra in bara JSON eller ett svar med ett enda kodblock.
+- **Syntaxfel, fel `schemaVersion` eller schemafel:** dialogen visar felen med
+  JSON-sökväg, högst 20 åt gången, och knappen **"Kopiera reparationsprompt"**.
+
+Klistra in reparationsprompten i samma samtal med AI-assistenten och lägg in det
+nya svaret i fältet. Prompten innehåller reparationsreglerna och felen, men
+ingen JSON och inget schema, eftersom AI-assistenten redan har dem i samtalet.
+Öppna **"Förhandsvisa reparationsprompt"** om du vill läsa texten innan du
+kopierar den. Fel och varningar på enskilda rader i granskningen rättar du i
+granskningen som vid annan import.
+
+### Egen prompt eller validering
+
+Den infällda sektionen **"Egen prompt eller validering"** under stegguiden är
+stängd från början. Där finns **"Ladda ner schema"** och **"Ladda ner
+importinstruktion"**. Filerna innehåller bara formatregler och referensdata,
+inte AI-anropsmallens roll, regelordning, kontroller eller AI-instruktion.
+Använd dem när du skriver hela prompten själv, till exempel för en egen agent,
+eller när du validerar importfiler i ett eget verktyg. Kravhantering validerar
+filen vid import på samma sätt oavsett hur den har tagits fram.
+
+### Fortsätt från AI-assisterat författande
+
+I AI-assisterat författande öppnar **"Så byggs AI-anropet"** en förklaring av
+det inbyggda AI-anropet. Sista sektionen, **"Fortsätt i en extern
+AI-assistent"**, har samma två knappar och filnamn som stegguidens första steg,
+för samma destination och språk. Lägg sedan in svaret i importdialogen.
+
+### Tips för olika AI-assistenter
+
+- **Microsoft 365 Copilot Chat:** skriv behovet, klistra in hela AI-anropsmallen
+  i samma meddelande och bifoga referensdatafilen. Om AI-assistenten svarar att
+  referensdatafilen saknas, bifoga den igen i samma samtal.
+- **GitHub Copilot Chat i Visual Studio Code:** spara båda filerna i arbetsytan
+  och lägg till dem som kontext i chatten, till exempel genom att dra filerna
+  till chatten. Skriv sedan behovet. Be gärna AI-assistenten spara JSON-svaret
+  som fil, så att du kan släppa filen i importdialogen.
+- **ChatGPT:** använd bara i undantagsfall och bara om din organisation tillåter
+  det för informationen. Flödet är detsamma: klistra in mallen och bifoga
+  referensdatafilen.
+
+Om du ofta tar fram krav kan du spara mallens regeldel i beständiga
+instruktioner, till exempel i fältet Instructions för en Microsoft 365-agent,
+som rymmer högst 8 000 tecken. Regeldelen är mallen utan avsnittet "JSON Schema
+för kravimport", alltså utan schemarubriken, texten om utdatakontraktet och
+`json`-kodblocket. Den är cirka 5 800–7 700 tecken beroende på språk och
+destination. Hämta schemat med **"Ladda ner schema"** och lägg till det som
+kunskapskälla eller bifoga det i samtalet. Bifoga referensdatafilen i varje
+samtal. Byt ut instruktionerna när Kravhantering får ett nytt importformat.
 
 ## Förbättringsförslag
 
@@ -661,7 +777,7 @@ kravunderlagsansvarig (upphandling, projekt, förvaltning) kan lämna ett försl
 på förbättring av kravet. Klicka på **"+ Registrera förslag"** för att öppna
 formuläret.
 
-![Förbättringsförslag — tom sektion](images/058-forslag-sektion-tom.png)
+![Förbättringsförslag — tom sektion](images/065-forslag-sektion-tom.png)
 
 ### Formulär för förbättringsförslag
 
@@ -669,14 +785,14 @@ Formuläret öppnas som en modal dialog. Ange förbättringsidén i textfältet.
 **Registrerat av** visar den inloggade användaren automatiskt. Klicka på
 **"Spara"** för att registrera förslaget.
 
-![Formulär för förbättringsförslag](images/059-forslagsformular-tomt.png)
+![Formulär för förbättringsförslag](images/066-forslagsformular-tomt.png)
 
 ### Förbättringsförslag ifyllt
 
 Förslagstexten beskriver en konkret förbättringsidé. Knappen **"Spara"**
 aktiveras när innehållsfältet har text.
 
-![Förbättringsförslag ifyllt](images/060-forslagsformular-ifyllt.png)
+![Förbättringsförslag ifyllt](images/067-forslagsformular-ifyllt.png)
 
 ### Förbättringsförslag registrerat
 
@@ -684,7 +800,7 @@ Det registrerade förslaget visas i sektionen med sin arbetsflödesstatus:
 **Utkast → Granskning begärd → Granskad**. Förslaget kan redigeras och skickas
 för granskning via knappen **"Granskning ↗"**.
 
-![Förbättringsförslag registrerat](images/061-forslag-registrerat.png)
+![Förbättringsförslag registrerat](images/068-forslag-registrerat.png)
 
 ### Flera förbättringsförslag
 
@@ -692,7 +808,7 @@ Ett krav kan ha flera förbättringsförslag från olika intressenter. Varje fö
 hanteras individuellt genom sitt eget arbetsflöde. Listan ger en samlad bild av
 alla inkomna synpunkter på kravet.
 
-![Flera förbättringsförslag](images/062-forslag-flera.png)
+![Flera förbättringsförslag](images/069-forslag-flera.png)
 
 ## Administrationscenter
 
@@ -735,7 +851,7 @@ Fliken **Kolumner** konfigurerar vilka kolumner som visas som standard i
 kravbiblioteket och deras ordning. Ändringar gäller för alla användare. Du kan
 också ange standardvyer för olika kontexter.
 
-![Admin — Kolumnhantering](images/063-admin-kolumner.png)
+![Admin — Kolumnhantering](images/070-admin-kolumner.png)
 
 ### Admin — Taxonomi
 
@@ -745,7 +861,7 @@ prioritetsskala, kvalitetsegenskaper, styrningsobjektstyper och
 genomförandeformer. Normreferenser hanteras i Normbibliotek under
 Kravbiblioteksförvaltning.
 
-![Admin — Taxonomi](images/064-admin-taxonomi.png)
+![Admin — Taxonomi](images/071-admin-taxonomi.png)
 
 ### Admin — Statusar och arbetsflöden
 
@@ -754,7 +870,7 @@ kravunderlagets livscykel och användningsstatusar i kravunderlag. Taxonomi och
 statusar hålls isär så att klassningar inte blandas ihop med livscykel- och
 användningslägen.
 
-![Admin — Statusar och arbetsflöden](images/065-admin-statusar-arbetsfloden.png)
+![Admin — Statusar och arbetsflöden](images/072-admin-statusar-arbetsfloden.png)
 
 ## Taxonomi och statusar
 
@@ -764,7 +880,7 @@ Kravområden organiserar krav efter organisatorisk domän. Varje kravområde har
 ägare, ett prefix som används i krav-ID (t.ex. "SÄK" ger ID:n som "SÄK0001") och
 en beskrivning.
 
-![Kravområden](images/066-kravomraden.png)
+![Kravområden](images/073-kravomraden.png)
 
 ### Kategorier
 
@@ -772,7 +888,7 @@ Kategorier klassificerar kravets perspektiv, till exempel verksamhetskrav,
 IT-krav och leverantörskrav. I administrationscentret visas kategorierna som en
 skrivskyddad taxonomilista.
 
-![Kategorier](images/067-kategorier.png)
+![Kategorier](images/074-kategorier.png)
 
 ### Kravversionsstatusar
 
@@ -781,7 +897,7 @@ systemstyrda kravversionsstatusarna (Utkast, Granskning, Publicerad, Arkiverad)
 kan inte tas bort eller byta namn — de utgör ryggraden i arbetsflödet. Övriga
 kravversionsstatusar kan anpassas.
 
-![Kravversionsstatusar](images/068-kravversionsstatusar.png)
+![Kravversionsstatusar](images/075-kravversionsstatusar.png)
 
 ### Prioritetsskala
 
@@ -793,7 +909,7 @@ mörkt tema tillsammans med kontrastresultatet. Kontrollera både läsbarhet och
 att prioriteterna går att skilja åt i de två förhandsvisningarna innan du
 sparar.
 
-![Prioritetsskala](images/069-prioritetsnivaer.png)
+![Prioritetsskala](images/076-prioritetsnivaer.png)
 
 ### Kravtyper
 
@@ -801,7 +917,7 @@ Kravtyper kategoriserar kravets karaktär (t.ex. funktionellt, icke-funktionellt
 säkerhetskrav). Typer används för filtrering, rapportering och för att
 säkerställa rätt kvalitetsegenskaper kopplas till kravet.
 
-![Kravtyper](images/070-kravtyper.png)
+![Kravtyper](images/077-kravtyper.png)
 
 ### Kvalitetsegenskaper
 
@@ -809,7 +925,7 @@ Kvalitetsegenskaper är ett hierarkiskt taxonomi som beskriver icke-funktionella
 krav (t.ex. tillgänglighet, prestanda, säkerhet). Egenskaperna kopplas till krav
 för att säkerställa täckning av kvalitetskraven.
 
-![Kvalitetsegenskaper](images/071-kvalitetsegenskaper.png)
+![Kvalitetsegenskaper](images/078-kvalitetsegenskaper.png)
 
 ### Normbibliotek
 
@@ -817,7 +933,7 @@ Normbiblioteket samlar normreferenser till externa standarder och regelverk
 (t.ex. ISO-standarder, GDPR). Krav kan referera till en eller flera
 normreferenser för att tydliggöra vilka regelverk de härstammar från.
 
-![Normbibliotek](images/072-normreferenser.png)
+![Normbibliotek](images/079-normreferenser.png)
 
 ## Rapporter
 
@@ -905,7 +1021,7 @@ filtrering och sortering. När markerade krav omfattar status **Granskning**
 visar samma rapportmeny även **Kombinerad granskningsrapport** med antal
 markerade krav.
 
-![Rapportgenerering från kravbiblioteket](images/079-rapporter-kravbibliotek.png)
+![Rapportgenerering från kravbiblioteket](images/086-rapporter-kravbibliotek.png)
 
 ### Rapporter från kravdetaljsidan
 
@@ -913,4 +1029,4 @@ Från kravdetaljsidan kan du öppna rapportmenyn för att generera
 **Historikrapport**, **Förbättringsförslagshistorik** och **Granskningsrapport**
 som PDF.
 
-![Rapporter från kravdetaljsidan](images/080-rapporter-kravdetalj.png)
+![Rapporter från kravdetaljsidan](images/087-rapporter-kravdetalj.png)

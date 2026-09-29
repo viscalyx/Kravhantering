@@ -5,6 +5,7 @@ import {
   Braces,
   FileText,
   Info,
+  MessagesSquare,
   Settings,
   ShieldCheck,
   UserRound,
@@ -12,18 +13,28 @@ import {
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { ReactNode } from 'react'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import AiRequestFileDownloads from '@/components/AiRequestFileDownloads'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import type { AiAuthoringProfileDescription } from '@/lib/ai/authoring-runtime'
 import {
   buildRequirementImportSystemPrompt,
   buildRequirementImportUserPrompt,
 } from '@/lib/ai/requirement-prompt'
+import { devMarker } from '@/lib/developer-mode-markers'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
+import type { AiRequestFileDestination } from '@/lib/requirements/ai-request-files'
+
+const MARKER_CONTEXT = 'ai request explanation'
 
 interface AiRequestExplanationDialogProps {
   candidateCount: number
+  /**
+   * The destination of the AI request files for continuing in an external AI
+   * assistant; `null` disables the download buttons.
+   */
+  fileDestination: AiRequestFileDestination | null
   imageCount: number
   importInstruction: string
   importInstructionLoading: boolean
@@ -151,6 +162,7 @@ function ExactFormatStep() {
 
 export default function AiRequestExplanationDialog({
   candidateCount,
+  fileDestination,
   imageCount,
   importInstruction,
   importInstructionLoading,
@@ -167,6 +179,7 @@ export default function AiRequestExplanationDialog({
   const shouldReduceMotion = useReducedMotion()
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
   const trimmedNeed = need.trim()
   const displayNeed = trimmedNeed || needPlaceholder
   const exactNeed = trimmedNeed || t('requestExplanation.emptyNeed')
@@ -180,6 +193,10 @@ export default function AiRequestExplanationDialog({
   useEffect(() => {
     if (open) onLoadImportInstruction()
   }, [onLoadImportInstruction, open])
+
+  useEffect(() => {
+    if (open) setDownloadError(null)
+  }, [open])
 
   const systemMessage = useMemo(
     () => buildRequirementImportSystemPrompt(importInstruction, locale),
@@ -365,6 +382,47 @@ export default function AiRequestExplanationDialog({
                 <ExactFormatStep />
               </div>
             </details>
+
+            <section
+              aria-labelledby="ai-request-explanation-external-title"
+              className="mt-5 rounded-lg border border-secondary-200 p-4 dark:border-secondary-800"
+              {...devMarker({
+                context: MARKER_CONTEXT,
+                name: 'detail section',
+                value: 'continue in external ai assistant',
+              })}
+            >
+              <h3
+                className="flex items-center gap-2 text-sm font-semibold text-secondary-900 dark:text-secondary-50"
+                id="ai-request-explanation-external-title"
+              >
+                <MessagesSquare
+                  aria-hidden
+                  className="h-4 w-4 text-primary-600"
+                />
+                {t('requestExplanation.externalAssistantTitle')}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-secondary-600 dark:text-secondary-300">
+                {t('requestExplanation.externalAssistantHelp')}
+              </p>
+              <div className="mt-3 max-w-sm">
+                <AiRequestFileDownloads
+                  destination={fileDestination}
+                  locale={locale}
+                  markerContext={MARKER_CONTEXT}
+                  onDownloadStart={() => setDownloadError(null)}
+                  onError={setDownloadError}
+                />
+              </div>
+              {downloadError ? (
+                <p
+                  className="mt-2 text-sm text-red-700 dark:text-red-300"
+                  role="alert"
+                >
+                  {downloadError}
+                </p>
+              ) : null}
+            </section>
           </div>
         </motion.div>
       </motion.div>

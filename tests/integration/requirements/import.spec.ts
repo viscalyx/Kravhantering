@@ -175,12 +175,20 @@ test.describe('Requirements import', () => {
       await expect(dialog.getByLabel('Import-JSON')).toHaveValue('')
 
       const support = dialog.getByRole('complementary', {
-        name: 'Schema och instruktion',
+        name: 'Låt en extern AI ta fram krav',
       })
       await expect(support).toHaveAttribute(
         'data-developer-mode-name',
         'support panel',
       )
+      await expect(support.getByRole('listitem')).toHaveCount(3)
+      const ownPromptToggle = support.getByRole('button', {
+        name: 'Egen prompt eller validering',
+      })
+      await expect(ownPromptToggle).toHaveAttribute('aria-expanded', 'false')
+      await expect(
+        support.getByRole('button', { name: 'Ladda ner schema' }),
+      ).toHaveCount(0)
       await dialog.getByRole('button', { name: 'Stäng' }).focus()
       await page.keyboard.press('Tab')
       await expect(dialog.getByLabel('Kravområde')).toBeFocused()
@@ -200,6 +208,18 @@ test.describe('Requirements import', () => {
       )
       await page.keyboard.press('Tab')
       await expect(dialog.getByLabel('Import-JSON')).toBeFocused()
+      await page.keyboard.press('Tab')
+      await expect(
+        support.getByRole('button', { name: 'AI-anropsmall' }),
+      ).toBeFocused()
+      await page.keyboard.press('Tab')
+      await expect(
+        support.getByRole('button', { name: 'Referensdatafil' }),
+      ).toBeFocused()
+      await page.keyboard.press('Tab')
+      await expect(ownPromptToggle).toBeFocused()
+      await page.keyboard.press('Enter')
+      await expect(ownPromptToggle).toHaveAttribute('aria-expanded', 'true')
       await page.keyboard.press('Tab')
       await expect(
         support.getByRole('button', { name: 'Ladda ner schema' }),
@@ -226,7 +246,7 @@ test.describe('Requirements import', () => {
         .toEqual({ instruction: true, schema: true })
       await expect(
         dialog.getByText(
-          /Importinstruktionen är bara formatdelen och referensdata för import/,
+          /Schemat och importinstruktionen innehåller bara formatregler och referensdata/,
         ),
       ).toHaveCount(1)
     })
@@ -415,7 +435,7 @@ test.describe('Requirements import', () => {
             '[data-developer-mode-name="input panel"]',
           )
           const support = dialog.getByRole('complementary', {
-            name: 'Schema och instruktion',
+            name: 'Låt en extern AI ta fram krav',
           })
           await expect(input).toHaveCount(1)
           await expect(support).toHaveCount(1)
@@ -443,6 +463,12 @@ test.describe('Requirements import', () => {
               ),
             )
             .toBe(true)
+          const ownPromptToggle = support.getByRole('button', {
+            name: 'Egen prompt eller validering',
+          })
+          await ownPromptToggle.scrollIntoViewIfNeeded()
+          await expect(ownPromptToggle).toBeInViewport()
+          await ownPromptToggle.click()
           await support
             .getByRole('button', { name: 'Ladda ner schema' })
             .scrollIntoViewIfNeeded()
@@ -453,6 +479,209 @@ test.describe('Requirements import', () => {
         })
       }
     }
+  })
+
+  test('REQ-17c: reads external JSON responses, explains each problem before review, and copies a repair prompt', async ({
+    context,
+    page,
+  }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    const previewRequests: Array<{ payload: unknown }> = []
+    await page.route('**/api/requirements/import/preview', async route => {
+      previewRequests.push(route.request().postDataJSON())
+      await fulfillJson(route, {
+        previewToken: 'external-json-preview-token',
+        proposals: [],
+        rows: [
+          {
+            errors: [],
+            infos: [],
+            proposedNormReferenceKeys: [],
+            reviewRowId: 'external-json-row-1',
+            selected: true,
+            sourceIndex: 0,
+            values: {
+              acceptanceCriteria: null,
+              categoryId: null,
+              description: 'Krav från kodblock',
+              needsReferenceId: null,
+              normReferenceIds: [],
+              priorityLevelId: null,
+              qualityCharacteristicId: null,
+              requirementPackageIds: [],
+              typeId: null,
+              verifiable: false,
+              verificationMethod: null,
+            },
+            warnings: [],
+          },
+        ],
+        summary: { errorCount: 0, rowCount: 1, warningCount: 0 },
+      })
+    })
+    const codeBlockPayload = {
+      requirements: [{ description: 'Krav från kodblock' }],
+      schemaVersion: 'requirement-import.v4',
+    }
+    const validJson = JSON.stringify(codeBlockPayload, null, 2)
+
+    await page.goto('/sv/requirements')
+    await page
+      .getByRole('button', { name: 'Importera krav', exact: true })
+      .click()
+    const dialog = page.getByRole('dialog', { name: /^Importera krav/ })
+    const rawJson = dialog.getByLabel('Import-JSON')
+    const previewButton = dialog.getByRole('button', {
+      name: 'Förhandsgranska krav',
+    })
+    const blocker = dialog.getByRole('status').first()
+    const copyRepairPrompt = dialog.getByRole('button', {
+      name: 'Kopiera reparationsprompt',
+    })
+    const repairPromptPreview = dialog.getByRole('textbox', {
+      name: 'Reparationsprompt',
+    })
+    await dialog.getByLabel('Kravområde').selectOption({ index: 1 })
+
+    await test.step('explain a response without JSON', async () => {
+      await rawJson.fill('Jag behöver referensdatafilen först.')
+      await expect(blocker).toHaveText(
+        'Svaret innehåller ingen JSON. Läs AI-assistentens svar. Behovet eller referensdatafilen kan saknas.',
+      )
+      await expect(previewButton).toBeDisabled()
+      await expect(copyRepairPrompt).toHaveCount(0)
+    })
+
+    await test.step('explain a truncated JSON response', async () => {
+      await rawJson.fill(validJson.slice(0, validJson.indexOf('Krav')))
+      await expect(blocker).toHaveText(
+        'Svaret är troligen avkortat. Be om färre krav per förfrågan.',
+      )
+      await expect(previewButton).toBeDisabled()
+      await expect(copyRepairPrompt).toHaveCount(0)
+    })
+
+    await test.step('reject several code blocks without extracting JSON', async () => {
+      await rawJson.fill(
+        `Förslag 1:\n\`\`\`json\n${validJson}\n\`\`\`\nFörslag 2:\n\`\`\`json\n${validJson}\n\`\`\``,
+      )
+      await expect(blocker).toContainText('Svaret innehåller 2 kodblock.')
+      await expect(previewButton).toBeDisabled()
+      await expect(dialog.getByText(/JSON togs ut ur kodblocket/)).toHaveCount(
+        0,
+      )
+      await expect(copyRepairPrompt).toHaveCount(0)
+    })
+
+    await test.step('show syntax errors with line and column and a repair prompt', async () => {
+      await rawJson.fill(
+        '{\n  "schemaVersion": "requirement-import.v4",\n  "requirements": [{ "description": "Krav" }],\n}',
+      )
+      await expect(blocker).toHaveText(
+        'JSON har ett syntaxfel på rad 4, kolumn 1: oväntat tecken ”}”.',
+      )
+      await expect(previewButton).toBeDisabled()
+      await expect(copyRepairPrompt).toBeEnabled()
+      const previewToggle = dialog.getByRole('button', {
+        name: 'Förhandsvisa reparationsprompt',
+      })
+      await expect(previewToggle).toHaveAttribute('aria-expanded', 'false')
+      await expect(repairPromptPreview).toBeHidden()
+      await previewToggle.click()
+      await expect(previewToggle).toHaveAttribute('aria-expanded', 'true')
+      await expect(repairPromptPreview).toHaveValue(
+        new RegExp(
+          escapeRegExp(
+            '- $: JSON har ett syntaxfel på rad 4, kolumn 1: oväntat tecken ”}”.',
+          ),
+        ),
+      )
+    })
+
+    await test.step('explain a wrong schemaVersion and offer a repair prompt', async () => {
+      await rawJson.fill(
+        JSON.stringify({
+          ...codeBlockPayload,
+          schemaVersion: 'requirement-import.v1',
+        }),
+      )
+      await expect(blocker).toHaveText(
+        'schemaVersion ska vara requirement-import.v4.',
+      )
+      await expect(previewButton).toBeDisabled()
+      await expect(copyRepairPrompt).toBeEnabled()
+      await expect(repairPromptPreview).toHaveValue(
+        new RegExp(
+          escapeRegExp(
+            '- $.schemaVersion: schemaVersion ska vara requirement-import.v4.',
+          ),
+        ),
+      )
+    })
+
+    await test.step('list at most 20 schema errors with JSON paths', async () => {
+      await rawJson.fill(
+        JSON.stringify({
+          requirements: Array.from({ length: 23 }, () => ({})),
+          schemaVersion: 'requirement-import.v4',
+        }),
+      )
+      await expect(blocker).toHaveText(
+        'JSON följer inte importschemat. Rätta 23 fel:',
+      )
+      const errors = dialog.getByRole('list', { name: 'Valideringsfel' })
+      // `has` matches relative to each status, so the inner locator starts
+      // at the page.
+      await expect(
+        dialog.getByRole('status').filter({
+          has: page.getByRole('list', { name: 'Valideringsfel' }),
+        }),
+      ).toHaveCount(1)
+      await expect(errors.getByRole('listitem')).toHaveCount(20)
+      await expect(errors.getByRole('listitem').first()).toHaveText(
+        '$.requirements[0].description: Fältet saknas men är obligatoriskt.',
+      )
+      await expect(dialog.getByText('och 3 fel till')).toHaveCount(1)
+      await expect(previewButton).toBeDisabled()
+    })
+
+    await test.step('copy the repair prompt for the schema errors', async () => {
+      await copyRepairPrompt.click()
+      await expect(
+        dialog.getByRole('status').filter({
+          hasText:
+            'Reparationsprompten är kopierad. Klistra in den i samma samtal med AI-assistenten.',
+        }),
+      ).toHaveCount(1)
+      const copied = await page.evaluate(() => navigator.clipboard.readText())
+      await expect(repairPromptPreview).toHaveValue(copied)
+      expect(copied).toMatch(
+        /^Ditt JSON-svar validerade inte mot importkontraktet\./u,
+      )
+      expect(
+        copied.split('\n').filter(line => line.startsWith('- $.requirements[')),
+      ).toHaveLength(23)
+      expect(copied).toContain(
+        '- $.requirements[22].description: Fältet saknas men är obligatoriskt.',
+      )
+      expect(copied).not.toMatch(/[{}]/u)
+    })
+
+    await test.step('preview JSON taken from exactly one code block', async () => {
+      const response = `Här är kraven:\n\n\`\`\`json\n${validJson}\n\`\`\`\n\nSäg till om du vill ha fler.`
+      await rawJson.fill(response)
+      await expect(
+        dialog.getByRole('status').filter({
+          hasText:
+            'JSON togs ut ur kodblocket i svaret. Texten i fältet är oförändrad.',
+        }),
+      ).toHaveCount(1)
+      await expect(rawJson).toHaveValue(response)
+      await expect(previewButton).toBeEnabled()
+      await previewButton.click()
+      await expect(page.getByRole('tab', { name: /Krav 1/ })).toBeVisible()
+      expect(previewRequests.at(-1)?.payload).toEqual(codeBlockPayload)
+    })
   })
 
   test('REQ-17a: downloads edited remaining candidates and reopens with changed reference data', async ({

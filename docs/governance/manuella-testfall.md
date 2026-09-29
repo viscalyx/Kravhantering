@@ -949,12 +949,19 @@ meddelar den nya statusen utan att fokus behöver flyttas till statusbrickan.
 ### REQ-15: AI-kravgenerator lämnar kandidater till importgranskning
 
 **Steg:** Öppna AI-assisterat författande från kravbiblioteket, kontrollera
-den administratörsstyrda AI-anslutningen och datapolicyn, välj kravområde och
-generera en kravkandidat. Öppna fliken `AI-analys` och
-kontrollera modellens analys. Välj sedan `Förhandsgranska krav i import`.
+den administratörsstyrda AI-anslutningen och datapolicyn och välj kravområde.
+Öppna `Så byggs AI-anropet`, välj `AI-anropsmall` och sedan `Referensdatafil`
+i sektionen `Fortsätt i en extern AI-assistent` och stäng dialogen. Generera
+en kravkandidat. Öppna fliken `AI-analys` och kontrollera modellens analys.
+Välj sedan `Förhandsgranska krav i import`.
 
-**Förväntat resultat:** Den genererade kandidaten skickas som
-`requirement-import.v4` till importgranskningen för valt kravområde.
+**Förväntat resultat:** Sektionen `Fortsätt i en extern AI-assistent` ligger
+sist i `Så byggs AI-anropet`, efter `Visa exakt text som skickas`. Filnamnet
+står under varje knapp och är detsamma som den nedladdade filens namn och som
+i importdialogen: `kravimport-ai-anropsmall-kravbibliotek.md` och
+`kravimport-referensdata-kravbibliotek.json`. Den genererade kandidaten
+skickas som `requirement-import.v4` till importgranskningen för valt
+kravområde.
 En resolverad prioritet visas i AI-förhandsgranskningen med P-kod och
 lokaliserat namn. Ett ogiltigt förslag visas i stället med en varning.
 Importgranskningen öppnas direkt med kandidaten synlig och utan att visa
@@ -1098,8 +1105,10 @@ har ändrats.
 
 **Steg:** Logga in som `olle.areaowner`, öppna `/sv/requirements`, välj
 importknappen i den flytande åtgärdsytan. Använd Tab och Skift+Tab för att
-nå kravområde, filval, textinmatning och stödytan `Schema och instruktion`.
-Ladda ner schema och importinstruktion från stödytan. Välj även en JSON-fil
+nå kravområde, filval, textinmatning och stödytan `Låt en extern AI ta fram
+krav`. Kontrollera stegguidens tre steg. Öppna den infällda sektionen `Egen
+prompt eller validering` och ladda ner schema och importinstruktion. Välj även
+en JSON-fil
 via filvalet och kontrollera att innehållet visas i textfältet. Klistra in
 `requirement-import.v4`-JSON med ett krav vars
 kravtext börjar med `=`,
@@ -1109,8 +1118,12 @@ expandera raden, granska den föreslagna normreferensen, importera vald rad och
 ladda ner CSV-kvitto.
 
 **Förväntat resultat:** Inmatning och stödmaterial går att nå med tangentbord
-och har synlig fokusmarkering. Båda nedladdningarna och deras förklaring är
-tillgängliga utan att öppna en extra sektion. Filval och inklistring använder
+och har synlig fokusmarkering. Stegguiden visar `Hämta två filer`, `Fråga
+AI-assistenten` och `Lägg in svaret här` och nämner inga produktnamn.
+Sektionen `Egen prompt eller validering` är stängd från start, anger sitt
+läge för skärmläsare och visar knapparna för schema och importinstruktion med
+förklaringen att filerna bara innehåller formatregler och referensdata.
+Filval och inklistring använder
 samma textfält och validering. JSON med destinationsfält stoppas före granskning.
 Kravområde måste väljas från användarens tilldelade områden, dialogrubriken
 visar `Importera krav för {kravområde}` och granskningen skiljer mellan `Krav`
@@ -1148,6 +1161,147 @@ Nedladdning behåller ändringar och val i granskningen. Filen kan öppnas via
 vanlig filinläsning; den nya granskningen visar den korrigerade raden och en
 varning för den saknade referensen. Aktuell behörighet, destination,
 referensdata och kravimportbudget valideras på nytt.
+
+### REQ-17b: hämta AI-anropsmall och referensdatafil för kravbiblioteket
+
+**Steg:** Logga in som `ada.admin`, öppna `/sv/requirements` och välj
+`Importera krav`. Välj `AI-anropsmall` och sedan `Referensdatafil` i steg 1
+i stödytan `Låt en extern AI ta fram krav`. Öppna båda filerna.
+
+**Förväntat resultat:** Filnamnet står under varje knapp och är detsamma som
+den nedladdade filens namn: `kravimport-ai-anropsmall-kravbibliotek.md` och
+`kravimport-referensdata-kravbibliotek.json`. Mallen börjar
+med raden `===== BÖRJAN PÅ AI-ANROPSMALL FÖR KRAVIMPORT =====` och slutar med
+raden `===== SLUT PÅ AI-ANROPSMALL =====`. Den anger `schemaVersion` och
+destinationstypen `requirements_library`, har ett enda `json`-kodblock med
+schemat och innehåller varken referensdata, platshållare eller namn på
+AI-assistenter.
+Referensdatafilen är minifierad JSON utan BOM med `generatedAt`,
+`schemaVersion`, `locale`, `destination` med `kind` `requirements_library`
+och `referenceData`. Under stegen står att referensdatafilen speglar
+kravbiblioteket just nu och att en ny fil behövs när normreferenser eller
+kravpaket har ändrats.
+
+### REQ-17c: läs in extern JSON, visa detaljerade fel och kopiera reparationsprompt
+
+**Steg:** Logga in som `olle.areaowner`, öppna `/sv/requirements`, välj
+importknappen och välj ett kravområde. Klistra in följande texter i tur och
+ordning i fältet `Import-JSON` och läs meddelandet under fältet efter varje
+inklistring. Kontrollera också om knappen `Kopiera reparationsprompt` finns
+under meddelandet. Öppna `Förhandsvisa reparationsprompt` vid fall 4 och läs
+texten i förhandsvisningen vid fall 4–6. Välj `Kopiera reparationsprompt` vid
+fall 6 och klistra in urklippet i ett textfält:
+
+1. Ett svar utan JSON, till exempel `Jag behöver referensdatafilen först.`
+2. Början av ett giltigt importobjekt som slutar mitt i listan `requirements`.
+3. Ett svar med förklarande text och två kodblock med JSON.
+4. Ett importobjekt på fyra rader där rad 3 slutar med ett extra
+   kommatecken före det avslutande `}` på rad 4.
+5. Ett importobjekt med `"schemaVersion": "requirement-import.v1"`.
+6. Ett `requirement-import.v4`-objekt med 23 krav utan kravtext.
+7. Ett svar med förklarande text och ett enda kodblock med giltig
+   `requirement-import.v4`-JSON.
+
+Förhandsgranska sedan.
+
+**Förväntat resultat:** Dialogen visar ett meddelande per fall innan
+granskningen laddas, och `Förhandsgranska krav` är inaktiverad för fall 1–6:
+
+1. `Svaret innehåller ingen JSON. Läs AI-assistentens svar. Behovet eller
+   referensdatafilen kan saknas.`
+2. `Svaret är troligen avkortat. Be om färre krav per förfrågan.`
+3. `Svaret innehåller 2 kodblock.` Ingen JSON tas ut.
+4. Syntaxfelet med rad och kolumn: `JSON har ett syntaxfel på rad 4, kolumn 1:
+   oväntat tecken ”}”.`
+5. `schemaVersion ska vara requirement-import.v4.`
+6. `JSON följer inte importschemat. Rätta 23 fel:` följt av en lista med 20 fel.
+   Varje fel har en JSON-sökväg, till exempel `$.requirements[0].description`,
+   och en översatt text. Listan avslutas med `och 3 fel till`.
+7. Dialogen visar att JSON togs ut ur kodblocket och att texten i fältet är
+   oförändrad. Fältet innehåller fortfarande hela svaret, och granskningen
+   laddas med kravet från kodblocket.
+
+Skärmläsare meddelar meddelandet under fältet, fellistan och informationen om
+att JSON togs ut ur kodblocket som status utan att fokus flyttas.
+
+`Kopiera reparationsprompt` finns bara för fall 4–6. Förhandsvisningen är
+stängd tills du öppnar den och visar reparationsprompten för det aktuella
+felet:
+
+- Fall 4: `- $: JSON har ett syntaxfel på rad 4, kolumn 1: oväntat tecken ”}”.`
+- Fall 5: `- $.schemaVersion: schemaVersion ska vara requirement-import.v4.`
+- Fall 6: alla 23 fel med JSON-sökväg och översatt text.
+
+Efter kopieringen visar dialogen `Reparationsprompten är kopierad. Klistra in
+den i samma samtal med AI-assistenten.` Den inklistrade texten är densamma som
+förhandsvisningen. Den börjar med `Ditt JSON-svar validerade inte mot
+importkontraktet. Rätta felen nedan.`, följt av reparationsreglerna och
+felen. Den innehåller ingen JSON, inget schema och inga produktnamn. Om fler än
+50 fel finns, listar prompten 50 fel och sedan raden `och N fel till`.
+
+Med engelskt gränssnitt visas samma meddelanden och knappen
+`Copy repair prompt` på engelska. Radfel och varningar i granskningen behåller
+sina befintliga åtgärder och ger ingen reparationsprompt.
+
+### REQ-17d: ta fram krav med en extern AI-assistent i riktiga klienter
+
+Detta testfall är manuellt endast enligt undantaget i issue `#1559`. Det har
+avsiktligt inget Playwright-scenario, eftersom det kräver riktiga externa
+AI-klienter som testmiljön inte kan styra.
+
+**Steg:** Använd Microsoft 365 Copilot Chat och GitHub Copilot Chat i Visual
+Studio Code med konton som organisationen har godkänt för testdata. Använd bara
+seedad testdata och skriv inga verkliga uppgifter i behoven.
+
+1. Logga in som `petra.specresp`, öppna ett kravunderlag där användaren är
+   ansvarig, välj `Fler åtgärder` och sedan `Importera unika krav`. Hämta
+   `AI-anropsmall` och `Referensdatafil` i steg 1 i stödytan `Låt en extern AI
+   ta fram krav`. Notera referensdatafilens storlek, antalet objekt i listorna
+   `normReferences`, `requirementPackages` och `needsReferences` och det sista
+   objektet i varje lista.
+1. Starta ett nytt samtal i Microsoft 365 Copilot Chat, bifoga bara
+   referensdatafilen och fråga hur många objekt listorna har och vilket det
+   sista objektet i varje lista är.
+1. Starta ett nytt samtal i Microsoft 365 Copilot Chat. Skriv ett behov med
+   ett begärt antal krav, till exempel
+   `Ta fram 5 krav för inloggning med e-legitimation.`, klistra in hela
+   AI-anropsmallen i samma meddelande och bifoga referensdatafilen. Notera om
+   hela mallen fram till slutmarkören ryms i meddelandet. Om den inte ryms,
+   notera hur många tecken som ryms.
+1. Spara svaret som JSON-fil, släpp filen i fältet `Import-JSON` i
+   importdialogen och välj `Förhandsgranska krav`. Om dialogen visar
+   `Kopiera reparationsprompt`, kopiera prompten, klistra in den i samma samtal
+   och lägg in det nya svaret.
+1. Starta ett nytt samtal i Microsoft 365 Copilot Chat. Klistra in
+   AI-anropsmallen och bifoga referensdatafilen utan att skriva något behov.
+   Öppna importdialogen på nytt och klistra in svaret i fältet `Import-JSON`.
+1. Starta ett nytt samtal i Microsoft 365 Copilot Chat. Skriv ett behov och
+   klistra in AI-anropsmallen utan att bifoga referensdatafilen.
+1. Logga in som `olle.areaowner`, öppna `/sv/requirements`, välj
+   `Importera krav` och ett kravområde och hämta båda filerna i steg 1. Spara
+   filerna i en arbetsyta i Visual Studio Code. Lägg till båda filerna som
+   kontext i GitHub Copilot Chat och skriv ett behov utan antal. Lägg in
+   svaret i importdialogen och välj `Förhandsgranska krav`.
+1. Starta ett nytt samtal i GitHub Copilot Chat, lägg till bara
+   AI-anropsmallen som kontext och skriv ett behov.
+
+**Förväntat resultat:** Microsoft 365 Copilot Chat anger samma antal och samma
+sista objekt som referensdatafilen, vilket visar att hela bilagan har lästs.
+Hela mallen fram till slutmarkören ryms i meddelandet, eller så är gränsen
+noterad. Svaren med behov och referensdatafil innehåller JSON som dialogen
+läser in, direkt eller ur ett enda kodblock, eventuellt efter en
+reparationsprompt i samma samtal. Granskningen visar det begärda antalet
+kravkandidater för Microsoft 365 Copilot Chat och 8 kravkandidater för GitHub
+Copilot Chat. Kategorier, kravtyper, kvalitetsegenskaper, prioriteter och
+kravpaket i svaren finns i referensdatafilen. Normreferenser och
+behovsreferenser finns i referensdatafilen eller är förslag på nya referenser.
+Utan behov och utan referensdatafil svarar AI-assistenten kort utan JSON och
+förklarar vad som saknas. När ett sådant svar klistras in visar dialogen
+`Svaret innehåller ingen JSON. Läs AI-assistentens svar. Behovet eller
+referensdatafilen kan saknas.` Anteckna klient, datum, filstorlek, antal tecken
+som ryms och varje avvikelse i testrapporten. Om en klient inte läser hela
+bilagan eller inte rymmer mallen, uppdatera tipsen i användarguidens avsnitt
+`Låt en extern AI ta fram krav`.
 
 ### REQ-18: exportera kravbiblioteket till CSV
 
@@ -1997,20 +2151,33 @@ utan att fokus behöver flyttas till statusbrickan.
 ### SPEC-17: importera unika krav till kravunderlag
 
 **Steg:** Logga in som `petra.specresp`, öppna ett kravunderlag där användaren
-är ansvarig, välj `Fler åtgärder` och sedan `Importera unika krav`.
-Klistra in giltig `requirement-import.v4`-JSON med kravtext, föreslagen
-normreferens, `proposedNeedsReferences` med radens `needsReferenceKey` och fält
-för kravpaket som ska ignoreras för kravunderlagslokala krav. Lös
-behovsreferensen i fliken `Föreslagna behovsreferenser` genom att skapa eller
-länka behovsreferensen. Testa även en rad med `verifiable: true` utan
-verifieringsmetod och fyll sedan i metoden innan import. Ladda ner valda
-kandidater innan import och kontrollera att filen innehåller aktuell
-verifieringsmetod, löst behovsreferens-ID och normreferensens verksamhets-ID.
-Nedladdningen behåller granskningen och filen följer det kanoniska schemat.
+är ansvarig, välj `Fler åtgärder` och sedan `Importera unika krav`. Välj
+`AI-anropsmall` och sedan `Referensdatafil` i steg 1 i stödytan `Låt en extern
+AI ta fram krav` och öppna båda filerna. Klistra in giltig
+`requirement-import.v4`-JSON med kravtext, föreslagen normreferens,
+`proposedNeedsReferences` med radens `needsReferenceKey` och fält för kravpaket
+som ska ignoreras för kravunderlagslokala krav. Lös behovsreferensen i fliken
+`Föreslagna behovsreferenser` genom att skapa eller länka behovsreferensen.
+Testa även en rad med `verifiable: true` utan verifieringsmetod och fyll sedan i
+metoden innan import. Ladda ner valda kandidater innan import och kontrollera
+att filen innehåller aktuell verifieringsmetod, löst behovsreferens-ID och
+normreferensens verksamhets-ID. Nedladdningen behåller granskningen och filen
+följer det kanoniska schemat.
 
 **Förväntat resultat:** Importen kräver kravunderlagsbehörighet men inget
 kravområde. Rader skapas som kravunderlagslokala krav i aktuellt kravunderlag.
-Dialogrubriken visar `Importera krav för {kravunderlag}`.
+Dialogrubriken visar `Importera lokala krav för {kravunderlag}`.
+Filnamnet står under varje knapp i steg 1 och är detsamma som den nedladdade
+filens namn: `kravimport-ai-anropsmall-kravunderlag.md` och
+`kravimport-referensdata-kravunderlag-{id}.json`, där `{id}` är
+kravunderlagets id. Mallen börjar och slutar med markörraderna, anger
+destinationstypen `requirements_specification` och innehåller
+Importinstruktionens regler för behovsreferenser men ingen referensdata.
+Referensdatafilen är minifierad JSON utan BOM. Dess `destination` har `kind`
+`requirements_specification`, kravunderlagets `id` och kravunderlagets namn,
+och `referenceData` innehåller `needsReferences`. Under stegen står att
+referensdatafilen speglar kravunderlaget just nu och att en ny fil behövs när
+normreferenser, kravpaket eller behovsreferenser har ändrats.
 Verifierbara lokala krav utan verifieringsmetod blockeras tills värdet anges.
 Krav, föreslagna normreferenser och föreslagna behovsreferenser visas i
 separata flikar. Oupplöst `needsReferenceKey` blockerar raden tills förslaget

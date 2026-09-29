@@ -106,6 +106,13 @@ export const drawerPanelMotion = (
   }
 }
 
+/**
+ * Class names for the wrapper around a `collapsiblePanelMotion` region. The
+ * wrapper clips the height animation; the negative margin and matching
+ * padding keep the focus outlines of the content visible.
+ */
+export const COLLAPSIBLE_REGION_CLIP_CLASS = '-mx-1 overflow-hidden px-1'
+
 export const collapsiblePanelMotion = (
   reducedMotionPreference: boolean | null,
   { duration = 0.15 }: DurationOptions = {},
