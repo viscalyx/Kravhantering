@@ -164,14 +164,14 @@ jobs:
       - name: Validate production archive and runtime contracts
         run: npm run test -- scripts/__tests__/production-smoke-startup.test.mjs scripts/__tests__/prepare-production-smoke-bundle.test.mjs scripts/__tests__/container-release.test.mjs scripts/__tests__/ci-container-runtime.test.mjs
       - name: Download app-runtime candidate
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           # Use the REST API instead of the intermittent internal artifact endpoint.
           github-token: ${{ github.token }}
           name: container-candidate-app-runtime
           path: tmp/candidates/app-runtime
       - name: Download db-job candidate
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           github-token: ${{ github.token }}
           name: container-candidate-db-job
@@ -364,19 +364,19 @@ jobs:
         with:
           persist-credentials: false
       - name: Download exact OCI candidates
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           github-token: ${{ github.token }}
           name: hsa-mtls-current-commit-oci
           path: /tmp/hsa-oci
       - name: Download HSA mock candidate
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           github-token: ${{ github.token }}
           name: container-candidate-hsa-directory-mock
           path: /tmp/hsa-oci/candidates/hsa-directory-mock
       - name: Download HSA adapter candidate
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           github-token: ${{ github.token }}
           name: container-candidate-hsa-person-lookup-adapter
@@ -457,19 +457,19 @@ jobs:
         with:
           persist-credentials: false
       - name: Download exact OCI candidates
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           github-token: ${{ github.token }}
           name: hsa-mtls-current-commit-oci
           path: /tmp/hsa-oci
       - name: Download HSA mock candidate
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           github-token: ${{ github.token }}
           name: container-candidate-hsa-directory-mock
           path: /tmp/hsa-oci/candidates/hsa-directory-mock
       - name: Download HSA adapter candidate
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           github-token: ${{ github.token }}
           name: container-candidate-hsa-person-lookup-adapter
