@@ -53,7 +53,7 @@ jobs:
           target: ${{ matrix.target }}
       - name: Upload candidate and evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: container-candidate-${{ matrix.candidate }}
           path: tmp/container-candidate/
@@ -113,7 +113,7 @@ jobs:
           target: ${{ matrix.target }}
       - name: Upload candidate and evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: container-candidate-${{ matrix.candidate }}
           path: tmp/container-candidate/
@@ -265,7 +265,7 @@ jobs:
         run: timeout --kill-after=10s 120s scripts/containers/production-smoke.sh down
       - name: Upload assembly evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: production-assembly-evidence
           path: |
@@ -337,7 +337,7 @@ jobs:
             --output type=docker,dest=/tmp/hsa-oci/provisioner.tar \
             --file containers/hsa-mtls-provisioner/Dockerfile .
       - name: Upload exact OCI candidates
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: hsa-mtls-current-commit-oci
           path: /tmp/hsa-oci

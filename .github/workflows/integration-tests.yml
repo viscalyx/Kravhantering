@@ -91,7 +91,7 @@ jobs:
 
       - name: Upload test results (dev smoke)
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: playwright-report-dev-smoke
           path: playwright-report-dev/
@@ -99,7 +99,7 @@ jobs:
 
       - name: Upload test results XML (dev smoke)
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: playwright-junit-dev-smoke
           path: test-results/dev/playwright-junit.xml
@@ -215,7 +215,7 @@ jobs:
 
       - name: Upload SQL integration results
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: sql-integration-results
           path: test-results/sql-integration/
@@ -341,7 +341,7 @@ jobs:
           docker compose -f docker-compose.idp.yml logs --no-color > test-results/services/keycloak.log 2>&1 || true
       - name: Upload pruned server log
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: prodlike-pruned-server-log
           path: |
@@ -351,7 +351,7 @@ jobs:
           retention-days: 7
       - name: Upload test results (prodlike-pruned)
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: playwright-report-prodlike-pruned
           path: |
@@ -363,7 +363,7 @@ jobs:
           retention-days: 7
       - name: Upload test results XML (prodlike-pruned)
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: playwright-junit-prodlike-pruned
           path: test-results/prodlike/playwright-junit.xml
@@ -435,7 +435,7 @@ jobs:
           docker compose -f docker-compose.idp.yml logs --no-color > test-results/services/keycloak.log 2>&1 || true
       - name: Upload browser-functional evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: browser-functional-evidence
           path: |
