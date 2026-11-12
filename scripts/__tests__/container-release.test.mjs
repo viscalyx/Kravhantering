@@ -1828,18 +1828,14 @@ describe('trusted container release helpers', () => {
     expect(releaseEnv).toContain(
       'ghcr.io/viscalyx/kravhantering-app-runtime:replace-with-release-tag',
     )
-    expect(releaseEnv).toContain(
-      'NGINX_IMAGE_REF=docker.io/library/nginx:1.31.6-alpine3.24',
-    )
-    expect(releaseEnv).toContain(
-      'SQLSERVER_IMAGE_REF=mcr.microsoft.com/mssql/server:2025-CU9-ubuntu-24.04',
-    )
-    expect(releaseEnv).toContain(
-      'KEYCLOAK_IMAGE_REF=quay.io/keycloak/keycloak:26.7.4-0',
-    )
-    expect(releaseEnv).toContain(
-      'KONG_IMAGE_REF=docker.io/kong/kong-gateway:3.16.0.0-20260915-ubuntu',
-    )
+    for (const name of ['nginx', 'sqlserver', 'keycloak', 'kong']) {
+      const lock = JSON.parse(
+        readWorkspaceFile(`containers/${name}/image.lock.json`),
+      )
+      expect(releaseEnv).toContain(
+        `${name.toUpperCase()}_IMAGE_REF=${lock.image}:${lock.tag}`,
+      )
+    }
     expect(releaseEnv).toContain(
       'HSA_DIRECTORY_MOCK_IMAGE_REF=ghcr.io/viscalyx/kravhantering-hsa-directory-mock:replace-with-release-tag',
     )

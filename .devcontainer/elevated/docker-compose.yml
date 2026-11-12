@@ -105,7 +105,7 @@ services:
     init: true
 
   db:
-    image: mcr.microsoft.com/mssql/server:2025-CU9-ubuntu-24.04
+    image: mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-24.04
     env_file:
     - path: ../.env
       required: false
@@ -136,7 +136,7 @@ services:
     # — changes made via the admin UI on http://localhost:8080 are NOT
     # persisted across restarts.
     # See https://www.keycloak.org/docs/latest/upgrading/
-    image: quay.io/keycloak/keycloak:26.7.4-0
+    image: quay.io/keycloak/keycloak:26.8.2-2
     command:
       - start-dev
       - --import-realm
@@ -180,7 +180,7 @@ services:
       - hsa-mtls-mock:/run/kravhantering/hsa-mtls-runtime/mock
 
   kong:
-    image: docker.io/kong/kong-gateway:3.16.0.0-20260915-ubuntu
+    image: docker.io/kong/kong-gateway:3.16.0.2-20261110-ubuntu
     depends_on:
       hsa-person-lookup-adapter:
         condition: service_healthy

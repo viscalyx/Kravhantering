@@ -61,6 +61,36 @@ log() {
   printf '[krav-azure-bootstrap] %s\n' "$*"
 }
 
+select_host_platform() {
+  local distribution="$1" family="$2" release="$3" codename="$4" architecture="$5"
+  if [ "${distribution}" = ubuntu ] && [ "${architecture}" = amd64 ]; then
+    case "${family}:${codename}" in
+      24.04:noble)
+        HOST_CODENAME=noble
+        HOST_DOTNET_MAJOR=8
+        return 0
+        ;;
+      26.04:resolute)
+        if [[ "${release}" =~ ^26\.04\.[1-9][0-9]*\ LTS($|\ ) ]]; then
+          HOST_CODENAME=resolute
+          HOST_DOTNET_MAJOR=10
+          return 0
+        fi
+        ;;
+    esac
+  fi
+  log "Unsupported Azure development host: ${distribution} ${release} (${family}/${codename}, ${architecture}); require Ubuntu 26.04.1+ LTS AMD64 or supported Ubuntu 24.04 LTS"
+  return 1
+}
+
+configure_host_platform() {
+  # VERSION_ID identifies the family only; VERSION carries the point release.
+  local ID VERSION_ID VERSION VERSION_CODENAME
+  . /etc/os-release
+  select_host_platform "${ID:-}" "${VERSION_ID:-}" "${VERSION:-}" \
+    "${VERSION_CODENAME:-}" "$(dpkg --print-architecture)"
+}
+
 cleanup_service_environment_source() {
   if [ -z "${SERVICE_ENV_SOURCE_DIR}" ]; then
     return
@@ -191,8 +221,8 @@ EOF
     '/etc/apt/keyrings/docker.gpg' \
     '9DC858229FC7DD38854AE2D88D81803C0EBFCD88'
   printf \
-    'deb [arch=%s signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu noble stable\n' \
-    "$(dpkg --print-architecture)" \
+    'deb [arch=%s signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu %s stable\n' \
+    "$(dpkg --print-architecture)" "${HOST_CODENAME}" \
     > /etc/apt/sources.list.d/docker.list
 
   bash "${APT_KEY_VERIFIER}" \
@@ -229,7 +259,7 @@ install_host_packages() {
     docker-ce \
     docker-ce-cli \
     docker-compose-plugin \
-    dotnet-sdk-8.0 \
+    "dotnet-sdk-${HOST_DOTNET_MAJOR}.0" \
     e2fsprogs \
     fuse-overlayfs \
     gh \
@@ -959,6 +989,7 @@ run_repository_setup() {
   run_as_vscode "cd '${WORKSPACE_DIR}' && node scripts/provision-ai-provider-secret-keyring.mjs"
   run_as_vscode "cd '${WORKSPACE_DIR}' && npm install"
   run_as_vscode "cd '${WORKSPACE_DIR}' && dotnet tool restore"
+  run_as_vscode "cd '${WORKSPACE_DIR}' && dotnet tool run dotnet-gitversion /version"
   run_as_vscode "cd '${WORKSPACE_DIR}' && npx playwright install --with-deps"
   link_playwright_chrome
   run_as_vscode "cd '${WORKSPACE_DIR}' && bash .devcontainer/trust-container-ca.sh"
@@ -1577,11 +1608,12 @@ install_optional_tailscale() {
   fi
   bash "${APT_KEY_VERIFIER}" \
     'Tailscale' \
-    'https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg' \
+    "https://pkgs.tailscale.com/stable/ubuntu/${HOST_CODENAME}.noarmor.gpg" \
     '/usr/share/keyrings/tailscale-archive-keyring.gpg' \
     '2596A99EAAB33821893C0A79458CA832957F5868'
   printf \
-    'deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/ubuntu noble main\n' \
+    'deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/ubuntu %s main\n' \
+    "${HOST_CODENAME}" \
     > /etc/apt/sources.list.d/tailscale.list
   apt-get update
   DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -1690,6 +1722,11 @@ validate_loopback_ports() {
 }
 
 main() {
+  configure_host_platform
+  if [ "${1:-}" = --validate-host ]; then
+    dotnet --list-sdks | grep -Eq "^${HOST_DOTNET_MAJOR}\."
+    return
+  fi
   log "starting host bootstrap"
   install_host_packages
   install_lychee

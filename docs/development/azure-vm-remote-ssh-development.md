@@ -322,7 +322,7 @@ AZURE_DEV_VM_CONNECTIVITY_MODE=public-ssh
 AZURE_DEV_VM_DATA_DISK_GIB=64
 AZURE_DEV_VM_ENVIRONMENT_ID=personal
 AZURE_DEV_VM_FALLBACK_SIZE=Standard_D8as_v5
-AZURE_DEV_VM_IMAGE_OFFER=ubuntu-24_04-lts
+AZURE_DEV_VM_IMAGE_OFFER=ubuntu-26_04-lts
 AZURE_DEV_VM_IMAGE_PUBLISHER=Canonical
 AZURE_DEV_VM_IMAGE_SKU=server
 AZURE_DEV_VM_NAME=krav-dev-vm
@@ -343,6 +343,19 @@ and deploys the exact version, and requires Azure to report both an `Active`
 image state, Hyper-V generation V2, and Trusted Launch support. Existing VMs
 retain their immutable image reference even when these configuration values
 change.
+
+New hosts default to Ubuntu 26.04 LTS Standard Server AMD64 Gen2. The guest
+must report Ubuntu 26.04.1 LTS or a later point release in that family before
+bootstrap changes packages or storage. Azure's exact image build version is
+not an Ubuntu point-release number. Bootstrap checks the guest release and
+the smoke checks repeat that validation.
+
+Existing `.env.azure.development` files that set
+`AZURE_DEV_VM_IMAGE_OFFER=ubuntu-24_04-lts` keep that explicit override. Change
+it to `ubuntu-26_04-lts` to select the new family for a rebuild. Existing
+24.04 hosts remain supported and setup preserves their image and disks.
+Back up required data before a rebuild: `remove` deletes both managed OS and
+data disks. There is no automatic in-place Ubuntu release upgrade.
 
 Setup detects the initial workstation's current public IPv4 address and creates
 a named `/32` rule. It derives the workstation name from the local machine

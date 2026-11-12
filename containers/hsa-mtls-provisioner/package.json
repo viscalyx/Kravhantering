@@ -3,14 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "packageManager": "npm@12.1.0",
+  "packageManager": "npm@12.2.2",
   "engines": {
     "node": "24"
   },
   "devEngines": {
     "packageManager": {
       "name": "npm",
-      "version": "12.1.0",
+      "version": "12.2.2",
       "onFail": "error"
     }
   },

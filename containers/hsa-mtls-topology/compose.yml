@@ -85,7 +85,7 @@ services:
       retries: 30
 
   kong:
-    image: docker.io/kong/kong-gateway:3.16.0.0-20260915-ubuntu
+    image: docker.io/kong/kong-gateway:3.16.0.2-20261110-ubuntu
     depends_on:
       adapter:
         condition: service_healthy

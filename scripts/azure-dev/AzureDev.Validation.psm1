@@ -416,7 +416,8 @@ npm --version >/dev/null 2>&1
 test "$(npm config get cache)" = "/mnt/krav-azure-dev-data/cache/npm/vscode"
 storage-report --help >/dev/null
 zsh -ic 'test "$TMPDIR" = /var/tmp/krav-vscode && test "$npm_config_cache" = /mnt/krav-azure-dev-data/cache/npm/vscode'
-dotnet --version 2>/dev/null | grep -Eq '^8\.'
+bash /workspace/scripts/azure-dev/templates/bootstrap-host.sh --validate-host
+(cd /workspace && dotnet tool run dotnet-gitversion /version)
 git --version >/dev/null 2>&1
 test "$(git config --global --get user.name)" = "${expected_git_user_name}"
 test "$(git config --global --get user.email)" = "${expected_git_user_email}"

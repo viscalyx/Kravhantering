@@ -13,6 +13,31 @@ changes.
 
 ## Unreleased
 
+### Bundled identity provider upgrade
+
+If you use the bundled identity provider, back up its database and configuration
+before upgrade. Stop all identity-provider nodes before starting the new version;
+do not mix old and new nodes in a rolling upgrade. Check database migration
+output and index creation, then verify login, token refresh, logout, and
+administrative access before reopening the service.
+
+Review custom clients that call the identity provider's administration API.
+Assign the `kc-admin-api` client scope to each custom client as a default or
+optional scope. Clients with an optional scope must request it. The built-in
+administration client receives the scope automatically. Check custom
+identity-broker settings against the
+[vendor migration guide](https://www.keycloak.org/docs/26.8.2/upgrading/)
+before rollout.
+
+### SQL Server recovery monitoring
+
+The bundled SQL Server CU10 image has a known issue with request-monitoring
+queries during database recovery. Before rollout, review external monitoring
+that queries active database requests. Avoid these queries during recovery or
+apply the mitigation in the
+[CU10 known issues](https://support.microsoft.com/en-gb/servicing/sql/sql-server-2025/cumulative-update/kb5125471-cu10).
+Confirm that databases complete recovery before normal monitoring resumes.
+
 ### Runtime security updates
 
 Deploy the complete new release images to receive the Node.js and operating
