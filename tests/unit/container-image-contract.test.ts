@@ -4,11 +4,11 @@ import { describe, expect, it } from 'vitest'
 import { parse as parseYaml } from 'yaml'
 import { parseJsonc } from './test-helpers'
 
-const disabledSystemSkillPaths = [
-  '/home/vscode/.codex/skills/.system/plugin-creator/SKILL.md',
-  '/home/vscode/.codex/skills/.system/review-agent/SKILL.md',
-  '/home/vscode/.codex/skills/.system/skill-creator/SKILL.md',
-  '/home/vscode/.codex/skills/.system/skill-installer/SKILL.md',
+const disabledSystemSkillNames = [
+  'plugin-creator',
+  'review-agent',
+  'skill-creator',
+  'skill-installer',
 ]
 const disabledPluginNames = ['openai-templates', 'plugin-management']
 
@@ -79,9 +79,8 @@ function expectDisabledSystemSkills(content: string) {
     )
   }
   expect(content).not.toContain('/plugins/cache/')
-  expect(content.match(/\[\[skills\.config\]\]/gu)).toHaveLength(4)
-  for (const skillPath of disabledSystemSkillPaths) {
-    expect(content).toContain(`path = "${skillPath}"`)
+  for (const skillName of disabledSystemSkillNames) {
+    expect(content).toContain(`name = "${skillName}"\nenabled = false`)
   }
 }
 
@@ -296,7 +295,7 @@ describe('container image contract', () => {
       }
 
       expect(devcontainer.postStartCommand).toMatch(
-        /^bash -lc 'codex app-server daemon start \|\| \{ echo "Codex shared app-server daemon failed to start\." >&2; exit 1; \};/u,
+        /^bash -lc 'codex app-server daemon start \|\| \{.*sleep 5; codex app-server daemon start \|\| \{ echo "Codex shared app-server daemon failed to start\." >&2; exit 1; \}; \};/u,
       )
     }
   })
