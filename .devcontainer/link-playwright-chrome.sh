@@ -5,9 +5,9 @@ browser_root="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}"
 chrome_bin=""
 if [[ -d "$browser_root" ]]; then
   chrome_bin="$(
-    find "$browser_root" \
-      \( -path '*/chrome-linux/chrome' -o -path '*/chrome-linux64/chrome' \) \
-      -type f 2>/dev/null |
+    { find "$browser_root" \
+      \( -path '*/chrome-linux/chrome' -o -path '*/chrome-linux64/chrome' -o -path '*/chrome-linux-arm64/chrome' \) \
+      -type f 2>/dev/null || true; } |
       sort -V |
       tail -n 1
   )"

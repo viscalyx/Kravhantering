@@ -120,7 +120,7 @@ def is_managed_plugin_section(
 
 def without_managed_skill_configs(
     lines: list[str],
-    managed_skill_paths: list[str],
+    managed_skill_selectors: list[tuple[str, str]],
 ) -> list[str]:
     result: list[str] = []
     skill_config: list[str] | None = None
@@ -131,8 +131,8 @@ def without_managed_skill_configs(
             return
         parsed = tomllib.loads("\n".join(skill_config))
         entries = parsed.get("skills", {}).get("config", [])
-        path = entries[0].get("path") if entries else None
-        if path not in managed_skill_paths:
+        entry = entries[0] if entries else {}
+        if not any(entry.get(key) == value for key, value in managed_skill_selectors):
             result.extend(skill_config)
         skill_config = None
 
@@ -161,7 +161,7 @@ def clean_existing_config(
     content: str,
     trust_level: str,
     managed_plugin_names: list[str],
-    managed_skill_paths: list[str],
+    managed_skill_selectors: list[tuple[str, str]],
 ) -> tuple[list[str], bool]:
     result: list[str] = []
     section: str | None = None
@@ -169,7 +169,7 @@ def clean_existing_config(
 
     existing_lines = without_managed_skill_configs(
         without_marked_blocks(content),
-        managed_skill_paths,
+        managed_skill_selectors,
     )
     for line in existing_lines:
         match = SECTION_PATTERN.match(line) or ARRAY_SECTION_PATTERN.match(line)
@@ -231,23 +231,28 @@ def require_disabled_plugins(managed: dict[str, Any]) -> list[str]:
     return names
 
 
-def require_disabled_skills(managed: dict[str, Any]) -> list[str]:
+def require_disabled_skills(managed: dict[str, Any]) -> list[tuple[str, str]]:
     skills = require_table(managed.get("skills"), "skills")
     config = skills.get("config")
     if not isinstance(config, list) or not config:
         raise ValueError("skills.config must be a non-empty array")
     skill_config = cast(list[Any], config)
 
-    paths: list[str] = []
+    selectors: list[tuple[str, str]] = []
     for index, entry in enumerate(skill_config):
         skill = require_table(entry, f"skills.config.{index}")
-        path = require_string(skill.get("path"), f"skills.config.{index}.path")
+        keys = [key for key in ("name", "path") if key in skill]
+        if len(keys) != 1:
+            raise ValueError(f"skills.config.{index} requires exactly one name or path")
+        key = keys[0]
+        value = require_string(skill[key], f"skills.config.{index}.{key}")
+        selector = (key, value)
         if skill.get("enabled") is not False:
             raise ValueError(f"skills.config.{index}.enabled must be false")
-        if path in paths:
-            raise ValueError(f"duplicate disabled skill path: {path}")
-        paths.append(path)
-    return paths
+        if selector in selectors:
+            raise ValueError(f"duplicate disabled skill {key}: {value}")
+        selectors.append(selector)
+    return selectors
 
 
 def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
@@ -307,7 +312,7 @@ def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
     if not domains:
         raise ValueError("permission network domains must be a non-empty table")
     disabled_plugin_names = require_disabled_plugins(managed)
-    disabled_skill_paths = require_disabled_skills(managed)
+    disabled_skill_selectors = require_disabled_skills(managed)
 
     root = [
         ROOT_START,
@@ -362,12 +367,12 @@ def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
                 "enabled = false",
             ],
         )
-    for path in disabled_skill_paths:
+    for key, value in disabled_skill_selectors:
         profile_lines.extend(
             [
                 "",
                 "[[skills.config]]",
-                f"path = {toml_string(path)}",
+                f"{key} = {toml_string(value)}",
                 "enabled = false",
             ],
         )
@@ -378,13 +383,13 @@ def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
 def merge_config(existing_content: str, managed_content: str) -> str:
     managed = load_managed_config(managed_content)
     managed_plugin_names = require_disabled_plugins(managed)
-    managed_skill_paths = require_disabled_skills(managed)
+    managed_skill_selectors = require_disabled_skills(managed)
     root_lines, trust_level, profile_lines = render_profile(managed)
     existing_lines, workspace_found = clean_existing_config(
         existing_content,
         trust_level,
         managed_plugin_names,
-        managed_skill_paths,
+        managed_skill_selectors,
     )
 
     merged = list(root_lines)
@@ -446,15 +451,15 @@ def validate_merged_config(
         require_table(entry, f"merged skills.config.{index}")
         for index, entry in enumerate(cast(list[Any], merged_skills_value))
     ]
-    for path in require_disabled_skills(managed):
+    for key, value in require_disabled_skills(managed):
         matching_skills = [
             entry
             for entry in merged_skills
-            if entry.get("path") == path
+            if entry.get(key) == value
         ]
         if len(matching_skills) != 1 or matching_skills[0].get("enabled") is not False:
             raise ValueError(
-                f"merged disabled skill configuration is incorrect for {path}",
+                f"merged disabled skill configuration is incorrect for {key}: {value}",
             )
 
 
