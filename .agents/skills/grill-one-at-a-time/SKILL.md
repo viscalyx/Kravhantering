@@ -17,7 +17,7 @@ overriding its instruction to present the whole frontier at once.
    questions, keeping a link to the original identifier.
 2. Give a little context, then re-pitch each question and its recommended
    answer in ASD-STE100 Simplified Technical English. Use the ubiquitous
-   language from `CONTEXT.md`; follow `CONTEXT-MAP.md` to the relevant glossary
+   language from `GLOSSARY.md`; follow `GLOSSARY-MAP.md` to the relevant glossary
    when the repository has more than one. Preserve the meaning and explain
    the terms needed to understand the decision.
 3. Show the grilling recap and round focus, then one question with the context

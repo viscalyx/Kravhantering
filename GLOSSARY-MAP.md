@@ -5,7 +5,7 @@ berör och läs båda när arbetet korsar gränsen.
 
 ## Sammanhang
 
-- [Kravhantering](./CONTEXT.md) — äger applikationens verksamhetsbegrepp,
+- [Kravhantering](./GLOSSARY.md) — äger applikationens verksamhetsbegrepp,
   användarflöden och applikationsstyrda tillstånd.
 - [Verksamhetsstatistik](./domain-language-glossary/statistics.md) — äger
   begrepp för mätningar, tidsbetydelser, behörighetsskyddade aggregat och

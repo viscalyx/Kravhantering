@@ -1,4 +1,4 @@
 interface:
   display_name: "Domain Modeling"
   short_description: "Define domain terms and record ADRs"
-  default_prompt: "Use $domain-modeling to define project terminology, update CONTEXT.md, and record hard-to-reverse decisions as ADRs."
+  default_prompt: "Use $domain-modeling to define project terminology, update GLOSSARY.md, and record hard-to-reverse decisions as ADRs."

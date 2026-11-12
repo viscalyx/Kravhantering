@@ -22,8 +22,8 @@ correct domain language produce no diff on a later run.
 
 1. Discover the complete scope.
    - Read applicable repository instructions.
-   - Follow `CONTEXT-MAP.md` when present; otherwise read the root
-     `CONTEXT.md`.
+   - Follow `GLOSSARY-MAP.md` when present; otherwise read the root
+     `GLOSSARY.md`.
    - Inventory every Markdown file in every `docs/adr/` directory.
    - Finish when every ADR root, glossary, and ADR convention is accounted for.
 2. Build a decision graph in working notes.
@@ -87,7 +87,7 @@ correct domain language produce no diff on a later run.
    - Keep cross-ADR links only when they clarify current boundaries or
      dependencies. State the relationship directly rather than narrating the
      supersession chain.
-   - Update `CONTEXT.md` inline when domain modeling resolves a term.
+   - Update `GLOSSARY.md` inline when domain modeling resolves a term.
    - Finish when no ADR asks a reader to learn a decision and then disregard
      it elsewhere.
 5. Verify the entire corpus again.

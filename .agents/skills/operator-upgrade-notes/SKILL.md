@@ -55,8 +55,7 @@ environment and keep it operating safely.
    committed changes only, report unrelated worktree changes as excluded.
 5. Apply the operational relevance test below before selecting note triggers.
    For each candidate, identify the affected operational resource or contract,
-   the new or changed operator action or deployment constraint compared with
-   the previous release, and the consequence of overlooking it.
+   the required action or constraint, and the consequence of overlooking it.
    Complete the assessment when every relevant change has required guidance
    or a supported no-notes decision.
 6. Compare required guidance with the Unreleased section in
@@ -67,18 +66,11 @@ environment and keep it operating safely.
 
 ## Operational Relevance
 
-Assess impact on a person installing, upgrading, or recovering a deployed
-environment using released artifacts. Require notes for changed preparation,
-rollout, compatibility, recovery, or continued-operation requirements grounded
-in the inspected changes. Existing verification and recovery procedures alone
-do not establish a release-specific impact.
-
-Route CI, artifact publication, upload retries, and failed-workflow recovery
-guidance to release-maintainer documentation. Require operator notes for such
-changes only when they change what operators deploy or how they upgrade or
-recover, such as artifact layout, installation steps, or supported rollback
-paths. General requests to notify users, update training, or perform routine
-UI acceptance checks do not establish operational relevance.
+Require notes when a change affects production upgrade preparation, rollout,
+compatibility, recovery, or continued operation. Ground the decision in an
+operational consequence found in the inspected changes. General requests to
+notify users, update training, or perform routine UI acceptance checks do not
+establish operational relevance.
 
 UI labels, column widths, scrolling, layout defaults, and other presentation
 changes belong in user-facing documentation. Return no operator notes for
@@ -106,12 +98,12 @@ For changes that pass the operational relevance test, create notes for:
 
 ## Notes Style
 
-- Write standalone, high-level guidance for staff performing production
-  installation, upgrade, or recovery.
+- Write standalone, high-level guidance for production operators, release
+  managers, or staff responsible for production operation.
 - State what needs attention before upgrade, during rollout, or soon after
   upgrade.
-- Write in ASD-STE100 Simplified Technical English. Use `CONTEXT-MAP.md` if it
-  exists to select the ubiquitous language; otherwise use `CONTEXT.md`.
+- Write in ASD-STE100 Simplified Technical English. Use `GLOSSARY-MAP.md` if it
+  exists to select the ubiquitous language; otherwise use `GLOSSARY.md`.
 - Keep notes independent of implementation. Omit file paths, code symbols,
   migration numbers, table or column names, tests, commits, PRs, and issues.
 - Omit detailed commands, SQL, configuration-variable lists, and code

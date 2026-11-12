@@ -5,7 +5,8 @@ description: Audit npm dependencies in package.json, recommend safe updates for 
 
 # Update Packages
 
-- Always run the commands outside the sandbox, otherwise it fails.
+- Use the repository npm version; run `node scripts/install-repository-npm.mjs`
+  when the active version differs from `packageManager`.
 - Audit `package.json` for outdated or installed-version mismatches and vulnerabilities.
 - Recommend repo-safe updates and npm update commands.
 - Review `overrides` and justify each keep, remove, or update decision.
@@ -18,7 +19,10 @@ description: Audit npm dependencies in package.json, recommend safe updates for 
 2. Read `.github/instructions/package-updates.instructions.md`.
 3. Record `dependencies`, `devDependencies`, `overrides`, `//overrides`,
    and `allowScripts`.
-4. Run `npm run purge:install` to hydrate `node_modules` using this repo's full install flow. Verify it succeeds before continuing.
+4. Run `npm run purge:install` to hydrate `node_modules` using the two-phase
+   maintenance flow. Verify it succeeds before continuing. This command
+   regenerates the installation; update direct versions through the generated
+   `npm install package@version` commands.
 5. Run `npm approve-scripts --allow-scripts-pending` to capture packages with
    install scripts not yet covered by `allowScripts`.
    - This command is read-only. If it reports pending packages, keep the output
@@ -58,7 +62,7 @@ description: Audit npm dependencies in package.json, recommend safe updates for 
 
 - Treat pinned versions as intentional. Do not convert pinned specs to ranges.
 - Do not normalize existing valid `^` or `~` ranges to pinned versions unless explicitly asked.
-- Verify Next.js and React compatibility before recommending updates to either package.
+- Verify React, React DOM, and Vite compatibility before recommending updates.
 - Keep `@biomejs/biome` aligned with the `biome.json` `$schema` version when recommending a Biome update.
 - Keep `@types/react` and `@types/react-dom` aligned with the installed React major.
 - Never recommend a downgrade, even if a downgrade would avoid a vulnerability. Flag it for manual review instead.
