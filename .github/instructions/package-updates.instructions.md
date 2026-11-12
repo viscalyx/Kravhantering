@@ -1,26 +1,22 @@
 ---
-applyTo: 'package.json'
+applyTo: "{package.json,package-lock.json,.npmrc}"
 ---
 
-# Package Management Rules
+# Package Management
 
-## Version Specifiers
-
-- If a dependency is already pinned (no `^` or `~`), treat that as intentional — do not change it to a range or another version without confirming
-- Do not normalize existing valid ranges (`^`/`~`) to pinned versions unless explicitly requested
-- The `overrides` section may pin transitive dependencies — check for needed updates when direct dependencies change
-
-## Compatibility
-
-- Next.js and React share tight peer dependency requirements — always verify compatibility before updating either
-- Keep `@biomejs/biome` and the `biome.json` `$schema` version aligned when upgrading Biome
-- `@types/react` and `@types/react-dom` should match the installed React major version
-
-## Playwright
-
-- When `@playwright/test` is updated, run `npx playwright install chromium` immediately after `npm install` to download the matching Chromium binary. The version pinned in `package.json` must match the installed browser binary or integration tests will fail with "Executable doesn't exist".
-
-## After Any Dependency Change
-
-- Run `npm run check` to verify type-checking, formatting, linting, tests, and markdown checks pass.
-- Run `npm audit` to verify vulnerability checks pass after each dependency change.
+- Preserve exact dependency pins unless the requested update changes them.
+- Keep Node.js, npm, CI, production images, and both devcontainer profiles
+  compatible. Use `packageManager` as the npm version source.
+- Keep React and React DOM aligned; match their type packages to their major.
+- Keep Vitest and its coverage provider at the same version.
+- Match the Biome configuration schema to the installed Biome version.
+- Review `npm approve-scripts --allow-scripts-pending` after installation.
+  Record approvals for reviewed package versions in `allowScripts`.
+- Use `npm run purge:install` for explicit dependency maintenance. Preserve
+  `npm ci` for CI and devcontainer creation.
+- Update direct pins with explicit `npm install package@version` commands;
+  `purge:install` regenerates the installation without changing those pins.
+- After updating Playwright, install its matching Chromium browser with
+  `npx playwright install chromium`.
+- Run `npm run check` and `npm audit` after dependency changes. Run
+  `npm run test:container` when production image inputs change.

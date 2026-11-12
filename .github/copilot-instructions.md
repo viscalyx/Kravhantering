@@ -41,8 +41,19 @@
 
 ## Documentation
 
+- Keep documentation standalone. State requirements, decisions, preparation,
+  and expected outcomes in repository docs; link between docs where useful.
+  Do not link to issues or issue comments or rely on their text or status.
 - For affected documentation under `docs/**/*.md`, identify the intended
   readers and what they need to know or do.
+  - Keep `docs/development/` focused on environment setup, running tests, and
+  developer workflows. Consolidate guidance in the existing setup and testing
+  guides; omit per-feature implementation descriptions and application internals.
+  - Keep manual test cases and their preparation under `docs/manual-tests/`
+    and operational procedures under `docs/operations/`.
+  - For user-guide changes, update `scripts/guide/generate-guide.ts` and
+    regenerate `docs/user-guide/` following
+    [the guide generation workflow](../docs/development/guide-generation.md).
 - Create or update guidance when it is missing, inaccurate, or insufficient
   for those readers. Leave accurate, sufficient guidance unchanged.
 - Match content and technical detail to the audience: developers,
