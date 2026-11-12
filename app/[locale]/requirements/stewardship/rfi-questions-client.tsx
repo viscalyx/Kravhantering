@@ -1302,10 +1302,10 @@ export default function RfiQuestionsClient() {
         ) : null}
 
         <div
-          className="mb-5 grid grid-cols-1 gap-3 rounded-2xl border bg-white/80 p-4 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60 min-[768px]:grid-cols-3 min-[1100px]:grid-cols-[minmax(0,1fr)_220px_180px_180px]"
+          className="mb-5 grid grid-cols-1 gap-3 rounded-2xl border bg-white/80 p-4 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60 md:grid-cols-3 min-[1100px]:grid-cols-[minmax(0,1fr)_220px_180px_180px]"
           {...devMarker({ context: 'rfiQuestions', name: 'question filters' })}
         >
-          <label className="relative block min-w-0 min-[768px]:col-span-3 min-[1100px]:col-span-1">
+          <label className="relative block min-w-0 md:col-span-3 min-[1100px]:col-span-1">
             <Search
               aria-hidden="true"
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
