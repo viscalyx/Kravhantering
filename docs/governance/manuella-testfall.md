@@ -2308,12 +2308,19 @@ när det valda avtalet har ett föregående avtal, även vid visning av äldre a
 
 ### SPEC-23: ändra krav i ett nytt avtalsutkast
 
+**Integrationstest:**
+[agreements.spec.ts](../../tests/integration/specifications/agreements.spec.ts),
+testfallet “SPEC-22/SPEC-23/SPEC-28: edit the complete agreement in the
+requirement list and retain historical content and output”.
+
 **Steg:** Skapa ett nytt avtal från det aktuella avtalet. Redigera ett
 bibliotekskrav med **Redigera krav**. Kontrollera meddelandet om lokal identitet
 och ändra text, acceptanskriterier, klassificering och verifieringsuppgifter i
 den fullständiga editorn. Spara och ångra sedan ändringen. Gör en ny ändring,
-lägg till ett lokalt krav och ta bort ett annat krav. Bekräfta avtalet och välj
-sedan det tidigare avtalet. Jämför också en nyare publicerad biblioteksversion
+lägg till ett lokalt krav och ta bort ett annat krav. Ange dagens datum för
+avtalet och bekräfta. Kontrollera direkt att avtalet är aktuellt och visar
+den ändrade kravtexten. Välj sedan det tidigare avtalet. Jämför också en
+nyare publicerad biblioteksversion
 och använd **Uppdatera från kravbiblioteket** i åtgärdskolumnen till höger.
 Där finns även **Ångra ändring** när ändringen kan ångras. Kontrollera att
 åtgärdernas fullständiga namn är läsbara även när texten radbryts, på både

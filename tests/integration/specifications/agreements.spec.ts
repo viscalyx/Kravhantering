@@ -654,6 +654,13 @@ test('SPEC-22/SPEC-23/SPEC-28: edit the complete agreement in the requirement li
     ).toContainText('Changed agreed service')
     await confirmDraft(page)
     await expect(card(page)).toContainText('Current')
+    await expect(
+      page
+        .getByRole('button', {
+          name: new RegExp(`^${data.local.uniqueId}\\b`),
+        })
+        .locator('xpath=ancestor::tr[1]'),
+    ).toContainText('Changed agreed service')
     await select(page, 'Agreement A', true)
     await expect(
       page
