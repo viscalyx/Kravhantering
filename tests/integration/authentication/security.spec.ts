@@ -12,8 +12,8 @@ import {
 import {
   expectApiResponseOk,
   expectApiResponseStatus,
-} from '../api-response-assertions'
-import { resolveIntegrationBaseUrl } from '../base-url'
+} from '@/tests/support/api-response-assertions'
+import { resolveIntegrationBaseUrl } from '@/tests/support/base-url'
 
 function getStorageState(testInfo: TestInfo) {
   return testInfo.project.use.storageState ?? 'test-results/auth/admin.json'

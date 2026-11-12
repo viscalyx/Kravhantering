@@ -10,15 +10,15 @@ import {
 import { extractText } from 'unpdf'
 import { delay, escapeRegExp } from '@/tests/helpers/common'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
-import { expectApiResponseOk } from '../api-response-assertions'
-import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
+import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
+import { expectApiResponseOkWithRetry } from '@/tests/support/api-retry-helpers'
 import {
   newRoleContext,
   ROLE_STORAGE_STATE,
   type RoleContext,
   referenceManualCases,
-} from '../authorization/authorization-test-helpers'
-import { resolveIntegrationBaseUrl } from '../base-url'
+} from '@/tests/support/authorization-test-helpers'
+import { resolveIntegrationBaseUrl } from '@/tests/support/base-url'
 
 const STATUS_DRAFT = 1
 const STATUS_REVIEW = 2

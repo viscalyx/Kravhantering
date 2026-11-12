@@ -1,9 +1,9 @@
 import { expect, type Locator, type Page, test } from '@playwright/test'
 import { delay, escapeRegExp } from '@/tests/helpers/common'
-import { referenceManualCases } from '@/tests/integration/authorization/authorization-test-helpers'
+import { referenceManualCases } from '@/tests/support/authorization-test-helpers'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
-import { deferRoute } from '../deferred-route'
-import { countDetailRequests } from '../detail-request-counter'
+import { deferRoute } from '@/tests/support/deferred-route'
+import { countDetailRequests } from '@/tests/support/detail-request-counter'
 
 // cSpell:ignore requestfailed
 

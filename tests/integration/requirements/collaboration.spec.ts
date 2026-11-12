@@ -7,12 +7,12 @@ import {
 } from '@playwright/test'
 import type { SuggestionData } from '@/app/[locale]/requirements/[id]/_detail/types'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
-import { expectApiResponseOk } from '../api-response-assertions'
-import { newRoleContext } from '../authorization/authorization-test-helpers'
+import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
+import { newRoleContext } from '@/tests/support/authorization-test-helpers'
 import {
   getRequirementRowButton,
   resolveRequirementDetailPane,
-} from './requirement-detail-test-helpers'
+} from '@/tests/support/requirement-detail-test-helpers'
 
 const SELECTED_INT0001_VERSION_ID = 1
 

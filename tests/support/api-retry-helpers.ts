@@ -2,7 +2,7 @@ import { delay } from '@/tests/helpers/common'
 import {
   type ApiResponseLike,
   apiResponseFailureMessage,
-} from './api-response-assertions'
+} from '@/tests/support/api-response-assertions'
 
 export type RetryableApiResponse = ApiResponseLike
 

@@ -1,7 +1,7 @@
 import { expect, type Page, test } from '@playwright/test'
 import { DESKTOP_VIEWPORT } from '@/tests/helpers/desktop-viewport'
 import { requireTestValue } from '@/tests/helpers/require-test-value'
-import { expectApiResponseOk } from '../api-response-assertions'
+import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
 
 const storageKey = 'specification-panel-layout-v1'
 

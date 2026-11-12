@@ -18,10 +18,10 @@ import {
 } from '@/lib/requirements/import-schema'
 import { delay } from '@/tests/helpers/common'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
-import { expectApiResponseOk } from '../api-response-assertions'
-import { newRoleContext } from '../authorization/authorization-test-helpers'
-import { deferRoute } from '../deferred-route'
-import { countDetailRequests } from '../detail-request-counter'
+import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
+import { newRoleContext } from '@/tests/support/authorization-test-helpers'
+import { deferRoute } from '@/tests/support/deferred-route'
+import { countDetailRequests } from '@/tests/support/detail-request-counter'
 
 const specificationId = 8
 const specificationCode = 'ETJANST-UPP-2026'

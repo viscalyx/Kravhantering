@@ -13,7 +13,7 @@ import {
   type SpecificationResponse,
   seedAuthorizationResponsibilityPeople,
   verifyResponsibilityPerson,
-} from './authorization-test-helpers'
+} from '@/tests/support/authorization-test-helpers'
 
 let fixture: AuthorizationFixture
 

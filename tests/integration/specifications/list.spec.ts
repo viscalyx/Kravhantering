@@ -2,11 +2,11 @@ import { expect, type Locator, test } from '@playwright/test'
 import { upsertRequirementResponsibilityPerson } from '@/lib/dal/requirement-responsibility-people'
 import { escapeRegExp } from '@/tests/helpers/common'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
-import { expectApiResponseOk } from '../api-response-assertions'
+import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
 import {
   seedAuthorizationResponsibilityPeople,
   withPlaywrightSqlServerDataSource,
-} from '../authorization/authorization-test-helpers'
+} from '@/tests/support/authorization-test-helpers'
 
 const viewports = [{ ...DESKTOP_VIEWPORT, name: 'desktop' }]
 

@@ -10,7 +10,7 @@ import {
   ROLE_STORAGE_STATE,
   referenceManualCases,
   STATUS_ARCHIVED,
-} from './authorization-test-helpers'
+} from '@/tests/support/authorization-test-helpers'
 
 test.describe.configure({ mode: 'serial' })
 

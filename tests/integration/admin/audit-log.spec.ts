@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { expect, type Page, test } from '@playwright/test'
-import { deferRoute } from '../deferred-route'
+import { deferRoute } from '@/tests/support/deferred-route'
 
 function requirementCreateAuditRows(page: Page) {
   return page.getByRole('row').filter({

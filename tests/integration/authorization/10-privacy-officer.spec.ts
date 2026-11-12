@@ -8,7 +8,7 @@ import {
   newRoleContext,
   ROLE_STORAGE_STATE,
   referenceManualCases,
-} from './authorization-test-helpers'
+} from '@/tests/support/authorization-test-helpers'
 
 let fixture: { areaId: number; packageId: number }
 const PRIVACY_PREVIEW_TARGET_HSA_ID = 'SE5560000001-linneab'

@@ -6,7 +6,7 @@ import {
 } from '@playwright/test'
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
 import { DESKTOP_VIEWPORT } from '@/tests/helpers/desktop-viewport'
-import { expectApiResponseOk } from '@/tests/integration/api-response-assertions'
+import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
 
 const initialToken = '11111111-1111-4111-8111-111111111111'
 const latestToken = '22222222-2222-4222-8222-222222222222'

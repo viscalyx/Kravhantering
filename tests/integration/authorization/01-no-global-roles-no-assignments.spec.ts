@@ -6,7 +6,7 @@ import {
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
 import { escapeRegExp } from '@/tests/helpers/common'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
-import { resolveIntegrationBaseUrl } from '../base-url'
+import { resolveIntegrationBaseUrl } from '@/tests/support/base-url'
 import {
   type AuthorizationFixture,
   createAuthorizationFixture,
@@ -16,7 +16,7 @@ import {
   type RequirementListResponse,
   ROLE_STORAGE_STATE,
   referenceManualCases,
-} from './authorization-test-helpers'
+} from '@/tests/support/authorization-test-helpers'
 
 let fixture: AuthorizationFixture
 

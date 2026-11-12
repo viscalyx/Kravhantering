@@ -10,7 +10,7 @@ import {
   ROLE_STORAGE_STATE,
   referenceManualCases,
   type SpecificationResponse,
-} from './authorization-test-helpers'
+} from '@/tests/support/authorization-test-helpers'
 
 let fixture: AuthorizationFixture
 

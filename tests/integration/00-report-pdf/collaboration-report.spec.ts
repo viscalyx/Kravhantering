@@ -11,11 +11,11 @@ import {
   test,
 } from '@playwright/test'
 import { extractText } from 'unpdf'
-import { expectApiResponseOk } from '../api-response-assertions'
+import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
 import {
   getRequirementRowButton,
   resolveRequirementDetailPane,
-} from '../requirements/requirement-detail-test-helpers'
+} from '@/tests/support/requirement-detail-test-helpers'
 
 const PDF_EVENT_TIMEOUT_MS = 15_000
 const RESPONSE_BODY_EXCERPT_LENGTH = 2_000

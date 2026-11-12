@@ -1,6 +1,6 @@
 import type { TestInfo } from '@playwright/test'
 import { afterEach, describe, expect, it } from 'vitest'
-import { resolveIntegrationBaseUrl } from '@/tests/integration/base-url'
+import { resolveIntegrationBaseUrl } from '@/tests/support/base-url'
 
 const originalBaseUrl = process.env.PLAYWRIGHT_BASE_URL
 

@@ -14,7 +14,7 @@ import {
   newRoleContext,
   ROLE_STORAGE_STATE,
   withPlaywrightSqlServerDataSource,
-} from '../authorization/authorization-test-helpers'
+} from '@/tests/support/authorization-test-helpers'
 
 test.use({ storageState: ROLE_STORAGE_STATE.specificationResponsible })
 

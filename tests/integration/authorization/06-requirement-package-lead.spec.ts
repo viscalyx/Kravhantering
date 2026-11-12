@@ -12,7 +12,7 @@ import {
   ROLE_STORAGE_STATE,
   referenceManualCases,
   seedAuthorizationResponsibilityPeople,
-} from './authorization-test-helpers'
+} from '@/tests/support/authorization-test-helpers'
 
 let fixture: AuthorizationFixture
 

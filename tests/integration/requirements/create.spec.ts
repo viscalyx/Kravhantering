@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
-import { expectApiResponseOk } from '../api-response-assertions'
+import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
 
 test.describe('Requirement creation', () => {
   for (const viewport of [{ ...DESKTOP_VIEWPORT, label: 'desktop' }]) {
