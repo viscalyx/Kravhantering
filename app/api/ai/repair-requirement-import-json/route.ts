@@ -6,7 +6,7 @@ import {
   createProductionAiAuthoringRuntime,
 } from '@/lib/ai/authoring-runtime'
 import {
-  buildRequirementImportRepairPrompt,
+  buildRequirementImportRepairUserPrompt,
   buildRequirementImportResponseFormatSchema,
   buildRequirementImportSystemPrompt,
   parseJsonObject,
@@ -231,7 +231,7 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
       task: {
         content: [
           {
-            text: buildRequirementImportRepairPrompt({
+            text: buildRequirementImportRepairUserPrompt({
               brokenJson: body.rawJson,
               errors: body.errors,
               locale: body.locale,

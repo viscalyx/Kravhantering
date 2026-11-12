@@ -190,6 +190,38 @@ test('REQ-15: AI-assisted authoring hands library candidates to requirement impo
     .getByLabel('Kravområde', { exact: true })
     .selectOption({ index: 1 })
 
+  await test.step('download the AI request files from the explanation dialog', async () => {
+    await initialAiDialog
+      .getByRole('button', { name: /Så byggs AI-anropet/ })
+      .click()
+    const explanation = page.getByRole('dialog', {
+      name: 'Så byggs AI-anropet',
+    })
+    await expect(explanation).toBeVisible()
+    const section = explanation.getByRole('region', {
+      name: 'Fortsätt i en extern AI-assistent',
+    })
+    await expect(
+      section.locator('xpath=preceding-sibling::details'),
+    ).toContainText('Visa exakt text som skickas')
+    await expect(section.locator('xpath=following-sibling::*')).toHaveCount(0)
+
+    for (const [buttonName, fileName] of [
+      ['AI-anropsmall', 'kravimport-ai-anropsmall-kravbibliotek.md'],
+      ['Referensdatafil', 'kravimport-referensdata-kravbibliotek.json'],
+    ] as const) {
+      const button = section.getByRole('button', { name: buttonName })
+      await expect(button).toBeEnabled()
+      await expect(button).toHaveAccessibleDescription(fileName)
+      const downloading = page.waitForEvent('download')
+      await button.click()
+      expect((await downloading).suggestedFilename()).toBe(fileName)
+    }
+
+    await explanation.getByRole('button', { name: 'Stäng' }).click()
+    await expect(explanation).toBeHidden()
+  })
+
   await generateCandidate(page)
 
   const dialog = page.getByRole('dialog', {

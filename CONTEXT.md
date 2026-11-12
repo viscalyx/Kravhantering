@@ -513,8 +513,41 @@ användarens behov och ett tvingande svarsformat.
 
 - `en`: AI request
 
-_Avoid_: Prompt när hela anropet avses, AI-instruktion när bara
-författarinstruktionen avses.
+_Avoid_: Prompt eller AI-instruktion när hela anropet avses.
+
+**AI-instruktion**:
+Applikationens författarregler för kravkandidater i ett AI-anrop eller en
+AI-anropsmall.
+
+- `en`: AI instruction
+
+_Avoid_: AI-anropsmall när hela den portabla texten avses.
+
+**AI-anropsmall**:
+AI-anropet i portabel form för en extern AI-assistent: rollintro,
+regelordning, AI-instruktion, Importinstruktionens regler och JSON Schema inom
+markörer, utan referensdata och utan användarens behov.
+
+- `en`: AI request template
+
+_Avoid_: AI-instruktionspaket, promptpaket.
+
+**Referensdatafil**:
+En ögonblicksbild av importens referensdata för en destination, som bifogas
+till AI-anropsmallen.
+
+- `en`: Reference data file
+
+_Avoid_: Referensdatamall.
+
+**Reparationsprompt**:
+Texten som importdialogen skapar när extern JSON inte validerar, så att
+användaren kan klistra in den i samma samtal med AI-assistenten.
+
+- `en`: Repair prompt
+
+_Avoid_: Reparationsprompt om det interna reparationssteget, som är ett
+AI-anrop (reparationsanrop).
 
 **Integritetsminimum för AI-anrop**:
 Den administratörsägda lägsta integritetsnivå som varje AI-anrop måste följa,
@@ -776,9 +809,10 @@ _Avoid_: Kravimportbudget, samtidighetsgräns, lagringskapacitet utan
 sessionssammanhang.
 
 **Importinstruktion**:
-Vägledning för att ta fram en kravimportfil. Importinstruktionen beskriver
-regler, fältval och stödjande sammanhang för import-JSON, men JSON Schema är
-det styrande filformatskontraktet.
+Vägledning för att ta fram en kravimportfil. Importinstruktionen innehåller
+bara formatregler och referensdata, och JSON Schema är det styrande
+filformatskontraktet. En AI-anropsmall bygger på Importinstruktionens regler
+för extern AI-assisterad kravframtagning.
 
 - `en`: Import instruction
 

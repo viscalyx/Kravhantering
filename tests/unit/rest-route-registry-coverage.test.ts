@@ -73,9 +73,32 @@ describe('REST route registry coverage', () => {
     const registered = REST_OPERATIONS.map(
       operation => `${operation.method} ${operation.template}`,
     )
-    expect(Object.keys(routeModules)).toHaveLength(154)
+    expect(Object.keys(routeModules)).toHaveLength(156)
     expect(discovered.sort()).toEqual(registered.sort())
   }, 30_000)
+
+  it.each([
+    '/api/requirements/import/ai-request-template',
+    '/api/requirements/import/instruction',
+    '/api/requirements/import/reference-data',
+    '/api/requirements/import/schema',
+  ])(
+    'declares the import artifact read %s as a focused sensitive session read',
+    template => {
+      expect(
+        REST_OPERATIONS.find(
+          operation =>
+            operation.method === 'GET' && operation.template === template,
+        ),
+      ).toMatchObject({
+        auth: 'session',
+        cache: 'no-store',
+        contract: 'focused',
+        csrf: 'none',
+        sensitivity: 'sensitive',
+      })
+    },
+  )
 
   it('brands every mutation with an approved wrapper', async () => {
     const failures: string[] = []

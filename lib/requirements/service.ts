@@ -1,3 +1,4 @@
+import type { RequirementImportDestinationKind } from '@/lib/ai/requirement-prompt'
 import {
   countDeviationsBySpecification,
   createDeviation,
@@ -18,6 +19,7 @@ import {
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
 import { validationError } from '@/lib/requirements/errors'
+import type { RequirementImportReferenceDataFile } from '@/lib/requirements/import-reference-data-file'
 import type {
   ImportExecuteBody,
   ImportRequirementsPayload,
@@ -441,6 +443,14 @@ export interface RequirementsService extends RfiQuestionQueryService {
     },
   ): Promise<RequirementsImportExecuteResult>
 
+  getImportAiRequestTemplate(
+    context: RequestContext,
+    input: {
+      destinationKind: RequirementImportDestinationKind
+      locale: ResponseLocale
+    },
+  ): Promise<{ aiRequestTemplate: string }>
+
   getImportInstruction(
     context: RequestContext,
     input: {
@@ -448,6 +458,14 @@ export interface RequirementsService extends RfiQuestionQueryService {
       locale: ResponseLocale
     },
   ): Promise<{ importInstruction: string }>
+
+  getImportReferenceDataFile(
+    context: RequestContext,
+    input: {
+      destination: McpImportInstructionDestinationRef
+      locale: ResponseLocale
+    },
+  ): Promise<RequirementImportReferenceDataFile>
 
   getImportSchema(
     context: RequestContext,

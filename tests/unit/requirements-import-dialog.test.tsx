@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsImportDialog, {
   type ImportPreviewResponse,
 } from '@/components/RequirementsImportDialog'
+import { getPromptMessage } from '@/lib/ai/requirement-prompt'
 import { apiFetch } from '@/lib/http/api-fetch'
 import {
   DEFAULT_REQUIREMENT_IMPORT_BUDGET,
@@ -16,6 +17,7 @@ import {
   type RequirementImportBudget,
 } from '@/lib/requirements/import-budget'
 import { buildRequirementsImportJsonSchema } from '@/lib/requirements/import-schema'
+import svMessages from '@/messages/sv.json'
 
 const confirmMock = vi.hoisted(() => vi.fn())
 const downloadBlobMock = vi.hoisted(() => vi.fn())
@@ -28,7 +30,6 @@ const importDialogTranslate = vi.hoisted(() => {
     descriptionRequired: 'Kravtext måste anges innan raden kan importeras.',
     importTitleWithDestination: '{title} för {destination}',
     loadingInitialImport: 'Förbereder importgranskning...',
-    importSupport: 'Schema och instruktion',
     verificationMethodRequired:
       'Verifieringsmetod måste anges för verifierbara krav.',
   }
@@ -44,10 +45,36 @@ const importDialogTranslate = vi.hoisted(() => {
   })
 })
 
-vi.mock('next-intl', () => ({
-  useLocale: () => importLocaleState.locale,
-  useTranslations: () => importDialogTranslate,
-}))
+vi.mock('next-intl', async () => {
+  const { createTranslator } =
+    await vi.importActual<typeof import('next-intl')>('next-intl')
+  const { default: enMessages } = await import('@/messages/en.json')
+  const { default: svMessages } = await import('@/messages/sv.json')
+  const createTranslators = (
+    namespace: 'requirementsImportAiRequest' | 'requirementsImportJson',
+  ) => ({
+    en: createTranslator({ locale: 'en', messages: enMessages, namespace }),
+    sv: createTranslator({ locale: 'sv', messages: svMessages, namespace }),
+  })
+  const realTranslators: Record<
+    string,
+    ReturnType<typeof createTranslators>
+  > = {
+    requirementsImportAiRequest: createTranslators(
+      'requirementsImportAiRequest',
+    ),
+    requirementsImportJson: createTranslators('requirementsImportJson'),
+  }
+  return {
+    useLocale: () => importLocaleState.locale,
+    useTranslations: (namespace?: string) =>
+      namespace && realTranslators[namespace]
+        ? realTranslators[namespace][
+            importLocaleState.locale === 'en' ? 'en' : 'sv'
+          ]
+        : importDialogTranslate,
+  }
+})
 
 vi.mock('@/components/ConfirmModal', () => ({
   useConfirmModal: () => ({
@@ -276,6 +303,28 @@ function specificationLocalPreviewResponse(): Response {
   } as Response
 }
 
+const originalClipboard = Object.getOwnPropertyDescriptor(
+  globalThis.navigator,
+  'clipboard',
+)
+
+function mockClipboardWriteText() {
+  const writeText = vi.fn<(text: string) => Promise<void>>()
+  Object.defineProperty(globalThis.navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText },
+  })
+  return writeText
+}
+
+function restoreClipboard() {
+  if (originalClipboard) {
+    Object.defineProperty(globalThis.navigator, 'clipboard', originalClipboard)
+  } else {
+    Reflect.deleteProperty(globalThis.navigator, 'clipboard')
+  }
+}
+
 describe('RequirementsImportDialog', () => {
   beforeEach(() => {
     importLocaleState.locale = 'sv'
@@ -288,9 +337,10 @@ describe('RequirementsImportDialog', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    restoreClipboard()
   })
 
-  it('keeps downloads and their guidance in a named support panel after the import inputs', async () => {
+  it('shows the external AI step guide in a named support panel after the import inputs', async () => {
     render(
       <RequirementsImportDialog
         areas={[{ id: 1, name: 'Informationssäkerhet' }]}
@@ -301,7 +351,7 @@ describe('RequirementsImportDialog', () => {
     )
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(6))
     const support = screen.getByRole('complementary', {
-      name: 'Schema och instruktion',
+      name: 'Låt en extern AI ta fram krav',
     })
     expect(support).toHaveAttribute('data-developer-mode-name', 'support panel')
     expect(
@@ -310,17 +360,389 @@ describe('RequirementsImportDialog', () => {
         .closest('[data-developer-mode-name="input panel"]'),
     ).toBeInTheDocument()
     expect(
-      within(support).getByRole('button', { name: 'Ladda ner schema' }),
-    ).toHaveAccessibleDescription(/Använd schemat/)
-    expect(
-      within(support).getByRole('button', {
-        name: 'Ladda ner importinstruktion',
-      }),
-    ).toBeEnabled()
-    expect(
       screen.getByLabelText(/Import-JSON/).compareDocumentPosition(support) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
+
+    const guide = within(support).getByRole('list')
+    expect(guide).toHaveAttribute('data-developer-mode-name', 'step guide')
+    const steps = within(guide).getAllByRole('listitem')
+    expect(steps).toHaveLength(3)
+    expect(
+      steps.map(step => step.getAttribute('data-developer-mode-value')),
+    ).toEqual(['get files', 'ask ai assistant', 'add response'])
+    expect(steps[0]).toHaveTextContent('Hämta två filer')
+    expect(steps[1]).toHaveTextContent('Fråga AI-assistenten')
+    expect(steps[1]).toHaveTextContent('din AI-assistent')
+    expect(steps[2]).toHaveTextContent('Lägg in svaret här')
+    expect(support).toHaveTextContent(
+      'Referensdatafilen speglar kravbiblioteket just nu.',
+    )
+
+    const templateButton = within(steps[0] as HTMLElement).getByRole('button', {
+      name: 'AI-anropsmall',
+    })
+    const referenceDataButton = within(steps[0] as HTMLElement).getByRole(
+      'button',
+      { name: 'Referensdatafil' },
+    )
+    expect(templateButton).toBeEnabled()
+    expect(templateButton).toHaveClass('btn-primary')
+    expect(templateButton).toHaveAccessibleDescription(
+      'kravimport-ai-anropsmall-kravbibliotek.md',
+    )
+    expect(templateButton).toHaveAttribute(
+      'data-developer-mode-value',
+      'ai request template',
+    )
+    expect(referenceDataButton).toBeEnabled()
+    expect(referenceDataButton).toHaveClass('btn-secondary')
+    expect(referenceDataButton).toHaveAccessibleDescription(
+      'kravimport-referensdata-kravbibliotek.json',
+    )
+    expect(referenceDataButton).toHaveAttribute(
+      'data-developer-mode-value',
+      'reference data file',
+    )
+    expect(support).not.toHaveTextContent(/Copilot|ChatGPT|Microsoft/)
+  })
+
+  it('keeps the schema and import instruction in a collapsed own prompt section', async () => {
+    render(
+      <RequirementsImportDialog
+        areas={[{ id: 1, name: 'Informationssäkerhet' }]}
+        mode="library"
+        onClose={vi.fn()}
+        open
+      />,
+    )
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(6))
+    const toggle = screen.getByRole('button', {
+      name: 'Egen prompt eller validering',
+    })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      toggle.closest('[data-developer-mode-name="disclosure"]'),
+    ).toHaveAttribute('data-developer-mode-value', 'own prompt or validation')
+    expect(
+      screen.queryByRole('button', { name: 'Ladda ner schema' }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(toggle)
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(
+      screen.getByRole('button', { name: 'Ladda ner schema' }),
+    ).toHaveAccessibleDescription(/bara formatregler och referensdata/)
+    expect(
+      screen.getByRole('button', { name: 'Ladda ner importinstruktion' }),
+    ).toBeEnabled()
+
+    fireEvent.click(toggle)
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.queryByRole('button', { name: 'Ladda ner schema' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('clears an earlier AI request file download error when a new download starts', async () => {
+    const downloadFailed = svMessages.requirementsImportAiRequest.downloadFailed
+    let templateRequests = 0
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.startsWith('/api/requirements/import/ai-request-template')) {
+        templateRequests += 1
+        return templateRequests === 1
+          ? ({
+              headers: new Headers(),
+              ok: false,
+              text: async () => '',
+            } as Response)
+          : ({ blob: async () => new Blob(['file']), ok: true } as Response)
+      }
+      return { json: async () => ({}), ok: true } as Response
+    })
+
+    render(
+      <RequirementsImportDialog
+        areas={[{ id: 1, name: 'Informationssäkerhet' }]}
+        mode="library"
+        onClose={vi.fn()}
+        open
+      />,
+    )
+    const template = await screen.findByRole('button', {
+      name: 'AI-anropsmall',
+    })
+
+    fireEvent.click(template)
+    expect(await screen.findByText(downloadFailed)).toBeInTheDocument()
+
+    await waitFor(() => expect(template).toBeEnabled())
+    fireEvent.click(template)
+
+    await waitFor(() => expect(downloadBlobMock).toHaveBeenCalledTimes(1))
+    expect(screen.queryByText(downloadFailed)).not.toBeInTheDocument()
+  })
+
+  it.each([
+    [
+      'sv',
+      'AI-anropsmall',
+      '/api/requirements/import/ai-request-template?locale=sv&kind=requirements_library',
+      'kravimport-ai-anropsmall-kravbibliotek.md',
+    ],
+    [
+      'sv',
+      'Referensdatafil',
+      '/api/requirements/import/reference-data?locale=sv&kind=requirements_library',
+      'kravimport-referensdata-kravbibliotek.json',
+    ],
+    [
+      'en',
+      'AI request template',
+      '/api/requirements/import/ai-request-template?locale=en&kind=requirements_library',
+      'requirement-import-ai-request-template-requirements-library.md',
+    ],
+    [
+      'en',
+      'Reference data file',
+      '/api/requirements/import/reference-data?locale=en&kind=requirements_library',
+      'requirement-import-reference-data-requirements-library.json',
+    ],
+  ])(
+    'downloads the %s library file behind %s',
+    async (locale, buttonName, expectedUrl, expectedFileName) => {
+      importLocaleState.locale = locale
+      const fileBlob = new Blob(['file'])
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('/api/requirements/import/schema')) {
+          return {
+            json: async () => buildRequirementsImportJsonSchema(locale as 'sv'),
+            ok: true,
+          } as Response
+        }
+        if (url.startsWith('/api/requirements/import/')) {
+          return { blob: async () => fileBlob, ok: true } as Response
+        }
+        return { json: async () => ({}), ok: true } as Response
+      })
+      global.fetch = fetchMock
+
+      render(
+        <RequirementsImportDialog
+          areas={[{ id: 1, name: 'Informationssäkerhet' }]}
+          mode="library"
+          onClose={vi.fn()}
+          open
+        />,
+      )
+      fireEvent.click(await screen.findByRole('button', { name: buttonName }))
+
+      await waitFor(() =>
+        expect(downloadBlobMock).toHaveBeenCalledWith(
+          fileBlob,
+          expectedFileName,
+        ),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(expectedUrl)
+    },
+  )
+
+  it.each([
+    [
+      'sv',
+      'AI-anropsmall',
+      '/api/requirements/import/ai-request-template?locale=sv&kind=requirements_specification',
+      'kravimport-ai-anropsmall-kravunderlag.md',
+    ],
+    [
+      'sv',
+      'Referensdatafil',
+      '/api/requirements/import/reference-data?locale=sv&kind=requirements_specification&specificationId=8',
+      'kravimport-referensdata-kravunderlag-8.json',
+    ],
+    [
+      'en',
+      'AI request template',
+      '/api/requirements/import/ai-request-template?locale=en&kind=requirements_specification',
+      'requirement-import-ai-request-template-requirements-specification.md',
+    ],
+    [
+      'en',
+      'Reference data file',
+      '/api/requirements/import/reference-data?locale=en&kind=requirements_specification&specificationId=8',
+      'requirement-import-reference-data-requirements-specification-8.json',
+    ],
+  ])(
+    'downloads the %s specification file behind %s',
+    async (locale, buttonName, expectedUrl, expectedFileName) => {
+      importLocaleState.locale = locale
+      const fileBlob = new Blob(['file'])
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('/api/requirements/import/schema')) {
+          return {
+            json: async () => buildRequirementsImportJsonSchema(locale as 'sv'),
+            ok: true,
+          } as Response
+        }
+        if (url.startsWith('/api/requirements/import/')) {
+          return { blob: async () => fileBlob, ok: true } as Response
+        }
+        return { json: async () => ({}), ok: true } as Response
+      })
+      global.fetch = fetchMock
+
+      render(
+        <RequirementsImportDialog
+          mode="specification-local"
+          onClose={vi.fn()}
+          open
+          specificationId={8}
+        />,
+      )
+      const button = await screen.findByRole('button', { name: buttonName })
+      expect(button).not.toHaveAttribute('title')
+      expect(screen.getByText(expectedFileName)).toBeInTheDocument()
+      fireEvent.click(button)
+
+      await waitFor(() =>
+        expect(downloadBlobMock).toHaveBeenCalledWith(
+          fileBlob,
+          expectedFileName,
+        ),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(expectedUrl)
+    },
+  )
+
+  it('disables the AI request files when a specification import has no specification id', async () => {
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      return {
+        json: async () =>
+          url.includes('/api/requirements/import/schema')
+            ? buildRequirementsImportJsonSchema('sv')
+            : {},
+        ok: true,
+      } as Response
+    })
+
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+      />,
+    )
+
+    for (const name of ['AI-anropsmall', 'Referensdatafil']) {
+      const button = await screen.findByRole('button', { name })
+      expect(button).toBeDisabled()
+      expect(button).toHaveAttribute(
+        'title',
+        'Filerna kräver ett kravunderlag.',
+      )
+    }
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Egen prompt eller validering' }),
+    )
+    expect(
+      screen.getByRole('button', { name: 'Ladda ner importinstruktion' }),
+    ).toBeDisabled()
+  })
+
+  it('reports a failed AI request template download', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('/api/requirements/import/ai-request-template')) {
+        return {
+          headers: new Headers({ 'content-type': 'application/json' }),
+          json: async () => ({ error: 'Template unavailable' }),
+          ok: false,
+        } as Response
+      }
+      return {
+        json: async () =>
+          url.includes('/api/requirements/import/schema')
+            ? buildRequirementsImportJsonSchema('sv')
+            : {},
+        ok: true,
+      } as Response
+    })
+    global.fetch = fetchMock
+
+    render(
+      <RequirementsImportDialog
+        areas={[{ id: 1, name: 'Informationssäkerhet' }]}
+        mode="library"
+        onClose={vi.fn()}
+        open
+      />,
+    )
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'AI-anropsmall' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Template unavailable',
+    )
+    expect(downloadBlobMock).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'AI-anropsmall' })).toBeEnabled()
+  })
+
+  it('shows the downloading label and disables both files while a file downloads', async () => {
+    let resolveTemplate: (response: Response) => void = () => {}
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('/api/requirements/import/ai-request-template')) {
+        return new Promise<Response>(resolve => {
+          resolveTemplate = resolve
+        })
+      }
+      return Promise.resolve({
+        json: async () =>
+          url.includes('/api/requirements/import/schema')
+            ? buildRequirementsImportJsonSchema('sv')
+            : {},
+        ok: true,
+      } as Response)
+    })
+
+    render(
+      <RequirementsImportDialog
+        areas={[{ id: 1, name: 'Informationssäkerhet' }]}
+        mode="library"
+        onClose={vi.fn()}
+        open
+      />,
+    )
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'AI-anropsmall' }),
+    )
+
+    expect(
+      await screen.findByRole('button', { name: 'Laddar ner…' }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Referensdatafil' }),
+    ).toBeDisabled()
+
+    const blob = new Blob(['template'])
+    resolveTemplate({ blob: async () => blob, ok: true } as Response)
+
+    await waitFor(() =>
+      expect(downloadBlobMock).toHaveBeenCalledWith(
+        blob,
+        'kravimport-ai-anropsmall-kravbibliotek.md',
+      ),
+    )
+    expect(
+      await screen.findByRole('button', { name: 'AI-anropsmall' }),
+    ).toBeEnabled()
   })
 
   it.each(['library', 'specification-local'] as const)(
@@ -904,6 +1326,9 @@ describe('RequirementsImportDialog', () => {
     )
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Egen prompt eller validering' }),
+    )
     const instructionButton = screen.getByRole('button', {
       name: 'Ladda ner importinstruktion',
     })
@@ -1984,14 +2409,16 @@ describe('RequirementsImportDialog', () => {
       'Välj kravområde och lägg till import-JSON',
     )
     fireEvent.change(rawJson, { target: { value: '{' } })
-    expect(screen.getByRole('status')).toHaveTextContent('JSON kan inte läsas')
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Svaret är troligen avkortat. Be om färre krav per förfrågan.',
+    )
     fireEvent.change(rawJson, {
       target: {
         value: JSON.stringify({ requirements: [{}], schemaVersion: 'v1' }),
       },
     })
     expect(screen.getByRole('status')).toHaveTextContent(
-      'schemaVersion måste vara requirement-import.v4',
+      'schemaVersion ska vara requirement-import.v4.',
     )
     fireEvent.change(rawJson, {
       target: {
@@ -2001,9 +2428,13 @@ describe('RequirementsImportDialog', () => {
         }),
       },
     })
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'JSON följer inte importschemat',
+    const [schemaBlocker, schemaErrors] = screen.getAllByRole('status')
+    expect(schemaBlocker).toHaveTextContent(
+      'JSON följer inte importschemat. Rätta 1 fel:',
     )
+    expect(
+      within(schemaErrors).getByRole('list', { name: 'Valideringsfel' }),
+    ).toHaveTextContent('$.requirements: Måste innehålla minst 1 post.')
     fireEvent.change(rawJson, { target: { value: validImportPayload() } })
     expect(screen.getByRole('status')).toHaveTextContent('Välj kravområde')
 
@@ -2031,6 +2462,283 @@ describe('RequirementsImportDialog', () => {
     if (!fileInput) throw new Error('Expected the JSON file input')
     fireEvent.change(fileInput, { target: { files: [file] } })
     await waitFor(() => expect(rawJson).toHaveValue(filePayload))
+  })
+
+  it('previews JSON taken from the only code block without changing the field text', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(importPreviewResponse())
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+    const rawJson = screen.getByLabelText(/Import-JSON/)
+    const response = `Här är kraven:\n\n\`\`\`json\n${validImportPayload()}\n\`\`\`\n`
+
+    fireEvent.change(rawJson, { target: { value: response } })
+
+    const notice = await screen.findByText(
+      'JSON togs ut ur kodblocket i svaret. Texten i fältet är oförändrad.',
+    )
+    expect(rawJson).toHaveValue(response)
+    expect(rawJson).toHaveAccessibleDescription(notice.textContent ?? '')
+    expect(screen.getByRole('status')).toBe(notice.closest('p'))
+    expect(notice.closest('p')).toHaveAttribute(
+      'data-developer-mode-value',
+      'code block extracted',
+    )
+    await clickPreviewButton()
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(1))
+    const [, init] = vi.mocked(apiFetch).mock.calls[0] ?? []
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      payload: {
+        requirements: [{ description: 'Kravtext' }],
+        schemaVersion: 'requirement-import.v4',
+      },
+      specificationId: 8,
+    })
+  })
+
+  it('explains responses without JSON, several code blocks and syntax errors with a location', async () => {
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+    const rawJson = screen.getByLabelText(/Import-JSON/)
+    const preview = screen.getByRole('button', {
+      name: 'Förhandsgranska krav',
+    })
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+
+    fireEvent.change(rawJson, {
+      target: { value: 'Jag behöver referensdatafilen först.' },
+    })
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Svaret innehåller ingen JSON. Läs AI-assistentens svar. Behovet eller referensdatafilen kan saknas.',
+    )
+    fireEvent.change(rawJson, {
+      target: {
+        value: `\`\`\`json\n${validImportPayload()}\n\`\`\`\n\`\`\`json\n${validImportPayload()}\n\`\`\``,
+      },
+    })
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Svaret innehåller 2 kodblock.',
+    )
+    expect(
+      screen.queryByText(/JSON togs ut ur kodblocket/),
+    ).not.toBeInTheDocument()
+    fireEvent.change(rawJson, {
+      target: { value: '{\n  "schemaVersion": "requirement-import.v4",,\n}' },
+    })
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'JSON har ett syntaxfel på rad 2, kolumn 44: oväntat tecken ”,”.',
+    )
+    expect(preview).toBeDisabled()
+    // Let the lazily loaded repair prompt builder settle inside the test.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Kopiera reparationsprompt' }),
+      ).toBeEnabled(),
+    )
+  })
+
+  it('lists at most 20 schema errors with JSON paths followed by the remaining count', async () => {
+    importLocaleState.locale = 'en'
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+
+    fireEvent.change(screen.getByLabelText(/Import JSON/), {
+      target: {
+        value: JSON.stringify({
+          requirements: Array.from({ length: 23 }, () => ({})),
+          schemaVersion: 'requirement-import.v4',
+        }),
+      },
+    })
+
+    const [blocker, errorStatus] = await screen.findAllByRole('status')
+    expect(blocker).toHaveTextContent(
+      'The JSON does not match the import schema. Fix 23 errors:',
+    )
+    // The error list is its own status region, so its updates are announced.
+    const errorList = within(errorStatus).getByRole('list', {
+      name: 'Validation errors',
+    })
+    const items = within(errorList).getAllByRole('listitem')
+    expect(items).toHaveLength(20)
+    expect(items[0]).toHaveTextContent(
+      '$.requirements[0].description: The field is required but missing.',
+    )
+    expect(screen.getByText('and 3 more errors')).toBeInTheDocument()
+    expect(errorList.parentElement).toHaveAttribute(
+      'data-developer-mode-value',
+      'import JSON errors',
+    )
+  })
+
+  it('copies a repair prompt for a syntax error and shows it in a collapsed preview', async () => {
+    const writeText = mockClipboardWriteText().mockResolvedValue()
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: { value: '{\n  "schemaVersion": "requirement-import.v4",,\n}' },
+    })
+
+    const copyButton = await screen.findByRole('button', {
+      name: 'Kopiera reparationsprompt',
+    })
+    await waitFor(() => expect(copyButton).toBeEnabled())
+    expect(copyButton).toHaveAttribute(
+      'data-developer-mode-value',
+      'repair prompt',
+    )
+    const previewToggle = screen.getByRole('button', {
+      name: 'Förhandsvisa reparationsprompt',
+    })
+    expect(previewToggle).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.queryByRole('textbox', { name: 'Reparationsprompt' }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(copyButton)
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1))
+    const copiedPrompt = String(writeText.mock.calls[0]?.[0])
+    expect(copiedPrompt).toContain(
+      '- $: JSON har ett syntaxfel på rad 2, kolumn 44: oväntat tecken ”,”.',
+    )
+    expect(copiedPrompt).not.toContain('"schemaVersion"')
+    expect(
+      await screen.findByText(
+        'Reparationsprompten är kopierad. Klistra in den i samma samtal med AI-assistenten.',
+      ),
+    ).toHaveAttribute('role', 'status')
+
+    fireEvent.click(previewToggle)
+    expect(previewToggle).toHaveAttribute('aria-expanded', 'true')
+    const preview = screen.getByRole('textbox', { name: 'Reparationsprompt' })
+    expect(preview).toHaveValue(copiedPrompt)
+    expect(preview).toHaveAttribute('readonly')
+    expect(previewToggle.parentElement).toHaveAttribute(
+      'data-developer-mode-value',
+      'repair prompt preview',
+    )
+  })
+
+  it('offers the repair prompt for a wrong schemaVersion and schema errors but not for responses without JSON or truncated JSON', async () => {
+    importLocaleState.locale = 'en'
+    const writeText = mockClipboardWriteText().mockResolvedValue()
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+    const rawJson = screen.getByLabelText(/Import JSON/)
+    const copyButtonName = { name: 'Copy repair prompt' }
+
+    fireEvent.change(rawJson, {
+      target: {
+        value: JSON.stringify({ requirements: [{}], schemaVersion: 'v1' }),
+      },
+    })
+    fireEvent.click(await screen.findByRole('button', copyButtonName))
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1))
+    expect(String(writeText.mock.calls[0]?.[0])).toContain(
+      '- $.schemaVersion: schemaVersion must be requirement-import.v4.',
+    )
+
+    fireEvent.change(rawJson, {
+      target: {
+        value: JSON.stringify({
+          requirements: Array.from({ length: 57 }, () => ({})),
+          schemaVersion: 'requirement-import.v4',
+        }),
+      },
+    })
+    expect(
+      screen.queryByText(/The repair prompt is copied/),
+    ).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', copyButtonName))
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2))
+    const schemaPrompt = String(writeText.mock.calls[1]?.[0])
+    expect(
+      schemaPrompt
+        .split('\n')
+        .filter(line => line.startsWith('- $.requirements[')),
+    ).toHaveLength(50)
+    expect(schemaPrompt.split('\n\n').at(-1)).toBe(
+      getPromptMessage('en', ['ai', 'prompt', 'repair', 'moreErrors']).replace(
+        '{count}',
+        '7',
+      ),
+    )
+
+    fireEvent.change(rawJson, { target: { value: 'I need the file first.' } })
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'The response contains no JSON.',
+    )
+    expect(screen.queryByRole('button', copyButtonName)).not.toBeInTheDocument()
+
+    fireEvent.change(rawJson, { target: { value: '{"requirements": [' } })
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'The response is probably truncated.',
+    )
+    expect(screen.queryByRole('button', copyButtonName)).not.toBeInTheDocument()
+  })
+
+  it('tells the user to copy from the preview when the clipboard is unavailable', async () => {
+    mockClipboardWriteText().mockRejectedValue(new Error('denied'))
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: {
+        value: JSON.stringify({ requirements: [{}], schemaVersion: 'v1' }),
+      },
+    })
+
+    const copyButton = await screen.findByRole('button', {
+      name: 'Kopiera reparationsprompt',
+    })
+    await waitFor(() => expect(copyButton).toBeEnabled())
+    fireEvent.click(copyButton)
+
+    expect(
+      await screen.findByText(
+        'Reparationsprompten kunde inte kopieras. Öppna förhandsvisningen och kopiera texten därifrån.',
+      ),
+    ).toHaveAttribute('role', 'status')
   })
 
   it('keeps preview disabled until the independently loaded schema budget resolves', async () => {
@@ -2271,6 +2979,24 @@ describe('RequirementsImportDialog', () => {
       />,
     )
 
+    const support = screen.getByRole('complementary', {
+      name: 'Låt en extern AI ta fram krav',
+    })
+    expect(support).toHaveTextContent(
+      'Hämta en ny fil om normreferenser, kravpaket eller behovsreferenser har ändrats.',
+    )
+    expect(
+      within(support).getByRole('button', { name: 'AI-anropsmall' }),
+    ).toBeEnabled()
+    expect(
+      within(support).getByRole('button', { name: 'Referensdatafil' }),
+    ).toBeEnabled()
+    expect(support).toHaveTextContent(
+      'kravimport-referensdata-kravunderlag-8.json',
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Egen prompt eller validering' }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Ladda ner schema' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Schema unavailable',

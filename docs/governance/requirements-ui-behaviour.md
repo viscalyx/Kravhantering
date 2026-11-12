@@ -262,9 +262,33 @@ an explicit in-modal error.
   import budget violations produce an error without discarding edits.
   Reopening the file starts normal validation with current permissions,
   destination, reference data and budget; the file grants no authority.
-- The schema and AI reference prompt are downloadable from the import dialog.
-  The AI prompt contains the full schema and current reference data, but no
-  examples. A successful execute can optionally be recorded by downloading the
+- Before the review is loaded, the support panel shows the step guide
+  `Låt en extern AI ta fram krav` / `Let an external AI draft requirements`
+  with three steps: download the AI request template and the reference data
+  file, ask the AI assistant, and add the response. The file name is shown
+  under each download button. For kravunderlagsimport, both buttons are
+  disabled without a kravunderlag id. A sentence under the steps says that the
+  reference data file mirrors the destination now. The dialog names no AI
+  products. The
+  [AI request template and reference data file](reference-data-and-ai.md#ai-request-template-and-reference-data-file)
+  contract defines the file contents.
+- The collapsed section `Egen prompt eller validering` /
+  `Own prompt or validation` is closed by default. It offers the schema and import
+  instruction downloads for users who write the whole prompt themselves or
+  validate in their own tool. The import instruction holds only format rules
+  and reference data; the schema is the separate file format contract.
+- The JSON field reads the text as JSON. If the text is not valid JSON but
+  holds exactly one code block, the dialog reads the block and says so without
+  changing the field. Several code blocks, a response without JSON, and a
+  likely truncated response each get a short message. Syntax errors, a wrong
+  `schemaVersion`, and schema errors show at most 20 errors with JSON paths,
+  followed by `och N fel till` / `and N more errors`, and offer
+  `Kopiera reparationsprompt` / `Copy repair prompt` with a collapsed preview.
+  The
+  [repair prompt contract](reference-data-and-ai.md#validation-and-repair)
+  defines the prompt. Row errors and warnings after the review loads keep
+  their existing actions.
+- A successful execute can optionally be recorded by downloading the
   client-generated CSV receipt shown in the dialog.
 
 ## Requirement Routes

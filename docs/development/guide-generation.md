@@ -74,6 +74,11 @@ Outputs stay at these locations:
 - `test-results/guide/`: runner artifacts, including scenario screenshots
   on every run and traces retained on failure.
 
+Each screenshot and each text-only entry takes the next number in the guide,
+and screenshot file names start with that number. A new or removed step
+therefore renames the screenshots after it. Commit the generated README
+together with the whole images directory.
+
 The generator clears the guide images directory before its scenario starts
 and writes the README only after completing the scenario. A failed or skipped
 run can therefore leave the existing README alongside incomplete or missing

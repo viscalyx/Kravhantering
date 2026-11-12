@@ -15,6 +15,11 @@ const translate = Object.assign(
       analysisTab: 'AI analysis',
       candidateCount: 'Number of requirement candidates',
       continueToImport: 'Preview requirements in import',
+      downloadFailed: 'The file could not be downloaded. Try again.',
+      downloadReferenceData: 'Reference data file',
+      downloadTemplate: 'AI request template',
+      downloading: 'Downloading…',
+      filesUnavailable: 'These files need a requirements specification.',
       imageErrorCount: 'You can attach up to {max} images.',
       imageErrorRead:
         'Failed to read one or more image files. Please try again.',
@@ -60,6 +65,10 @@ const translate = Object.assign(
       'requestExplanation.exactMessagesHelp':
         'The parts are shown in the order the model receives them.',
       'requestExplanation.exactMessagesTitle': 'Show exact text sent',
+      'requestExplanation.externalAssistantHelp':
+        'Download the AI request template and the reference data file for the same destination.',
+      'requestExplanation.externalAssistantTitle':
+        'Continue in an external AI assistant',
       'requestExplanation.formatLabel': 'Format',
       'requestExplanation.fullSchemaLabel': 'Full schema',
       'requestExplanation.imageCount': '{count} images',
@@ -101,9 +110,17 @@ const translate = Object.assign(
   },
 )
 
+const localeState = vi.hoisted(() => ({ locale: 'en' }))
+
 vi.mock('next-intl', () => ({
-  useLocale: () => 'en',
+  useLocale: () => localeState.locale,
   useTranslations: () => translate,
+}))
+
+const downloadBlobMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@/lib/browser-download', () => ({
+  downloadBlob: downloadBlobMock,
 }))
 
 const confirmState = vi.hoisted(() => ({ confirm: vi.fn() }))
@@ -119,6 +136,7 @@ const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
 import AiRequirementGenerator from '@/components/AiRequirementGenerator'
+import { buildRequirementImportSystemPrompt } from '@/lib/ai/requirement-prompt'
 import type { ImportRequirementsPayload } from '@/lib/requirements/import-schema'
 
 const testAreas = [
@@ -446,6 +464,7 @@ async function renderOpenGenerator(overrides?: {
 describe('AiRequirementGenerator', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localeState.locale = 'en'
     confirmState.confirm.mockResolvedValue(true)
     window.localStorage.clear()
     // Default: all administrator-managed authoring actions are available.
@@ -691,6 +710,11 @@ describe('AiRequirementGenerator', () => {
     ).toBeVisible()
     expect(screen.getByText('Raw result')).toBeVisible()
     expect(screen.getByText('{"requirements":')).toBeInTheDocument()
+    // The internal repair step is a repair request, not a repair prompt; the
+    // repair prompt is the text for an external AI assistant.
+    expect(
+      screen.getByRole('heading', { name: 'repairRequestContent' }),
+    ).toBeVisible()
 
     const repairButton = screen.getByRole('button', { name: 'repair' })
     expect(repairButton).toBeDisabled()
@@ -732,13 +756,19 @@ describe('AiRequirementGenerator', () => {
 
     await userEvent.click(screen.getByText('Show exact text sent'))
 
+    const expectedSystemMessage = buildRequirementImportSystemPrompt(
+      '# Import instruction\n\nUse schemaVersion.',
+      'en',
+    )
     await waitFor(() => {
       expect(
-        screen.getByText(/experienced requirements engineer/),
+        screen.getByText(
+          (_content, element) =>
+            element?.tagName === 'PRE' &&
+            element.textContent === expectedSystemMessage,
+        ),
       ).toBeInTheDocument()
     })
-    expect(screen.getAllByText(/Import instruction/).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/Use schemaVersion/).length).toBeGreaterThan(0)
     expect(
       mockFetch.mock.calls.some(([url]) =>
         String(url).startsWith('/api/requirements/import/schema'),
@@ -836,6 +866,185 @@ describe('AiRequirementGenerator', () => {
     })
   })
 
+  describe('continuing in an external AI assistant', () => {
+    const fileBlob = new Blob(['file'])
+
+    function mockAiRequestFileDownloads() {
+      const defaultFetch = mockFetch.getMockImplementation()
+      mockFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+        if (
+          typeof url === 'string' &&
+          (url.startsWith('/api/requirements/import/ai-request-template') ||
+            url.startsWith('/api/requirements/import/reference-data'))
+        ) {
+          return { blob: async () => fileBlob, ok: true }
+        }
+        return defaultFetch?.(url, init)
+      })
+    }
+
+    async function openExplanation() {
+      await userEvent.click(
+        screen.getByRole('button', { name: /How the AI request is built/ }),
+      )
+      return screen.getByRole('dialog', {
+        name: 'How the AI request is built',
+      })
+    }
+
+    it('offers the AI request files in a marked section after the exact messages', async () => {
+      await renderOpenGenerator()
+      const dialog = await openExplanation()
+
+      const section = within(dialog).getByRole('region', {
+        name: 'Continue in an external AI assistant',
+      })
+      expect(section).toHaveAttribute(
+        'data-developer-mode-context',
+        'ai request explanation',
+      )
+      expect(section).toHaveAttribute(
+        'data-developer-mode-name',
+        'detail section',
+      )
+      expect(section).toHaveAttribute(
+        'data-developer-mode-value',
+        'continue in external ai assistant',
+      )
+      const exactMessages = within(dialog)
+        .getByText('Show exact text sent')
+        .closest('details')
+      expect(exactMessages).not.toBeNull()
+      expect(
+        (exactMessages as HTMLElement).compareDocumentPosition(section) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(section.nextElementSibling).toBeNull()
+      expect(
+        within(section).getByRole('button', { name: 'AI request template' }),
+      ).toHaveAccessibleDescription(
+        'requirement-import-ai-request-template-requirements-library.md',
+      )
+      expect(
+        within(section).getByRole('button', { name: 'Reference data file' }),
+      ).toHaveAccessibleDescription(
+        'requirement-import-reference-data-requirements-library.json',
+      )
+    })
+
+    it.each([
+      [
+        'en',
+        'library',
+        undefined,
+        'AI request template',
+        '/api/requirements/import/ai-request-template?locale=en&kind=requirements_library',
+        'requirement-import-ai-request-template-requirements-library.md',
+      ],
+      [
+        'sv',
+        'library',
+        undefined,
+        'Reference data file',
+        '/api/requirements/import/reference-data?locale=sv&kind=requirements_library',
+        'kravimport-referensdata-kravbibliotek.json',
+      ],
+      [
+        'sv',
+        'specification-local',
+        8,
+        'AI request template',
+        '/api/requirements/import/ai-request-template?locale=sv&kind=requirements_specification',
+        'kravimport-ai-anropsmall-kravunderlag.md',
+      ],
+      [
+        'en',
+        'specification-local',
+        8,
+        'Reference data file',
+        '/api/requirements/import/reference-data?locale=en&kind=requirements_specification&specificationId=8',
+        'requirement-import-reference-data-requirements-specification-8.json',
+      ],
+    ] as const)(
+      'downloads the %s %s file behind %s for the same destination',
+      async (locale, mode, specificationId, buttonName, expectedUrl, expectedFileName) => {
+        localeState.locale = locale
+        mockAiRequestFileDownloads()
+        await renderOpenGenerator({ mode, specificationId })
+        const dialog = await openExplanation()
+
+        await userEvent.click(
+          within(dialog).getByRole('button', { name: buttonName }),
+        )
+
+        await waitFor(() =>
+          expect(downloadBlobMock).toHaveBeenCalledWith(
+            fileBlob,
+            expectedFileName,
+          ),
+        )
+        expect(mockFetch).toHaveBeenCalledWith(expectedUrl)
+      },
+    )
+
+    it('disables the AI request files when a specification import has no specification id', async () => {
+      await renderOpenGenerator({ mode: 'specification-local' })
+      const dialog = await openExplanation()
+
+      for (const name of ['AI request template', 'Reference data file']) {
+        const button = within(dialog).getByRole('button', { name })
+        expect(button).toBeDisabled()
+        expect(button).toHaveAttribute(
+          'title',
+          'These files need a requirements specification.',
+        )
+      }
+    })
+
+    it('reports a failed download inside the dialog and clears it on retry', async () => {
+      const defaultFetch = mockFetch.getMockImplementation()
+      let templateAttempts = 0
+      mockFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+        if (
+          typeof url === 'string' &&
+          url.startsWith('/api/requirements/import/ai-request-template')
+        ) {
+          templateAttempts += 1
+          if (templateAttempts === 1) {
+            return {
+              headers: new Headers({ 'content-type': 'application/json' }),
+              json: async () => ({ error: 'Template unavailable' }),
+              ok: false,
+            }
+          }
+          return { blob: async () => fileBlob, ok: true }
+        }
+        return defaultFetch?.(url, init)
+      })
+      await renderOpenGenerator()
+      const dialog = await openExplanation()
+      const section = within(dialog).getByRole('region', {
+        name: 'Continue in an external AI assistant',
+      })
+
+      await userEvent.click(
+        within(section).getByRole('button', { name: 'AI request template' }),
+      )
+
+      expect(await within(section).findByRole('alert')).toHaveTextContent(
+        'Template unavailable',
+      )
+      expect(downloadBlobMock).not.toHaveBeenCalled()
+
+      await userEvent.click(
+        within(section).getByRole('button', { name: 'AI request template' }),
+      )
+
+      await waitFor(() => expect(downloadBlobMock).toHaveBeenCalledTimes(1))
+      expect(within(section).queryByRole('alert')).not.toBeInTheDocument()
+    })
+  })
+
   it('traps focus in the AI request explanation dialog and restores focus on close', async () => {
     await renderOpenGenerator()
     const trigger = screen.getByRole('button', {
@@ -849,12 +1058,16 @@ describe('AiRequirementGenerator', () => {
     })
     const closeButton = within(dialog).getByLabelText('close')
 
+    const lastButton = within(dialog).getByRole('button', {
+      name: 'Reference data file',
+    })
+
     await waitFor(() => expect(closeButton).toHaveFocus())
 
-    fireEvent.keyDown(dialog, { key: 'Tab' })
-    expect(closeButton).toHaveFocus()
-
     fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })
+    expect(lastButton).toHaveFocus()
+
+    fireEvent.keyDown(dialog, { key: 'Tab' })
     expect(closeButton).toHaveFocus()
 
     fireEvent.keyDown(dialog, { key: 'Escape' })

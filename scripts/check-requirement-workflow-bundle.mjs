@@ -41,16 +41,18 @@ export const REQUIREMENT_WORKFLOW_GZIP_MAX_BYTES = {
   'requirements-library': {
     // 2026-07-14 production baseline: 280,092 gzip bytes plus 5% headroom.
     entry: 294_097,
-    // 2026-09-12 production baseline: 276,448 gzip bytes plus 5% headroom.
-    'ai-authoring': 290_271,
+    // 2026-09-29 production baseline: 292,752 gzip bytes plus 5% headroom.
+    // The AI request prompt module bundles messages/{sv,en}.json, so new
+    // message texts grow this chunk.
+    'ai-authoring': 307_390,
     // 2026-09-27 production baseline: 137,473 gzip bytes plus 5% headroom.
     'import-review': 144_347,
   },
   'requirements-specification-detail': {
     // 2026-09-19 production baseline: 331,248 gzip bytes plus 5% headroom.
     entry: 347_811,
-    // 2026-09-12 production baseline: 277,157 gzip bytes plus 5% headroom.
-    'ai-authoring': 291_015,
+    // 2026-09-29 production baseline: 293,461 gzip bytes plus 5% headroom.
+    'ai-authoring': 308_134,
     // 2026-09-27 production baseline: 135,639 gzip bytes plus 5% headroom.
     'import-review': 142_421,
   },

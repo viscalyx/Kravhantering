@@ -9,7 +9,6 @@ import {
   ChevronsUp,
   Download,
   FileInput,
-  FileJson,
   Info,
   Loader2,
   Plus,
@@ -36,12 +35,15 @@ import NormReferenceModal, {
 import QualityCharacteristicSelectOptions from '@/components/QualityCharacteristicSelectOptions'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
+import RequirementsImportRepairPrompt from '@/components/RequirementsImportRepairPrompt'
+import RequirementsImportSupportPanel from '@/components/RequirementsImportSupportPanel'
 import StatusBadge from '@/components/StatusBadge'
 import { downloadBlob } from '@/lib/browser-download'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { escapeCsvField } from '@/lib/export-csv'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import { resolveAiRequestFileDestination } from '@/lib/requirements/ai-request-files'
 import type { RequirementImportBudget } from '@/lib/requirements/import-budget'
 import {
   RequirementImportCandidateError,
@@ -54,9 +56,18 @@ import {
   readRequirementImportFile,
 } from '@/lib/requirements/import-client'
 import {
+  describeRequirementImportJsonProblem,
+  formatRequirementImportJsonErrors,
+  isRequirementImportJsonProblemRepairable,
+  REQUIREMENT_IMPORT_JSON_DIALOG_ERROR_LIMIT,
+} from '@/lib/requirements/import-json-errors'
+import {
+  type ImportJsonProblem,
+  readRequirementImportJson,
+} from '@/lib/requirements/import-json-input'
+import {
   buildRequirementsImportPayloadSchema,
   type ImportRequirementsPayload,
-  REQUIREMENTS_IMPORT_SCHEMA_VERSION,
 } from '@/lib/requirements/import-schema'
 import { createUtf8BomBlob } from '@/lib/text-export'
 
@@ -238,21 +249,30 @@ export interface RequirementsImportDialogProps {
   specificationId?: number
 }
 
+type ImportPayloadBlockReason =
+  | 'content-too-large'
+  | 'import-budget-loading'
+  | 'import-budget-unavailable'
+  | 'missing-json'
+
 type ImportPayloadValidation =
   | {
+      extractedFromCodeBlock: boolean
       payload: ImportRequirementsPayload
+      problem: null
       reason: null
     }
   | {
+      extractedFromCodeBlock: boolean
       payload: null
-      reason:
-        | 'invalid-json'
-        | 'content-too-large'
-        | 'import-budget-loading'
-        | 'import-budget-unavailable'
-        | 'missing-json'
-        | 'schema-invalid'
-        | 'wrong-version'
+      problem: ImportJsonProblem
+      reason: 'import-json-problem'
+    }
+  | {
+      extractedFromCodeBlock: false
+      payload: null
+      problem: null
+      reason: ImportPayloadBlockReason
     }
 
 const TEXT = {
@@ -265,11 +285,7 @@ const TEXT = {
     confirmWarnings:
       'Selected rows contain warnings. Unresolved optional metadata will be omitted. Continue?',
     dropJsonFile: 'Drop a JSON file here, or click to browse.',
-    downloadImportInstruction: 'Download import instruction',
-    downloadArtifactsHelp:
-      'Use the schema to validate the file. The import instruction is only the output-format and import-reference part for AI work; combine it with your own prompt describing the requirements and text content to produce.',
     downloadCsv: 'Download CSV receipt',
-    downloadSchema: 'Download schema',
     error: 'Something went wrong',
     errors: 'errors',
     execute: 'Import selected',
@@ -285,7 +301,6 @@ const TEXT = {
     expandAll: 'Expand all',
     expandRow: 'Expand row',
     infoCount: (count: number) => `${count} info`,
-    invalidSchema: `The JSON does not match ${REQUIREMENTS_IMPORT_SCHEMA_VERSION}. Fix the import file before previewing requirements.`,
     contentTooLarge: 'Requirement import content must not exceed 8 MiB.',
     importTitleLibrary: 'Import requirements',
     importTitleSpecification: 'Import local requirements',
@@ -350,12 +365,6 @@ const TEXT = {
       'Select a requirement area and add import JSON to preview requirements.',
     startImportMissingTarget:
       'Select a requirement area to preview requirements.',
-    startImportInvalidJson:
-      'The JSON cannot be parsed. Check the syntax before previewing requirements.',
-    startImportInvalidSchema:
-      'The JSON does not match the import schema. Check required fields and field names.',
-    startImportWrongSchemaVersion: (schemaVersion: string) =>
-      `schemaVersion must be ${schemaVersion}.`,
     success: 'Imported rows',
     type: 'Type',
     unknownNormReferenceId: 'No matching norm reference found.',
@@ -374,11 +383,7 @@ const TEXT = {
     confirmWarnings:
       'Valda rader innehåller varningar. Olöst frivillig metadata utelämnas. Fortsätta?',
     dropJsonFile: 'Släpp en JSON-fil här, eller klicka för att välja fil.',
-    downloadImportInstruction: 'Ladda ner importinstruktion',
-    downloadArtifactsHelp:
-      'Använd schemat för att validera filen. Importinstruktionen är bara formatdelen och referensdata för import för AI-arbete; kombinera den med en egen prompt som beskriver vilka krav och texter som ska tas fram.',
     downloadCsv: 'Ladda ner CSV-kvitto',
-    downloadSchema: 'Ladda ner schema',
     error: 'Något gick fel',
     errors: 'fel',
     execute: 'Importera valda',
@@ -393,7 +398,6 @@ const TEXT = {
     expandAll: 'Expandera alla',
     expandRow: 'Expandera rad',
     infoCount: (count: number) => `${count} info`,
-    invalidSchema: `JSON följer inte ${REQUIREMENTS_IMPORT_SCHEMA_VERSION}. Korrigera importfilen innan granskningen laddas.`,
     contentTooLarge: 'Kravimportens innehåll får inte överstiga 8 MiB.',
     importTitleLibrary: 'Importera krav',
     importTitleSpecification: 'Importera lokala krav',
@@ -457,12 +461,6 @@ const TEXT = {
     startImportMissingTargetAndJson:
       'Välj kravområde och lägg till import-JSON för att förhandsgranska kraven.',
     startImportMissingTarget: 'Välj kravområde för att förhandsgranska kraven.',
-    startImportInvalidJson:
-      'JSON kan inte läsas. Kontrollera syntaxen innan kraven förhandsgranskas.',
-    startImportInvalidSchema:
-      'JSON följer inte importschemat. Kontrollera obligatoriska fält och fältnamn.',
-    startImportWrongSchemaVersion: (schemaVersion: string) =>
-      `schemaVersion måste vara ${schemaVersion}.`,
     success: 'Importerade rader',
     type: 'Typ',
     unknownNormReferenceId: 'Ingen matchande normreferens hittades.',
@@ -749,6 +747,7 @@ export default function RequirementsImportDialog({
   const locale = useLocale() === 'sv' ? 'sv' : 'en'
   const text = TEXT[locale]
   const importText = useTranslations('requirementsImportDialog')
+  const importJsonText = useTranslations('requirementsImportJson')
   const { confirm } = useConfirmModal()
   const titleId = useId()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -846,40 +845,68 @@ export default function RequirementsImportDialog({
     [importBudget],
   )
   const importPayloadValidation = useMemo<ImportPayloadValidation>(() => {
+    const blocked = (
+      reason: ImportPayloadBlockReason,
+    ): ImportPayloadValidation => ({
+      extractedFromCodeBlock: false,
+      payload: null,
+      problem: null,
+      reason,
+    })
     if (importBudgetStatus === 'loading') {
-      return { payload: null, reason: 'import-budget-loading' }
+      return blocked('import-budget-loading')
     }
     if (importBudgetStatus === 'error' || !runtimeImportPayloadSchema) {
-      return { payload: null, reason: 'import-budget-unavailable' }
+      return blocked('import-budget-unavailable')
     }
-    if (!rawJson.trim()) return { payload: null, reason: 'missing-json' }
+    if (!rawJson.trim()) return blocked('missing-json')
     try {
       assertRequirementImportTextSize(rawJson)
-      const parsed = JSON.parse(rawJson) as unknown
-      if (
-        typeof parsed !== 'object' ||
-        parsed === null ||
-        !('schemaVersion' in parsed) ||
-        (parsed as { schemaVersion?: unknown }).schemaVersion !==
-          REQUIREMENTS_IMPORT_SCHEMA_VERSION
-      ) {
-        return { payload: null, reason: 'wrong-version' }
-      }
-      const result = runtimeImportPayloadSchema.safeParse(parsed)
-      return result.success
-        ? { payload: result.data, reason: null }
-        : { payload: null, reason: 'schema-invalid' }
-    } catch (error) {
-      if (error instanceof RequirementImportClientBudgetError) {
-        return { payload: null, reason: 'content-too-large' }
-      }
-      return { payload: null, reason: 'invalid-json' }
+    } catch {
+      return blocked('content-too-large')
     }
+    const result = readRequirementImportJson(
+      rawJson,
+      runtimeImportPayloadSchema,
+    )
+    return result.problem
+      ? {
+          extractedFromCodeBlock: result.extractedFromCodeBlock,
+          payload: null,
+          problem: result.problem,
+          reason: 'import-json-problem',
+        }
+      : {
+          extractedFromCodeBlock: result.extractedFromCodeBlock,
+          payload: result.payload,
+          problem: null,
+          reason: null,
+        }
   }, [importBudgetStatus, rawJson, runtimeImportPayloadSchema])
+  const importJsonProblem = importPayloadValidation.problem
+  const importJsonErrors = useMemo(() => {
+    if (importJsonProblem?.kind !== 'schema') return null
+    const formatted = formatRequirementImportJsonErrors(importJsonProblem, {
+      limit: REQUIREMENT_IMPORT_JSON_DIALOG_ERROR_LIMIT,
+      t: importJsonText,
+    })
+    const occurrences = new Map<string, number>()
+    return {
+      errors: formatted.errors.map(error => {
+        const identity = `${error.path} ${error.message}`
+        const occurrence = (occurrences.get(identity) ?? 0) + 1
+        occurrences.set(identity, occurrence)
+        return { ...error, key: `${identity} ${occurrence}` }
+      }),
+      omittedCount: formatted.omittedCount,
+    }
+  }, [importJsonProblem, importJsonText])
   const parsedImportPayload = importPayloadValidation.payload
   const hasRequiredImportTarget = mode !== 'library' || selectedAreaId !== ''
-  const canDownloadImportInstruction =
-    mode === 'library' || specificationId != null
+  const aiRequestFileDestination = resolveAiRequestFileDestination(
+    mode,
+    specificationId,
+  )
   const canLoadPreview =
     !loading && parsedImportPayload !== null && hasRequiredImportTarget
   const startImportDisabledReason = useMemo(() => {
@@ -893,15 +920,12 @@ export default function RequirementsImportDialog({
             ? text.startImportMissingJson
             : importPayloadValidation.reason === 'content-too-large'
               ? text.contentTooLarge
-              : importPayloadValidation.reason === 'invalid-json'
-                ? text.startImportInvalidJson
-                : importPayloadValidation.reason === 'wrong-version'
-                  ? text.startImportWrongSchemaVersion(
-                      REQUIREMENTS_IMPORT_SCHEMA_VERSION,
-                    )
-                  : importPayloadValidation.reason === 'schema-invalid'
-                    ? text.startImportInvalidSchema
-                    : null
+              : importJsonProblem
+                ? describeRequirementImportJsonProblem(
+                    importJsonProblem,
+                    importJsonText,
+                  )
+                : null
     if (
       !hasRequiredImportTarget &&
       importPayloadValidation.reason === 'missing-json'
@@ -917,6 +941,8 @@ export default function RequirementsImportDialog({
   }, [
     canLoadPreview,
     hasRequiredImportTarget,
+    importJsonProblem,
+    importJsonText,
     importPayloadValidation.reason,
     loading,
     text,
@@ -1558,13 +1584,8 @@ export default function RequirementsImportDialog({
   }
 
   const refreshPreviewToken = async () => {
-    if (!rawJson.trim()) return
-    let payload: unknown
-    try {
-      payload = JSON.parse(rawJson)
-    } catch {
-      return
-    }
+    const payload = importPayloadValidation.payload
+    if (!payload) return
     const isLibrary = mode === 'library'
     if (isLibrary && !selectedAreaId) return
     const response = await apiFetch(
@@ -1799,12 +1820,15 @@ export default function RequirementsImportDialog({
   const downloadArtifact = async (kind: 'schema' | 'instruction') => {
     const instructionParams = new URLSearchParams({ locale })
     if (kind === 'instruction') {
-      if (mode === 'specification-local') {
-        if (specificationId == null) return
-        instructionParams.set('kind', 'requirements_specification')
-        instructionParams.set('specificationId', String(specificationId))
-      } else {
-        instructionParams.set('kind', 'requirements_library')
+      // The import instruction has the same destination as the AI request
+      // files and is unavailable without it.
+      if (!aiRequestFileDestination) return
+      instructionParams.set('kind', aiRequestFileDestination.kind)
+      if (aiRequestFileDestination.kind === 'requirements_specification') {
+        instructionParams.set(
+          'specificationId',
+          String(aiRequestFileDestination.specificationId),
+        )
       }
     }
     const path =
@@ -1867,20 +1891,21 @@ export default function RequirementsImportDialog({
       setErrorMessage(null)
       setNoticeMessage(null)
       setReceiptRows([])
-      let payload: unknown
-      try {
-        payload = JSON.parse(rawJson)
-      } catch {
-        setErrorMessage(locale === 'sv' ? 'Ogiltig JSON.' : 'Invalid JSON.')
-        return
-      }
       if (!runtimeImportPayloadSchema) {
         setErrorMessage(text.importBudgetUnavailable)
         return
       }
-      const schemaResult = runtimeImportPayloadSchema.safeParse(payload)
-      if (!schemaResult.success) {
-        setErrorMessage(text.invalidSchema)
+      const importJson = readRequirementImportJson(
+        rawJson,
+        runtimeImportPayloadSchema,
+      )
+      if (importJson.problem) {
+        setErrorMessage(
+          describeRequirementImportJsonProblem(
+            importJson.problem,
+            importJsonText,
+          ),
+        )
         return
       }
       const isLibrary = mode === 'library'
@@ -1901,7 +1926,7 @@ export default function RequirementsImportDialog({
             ...(isLibrary ? { areaId: Number(selectedAreaId) } : {}),
             ...(!isLibrary ? { specificationId } : {}),
             locale,
-            payload: schemaResult.data,
+            payload: importJson.payload,
           }),
           headers: { 'Content-Type': 'application/json' },
           method: 'POST',
@@ -2307,6 +2332,11 @@ export default function RequirementsImportDialog({
                       <span>{text.dropJsonFile}</span>
                     </button>
                     <textarea
+                      aria-describedby={
+                        importPayloadValidation.extractedFromCodeBlock
+                          ? `${titleId}-json-extracted`
+                          : undefined
+                      }
                       className={`${inputClass} min-h-52 resize-y font-mono text-xs`}
                       id="import-json"
                       onChange={event => {
@@ -2326,6 +2356,25 @@ export default function RequirementsImportDialog({
                       placeholder={text.rawJsonPlaceholder}
                       value={rawJson}
                     />
+                    {importPayloadValidation.extractedFromCodeBlock ? (
+                      <p
+                        className="mt-2 flex items-start gap-2 text-sm text-secondary-700 dark:text-secondary-300"
+                        id={`${titleId}-json-extracted`}
+                        role="status"
+                        {...devMarker({
+                          context: 'requirements import',
+                          name: 'status banner',
+                          priority: 340,
+                          value: 'code block extracted',
+                        })}
+                      >
+                        <Info
+                          aria-hidden="true"
+                          className="mt-0.5 h-4 w-4 shrink-0 text-primary-700 dark:text-primary-300"
+                        />
+                        <span>{importJsonText('codeBlockExtracted')}</span>
+                      </p>
+                    ) : null}
                   </div>
                   {!canLoadPreview && startImportDisabledReason ? (
                     <p
@@ -2344,6 +2393,49 @@ export default function RequirementsImportDialog({
                       />
                       <span>{startImportDisabledReason}</span>
                     </p>
+                  ) : null}
+                  {importJsonErrors && importJsonErrors.errors.length > 0 ? (
+                    <div
+                      className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100"
+                      role="status"
+                      {...devMarker({
+                        context: 'requirements import',
+                        name: 'status banner',
+                        priority: 350,
+                        value: 'import JSON errors',
+                      })}
+                    >
+                      <ul
+                        aria-label={importJsonText('errorListLabel')}
+                        className="space-y-1"
+                      >
+                        {importJsonErrors.errors.map(error => (
+                          <li className="wrap-anywhere" key={error.key}>
+                            <code className="font-mono text-xs">
+                              {error.path}
+                            </code>
+                            {': '}
+                            {error.message}
+                          </li>
+                        ))}
+                      </ul>
+                      {importJsonErrors.omittedCount > 0 ? (
+                        <p className="mt-1">
+                          {importJsonText('moreErrors', {
+                            count: importJsonErrors.omittedCount,
+                          })}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {importJsonProblem &&
+                  isRequirementImportJsonProblemRepairable(
+                    importJsonProblem,
+                  ) ? (
+                    <RequirementsImportRepairPrompt
+                      locale={locale}
+                      problem={importJsonProblem}
+                    />
                   ) : null}
                   <button
                     className="btn-primary inline-flex w-full items-center justify-center gap-2 sm:w-auto"
@@ -2368,45 +2460,18 @@ export default function RequirementsImportDialog({
                     priority: 250,
                   })}
                 >
-                  <h3
-                    className="text-sm font-semibold text-secondary-800 dark:text-secondary-200"
-                    id={`${titleId}-support`}
-                  >
-                    {importText('importSupport')}
-                  </h3>
-                  <div className="flex flex-col items-start gap-2">
-                    <button
-                      aria-describedby="requirements-import-download-help"
-                      className="inline-flex min-h-8 items-center gap-2 rounded text-left text-sm underline underline-offset-4 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 dark:hover:text-primary-300"
-                      onClick={() => void downloadArtifact('schema')}
-                      type="button"
-                    >
-                      <Download
-                        aria-hidden="true"
-                        className="h-4 w-4 shrink-0"
-                      />
-                      {text.downloadSchema}
-                    </button>
-                    <button
-                      aria-describedby="requirements-import-download-help"
-                      className="inline-flex min-h-8 items-center gap-2 rounded text-left text-sm underline underline-offset-4 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-primary-300"
-                      disabled={!canDownloadImportInstruction}
-                      onClick={() => void downloadArtifact('instruction')}
-                      type="button"
-                    >
-                      <FileJson
-                        aria-hidden="true"
-                        className="h-4 w-4 shrink-0"
-                      />
-                      {text.downloadImportInstruction}
-                    </button>
-                  </div>
-                  <p
-                    className="max-w-3xl text-xs leading-relaxed text-secondary-600 dark:text-secondary-300"
-                    id="requirements-import-download-help"
-                  >
-                    {text.downloadArtifactsHelp}
-                  </p>
+                  <RequirementsImportSupportPanel
+                    destination={aiRequestFileDestination}
+                    headingId={`${titleId}-support`}
+                    locale={locale}
+                    mode={mode}
+                    onDownloadError={setErrorMessage}
+                    onDownloadImportInstruction={() =>
+                      void downloadArtifact('instruction')
+                    }
+                    onDownloadSchema={() => void downloadArtifact('schema')}
+                    onDownloadStart={() => setErrorMessage(null)}
+                  />
                 </aside>
               </div>
             ) : null}

@@ -96,6 +96,13 @@ ALTER TABLE [<table>]
   - Import instruction artifact using the same schema:
     `app/api/requirements/import/instruction/route.ts` and
     `lib/requirements/import-service.ts`.
+  - AI request template embedding the same schema:
+    `app/api/requirements/import/ai-request-template/route.ts` and
+    `lib/ai/requirement-prompt.ts`
+    (`buildRequirementImportAiRequestTemplate`).
+  - Reference data file carrying the import reference data:
+    `app/api/requirements/import/reference-data/route.ts` and
+    `lib/requirements/import-reference-data-file.ts`.
   - Schema tests:
     `tests/unit/requirements-import-schema.test.ts`.
 - If a deviation is required, add it to `Accepted Exceptions` in

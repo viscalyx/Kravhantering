@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { POST } from '@/app/api/ai/repair-requirement-import-json/route'
 import type { AiAuthoringRunEvent } from '@/lib/ai/authoring-runtime'
 import { AiRunProfileResolutionError } from '@/lib/ai/profile-resolver'
+import { buildRequirementImportRepairUserPrompt } from '@/lib/ai/requirement-prompt'
 import type { AiRunEvent, AiRunIdentity } from '@/lib/ai/run-contracts'
 import * as aiSafety from '@/lib/ai/safety'
 import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
@@ -147,8 +148,12 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
     const runRequest = routeState.run.mock.calls[0]?.[0]
     expect(runRequest.type).toBe('repair_invalid_import_json')
     expect(runRequest).not.toHaveProperty('model')
-    expect(runRequest.task.content[0].text).toContain(
-      'schemaVersion is missing',
+    expect(runRequest.task.content[0].text).toBe(
+      buildRequirementImportRepairUserPrompt({
+        brokenJson: '{"requirements":[]}',
+        errors: ['schemaVersion is missing'],
+        locale: 'en',
+      }),
     )
   })
 
