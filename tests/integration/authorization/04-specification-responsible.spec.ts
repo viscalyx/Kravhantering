@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test'
 import { escapeRegExp } from '@/tests/helpers/common'
-import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import {
   type AuthorizationFixture,
   createAuthorizationFixture,
@@ -14,6 +13,7 @@ import {
   seedAuthorizationResponsibilityPeople,
   verifyResponsibilityPerson,
 } from '@/tests/support/authorization-test-helpers'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 let fixture: AuthorizationFixture
 

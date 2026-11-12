@@ -9,7 +9,6 @@ import {
 } from '@playwright/test'
 import { extractText } from 'unpdf'
 import { delay, escapeRegExp } from '@/tests/helpers/common'
-import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
 import { expectApiResponseOkWithRetry } from '@/tests/support/api-retry-helpers'
 import {
@@ -19,6 +18,7 @@ import {
   referenceManualCases,
 } from '@/tests/support/authorization-test-helpers'
 import { resolveIntegrationBaseUrl } from '@/tests/support/base-url'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 const STATUS_DRAFT = 1
 const STATUS_REVIEW = 2

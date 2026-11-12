@@ -14,16 +14,16 @@ import {
   MCP_REQUEST_PAYLOAD_MIN_BYTES,
 } from '@/lib/ai/generation-availability'
 import type { AdminApplicationSettings } from '@/lib/application-settings'
-import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
-import {
-  getAiSettings,
-  putAiSettings,
-} from '@/tests/support/ai-settings-test-helpers'
 import {
   ADMIN_20_CONNECTION_NAME,
   ADMIN_20_MODEL_NAME,
   prepareAdmin20Fixture,
 } from '@/tests/support/ai-connection-test-fixture'
+import {
+  getAiSettings,
+  putAiSettings,
+} from '@/tests/support/ai-settings-test-helpers'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 async function mockAiDialogReferenceData(page: Page) {
   await page.route('**/api/ai/authoring-profiles', async route => {

@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test'
-import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { expectApiResponseOkWithRetry } from '@/tests/support/api-retry-helpers'
 import {
   type AuthorizationFixture,
@@ -12,6 +11,7 @@ import {
   ROLE_STORAGE_STATE,
   referenceManualCases,
 } from '@/tests/support/authorization-test-helpers'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 let fixture: AuthorizationFixture
 

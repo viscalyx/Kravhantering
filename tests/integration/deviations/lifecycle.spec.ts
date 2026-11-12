@@ -9,7 +9,6 @@ import {
 } from '@playwright/test'
 import { escapeRegExp } from '@/tests/helpers/common'
 import { requireTestValue } from '@/tests/helpers/require-test-value'
-import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import { expectApiResponseStatus } from '@/tests/support/api-response-assertions'
 import { expectApiResponseOkWithRetry } from '@/tests/support/api-retry-helpers'
 import {
@@ -19,6 +18,7 @@ import {
   referenceManualCases,
 } from '@/tests/support/authorization-test-helpers'
 import { resolveIntegrationBaseUrl } from '@/tests/support/base-url'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 interface DeviationData {
   decidedAt: string | null
