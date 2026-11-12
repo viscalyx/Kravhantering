@@ -2701,86 +2701,96 @@ describe('whole-specification agreement contexts', () => {
     })
   })
 
-  it('activates changed local content as included and retains its identity and change date in a successor', async () => {
-    const db = database()
-    const specification = await createSpecificationFixture(db, 'LOCAL-VERSIONS')
-    const local = await createSpecificationLocalRequirement(
-      db,
-      specification.id,
-      { description: 'Original local text' },
-    )
-    await updateSpecificationLocalRequirementFields(db, local.id, {
-      specificationItemStatusId: 4,
-    })
-    const context = await makeRequestContext()
-    const workflow = createSpecificationAgreementWorkflow(db)
-    const today = new Intl.DateTimeFormat('sv-SE', {
-      timeZone: 'Europe/Stockholm',
-    }).format(new Date())
-    await workflow.mutate(context, specification.id, {
-      operation: 'establish',
-      agreementReference: 'A',
-      effectiveDate: '2020-01-01',
-    })
-    await workflow.mutate(context, specification.id, {
-      operation: 'create_draft',
-      agreementReference: 'B',
-      effectiveDate: today,
-    })
-    const agreementId = requireTestValue(
-      (await workflow.read(context, specification.id)).agreements.find(
-        agreement => agreement.agreementReference === 'B',
-      ),
-    ).id
-    await workflow.mutate(context, specification.id, {
-      operation: 'save_requirement',
-      agreementId,
-      itemRef: local.itemRef,
-      content: { description: 'Changed local text' },
-    })
-    await workflow.mutate(context, specification.id, {
-      operation: 'confirm',
-      agreementId,
-    })
-    const current = await workflow.read(context, specification.id)
-    expect(current.items[0]).toMatchObject({
-      uniqueId: local.uniqueId,
-      description: 'Changed local text',
-      specificationItemStatusId: 1,
-      changeDate: today,
-    })
-    const applicable = await listSpecificationTraceabilityItems(
-      db,
-      specification.id,
-      [local.itemRef, requireTestValue(current.items[0]).itemRef],
-    )
-    expect(applicable.map(item => item.itemRef)).toEqual([
-      requireTestValue(current.items[0]).itemRef,
-    ])
-    await updateSpecificationLocalRequirementFields(
-      db,
-      Number(requireTestValue(current.items[0]).itemRef.split(':')[1]),
-      { specificationItemStatusId: 4 },
-    )
-    await workflow.mutate(context, specification.id, {
-      operation: 'create_draft',
-      agreementReference: 'C',
-      effectiveDate: '2035-01-01',
-    })
-    const nextId = requireTestValue(
-      (await workflow.read(context, specification.id)).agreements.find(
-        agreement => agreement.agreementReference === 'C',
-      ),
-    ).id
-    const next = await workflow.read(context, specification.id, {
-      agreementId: nextId,
-    })
-    expect(next.items[0]).toMatchObject({
-      uniqueId: local.uniqueId,
-      changeDate: today,
-      specificationItemStatusId: 4,
-    })
-  })
+  it.each([0, 5])(
+    'activates changed local content as included and retains its identity and change date in a successor (%i ms)',
+    async milliseconds => {
+      const db = database()
+      const specification = await createSpecificationFixture(
+        db,
+        'LOCAL-VERSIONS',
+      )
+      const local = await createSpecificationLocalRequirement(
+        db,
+        specification.id,
+        { description: 'Original local text' },
+      )
+      await updateSpecificationLocalRequirementFields(db, local.id, {
+        specificationItemStatusId: 4,
+      })
+      const context = await makeRequestContext()
+      // Keep confirmation and its first read at one instant after fixture creation.
+      const now = new Date(Math.ceil(Date.now() / 1000) * 1000 + milliseconds)
+      const workflow = createSpecificationAgreementWorkflow(db, {
+        now: () => now,
+      })
+      const today = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'Europe/Stockholm',
+      }).format(now)
+      await workflow.mutate(context, specification.id, {
+        operation: 'establish',
+        agreementReference: 'A',
+        effectiveDate: '2020-01-01',
+      })
+      await workflow.mutate(context, specification.id, {
+        operation: 'create_draft',
+        agreementReference: 'B',
+        effectiveDate: today,
+      })
+      const agreementId = requireTestValue(
+        (await workflow.read(context, specification.id)).agreements.find(
+          agreement => agreement.agreementReference === 'B',
+        ),
+      ).id
+      await workflow.mutate(context, specification.id, {
+        operation: 'save_requirement',
+        agreementId,
+        itemRef: local.itemRef,
+        content: { description: 'Changed local text' },
+      })
+      await workflow.mutate(context, specification.id, {
+        operation: 'confirm',
+        agreementId,
+      })
+      const current = await workflow.read(context, specification.id)
+      expect(current.items[0]).toMatchObject({
+        uniqueId: local.uniqueId,
+        description: 'Changed local text',
+        specificationItemStatusId: 1,
+        changeDate: today,
+      })
+      const applicable = await listSpecificationTraceabilityItems(
+        db,
+        specification.id,
+        [local.itemRef, requireTestValue(current.items[0]).itemRef],
+      )
+      expect(applicable.map(item => item.itemRef)).toEqual([
+        requireTestValue(current.items[0]).itemRef,
+      ])
+      await updateSpecificationLocalRequirementFields(
+        db,
+        Number(requireTestValue(current.items[0]).itemRef.split(':')[1]),
+        { specificationItemStatusId: 4 },
+      )
+      await workflow.mutate(context, specification.id, {
+        operation: 'create_draft',
+        agreementReference: 'C',
+        effectiveDate: '2035-01-01',
+      })
+      const nextId = requireTestValue(
+        (await workflow.read(context, specification.id)).agreements.find(
+          agreement => agreement.agreementReference === 'C',
+        ),
+      ).id
+      const next = await workflow.read(context, specification.id, {
+        agreementId: nextId,
+      })
+      expect(next.items[0]).toMatchObject({
+        uniqueId: local.uniqueId,
+        changeDate: today,
+        specificationItemStatusId: 4,
+      })
+    },
+  )
 
   it('keeps independent local conversions of one library requirement in separate histories', async () => {
     const db = database()

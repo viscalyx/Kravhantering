@@ -363,6 +363,11 @@ operations. Item count, file size, time, and per-node capacity limits apply;
 no partial output is returned when generation exceeds a limit. CSV operations
 share the Admin-managed CSV limits and concurrency pool.
 
+Completed file responses include `X-Generated-Output-Bytes`, the file size in
+bytes before HTTP compression. Compare this value with the full downloaded
+file size. Next.js removes `Content-Length` from these streamed responses;
+clients must not require that HTTP framing header.
+
 The browser shows `Generating/Preparing` while generation runs and
 `Downloading` while receiving the completed output. The server filename takes
 precedence over the localized fallback. Filenames preserve Unicode, remove

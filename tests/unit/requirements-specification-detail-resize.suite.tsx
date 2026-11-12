@@ -59,10 +59,12 @@ export function registerPanelResizeTests(context: SpecDetailWorkflowContext) {
       const computedStyle = window.getComputedStyle
       vi.spyOn(window, 'getComputedStyle').mockImplementation(
         (element, pseudo) => {
-          const style = computedStyle(element, pseudo)
-          if (element.hasAttribute('data-specification-detail-split-panel'))
-            style.columnGap = '16px'
-          return style
+          if (
+            element instanceof HTMLElement &&
+            element.hasAttribute('data-specification-detail-split-panel')
+          )
+            element.style.columnGap = '16px'
+          return computedStyle(element, pseudo)
         },
       )
       let frameId = 0

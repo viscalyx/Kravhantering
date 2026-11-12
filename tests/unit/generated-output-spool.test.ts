@@ -142,32 +142,39 @@ describe('generated output spool', () => {
     )
   })
 
-  it('streams an exact-length no-store response and cleans up after transfer', async () => {
-    const root = await temporaryRoot()
-    const spool = await acquireGeneratedOutputSpool(
-      {
-        concurrencyLimit: 1,
-        maxFileBytes: 1024,
-        output: 'pdf',
-      },
-      testEnv(root),
-    )
-    await writeFile(spool.filePath, '%PDF')
-    let completed = 0
-    const response = await createGeneratedOutputFileResponse(
-      spool,
-      { 'Content-Type': 'application/pdf' },
-      { onComplete: () => completed++ },
-    )
+  it.each([
+    { body: '%PDF', bytes: '4', contentType: 'application/pdf' },
+    { body: 'åäö\n', bytes: '7', contentType: 'text/csv;charset=utf-8' },
+  ])(
+    'streams $contentType with exact byte metadata and cleans up after transfer',
+    async ({ body, bytes, contentType }) => {
+      const root = await temporaryRoot()
+      const spool = await acquireGeneratedOutputSpool(
+        {
+          concurrencyLimit: 1,
+          maxFileBytes: 1024,
+          output: 'pdf',
+        },
+        testEnv(root),
+      )
+      await writeFile(spool.filePath, body)
+      let completed = 0
+      const response = await createGeneratedOutputFileResponse(
+        spool,
+        { 'Content-Type': contentType, 'X-Generated-Output-Bytes': '999' },
+        { onComplete: () => completed++ },
+      )
 
-    expect(response.headers.get('Content-Length')).toBe('4')
-    expect(response.headers.get('Cache-Control')).toBe('no-store')
-    expect(response.headers.get('X-Accel-Buffering')).toBe('no')
-    expect(await response.text()).toBe('%PDF')
-    await new Promise(resolve => setImmediate(resolve))
-    expect(completed).toBe(1)
-    await expect(access(spool.directoryPath)).rejects.toThrow()
-  })
+      expect(response.headers.get('Content-Length')).toBe(bytes)
+      expect(response.headers.get('X-Generated-Output-Bytes')).toBe(bytes)
+      expect(response.headers.get('Cache-Control')).toBe('no-store')
+      expect(response.headers.get('X-Accel-Buffering')).toBe('no')
+      expect(await response.text()).toBe(body)
+      await new Promise(resolve => setImmediate(resolve))
+      expect(completed).toBe(1)
+      await expect(access(spool.directoryPath)).rejects.toThrow()
+    },
+  )
 
   it('cleans the spool and reports cancellation once', async () => {
     const root = await temporaryRoot()

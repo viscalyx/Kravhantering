@@ -35,10 +35,11 @@ export async function activateDueAgreements(
   specificationId: number,
   now: Date,
 ): Promise<void> {
+  // Driver Date parameters use datetime; match the stored datetime2 precision.
   const due = await db.query<Array<{ id: number; effectiveAt: Date }>>(
     `SELECT id, effective_at AS effectiveAt FROM specification_agreements
      WHERE specification_id = @0 AND is_pending = 1 AND confirmed_at IS NOT NULL
-       AND effective_at <= @1`,
+       AND effective_at <= CONVERT(datetime2, @1)`,
     [specificationId, now],
   )
   for (const agreement of due) {

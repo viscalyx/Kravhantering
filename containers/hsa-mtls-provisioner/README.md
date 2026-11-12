@@ -31,8 +31,8 @@ values from verifier output. Record exact Node and OpenSSL binary versions,
 RPM identities, source RPMs, and vendor in the lock. Keep the shared
 `containers/node/ubi-compat.sh` adaptation and the provisioner's `0:0` runtime
 identity. `HOME=/root` and the explicit Node CLI entrypoint override inherited
-S2I defaults. The shared adaptation removes the npm CLI and retains inherited
-nodemon; certificate commands need neither npm nor package installation.
+S2I defaults. The shared adaptation removes the npm CLI and development-only
+Nodemon; certificate commands need neither npm nor package installation.
 
 Run `npm run test:hsa-provisioner`, build the complete `linux/amd64` image,
 and retain its toolchain verification event, SBOM, vulnerability-policy result,

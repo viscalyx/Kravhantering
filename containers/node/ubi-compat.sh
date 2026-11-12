@@ -6,13 +6,18 @@ set -eu
 [ "$(id -u)" = 0 ]
 [ "$(node -p 'process.versions.node.split(".")[0]')" = 24 ]
 
+# Nodemon is a development-only runner. No runtime image invokes it, and its
+# bundled JavaScript dependencies are outside the application's npm lockfile.
+microdnf remove -y nodejs-nodemon
+
 # Public RPM fixes can precede refreshed base images. Keep this hook when the
 # list is empty; README.md#runtime-security-packages owns the entry rules and
 # records each entry's vulnerabilities and advisory.
-security_update_packages='curl libcurl-minimal libxml2'
+security_update_packages='nodejs24 nodejs24-libs nodejs24-full-i18n nodejs24-npm c-ares libxml2 libblkid libmount libsmartcols libuuid'
 if [ -n "$security_update_packages" ]; then
   # shellcheck disable=SC2086 # Split the package list into arguments.
   microdnf --disablerepo='*' --enablerepo=ubi-10-baseos-rpms \
+    --enablerepo=ubi-10-appstream-rpms \
     upgrade -y $security_update_packages
   microdnf clean all
 fi
@@ -52,6 +57,6 @@ chmod 0644 /usr/share/licenses/kravhantering/LICENSE
 mkdir -p /usr/local/bin
 ln -s /usr/bin/node /usr/local/bin/node
 
-# Keep workload dependencies and inherited nodemon; remove the npm CLI payload.
+# Keep workload dependencies; remove the npm CLI payload.
 rm -rf /usr/lib/node_modules_24/npm
 rm -f /usr/bin/npm /usr/bin/npx /usr/bin/npm-24 /usr/bin/npx-24

@@ -110,21 +110,35 @@ for (const [width, height] of [
             .poll(() =>
               filters.evaluate(element => {
                 const style = getComputedStyle(element)
+                const search = element.firstElementChild
+                const controls = Array.from(element.children).map(child =>
+                  child.getBoundingClientRect(),
+                )
                 const last = element.lastElementChild?.getBoundingClientRect()
                 const box = element.getBoundingClientRect()
-                return (
-                  !!last &&
-                  style.gridTemplateColumns.split(' ').length === 4 &&
-                  Math.abs(
-                    box.right -
-                      Number.parseFloat(style.paddingRight) -
-                      Number.parseFloat(style.borderRightWidth) -
-                      last.right,
-                  ) < 1
-                )
+                return {
+                  columns: style.gridTemplateColumns.split(' ').length,
+                  searchColumn: search && getComputedStyle(search).gridColumn,
+                  sameRow: controls.every(
+                    control => Math.abs(control.top - controls[0].top) < 1,
+                  ),
+                  fillsRow:
+                    !!last &&
+                    Math.abs(
+                      box.right -
+                        Number.parseFloat(style.paddingRight) -
+                        Number.parseFloat(style.borderRightWidth) -
+                        last.right,
+                    ) < 1,
+                }
               }),
             )
-            .toBe(true)
+            .toEqual({
+              columns: 4,
+              searchColumn: 'span 1 / span 1',
+              sameRow: true,
+              fillsRow: true,
+            })
           for (const button of await first.getByRole('button').all()) {
             await expect
               .poll(async () => {

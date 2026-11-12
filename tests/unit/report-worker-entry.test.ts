@@ -84,7 +84,13 @@ vi.mock('node:worker_threads', () => {
       return entryState.workerData
     },
   }
-  return { ...workerThreads, default: workerThreads }
+  return {
+    default: workerThreads,
+    parentPort: workerThreads.parentPort,
+    get workerData() {
+      return entryState.workerData
+    },
+  }
 })
 
 vi.mock('@react-pdf/renderer', () => ({

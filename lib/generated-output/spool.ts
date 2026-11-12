@@ -215,6 +215,7 @@ export async function createGeneratedOutputFileResponse(
   const responseHeaders = new Headers(headers)
   responseHeaders.set('Cache-Control', 'no-store')
   responseHeaders.set('Content-Length', String(file.size))
+  responseHeaders.set('X-Generated-Output-Bytes', String(file.size))
   responseHeaders.set('X-Accel-Buffering', 'no')
 
   return new Response(

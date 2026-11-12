@@ -813,6 +813,11 @@ inläsningsfel får egna meddelanden; ett fel kan prövas igen genom att stänga
 
 ### REQ-10: skapa PDF från kravlistan
 
+**Integrationstest:**
+[authorization-boundaries.spec.ts](../../tests/integration/00-report-pdf/authorization-boundaries.spec.ts),
+testfallet “REQ-10/REQ-18: actual SQL renders and exports exactly 1,000
+requirements”.
+
 **Steg:** Öppna `/sv/requirements`, välj ett känt filter och en känd sortering,
 öppna rapportmenyn och välj `Kravlista`. Låt genereringen och nedladdningen
 slutföras.
@@ -820,6 +825,8 @@ slutföras.
 **Förväntat resultat:** Dialogen visar först `Genererar PDF …` och sedan
 `Laddar ned PDF …`. En PDF med serverns filnamn laddas ned och innehåller
 samtliga matchande publicerade krav som användaren får läsa, i vald ordning.
+Öppna den nedladdade filen och kontrollera att även det sista matchande kravet
+finns med och går att läsa.
 Dialogen stängs och fokus återgår till rapportknappen.
 
 ### REQ-10a: avbryt PDF-generering från kravlistan
@@ -1305,6 +1312,11 @@ bilagan eller inte rymmer mallen, uppdatera tipsen i användarguidens avsnitt
 
 ### REQ-18: exportera kravbiblioteket till CSV
 
+**Integrationstest:**
+[authorization-boundaries.spec.ts](../../tests/integration/00-report-pdf/authorization-boundaries.spec.ts),
+testfallet “REQ-10/REQ-18: actual SQL renders and exports exactly 1,000
+requirements”.
+
 **Steg:** Använd en fixture med minst 205 publicerade krav och sätt CSV-gränsen
 till minst antalet matchningar. Öppna `/sv/requirements`, välj ett känt filter
 och en känd sortering, välj `Exportera` och låt exporten och nedladdningen
@@ -1312,7 +1324,9 @@ slutföras.
 
 **Förväntat resultat:** Dialogen visar först `Förbereder CSV-export …` och sedan
 `Laddar ned CSV …`. `kravbibliotek.csv` innehåller samtliga matchande krav exakt
-en gång i samma auktoritativa ordning som listan. Exportanropet går till
+en gång i samma auktoritativa ordning som listan.
+Öppna den nedladdade filen och kontrollera att även den sista matchande raden
+finns med och att svenska tecken går att läsa. Exportanropet går till
 `/api/requirements/export` utan `cursor` eller `limit`. Dialogen stängs och
 fokus återgår till exportknappen. Statusmeddelandet `Filen är klar` försvinner
 automatiskt efter fyra sekunder.
@@ -2137,7 +2151,9 @@ kravområde, version och status för aktiva och arkiverade frågor i båda teman
 med infälld och utfälld navigering. Upprepa med lång text och på smal skärm.
 Tabba till en fråga och öppna och stäng detaljerna med Enter. Öppna redigering
 på en hopfälld fråga och stäng dialogen. Sök på frågekod och växla mellan
-aktiva och arkiverade frågor med statusfiltret. Välj sedan alla statusar och,
+aktiva och arkiverade frågor med statusfiltret i både bred och smal vy.
+Kontrollera att sökfältet och alla tre filter är åtkomliga. Välj sedan alla
+statusar och,
 med skärmläsare, arkivera och återaktivera en fråga.
 
 **Förväntat resultat:** Hela texten och all metadata går att läsa. Aktiva
@@ -2292,12 +2308,19 @@ när det valda avtalet har ett föregående avtal, även vid visning av äldre a
 
 ### SPEC-23: ändra krav i ett nytt avtalsutkast
 
+**Integrationstest:**
+[agreements.spec.ts](../../tests/integration/specifications/agreements.spec.ts),
+testfallet “SPEC-22/SPEC-23/SPEC-28: edit the complete agreement in the
+requirement list and retain historical content and output”.
+
 **Steg:** Skapa ett nytt avtal från det aktuella avtalet. Redigera ett
 bibliotekskrav med **Redigera krav**. Kontrollera meddelandet om lokal identitet
 och ändra text, acceptanskriterier, klassificering och verifieringsuppgifter i
 den fullständiga editorn. Spara och ångra sedan ändringen. Gör en ny ändring,
-lägg till ett lokalt krav och ta bort ett annat krav. Bekräfta avtalet och välj
-sedan det tidigare avtalet. Jämför också en nyare publicerad biblioteksversion
+lägg till ett lokalt krav och ta bort ett annat krav. Ange dagens datum för
+avtalet och bekräfta. Kontrollera direkt att avtalet är aktuellt och visar
+den ändrade kravtexten. Välj sedan det tidigare avtalet. Jämför också en
+nyare publicerad biblioteksversion
 och använd **Uppdatera från kravbiblioteket** i åtgärdskolumnen till höger.
 Där finns även **Ångra ändring** när ändringen kan ångras. Kontrollera att
 åtgärdernas fullständiga namn är läsbara även när texten radbryts, på både

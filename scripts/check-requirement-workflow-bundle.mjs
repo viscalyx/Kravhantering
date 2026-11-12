@@ -49,8 +49,8 @@ export const REQUIREMENT_WORKFLOW_GZIP_MAX_BYTES = {
     'import-review': 144_347,
   },
   'requirements-specification-detail': {
-    // 2026-09-19 production baseline: 331,248 gzip bytes plus 5% headroom.
-    entry: 347_811,
+    // 2026-11-12 dependency update baseline: 352,656 gzip bytes plus 5% headroom.
+    entry: 370_289,
     // 2026-09-29 production baseline: 293,461 gzip bytes plus 5% headroom.
     'ai-authoring': 308_134,
     // 2026-09-27 production baseline: 135,639 gzip bytes plus 5% headroom.

@@ -1,9 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import tailwindcss from '@tailwindcss/postcss'
+import { compile } from '@tailwindcss/node'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import postcss from 'postcss'
 import type { ComponentProps, ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import RequirementActionRail from '@/app/[locale]/requirements/[id]/_detail/RequirementActionRail'
@@ -88,15 +87,16 @@ describe('RequirementActionRail', () => {
   })
 
   it('emits the destructive button variant from Tailwind CSS', async () => {
-    const result = await postcss([tailwindcss()]).process(
+    const compiler = await compile(
       readFileSync(join(process.cwd(), 'app/globals.css'), 'utf8'),
-      { from: join(process.cwd(), 'app/globals.css') },
+      { base: join(process.cwd(), 'app'), onDependency() {} },
     )
+    const css = compiler.build([])
 
-    expect(result.css).toContain('.btn-destructive')
-    expect(result.css).toContain('color: var(--color-red-700)')
-    expect(result.css).toContain('border-color: var(--color-red-200)')
-    expect(result.css).toContain('background-color: var(--color-red-50)')
+    expect(css).toContain('.btn-destructive')
+    expect(css).toContain('color: var(--color-red-700)')
+    expect(css).toContain('border-color: var(--color-red-200)')
+    expect(css).toContain('background-color: var(--color-red-50)')
   }, 15_000)
 
   it('uses the shared destructive variant for archive and delete draft actions', () => {
