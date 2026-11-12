@@ -237,6 +237,9 @@ describe.each(['json', 'pdf'] as const)(
       expect(response.headers.get('Content-Length')).toBe(
         String(Buffer.byteLength(body)),
       )
+      expect(response.headers.get('X-Generated-Output-Bytes')).toBe(
+        String(Buffer.byteLength(body)),
+      )
       await expectCleaned()
       expectTerminal('capacity.operation.completed', 200, {
         active_count: 0,

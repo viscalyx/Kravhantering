@@ -35,8 +35,11 @@ and the normal mutation-route CSRF protection; see
 
 ## Export Schema
 
-`delivery: "json"` returns JSON with attachment, exact `Content-Length`, and
-`Cache-Control: no-store` headers; `delivery: "pdf"` returns
+`delivery: "json"` returns JSON with attachment,
+`X-Generated-Output-Bytes`, and `Cache-Control: no-store` headers. The byte
+count is the completed file size before HTTP compression. Next.js removes
+`Content-Length`; clients must not require that HTTP framing header.
+`delivery: "pdf"` returns
 `application/pdf` with the same bounded-download headers. The current JSON
 schema version is
 `privacy-data-subject-export.v1`. The schema applies to JSON. The PDF is not a

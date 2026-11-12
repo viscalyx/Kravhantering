@@ -155,8 +155,12 @@ multiplied by its maximum file size, plus PDF concurrency multiplied by its
 maximum file size, with additional headroom. When processes share a filesystem,
 include every process in that budget; storage reservations are process-local.
 
-Successful file responses set exact `Content-Length`,
-`Cache-Control: no-store`, and `X-Accel-Buffering: no`. Production Nginx grants
+Successful file responses set `X-Generated-Output-Bytes` to the completed file
+size in bytes, before HTTP compression. Clients can compare it with the full
+downloaded file size. Responses also set `Cache-Control: no-store` and
+`X-Accel-Buffering: no`. The application supplies `Content-Length`, but Next.js
+removes that HTTP framing header. Clients must not require it. Production
+Nginx grants
 the Requirements Library CSV, numeric requirements-specification CSV, and
 localized list-PDF routes a 660-second read timeout, leaving 60 seconds of
 proxy margin over the maximum 600-second application setting.

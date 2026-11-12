@@ -149,6 +149,10 @@ labels use only the report name for PDF actions, without a download verb or
 `(PDF)` suffix.
 
 The large list-PDF and privacy-PDF routes write only to private spool files and
+return the completed file size in `X-Generated-Output-Bytes`. Validate this
+value against the downloaded bytes after decompression. Next.js removes
+`Content-Length` from route-handler responses, so that framing header cannot
+provide file-size verification through the deployed runtime. These routes
 invoke the report worker with their respective structured document models. The
 worker client passes the literal
 `./lib/pdf/report-worker-entry.ts` filename to `node:worker_threads`.

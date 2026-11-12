@@ -21,6 +21,15 @@ fixes. For disconnected sites, transfer and verify the new images and matching
 release locks before rollout. Check the release vulnerability evidence before
 deployment.
 
+### Generated download size
+
+Before rollout, update external clients that require `Content-Length` for
+Requirements Library or specification CSV, Action-log CSV, requirements-list
+PDF, or privacy exports. The secure application runtime removes this
+HTTP framing header. Use `X-Generated-Output-Bytes` to check the completed
+file size before HTTP compression. Compare this value with the downloaded
+file size after decompression. Verify complete downloads after upgrade.
+
 
 
 ## v0.9.1 - 2026-09-28

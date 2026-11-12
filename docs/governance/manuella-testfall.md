@@ -813,6 +813,11 @@ inläsningsfel får egna meddelanden; ett fel kan prövas igen genom att stänga
 
 ### REQ-10: skapa PDF från kravlistan
 
+**Integrationstest:**
+[authorization-boundaries.spec.ts](../../tests/integration/00-report-pdf/authorization-boundaries.spec.ts),
+testfallet “REQ-10/REQ-18: actual SQL renders and exports exactly 1,000
+requirements”.
+
 **Steg:** Öppna `/sv/requirements`, välj ett känt filter och en känd sortering,
 öppna rapportmenyn och välj `Kravlista`. Låt genereringen och nedladdningen
 slutföras.
@@ -820,6 +825,8 @@ slutföras.
 **Förväntat resultat:** Dialogen visar först `Genererar PDF …` och sedan
 `Laddar ned PDF …`. En PDF med serverns filnamn laddas ned och innehåller
 samtliga matchande publicerade krav som användaren får läsa, i vald ordning.
+Öppna den nedladdade filen och kontrollera att även det sista matchande kravet
+finns med och går att läsa.
 Dialogen stängs och fokus återgår till rapportknappen.
 
 ### REQ-10a: avbryt PDF-generering från kravlistan
@@ -1305,6 +1312,11 @@ bilagan eller inte rymmer mallen, uppdatera tipsen i användarguidens avsnitt
 
 ### REQ-18: exportera kravbiblioteket till CSV
 
+**Integrationstest:**
+[authorization-boundaries.spec.ts](../../tests/integration/00-report-pdf/authorization-boundaries.spec.ts),
+testfallet “REQ-10/REQ-18: actual SQL renders and exports exactly 1,000
+requirements”.
+
 **Steg:** Använd en fixture med minst 205 publicerade krav och sätt CSV-gränsen
 till minst antalet matchningar. Öppna `/sv/requirements`, välj ett känt filter
 och en känd sortering, välj `Exportera` och låt exporten och nedladdningen
@@ -1312,7 +1324,9 @@ slutföras.
 
 **Förväntat resultat:** Dialogen visar först `Förbereder CSV-export …` och sedan
 `Laddar ned CSV …`. `kravbibliotek.csv` innehåller samtliga matchande krav exakt
-en gång i samma auktoritativa ordning som listan. Exportanropet går till
+en gång i samma auktoritativa ordning som listan.
+Öppna den nedladdade filen och kontrollera att även den sista matchande raden
+finns med och att svenska tecken går att läsa. Exportanropet går till
 `/api/requirements/export` utan `cursor` eller `limit`. Dialogen stängs och
 fokus återgår till exportknappen. Statusmeddelandet `Filen är klar` försvinner
 automatiskt efter fyra sekunder.

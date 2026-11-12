@@ -320,7 +320,7 @@ test('REQ-10/REQ-18: actual SQL renders and exports exactly 1,000 requirements',
     const exportedIds =
       csv.match(new RegExp(`${RESOURCE_FIXTURE_PREFIX}\\d{4}`, 'gu')) ?? []
     expect(exportedIds).toHaveLength(RESOURCE_FIXTURE_SIZE)
-    expect(csvResponse.headers()['content-length']).toBe(
+    expect(csvResponse.headers()['x-generated-output-bytes']).toBe(
       String(Buffer.byteLength(csv)),
     )
 
@@ -332,7 +332,9 @@ test('REQ-10/REQ-18: actual SQL renders and exports exactly 1,000 requirements',
     await expectOk(pdfResponse, '1,000-requirement PDF report')
     const pdf = await pdfResponse.body()
     expect(pdfResponse.headers()['content-type']).toContain('application/pdf')
-    expect(pdfResponse.headers()['content-length']).toBe(String(pdf.length))
+    expect(pdfResponse.headers()['x-generated-output-bytes']).toBe(
+      String(pdf.length),
+    )
     expect(pdf.length).toBeGreaterThan(1_000)
 
     await testInfo.attach('issue-596-resource-gate.json', {

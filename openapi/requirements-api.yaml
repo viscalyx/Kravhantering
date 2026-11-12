@@ -186,7 +186,8 @@ paths:
               $ref: '#/components/headers/NoStore'
             Content-Disposition:
               schema: { type: string }
-            Content-Length:
+            X-Generated-Output-Bytes:
+              description: Completed file size in bytes before HTTP compression.
               schema: { type: integer, minimum: 1 }
             X-Accel-Buffering:
               schema: { type: string, enum: [ 'no' ] }
@@ -438,6 +439,9 @@ paths:
           headers:
             Cache-Control:
               $ref: '#/components/headers/NoStore'
+            X-Generated-Output-Bytes:
+              description: Completed file size in bytes before HTTP compression.
+              schema: { type: integer, minimum: 1 }
           content:
             text/csv:
               schema:
