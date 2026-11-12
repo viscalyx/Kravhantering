@@ -1,0 +1,5 @@
+# Allow GitHub CLI commands with any subcommand and arguments.
+prefix_rule(
+    pattern = ["gh"],
+    decision = "allow",
+)

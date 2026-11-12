@@ -1,6 +1,8 @@
 # Shared Codex defaults for every Kravhantering development environment.
 # Codex automatically layers the settings on top of the user configuration in ~/.codex/config.toml.
+# GitHub CLI command approvals are configured in rules/github.rules.
 
+approval_policy = "never"
 default_permissions = "kravhantering-development"
 
 personality = "pragmatic"
@@ -11,8 +13,12 @@ model_reasoning_effort = "high"
 [features]
 default_mode_request_user_input = false
 
+[agents]
+default_subagent_model = "gpt-6.1-sol"
+default_subagent_reasoning_effort = "high"
+
 [permissions.kravhantering-development]
-description = "Workspace access including Git metadata."
+description = "Workspace access including Git metadata and project skills."
 extends = ":workspace"
 
 [permissions.kravhantering-development.filesystem]
@@ -22,6 +28,7 @@ extends = ":workspace"
 [permissions.kravhantering-development.filesystem.":workspace_roots"]
 ".git" = "write"
 ".codex" = "write"
+".agents/skills" = "write"
 
 [mcp_servers.playwright]
 args = ["@playwright/mcp@latest"]
@@ -74,29 +81,22 @@ approval_mode = "approve"
 [mcp_servers.github.tools.create_pull_request]
 approval_mode = "approve"
 
+# Built-in GitHub connector, separate from the GitHub MCP server above.
+[apps.connector_76869538009648d5b282a4bb21c3d157]
+enabled = true
+default_tools_enabled = true
+default_tools_approval_mode = "approve"
+destructive_enabled = true
+open_world_enabled = true
+
 [tui]
 terminal_title = ["activity", "app-name"]
 status_line = ["model-with-reasoning", "context-used", "context-window-size", "fast-mode", "permissions", "thread-title"]
 status_line_use_colors = true
+animations = false
 
 [plugins.openai-templates]
 enabled = false
 
 [plugins.plugin-management]
-enabled = false
-
-[[skills.config]]
-path = "/home/vscode/.codex/skills/.system/plugin-creator/SKILL.md"
-enabled = false
-
-[[skills.config]]
-path = "/home/vscode/.codex/skills/.system/review-agent/SKILL.md"
-enabled = false
-
-[[skills.config]]
-path = "/home/vscode/.codex/skills/.system/skill-creator/SKILL.md"
-enabled = false
-
-[[skills.config]]
-path = "/home/vscode/.codex/skills/.system/skill-installer/SKILL.md"
 enabled = false
