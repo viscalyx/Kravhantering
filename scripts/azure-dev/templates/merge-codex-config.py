@@ -131,7 +131,7 @@ def without_managed_skill_configs(
             return
         parsed = tomllib.loads("\n".join(skill_config))
         entries = parsed.get("skills", {}).get("config", [])
-        entry = entries[0] if entries else {}
+        entry: dict[str, Any] = entries[0] if entries else {}
         if not any(entry.get(key) == value for key, value in managed_skill_selectors):
             result.extend(skill_config)
         skill_config = None
