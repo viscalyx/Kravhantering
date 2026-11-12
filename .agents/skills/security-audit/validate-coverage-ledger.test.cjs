@@ -899,7 +899,7 @@ test('rejects a FIFO through the CLI without blocking', {
       timeout: CLI_TIMEOUT_MS,
     })
     const output = cliOutput(result)
-    assert.notEqual(result.error && result.error.code, 'ETIMEDOUT', output)
+    assert.notEqual(result.error?.code, 'ETIMEDOUT', output)
     assert.equal(result.status, 1, output)
     assert.match(output, /input must be a regular file/)
     assert.doesNotMatch(output, /stack|at validate-coverage-ledger/i)
@@ -924,7 +924,7 @@ test('rejects a symlink through the CLI', {
       timeout: CLI_TIMEOUT_MS,
     })
     const output = cliOutput(result)
-    assert.notEqual(result.error && result.error.code, 'ETIMEDOUT', output)
+    assert.notEqual(result.error?.code, 'ETIMEDOUT', output)
     assert.equal(result.status, 1, output)
     assert.match(output, /input must not be a symlink/)
     assert.doesNotMatch(output, /stack|at validate-coverage-ledger/i)
@@ -945,7 +945,7 @@ test('rejects deeply nested input without recursion failure', () => {
 
   const result = runCli(`${'['.repeat(20000)}0${']'.repeat(20000)}`)
   const output = cliOutput(result)
-  assert.notEqual(result.error && result.error.code, 'ETIMEDOUT', output)
+  assert.notEqual(result.error?.code, 'ETIMEDOUT', output)
   assert.equal(result.status, 1, output)
   assert.match(output, /exceeds nesting depth limit 64/)
   assert.doesNotMatch(
@@ -965,7 +965,7 @@ test('rejects multi-megabyte nesting under a constrained Node heap', {
       timeout: HOSTILE_CLI_TIMEOUT_MS,
     })
     const output = cliOutput(result)
-    assert.notEqual(result.error && result.error.code, 'ETIMEDOUT', output)
+    assert.notEqual(result.error?.code, 'ETIMEDOUT', output)
     assert.equal(result.status, 1, output)
     assert.match(output, /exceeds nesting depth limit 64/)
     assert.doesNotMatch(
@@ -986,7 +986,7 @@ test('caps malformed 10000-unit validation output', () => {
     JSON.stringify(Array.from({ length: LIMITS.units }, () => null)),
   )
   const output = cliOutput(result)
-  assert.notEqual(result.error && result.error.code, 'ETIMEDOUT', output)
+  assert.notEqual(result.error?.code, 'ETIMEDOUT', output)
   assert.equal(result.status, 1, output)
   assert.match(output, /output capped at 100/)
   assert(output.length < 20000, `unexpected output length ${output.length}`)
@@ -1017,7 +1017,7 @@ test('accepts a canonical ID derived from near-maximum multibyte references', ()
     surface: '\u6f22'.repeat(1024),
     boundary: '\u00e9'.repeat(1024),
     subsystem: 'packages/api',
-    attack_class: '\u6f22'.repeat(1023) + '\u00e9',
+    attack_class: `${'\u6f22'.repeat(1023)}\u00e9`,
   }
   const value = unit({ canonical_refs: canonicalRefs })
   assert(

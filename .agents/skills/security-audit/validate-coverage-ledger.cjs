@@ -93,7 +93,7 @@ const UNSAFE_DIAGNOSTIC_CHARACTER =
   /[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}\p{Default_Ignorable_Code_Point}]/gu
 const MAX_DIAGNOSTIC_STRING_LENGTH = 256
 
-const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key)
+const hasOwn = (value, key) => Object.hasOwn(value, key)
 
 class JsonStructureError extends Error {}
 class SafeInputError extends Error {}
@@ -295,17 +295,13 @@ function preflightJsonText(contents) {
       closeContainer('object')
     } else if (character === ':') {
       const container = currentContainer()
-      if (
-        !container ||
-        container.type !== 'object' ||
-        container.state !== 'colon'
-      ) {
+      if (container?.type !== 'object' || container.state !== 'colon') {
         fail('has malformed JSON object structure')
       }
       container.state = 'value'
     } else if (character === ',') {
       const container = currentContainer()
-      if (!container || container.state !== 'commaOrEnd')
+      if (container?.state !== 'commaOrEnd')
         fail('has malformed JSON collection structure')
       container.state = container.type === 'array' ? 'value' : 'key'
     } else {

@@ -8,11 +8,11 @@
  * report-schema.json, plus finding-specific checks that are clearer in code.
  */
 
-const fs = require('fs')
-const path = require('path')
-const { TextDecoder } = require('util')
+const fs = require('node:fs')
+const path = require('node:path')
+const { TextDecoder } = require('node:util')
 
-const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key)
+const hasOwn = (value, key) => Object.hasOwn(value, key)
 const SUPPORTED_TYPES = new Set([
   'object',
   'array',
@@ -392,7 +392,7 @@ function collectSchemaErrors(schema, location = 'schema') {
       } else {
         try {
           new RegExp(node.pattern)
-        } catch (error) {
+        } catch (_error) {
           errors.push(`${p}.pattern: invalid regular expression`)
         }
       }
@@ -411,9 +411,9 @@ function collectSchemaErrors(schema, location = 'schema') {
       if (!Array.isArray(node.oneOf) || node.oneOf.length === 0) {
         errors.push(`${p}.oneOf: expected a non-empty array`)
       } else {
-        node.oneOf.forEach((branch, index) =>
-          check(branch, `${p}.oneOf[${index}]`),
-        )
+        node.oneOf.forEach((branch, index) => {
+          check(branch, `${p}.oneOf[${index}]`)
+        })
       }
     }
   }
@@ -558,9 +558,9 @@ function validate(value, schema, p, errors) {
       }
     }
     if (hasOwn(schema, 'items')) {
-      value.forEach((item, index) =>
-        validate(item, schema.items, `${p}[${index}]`, errors),
-      )
+      value.forEach((item, index) => {
+        validate(item, schema.items, `${p}[${index}]`, errors)
+      })
     }
   }
 
@@ -704,7 +704,7 @@ function collectFindingSemanticErrors(findings) {
     }
 
     if (Array.isArray(finding.trace) && finding.trace.length === 1) {
-      const kind = finding.trace[0] && finding.trace[0].kind
+      const kind = finding.trace[0]?.kind
       if (kind !== 'entrypoint' && kind !== 'sink') {
         errors.push(
           `${base}.trace[0].kind: a one-line trace must be "entrypoint" or "sink"`,
@@ -765,11 +765,8 @@ function collectFindingSemanticErrors(findings) {
       ) {
         errors.push(`${base}: confirmed finding requires visible remediation`)
       }
-      const overall = finding.severity && finding.severity.overall_severity
-      const impact =
-        finding.severity &&
-        finding.severity.impact &&
-        finding.severity.impact.score
+      const overall = finding.severity?.overall_severity
+      const impact = finding.severity?.impact?.score
       if (
         SEVERITY_RANK.has(overall) &&
         SEVERITY_RANK.has(impact) &&
@@ -912,8 +909,7 @@ function enforceJsonTextLimits(contents) {
 
   function markArrayItem() {
     const container = containers[containers.length - 1]
-    if (!container || container.type !== 'array' || !container.expectsItem)
-      return
+    if (container?.type !== 'array' || !container.expectsItem) return
     container.expectsItem = false
     container.items++
     if (container.items > LIMITS.arrayItems) {

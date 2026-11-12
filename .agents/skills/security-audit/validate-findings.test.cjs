@@ -738,7 +738,7 @@ test('CLI rejects a FIFO without blocking', {
       timeout: CLI_TIMEOUT_MS,
     })
     const output = cliOutput(result)
-    assert.notEqual(result.error && result.error.code, 'ETIMEDOUT', output)
+    assert.notEqual(result.error?.code, 'ETIMEDOUT', output)
     assert.equal(result.status, 1, output)
     assert.match(output, /input must be a regular file/)
     assert.doesNotMatch(output, /stack|at validate-findings/i)
@@ -763,7 +763,7 @@ test('CLI rejects a symlink without following it', {
       timeout: CLI_TIMEOUT_MS,
     })
     const output = cliOutput(result)
-    assert.notEqual(result.error && result.error.code, 'ETIMEDOUT', output)
+    assert.notEqual(result.error?.code, 'ETIMEDOUT', output)
     assert.equal(result.status, 1, output)
     assert.match(output, /input must not be a symlink/)
     assert.doesNotMatch(output, /stack|at validate-findings/i)
@@ -845,7 +845,7 @@ test('caps malformed 1000-finding validation output', () => {
     JSON.stringify(Array.from({ length: LIMITS.arrayItems }, () => null)),
   )
   const output = cliOutput(result)
-  assert.notEqual(result.error && result.error.code, 'ETIMEDOUT', output)
+  assert.notEqual(result.error?.code, 'ETIMEDOUT', output)
   assert.equal(result.status, 1, output)
   assert.match(output, /output capped at 100/)
   assert(output.length < 20000, `unexpected output length ${output.length}`)
@@ -878,7 +878,7 @@ test('caps amplified in-limit findings output under a constrained Node heap', {
     timeout: HOSTILE_CLI_TIMEOUT_MS,
   })
   const output = cliOutput(result)
-  assert.notEqual(result.error && result.error.code, 'ETIMEDOUT', output)
+  assert.notEqual(result.error?.code, 'ETIMEDOUT', output)
   assert.equal(result.status, 1, output)
   assert.match(output, /output capped at 100/)
   assert(output.length < 20000, `unexpected output length ${output.length}`)
@@ -911,9 +911,7 @@ test('keeps shared helpers aligned with the coverage-ledger validator', () => {
   }
 
   const sharedLimitKeys = Object.keys(findingsModule.LIMITS)
-    .filter(key =>
-      Object.prototype.hasOwnProperty.call(ledgerModule.LIMITS, key),
-    )
+    .filter(key => Object.hasOwn(ledgerModule.LIMITS, key))
     .sort()
   assert.deepEqual(sharedLimitKeys, [
     'inputBytes',
