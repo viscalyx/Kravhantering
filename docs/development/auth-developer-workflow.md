@@ -35,7 +35,8 @@ Next.js server. It returns `{ "status": "ready" }` or
 
 <!-- cSpell:ignore socat -->
 
-Both setups use the same Keycloak image (`quay.io/keycloak/keycloak:26.7.4-0`)
+Both setups use the Keycloak image selected in the
+[canonical image lock](../../containers/keycloak/image.lock.json)
 and import `dev/keycloak/realm-kravhantering-dev.json` when the realm does not
 already exist. The JSON file is the source of truth. Admin UI edits survive a
 container restart but are lost when the container is recreated; use the reset

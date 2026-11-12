@@ -794,7 +794,7 @@ Bootstrap prepends the managed storage environment to the installed profile
 before Powerlevel10k's instant-prompt preamble. VS Code injects shell integration
 when it starts the terminal, so the profile does not source that integration.
 
-Bootstrap installs Bubblewrap and the Ubuntu 24.04
+Bootstrap installs Bubblewrap and Ubuntu's
 `bwrap-userns-restrict` AppArmor profile, then proves that the `vscode` user
 can create the user, PID, and network namespaces Codex requires. It does not
 disable `kernel.apparmor_restrict_unprivileged_userns` globally.
@@ -935,9 +935,26 @@ Podman, writes managed local app environment, builds local HSA images, installs
 Quadlet units, and starts services. An absent Ubuntu Pro attach-config file is
 a no-op and does not detach an existing attachment.
 
-Package setup intentionally installs .NET SDK 8.0 from Ubuntu 24.04 package
-feeds. Do not add the Microsoft package feed unless the devcontainer path is
-changed at the same time and the reason is documented.
+Bootstrap validates the guest before installing packages or changing storage.
+Ubuntu 26.04 requires `VERSION` to report at least 26.04.1 LTS; `VERSION_ID`
+alone identifies only the 26.04 family. Supported Ubuntu 24.04 hosts keep
+their Noble package sources. Other distributions, release families, codename
+mismatches, and non-AMD64 guests fail closed.
+
+Package setup uses the native Ubuntu SDK: .NET 10 on Resolute and .NET 8 on
+Noble. GitVersion 6.7 supports both runtimes; bootstrap restores and executes
+the local tool, and smoke validation checks the selected SDK and tool again.
+No Microsoft feed or .NET backports PPA is needed. Docker and optional
+Tailscale repositories use the validated guest codename. NodeSource retains
+its Node 24 `nodistro` feed, and npm remains pinned by the repository.
+The repository's Playwright release supports Ubuntu 26.04 and installs its
+browser dependencies through the existing `install --with-deps` command.
+
+When validating a new host family, run isolated fresh-host bootstrap and the
+complete Azure smoke checks. Verify rootless Podman/Quadlet, Docker tooling,
+AppArmor namespaces, SQL Server, Keycloak, Kong/HSA, public SSH, optional
+Tailscale, and optional Ubuntu Pro. Package availability alone does not prove
+these host integration checks. Keep the existing development host untouched.
 
 Repository setup installs the exact npm version declared by root
 `package.json`, then uses `npm install`, not `npm ci`, to match the current

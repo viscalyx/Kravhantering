@@ -2,7 +2,7 @@
   "name": "kravhantering",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "npm@12.1.0",
+  "packageManager": "npm@12.2.2",
   "description": "En webbapplikation för kravhantering som stödjer företagets kravmodell och kravprocess",
   "license": "MIT",
   "author": "Viscalyx",
@@ -12,7 +12,7 @@
   "devEngines": {
     "packageManager": {
       "name": "npm",
-      "version": "12.1.0",
+      "version": "12.2.2",
       "onFail": "error"
     }
   },

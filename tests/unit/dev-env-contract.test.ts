@@ -283,7 +283,7 @@ describe('development environment contract', () => {
     expect(resolverEnd).toBeGreaterThan(resolverStart)
     expect(configModule).toContain("AZURE_DEV_VM_IMAGE_PUBLISHER = 'Canonical'")
     expect(configModule).toContain(
-      "AZURE_DEV_VM_IMAGE_OFFER = 'ubuntu-24_04-lts'",
+      "AZURE_DEV_VM_IMAGE_OFFER = 'ubuntu-26_04-lts'",
     )
     expect(configModule).toContain("AZURE_DEV_VM_IMAGE_SKU = 'server'")
     expect(configModule).toContain(
@@ -294,7 +294,7 @@ describe('development environment contract', () => {
     )
     expect(configModule).toContain('ImageSku = $values.AZURE_DEV_VM_IMAGE_SKU')
     expect(envExample).toContain('AZURE_DEV_VM_IMAGE_PUBLISHER=Canonical')
-    expect(envExample).toContain('AZURE_DEV_VM_IMAGE_OFFER=ubuntu-24_04-lts')
+    expect(envExample).toContain('AZURE_DEV_VM_IMAGE_OFFER=ubuntu-26_04-lts')
     expect(envExample).toContain('AZURE_DEV_VM_IMAGE_SKU=server')
     expect(resolver).toContain('$publisher = $Config.ImagePublisher')
     expect(resolver).toContain('$offer = $Config.ImageOffer')

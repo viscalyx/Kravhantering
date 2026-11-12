@@ -5,7 +5,10 @@ import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 const enabled = process.env.KRAVHANTERING_NGINX_INTEGRATION === '1'
-const nginxImage = 'nginx:1.31.6-alpine3.24'
+const nginxLock = JSON.parse(
+  fs.readFileSync('containers/nginx/image.lock.json', 'utf8'),
+)
+const nginxImage = `${nginxLock.image}:${nginxLock.tag}@${nginxLock.manifestDigest}`
 const workspace = process.cwd()
 const runId = `kh-client-ip-${process.pid}`
 const networkName = `${runId}-network`
@@ -231,15 +234,15 @@ function startTlsEdge(templateName, readinessProbeConfig) {
     '--volume',
     `${readinessProbePath}:/etc/nginx/snippets/readiness-probes.conf:ro`,
     '--volume',
-    `${workspace}/tmp/container-tls/kravhantering.test.crt:/etc/nginx/tls/fullchain.pem:ro`,
+    `${temporaryDirectory}/kravhantering.test.crt:/etc/nginx/tls/fullchain.pem:ro`,
     '--volume',
-    `${workspace}/tmp/container-tls/kravhantering.test.key:/etc/nginx/tls/privkey.pem:ro`,
+    `${temporaryDirectory}/kravhantering.test.key:/etc/nginx/tls/privkey.pem:ro`,
     '--volume',
-    `${workspace}/tmp/container-tls/kravhantering.test.crt:/etc/nginx/keycloak-management-tls/fullchain.pem:ro`,
+    `${temporaryDirectory}/kravhantering.test.crt:/etc/nginx/keycloak-management-tls/fullchain.pem:ro`,
     '--volume',
-    `${workspace}/tmp/container-tls/kravhantering.test.key:/etc/nginx/keycloak-management-tls/privkey.pem:ro`,
+    `${temporaryDirectory}/kravhantering.test.key:/etc/nginx/keycloak-management-tls/privkey.pem:ro`,
     '--volume',
-    `${workspace}/tmp/container-tls/ca.crt:/etc/nginx/keycloak-management-tls/client-ca.crt:ro`,
+    `${temporaryDirectory}/ca.crt:/etc/nginx/keycloak-management-tls/client-ca.crt:ro`,
     nginxImage,
   )
   edgeContainers.push(name)
@@ -309,6 +312,31 @@ describe.runIf(enabled)('nginx trusted client-IP boundary', () => {
 
   beforeAll(() => {
     fs.mkdirSync(temporaryDirectory, { recursive: true })
+    childProcess.execFileSync(
+      'openssl',
+      [
+        'req',
+        '-x509',
+        '-newkey',
+        'rsa:2048',
+        '-noenc',
+        '-days',
+        '1',
+        '-subj',
+        '/CN=kravhantering.test',
+        '-addext',
+        'subjectAltName=DNS:kravhantering.test,IP:127.0.0.1',
+        '-keyout',
+        path.join(temporaryDirectory, 'kravhantering.test.key'),
+        '-out',
+        path.join(temporaryDirectory, 'kravhantering.test.crt'),
+      ],
+      { stdio: 'pipe' },
+    )
+    fs.copyFileSync(
+      path.join(temporaryDirectory, 'kravhantering.test.crt'),
+      path.join(temporaryDirectory, 'ca.crt'),
+    )
     const upstreamConfigPath = path.join(
       temporaryDirectory,
       'upstream-nginx.conf',
@@ -390,9 +418,9 @@ describe.runIf(enabled)('nginx trusted client-IP boundary', () => {
       '--volume',
       `${workspace}/containers/nginx/readiness-probes.conf:/etc/nginx/snippets/readiness-probes.conf:ro`,
       '--volume',
-      `${workspace}/tmp/container-tls/kravhantering.test.crt:/etc/nginx/tls/kravhantering.test.crt:ro`,
+      `${temporaryDirectory}/kravhantering.test.crt:/etc/nginx/tls/kravhantering.test.crt:ro`,
       '--volume',
-      `${workspace}/tmp/container-tls/kravhantering.test.key:/etc/nginx/tls/kravhantering.test.key:ro`,
+      `${temporaryDirectory}/kravhantering.test.key:/etc/nginx/tls/kravhantering.test.key:ro`,
       nginxImage,
     )
     edgeContainers.push(name)

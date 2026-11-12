@@ -34,7 +34,7 @@ function Get-AzureDevDefaultConfig {
     AZURE_DEV_VM_AUTO_STOP_ENABLED = 'true'
     AZURE_DEV_VM_AUTO_STOP_TIME = '2200'
     AZURE_DEV_VM_AUTO_STOP_TIME_ZONE = 'UTC'
-    AZURE_DEV_VM_IMAGE_OFFER = 'ubuntu-24_04-lts'
+    AZURE_DEV_VM_IMAGE_OFFER = 'ubuntu-26_04-lts'
     AZURE_DEV_VM_IMAGE_PUBLISHER = 'Canonical'
     AZURE_DEV_VM_IMAGE_SKU = 'server'
     AZURE_DEV_VM_LOCATION = 'eastus2'

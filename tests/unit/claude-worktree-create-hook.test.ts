@@ -28,6 +28,7 @@ function createRepositoryOnIntegrationBranch() {
   git(repository, 'init', '-q', '-b', 'main')
   git(repository, 'config', 'user.email', 'test@example.com')
   git(repository, 'config', 'user.name', 'Test')
+  git(repository, 'config', 'commit.gpgsign', 'false')
   commitFile(repository, 'base.txt', 'base')
   git(repository, 'switch', '-qc', 'f/issue-1')
   commitFile(repository, 'integrated.txt', 'integrated')
