@@ -13,6 +13,14 @@ changes.
 
 ## Unreleased
 
+### Runtime security updates
+
+Deploy the complete new release images to receive the Node.js and operating
+system security fixes. Restarting existing containers does not apply these
+fixes. For disconnected sites, transfer and verify the new images and matching
+release locks before rollout. Check the release vulnerability evidence before
+deployment.
+
 
 
 ## v0.9.1 - 2026-09-28

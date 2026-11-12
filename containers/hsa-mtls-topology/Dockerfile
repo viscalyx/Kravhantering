@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM registry.access.redhat.com/ubi10/nodejs-24:latest@sha256:fbb6ecf7772c98d84a3cb741e26a601682ae0e97bedcb56744db41ceb5ba60ab AS builder
+FROM registry.access.redhat.com/ubi10/nodejs-24:latest@sha256:46b61de1d17753d36bd4e89d935ddfb99df53fcc08b72401c95a3611c2bf3f0b AS builder
 
 USER 0:0
 ENTRYPOINT []
@@ -16,7 +16,7 @@ COPY lib ./lib
 RUN npx esbuild lib/hsa/strict-person-lookup.ts --bundle --format=esm --platform=node \
   --target=node24 --alias:@=/build --outfile=/tmp/strict-person-lookup.mjs
 
-FROM registry.access.redhat.com/ubi10/nodejs-24-minimal:latest@sha256:bf6efa8c27f5cda1595bf86e1455a6d217c68cd8f386e8e167623250ace053eb
+FROM registry.access.redhat.com/ubi10/nodejs-24-minimal:latest@sha256:57681294c84a4cfb6bf4ef5d725c32c00403a390cd7699d5b69ea31f976005a8
 
 USER 0:0
 ENTRYPOINT []

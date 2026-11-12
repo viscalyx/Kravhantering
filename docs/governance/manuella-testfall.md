@@ -2137,7 +2137,9 @@ kravområde, version och status för aktiva och arkiverade frågor i båda teman
 med infälld och utfälld navigering. Upprepa med lång text och på smal skärm.
 Tabba till en fråga och öppna och stäng detaljerna med Enter. Öppna redigering
 på en hopfälld fråga och stäng dialogen. Sök på frågekod och växla mellan
-aktiva och arkiverade frågor med statusfiltret. Välj sedan alla statusar och,
+aktiva och arkiverade frågor med statusfiltret i både bred och smal vy.
+Kontrollera att sökfältet och alla tre filter är åtkomliga. Välj sedan alla
+statusar och,
 med skärmläsare, arkivera och återaktivera en fråga.
 
 **Förväntat resultat:** Hela texten och all metadata går att läsa. Aktiva

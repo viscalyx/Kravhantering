@@ -34,7 +34,7 @@ The dependency stage uses the digest-pinned public UBI 10 Node.js 24 builder;
 the runtime uses the matching minimal role. Builds require no Red Hat account
 or subscription. Builder npm follows this directory's `packageManager` and
 lockfile. The shared `containers/node/ubi-compat.sh` adaptation preserves the
-`1000:1000` identity and removes the runtime npm CLI; inherited nodemon remains.
+`1000:1000` identity and removes the runtime npm CLI and development-only Nodemon.
 The Dockerfile explicitly resets inherited S2I defaults and keeps
 `node src/strict-server.mjs` as the direct command. Existing init supervision,
 read-only roots, temporary mounts and administrative `--user=0:0` overrides

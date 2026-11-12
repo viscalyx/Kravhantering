@@ -43,21 +43,23 @@ those build-time downloads.
 
 ## Runtime security packages
 
-Red Hat can publish a fixed RPM in the public UBI 10 BaseOS repository before
+Red Hat can publish a fixed RPM in the public UBI 10 repositories before
 it publishes a refreshed base image. The shared helper's
 `security_update_packages` list closes that gap for inherited base packages:
-the helper upgrades only the listed packages from that repository and removes
-package-manager metadata. The hook is permanent; an empty list skips the
-upgrade.
+the helper upgrades only the listed packages from the public BaseOS and
+AppStream repositories and removes package-manager metadata. The hook is
+permanent; an empty list skips the upgrade.
 
 | Packages | Vulnerabilities | Fixed version | Advisory |
 | --- | --- | --- | --- |
-| `curl`, `libcurl-minimal` | `CVE-2026-8458` | `8.12.1-4.el10_2.6` | [RHSA-2026:69125](https://access.redhat.com/errata/RHSA-2026:69125) |
-| `libxml2` | `CVE-2026-74860`, `CVE-2026-86140` | `2.12.5-10.el10_2.4` | [RHSA-2026:71586](https://access.redhat.com/errata/RHSA-2026:71586) |
+| `nodejs24`, `nodejs24-libs`, `nodejs24-full-i18n`, `nodejs24-npm` | Node.js security fixes, including `CVE-2026-109829` | `24.22.1-3.el10_2` | [Red Hat CVE record](https://access.redhat.com/security/cve/CVE-2026-109829) |
+| `c-ares` | `CVE-2026-69184`, `CVE-2026-69186` | `1.34.6-5.el10_3.2` | [Red Hat CVE record](https://access.redhat.com/security/cve/CVE-2026-69184) |
+| `libxml2` | `CVE-2026-74860`, `CVE-2026-86140` | `2.12.5-15.el10_3.2` | [Red Hat CVE record](https://access.redhat.com/security/cve/CVE-2026-74860) |
+| `libblkid`, `libmount`, `libsmartcols`, `libuuid` | `CVE-2026-53615` | `2.40.2-24.el10_3.24` | [Red Hat CVE record](https://access.redhat.com/security/cve/CVE-2026-53615) |
 
 This table is the record for every list entry. Add a package to the list and
 this table when a fixable container finding affects an inherited base RPM and
-the fixed version is already in UBI 10 BaseOS. Prefer this over a
+the fixed version is already in UBI 10 BaseOS or AppStream. Prefer this over a
 vulnerability exception. Remove an entry when the unmodified pinned runtime
 base contains the fixed version, for example:
 
@@ -71,12 +73,19 @@ packages installed when they were built. Rebuild without cache when checking
 for newly published RPM fixes. Workload packages and the provisioner's locked
 toolchain remain the responsibility of their consuming Dockerfiles.
 
-The selected minimal base includes `openssl-libs-3.5.8-1.el10_2`, which fixes
-`CVE-2026-14456` according to
-[Red Hat advisory RHSA-2026:67154](https://access.redhat.com/errata/RHSA-2026:67154).
-The shared helper uses that inherited library. The provisioner additionally
-installs its locked OpenSSL CLI package from the public UBI 10 BaseOS
+The selected minimal base includes `openssl-libs-3.5.8-2.el10_2`, which also
+fixes [CVE-2026-84782](https://access.redhat.com/security/cve/CVE-2026-84782).
+It includes fixed curl, Brotli, PCRE2, certificate, and RPM cryptography
+packages, so these packages need no additional helper update.
+The shared helper uses the inherited OpenSSL library. The provisioner additionally
+installs its locked OpenSSL 3.5.9 CLI package from the public UBI 10 BaseOS
 repository. The container vulnerability policy evaluates the completed images.
+
+The helper removes the inherited development-only Nodemon RPM. Runtime images
+start Node.js directly and do not use this runner. Removing it also removes its
+bundled vulnerable brace-expansion dependency, which is outside the application's
+npm lockfile and is affected by
+[GHSA-qhr7-859c-m2p7](https://github.com/advisories/GHSA-qhr7-859c-m2p7).
 
 Deploy a new immutable project release to receive the updated runtime packages.
 Existing release images and installed containers do not change when a base pin

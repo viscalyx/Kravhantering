@@ -4,6 +4,7 @@
 .devcontainer/
 .git/
 .github/
+.hsa-mtls/
 .next/
 .npm/
 .nyc_output/
