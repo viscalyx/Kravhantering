@@ -215,6 +215,30 @@ install_runtime_config_directories() {
     "$CONFIG_ROOT/secrets/hsa-mtls"
 }
 
+write_smoke_resource_limits() {
+  # The smaller supported nginx limit keeps this CI profile within 75% of a
+  # 15 GiB runner. Production defaults and host-capacity checks still apply.
+  printf '%s\n' \
+    'APP_RUNTIME_MEMORY_LIMIT_MIB=4096' \
+    'APP_RUNTIME_CPU_QUOTA_PERCENT=300' \
+    'APP_RUNTIME_PIDS_LIMIT=512' \
+    'APP_RUNTIME_EXPORT_STORAGE=tmpfs' \
+    'APP_RUNTIME_EXPORT_TMPFS_MIB=1024' \
+    'NGINX_MEMORY_LIMIT_MIB=256' \
+    'NGINX_CPU_QUOTA_PERCENT=100' \
+    'NGINX_PIDS_LIMIT=128' \
+    'NGINX_CACHE_TMPFS_MIB=64' \
+    'SQLSERVER_MEMORY_LIMIT_MIB=4096' \
+    'SQLSERVER_CPU_QUOTA_PERCENT=200' \
+    'SQLSERVER_PIDS_LIMIT=1024' \
+    'SQLSERVER_TMPFS_MIB=512' \
+    'KEYCLOAK_MEMORY_LIMIT_MIB=3072' \
+    'KEYCLOAK_CPU_QUOTA_PERCENT=100' \
+    'KEYCLOAK_PIDS_LIMIT=512' \
+    'KEYCLOAK_QUARKUS_TMPFS_MIB=64' \
+    'KEYCLOAK_TMPFS_MIB=512'
+}
+
 render_runtime_configuration() {
   local app_client_secret cookie_password keycloak_admin_password
   local mcp_client_secret
@@ -285,24 +309,7 @@ NODE
     printf 'NGINX_RESOLVER=%s\n' "${NGINX_RESOLVER:-10.89.0.1}"
     printf 'NGINX_IDENTITY_RESOLVER=%s\n' \
       "${NGINX_IDENTITY_RESOLVER:-10.89.1.1}"
-    printf 'APP_RUNTIME_MEMORY_LIMIT_MIB=4096\n'
-    printf 'APP_RUNTIME_CPU_QUOTA_PERCENT=300\n'
-    printf 'APP_RUNTIME_PIDS_LIMIT=512\n'
-    printf 'APP_RUNTIME_EXPORT_STORAGE=tmpfs\n'
-    printf 'APP_RUNTIME_EXPORT_TMPFS_MIB=1024\n'
-    printf 'NGINX_MEMORY_LIMIT_MIB=512\n'
-    printf 'NGINX_CPU_QUOTA_PERCENT=100\n'
-    printf 'NGINX_PIDS_LIMIT=128\n'
-    printf 'NGINX_CACHE_TMPFS_MIB=64\n'
-    printf 'SQLSERVER_MEMORY_LIMIT_MIB=4096\n'
-    printf 'SQLSERVER_CPU_QUOTA_PERCENT=200\n'
-    printf 'SQLSERVER_PIDS_LIMIT=1024\n'
-    printf 'SQLSERVER_TMPFS_MIB=512\n'
-    printf 'KEYCLOAK_MEMORY_LIMIT_MIB=3072\n'
-    printf 'KEYCLOAK_CPU_QUOTA_PERCENT=100\n'
-    printf 'KEYCLOAK_PIDS_LIMIT=512\n'
-    printf 'KEYCLOAK_QUARKUS_TMPFS_MIB=64\n'
-    printf 'KEYCLOAK_TMPFS_MIB=512\n'
+    write_smoke_resource_limits
   } >"$CONFIG_TEMP_DIR/release.env"
   printf '%s\n' \
     '# Disposable production-smoke probe networks.' \
@@ -1445,7 +1452,7 @@ verify_containment() {
   verify_network_contract
   assert_service_property kravhantering-app-runtime.service MemoryMax 4294967296
   assert_service_property kravhantering-app-runtime.service TasksMax 544
-  assert_service_property kravhantering-nginx.service MemoryMax 536870912
+  assert_service_property kravhantering-nginx.service MemoryMax 268435456
   assert_service_property kravhantering-nginx.service TasksMax 160
   assert_service_property kravhantering-keycloak.service MemoryMax 3221225472
   assert_service_property kravhantering-keycloak.service TasksMax 544
@@ -1454,7 +1461,7 @@ verify_containment() {
   verify_service_cgroup kravhantering-app-runtime.service \
     4294967296 544 '300000 100000'
   verify_service_cgroup kravhantering-nginx.service \
-    536870912 160 '100000 100000'
+    268435456 160 '100000 100000'
   verify_service_cgroup kravhantering-keycloak.service \
     3221225472 544 '100000 100000'
   verify_service_cgroup kravhantering-sqlserver.service \

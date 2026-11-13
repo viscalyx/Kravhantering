@@ -1969,6 +1969,40 @@ rotate_sqlserver_certificate
     )
   })
 
+  it.each([15728640, 16078424])(
+    'fits the production smoke profile within the budget of a %i KiB CI host',
+    memoryKiB => {
+      const profile = childProcess.spawnSync(
+        'bash',
+        [
+          '-c',
+          'source "$1"; write_smoke_resource_limits',
+          'smoke-resource-profile',
+          PRODUCTION_SMOKE_PATH,
+        ],
+        { encoding: 'utf8' },
+      )
+      expect(profile.status, profile.stderr).toBe(0)
+      const limits = Object.fromEntries(
+        profile.stdout
+          .trim()
+          .split('\n')
+          .map(line => line.split('=')),
+      )
+      const fixture = createFixture(releaseEnv(limits))
+      const memoryFile = path.join(fixture.root, 'ci-memory')
+      fs.writeFileSync(memoryFile, `MemTotal:       ${memoryKiB} kB\n`)
+
+      const result = runHelper(
+        ['verify-host', '--topology', 'single-node'],
+        fixture,
+        { KRAVHANTERING_MEMINFO_FILE: memoryFile },
+      )
+
+      expect(result.status, result.stderr).toBe(0)
+    },
+  )
+
   it('sizes external OIDC single-node without bundled Keycloak memory', () => {
     const fixture = createFixture(
       releaseEnv({ IDENTITY_PROVIDER_MODE: 'external' }),
