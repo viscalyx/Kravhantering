@@ -165,7 +165,7 @@ function createToolchainFixture({ toolchain = 'package' } = {}) {
     [
       '#!/usr/bin/env bash',
       'printf \'%s\\n\' "$*" >>"$CI_FAKE_SUDO_LOG"',
-      'if [[ "$1" == rm || "$1" == ln ]]; then "$@"; fi',
+      'if [[ "$1" == rm || "$1" == ln || "$1" == mkdir ]]; then "$@"; fi',
       '',
     ].join('\n'),
     { mode: 0o755 },
@@ -364,6 +364,41 @@ describe('CI container runtime', () => {
       expect(fs.existsSync(fixture.githubPathFile)).toBe(false)
     },
   )
+
+  it('creates a missing conmon directory for a complete static runtime', () => {
+    const fixture = createToolchainFixture({ toolchain: 'static' })
+    fs.rmSync(path.dirname(fixture.conmonPath), { recursive: true })
+
+    const result = runRuntimeScript(['bootstrap', 'pr'], fixture)
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(result.stdout).toContain('coherent static toolchain: verified')
+    expect(fs.realpathSync(fixture.conmonPath)).toBe(
+      path.join(fixture.systemPrefix, 'bin', 'conmon'),
+    )
+  })
+
+  it('replaces a standalone local Podman with the complete package runtime', () => {
+    const fixture = createToolchainFixture({ toolchain: 'static' })
+    fs.rmSync(path.join(fixture.localPrefix, 'lib', 'podman'), {
+      recursive: true,
+    })
+    fs.rmSync(path.join(fixture.localPrefix, 'libexec', 'podman'), {
+      recursive: true,
+    })
+    fs.rmSync(fixture.crunPath)
+
+    const result = runRuntimeScript(['bootstrap', 'pr'], fixture)
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(result.stdout).toContain('coherent package toolchain: verified')
+    expect(fs.readFileSync(fixture.commandLog, 'utf8')).toContain(
+      'system reset --force',
+    )
+    expect(fs.readFileSync(fixture.sudoLog, 'utf8')).toContain(
+      'apt-get install -y --no-install-recommends --reinstall conmon crun jq libnss3-tools podman',
+    )
+  })
 
   it('aborts bootstrap before replacing binaries when Podman reset fails', () => {
     const fixture = createToolchainFixture()
@@ -775,6 +810,85 @@ describe('CI container runtime', () => {
         'utf8',
       ),
     ).toContain('simulated job log API failure')
+  })
+
+  it.each(['avrea-ubuntu-latest', 'avrea-ubuntu-latest-8-vcpu'])(
+    'collects safe Avrea metadata for %s without hosted image headers',
+    label => {
+      const fixture = createToolchainFixture()
+      const evidenceDirectory = path.join(fixture.root, 'runner-evidence')
+      const ghPath = path.join(fixture.root, 'usr', 'bin', 'gh')
+      fs.writeFileSync(
+        ghPath,
+        [
+          '#!/usr/bin/env bash',
+          'if [[ "$*" == *"/jobs?filter=latest"* ]]; then',
+          `  printf '%s\\n' '${JSON.stringify({ jobs: [{ id: 123, name: 'Assembly', status: 'completed', labels: [label] }] })}'`,
+          'else',
+          `  printf '\\357\\273\\277%s\\n' "2026-11-13T18:07:30.8366633Z Current runner version: '2.338.2'"`,
+          "  printf '%s\\n' \"Runner name: 'avrea-exe-fixture'\"",
+          "  printf '%s\\n' 'UNRELATED_SECRET=fixture-secret'",
+          'fi',
+          '',
+        ].join('\n'),
+        { mode: 0o755 },
+      )
+
+      const result = runRuntimeScript(['collect-runner-metadata'], fixture, {
+        CI_RUNTIME_EVIDENCE_DIR: evidenceDirectory,
+        CI_RUNTIME_TARGET_JOB: 'Assembly',
+        GH_TOKEN: 'test-token',
+        GITHUB_REPOSITORY: 'viscalyx/Kravhantering',
+        GITHUB_RUN_ID: '12345',
+      })
+
+      expect(result.status, result.stderr).toBe(0)
+      const metadata = fs.readFileSync(
+        path.join(evidenceDirectory, 'github-runner-metadata.txt'),
+        'utf8',
+      )
+      expect(metadata).toContain("Current runner version: '2.338.2'")
+      expect(metadata).toContain('Runner provider: Avrea')
+      expect(metadata).toContain(`Runner label: ${label}`)
+      expect(metadata).not.toContain('UNRELATED_SECRET')
+      expect(metadata).not.toContain('fixture-secret')
+    },
+  )
+
+  it('rejects an arbitrary label as a substitute for hosted image metadata', () => {
+    const fixture = createToolchainFixture()
+    const evidenceDirectory = path.join(fixture.root, 'runner-evidence')
+    const ghPath = path.join(fixture.root, 'usr', 'bin', 'gh')
+    fs.writeFileSync(
+      ghPath,
+      [
+        '#!/usr/bin/env bash',
+        'if [[ "$*" == *"/jobs?filter=latest"* ]]; then',
+        `  printf '%s\\n' '${JSON.stringify({ jobs: [{ id: 123, name: 'Assembly', status: 'completed', labels: ['avrea-ubuntu-latest+UNRELATED_SECRET'] }] })}'`,
+        'else',
+        "  printf '%s\\n' 'Current runner version: 2.338.2'",
+        'fi',
+        '',
+      ].join('\n'),
+      { mode: 0o755 },
+    )
+
+    const result = runRuntimeScript(['collect-runner-metadata'], fixture, {
+      CI_RUNTIME_EVIDENCE_DIR: evidenceDirectory,
+      CI_RUNTIME_TARGET_JOB: 'Assembly',
+      GH_TOKEN: 'test-token',
+      GITHUB_REPOSITORY: 'viscalyx/Kravhantering',
+      GITHUB_RUN_ID: '12345',
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('GitHub runner metadata was incomplete')
+    expect(
+      fs.readFileSync(
+        path.join(evidenceDirectory, 'github-runner-metadata.txt'),
+        'utf8',
+      ),
+    ).not.toContain('UNRELATED_SECRET')
   })
 
   it('rejects completed runner metadata without image and provisioner identities', () => {

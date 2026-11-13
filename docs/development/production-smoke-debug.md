@@ -21,6 +21,19 @@ Prerequisites:
 - GitHub CLI authenticated with access to the workflow run; and
 - an internet connection for the pinned vendor image pulls.
 
+Production assembly and trusted release CI use the
+[32 GB Avrea runner size](https://docs.avrea.com/runners/).
+The bare `avrea-ubuntu-latest` label provides 8 GB and cannot satisfy the
+production stack's memory budget. Keep the 75% host-memory check enabled.
+For local reproduction, allow at least 16 GiB of visible host RAM for the
+default service limits.
+
+The runtime bootstrap keeps a static Podman toolchain only when its matching
+crun and Quadlet are present. A standalone local Podman wrapper uses the full
+Ubuntu package toolchain. Runner metadata records the selected Avrea label
+and runner version; available image fields are in `runtime-diagnostics/runner.json`.
+Avrea job logs do not provide GitHub-hosted image and provisioner headers.
+
 The candidate Node images use UBI 10. Nested containers use the outer host's
 CPU capabilities; an Ubuntu debug host does not remove the x86-64-v3
 requirement. See [shared UBI runtime packaging](../../containers/node/README.md).
