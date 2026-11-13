@@ -14,8 +14,8 @@ host setup, smoke execution, evidence collection, and safe cleanup.
 
 Prerequisites:
 
-- a Linux x86_64 host with x86-64-v3 CPU support, Docker, cgroup v2, at least
-  15 GiB of RAM, and 10 GiB of free disk space;
+- a Linux x86_64 host with x86-64-v3 CPU support, Docker, cgroup v2, and at
+  least 10 GiB free;
 - Node.js, npm, `tar`, OpenSSL, and the repository dependencies already
   installed;
 - GitHub CLI authenticated with access to the workflow run; and
@@ -62,10 +62,6 @@ The debug host remains running after both success and failure so its state is
 available for inspection.
 
 The debug command selects `PRODUCTION_SMOKE_SCOPE=core`, matching PR assembly.
-The smoke profile uses the supported 256 MiB nginx limit so its service limits
-fit within 75% of a 15 GiB host. The production host-capacity check still applies.
-Production deployments retain their default 512 MiB nginx limit.
-
 It downloads `container-candidate-app-runtime`, `container-candidate-db-job`,
 and `production-assembly-evidence`. Deep cleanup, recovery, restart, concurrency,
 and HSA overlay qualification belong to trusted release. See
