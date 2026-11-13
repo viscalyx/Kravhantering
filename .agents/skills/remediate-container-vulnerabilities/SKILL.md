@@ -29,19 +29,23 @@ provide evidence; this skill creates and maintains the remediation issues.
    `remediation:container-vulnerability`. Apply both labels to reused package
    issues too and keep them when recording progress. Preserve unrelated
    issue content and automation-owned issue bodies. Start each created or
-   adopted package issue with the tracking contract's plain-language action
-   summary. Automation-labelled issues are outside this hierarchy and its
-   parent references.
+   adopted package issue with the tracking contract's plain-language
+   `Action taken` and `Next step` sections. Automation-labelled issues are
+   outside this hierarchy and its parent references.
 
 ## Recheck an existing remediation
 
 Read the issue's next-check instructions, original base selection, installed
 workaround, fix criteria, and evidence. Inspect the current unmodified upstream
-image and available packages using those criteria.
+image and available packages using those criteria. Resolve and pull the current
+upstream candidate; rebuilding the saved image digest keeps the same base.
 
 If the original image now contains the actual fix, update the selected image
-and every synchronized consumer. Remove the temporary update, source patch,
-removal rule, or approved exception that the original fix makes unnecessary.
+and every synchronized consumer through the
+[image-maintenance workflow](../../../docs/development/dependency-workflow.md#ubi-node-builder-and-runtime-maintenance)
+for UBI, or the owning workflow for another image family. Remove the temporary
+update, source patch, removal rule, or approved exception that the original fix
+makes unnecessary.
 Rebuild and verify before using `Closes #<package-issue>` in the cleanup PR.
 The initial workaround PR uses `Relates to`; a passing workaround does not
 complete the tracking issue. Continue below if the original fix is absent.
