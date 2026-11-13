@@ -1,5 +1,5 @@
 # User-level Codex settings required by the Kravhantering devcontainer.
-# The devcontainer postCreateCommand copies this to user configuration (~/.codex/config.toml).
+# The devcontainer postCreateCommand merges this into user configuration (~/.codex/config.toml).
 # Then Codex automatically layers the project’s .codex/config.toml on top of it.
 
 approval_policy = "never"
@@ -9,7 +9,7 @@ default_permissions = "kravhantering-development"
 trust_level = "trusted"
 
 [permissions.kravhantering-development]
-description = "Workspace access with Kravhantering devcontainer service network."
+description = "Workspace access with kravhantering local development network."
 extends = ":workspace"
 
 [permissions.kravhantering-development.filesystem]
@@ -40,17 +40,157 @@ enabled = false
 enabled = false
 
 [[skills.config]]
-path = "/home/vscode/.codex/skills/.system/plugin-creator/SKILL.md"
+name = "plugin-creator"
 enabled = false
 
 [[skills.config]]
-path = "/home/vscode/.codex/skills/.system/review-agent/SKILL.md"
+name = "review-agent"
 enabled = false
 
 [[skills.config]]
-path = "/home/vscode/.codex/skills/.system/skill-creator/SKILL.md"
+name = "skill-creator"
 enabled = false
 
 [[skills.config]]
-path = "/home/vscode/.codex/skills/.system/skill-installer/SKILL.md"
+name = "skill-installer"
+enabled = false
+
+[[skills.config]]
+name = "cloud-environment:cloud-environment-runtime"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-analytics-dashboard"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-business-review"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-design-report"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-experiment-analysis"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-financial-budget"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-investment-committee-memo"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-legal-memorandum"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-market-trends-report"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-minimal-letterhead"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-operating-calendar"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-operating-review"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-project-kickoff"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-project-tracker"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-sales-pipeline"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-simple-dark-mode"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-simple-light-mode"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-strategy-memorandum"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-system-design"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-team-alignment"
+enabled = false
+
+[[skills.config]]
+name = "openai-templates:artifact-template-three-statement-forecast"
+enabled = false
+
+[[skills.config]]
+name = "pages:maintain-space"
+enabled = false
+
+[[skills.config]]
+name = "pages:manage-schedules"
+enabled = false
+
+[[skills.config]]
+name = "pages:organize-space"
+enabled = false
+
+[[skills.config]]
+name = "pages:write-page"
+enabled = false
+
+[[skills.config]]
+name = "sites:sites-building"
+enabled = false
+
+[[skills.config]]
+name = "sites:sites-hosting"
+enabled = false
+
+[[skills.config]]
+name = "sites:sites-mcp"
+enabled = false
+
+[[skills.config]]
+name = "sites:sites-preview-troubleshooting"
+enabled = false
+
+[[skills.config]]
+name = "sites:sites"
+enabled = false
+
+[[skills.config]]
+name = "work-pets:create-pet"
+enabled = false
+
+[[skills.config]]
+name = "work-pets:pets"
+enabled = false
+
+[[skills.config]]
+name = "work-pets:update-pet"
+enabled = false
+
+[[skills.config]]
+name = "sites:sites-remix"
+enabled = false
+
+[[skills.config]]
+name = "cloud-environment:cloud-desktop"
 enabled = false

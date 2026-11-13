@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { expectApiResponseOk } from '../api-response-assertions'
+import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
 
 const marker = (name: string) => `[data-developer-mode-name="${name}"]`
 

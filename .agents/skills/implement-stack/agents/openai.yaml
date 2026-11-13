@@ -1,0 +1,5 @@
+interface:
+  display_name: "Implement Stack"
+  short_description: "Implement a spec and publish a reviewed PR stack."
+policy:
+  allow_implicit_invocation: false

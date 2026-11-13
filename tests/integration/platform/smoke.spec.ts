@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test'
 import {
   expectApiResponseOk,
   expectApiResponseStatus,
-} from '../api-response-assertions'
-import { resolveIntegrationBaseUrl } from '../base-url'
+} from '@/tests/support/api-response-assertions'
+import { resolveIntegrationBaseUrl } from '@/tests/support/base-url'
 
 test('RES-02: homepage loads for signed-in and signed-out sessions', async ({
   browser,

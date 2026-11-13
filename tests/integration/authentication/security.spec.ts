@@ -6,14 +6,14 @@ import {
   test,
 } from '@playwright/test'
 import {
+  expectApiResponseOk,
+  expectApiResponseStatus,
+} from '@/tests/support/api-response-assertions'
+import { resolveIntegrationBaseUrl } from '@/tests/support/base-url'
+import {
   expectApiDocsSecurityHeaders,
   expectApiDocsToRenderWithoutCspErrors,
 } from '../../helpers/api-docs-security-headers'
-import {
-  expectApiResponseOk,
-  expectApiResponseStatus,
-} from '../api-response-assertions'
-import { resolveIntegrationBaseUrl } from '../base-url'
 
 function getStorageState(testInfo: TestInfo) {
   return testInfo.project.use.storageState ?? 'test-results/auth/admin.json'

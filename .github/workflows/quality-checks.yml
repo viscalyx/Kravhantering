@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: read
-  checks: write
   pull-requests: read
 
 jobs:
@@ -124,10 +123,12 @@ jobs:
 
       # Must use the action to get the executable as it is not installed, and have
       # not a secure download URL to fetch it from.
+      # Report locally so lint results do not depend on GitHub Checks API writes.
       - name: Run dotenv-linter root check
         uses: dotenv-linter/action-dotenv-linter@afde61cfda2ecffe7bea35837b6f20b956c88689 # v3
         with:
           dotenv_linter_flags: .
+          reporter: local
           filter_mode: nofilter
           fail_level: any
         if: contains(fromJSON(needs.select.outputs.owners), 'static')
@@ -138,6 +139,7 @@ jobs:
         uses: dotenv-linter/action-dotenv-linter@afde61cfda2ecffe7bea35837b6f20b956c88689 # v3
         with:
           dotenv_linter_flags: .devcontainer --recursive
+          reporter: local
           filter_mode: nofilter
           fail_level: any
         if: contains(fromJSON(needs.select.outputs.owners), 'static')

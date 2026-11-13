@@ -21,8 +21,8 @@ import {
 import {
   expectApiResponseOk,
   expectApiResponseStatus,
-} from '../api-response-assertions'
-import { resolveIntegrationBaseUrl } from '../base-url'
+} from '@/tests/support/api-response-assertions'
+import { resolveIntegrationBaseUrl } from '@/tests/support/base-url'
 
 export const ROLE_STORAGE_STATE = {
   admin: 'test-results/auth/admin.json',

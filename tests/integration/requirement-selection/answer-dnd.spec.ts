@@ -1,7 +1,7 @@
 import { type APIRequestContext, expect, test } from '@playwright/test'
+import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
+import { expectApiResponseOkWithRetry } from '@/tests/support/api-retry-helpers'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
-import { expectApiResponseOk } from '../api-response-assertions'
-import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
 
 const DRF_ANSWER_TEXT_ORDER = [
   'Egen drift/on-premises',

@@ -9,8 +9,8 @@ import {
   type TestInfo,
   test,
 } from '@playwright/test'
-import { expectApiResponseStatus } from '../api-response-assertions'
-import { resolveIntegrationBaseUrl } from '../base-url'
+import { expectApiResponseStatus } from '@/tests/support/api-response-assertions'
+import { resolveIntegrationBaseUrl } from '@/tests/support/base-url'
 
 const execFileAsync = promisify(execFile)
 const SCAN_DIR = 'test-results/mcp-seeded'
