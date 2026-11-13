@@ -78,8 +78,7 @@ it cannot solve the case. Continue to the next path only on the latter result.
    Ask the user whether to add an exception, presenting its exact scope,
    accountable owner, rationale, and proposed case-specific review and expiry
    dates. Wait for the answer before changing the exception file. If approved,
-   follow the model-invoked
-   [exception maintenance skill](../manage-container-vulnerability-exceptions/SKILL.md).
+   call the Skill tool with "manage-container-vulnerability-exceptions".
    The user decides the dates from the case; this workflow sets no fixed
    review or expiry interval. A refusal leaves the package issue open with
    the recorded blocker and next checks.
