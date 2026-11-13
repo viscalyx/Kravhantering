@@ -195,6 +195,45 @@ database status, the policy decision and smoke diagnostics as workflow
 artifacts. It does not authenticate to GHCR, apply an OCI release tag, create a
 final image or SBOM attestation, or publish a GitHub Release.
 
+### Remediation And Last-Resort Exceptions
+
+Maintainers can run `$remediate-container-vulnerabilities` with a failing PR or
+release job URL, or an existing package remediation issue. The user-invoked
+skill creates or reuses one human-managed issue per package, with the
+`ready-for-human` label. CI supplies build and scan evidence; it does not create
+these remediation issues. Published-release monitoring retains its separate
+automation-owned scan records.
+
+The remediation sequence is:
+
+1. Install a verified compatible fixed package or base.
+2. Build the actual fixes from authenticated, pinned vendor or upstream source.
+3. Inspect production use and remove the package and its full dependency
+   closure only when the supported workloads do not need them.
+4. If all three paths fail, record the evidence and ask the user whether to add
+   an exact exception under the existing promotion policy.
+
+Source patches need build provenance, truthful package identities, license
+notices, compatibility tests, and passing final-image scan evidence. Removal
+needs a report of every removed dependency and evidence that production does
+not use it. Preserve package inventory for external SBOM tools. Treat unknown
+production use as a reason to keep the package. Installing a package-list entry
+or changing a version without the fix does not establish remediation.
+
+The exception request includes the failed attempts, remaining exposure, exact
+scope, accountable owner, and proposed review and expiry dates. The user makes
+the case-specific decision before an exception is added. The evaluator's
+required lifecycle fields, expiry checks, and stale-scope rejection still
+apply; this workflow adds no fixed review or expiry interval.
+
+The package issue records current evidence, temporary code and exceptions,
+upstream sources to watch, exact fix criteria, and repeatable next checks. Give
+that issue to the skill to recheck whether a fix is now available or an existing
+workaround can be removed. Keep the issue open after an initial successful
+workaround. The cleanup PR can close it only after the original image contains
+the fix, the workaround is removed, and all affected final images pass their
+required checks.
+
 ## Continuous Published-Release Scanning
 
 `.github/workflows/container-vulnerability-monitor.yml` runs daily from

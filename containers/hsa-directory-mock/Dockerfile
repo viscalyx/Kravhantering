@@ -45,7 +45,8 @@ ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV NPM_CONFIG_PREFIX=/usr/local
 RUN --mount=type=bind,source=containers/node,target=/tmp/ubi-compat \
   --mount=type=bind,source=LICENSE,target=/tmp/kravhantering-LICENSE \
-  sh /tmp/ubi-compat/ubi-compat.sh
+  sh /tmp/ubi-compat/ubi-compat.sh \
+  && sh /tmp/ubi-compat/finalize-runtime.sh
 
 ENV NODE_ENV=production
 WORKDIR /app/containers/hsa-directory-mock

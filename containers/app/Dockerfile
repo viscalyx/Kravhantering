@@ -111,7 +111,8 @@ ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV NPM_CONFIG_PREFIX=/usr/local
 RUN --mount=type=bind,source=containers/node,target=/tmp/ubi-compat \
   --mount=type=bind,source=LICENSE,target=/tmp/kravhantering-LICENSE \
-  sh /tmp/ubi-compat/ubi-compat.sh
+  sh /tmp/ubi-compat/ubi-compat.sh \
+  && sh /tmp/ubi-compat/finalize-runtime.sh
 
 ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -155,7 +156,8 @@ ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV NPM_CONFIG_PREFIX=/usr/local
 RUN --mount=type=bind,source=containers/node,target=/tmp/ubi-compat \
   --mount=type=bind,source=LICENSE,target=/tmp/kravhantering-LICENSE \
-  sh /tmp/ubi-compat/ubi-compat.sh
+  sh /tmp/ubi-compat/ubi-compat.sh \
+  && sh /tmp/ubi-compat/finalize-runtime.sh
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
@@ -207,7 +209,8 @@ ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV NPM_CONFIG_PREFIX=/usr/local
 RUN --mount=type=bind,source=containers/node,target=/tmp/ubi-compat \
   --mount=type=bind,source=LICENSE,target=/tmp/kravhantering-LICENSE \
-  sh /tmp/ubi-compat/ubi-compat.sh
+  sh /tmp/ubi-compat/ubi-compat.sh \
+  && sh /tmp/ubi-compat/finalize-runtime.sh
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production

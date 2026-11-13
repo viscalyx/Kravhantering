@@ -46,6 +46,11 @@ fixes. For disconnected sites, transfer and verify the new images and matching
 release locks before rollout. Check the release vulnerability evidence before
 deployment.
 
+Application and HSA runtime images no longer include curl or package-management
+tools. Before rollout, move custom diagnostic or maintenance commands that need
+these tools to the host. Apply security updates by deploying complete rebuilt
+images; package installation inside a running container is unavailable.
+
 ### Generated download size
 
 Before rollout, update external clients that require `Content-Length` for

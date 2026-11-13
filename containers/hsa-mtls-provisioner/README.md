@@ -15,6 +15,11 @@ Missing evidence or any selected-input, installed-version, identity, or source
 mismatch fails the build. Package tests cover
 the same verifier contract without inspecting Dockerfile or workflow source.
 
+After verification, the shared runtime finalizer removes unused Kerberos,
+curl, and package-management tools. The RPM database remains available to
+external SBOM tools; the final image has no RPM CLI. OpenSSL, CA trust, and
+crypto-policy configuration remain intact for certificate operations.
+
 ## Toolchain maintenance
 
 The digest-pinned runtime and additional packages are available anonymously.

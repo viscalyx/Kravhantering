@@ -1,0 +1,6 @@
+interface:
+  display_name: "Remediate Container Vulnerabilities"
+  short_description: "Remediate a failing container job or package issue"
+  default_prompt: "Use $remediate-container-vulnerabilities with this failing PR or release job, or existing package remediation issue."
+policy:
+  allow_implicit_invocation: false

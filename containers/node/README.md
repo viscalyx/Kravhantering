@@ -2,8 +2,8 @@
 
 `ubi-compat.sh` adapts the selected UBI Node.js minimal base for all six
 published runtime images and the local HSA topology helper. Each Dockerfile
-invokes it during the existing image build and declares its own workload
-packages, commands and final user.
+declares its workload packages, commands and final user, then runs
+`finalize-runtime.sh` after its last package-dependent build operation.
 
 ## Image scope
 
@@ -56,18 +56,14 @@ permanent; an empty list skips the upgrade.
 | `c-ares` | `CVE-2026-69184`, `CVE-2026-69186` | `1.34.6-5.el10_3.2` | [Red Hat CVE record](https://access.redhat.com/security/cve/CVE-2026-69184) |
 | `libxml2` | `CVE-2026-74860`, `CVE-2026-86140` | `2.12.5-15.el10_3.2` | [Red Hat CVE record](https://access.redhat.com/security/cve/CVE-2026-74860) |
 | `libblkid`, `libmount`, `libsmartcols`, `libuuid` | `CVE-2026-53615` | `2.40.2-24.el10_3.24` | [Red Hat CVE record](https://access.redhat.com/security/cve/CVE-2026-53615) |
-| `krb5-libs` | Kerberos security fixes in `RHSA-2026:99624` | `1.21.3-11.el10_3.2` | [Red Hat advisory](https://access.redhat.com/errata/RHSA-2026:99624) |
 
 This table is the record for every list entry. Add a package to the list and
-this table when a fixable container finding affects an inherited base RPM.
-Confirm that UBI 10 BaseOS or AppStream supplies the fixed version before
-treating an entry as remediation. A vendor advisory can precede public UBI
-package availability; an entry prepared during that gap does not establish
-that a rebuild installs the fix. Verify the installed RPM in the rebuilt
-images and require the completed-image vulnerability gate to pass before
-release. Prefer the supported package update over a vulnerability exception.
-Remove an entry when the unmodified pinned runtime base contains the fixed
-version, for example:
+this table when a fixable container finding affects an inherited base RPM and
+the fixed version is already in UBI 10 BaseOS or AppStream. A vendor advisory
+can precede public UBI package availability. Verify the installed RPM in the
+rebuilt images and require the completed-image vulnerability gate to pass
+before release. Remove an entry when the unmodified pinned runtime base
+contains the fixed version, for example:
 
 ```sh
 docker run --rm --platform linux/amd64 --entrypoint rpm \
@@ -82,7 +78,8 @@ toolchain remain the responsibility of their consuming Dockerfiles.
 The selected minimal base includes `openssl-libs-3.5.8-2.el10_2`, which also
 fixes [CVE-2026-84782](https://access.redhat.com/security/cve/CVE-2026-84782).
 It includes fixed curl, Brotli, PCRE2, certificate, and RPM cryptography
-packages, so these packages need no additional helper update.
+packages, so these packages need no additional helper update. Final runtimes
+remove the unused curl and package-management dependency chain described below.
 The shared helper uses the inherited OpenSSL library. The provisioner additionally
 installs its locked OpenSSL 3.5.9 CLI package from the public UBI 10 BaseOS
 repository. The container vulnerability policy evaluates the completed images.
@@ -96,6 +93,36 @@ npm lockfile and is affected by
 Deploy a new immutable project release to receive the updated runtime packages.
 Existing release images and installed containers do not change when a base pin
 or a public RPM repository changes.
+
+## Runtime package removal
+
+The finalizer removes unused Kerberos and its complete package dependency
+closure: `krb5-libs`, `libcurl-minimal`, `curl`, `librepo`, `libdnf`,
+`microdnf`, `rpm`, `rpm-libs`, `libsolv`, and `libmodulemd`. Kerberos supplies
+GSSAPI to libcurl; curl and repository/package-management libraries keep the
+rest of this chain installed. The supported production workloads do not use
+those tools or native Kerberos authentication. Application clients and health
+checks run in Node.js; the provisioner uses Node.js and OpenSSL.
+
+This removes the affected Kerberos implementation rather than waiting for the
+public UBI package for
+[RHSA-2026:99624](https://access.redhat.com/errata/RHSA-2026:99624).
+Before changing the list, inspect production commands and native libraries and
+validate the full dependency closure. The finalizer tests an ordinary RPM erase
+transaction before applying the same explicit list. A new dependency fails the
+build for reassessment rather than expanding the removal list automatically.
+
+Package updates and the license download finish before removal. The
+provisioner's RPM toolchain verification also finishes first. Finalization
+checks that CA trust, OpenSSL libraries and crypto-policy configuration remain
+unchanged, and retains the RPM database for external SBOM inventory. Final
+image scans and workload checks establish that removal is complete and that
+production behavior still works. Lower base-image layers remain unchanged.
+
+Final runtime images contain no curl, RPM CLI, or package manager. Use host
+tools for diagnostics and deploy rebuilt images for updates. Reassess this
+incident-specific removal when the unmodified pinned upstream base contains
+the Kerberos fix, and validate the final images before removing the workaround.
 
 ## Licenses and image identity
 
