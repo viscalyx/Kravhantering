@@ -46,10 +46,13 @@ fixes. For disconnected sites, transfer and verify the new images and matching
 release locks before rollout. Check the release vulnerability evidence before
 deployment.
 
-Application and HSA runtime images no longer include curl or package-management
-tools. Before rollout, move custom diagnostic or maintenance commands that need
-these tools to the host. Apply security updates by deploying complete rebuilt
-images; package installation inside a running container is unavailable.
+Application and HSA runtime images temporarily exclude curl and
+package-management tools. A later release will restore these tools after the
+upstream runtime image includes the Kerberos security fix and the temporary
+removal is no longer needed. Until then, move custom diagnostic or maintenance
+commands that need these tools to the host before rollout. Apply security
+updates by deploying complete rebuilt images; package installation inside a
+running container is unavailable during this period.
 
 ### Generated download size
 
