@@ -30,8 +30,7 @@ provide evidence; this skill creates and maintains the remediation issues.
    issues too and keep them when recording progress. Preserve unrelated
    issue content and automation-owned issue bodies. Start each created or
    adopted package issue with the tracking contract's plain-language
-   `Action taken` and `Next step` sections. Automation-labelled issues are
-   outside this hierarchy and its parent references.
+   `Action taken` and `Next step` sections.
 
 ## Recheck an existing remediation
 

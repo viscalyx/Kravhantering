@@ -6,8 +6,9 @@ family, to find the owning open issue. Existing automation findings are scan
 records, not these remediation issues. Create issues only during a user-invoked
 skill run. Apply `ready-for-human` and `remediation:container-vulnerability`
 when creating or adopting a package issue; create a missing label with its
-documented purpose before using it. Use native sub-issue links only for
-human-managed issues when a parent is in scope.
+documented purpose before using it. Keep package remediation issues separate
+from coordination parents; do not attach them as sub-issues. Exclude
+automation-labelled issues from coordination links and reference lists.
 
 ## Opening summary
 
