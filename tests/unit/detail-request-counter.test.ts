@@ -1,6 +1,6 @@
 import type { Page, Route } from '@playwright/test'
 import { describe, expect, it, vi } from 'vitest'
-import { countDetailRequests } from '@/tests/integration/detail-request-counter'
+import { countDetailRequests } from '@/tests/support/detail-request-counter'
 
 describe('countDetailRequests', () => {
   it('consumes an early release without releasing the next held request', async () => {

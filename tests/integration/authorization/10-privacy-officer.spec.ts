@@ -1,6 +1,5 @@
 // cSpell:ignore linneab
 import { expect, type Page, test } from '@playwright/test'
-import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import {
   expectOk,
   expectStatus,
@@ -8,7 +7,8 @@ import {
   newRoleContext,
   ROLE_STORAGE_STATE,
   referenceManualCases,
-} from './authorization-test-helpers'
+} from '@/tests/support/authorization-test-helpers'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 let fixture: { areaId: number; packageId: number }
 const PRIVACY_PREVIEW_TARGET_HSA_ID = 'SE5560000001-linneab'

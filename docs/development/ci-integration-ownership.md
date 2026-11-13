@@ -132,6 +132,18 @@ without chunk restarts or report merging. See the
 [SQL Server workflow](sql-server-developer-workflow.md) and
 [authentication workflow](auth-developer-workflow.md) for local service setup.
 
+For a focused failure investigation, pass `--trace=retain-on-failure --retries=0`
+after the spec path to retain the first failure trace. The development
+configuration otherwise records traces on retry, while local retries default
+to zero. Preserve existing failure artifacts before another run replaces them.
+
+Select affected scenarios and runtime variants for local repairs. Run a full
+suite when that scope is requested. After a repair, rerun affected tests and
+reuse earlier passes only when subsequent changes cannot affect them. When
+verifying selected chunks, existing passing results remain usable under the
+same rule; a failure that depends on chunk order needs verification in that
+chunk. CI keeps its configured coverage.
+
 When adding, moving, renaming, or removing a specification, update the ownership
 rules in `tests/integration-chunks.mjs` if needed, then run
 `npm run test:integration:chunks:generate` and

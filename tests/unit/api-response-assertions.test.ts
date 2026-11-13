@@ -4,7 +4,7 @@ import {
   apiResponseFailureMessage,
   expectApiResponseOk,
   expectApiResponseStatus,
-} from '@/tests/integration/api-response-assertions'
+} from '@/tests/support/api-response-assertions'
 
 function response(options: {
   ok?: boolean

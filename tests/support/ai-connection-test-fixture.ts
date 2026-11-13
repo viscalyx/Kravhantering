@@ -4,7 +4,7 @@ import {
   createSqlServerDataSource,
   getSqlServerDatabaseUrl,
   type SqlServerRuntimeEnv,
-} from '../../../lib/typeorm/sqlserver-config'
+} from '@/lib/typeorm/sqlserver-config'
 
 export const ADMIN_20_CONNECTION_NAME = 'PW ADMIN-20 kontrollerad anslutning'
 export const ADMIN_20_MODEL_NAME = 'PW ADMIN-20 kontrollerad modell'

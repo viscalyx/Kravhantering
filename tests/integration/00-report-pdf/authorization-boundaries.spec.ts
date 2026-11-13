@@ -17,7 +17,7 @@ import {
   newRoleContext,
   type RequirementListResponse,
   referenceManualCases,
-} from '../authorization/authorization-test-helpers'
+} from '@/tests/support/authorization-test-helpers'
 
 const RESPONSE_BODY_EXCERPT_LENGTH = 2_000
 const RESOURCE_FIXTURE_PREFIX = 'I596LOAD'

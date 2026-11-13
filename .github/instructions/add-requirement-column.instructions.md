@@ -29,7 +29,7 @@ applyTo: "{components/**/*.tsx,app/[locale]/requirements/**/*.tsx,app/api/**/*.t
 
 ## Terminology
 
-- Use `CONTEXT.md` for domain terminology and naming decisions.
+- Use `GLOSSARY.md` for domain terminology and naming decisions.
 - See `.github/instructions/translations.instructions.md` for the message-file update workflow.
 - Bind all visible labels to translation keys. Do not hardcode labels in list headers, edit forms, inline detail panes, detail pages, CSV, service output, or MCP HTML.
 

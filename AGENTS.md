@@ -1,10 +1,13 @@
 # Agent Instructions
 
-For terminology, read [./CONTEXT-MAP.md](./CONTEXT-MAP.md) and load only the
+For terminology, read [./GLOSSARY-MAP.md](./GLOSSARY-MAP.md) and load only the
 glossary that applies to the work. Load both glossaries when work crosses their
 boundary.
 
 Follow the rules in @.github/copilot-instructions.md and the instructions in `.github/instructions/*.md`
+
+Run builds and tests through the repository's npm scripts to use the
+shared process lock.
 
 - Use quoted paths to avoid issues with brackets, e.g `app/[locale]/admin/audit-log/page.tsx`.
 - For visible UI element, label, or layout surface changes, see `.github/instructions/developer-mode.instructions.md`.
@@ -37,6 +40,7 @@ Follow the rules in @.github/copilot-instructions.md and the instructions in `.g
 
 Issues (tickets) are tracked as GitHub issues in repository `viscalyx/Kravhantering`.
 
-- For multiline GitHub Markdown, use `gh ... --body-file -` with a
-  single-quoted heredoc, then verify real line breaks with
-  `gh ... view --json body --jq .body` before finishing.
+- For multiline GitHub Markdown, write the exact text to a temporary file
+  with a file-editing tool, then run `gh ... --body-file /absolute/path`
+  as a separate command with literal arguments. Verify real line breaks
+  with `gh ... view --json body --jq .body` before finishing.

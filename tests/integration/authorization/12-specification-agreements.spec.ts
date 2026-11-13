@@ -5,7 +5,7 @@ import {
   expectOk,
   newRoleContext,
   ROLE_STORAGE_STATE,
-} from './authorization-test-helpers'
+} from '@/tests/support/authorization-test-helpers'
 
 test.use({ storageState: ROLE_STORAGE_STATE.specificationCoauthor })
 

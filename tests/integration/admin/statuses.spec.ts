@@ -5,7 +5,7 @@ import {
   type Page,
   test,
 } from '@playwright/test'
-import { expectApiResponseOk } from '../api-response-assertions'
+import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
 
 interface SpecificationItemStatus {
   color: string

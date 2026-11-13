@@ -1,0 +1,5 @@
+interface:
+  display_name: "Plain Language"
+  short_description: "Write clear English or Swedish for all experience levels"
+policy:
+  allow_implicit_invocation: false

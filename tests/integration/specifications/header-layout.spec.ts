@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import en from '@/messages/en.json'
 import sv from '@/messages/sv.json'
 import { requireTestValue } from '@/tests/helpers/require-test-value'
-import { expectApiResponseOk } from '../api-response-assertions'
+import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
 
 for (const locale of ['sv', 'en'] as const) {
   const t = (locale === 'sv' ? sv : en).specification

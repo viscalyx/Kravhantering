@@ -21,7 +21,8 @@
     }
   },
   "files": {
-    "ignoreUnknown": true
+    "ignoreUnknown": true,
+    "includes": ["**", "!!.agents/skills"]
   },
   "formatter": {
     "indentStyle": "space",

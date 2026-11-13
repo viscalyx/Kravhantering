@@ -9,16 +9,16 @@ import {
 } from '@playwright/test'
 import { escapeRegExp } from '@/tests/helpers/common'
 import { requireTestValue } from '@/tests/helpers/require-test-value'
-import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
-import { expectApiResponseStatus } from '../api-response-assertions'
-import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
+import { expectApiResponseStatus } from '@/tests/support/api-response-assertions'
+import { expectApiResponseOkWithRetry } from '@/tests/support/api-retry-helpers'
 import {
   newRoleContext,
   ROLE_STORAGE_STATE,
   type RoleContext,
   referenceManualCases,
-} from '../authorization/authorization-test-helpers'
-import { resolveIntegrationBaseUrl } from '../base-url'
+} from '@/tests/support/authorization-test-helpers'
+import { resolveIntegrationBaseUrl } from '@/tests/support/base-url'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 interface DeviationData {
   decidedAt: string | null

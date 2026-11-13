@@ -1,0 +1,6 @@
+interface:
+  display_name: "Fix Integration Tests"
+  short_description: "Run and repair Playwright integration specs"
+  default_prompt: "Use $fix-integration-tests to repair these failing Playwright specs and their shared test helpers with test-only edits."
+policy:
+  allow_implicit_invocation: true

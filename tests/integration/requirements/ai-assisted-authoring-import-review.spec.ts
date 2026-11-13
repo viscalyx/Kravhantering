@@ -1,5 +1,8 @@
 import { expect, type Page, type Route, test } from '@playwright/test'
-import { getAiSettings, putAiSettings } from '../ai-settings-test-helpers'
+import {
+  getAiSettings,
+  putAiSettings,
+} from '@/tests/support/ai-settings-test-helpers'
 
 const specificationId = 8
 const generatedDescription =

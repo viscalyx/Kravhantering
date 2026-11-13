@@ -274,17 +274,26 @@ trust_level = "untrusted"
     expect(mergeConfig(configPath)).toBe(firstMerge)
   })
 
-  it('merges the same disabled plugins and system skills for devcontainers', () => {
-    const configPath = createTemporaryConfig('personality = "pragmatic"\n')
+  it('merges named skills for devcontainers while preserving unmanaged skills', () => {
+    const configPath = createTemporaryConfig(`personality = "pragmatic"
+
+[[skills.config]]
+name = "plugin-creator"
+enabled = true
+
+[[skills.config]]
+name = "personal-skill"
+enabled = true
+`)
 
     const merged = mergeConfig(configPath, devcontainerConfigPath)
 
     expectDisabledPlugins(merged)
     expect(merged).not.toContain('/plugins/cache/')
-    expect(merged.match(/\[\[skills\.config\]\]/g)).toHaveLength(4)
-    for (const path of disabledSystemSkillPaths) {
-      expect(merged).toContain(`path = "${path}"`)
-    }
+    expect(merged.split('name = "plugin-creator"')).toHaveLength(2)
+    expect(merged).toContain('name = "plugin-creator"\nenabled = false')
+    expect(merged).toContain('name = "personal-skill"\nenabled = true')
+    expect(mergeConfig(configPath, devcontainerConfigPath)).toBe(merged)
   })
 
   it('migrates a previously copied devcontainer profile', () => {
@@ -353,7 +362,7 @@ enabled = true
 
     expect(validation.status).toBe(1)
     expect(validation.stderr).toContain(
-      `merged disabled skill configuration is incorrect for ${managedSkillPath}`,
+      `merged disabled skill configuration is incorrect for path: ${managedSkillPath}`,
     )
   })
 })

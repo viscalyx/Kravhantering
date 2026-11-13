@@ -1,7 +1,7 @@
 # ADR Format
 
 ADRs live in `docs/adr/` and use sequential numbering: `0001-slug.md`, `0002-slug.md`, etc.
-Use the primary language declared in `CONTEXT.md` for ADR titles, body text,
+Use the primary language declared in `GLOSSARY.md` for ADR titles, body text,
 section headings, and filename slugs.
 
 Create the `docs/adr/` directory lazily: only when the first ADR is needed.

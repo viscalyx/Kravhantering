@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test'
-import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 import {
   type AuthorizationFixture,
   createAuthorizationFixture,
@@ -10,7 +9,8 @@ import {
   ROLE_STORAGE_STATE,
   referenceManualCases,
   STATUS_ARCHIVED,
-} from './authorization-test-helpers'
+} from '@/tests/support/authorization-test-helpers'
+import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 test.describe.configure({ mode: 'serial' })
 

@@ -1,0 +1,5 @@
+interface:
+  display_name: "Show Me"
+  short_description: "Help the user understand the current topic visually."
+policy:
+  allow_implicit_invocation: false

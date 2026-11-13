@@ -1,5 +1,5 @@
 import type { APIRequestContext } from '@playwright/test'
-import { expectApiResponseOk } from './api-response-assertions'
+import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
 
 export interface AiGenerationAvailability {
   aiSafetyRuleCacheTtlSeconds: number

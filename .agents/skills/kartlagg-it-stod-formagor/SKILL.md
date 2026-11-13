@@ -25,7 +25,7 @@ senare.
    `ANALYS-FORMAT.md`.
 4. Läs befintlig analysfil först vid återupptagning eller efter
    kontextkomprimering. Fortsätt från dess källstatus och öppna frågor.
-5. Läs lokala domän- och språkunderlag först, till exempel `CONTEXT.md`,
+5. Läs lokala domän- och språkunderlag först, till exempel `GLOSSARY.md`,
    `README`, `docs/`, ADR:er, manualfall och specifikationer.
 6. Dela kodbasen i källkluster som kan analyseras ett i taget:
    - routes, sidor, komponenter, formulär, navigation, översättningar

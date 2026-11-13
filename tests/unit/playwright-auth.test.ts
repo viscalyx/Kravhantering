@@ -6,7 +6,7 @@ import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requiremen
 import {
   HSA,
   verifyResponsibilityPerson,
-} from '@/tests/integration/authorization/authorization-test-helpers'
+} from '@/tests/support/authorization-test-helpers'
 import {
   getPlaywrightBaseUrl,
   loginAndSaveStorageState,
