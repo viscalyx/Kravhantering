@@ -4,8 +4,10 @@ Maintain one human-managed issue per affected package, including its images
 and CVEs. Use the package name and ecosystem from the scanner, plus its image
 family, to find the owning open issue. Existing automation findings are scan
 records, not these remediation issues. Create issues only during a user-invoked
-skill run and apply `ready-for-human` at creation. Use native sub-issue links
-only for human-managed issues when a parent is in scope.
+skill run. Apply `ready-for-human` and `remediation:container-vulnerability`
+when creating or adopting a package issue; create a missing label with its
+documented purpose before using it. Use native sub-issue links only for
+human-managed issues when a parent is in scope.
 
 ## Required issue content
 
@@ -36,8 +38,10 @@ Keep these sections current so another invocation can continue without chat:
 ## Lifecycle
 
 Record a passing workaround as remediated with cleanup pending, with the issue
-still open. Keep `ready-for-human` on the issue; it identifies the maintainer's
-tracking item rather than authorizing an exception.
+still open. Keep both workflow labels on the issue. `ready-for-human`
+identifies the maintainer's tracking item rather than authorizing an exception;
+`remediation:container-vulnerability` identifies this package-remediation
+workflow for searches and duplicate detection.
 
 Only the PR that removes the workaround after the original image includes the
 fix may auto-close the issue. Confirm all its affected image/CVE scopes before

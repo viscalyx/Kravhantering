@@ -25,8 +25,9 @@ provide evidence; this skill creates and maintains the remediation issues.
    its affected images and CVEs in one case.
 3. Read [the tracking contract](references/tracking.md). Reuse the supplied
    issue or search for its existing human-managed package issue. Create a
-   missing package issue with `ready-for-human`, the repository's ready for
-   human label. Keep that label when recording progress. Preserve unrelated
+   missing package issue with `ready-for-human` and
+   `remediation:container-vulnerability`. Apply both labels to reused package
+   issues too and keep them when recording progress. Preserve unrelated
    issue content and automation-owned issue bodies. Automation-labelled issues
    are outside this hierarchy and its parent references.
 

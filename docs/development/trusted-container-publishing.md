@@ -200,9 +200,9 @@ final image or SBOM attestation, or publish a GitHub Release.
 Maintainers can run `$remediate-container-vulnerabilities` with a failing PR or
 release job URL, or an existing package remediation issue. The user-invoked
 skill creates or reuses one human-managed issue per package, with the
-`ready-for-human` label. CI supplies build and scan evidence; it does not create
-these remediation issues. Published-release monitoring retains its separate
-automation-owned scan records.
+`ready-for-human` and `remediation:container-vulnerability` labels. CI supplies
+build and scan evidence; it does not create these remediation issues.
+Published-release monitoring retains its separate automation-owned scan records.
 
 The remediation sequence is:
 
