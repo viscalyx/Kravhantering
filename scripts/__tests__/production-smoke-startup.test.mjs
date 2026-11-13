@@ -5,6 +5,67 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 describe('production smoke startup readiness', () => {
+  it('enters a private service home only after switching users', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smoke-service-home-'))
+    const serviceHome = path.join(root, 'private service home')
+    fs.mkdirSync(serviceHome, { mode: 0o700 })
+    try {
+      const result = spawnSync(
+        'bash',
+        [
+          '-s',
+          '--',
+          path.resolve('scripts/containers/production-smoke.sh'),
+          serviceHome,
+        ],
+        {
+          input: String.raw`
+            source "$1"
+            SERVICE_HOME="$2"
+            SERVICE_USER=fixture-service-user
+            service_uid() { printf '12345\n'; }
+            cd() {
+              if [[ "$1" == "$SERVICE_HOME" ]]; then
+                printf 'runner cannot enter private service home\n' >&2
+                return 1
+              fi
+              builtin cd "$@"
+            }
+            sudo() {
+              [[ "$1 $2" == '-u fixture-service-user' ]] || return 1
+              shift 2
+              "$@"
+            }
+            as_service bash -c '
+              printf "%s\n" "$PWD" "$HOME" "$XDG_RUNTIME_DIR" "$1"
+              [[ ! -v CONTAINERS_CONF ]]
+              [[ ! -v REGISTRY_AUTH_FILE ]]
+            ' service-command 'literal ; $argument'
+          `,
+          encoding: 'utf8',
+          timeout: 10_000,
+          env: {
+            ...process.env,
+            CONTAINERS_CONF: '/runner/containers.conf',
+            REGISTRY_AUTH_FILE: '/runner/auth.json',
+          },
+        },
+      )
+
+      expect(result.error).toBeUndefined()
+      expect(result.status, result.stderr).toBe(0)
+      expect(result.stdout.trim().split('\n')).toEqual([
+        serviceHome,
+        serviceHome,
+        '/run/user/12345',
+        'literal ; $argument',
+      ])
+      expect(fs.statSync(serviceHome).mode & 0o777).toBe(0o700)
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   it.each([
     ['release', true],
     ['release', false],

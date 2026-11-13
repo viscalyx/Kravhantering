@@ -1,0 +1,4 @@
+interface:
+  display_name: "Debate Me"
+  short_description: "Debate recommendations with sourced arguments"
+  default_prompt: "Use $debate-me to debate this recommendation with sourced arguments until I decide or stop."

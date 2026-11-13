@@ -210,7 +210,7 @@ describe('GitHub Actions workflow security', () => {
       )
       const npmRestore = steps[npmRestoreIndex]
 
-      expect(job?.['runs-on']).toBe('ubuntu-24.04')
+      expect(job?.['runs-on']).toBe('avrea-ubuntu-latest-8-vcpu')
       expect(stepNames).toEqual(
         expect.arrayContaining([
           'Install production archive with rootless Quadlet',

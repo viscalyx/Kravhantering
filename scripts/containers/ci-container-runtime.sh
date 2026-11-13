@@ -206,7 +206,8 @@ bootstrap_toolchain() {
   # actions/setup-node in every later workflow step.
 
   select_toolchain
-  if [[ "$TOOLCHAIN_PROFILE" == static ]]; then
+  if [[ "$TOOLCHAIN_PROFILE" == static && -x "$CRUN_BIN" && \
+    -x "$QUADLET_GENERATOR" ]]; then
     # Newer hosted images provide a current static Podman, crun, and Quadlet,
     # but their bundled conmon omits journald support. Keep the current runtime
     # and replace only conmon with Ubuntu's journald-capable package. This also
@@ -216,6 +217,7 @@ bootstrap_toolchain() {
     "$SUDO_BIN" "$APT_GET_BIN" update
     "$SUDO_BIN" "$APT_GET_BIN" install -y --no-install-recommends \
       --reinstall "${packages[@]}"
+    "$SUDO_BIN" mkdir -p -- "$(dirname "$STATIC_BUNDLED_CONMON_BIN")"
     "$SUDO_BIN" rm -f -- "$STATIC_BUNDLED_CONMON_BIN"
     "$SUDO_BIN" ln -s -- "$PACKAGE_CONMON_BIN" "$STATIC_BUNDLED_CONMON_BIN"
     hash -r
@@ -223,8 +225,9 @@ bootstrap_toolchain() {
     return 0
   fi
 
-  # Older hosted images use Ubuntu's package-owned runtime. Reset its disposable
-  # rootless state and reinstall the complete package toolchain coherently.
+  # A local Podman wrapper alone is not a complete static toolchain. Use the
+  # package profile on those images too, resetting disposable rootless state
+  # before reinstalling all runtime components coherently.
   reset_existing_rootless_runtime
   remove_runner_static_configuration
   "$SUDO_BIN" rm -rf -- \
@@ -284,7 +287,7 @@ write_runner_metadata() {
 collect_github_runner_metadata() {
   local required="${1:-false}"
   local api_error_file api_help gh_version job_id jobs_file log_file message
-  local request_error target_job
+  local request_error target_job runner_label
   local -a gh_log_api_args=(api)
   local output="$EVIDENCE_DIR/github-runner-metadata.txt"
   target_job="${CI_RUNTIME_TARGET_JOB:-}"
@@ -351,12 +354,20 @@ collect_github_runner_metadata() {
         "$jobs_file"
     )"
   fi
-  rm -f -- "$jobs_file"
   if [[ -z "$job_id" ]]; then
+    rm -f -- "$jobs_file"
     metadata_unavailable \
       "GitHub target job metadata unavailable for '$target_job' in run $GITHUB_RUN_ID."
     return
   fi
+  runner_label="$(
+    jq -r --argjson job_id "$job_id" '
+      [.jobs[] | select(.id == $job_id) | .labels[]?
+        | select(test("^avrea-ubuntu-(latest|[0-9]{2}\\.[0-9]{2})(-[0-9]+-vcpu(-[0-9]+gb)?)?$"))]
+      | unique | if length == 1 then .[0] else empty end
+    ' "$jobs_file"
+  )"
+  rm -f -- "$jobs_file"
   log_file="$(mktemp)"
   api_error_file="$(mktemp)"
   api_help="$(gh api --help 2>&1 || true)"
@@ -374,7 +385,9 @@ collect_github_runner_metadata() {
   fi
   rm -f -- "$api_error_file"
   head -n 120 "$log_file" |
-    sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z //' |
+    sed -E \
+      -e '1s/^\xEF\xBB\xBF//' \
+      -e 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z //' |
     awk '
       {
         sub(/^[[:space:]]+/, "")
@@ -399,6 +412,15 @@ collect_github_runner_metadata() {
   if [[ ! -s "$output" ]]; then
     metadata_unavailable 'GitHub runner metadata was absent from the target job log.'
     return
+  fi
+  if [[ -n "$runner_label" ]]; then
+    if ! grep -Eq "^Current runner version: '?[0-9]+\\.[0-9]+\\.[0-9]+'?$" "$output"; then
+      metadata_unavailable 'Avrea runner version was absent from the target job log.'
+      return
+    fi
+    printf 'Runner provider: Avrea\nRunner label: %s\n' "$runner_label" >>"$output"
+    printf '%s\n' 'Runner image metadata: see runtime runner.json; unavailable fields remain unknown.' >>"$output"
+    return 0
   fi
   if ! awk '
     $0 == "Runner Image Provisioner" { section = "provisioner"; next }

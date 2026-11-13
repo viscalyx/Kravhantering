@@ -56,6 +56,9 @@ RUN HSA_TOOLCHAIN_BASE_IMAGE="${HSA_TOOLCHAIN_BASE_IMAGE}" \
       /tmp/toolchain.lock.json \
   && rm -rf /tmp/toolchain-verifier /tmp/toolchain.lock.json
 
+RUN --mount=type=bind,source=containers/node,target=/tmp/ubi-compat \
+  sh /tmp/ubi-compat/finalize-runtime.sh
+
 LABEL se.kravhantering.hsa-provisioner.node-major="${NODE_MAJOR}" \
   se.kravhantering.hsa-provisioner.openssl-package="${OPENSSL_VERSION}" \
   se.kravhantering.hsa-provisioner.ca-certificates-package="${CA_CERTIFICATES_VERSION}"
