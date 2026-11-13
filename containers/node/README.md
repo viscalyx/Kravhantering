@@ -56,12 +56,18 @@ permanent; an empty list skips the upgrade.
 | `c-ares` | `CVE-2026-69184`, `CVE-2026-69186` | `1.34.6-5.el10_3.2` | [Red Hat CVE record](https://access.redhat.com/security/cve/CVE-2026-69184) |
 | `libxml2` | `CVE-2026-74860`, `CVE-2026-86140` | `2.12.5-15.el10_3.2` | [Red Hat CVE record](https://access.redhat.com/security/cve/CVE-2026-74860) |
 | `libblkid`, `libmount`, `libsmartcols`, `libuuid` | `CVE-2026-53615` | `2.40.2-24.el10_3.24` | [Red Hat CVE record](https://access.redhat.com/security/cve/CVE-2026-53615) |
+| `krb5-libs` | Kerberos security fixes in `RHSA-2026:99624` | `1.21.3-11.el10_3.2` | [Red Hat advisory](https://access.redhat.com/errata/RHSA-2026:99624) |
 
 This table is the record for every list entry. Add a package to the list and
-this table when a fixable container finding affects an inherited base RPM and
-the fixed version is already in UBI 10 BaseOS or AppStream. Prefer this over a
-vulnerability exception. Remove an entry when the unmodified pinned runtime
-base contains the fixed version, for example:
+this table when a fixable container finding affects an inherited base RPM.
+Confirm that UBI 10 BaseOS or AppStream supplies the fixed version before
+treating an entry as remediation. A vendor advisory can precede public UBI
+package availability; an entry prepared during that gap does not establish
+that a rebuild installs the fix. Verify the installed RPM in the rebuilt
+images and require the completed-image vulnerability gate to pass before
+release. Prefer the supported package update over a vulnerability exception.
+Remove an entry when the unmodified pinned runtime base contains the fixed
+version, for example:
 
 ```sh
 docker run --rm --platform linux/amd64 --entrypoint rpm \

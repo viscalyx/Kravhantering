@@ -13,7 +13,7 @@ microdnf remove -y nodejs-nodemon
 # Public RPM fixes can precede refreshed base images. Keep this hook when the
 # list is empty; README.md#runtime-security-packages owns the entry rules and
 # records each entry's vulnerabilities and advisory.
-security_update_packages='nodejs24 nodejs24-libs nodejs24-full-i18n nodejs24-npm c-ares libxml2 libblkid libmount libsmartcols libuuid'
+security_update_packages='nodejs24 nodejs24-libs nodejs24-full-i18n nodejs24-npm c-ares libxml2 libblkid libmount libsmartcols libuuid krb5-libs'
 if [ -n "$security_update_packages" ]; then
   # shellcheck disable=SC2086 # Split the package list into arguments.
   microdnf --disablerepo='*' --enablerepo=ubi-10-baseos-rpms \
