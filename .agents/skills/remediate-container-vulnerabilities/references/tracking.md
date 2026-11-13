@@ -22,8 +22,10 @@ English. Explain:
   fix already included in the original image. Explain coordinated package-set
   updates and any collateral tools removed, without implying a separate
   vulnerability in every package.
-- What is verified and whether the change is merged or released. Separate a
-  passing rebuilt image from an unchanged upstream image or installed release.
+- Which PRs introduced or changed this package's remediation. Link each
+  relevant PR and explain its change when more than one PR is involved.
+- What is verified. Separate a passing rebuilt image from an unchanged
+  upstream image or installed release.
   For an exception, state that the affected package remains and that the user
   approved a temporary exception.
 
@@ -34,9 +36,8 @@ Put commands, image hashes, CVE lists, and detailed evidence below the summary.
 
 Put `## Next step` immediately after `## Action taken`. In plain ASD-STE100
 Simplified Technical English, explain what to do at the next maintenance
-review and what result permits cleanup. Keep current PR progress in
-`Action taken` or the evidence sections; `Next step` must remain useful after
-that PR is merged.
+review and what result permits cleanup. Keep this section focused on future
+maintenance actions.
 
 Tell the reader to run `$remediate-container-vulnerabilities` with this issue
 and explain what to inspect in the current unmodified upstream image. For an
@@ -74,7 +75,7 @@ Keep these sections current so another invocation can continue without chat:
   list the full dependency closure, production-use evidence, collateral tools,
   retained runtime capabilities, and final inventory/workload checks.
 - **Current remediation:** chosen path, code/recipe/lock locations, temporary
-  package changes, output identities, PR and exact validated commit, all-image
+  package changes, output identities, exact validated commits, all-image
   verification, and any user-approved exception's scope and lifecycle dates.
 - **Next checks:** exact upstream package/image/source URLs, expected versions
   or fixes, what has to change, how to probe it, and what would make each failed
