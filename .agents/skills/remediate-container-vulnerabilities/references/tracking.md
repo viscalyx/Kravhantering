@@ -9,6 +9,31 @@ when creating or adopting a package issue; create a missing label with its
 documented purpose before using it. Use native sub-issue links only for
 human-managed issues when a parent is in scope.
 
+## Opening summary
+
+Start each package issue with `## Action taken`, before technical evidence.
+Write two to four short paragraphs in plain ASD-STE100 Simplified Technical
+English. Explain:
+
+- What the build actually does: install a fixed package, build a source patch,
+  remove unused software, or apply a user-approved exception. If nothing has
+  been applied, state that and identify the proposed action separately.
+- Why the action is needed. Distinguish a fix published as a package from a
+  fix already included in the original image. Explain coordinated package-set
+  updates and any collateral tools removed, without implying a separate
+  vulnerability in every package.
+- What is verified and whether the change is merged or released. Separate a
+  passing rebuilt image from an unchanged upstream image or installed release.
+  For an exception, state that the affected package remains and that the user
+  approved a temporary exception.
+- What must change upstream before the extra build step or exception can be
+  removed. For completed cleanup, state what was removed and verified instead.
+
+Use package names where needed, and explain their purpose in ordinary words.
+Put commands, image hashes, CVE lists, and detailed evidence below the summary.
+Update the summary whenever the action or its verification state changes,
+including when adopting an existing issue or completing its cleanup.
+
 ## Required issue content
 
 Keep these sections current so another invocation can continue without chat:

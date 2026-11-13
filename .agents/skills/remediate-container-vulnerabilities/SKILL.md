@@ -28,8 +28,10 @@ provide evidence; this skill creates and maintains the remediation issues.
    missing package issue with `ready-for-human` and
    `remediation:container-vulnerability`. Apply both labels to reused package
    issues too and keep them when recording progress. Preserve unrelated
-   issue content and automation-owned issue bodies. Automation-labelled issues
-   are outside this hierarchy and its parent references.
+   issue content and automation-owned issue bodies. Start each created or
+   adopted package issue with the tracking contract's plain-language action
+   summary. Automation-labelled issues are outside this hierarchy and its
+   parent references.
 
 ## Recheck an existing remediation
 
