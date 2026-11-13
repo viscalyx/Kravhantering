@@ -10,6 +10,12 @@ documented purpose before using it. Keep package remediation issues separate
 from coordination parents; do not attach them as sub-issues. Exclude
 automation-labelled issues from coordination links and reference lists.
 
+Implementation and coordination issues may finish when their changes land.
+Keep their package remediation in its owning tracking issue, including the
+upstream checks and future cleanup. When work is split this way, link the
+tracking issue and keep the remediation labels on it rather than on the
+implementation issue. Preserve the package evidence when moving that scope.
+
 ## Opening summary
 
 Start each package issue with `## Action taken`, before technical evidence.

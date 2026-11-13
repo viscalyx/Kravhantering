@@ -24,8 +24,9 @@ provide evidence; this skill creates and maintains the remediation issues.
    remediation issues. Process each affected package separately, including all
    its affected images and CVEs in one case.
 3. Read [the tracking contract](references/tracking.md). Reuse the supplied
-   issue or search for its existing human-managed package issue. Create a
-   missing package issue with `ready-for-human` and
+   package issue, or follow an implementation issue's link to its owning
+   package issue. Otherwise search for the existing human-managed package
+   issue. Create a missing package issue with `ready-for-human` and
    `remediation:container-vulnerability`. Apply both labels to reused package
    issues too and keep them when recording progress. Preserve unrelated
    issue content and automation-owned issue bodies. Start each created or
