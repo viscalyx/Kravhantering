@@ -308,7 +308,11 @@ describe('least-privilege SQL Server runtime role', () => {
            AND objects.[type] IN ('U', 'V')`,
       )) as Array<{ objectName: string }>
       expect(
-        RUNTIME_PERMISSION_MANIFEST.map(entry => entry.object).sort(),
+        [
+          ...RUNTIME_PERMISSION_MANIFEST.map(entry => entry.object),
+          // Initialization history belongs to database jobs, not the runtime.
+          'dbo.optional_catalog_initializations',
+        ].sort(),
       ).toEqual(currentObjects.map(row => row.objectName).sort())
 
       await migrationDb.query(
@@ -330,6 +334,26 @@ describe('least-privilege SQL Server runtime role', () => {
         REVOKE IMPERSONATE ON USER::[${MIGRATION_LOGIN}]
           FROM [${SQL_SERVER_RUNTIME_ROLE}]
       `)
+    }
+  })
+
+  it('keeps optional initialization history accessible only to database jobs', async () => {
+    expect(
+      await migrationDb.query(
+        'SELECT id FROM optional_catalog_initializations',
+      ),
+    ).toEqual([{ id: 1 }])
+
+    for (const statement of [
+      'SELECT * FROM optional_catalog_initializations',
+      `INSERT INTO optional_catalog_initializations (id, created_at, completed_at)
+       SELECT 1, SYSUTCDATETIME(), NULL WHERE 1 = 0`,
+      'UPDATE optional_catalog_initializations SET completed_at = NULL WHERE 1 = 0',
+      'DELETE FROM optional_catalog_initializations WHERE 1 = 0',
+    ]) {
+      await expect(runtimeDb.query(statement)).rejects.toThrow(
+        /permission|denied/u,
+      )
     }
   })
 
