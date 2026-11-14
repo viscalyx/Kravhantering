@@ -379,7 +379,7 @@ jobs:
     if: ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'runtime') }}
   browser-functional:
     name: Browser Functional Integration (execution)
-    runs-on: ubuntu-latest
+    runs-on: avrea-ubuntu-latest-8-vcpu
     timeout-minutes: 150
     steps:
       - name: Checkout code

@@ -24,7 +24,7 @@ jobs:
     name: Schemathesis REST API (execution)
     if: >-
       ${{ contains(fromJSON(needs.select.outputs.owners || '[]'), 'api') && (github.event_name != 'schedule' || github.repository == 'viscalyx/Kravhantering') }}
-    runs-on: ubuntu-latest
+    runs-on: avrea-ubuntu-latest-8-vcpu
     timeout-minutes: 35
 
     env:
