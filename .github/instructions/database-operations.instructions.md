@@ -5,10 +5,18 @@ applyTo: "{scripts/db-sqlserver-admin.mjs,scripts/db-admin.mjs,lib/typeorm/sqlse
 ## Database Operations
 
 - Follow `database-schema.instructions.md` for seed ownership and upgrades.
+- Report committed migrations separately from later permission failures.
 - Provide versioned parseable results and a concise human summary for
-  required reconciliation and optional initialization.
+  migrations, required reconciliation and optional initialization.
 - Separate JSON output from human diagnostics. Report committed outcomes,
   including inserted, updated/repaired, unchanged and skipped entries.
-- Return nonzero status for unexpected failures and required conflicts.
+- For optional omissions, report logical identity, reason, dependency cause,
+  required action and the absence of automatic retry.
+- Retain success status for expected optional omissions; return nonzero
+  status for unexpected failures and required conflicts.
 - Preserve run/release correlation and retained deployment evidence.
 - Keep customer pipeline publication and notification policy platform-neutral.
+- Preserve engine-required autocommit boundaries; keep `SINGLE_USER` and
+  `DROP DATABASE` together in their existing client batch.
+- Preserve the documented tested recovery set and restore procedure after
+  migrations start.

@@ -40,7 +40,7 @@ manual runs pass the admin command as arguments:
   manifest, and fails if grants or managed-user membership do not verify.
 - `migrate --json` applies TypeORM migrations and prints the preflight,
   migration execution, final migration status, and runtime-permission evidence
-  as JSON.
+  as versioned JSON on stdout, with separate diagnostics and summary on stderr.
 - `permission-status` prints secret-free JSON evidence without changing state.
 - `permission-reconcile` reapplies the manifest and managed memberships, then
   prints the verified JSON status.
@@ -85,6 +85,58 @@ the Next.js application dependency tree.
 Demo/test data must not be baked into this production `db-job` image. See
 [../app/README.md](../app/README.md) for the separate opt-in
 `kravhantering-demo-seed` image contract.
+
+## Migration Results
+
+For operators and pipeline authors, `migrate --json` emits one JSON document
+on success or failure. Version 1 adds `operation: "migrate"`, `runId`, `release`,
+timestamps, `status` and `phase` to the migration evidence. Existing
+`preflight`, `postMigration`, `migration.applied`, `migrationsApplied` and
+`runtimePermissions` remain available when their phase completes. Supply a
+unique non-secret `DB_MIGRATION_RUN_ID` per attempt, or retain the generated
+UUID. Set `RELEASE_VERSION` (or `BUILD_VERSION`) for release correlation.
+
+`migration.transaction` is `not_started`, `not_needed` (no pending migrations),
+`committed`, `rolled_back` or `unknown`. TypeORM owns the transaction covering
+all pending migrations and their history. Commit/rollback acknowledgements
+determine the outcome; a lost acknowledgement remains unknown. A rollback or
+unknown outcome has no confirmed applied list, entries or counts. Inspect the
+database before deciding what to do with an unknown outcome.
+
+`migration.entries` records default changes with migration name, stable
+`logicalId`, table, resolved ID and `outcome`: `inserted`, `updated`,
+`unchanged` or `skipped`. Counts describe confirmed committed default entries;
+they do not count every DDL statement or writes in older migrations without
+entry reporting. Changed-value guards preserve customized or missing optional
+entries as unchanged with a reason.
+
+Optional omissions have `reason`, `dependencyCause` (null for a direct
+conflict), `actionRequired: false`, `requiredAction` and
+`automaticRetry: false`. `completed_with_omissions` retains exit status zero.
+The summary identifies omitted entries and dependencies, confirms existing
+data was preserved and explains that there is no automatic retry. TypeORM
+history prevents retries even when the conflict disappears. To add an omitted
+entry, use a deliberate later migration or a supported administrator action;
+do not delete history or clear initialization completion to retry it.
+
+Unexpected errors and required conflicts return nonzero and `status: failed`.
+`phase` identifies preparation, preflight, migrations, post-check, permissions
+or cleanup (`prepare`, `preflight`, `migrations`, `post_check`, `permissions`,
+`cleanup`); successful completion is `complete`.
+`permissions.status` is `not_started`, `completed` or `failed`. A permission
+failure after migration commit retains the applied list and committed entries.
+Its original `error` is preserved; any later cleanup failure is separate in
+`cleanupError`. This is not a whole-deployment rollback. The tested recovery
+set and restore procedure still apply once migrations start.
+
+Save JSON and stderr under distinct attempt names, including failures, with
+the release, image and restore-point evidence. Retain earlier omission reports
+when a later no-op succeeds. Publish the concise summary with a link to the
+retained details through the company pipeline. The company chooses retention
+duration, publication, notifications and any stricter review policy.
+
+Both database images include the result module and versioned default-evolution
+helper.
 
 ## Required Seed Results
 

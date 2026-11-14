@@ -90,6 +90,11 @@ describe('least-privilege SQL Server runtime role', () => {
   })
 
   beforeAll(async () => {
+    // This suite owns its baseline even when seed suites ran earlier.
+    await resetSqlServerDatabase(adminConnectionString)
+    await runSqlServerMigrations(adminConnectionString, {
+      expectedRuntimeUsers: [],
+    })
     await masterDb.initialize()
     await adminDb.initialize()
     await masterDb.query(`

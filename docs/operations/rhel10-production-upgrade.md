@@ -32,6 +32,14 @@ for fresh installations; rerunning it on a completed installation is a no-op.
 Keep initialization history with the database and its recovery set. Do not
 clear it to force catalog refill. Later default changes use release migrations.
 
+Retain each migration attempt in its own evidence directory, including failed
+attempts. Read the versioned [migration result contract](../../containers/db-job/README.md#migration-results)
+and publish its stderr summary with a link to the retained JSON detail through
+the company pipeline. Expected optional omissions keep success status but do
+not retry automatically. A later no-op must not replace earlier evidence.
+Permission failure can occur after migrations commit; use the reported phases
+and the tested recovery boundary below, not an assumed deployment rollback.
+
 ## Planned-Downtime Upgrade
 
 Before the downtime window, confirm the target images' CPU requirements in
@@ -367,7 +375,8 @@ place.
    . /etc/kravhantering/release.env
    set +a
    VERSION="$(basename "$(readlink -f /opt/kravhantering/current)")"
-   EVIDENCE_DIR="/var/tmp/kravhantering-upgrade-${VERSION}-evidence"
+   DEPLOYMENT_RUN_ID="$(cat /proc/sys/kernel/random/uuid)"
+   EVIDENCE_DIR="/var/tmp/kravhantering-upgrade-${VERSION}-${DEPLOYMENT_RUN_ID}-evidence"
    mkdir -p "$EVIDENCE_DIR"
 
    podman run --rm --env-file /etc/kravhantering/db-job.env \
@@ -376,8 +385,11 @@ place.
      "$DB_JOB_IMAGE_REF" migration-status \
      > "$EVIDENCE_DIR/migration-status-before-${VERSION}.json"
    podman run --rm --env-file /etc/kravhantering/db-job.env \
+     --env "RELEASE_VERSION=$VERSION" \
+     --env "DB_MIGRATION_RUN_ID=$DEPLOYMENT_RUN_ID" \
      "$DB_JOB_IMAGE_REF" migrate --json \
-     > "$EVIDENCE_DIR/migration-run-${VERSION}.json"
+     > "$EVIDENCE_DIR/migration-run-${VERSION}.json" \
+     2> "$EVIDENCE_DIR/migration-run-${VERSION}.log"
    podman run --rm --env-file /etc/kravhantering/db-job.env \
      "$DB_JOB_IMAGE_REF" migration-status \
      > "$EVIDENCE_DIR/migration-status-after-${VERSION}.json"
@@ -547,7 +559,7 @@ place.
     rotation only after the readiness probes and read-only workflow succeed.
     Add the final bundle checksum, image refs, restore-point reference and
     `migration-status-before-<version>.json`,
-    `migration-run-<version>.json`,
+    `migration-run-<version>.json` and its `.log` summary,
     `migration-status-after-<version>.json`,
     `runtime-permissions-<version>.json` and readiness results to the
     [Operational Evidence](./rhel10-production-deploy.md#operational-evidence)
