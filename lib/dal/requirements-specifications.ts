@@ -2841,6 +2841,12 @@ export async function graduateSpecificationLocalRequirementToLibrary(
     specificationLocalRequirementId: number
     targetRequirementAreaId: number
   },
+  options: {
+    audit?: (
+      executor: SqlExecutor,
+      result: GraduatedRequirementResult,
+    ) => Promise<void>
+  } = {},
 ): Promise<GraduatedRequirementResult> {
   return db.transaction(async (manager: SqlExecutor) => {
     await assertSpecificationContentEditable(manager, data.specificationId)
@@ -2993,7 +2999,7 @@ export async function graduateSpecificationLocalRequirementToLibrary(
       requirementPackageIds: [],
     })
 
-    return {
+    const result = {
       requirement: {
         id: requirementId,
         requirementAreaId: Number(requirementRow.requirementAreaId),
@@ -3012,6 +3018,8 @@ export async function graduateSpecificationLocalRequirementToLibrary(
         versionNumber: Number(versionRow.versionNumber),
       },
     }
+    await options.audit?.(manager, result)
+    return result
   })
 }
 
@@ -3111,6 +3119,9 @@ export async function linkRequirementsToSpecificationAtomically(
     needsReferenceText?: string | null
   },
   actorHsaId: string | null = null,
+  options: {
+    audit?: (executor: SqlExecutor, addedCount: number) => Promise<void>
+  } = {},
 ): Promise<number> {
   if (requirementIds.length === 0) {
     return 0
@@ -3174,6 +3185,7 @@ export async function linkRequirementsToSpecificationAtomically(
         )
       }
 
+      if (addedCount > 0) await options.audit?.(manager, addedCount)
       return addedCount
     }
 
@@ -3186,7 +3198,7 @@ export async function linkRequirementsToSpecificationAtomically(
             needsReferenceId,
           )
 
-    return linkRequirementsToSpecification(
+    const addedCount = await linkRequirementsToSpecification(
       manager,
       specificationId,
       items.map(item => ({
@@ -3195,6 +3207,8 @@ export async function linkRequirementsToSpecificationAtomically(
       })),
       { agreementId, actorHsaId },
     )
+    if (addedCount > 0) await options.audit?.(manager, addedCount)
+    return addedCount
   })
 }
 

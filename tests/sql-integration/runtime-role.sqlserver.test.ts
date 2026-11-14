@@ -724,7 +724,9 @@ describe('least-privilege SQL Server runtime role', () => {
       await migrationProbeAdminDb.destroy()
     }
 
-    const migrationResult = await runSqlServerMigrations(migrationProbeUrl)
+    const migrationResult = await runSqlServerMigrations(migrationProbeUrl, {
+      expectedRuntimeUsers: [],
+    })
     expect(migrationResult.migrationsApplied).toBeGreaterThan(50)
     expect(migrationResult.postMigration.observedHead?.name).toBe(
       migrationResult.postMigration.expectedHead?.name,

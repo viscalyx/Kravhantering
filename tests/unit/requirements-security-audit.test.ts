@@ -9,7 +9,7 @@ import {
   recordAuthorizationDeniedAuditFailure,
   recordSensitiveMutationActionAuditEvent,
   recordSensitiveMutationSecurityEvent,
-  recordSensitiveMutationSucceeded,
+  withSensitiveMutationAudit,
 } from '@/lib/requirements/security-audit'
 
 const mocks = vi.hoisted(() => ({
@@ -364,13 +364,14 @@ describe('requirements security audit', () => {
     recordSensitiveMutationSecurityEvent(context(), detail)
   })
 
-  it('uses the request data source for successful mutation evidence', async () => {
+  it('writes successful mutation evidence with the supplied executor', async () => {
     const db = { query: vi.fn() }
-    mocks.getRequestSqlServerDataSource.mockResolvedValueOnce(db)
-    await recordSensitiveMutationSucceeded(context(), {
-      action: 'requirement.created',
-      requirementId: 1,
-    })
+    await withSensitiveMutationAudit(context(), audit =>
+      audit(db, {
+        action: 'requirement.created',
+        requirementId: 1,
+      }),
+    )
     expect(mocks.recordAllowedActionAuditEvent).toHaveBeenCalledWith(
       db,
       expect.anything(),

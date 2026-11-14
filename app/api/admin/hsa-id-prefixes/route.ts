@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { withPrivilegedMutationAudit } from '@/lib/admin/privileged-audit'
 import { isHsaIdPrefix } from '@/lib/auth/hsa-id'
 import {
   formatUiSettingsLoadError,
@@ -86,18 +86,16 @@ export const PUT = secureMutationRoute({
   handler: async ({ body, context }) => {
     try {
       const db = await getRequestSqlServerDataSource()
-      const prefixes = await updateHsaIdPrefixes(db, body.prefixes, {
-        audit: executor =>
-          recordAdminPrivilegedActionSucceeded(
-            context,
-            {
+      const prefixes = await withPrivilegedMutationAudit(context, audit =>
+        updateHsaIdPrefixes(db, body.prefixes, {
+          audit: executor =>
+            audit(executor, {
               itemCount: body.prefixes.length,
               operation: 'save',
               resourceType: 'hsa_id_prefix',
-            },
-            executor,
-          ),
-      })
+            }),
+        }),
+      )
 
       return NextResponse.json({ prefixes })
     } catch (error) {

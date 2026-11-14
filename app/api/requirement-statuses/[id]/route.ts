@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { runPrivilegedMutation } from '@/lib/admin/privileged-audit'
 import { updateStatus } from '@/lib/dal/requirement-statuses'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
@@ -40,13 +40,15 @@ export const PUT = secureMutationRoute({
   policy: adminMutationPolicy(),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const updated = await updateStatus(db, params.id, body)
-    await recordAdminPrivilegedActionSucceeded(context, {
-      changedFields: Object.keys(body),
-      operation: 'update',
-      resourceId: params.id,
-      resourceType: 'requirement_status',
+    return await runPrivilegedMutation(db, context, async (manager, audit) => {
+      const updated = await updateStatus(manager, params.id, body)
+      await audit(manager, {
+        changedFields: Object.keys(body),
+        operation: 'update',
+        resourceId: params.id,
+        resourceType: 'requirement_status',
+      })
+      return NextResponse.json(updated)
     })
-    return NextResponse.json(updated)
   },
 })

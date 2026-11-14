@@ -391,11 +391,14 @@ describe('AI administration model verification attempts', () => {
       modelToken: null,
       name: 'Edited name',
     }
-    expect(audit).toHaveBeenCalledWith({
-      operation: 'verify',
-      resourceId: current.id,
-      resourceType: 'ai_connection',
-    })
+    expect(audit).toHaveBeenCalledWith(
+      {
+        operation: 'verify',
+        resourceId: current.id,
+        resourceType: 'ai_connection',
+      },
+      expect.objectContaining({ query: expect.any(Function) }),
+    )
     await expect(
       service.saveModelRevision({
         connectionId: current.id,

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { withPrivilegedMutationAudit } from '@/lib/admin/privileged-audit'
 import {
   isValidAiSafetyRuleCacheTtlSeconds,
   isValidMcpImportMaxActiveSessionsPerDestination,
@@ -133,11 +133,10 @@ export const PUT = secureMutationRoute({
   handler: async ({ body, context }) => {
     try {
       const db = await getRequestSqlServerDataSource()
-      const settings = await updateAiGenerationSettings(db, body, {
-        audit: executor =>
-          recordAdminPrivilegedActionSucceeded(
-            context,
-            {
+      const settings = await withPrivilegedMutationAudit(context, audit =>
+        updateAiGenerationSettings(db, body, {
+          audit: executor =>
+            audit(executor, {
               changedFields: [
                 'requirementGenerationEnabled',
                 'mcpMaxRequestBytes',
@@ -152,10 +151,9 @@ export const PUT = secureMutationRoute({
               operation: 'save',
               resourceId: 'global',
               resourceType: 'ai_settings',
-            },
-            executor,
-          ),
-      })
+            }),
+        }),
+      )
       clearAiSafetyRuleSetCache()
 
       return NextResponse.json(settings)
@@ -183,19 +181,17 @@ export const PATCH = secureMutationRoute({
   handler: async ({ body, context }) => {
     try {
       const db = await getRequestSqlServerDataSource()
-      const settings = await patchAiGenerationSettings(db, body, {
-        audit: executor =>
-          recordAdminPrivilegedActionSucceeded(
-            context,
-            {
+      const settings = await withPrivilegedMutationAudit(context, audit =>
+        patchAiGenerationSettings(db, body, {
+          audit: executor =>
+            audit(executor, {
               changedFields: Object.keys(body),
               operation: 'update',
               resourceId: 'global',
               resourceType: 'ai_settings',
-            },
-            executor,
-          ),
-      })
+            }),
+        }),
+      )
       clearAiSafetyRuleSetCache()
 
       return NextResponse.json(settings)

@@ -246,9 +246,14 @@ describe('requirement-area DAL coverage', () => {
     ])
   })
 
-  it('updates every ordinary field directly and delegates no-owner/no-prefix checked updates', async () => {
+  it('updates ordinary fields atomically and delegates no-owner/no-prefix checked updates', async () => {
     const query = vi.fn().mockResolvedValue([areaRow])
-    const db = { query } as unknown as Parameters<typeof updateArea>[0]
+    const db = {
+      query,
+      transaction: async (
+        run: (executor: { query: typeof query }) => Promise<unknown>,
+      ) => run({ query }),
+    } as unknown as Parameters<typeof updateArea>[0]
     await expect(
       updateArea(db, 4, {
         description: 'Updated',

@@ -314,7 +314,7 @@ describe('Shared completed model verifications', () => {
     expect(pending).toContainEqual(original)
   })
 
-  it('hands a bounded candidate between administrators and rolls back all revision writes on audit failure', async () => {
+  it('hands a bounded candidate between administrators and rolls back attempts and revisions on audit failure', async () => {
     const db = database()
     const connectionId = await createConnection()
     const attempts = createSqlServerAiModelVerificationAttemptStore(
@@ -343,7 +343,7 @@ describe('Shared completed model verifications', () => {
       creatorContext,
       { external },
     )
-    const result = await creator.verifyModelCandidate({
+    const candidateInput = {
       connectionId,
       signal: new AbortController().signal,
       candidate: {
@@ -353,7 +353,33 @@ describe('Shared completed model verifications', () => {
         externalModelVersion: null,
         reasoning: VERIFICATION.reasoning,
       },
-    })
+    }
+    await db.query(`CREATE TRIGGER [fail_verification_audit] ON [action_audit_events]
+      AFTER INSERT AS THROW 51000, 'verification_audit_failed', 1;`)
+    try {
+      await expect(
+        creator.verifyModelCandidate(candidateInput),
+      ).rejects.toMatchObject({
+        code: 'attempt_unavailable',
+      })
+      expect(await attempts.list(connectionId)).toEqual([])
+    } finally {
+      await db.query('DROP TRIGGER [fail_verification_audit]')
+    }
+    const result = await creator.verifyModelCandidate(candidateInput)
+    if (!result.attemptId) throw new Error('Pending candidate missing')
+    await db.query(`CREATE TRIGGER [fail_verification_audit] ON [action_audit_events]
+      AFTER INSERT AS THROW 51000, 'verification_audit_failed', 1;`)
+    try {
+      await expect(
+        creator.discardModelVerification(connectionId, result.attemptId),
+      ).rejects.toMatchObject({
+        code: 'attempt_unavailable',
+      })
+      expect(await attempts.list(connectionId)).toHaveLength(1)
+    } finally {
+      await db.query('DROP TRIGGER [fail_verification_audit]')
+    }
     const secondContext = await makeRequestContext()
     secondContext.actor.hsaId = 'SE5560000001-second-admin'
     secondContext.actor.id = 'second-admin'

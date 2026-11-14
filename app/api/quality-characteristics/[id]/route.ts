@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { runPrivilegedMutation } from '@/lib/admin/privileged-audit'
 import {
   deleteQualityCharacteristic,
   hasChildQualityCharacteristics,
@@ -47,17 +47,23 @@ export const PUT = secureMutationRoute({
   policy: adminMutationPolicy(),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const category = await updateQualityCharacteristic(db, params.id, body)
-    if (!category) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    }
-    await recordAdminPrivilegedActionSucceeded(context, {
-      changedFields: Object.keys(body),
-      operation: 'update',
-      resourceId: params.id,
-      resourceType: 'quality_characteristic',
+    return await runPrivilegedMutation(db, context, async (manager, audit) => {
+      const category = await updateQualityCharacteristic(
+        manager,
+        params.id,
+        body,
+      )
+      if (!category) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+      await audit(manager, {
+        changedFields: Object.keys(body),
+        operation: 'update',
+        resourceId: params.id,
+        resourceType: 'quality_characteristic',
+      })
+      return NextResponse.json(category)
     })
-    return NextResponse.json(category)
   },
 })
 
@@ -76,15 +82,22 @@ export const DELETE = secureMutationRoute({
     }
 
     try {
-      const deleted = await deleteQualityCharacteristic(db, id)
-      if (!deleted) {
-        return NextResponse.json({ error: 'Not found' }, { status: 404 })
-      }
-      await recordAdminPrivilegedActionSucceeded(context, {
-        operation: 'delete',
-        resourceId: id,
-        resourceType: 'quality_characteristic',
-      })
+      return await runPrivilegedMutation(
+        db,
+        context,
+        async (manager, audit) => {
+          const deleted = await deleteQualityCharacteristic(manager, id)
+          if (!deleted) {
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
+          }
+          await audit(manager, {
+            operation: 'delete',
+            resourceId: id,
+            resourceType: 'quality_characteristic',
+          })
+          return NextResponse.json({ ok: true })
+        },
+      )
     } catch (error) {
       if (isForeignKeyOrConstraintError(error)) {
         return NextResponse.json(
@@ -98,6 +111,5 @@ export const DELETE = secureMutationRoute({
         { status: 500 },
       )
     }
-    return NextResponse.json({ ok: true })
   },
 })

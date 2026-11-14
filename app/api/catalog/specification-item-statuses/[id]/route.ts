@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { runPrivilegedMutation } from '@/lib/admin/privileged-audit'
 import {
   getLinkedSpecificationItems,
   getSpecificationItemStatusById,
@@ -82,16 +82,22 @@ export const PUT = secureMutationRoute({
   policy: adminMutationPolicy(),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const status = await updateSpecificationItemStatus(db, params.id, body)
-    if (!status) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    }
-    await recordAdminPrivilegedActionSucceeded(context, {
-      changedFields: Object.keys(body),
-      operation: 'update',
-      resourceId: params.id,
-      resourceType: 'specification_item_status',
+    return await runPrivilegedMutation(db, context, async (manager, audit) => {
+      const status = await updateSpecificationItemStatus(
+        manager,
+        params.id,
+        body,
+      )
+      if (!status) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+      await audit(manager, {
+        changedFields: Object.keys(body),
+        operation: 'update',
+        resourceId: params.id,
+        resourceType: 'specification_item_status',
+      })
+      return NextResponse.json(status)
     })
-    return NextResponse.json(status)
   },
 })

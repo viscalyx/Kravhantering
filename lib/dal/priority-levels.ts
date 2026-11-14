@@ -1,4 +1,4 @@
-import type { SqlServerDatabase } from '@/lib/db'
+import type { SqlServerExecutor } from '@/lib/db'
 import { conflictError, notFoundError } from '@/lib/requirements/errors'
 import {
   type PriorityLevelEntity,
@@ -57,7 +57,7 @@ function isSystemPriorityLevelId(id: number): id is SystemPriorityLevelId {
 }
 
 export async function listPriorityLevels(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
 ): Promise<PriorityLevelRow[]> {
   const rows = await db
     .getRepository(priorityLevelEntity)
@@ -66,7 +66,7 @@ export async function listPriorityLevels(
 }
 
 export async function getPriorityLevelById(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   id: number,
 ): Promise<PriorityLevelRow | null> {
   const row = await db
@@ -76,7 +76,7 @@ export async function getPriorityLevelById(
 }
 
 export async function countLinkedRequirements(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
 ): Promise<Record<number, number>> {
   const rows = await db.query(`
     SELECT
@@ -110,7 +110,7 @@ export async function countLinkedRequirements(
 }
 
 export async function getLinkedRequirements(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   priorityLevelId: number,
 ): Promise<LinkedRequirementRow[]> {
   return db.query(
@@ -181,7 +181,7 @@ export async function getLinkedRequirements(
 }
 
 export async function updatePriorityLevel(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   id: number,
   data: {
     assessmentCriteriaEn?: string

@@ -1,4 +1,4 @@
-import type { SqlServerDatabase } from '@/lib/db'
+import type { SqlServerExecutor } from '@/lib/db'
 import { conflictError } from '@/lib/requirements/errors'
 import {
   DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
@@ -43,7 +43,7 @@ function map(row: SpecificationItemStatusEntity): SpecificationItemStatusRow {
 }
 
 export async function listSpecificationItemStatuses(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
 ): Promise<SpecificationItemStatusRow[]> {
   const rows = await db
     .getRepository(specificationItemStatusEntity)
@@ -52,7 +52,7 @@ export async function listSpecificationItemStatuses(
 }
 
 export async function getSpecificationItemStatusById(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   id: number,
 ): Promise<SpecificationItemStatusRow | null> {
   if (!isSystemSpecificationItemStatusId(id)) {
@@ -65,7 +65,7 @@ export async function getSpecificationItemStatusById(
 }
 
 export async function countLinkedSpecificationItems(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
 ): Promise<Record<number, number>> {
   const rows = await db.query(`
     SELECT
@@ -99,7 +99,7 @@ export async function countLinkedSpecificationItems(
 }
 
 export async function getLinkedSpecificationItems(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   statusId: number,
 ): Promise<LinkedSpecificationRow[]> {
   return db.query(
@@ -139,7 +139,7 @@ export async function getLinkedSpecificationItems(
 }
 
 export async function updateSpecificationItemStatus(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   id: number,
   data: {
     nameSv?: string

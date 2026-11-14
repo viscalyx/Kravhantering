@@ -51,6 +51,20 @@ const mocks = vi.hoisted(() => {
 })
 
 vi.mock('@/lib/admin/privileged-audit', () => ({
+  withPrivilegedMutationAudit: async (
+    context: unknown,
+    commit: (
+      audit: (
+        executor: unknown,
+        detail: Record<string, unknown>,
+      ) => Promise<void>,
+    ) => Promise<unknown>,
+  ) =>
+    commit(async (_executor, detail) => {
+      if ('actorRole' in detail)
+        await mocks.recordDelegatedPrivilegedActionSucceeded(context, detail)
+      else await mocks.recordAdminPrivilegedActionSucceeded(context, detail)
+    }),
   createAdminPrivilegedAuditContext: mocks.createAdminPrivilegedAuditContext,
   recordAdminPrivilegedActionSucceeded:
     mocks.recordAdminPrivilegedActionSucceeded,
@@ -360,19 +374,27 @@ describe('requirement-areas route', () => {
         name: 'New requirement area',
         verificationEvidence: 'verified-owner',
       }
-      mocks.createArea.mockResolvedValue({ id: 3, ...body })
+      mocks.createArea.mockImplementation(async (_db, _data, options) => {
+        const result = { id: 3, ...body }
+        await options?.audit?.(_db, result)
+        return result
+      })
 
       const res = await POST(request(body))
       expect(res.status).toBe(201)
       expect(await res.json()).toMatchObject({ id: 3 })
-      expect(mocks.createArea).toHaveBeenCalledWith(mocks.db, {
-        name: body.name,
-        ownerHsaId: body.ownerHsaId,
-        ownerPerson: expect.objectContaining({
-          hsaId: 'NO5560000001-new1',
-        }),
-        prefix: body.prefix,
-      })
+      expect(mocks.createArea).toHaveBeenCalledWith(
+        mocks.db,
+        {
+          name: body.name,
+          ownerHsaId: body.ownerHsaId,
+          ownerPerson: expect.objectContaining({
+            hsaId: 'NO5560000001-new1',
+          }),
+          prefix: body.prefix,
+        },
+        expect.objectContaining({ audit: expect.any(Function) }),
+      )
       expect(mocks.recordAdminPrivilegedActionSucceeded).toHaveBeenCalledWith(
         expect.objectContaining({ requestId: 'request-area' }),
         {
@@ -398,7 +420,11 @@ describe('requirement-areas route', () => {
         name: 'New requirement area',
         verificationEvidence: 'verified-owner',
       }
-      mocks.createArea.mockResolvedValue({ id: 4, ...body })
+      mocks.createArea.mockImplementation(async (_db, _data, options) => {
+        const result = { id: 4, ...body }
+        await options?.audit?.(_db, result)
+        return result
+      })
 
       const res = await POST(request(body))
 
@@ -412,18 +438,22 @@ describe('requirement-areas route', () => {
           purpose: 'requirement_area_owner',
         }),
       )
-      expect(mocks.createArea).toHaveBeenCalledWith(mocks.db, {
-        name: 'New requirement area',
-        ownerHsaId: 'NO5560000001-new1',
-        ownerPerson: {
-          email: 'verified.owner@example.test',
-          givenName: 'Verified',
-          hsaId: 'NO5560000001-new1',
-          middleName: null,
-          surname: 'Owner',
+      expect(mocks.createArea).toHaveBeenCalledWith(
+        mocks.db,
+        {
+          name: 'New requirement area',
+          ownerHsaId: 'NO5560000001-new1',
+          ownerPerson: {
+            email: 'verified.owner@example.test',
+            givenName: 'Verified',
+            hsaId: 'NO5560000001-new1',
+            middleName: null,
+            surname: 'Owner',
+          },
+          prefix: 'NEW',
         },
-        prefix: 'NEW',
-      })
+        expect.objectContaining({ audit: expect.any(Function) }),
+      )
       expect(mocks.recordAdminPrivilegedActionSucceeded).toHaveBeenCalledWith(
         expect.objectContaining({ requestId: 'request-area' }),
         expect.objectContaining({
@@ -464,13 +494,19 @@ describe('requirement-areas route', () => {
         middleName: null,
         surname: 'Owner',
       })
-      mocks.updateAreaWithOwnerCheck.mockResolvedValue({
-        id: 1,
-        prefix: 'INT',
-        name: 'Integration',
-        description: null,
-        ownerHsaId: 'NO5560000001-next1',
-      })
+      mocks.updateAreaWithOwnerCheck.mockImplementation(
+        async (_db, _id, _data, options) => {
+          const result = {
+            id: 1,
+            prefix: 'INT',
+            name: 'Integration',
+            description: null,
+            ownerHsaId: 'NO5560000001-next1',
+          }
+          await (result && options?.audit?.(_db, result))
+          return result
+        },
+      )
 
       const res = await PUT(
         request(
@@ -494,6 +530,7 @@ describe('requirement-areas route', () => {
             hsaId: 'NO5560000001-next1',
           }),
         }),
+        expect.objectContaining({ audit: expect.any(Function) }),
       )
       expect(mocks.recordAdminPrivilegedActionSucceeded).toHaveBeenCalledWith(
         expect.objectContaining({ requestId: 'request-area' }),
@@ -524,13 +561,19 @@ describe('requirement-areas route', () => {
         source: 'rest',
       }
       mocks.createRequestContext.mockResolvedValueOnce(delegatedContext)
-      mocks.updateAreaWithOwnerCheck.mockResolvedValue({
-        id: 1,
-        prefix: 'INT',
-        name: 'Updated integration',
-        description: null,
-        ownerHsaId: 'SE5560000001-owner1',
-      })
+      mocks.updateAreaWithOwnerCheck.mockImplementation(
+        async (_db, _id, _data, options) => {
+          const result = {
+            id: 1,
+            prefix: 'INT',
+            name: 'Updated integration',
+            description: null,
+            ownerHsaId: 'SE5560000001-owner1',
+          }
+          await (result && options?.audit?.(_db, result))
+          return result
+        },
+      )
 
       const res = await PUT(
         request(

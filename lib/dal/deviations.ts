@@ -917,6 +917,7 @@ export async function recordDecision(
     decidedBy: string
     decidedByHsaId: string
   },
+  options: { audit?: (executor: SqlExecutor) => Promise<void> } = {},
 ): Promise<void> {
   if (
     data.decision !== DEVIATION_APPROVED &&
@@ -936,17 +937,18 @@ export async function recordDecision(
   const now = new Date()
   await runGuardedDeviationMutation({
     beforeMutation: () => validateApprovalTerms(data, now),
-    afterMutation:
-      data.decision === DEVIATION_APPROVED
-        ? manager =>
-            preserveApprovalReplacement(
-              manager,
-              'library',
-              deviationId,
-              data.decidedByHsaId,
-              now,
-            )
-        : undefined,
+    afterMutation: async manager => {
+      if (data.decision === DEVIATION_APPROVED) {
+        await preserveApprovalReplacement(
+          manager,
+          'library',
+          deviationId,
+          data.decidedByHsaId,
+          now,
+        )
+      }
+      await options.audit?.(manager)
+    },
     agreementId: data.agreementId,
     conflictMessageForState: recordDecisionConflictMessage,
     db,

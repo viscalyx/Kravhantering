@@ -1,4 +1,4 @@
-import type { SqlServerDatabase } from '@/lib/db'
+import type { SqlServerExecutor } from '@/lib/db'
 import { conflictError, notFoundError } from '@/lib/requirements/errors'
 import {
   type RequirementStatusEntity,
@@ -46,7 +46,7 @@ function mapStatus(row: RequirementStatusEntity): RequirementStatusRecord {
 }
 
 export async function listStatuses(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
 ): Promise<RequirementStatusRecord[]> {
   const rows = await db
     .getRepository(requirementStatusEntity)
@@ -55,7 +55,7 @@ export async function listStatuses(
 }
 
 async function getStatusById(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   id: number,
 ): Promise<RequirementStatusRecord | null> {
   const row = await db
@@ -65,7 +65,7 @@ async function getStatusById(
 }
 
 export async function updateStatus(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   id: number,
   data: {
     nameSv?: string
@@ -105,7 +105,7 @@ export async function updateStatus(
 // matches how the calling service consumes the data.
 
 export async function listTransitions(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
 ): Promise<RequirementStatusTransitionDetail[]> {
   const [transitions, statuses] = await Promise.all([
     db.query(`
@@ -131,7 +131,7 @@ export async function listTransitions(
 }
 
 export async function getTransitionsFrom(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   statusId: number,
 ): Promise<RequirementStatusRecord[]> {
   const [transitions, statuses] = await Promise.all([
@@ -155,7 +155,7 @@ export async function getTransitionsFrom(
 }
 
 export async function createTransition(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   fromStatusId: number,
   toStatusId: number,
 ): Promise<RequirementStatusTransitionRow> {
@@ -176,7 +176,7 @@ export async function createTransition(
   return rows[0]
 }
 
-export async function deleteTransition(db: SqlServerDatabase, id: number) {
+export async function deleteTransition(db: SqlServerExecutor, id: number) {
   await db.query(`DELETE FROM requirement_status_transitions WHERE id = @0`, [
     id,
   ])

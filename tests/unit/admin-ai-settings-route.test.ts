@@ -61,6 +61,43 @@ const routeState = vi.hoisted(() => ({
 }))
 
 vi.mock('@/lib/admin/privileged-audit', () => ({
+  withPrivilegedMutationAudit: async (
+    context: unknown,
+    commit: (
+      audit: (
+        executor: unknown,
+        detail: Record<string, unknown>,
+      ) => Promise<void>,
+    ) => Promise<unknown>,
+  ) =>
+    commit(async (executor, detail) => {
+      await Reflect.apply(
+        'actorRole' in detail
+          ? routeState.recordAdminPrivilegedActionSucceeded
+          : routeState.recordAdminPrivilegedActionSucceeded,
+        undefined,
+        [context, detail, executor],
+      )
+    }),
+  runPrivilegedMutation: async (
+    db: unknown,
+    context: unknown,
+    mutation: (
+      manager: unknown,
+      audit: (
+        executor: unknown,
+        detail: Record<string, unknown>,
+      ) => Promise<void>,
+    ) => Promise<unknown>,
+  ) =>
+    mutation(db, async (_executor, detail) => {
+      await Reflect.apply(
+        routeState.recordAdminPrivilegedActionSucceeded,
+        undefined,
+        [context, detail],
+      )
+    }),
+
   createAdminPrivilegedAuditContext:
     routeState.createAdminPrivilegedAuditContext,
   recordAdminPrivilegedActionSucceeded:

@@ -4,10 +4,11 @@ import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 test.describe('Requirement creation', () => {
   for (const viewport of [{ ...DESKTOP_VIEWPORT, label: 'desktop' }]) {
-    test(`LIFE-01: form submit redirects to list with inline detail open (${viewport.label})`, async ({
+    test(`LIFE-01: form submit opens the saved requirement and records its action history (${viewport.label})`, async ({
       page,
       request,
     }) => {
+      let created: { id: number; uniqueId: string }
       await test.step('prepare form data', async () => {
         await page.setViewportSize({
           width: viewport.width,
@@ -34,7 +35,15 @@ test.describe('Requirement creation', () => {
 
       await test.step('submit and return to the selected row', async () => {
         // Submit the form
+        const responsePromise = page.waitForResponse(
+          response =>
+            new URL(response.url()).pathname === '/api/requirements' &&
+            response.request().method() === 'POST',
+        )
         await page.click('button[type="submit"]')
+        const response = await responsePromise
+        await expectApiResponseOk(response, 'Create requirement')
+        created = (await response.json()).requirement
 
         // Should redirect to the list (not /requirements/undefined)
         await expect(page).toHaveURL(/\/sv\/requirements(?:\?|$)/)
@@ -44,6 +53,21 @@ test.describe('Requirement creation', () => {
         await expect(
           page.locator('[data-expanded-detail-cell="true"]').first(),
         ).toContainText('Playwright UI test requirement')
+      })
+
+      await test.step('find the saved requirement in the action log', async () => {
+        await page.goto(
+          `/sv/admin/audit-log?action=requirement.create&target_kind=Requirement&target_id=${created.id}`,
+        )
+        const rows = page.getByRole('row').filter({
+          has: page.getByRole('cell', {
+            name: 'requirement.create',
+            exact: true,
+          }),
+        })
+        await expect(rows).toHaveCount(1)
+        await expect(rows).toContainText(created.uniqueId)
+        await expect(rows).toContainText('Tillåten')
       })
     })
   }

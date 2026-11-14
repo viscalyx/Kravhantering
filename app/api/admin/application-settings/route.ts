@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { withPrivilegedMutationAudit } from '@/lib/admin/privileged-audit'
 import {
   APPLICATION_SETTING_CONSTRAINTS,
   type ApplicationSettingField,
@@ -186,11 +186,10 @@ export const PATCH = secureMutationRoute({
         number | boolean,
       ]
       const db = await getRequestSqlServerDataSource()
-      const update = await updateApplicationSetting(db, field, value, {
-        audit: (executor, change) =>
-          recordAdminPrivilegedActionSucceeded(
-            context,
-            {
+      const update = await withPrivilegedMutationAudit(context, audit =>
+        updateApplicationSetting(db, field, value, {
+          audit: (executor, change) =>
+            audit(executor, {
               changedFields: [change.field],
               details: {
                 newValue: change.newValue,
@@ -199,10 +198,9 @@ export const PATCH = secureMutationRoute({
               operation: 'update',
               resourceId: 'global',
               resourceType: 'application_settings',
-            },
-            executor,
-          ),
-      })
+            }),
+        }),
+      )
       return NextResponse.json(update)
     } catch (error) {
       if (isRequirementsServiceError(error)) {

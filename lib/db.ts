@@ -7,6 +7,7 @@ import { getSqlServerDatabaseUrl } from '@/lib/typeorm/sqlserver-config'
 
 export type SqlServerDatabase = DataSource
 export type SqlServerEntityManager = EntityManager
+export type SqlServerExecutor = Pick<DataSource, 'getRepository' | 'query'>
 
 declare global {
   var __kravhanteringSqlServerDataSourceCache:

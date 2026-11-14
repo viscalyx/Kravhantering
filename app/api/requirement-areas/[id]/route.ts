@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  recordAdminPrivilegedActionSucceeded,
-  recordDelegatedPrivilegedActionSucceeded,
-} from '@/lib/admin/privileged-audit'
+import { withPrivilegedMutationAudit } from '@/lib/admin/privileged-audit'
 import { isHsaId } from '@/lib/auth/hsa-id'
 import {
   canAuthorArea,
@@ -147,26 +144,33 @@ export const PUT = secureMutationRoute({
             },
           )
     const { verificationEvidence: _verificationEvidence, ...areaUpdate } = body
-    const area = await updateAreaWithOwnerCheck(db, params.id, {
-      ...areaUpdate,
-      ownerPerson,
-    })
-    if (!area) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    }
     const auditDetail = {
       changedFields: Object.keys(areaUpdate),
       operation: 'update',
       resourceId: params.id,
       resourceType: 'requirement_area',
     } as const
-    if (isAdmin(context.actor.roles)) {
-      await recordAdminPrivilegedActionSucceeded(context, auditDetail)
-    } else {
-      await recordDelegatedPrivilegedActionSucceeded(context, {
-        ...auditDetail,
-        actorRole: 'delegated_area_manager',
-      })
+    const area = await withPrivilegedMutationAudit(context, audit =>
+      updateAreaWithOwnerCheck(
+        db,
+        params.id,
+        {
+          ...areaUpdate,
+          ownerPerson,
+        },
+        {
+          audit: executor =>
+            audit(
+              executor,
+              isAdmin(context.actor.roles)
+                ? auditDetail
+                : { ...auditDetail, actorRole: 'delegated_area_manager' },
+            ),
+        },
+      ),
+    )
+    if (!area) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     return NextResponse.json(area)
   },
@@ -179,7 +183,16 @@ export const DELETE = secureMutationRoute({
     const db = await getRequestSqlServerDataSource()
     let deletedCount: number
     try {
-      deletedCount = await deleteArea(db, params.id)
+      deletedCount = await withPrivilegedMutationAudit(context, audit =>
+        deleteArea(db, params.id, {
+          audit: executor =>
+            audit(executor, {
+              operation: 'delete',
+              resourceId: params.id,
+              resourceType: 'requirement_area',
+            }),
+        }),
+      )
     } catch (error) {
       if (isForeignKeyViolation(error)) {
         return NextResponse.json(
@@ -192,11 +205,7 @@ export const DELETE = secureMutationRoute({
     if (deletedCount === 0) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    await recordAdminPrivilegedActionSucceeded(context, {
-      operation: 'delete',
-      resourceId: params.id,
-      resourceType: 'requirement_area',
-    })
+
     return NextResponse.json({ ok: true })
   },
 })

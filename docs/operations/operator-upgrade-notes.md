@@ -13,7 +13,18 @@ changes.
 
 ## Unreleased
 
+### Application changes and audit history
 
+After upgrade, verify that a saved application change has its matching Action
+log entry and that Security audit log events reach the configured collector.
+Required Action log history commits with the related database change. If the
+application cannot save required history, it rolls back that change.
+
+Review incident and retry procedures before rollout. A failed or interrupted
+response does not prove rollback. Check the saved state and its Action log
+entry before repeating the operation. Security audit log success is emitted
+only after confirmed commit, but external delivery remains best effort. A
+missing external success event does not prove that the change failed.
 
 ## v0.10.0 - 2026-11-14
 

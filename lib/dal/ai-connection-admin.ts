@@ -21,6 +21,7 @@ import {
 import type { AiRunProfileKey } from '@/lib/ai/profile-resolver'
 import { parseAiReasoningConfiguration } from '@/lib/ai/reasoning'
 import { AI_ADMIN_FUNCTIONAL_PROBE_VERSION } from '@/lib/ai/verification-contract'
+import { withCommittedAudit } from '@/lib/audit/committed-mutation'
 import type { SqlServerDatabase, SqlServerEntityManager } from '@/lib/db'
 import { conflictError } from '@/lib/requirements/errors'
 
@@ -726,6 +727,17 @@ export function createSqlServerAiAdminStore(
   db: SqlServerDatabase,
   audit: AiAdminAudit,
 ): AiAdminStore {
+  function mutateWithAudit<T>(
+    mutation: (
+      manager: import('@/lib/db').SqlServerEntityManager,
+      audit: (...args: Parameters<AiAdminAudit>) => Promise<void>,
+    ) => Promise<T>,
+  ): Promise<T> {
+    return withCommittedAudit(audit, writeAudit =>
+      db.transaction('SERIALIZABLE', manager => mutation(manager, writeAudit)),
+    )
+  }
+
   return {
     async listConnections() {
       const rows = await db.query<ConnectionRow[]>(
@@ -743,7 +755,7 @@ export function createSqlServerAiAdminStore(
 
     async createConnection(input) {
       const id = randomUUID()
-      return db.transaction('SERIALIZABLE', async manager => {
+      return mutateWithAudit(async (manager, writeAudit) => {
         await manager.query(
           `INSERT INTO [ai_connections] (
            [id], [administration_name], [public_name], [description],
@@ -762,7 +774,7 @@ export function createSqlServerAiAdminStore(
           await loadConnection(manager, id),
           'AI connection was not created.',
         )
-        await audit(
+        await writeAudit(
           {
             operation: 'create',
             resourceId: id,
@@ -775,7 +787,7 @@ export function createSqlServerAiAdminStore(
     },
 
     async updateConnection(input) {
-      return db.transaction('SERIALIZABLE', async manager => {
+      return mutateWithAudit(async (manager, writeAudit) => {
         const parameters = connectionParameters(input.connection)
         const rows = await manager.query<Array<{ technicalChanged: boolean }>>(
           `DECLARE @technical_changed bit = 0;
@@ -827,7 +839,7 @@ export function createSqlServerAiAdminStore(
         if (!rows?.[0]) return null
         const updated = await loadConnection(manager, input.connectionId)
         if (!updated) return null
-        await audit(
+        await writeAudit(
           {
             changedFields: Object.keys(input.connection),
             operation: 'update',
@@ -841,7 +853,7 @@ export function createSqlServerAiAdminStore(
     },
 
     async saveAttestation(input) {
-      return db.transaction('SERIALIZABLE', async manager => {
+      return mutateWithAudit(async (manager, writeAudit) => {
         const id = randomUUID()
         let targetId: string = id
         const value = input.attestation
@@ -956,7 +968,7 @@ export function createSqlServerAiAdminStore(
         )
         if (!rows?.[0]) throw new Error('AI attestation was not saved.')
         const saved = attestation(rows[0])
-        await audit(
+        await writeAudit(
           {
             changedFields: Object.keys(input.attestation).filter(
               field => field !== 'revisionToken',
@@ -972,7 +984,7 @@ export function createSqlServerAiAdminStore(
     },
 
     async discardAttestationDraft(input) {
-      return db.transaction('SERIALIZABLE', async manager => {
+      return mutateWithAudit(async (manager, writeAudit) => {
         const admitted = await manager.query<Array<{ id: string }>>(
           `SELECT [draft].[id]
            FROM [ai_connection_attestations] AS [draft]
@@ -1003,7 +1015,7 @@ export function createSqlServerAiAdminStore(
            WHERE [ai_connection_id] = @0 AND [status] = N'draft';`,
           [input.connectionId],
         )
-        await audit(
+        await writeAudit(
           {
             operation: 'discard',
             resourceId: input.draftAttestationId,
@@ -1016,7 +1028,7 @@ export function createSqlServerAiAdminStore(
     },
 
     async saveModelRevision(input) {
-      return db.transaction('SERIALIZABLE', async manager => {
+      return mutateWithAudit(async (manager, writeAudit) => {
         if (manager.queryRunner)
           manager.queryRunner.data.aiModelVerification = true
         const verification = await input.verification(manager)
@@ -1214,7 +1226,7 @@ export function createSqlServerAiAdminStore(
           sameId(candidate.id, modelId),
         )
         if (!model) throw new Error('AI connection model was not saved.')
-        await audit(
+        await writeAudit(
           {
             changedFields: [
               'name',
@@ -1233,7 +1245,7 @@ export function createSqlServerAiAdminStore(
     },
 
     async endModelRevision(input) {
-      return db.transaction('SERIALIZABLE', async manager => {
+      return mutateWithAudit(async (manager, writeAudit) => {
         const dependencies = await manager.query<
           Array<{ profileKey: string | null; runCount: number | string }>
         >(
@@ -1292,7 +1304,7 @@ export function createSqlServerAiAdminStore(
             .find(revision => sameId(revision.id, input.modelRevisionId)) ??
           null
         if (!revision) return null
-        await audit(
+        await writeAudit(
           {
             operation: 'retire',
             resourceId: input.modelRevisionId,
@@ -1305,7 +1317,7 @@ export function createSqlServerAiAdminStore(
     },
 
     async deleteModelRevision(input) {
-      return db.transaction('SERIALIZABLE', async manager => {
+      return mutateWithAudit(async (manager, writeAudit) => {
         const rows = await manager.query<Array<{ modelId: string }>>(
           `SELECT [model].[id] AS [modelId]
            FROM [ai_connection_model_revisions] AS [revision]
@@ -1350,7 +1362,7 @@ export function createSqlServerAiAdminStore(
            );`,
           [input.modelRevisionId, rows[0].modelId],
         )
-        await audit(
+        await writeAudit(
           {
             operation: 'delete',
             resourceId: input.modelRevisionId,
@@ -1363,7 +1375,7 @@ export function createSqlServerAiAdminStore(
     },
 
     async recordHealth(input) {
-      return db.transaction('SERIALIZABLE', async manager => {
+      return mutateWithAudit(async (manager, writeAudit) => {
         const rows = await manager.query<Array<{ id: string }>>(
           `IF NOT EXISTS (
              SELECT 1
@@ -1485,7 +1497,7 @@ export function createSqlServerAiAdminStore(
           await loadConnection(manager, input.connectionId),
           'AI connection health was not recorded.',
         )
-        await audit(
+        await writeAudit(
           {
             operation: 'probe',
             resourceId: input.modelRevisionId,
@@ -1518,7 +1530,7 @@ export function createSqlServerAiAdminStore(
     },
 
     async saveRunProfile(input) {
-      return db.transaction('SERIALIZABLE', async manager => {
+      return mutateWithAudit(async (manager, writeAudit) => {
         const value = input.profile
         if (value.modelRevisionId) {
           const selectedModel = await manager.query<Array<{ id: string }>>(
@@ -1607,7 +1619,7 @@ export function createSqlServerAiAdminStore(
         }
         const profile = (await loadProfiles(manager, input.profileKey))[0]
         if (!profile) throw new Error('AI run profile was not saved.')
-        await audit(
+        await writeAudit(
           {
             changedFields: Object.keys(input.profile).filter(
               field => field !== 'revisionToken',
@@ -1622,7 +1634,7 @@ export function createSqlServerAiAdminStore(
           rows[0].previousModelRevisionId === null &&
           profile.administrativeStatus === 'active'
         ) {
-          await audit(
+          await writeAudit(
             {
               operation: 'activate',
               resourceId: profile.id,
@@ -1636,7 +1648,7 @@ export function createSqlServerAiAdminStore(
     },
 
     async setConnectionLifecycle(input) {
-      return db.transaction('SERIALIZABLE', async manager => {
+      return mutateWithAudit(async (manager, writeAudit) => {
         const rows = await manager.query<Array<{ id: string }>>(
           `UPDATE [ai_connections] WITH (UPDLOCK, HOLDLOCK)
            SET [lifecycle_status] = @2, [updated_at] = SYSUTCDATETIME(),
@@ -1662,7 +1674,7 @@ export function createSqlServerAiAdminStore(
         }
         const loaded = await loadConnection(manager, input.connectionId)
         if (!loaded) return null
-        await audit(
+        await writeAudit(
           {
             operation: input.status === 'retired' ? 'retire' : 'suspend',
             resourceId: input.connectionId,
@@ -1675,7 +1687,7 @@ export function createSqlServerAiAdminStore(
     },
 
     async activateConnection(input) {
-      return db.transaction('SERIALIZABLE', async manager => {
+      return mutateWithAudit(async (manager, writeAudit) => {
         const rows = await manager.query<Array<{ id: string }>>(
           `UPDATE [connection] WITH (UPDLOCK, HOLDLOCK)
            SET [lifecycle_status] = N'active',
@@ -1742,7 +1754,7 @@ export function createSqlServerAiAdminStore(
         if (!rows?.[0]) return null
         const loaded = await loadConnection(manager, input.connectionId)
         if (!loaded) return null
-        await audit(
+        await writeAudit(
           {
             operation: 'activate',
             resourceId: input.connectionId,
@@ -1755,7 +1767,7 @@ export function createSqlServerAiAdminStore(
     },
 
     async setRunProfileOperationalStatus(input) {
-      return db.transaction('SERIALIZABLE', async manager => {
+      return mutateWithAudit(async (manager, writeAudit) => {
         const rows = await manager.query<Array<{ id: string }>>(
           `UPDATE [ai_run_profiles] WITH (UPDLOCK, HOLDLOCK)
            SET [operational_status] = @2, [updated_at] = SYSUTCDATETIME(),
@@ -1785,7 +1797,7 @@ export function createSqlServerAiAdminStore(
         const profile =
           (await loadProfiles(manager, input.profileKey))[0] ?? null
         if (!profile) return null
-        await audit(
+        await writeAudit(
           {
             operation: input.status === 'suspended' ? 'suspend' : 'activate',
             resourceId: profile.id,

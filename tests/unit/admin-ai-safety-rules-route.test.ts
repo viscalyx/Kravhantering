@@ -49,6 +49,41 @@ const routeState = vi.hoisted(() => ({
 }))
 
 vi.mock('@/lib/admin/privileged-audit', () => ({
+  withPrivilegedMutationAudit: async (
+    context: unknown,
+    commit: (
+      audit: (
+        executor: unknown,
+        detail: Record<string, unknown>,
+      ) => Promise<void>,
+    ) => Promise<unknown>,
+  ) =>
+    commit(async (_executor, detail) => {
+      await Reflect.apply(
+        routeState.recordAdminPrivilegedActionSucceeded,
+        undefined,
+        [context, detail],
+      )
+    }),
+  runPrivilegedMutation: async (
+    db: unknown,
+    context: unknown,
+    mutation: (
+      manager: unknown,
+      audit: (
+        executor: unknown,
+        detail: Record<string, unknown>,
+      ) => Promise<void>,
+    ) => Promise<unknown>,
+  ) =>
+    mutation(db, async (_executor, detail) => {
+      await Reflect.apply(
+        routeState.recordAdminPrivilegedActionSucceeded,
+        undefined,
+        [context, detail],
+      )
+    }),
+
   createAdminPrivilegedAuditContext:
     routeState.createAdminPrivilegedAuditContext,
   recordAdminPrivilegedActionSucceeded:
@@ -127,15 +162,45 @@ function jsonPost(url: string, body: unknown): NextRequest {
 describe('admin AI safety rules routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    routeState.createAiSafetyRuleTerm.mockResolvedValue(createdTerm)
+    routeState.createAiSafetyRuleTerm.mockImplementation(
+      async (_db, _data, options) => {
+        const result = createdTerm
+        await options?.audit?.(_db, result)
+        return result
+      },
+    )
     routeState.listAiSafetyRulesForAdmin.mockResolvedValue([])
-    routeState.deleteCustomAiSafetyRuleTerm.mockResolvedValue(createdTerm)
-    routeState.removeAiSafetyRuleTerms.mockResolvedValue({
-      deactivatedStandardCount: 1,
-      deletedCustomCount: 1,
-    })
-    routeState.restoreAiSafetyRuleDefaults.mockResolvedValue(4)
-    routeState.updateAiSafetyRuleTerm.mockResolvedValue(createdTerm)
+    routeState.deleteCustomAiSafetyRuleTerm.mockImplementation(
+      async (_db, _id, options) => {
+        const result = createdTerm
+        await options?.audit?.(_db, result)
+        return result
+      },
+    )
+    routeState.removeAiSafetyRuleTerms.mockImplementation(
+      async (_db, _ids, options) => {
+        const result = {
+          deactivatedStandardCount: 1,
+          deletedCustomCount: 1,
+        }
+        await options?.audit?.(_db, result)
+        return result
+      },
+    )
+    routeState.restoreAiSafetyRuleDefaults.mockImplementation(
+      async (_db, _rule, options) => {
+        const result = 4
+        await options?.audit?.(_db, result)
+        return result
+      },
+    )
+    routeState.updateAiSafetyRuleTerm.mockImplementation(
+      async (_db, _id, _data, options) => {
+        const result = createdTerm
+        await options?.audit?.(_db, result)
+        return result
+      },
+    )
   })
 
   it('returns AI safety rules with no-store for Admin users', async () => {
@@ -214,6 +279,7 @@ describe('admin AI safety rules routes', () => {
     expect(routeState.createAiSafetyRuleTerm).toHaveBeenCalledWith(
       { db: true },
       payload,
+      expect.objectContaining({ audit: expect.any(Function) }),
     )
     expect(
       routeState.recordAdminPrivilegedActionSucceeded,
@@ -260,6 +326,7 @@ describe('admin AI safety rules routes', () => {
     expect(routeState.removeAiSafetyRuleTerms).toHaveBeenCalledWith(
       { db: true },
       [11, 12],
+      expect.objectContaining({ audit: expect.any(Function) }),
     )
     expect(
       routeState.recordAdminPrivilegedActionSucceeded,
@@ -288,6 +355,7 @@ describe('admin AI safety rules routes', () => {
       { db: true },
       77,
       { isActive: false },
+      expect.objectContaining({ audit: expect.any(Function) }),
     )
     expect(
       routeState.recordAdminPrivilegedActionSucceeded,
@@ -330,6 +398,7 @@ describe('admin AI safety rules routes', () => {
     expect(routeState.deleteCustomAiSafetyRuleTerm).toHaveBeenCalledWith(
       { db: true },
       77,
+      expect.objectContaining({ audit: expect.any(Function) }),
     )
     expect(
       routeState.recordAdminPrivilegedActionSucceeded,

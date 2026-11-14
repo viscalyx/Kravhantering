@@ -745,14 +745,19 @@ describe('deviation mutation routes', () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ ok: true })
-    expect(routeState.recordDecision).toHaveBeenCalledWith(mockDb, 7, {
-      decidedBy: 'Reviewer',
-      decidedByHsaId: 'SE5560000001-reviewer1',
-      decision: 1,
-      decisionMotivation: 'Looks good',
-      conditions: 'Review access weekly',
-      validThrough: '2099-09-30',
-    })
+    expect(routeState.recordDecision).toHaveBeenCalledWith(
+      mockDb,
+      7,
+      {
+        decidedBy: 'Reviewer',
+        decidedByHsaId: 'SE5560000001-reviewer1',
+        decision: 1,
+        decisionMotivation: 'Looks good',
+        conditions: 'Review access weekly',
+        validThrough: '2099-09-30',
+      },
+      { audit: expect.any(Function) },
+    )
   })
 
   it('returns the decision route error shape when DB acquisition fails', async () => {

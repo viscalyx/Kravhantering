@@ -40,7 +40,7 @@ import type { RequirementsLogger } from '@/lib/requirements/logging'
 import { createRequirementApplicationMutationWorkflow } from '@/lib/requirements/requirement-application-mutations'
 import {
   recordAuthorizationDenied,
-  recordSensitiveMutationSucceeded,
+  withSensitiveMutationAudit,
 } from '@/lib/requirements/security-audit'
 import type {
   AddToSpecificationInput,
@@ -591,15 +591,30 @@ export function createSpecificationWorkflow({
             input.requirementAreaId,
           )
 
-          const result = await graduateSpecificationLocalRequirementToLibrary(
-            db,
-            {
-              actorDisplayName: actor.displayName,
-              actorHsaId: actor.hsaId,
-              specificationId,
-              specificationLocalRequirementId: input.localRequirementId,
-              targetRequirementAreaId: input.requirementAreaId,
-            },
+          const result = await withSensitiveMutationAudit(context, audit =>
+            graduateSpecificationLocalRequirementToLibrary(
+              db,
+              {
+                actorDisplayName: actor.displayName,
+                actorHsaId: actor.hsaId,
+                specificationId,
+                specificationLocalRequirementId: input.localRequirementId,
+                targetRequirementAreaId: input.requirementAreaId,
+              },
+              {
+                audit: (executor, result) =>
+                  audit(executor, {
+                    action: 'specification_local_requirement.graduated',
+                    locale,
+                    localRequirementId: input.localRequirementId,
+                    newRequirementId: result.requirement.id,
+                    newRequirementUniqueId: result.requirement.uniqueId,
+                    operation: 'graduate_specification_local_requirement',
+                    specificationId,
+                    targetRequirementAreaId: input.requirementAreaId,
+                  }),
+              },
+            ),
           )
 
           const requirement = await getRequirementById(
@@ -626,17 +641,6 @@ export function createSpecificationWorkflow({
               targetAreaName: targetArea.name,
             },
           )
-
-          await recordSensitiveMutationSucceeded(context, {
-            action: 'specification_local_requirement.graduated',
-            locale,
-            localRequirementId: input.localRequirementId,
-            newRequirementId: detail.id,
-            newRequirementUniqueId: detail.uniqueId,
-            operation: 'graduate_specification_local_requirement',
-            specificationId,
-            targetRequirementAreaId: input.requirementAreaId,
-          })
 
           return {
             detail,
@@ -695,29 +699,34 @@ export function createSpecificationWorkflow({
 
           let addedCount = 0
           if (succeeded.length > 0) {
-            addedCount = await linkRequirementsToSpecificationAtomically(
-              db,
-              specificationId,
-              {
-                requirementIds: succeeded.map(result => result.requirementId),
-                needsReferenceDescription: input.needsReferenceDescription,
-                needsReferenceId: input.needsReferenceId,
-                needsReferenceText: input.needsReferenceText,
-                agreementId: input.agreementId,
-              },
-              context.actor.hsaId,
+            addedCount = await withSensitiveMutationAudit(context, audit =>
+              linkRequirementsToSpecificationAtomically(
+                db,
+                specificationId,
+                {
+                  requirementIds: succeeded.map(result => result.requirementId),
+                  needsReferenceDescription: input.needsReferenceDescription,
+                  needsReferenceId: input.needsReferenceId,
+                  needsReferenceText: input.needsReferenceText,
+                  agreementId: input.agreementId,
+                },
+                context.actor.hsaId,
+                {
+                  audit: (executor, addedCount) =>
+                    audit(executor, {
+                      action: 'specification.requirements.added',
+                      addedCount,
+                      locale,
+                      operation: 'add_to_specification',
+                      requirementCount: input.requirementIds.length,
+                      requirementIds: succeeded.map(
+                        result => result.requirementId,
+                      ),
+                      specificationId,
+                    }),
+                },
+              ),
             )
-          }
-          if (addedCount > 0) {
-            await recordSensitiveMutationSucceeded(context, {
-              action: 'specification.requirements.added',
-              addedCount,
-              locale,
-              operation: 'add_to_specification',
-              requirementCount: input.requirementIds.length,
-              requirementIds: succeeded.map(result => result.requirementId),
-              specificationId,
-            })
           }
 
           const ref = getSpecificationReferenceLabel(input, specificationId)

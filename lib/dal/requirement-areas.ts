@@ -397,6 +397,9 @@ export async function createArea(
     ownerHsaId: string
     ownerPerson?: RequirementResponsibilityPersonRecord
   },
+  options: {
+    audit?: (executor: QueryExecutor, area: RequirementAreaRow) => Promise<void>
+  } = {},
 ): Promise<RequirementAreaRow> {
   const now = new Date()
   const ownerPerson = data.ownerPerson
@@ -427,14 +430,13 @@ export async function createArea(
     return mapAreaRow((rows as RequirementAreaRow[])[0])
   }
 
-  if (ownerPerson) {
-    return db.transaction(async manager => {
+  return db.transaction(async manager => {
+    if (ownerPerson)
       await upsertRequirementResponsibilityPerson(manager, ownerPerson)
-      return insertArea(manager)
-    })
-  }
-
-  return insertArea(db)
+    const area = await insertArea(manager)
+    await options.audit?.(manager, area)
+    return area
+  })
 }
 
 async function updateAreaFields(
@@ -503,11 +505,18 @@ export async function updateArea(
     ownerPerson?: RequirementResponsibilityPersonRecord
     prefix?: string
   },
+  options: {
+    audit?: (executor: QueryExecutor, area: RequirementAreaRow) => Promise<void>
+  } = {},
 ): Promise<RequirementAreaRow | undefined> {
   const ownerPerson = data.ownerPerson
-  if (!ownerPerson) return updateAreaFields(db, id, data)
 
   return db.transaction(async manager => {
+    if (!ownerPerson) {
+      const updated = await updateAreaFields(manager, id, data)
+      if (updated) await options.audit?.(manager, updated)
+      return updated
+    }
     const oldRows = (await manager.query(
       `
         SELECT owner_hsa_id AS ownerHsaId
@@ -523,6 +532,7 @@ export async function updateArea(
       manager,
       oldRows.map(row => row.ownerHsaId),
     )
+    await options.audit?.(manager, updated)
     return updated
   })
 }
@@ -538,9 +548,12 @@ export async function updateAreaWithOwnerCheck(
     prefix?: string
     resolveOwnerPerson?: RequirementAreaOwnerPersonResolver
   },
+  options: {
+    audit?: (executor: QueryExecutor, area: RequirementAreaRow) => Promise<void>
+  } = {},
 ): Promise<RequirementAreaRow | undefined> {
   if (data.ownerHsaId === undefined && data.prefix === undefined) {
-    return updateArea(db, id, data)
+    return updateArea(db, id, data, options)
   }
 
   return db.transaction('SERIALIZABLE', async manager => {
@@ -620,6 +633,7 @@ export async function updateAreaWithOwnerCheck(
         oldRows.map(row => row.ownerHsaId),
       )
     }
+    await options.audit?.(manager, updated)
     return updated
   })
 }
@@ -772,6 +786,7 @@ export async function replaceRequirementAreaCoAuthors(
 export async function deleteArea(
   db: SqlServerDatabase,
   id: number,
+  options: { audit?: (executor: QueryExecutor) => Promise<void> } = {},
 ): Promise<number> {
   return db.transaction(async manager => {
     const assignmentRows = (await manager.query(
@@ -798,6 +813,7 @@ export async function deleteArea(
       manager,
       assignmentRows.map(row => row.hsaId),
     )
+    if (rows.length > 0) await options.audit?.(manager)
     return rows.length
   })
 }
