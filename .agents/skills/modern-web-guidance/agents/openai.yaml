@@ -1,0 +1,4 @@
+interface:
+  display_name: "Modern Web Guidance"
+  short_description: "Consult local modern web platform guidance"
+  default_prompt: "Use $modern-web-guidance to search the bundled guides and apply relevant web platform guidance within the project's conventions."

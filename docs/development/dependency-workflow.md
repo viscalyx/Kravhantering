@@ -61,6 +61,33 @@ Review and commit `package.json` and `package-lock.json` changes together for
 intentional updates. Nested HSA projects have their own manifests and lockfiles;
 install in the affected project with `npm --prefix <project-directory> install`.
 
+## Modern Web Guidance
+
+The [project skill](../../.agents/skills/modern-web-guidance/SKILL.md) uses a
+pinned development dependency. Normal `npm install` or `npm ci` installs its
+CLI, guides, and local search model. No separate global tool, API key, browser,
+or model installation is needed. The devcontainer's existing dependency
+installation includes it automatically.
+
+Run the project command from the repository root:
+
+```sh
+npm run modern-web-guidance -- search "responsive data table"
+npm run modern-web-guidance -- retrieve "<id-from-search>"
+npm run modern-web-guidance -- list
+```
+
+The script disables telemetry for every invocation. Search and retrieval use
+bundled data and work without registry access after dependencies are installed.
+The initial dependency installation requires registry access or a prepared npm
+cache. Environments that omit development dependencies do not include this tool.
+
+Use the project command instead of upstream's `npx ...@latest` or skill
+installer commands. This keeps execution on the reviewed, lockfile-installed
+version. Follow repository conventions when applying the retrieved guidance.
+Maintainers updating the dependency must also review the copied skill and its
+[upstream provenance and adaptations](../../.agents/skills/modern-web-guidance/UPSTREAM.md).
+
 ## Purge Install
 
 Use `npm run purge:install` when `node_modules` or `package-lock.json` appears
