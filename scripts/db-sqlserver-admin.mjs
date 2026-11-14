@@ -3,6 +3,13 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { DataSource, MigrationExecutor } from 'typeorm'
 import {
+  commitMigrationReport,
+  createMigrationReport,
+  MigrationDiagnosticsLogger,
+  migrationError,
+  migrationSummary,
+} from '../typeorm/migration-results.mjs'
+import {
   buildRuntimePermissionReconcileSql,
   buildRuntimeRoleCreateSql,
   RUNTIME_PERMISSION_MANIFEST,
@@ -1519,73 +1526,126 @@ export async function reconcileSqlServerRuntimePermissionsForConnection(
 export async function runSqlServerMigrations(connectionString, options = {}) {
   const DataSourceCtor = options.dataSourceCtor ?? DataSource
   const env = options.env ?? process.env
-  const migrationDescriptors =
-    options.migrationDescriptors ?? (await getMigrationDescriptors())
-  const migrationClasses = migrationDescriptors.map(
-    descriptor => descriptor.classRef,
-  )
-  const dataSource = new DataSourceCtor(
-    buildMigrationDataSourceOptions(connectionString, migrationClasses, env),
-  )
-
-  await dataSource.initialize()
-
+  const report = createMigrationReport(env)
+  let dataSource
+  let failure
+  let observer
+  // Success always passes the post-check; every earlier exit throws below.
+  /** @type {ReturnType<typeof buildMigrationStateReport>} */
+  let postMigration
   try {
-    const preflight = await inspectMigrationState(
+    const migrationDescriptors =
+      options.migrationDescriptors ?? (await getMigrationDescriptors())
+    dataSource = new DataSourceCtor({
+      ...buildMigrationDataSourceOptions(
+        connectionString,
+        migrationDescriptors.map(descriptor => descriptor.classRef),
+        env,
+      ),
+      logger: new MigrationDiagnosticsLogger(options.consoleObj ?? console),
+    })
+    report.database = parseSqlServerConnectionString(
+      connectionString,
+      env,
+    ).database
+    await dataSource.initialize()
+    report.phase = 'preflight'
+    report.preflight = await inspectMigrationState(
       dataSource,
       connectionString,
-      {
-        ...options,
-        migrationDescriptors,
-      },
+      { ...options, migrationDescriptors },
     )
-    assertMigrationStateCompatible(preflight)
-
-    setMigrationInstallationContext(dataSource, preflight)
-
-    const migrations = await dataSource.runMigrations()
-    const postMigration = await inspectMigrationState(
-      dataSource,
-      connectionString,
-      {
-        ...options,
-        migrationDescriptors,
+    assertMigrationStateCompatible(report.preflight)
+    setMigrationInstallationContext(dataSource, report.preflight)
+    const entries = []
+    dataSource.options ??= {}
+    dataSource.options.kravhanteringMigrationEntries = entries
+    // Observe acknowledgements; TypeORM still owns the transaction and history.
+    let commitAttempted = false
+    observer = {
+      beforeTransactionCommit(event) {
+        if (event.queryRunner.transactionDepth === 1) commitAttempted = true
       },
+      afterTransactionCommit(event) {
+        if (event.queryRunner.isTransactionActive === false)
+          commitMigrationReport(
+            report,
+            report.preflight.pendingMigrations,
+            entries,
+          )
+      },
+      afterTransactionRollback(event) {
+        if (
+          event.queryRunner.isTransactionActive === false &&
+          !commitAttempted &&
+          report.migration.transaction !== 'committed'
+        )
+          report.migration.transaction = 'rolled_back'
+      },
+    }
+    dataSource.subscribers ??= []
+    dataSource.subscribers.push(observer)
+    report.phase = 'migrations'
+    report.migration.transaction = 'unknown'
+    const migrations = await dataSource.runMigrations({ transaction: 'all' })
+    commitMigrationReport(report, migrations, entries)
+    dataSource.subscribers = dataSource.subscribers.filter(
+      item => item !== observer,
     )
-    assertMigrationStateCompatible(postMigration)
-    assertPostMigrationHeadMatchesTarget(postMigration)
-    const reconcileRuntimePermissionsImpl =
+    report.phase = 'post_check'
+    postMigration = await inspectMigrationState(dataSource, connectionString, {
+      ...options,
+      migrationDescriptors,
+    })
+    report.postMigration = postMigration
+    assertMigrationStateCompatible(report.postMigration)
+    assertPostMigrationHeadMatchesTarget(report.postMigration)
+    report.phase = 'permissions'
+    report.permissions.status = 'failed'
+    report.runtimePermissions = await (
       options.reconcileRuntimePermissionsImpl ??
       reconcileSqlServerRuntimePermissions
-    const runtimePermissions = await reconcileRuntimePermissionsImpl(
-      dataSource,
-      {
-        env,
-        expectedRuntimeUsers: options.expectedRuntimeUsers,
-      },
+    )(dataSource, {
+      env,
+      expectedRuntimeUsers: options.expectedRuntimeUsers,
+    })
+    report.permissions.status = 'completed'
+    report.status = entries.some(entry => entry.outcome === 'skipped')
+      ? 'completed_with_omissions'
+      : 'completed'
+    report.phase = 'complete'
+  } catch (error) {
+    failure =
+      error && typeof error === 'object' ? error : new Error(String(error))
+    report.error = migrationError(failure)
+  }
+  if (dataSource) {
+    dataSource.subscribers = (dataSource.subscribers ?? []).filter(
+      item => item !== observer,
     )
-
-    return {
-      database: parseSqlServerConnectionString(connectionString, env).database,
-      migration: {
-        applied: migrations.map(migration => ({
-          name: migration.name,
-          timestamp:
-            typeof migration.timestamp === 'number'
-              ? migration.timestamp
-              : null,
-        })),
-      },
-      migrationsApplied: migrations.length,
-      postMigration,
-      preflight,
-      runtimePermissions,
-    }
-  } finally {
-    if (typeof dataSource.destroy === 'function') {
-      await dataSource.destroy()
+    try {
+      if (
+        typeof dataSource.destroy === 'function' &&
+        dataSource.isInitialized !== false
+      )
+        await dataSource.destroy()
+    } catch (error) {
+      if (failure) report.cleanupError = migrationError(error)
+      else {
+        failure =
+          error && typeof error === 'object' ? error : new Error(String(error))
+        report.status = 'failed'
+        report.phase = 'cleanup'
+        report.error = migrationError(failure)
+      }
     }
   }
+  report.completedAt = new Date().toISOString()
+  if (failure) {
+    failure.migrationCommandResult = report
+    throw failure
+  }
+  return Object.assign(report, { postMigration })
 }
 
 export async function ensureReadonlySqlServerAccess(
@@ -2059,6 +2119,14 @@ export async function main(args, dependencies = {}) {
       )
     }
   } catch (error) {
+    if (command === 'migrate' && jsonOutput) {
+      const report = createMigrationReport(env)
+      report.completedAt = new Date().toISOString()
+      report.error = migrationError(error)
+      consoleObj.log(JSON.stringify(report, null, 2))
+      consoleObj.error(migrationSummary(report))
+      return 1
+    }
     if (['seed:required', 'seed:optional'].includes(command) && jsonOutput) {
       const report = createSeedCommandReport(env, command.split(':')[1])
       report.completedAt = new Date().toISOString()
@@ -2274,29 +2342,29 @@ export async function main(args, dependencies = {}) {
   }
 
   if (command === 'migrate') {
+    let report
+    let exitCode = 0
     try {
       const expectedRuntimeUsers = getExpectedRuntimeUsers(env, {
         required: true,
       })
-      const result = await runSqlServerMigrations(connectionString, {
+      report = await runSqlServerMigrations(connectionString, {
         ...dependencies,
         env,
         expectedRuntimeUsers,
       })
-      if (jsonOutput) {
-        consoleObj.log(JSON.stringify(result, null, 2))
-      } else {
-        consoleObj.log(
-          `SQL Server migrations applied to ${result.database} (${result.migrationsApplied} migration${result.migrationsApplied === 1 ? '' : 's'}).`,
-        )
-      }
-      return 0
     } catch (error) {
-      consoleObj.error(
-        error instanceof Error ? error.message : 'SQL Server migrate failed.',
-      )
-      return 1
+      exitCode = 1
+      report = error.migrationCommandResult ?? createMigrationReport(env)
+      report.error ??= migrationError(error)
+      report.completedAt ??= new Date().toISOString()
     }
+    if (jsonOutput) {
+      consoleObj.log(JSON.stringify(report, null, 2))
+      consoleObj.error(migrationSummary(report))
+    } else if (exitCode) consoleObj.error(migrationSummary(report))
+    else consoleObj.log(migrationSummary(report))
+    return exitCode
   }
 
   if (['seed:required', 'seed:optional', 'seed:demo'].includes(command)) {

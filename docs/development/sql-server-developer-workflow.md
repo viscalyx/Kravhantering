@@ -398,6 +398,30 @@ history as a valid migration-job state, but app runtime readiness requires the
 database to have reached the build metadata field
 `expectedDatabaseSchemaVersion`.
 
+When changing shipped defaults, follow the
+[default evolution contract](../reference/database-schema.md#later-default-evolution).
+Verify fresh installation, untouched/customized/missing/conflicting records,
+coupled dependencies, skipped releases and omission history through the
+migration command. Keep schema/history rollback and post-commit permission
+failure as separate SQL integration cases. Select affected scenarios before
+running them through `npm run test:sql-integration -- <spec-path>`.
+
+Retain a migration result separately from its diagnostics, with a new run ID
+for each attempt:
+
+```bash
+MIGRATION_RUN_ID="$(node -p 'require("node:crypto").randomUUID()')"
+DB_MIGRATION_RUN_ID="$MIGRATION_RUN_ID" \
+  npm run --silent db:migrate -- --json \
+  > "migration-${MIGRATION_RUN_ID}.json" \
+  2> "migration-${MIGRATION_RUN_ID}.log"
+```
+
+Read the exit status and each committed phase in the
+[migration result contract](../../containers/db-job/README.md#migration-results).
+Expected optional omissions succeed; unexpected failures return nonzero.
+Keep failed attempts and earlier omission reports when a rerun is a no-op.
+
 ## Read-Only Browse Workflow
 
 Use VS Code SQLTools with your chosen development browse credential. You choose

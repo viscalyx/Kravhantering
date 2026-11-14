@@ -92,10 +92,58 @@ structures fail and roll back initialization. No completion is recorded on
 failure; correct the conflict before retrying. Concurrent initializers lock the
 single state row until commit. Later catalog changes use targeted migrations.
 
-Later shipped default changes require one-time migrations that preserve
-customized and absent optional records, check coupled dependencies, and record
-conflicting optional additions as omissions. Removing a default does not itself
-authorize removing stored data.
+### Later Default Evolution
+
+For maintainers changing shipped defaults, update the current fresh-install
+catalog and add an explicit one-time upgrade migration for each addition,
+change or removal. Keep released migrations and their old/new value snapshots
+unchanged. Fresh installation uses the current profiles; upgrade decisions
+must also work when intermediate releases are skipped.
+
+`typeorm/default-evolution-v1.mjs` provides `evolveDefaults(queryRunner,
+migrationName, changes)` for numeric-ID catalog additions and guarded changes
+inside TypeORM's migration transaction. Fresh installations skip this upgrade
+helper and receive current defaults through the profiles. Once released
+migrations use this helper, preserve its version's semantics.
+
+- Give each entry a stable `logicalId`, `table` and `values`. For additions,
+  include the proposed `id` and every coupled field. Supply all applicable
+  uniqueness groups in `unique`: a string names a single-column key; an array
+  names a composite key, such as
+  `[['from_requirement_status_id', 'to_requirement_status_id']]` for transitions.
+  All fields within a group must match; separate groups and the proposed ID
+  are alternatives. The helper checks these candidates before inserting.
+  Entire equivalent records retain their actual ID. Set `fixedId: true` only
+  when the family's identity contract requires that numeric ID, such as
+  statuses and priorities. Required transitions use their endpoint pair and
+  preserve existing surrogate IDs.
+- List dependencies before their children. `dependencies` maps foreign-key
+  columns to earlier logical IDs in the same call; children use the resolved
+  IDs. An omitted dependency omits its dependent additions. A missing plan
+  dependency is a programming error and fails the migration. A customized
+  parent's failed change guard also omits dependent additions; its structural
+  compatibility cannot be assumed.
+- For changes, supply an explicit safe `identity`, `previous` values and new
+  `values`. Include every affected field and coupled structural guard in
+  `previous`, including type, parent and chapter where applicable. Editable
+  labels alone do not prove identity. All guards must match before any value
+  changes. Missing optional records and customized values remain unchanged;
+  surrogate IDs and existing references remain intact.
+- Optional addition conflicts produce a recorded omission. Use `required`
+  only for required additions; their conflicts fail. This failure policy is
+  independent of `fixedId`. Unexpected SQL errors always fail and roll back
+  the pending migration transaction.
+- Removing an entry from the fresh catalog does not delete stored records.
+  State the retention decision in the new migration. Any deliberate stored
+  deletion needs separate identity, customization and reference checks.
+
+The helper collects per-entry outcomes for the migration command, without a
+per-default history table. TypeORM history records the completed migration,
+including expected omissions, so later upgrades never automatically retry
+those additions even after a conflict disappears. A deliberate later migration
+or supported administrator action can add them. Only confirmed committed
+entries appear in the [migration result](../../containers/db-job/README.md#migration-results).
+Retain each attempt's report so a later no-op cannot hide earlier omissions.
 
 ## Database Naming Standard
 

@@ -181,6 +181,8 @@ COPY --chown=1000:1000 typeorm/seed-optional-data.mjs ./typeorm/seed-optional-da
 COPY --chown=1000:1000 typeorm/ai-safety-seed-data.mjs ./typeorm/ai-safety-seed-data.mjs
 COPY --chown=1000:1000 typeorm/seed-runner.mjs ./typeorm/seed-runner.mjs
 COPY --chown=1000:1000 typeorm/seed-reconciliation.mjs ./typeorm/seed-reconciliation.mjs
+COPY --chown=1000:1000 typeorm/migration-results.mjs ./typeorm/migration-results.mjs
+COPY --chown=1000:1000 typeorm/default-evolution-v1.mjs ./typeorm/default-evolution-v1.mjs
 
 USER 1000:1000
 ENTRYPOINT ["node", "scripts/db-sqlserver-admin.mjs"]
@@ -236,6 +238,8 @@ COPY --chown=1000:1000 typeorm/seed-optional-data.mjs ./typeorm/seed-optional-da
 COPY --chown=1000:1000 typeorm/ai-safety-seed-data.mjs ./typeorm/ai-safety-seed-data.mjs
 COPY --chown=1000:1000 typeorm/seed-runner.mjs ./typeorm/seed-runner.mjs
 COPY --chown=1000:1000 typeorm/seed-reconciliation.mjs ./typeorm/seed-reconciliation.mjs
+COPY --chown=1000:1000 typeorm/migration-results.mjs ./typeorm/migration-results.mjs
+COPY --chown=1000:1000 typeorm/default-evolution-v1.mjs ./typeorm/default-evolution-v1.mjs
 COPY --chown=1000:1000 lib/mcp/import-validation-fingerprint.mjs ./lib/mcp/import-validation-fingerprint.mjs
 COPY --chown=1000:1000 lib/requirements/responsibility-person-verification-fingerprint.mjs ./lib/requirements/responsibility-person-verification-fingerprint.mjs
 COPY --chown=1000:1000 typeorm/seed.mjs ./typeorm/seed.mjs

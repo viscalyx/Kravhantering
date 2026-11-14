@@ -1403,7 +1403,9 @@ describe('db-sqlserver-admin.mjs', () => {
     })
 
     expect(exitCode).toBe(0)
-    expect(error).not.toHaveBeenCalled()
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining('migrations: not_needed'),
+    )
     expect(JSON.parse(log.mock.calls[0][0])).toMatchObject({
       database: 'kravhantering',
       migrationsApplied: 0,
@@ -1436,7 +1438,9 @@ describe('db-sqlserver-admin.mjs', () => {
       }),
     ).resolves.toBe(1)
     expect(error).toHaveBeenCalledWith(
-      'DB_RUNTIME_USER is required to verify the managed runtime database user.',
+      expect.stringContaining(
+        'DB_RUNTIME_USER is required to verify the managed runtime database user.',
+      ),
     )
   })
 

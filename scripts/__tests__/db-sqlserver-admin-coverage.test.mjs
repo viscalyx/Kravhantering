@@ -428,7 +428,13 @@ describe('administration CLI failure reporting', () => {
         )
         expect(exitCode).toBe(1)
         expect(consoleObj.error).toHaveBeenCalledWith(
-          failure instanceof Error ? 'database unavailable' : fallback,
+          expect.stringContaining(
+            failure instanceof Error
+              ? 'database unavailable'
+              : command === 'migrate'
+                ? String(failure)
+                : fallback,
+          ),
         )
         expect(consoleObj.log).not.toHaveBeenCalled()
       }

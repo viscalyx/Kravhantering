@@ -217,6 +217,14 @@ remove **all** references to it from `docs/reference/database-schema.md`:
 - Mark existing installations initialized without restoring missing old
   optional defaults; keep fresh installations eligible until initialization
   commits.
+- For every added, changed or removed shipped default, update fresh-install
+  defaults and define its one-time upgrade migration.
+- Apply changed values only to safely identified records whose affected
+  values still match the previous shipped values. Check coupled fields and
+  dependencies together.
+- Skip conflicting optional upgrade additions and their dependent entries
+  with a recorded omission. Unexpected database errors remain failures.
+- Define stored-data removal separately from removing an optional default.
 - Preserve family-specific release synchronization and supported edits;
   do not infer ownership from the seed file's current contents.
 - Keep demo loading separate from production reconciliation; preserve demo

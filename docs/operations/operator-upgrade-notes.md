@@ -13,6 +13,23 @@ changes.
 
 ## Unreleased
 
+### Migration outcomes and optional omissions
+
+Update deployment result consumers for versioned migration results. Keep each
+attempt's result and separate summary with the release evidence, including
+failed attempts. Publish the summary with a link to the saved detail. A later
+no-op must not replace an earlier omission report.
+
+Optional addition conflicts preserve existing data and can complete with
+omissions. They do not retry automatically, even after the conflict is removed.
+Review omitted entries with the administrator. Adding one requires a deliberate
+later migration or a supported administrator action.
+
+A permission failure can follow committed migrations. Check each phase and
+the exit status; do not assume the deployment rolled back. Inspect saved state
+when the outcome is unknown. Keep the tested recovery set and restore procedure
+for failures after migrations start.
+
 ### One-time starter catalogs
 
 Fresh installations must complete optional catalog initialization after
