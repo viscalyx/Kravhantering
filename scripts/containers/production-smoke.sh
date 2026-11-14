@@ -1771,6 +1771,7 @@ up() {
   database_job migration-status >"$EVIDENCE_DIR/migration-after.json"
   database_job permission-status >"$EVIDENCE_DIR/permissions.json"
   database_job seed:required
+  database_job seed:optional
   if [[ "$SMOKE_SCOPE" == core ]]; then
     local fixture_database
     fixture_database="$(sudo sed -n 's/^DB_NAME=//p' "$CONFIG_ROOT/app.env")"

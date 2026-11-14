@@ -639,6 +639,14 @@ describe('container stack helpers', () => {
           ),
       ),
     ).toBe(true)
+    const requiredIndex = commands.findIndex(command =>
+      command.endsWith('localhost/kravhantering/db-job:local seed:required'),
+    )
+    const optionalIndex = commands.findIndex(command =>
+      command.endsWith('localhost/kravhantering/db-job:local seed:optional'),
+    )
+    expect(optionalIndex).toBeGreaterThan(requiredIndex)
+    expect(appRuntimeIndex).toBeGreaterThan(optionalIndex)
     expect(commands.join('\n')).not.toContain('--exit-code-from')
     expect(commands.join('\n')).not.toContain('up --no-deps')
     expect(appRuntimeIndex).toBeGreaterThan(-1)

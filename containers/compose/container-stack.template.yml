@@ -78,11 +78,21 @@ services:
       - ./containers/db-job/.env.db-job.local
     restart: "no"
 
+  db-seed-optional:
+    image: "{{dbJobImage}}"
+    command: ["seed:optional"]
+    depends_on:
+      db-seed-required:
+        condition: service_completed_successfully
+    env_file:
+      - ./containers/db-job/.env.db-job.local
+    restart: "no"
+
   db-seed-demo:
     image: "{{demoSeedImage}}"
     command: ["seed:demo"]
     depends_on:
-      db-seed-required:
+      db-seed-optional:
         condition: service_completed_successfully
     env_file:
       - ./containers/db-job/.env.db-job.local
@@ -93,7 +103,7 @@ services:
   app-runtime:
     image: "{{appRuntimeImage}}"
     depends_on:
-      db-seed-required:
+      db-seed-optional:
         condition: service_completed_successfully
       keycloak:
         condition: service_started

@@ -2,27 +2,20 @@ import { seedAiSafetyRules } from './ai-safety-seed-data.mjs'
 import {
   reconcileSeedProfile,
   reconcileSeedRecord,
-  seedCounts,
 } from './seed-reconciliation.mjs'
 import { seedPositionDetail } from './seed-runner.mjs'
 
 export const REQUIRED_SEED_TABLES = Object.freeze([
   'archiving_retention_policies',
-  'specification_implementation_types',
   'specification_item_statuses',
   'specification_lifecycle_statuses',
-  'specification_governance_object_types',
-  'requirement_categories',
   'ai_settings',
   'ai_run_profiles',
   'application_settings',
   'ai_safety_rules',
   'ai_safety_rule_terms',
-  'requirement_list_column_defaults',
   'requirement_statuses',
   'requirement_status_transitions',
-  'requirement_types',
-  'quality_characteristics',
   'priority_levels',
 ])
 
@@ -123,14 +116,7 @@ export const REQUIRED_SEED_DATA = {
       ],
     ],
   },
-  specification_implementation_types: {
-    columns: ['id', 'name_sv', 'name_en'],
-    pk: ['id'],
-    rows: [
-      [1, 'Upphandling', 'Procurement'],
-      [2, 'Utveckling', 'Development'],
-    ],
-  },
+
   specification_item_statuses: {
     columns: [
       'id',
@@ -216,26 +202,7 @@ export const REQUIRED_SEED_DATA = {
       [4, 'Förvaltning', 'Management'],
     ],
   },
-  specification_governance_object_types: {
-    columns: ['id', 'name_sv', 'name_en'],
-    pk: ['id'],
-    rows: [
-      [1, 'Förvaltningsobjekt', 'Management object'],
-      [2, 'Projekt', 'Project'],
-      [3, 'Uppdrag', 'Assignment'],
-      [4, 'Leveransområde', 'Delivery area'],
-      [5, 'Tjänsteområde', 'Service area'],
-    ],
-  },
-  requirement_categories: {
-    columns: ['id', 'name_sv', 'name_en'],
-    pk: ['id'],
-    rows: [
-      [1, 'Verksamhetskrav', 'Business requirement'],
-      [2, 'IT-krav', 'IT requirement'],
-      [3, 'Leverantörskrav', 'Supplier requirement'],
-    ],
-  },
+
   ai_settings: {
     columns: [
       'id',
@@ -450,97 +417,7 @@ export const REQUIRED_SEED_DATA = {
       [5, 2, 4],
     ],
   },
-  requirement_types: {
-    columns: ['id', 'name_sv', 'name_en'],
-    pk: ['id'],
-    rows: [
-      [1, 'Funktionellt', 'Functional'],
-      [2, 'Icke-funktionellt', 'Non-functional'],
-    ],
-  },
-  quality_characteristics: {
-    columns: [
-      'id',
-      'name_sv',
-      'name_en',
-      'requirement_type_id',
-      'parent_id',
-      'chapter_id',
-    ],
-    pk: ['id'],
-    rows: [
-      [1, 'Funktionell lämplighet', 'Functional suitability', 1, null, '3.1'],
-      [
-        2,
-        'Funktionell fullständighet',
-        'Functional completeness',
-        1,
-        1,
-        '3.1.1',
-      ],
-      [3, 'Funktionell korrekthet', 'Functional correctness', 1, 1, '3.1.2'],
-      [
-        4,
-        'Funktionell ändamålsenlighet',
-        'Functional appropriateness',
-        1,
-        1,
-        '3.1.3',
-      ],
-      [5, 'Prestandaeffektivitet', 'Performance efficiency', 2, null, '3.2'],
-      [6, 'Tidsbeteende', 'Time behavior', 2, 5, '3.2.1'],
-      [7, 'Resursutnyttjande', 'Resource utilization', 2, 5, '3.2.2'],
-      [8, 'Kapacitet', 'Capacity', 2, 5, '3.2.3'],
-      [9, 'Kompatibilitet', 'Compatibility', 2, null, '3.3'],
-      [10, 'Samexistens', 'Co-existence', 2, 9, '3.3.1'],
-      [11, 'Interoperabilitet', 'Interoperability', 2, 9, '3.3.2'],
-      [12, 'Interaktionsförmåga', 'Interaction capability', 2, null, '3.4'],
-      [
-        13,
-        'Igenkännbar ändamålsenlighet',
-        'Appropriateness recognizability',
-        2,
-        12,
-        '3.4.1',
-      ],
-      [14, 'Lärbarhet', 'Learnability', 2, 12, '3.4.2'],
-      [15, 'Användbar driftbarhet', 'Operability', 2, 12, '3.4.3'],
-      [16, 'Skydd mot användarfel', 'User error protection', 2, 12, '3.4.4'],
-      [17, 'Användarengagemang', 'User engagement', 2, 12, '3.4.5'],
-      [18, 'Inkluderande användning', 'Inclusivity', 2, 12, '3.4.6'],
-      [19, 'Användarstöd', 'User assistance', 2, 12, '3.4.7'],
-      [20, 'Självbeskrivande förmåga', 'Self-descriptiveness', 2, 12, '3.4.8'],
-      [21, 'Tillförlitlighet', 'Reliability', 2, null, '3.5'],
-      [22, 'Felfrihet', 'Faultlessness', 2, 21, '3.5.1'],
-      [23, 'Tillgänglighet', 'Availability', 2, 21, '3.5.2'],
-      [24, 'Feltolerans', 'Fault tolerance', 2, 21, '3.5.3'],
-      [25, 'Återställbarhet', 'Recoverability', 2, 21, '3.5.4'],
-      [26, 'Informationssäkerhet', 'Security', 2, null, '3.6'],
-      [27, 'Konfidentialitet', 'Confidentiality', 2, 26, '3.6.1'],
-      [28, 'Integritet', 'Integrity', 2, 26, '3.6.2'],
-      [29, 'Oavvislighet', 'Non-repudiation', 2, 26, '3.6.3'],
-      [30, 'Ansvarsskyldighet', 'Accountability', 2, 26, '3.6.4'],
-      [31, 'Autenticitet', 'Authenticity', 2, 26, '3.6.5'],
-      [32, 'Motståndskraft', 'Resistance', 2, 26, '3.6.6'],
-      [33, 'Underhållbarhet', 'Maintainability', 2, null, '3.7'],
-      [34, 'Modularitet', 'Modularity', 2, 33, '3.7.1'],
-      [35, 'Återanvändbarhet', 'Reusability', 2, 33, '3.7.2'],
-      [36, 'Analyserbarhet', 'Analyzability', 2, 33, '3.7.3'],
-      [37, 'Ändringsbarhet', 'Modifiability', 2, 33, '3.7.4'],
-      [38, 'Testbarhet', 'Testability', 2, 33, '3.7.5'],
-      [39, 'Flexibilitet', 'Flexibility', 2, null, '3.8'],
-      [40, 'Anpassningsbarhet', 'Adaptability', 2, 39, '3.8.1'],
-      [41, 'Skalbarhet', 'Scalability', 2, 39, '3.8.2'],
-      [42, 'Installerbarhet', 'Installability', 2, 39, '3.8.3'],
-      [43, 'Utbytbarhet', 'Replaceability', 2, 39, '3.8.4'],
-      [44, 'Säkerhet mot skada', 'Safety', 2, null, '3.9'],
-      [45, 'Driftsbegränsning', 'Operational constraint', 2, 44, '3.9.1'],
-      [46, 'Riskidentifiering', 'Risk identification', 2, 44, '3.9.2'],
-      [47, 'Felsäkert beteende', 'Fail safe', 2, 44, '3.9.3'],
-      [48, 'Farovarning', 'Hazard warning', 2, 44, '3.9.4'],
-      [49, 'Säker integration', 'Safe integration', 2, 44, '3.9.5'],
-    ],
-  },
+
   priority_levels: {
     columns: [
       'id',
@@ -628,22 +505,7 @@ export const REQUIRED_SEED_DATA = {
 
 export { seedPositionDetail }
 
-// Retain the legacy table export for demo reset membership until the optional
-// initializer owns its durable completion marker and deployment dispatch.
-export const LEGACY_OPTIONAL_SEED_TABLES = Object.freeze([
-  'specification_implementation_types',
-  'specification_governance_object_types',
-  'requirement_categories',
-  'requirement_types',
-  'quality_characteristics',
-])
-export const REQUIRED_RECONCILIATION_TABLES = Object.freeze(
-  REQUIRED_SEED_TABLES.filter(
-    table =>
-      !LEGACY_OPTIONAL_SEED_TABLES.includes(table) &&
-      table !== 'requirement_list_column_defaults',
-  ),
-)
+export const REQUIRED_RECONCILIATION_TABLES = REQUIRED_SEED_TABLES
 const LOGICAL_KEYS = {
   archiving_retention_policies: ['policy_key'],
   ai_run_profiles: ['profile_key'],
@@ -695,29 +557,7 @@ export async function reconcileRequiredDatabase(executor) {
 
 export async function seedRequiredDatabase(executor) {
   const required = await reconcileRequiredDatabase(executor)
-  try {
-    const legacyOptional = await reconcileSeedProfile(
-      executor,
-      'legacy_optional',
-      (target, entries) =>
-        reconcileTables(target, LEGACY_OPTIONAL_SEED_TABLES, entries),
-    )
-    return {
-      required,
-      legacyOptional,
-      counts: seedCounts([...required.entries, ...legacyOptional.entries]),
-    }
-  } catch (error) {
-    error.requiredSeedResult = {
-      required,
-      legacyOptional: error.seedProfileResult,
-      counts: seedCounts([
-        ...required.entries,
-        ...(error.seedProfileResult?.entries ?? []),
-      ]),
-    }
-    throw error
-  }
+  return { required, counts: required.counts }
 }
 
 export default seedRequiredDatabase

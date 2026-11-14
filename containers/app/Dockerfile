@@ -176,6 +176,8 @@ COPY --from=transient-cleanup-build --chown=1000:1000 /workspace/.build/transien
 COPY --chown=1000:1000 typeorm/migrations ./typeorm/migrations
 COPY --chown=1000:1000 typeorm/runtime-permission-manifest.mjs ./typeorm/runtime-permission-manifest.mjs
 COPY --chown=1000:1000 typeorm/seed-required.mjs ./typeorm/seed-required.mjs
+COPY --chown=1000:1000 typeorm/seed-optional.mjs ./typeorm/seed-optional.mjs
+COPY --chown=1000:1000 typeorm/seed-optional-data.mjs ./typeorm/seed-optional-data.mjs
 COPY --chown=1000:1000 typeorm/ai-safety-seed-data.mjs ./typeorm/ai-safety-seed-data.mjs
 COPY --chown=1000:1000 typeorm/seed-runner.mjs ./typeorm/seed-runner.mjs
 COPY --chown=1000:1000 typeorm/seed-reconciliation.mjs ./typeorm/seed-reconciliation.mjs
@@ -229,6 +231,8 @@ COPY --chown=1000:1000 lib/ai/provider-secret-keyring-core.mjs ./lib/ai/provider
 COPY --chown=1000:1000 typeorm/migrations ./typeorm/migrations
 COPY --chown=1000:1000 typeorm/runtime-permission-manifest.mjs ./typeorm/runtime-permission-manifest.mjs
 COPY --chown=1000:1000 typeorm/seed-required.mjs ./typeorm/seed-required.mjs
+COPY --chown=1000:1000 typeorm/seed-optional.mjs ./typeorm/seed-optional.mjs
+COPY --chown=1000:1000 typeorm/seed-optional-data.mjs ./typeorm/seed-optional-data.mjs
 COPY --chown=1000:1000 typeorm/ai-safety-seed-data.mjs ./typeorm/ai-safety-seed-data.mjs
 COPY --chown=1000:1000 typeorm/seed-runner.mjs ./typeorm/seed-runner.mjs
 COPY --chown=1000:1000 typeorm/seed-reconciliation.mjs ./typeorm/seed-reconciliation.mjs

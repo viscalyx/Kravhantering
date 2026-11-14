@@ -226,10 +226,10 @@ describe('seed profiles', () => {
     ).toBe(" while seeding table='norm_references' rowIndex=0 pk={id=1}")
   })
 
-  it('seeds the inline ISO quality characteristics model', async () => {
+  it('seeds the demo ISO quality characteristics model', async () => {
     const { executor, rows } = collectSeedInsertRows()
 
-    await seedRequiredDatabase(executor)
+    await seedDemoDatabase(executor)
 
     const qualityCharacteristics = seedRowsFor(rows, 'quality_characteristics')
     expect(qualityCharacteristics).toHaveLength(49)
@@ -293,7 +293,7 @@ describe('seed profiles', () => {
     await seedRequiredDatabase(executor)
 
     expect(seedRowsFor(rows, 'requirement_statuses').length).toBeGreaterThan(0)
-    expect(seedRowsFor(rows, 'quality_characteristics')).toHaveLength(49)
+    expect(seedRowsFor(rows, 'quality_characteristics')).toHaveLength(0)
     const retentionPolicies = seedRowsFor(rows, 'archiving_retention_policies')
     expect(retentionPolicies).toHaveLength(6)
     expect(retentionPolicies).toEqual(

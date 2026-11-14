@@ -167,6 +167,7 @@
     "db:provider-secret-restore-verify": "node scripts/ai-provider-secret-restore-cli.mjs",
     "db:provider-secret-root-rotate": "node scripts/db-sqlserver-admin.mjs provider-secret-root-rotate",
     "db:seed:required": "node scripts/db-sqlserver-admin.mjs seed:required",
+    "db:seed:optional": "node scripts/db-sqlserver-admin.mjs seed:optional",
     "db:seed:demo": "node scripts/db-sqlserver-admin.mjs seed:demo",
     "db:reset": "node scripts/db-sqlserver-admin.mjs reset",
     "db:setup": "node scripts/db-sqlserver-admin.mjs setup",

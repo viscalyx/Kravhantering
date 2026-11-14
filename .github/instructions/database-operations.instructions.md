@@ -6,7 +6,7 @@ applyTo: "{scripts/db-sqlserver-admin.mjs,scripts/db-admin.mjs,lib/typeorm/sqlse
 
 - Follow `database-schema.instructions.md` for seed ownership and upgrades.
 - Provide versioned parseable results and a concise human summary for
-  required reconciliation.
+  required reconciliation and optional initialization.
 - Separate JSON output from human diagnostics. Report committed outcomes,
   including inserted, updated/repaired, unchanged and skipped entries.
 - Return nonzero status for unexpected failures and required conflicts.

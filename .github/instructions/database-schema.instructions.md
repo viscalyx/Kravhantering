@@ -212,6 +212,11 @@ remove **all** references to it from `docs/reference/database-schema.md`:
 - Preserve supported edits and optional deletions on reruns and upgrades.
 - Commit the complete required profile, including required AI writes, in one
   transaction. Roll back on ambiguous required identity conflicts.
+- Commit first-install optional defaults and initialization completion
+  together. Completed initialization is a no-op.
+- Mark existing installations initialized without restoring missing old
+  optional defaults; keep fresh installations eligible until initialization
+  commits.
 - Preserve family-specific release synchronization and supported edits;
   do not infer ownership from the seed file's current contents.
 - Keep demo loading separate from production reconciliation; preserve demo

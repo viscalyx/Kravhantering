@@ -74,24 +74,28 @@ ID and rolls back the required transaction. New ordered records use the shipped
 position if free, otherwise append after existing records; existing relative
 order is preserved. Existing valid order is not rewritten.
 
-The current command also runs the legacy optional catalogs in a separate
-transaction for compatibility. This phase retains its existing insert-missing
-behavior until the durable first-install initializer and upgrade transition
-are supplied. Its results are reported separately as `legacyOptional`; it is
-not part of the atomic required profile. Saved requirement column layouts are
-not seeded; absent layouts use runtime defaults. Demo reset membership remains
-unchanged. Migrations, required reconciliation, optional catalogs and demo
-loading have separate transaction boundaries.
+Required reconciliation excludes optional catalogs and saved column layouts.
+Absent layouts use runtime defaults. Fresh installations run `seed:optional`
+after migrations and required reconciliation. This commits the catalogs and
+completion together; a completed initializer is a no-op, even after deletion.
+Existing installations are marked complete by the transition migration without
+refilling old omissions. The migration persists fresh eligibility before the
+separate initializer process starts, so interruptions and retries retain it.
+Migrations, required reconciliation, optional initialization and demo loading
+have separate transaction boundaries. Demo loading retains its catalog fixtures
+and reset membership independently of production initialization.
 
-The optional initialization contract is one committed initialization per
-installation, with data and completion saved together. Existing installations
-must be marked complete without refilling historical omissions. Later shipped
-default changes require one-time migrations that preserve customized and
-absent optional records, check coupled dependencies, and record conflicting
-optional additions as omissions. Removing a default does not itself authorize
-removing stored data. These ownership rules govern the separate initializer
-and default-upgrade work; the compatibility phase does not provide that
-completion mechanism.
+The initializer accepts an equivalent entire entry under a different surrogate
+ID and resolves type and parent references to that ID. Names or chapter alone
+cannot establish equivalence. Occupied IDs, partial matches and inconsistent
+structures fail and roll back initialization. No completion is recorded on
+failure; correct the conflict before retrying. Concurrent initializers lock the
+single state row until commit. Later catalog changes use targeted migrations.
+
+Later shipped default changes require one-time migrations that preserve
+customized and absent optional records, check coupled dependencies, and record
+conflicting optional additions as omissions. Removing a default does not itself
+authorize removing stored data.
 
 ## Database Naming Standard
 
@@ -182,6 +186,11 @@ precision.
 <!-- markdownlint-disable MD013 -->
 ```mermaid
 erDiagram
+    optional_catalog_initializations {
+        int id PK
+        datetime2 created_at
+        datetime2 completed_at
+    }
     rfi_question_sequences {
         int area_id PK,FK
         int next_sequence
@@ -1313,6 +1322,28 @@ erDiagram
 
 ```
 <!-- markdownlint-enable MD013 -->
+
+## Optional Catalog Initialization State
+
+`optional_catalog_initializations` is deployment metadata owned by database
+migration and seed commands. The application runtime has no access grant.
+It contains exactly one row, constrained to `id = 1` by
+`chk_optional_catalog_initializations_id`; the primary key is
+`pk_optional_catalog_initializations`. It has no foreign keys or other indexes.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Meaning |
+| --- | --- | --- |
+| `id` | int | Singleton primary key, always 1. |
+| `created_at` | datetime2 | UTC time when the transition migration created state. |
+| `completed_at` | nullable datetime2 | NULL means fresh initialization is pending; otherwise initialization is complete. |
+<!-- markdownlint-enable MD013 -->
+
+The transition records completion immediately for an existing installation.
+For a fresh installation, only the optional transaction sets completion.
+Keep this row through upgrades, demo resets and backup/restore. It is not a
+per-default history or retry queue. Removing it would destroy evidence needed
+to preserve intentional omissions; recovery uses the tested backup procedure.
 
 ## Lookup / Taxonomy Tables
 
@@ -4135,6 +4166,7 @@ constraints and their referential actions:
 <!-- markdownlint-disable MD013 -->
 ```mermaid
 graph LR
+    optional_catalog_initializations[optional_catalog_initializations]
     rfi_question_sequences[rfi_question_sequences]
     rfi_question_sequences -->|area_id| requirement_areas[requirement_areas]
     rfi_question_suggestions[rfi_question_suggestions]

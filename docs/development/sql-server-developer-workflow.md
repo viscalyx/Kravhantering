@@ -191,10 +191,11 @@ Runtime pool defaults are conservative for a single app process:
 | `npm run db:wait` | Poll the configured SQL Server endpoint until it responds |
 | `npm run db:health` | Run a simple `SELECT 1` health probe |
 | `npm run db:browse` | Print a read-only VS Code SQLTools connection block |
-| `npm run db:setup` | Wait, reset, bootstrap principals, migrate and reconcile permissions, seed required + demo profiles, and configure the read-only login |
+| `npm run db:setup` | Wait, reset, bootstrap principals, migrate and reconcile permissions, seed required + optional + demo profiles, and configure the read-only login |
 | `npm run db:migration-status` | Report expected, observed, pending, and unknown TypeORM migrations as JSON |
 | `npm run db:migrate` | Run TypeORM migrations and reconcile runtime permissions |
-| `npm run db:seed:required` | Reconcile required records, then run the legacy optional-catalog compatibility phase |
+| `npm run db:seed:required` | Reconcile required records atomically; preserve optional catalogs |
+| `npm run db:seed:optional` | Initialize fresh starter catalogs once; completed installations are unchanged |
 | `npm run db:seed:demo` | Reset non-required rows, then apply optional demo, smoke-test, guide, and integration seed data |
 | `npm run db:reset` | Drop and recreate the database |
 | `npm run test:sql-integration` | Reset a dedicated test database and run focused SQL Server invariant tests |
@@ -213,6 +214,7 @@ For an empty production-like database, first run
 `node scripts/db-sqlserver-admin.mjs bootstrap` with bootstrap administrator
 credentials to create the database and principals if they do not exist.
 Then run `npm run db:migrate` plus `npm run db:seed:required`.
+For a fresh database, also run `npm run db:seed:optional` before use.
 Add `npm run db:seed:demo` only when you need the
 local development, integration-test, guide, or smoke-test fixtures. The demo
 profile is destructive: it clears non-required data before reseeding the
@@ -439,18 +441,28 @@ clean non-required data set by `npm run db:seed:demo`.
 
 Put required identities and invariant repairs in required reconciliation. Put
 examples, screenshots, privacy exercises, Playwright fixtures and dogfood Krav
-in the demo profile. The optional starter catalogs currently run in a separate
-compatibility phase; their durable one-time initialization is separate work.
+in the demo profile. Fresh optional starter catalogs use
+`npm run db:seed:optional`. Completion is durable and atomic with catalog data.
+Required reruns and upgrades preserve optional deletions. `db:setup` runs both
+profiles before demo fixtures.
 
 ### Inspect Required Reconciliation Results
 
 Use silent npm output when retaining parseable command output:
 
 ```bash
-npm run --silent db:seed:required -- --json > seed-result.json 2> seed-summary.log
+npm run --silent db:seed:required -- --json \
+  > seed-result.json 2> seed-summary.log
 ```
 
-The versioned result records required and legacy optional outcomes separately.
+For optional initialization, retain a separate report:
+
+```bash
+npm run --silent db:seed:optional -- --json \
+  > optional-result.json 2> optional-summary.log
+```
+
+Each versioned result records its own transaction and committed outcomes.
 The summary goes to stderr. Nonzero exit status means failure, even when a prior
 phase committed. See the [database job result contract](../../containers/db-job/README.md#required-seed-results)
 for counts, correlation and uncertain outcomes. Keep both files when diagnosing

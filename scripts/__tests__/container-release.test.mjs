@@ -490,6 +490,9 @@ describe('trusted container release helpers', () => {
   it('identifies release eligibility through the common path policy', () => {
     for (const file of [
       'containers/app/Dockerfile',
+      'typeorm/seed-optional.mjs',
+      'typeorm/seed-optional-data.mjs',
+      'typeorm/migrations/0071_optional_catalog_initialization.mjs',
       'package-lock.json',
       'proxy.ts',
       'new-area/input',
@@ -1468,7 +1471,7 @@ describe('trusted container release helpers', () => {
     )
     expect(notes).toContain('### kravhantering-db-job')
     expect(notes).toContain(
-      'Database job image for SQL Server health checks, migrations and required seed operations.',
+      'Database job image for SQL Server health checks, migrations, required reconciliation and optional catalog initialization.',
     )
     expect(notes).toContain(
       '- [`ghcr.io/viscalyx/kravhantering-db-job:1.2.0-preview.4`](https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=1.2.0-preview.4)',

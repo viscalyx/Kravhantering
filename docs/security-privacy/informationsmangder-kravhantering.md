@@ -351,3 +351,11 @@ befintliga motiveringar; ingen automatisk personidentifiering införs.
 Avslutets aktör hanteras i Dataskydd med exakt HSA-id. Namn och HSA-id
 anonymiseras tillsammans utan att avslutets anledning eller tidpunkt ändras.
 Registerutdrag använder samma aktörspolicy. Ingen ny bevarandetid införs.
+
+## Initieringsstatus för startkataloger
+
+`optional_catalog_initializations` är teknisk driftsmetadata utan personuppgifter.
+Driftansvarig bevarar posten under installationens livstid samt i säkerhetskopior.
+Den omfattas inte av applikationens gallring eller JSON-export. Posten behövs för
+att bevara avsiktliga borttagningar vid uppgraderingar och får inte återställas
+för att fylla på kataloger. Återställning följer driftens verifierade rutin.

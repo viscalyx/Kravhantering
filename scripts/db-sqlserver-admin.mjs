@@ -161,11 +161,16 @@ export async function loadSeedProfile(profile, options = {}) {
     return module.seedRequiredDatabase
   }
 
+  if (profile === 'optional') {
+    const module = await import('../typeorm/seed-optional.mjs')
+    return module.seedOptionalDatabase
+  }
+
   if (profile === 'demo') {
     const seedFile = options.demoSeedPath ?? DEMO_SEED_FILE
     if (!existsSync(seedFile)) {
       throw new Error(
-        'seed:demo requires demo seed files mounted into /workspace/typeorm. The production db-job image contains only required seed data. Use seed:required for production.',
+        'seed:demo requires demo seed files mounted into /workspace/typeorm. The production db-job image contains production seed profiles only. Use seed:required and seed:optional for production.',
       )
     }
     const module = await import(pathToFileURL(seedFile).href)
@@ -215,6 +220,7 @@ const CORE_COMMANDS = Object.freeze([
   'provider-secret-root-rotate',
   'provider-secret-restore-verify',
   'seed:required',
+  'seed:optional',
 ])
 const DEMO_DATA_COMMANDS = Object.freeze(['seed:demo', 'demo:clear', 'setup'])
 const AUXILIARY_COMMANDS = Object.freeze(['browse-config'])
@@ -1709,13 +1715,16 @@ export async function seedSqlServerDatabase(connectionString, options = {}) {
   const injectedSeedProfile =
     profile === 'required'
       ? (options.seedRequiredDatabaseImpl ?? options.seedDatabaseImpl)
-      : profile === 'demo'
-        ? (options.seedDemoDatabaseImpl ?? options.seedDatabaseImpl)
-        : null
-  if (profile !== 'required' && profile !== 'demo') {
+      : profile === 'optional'
+        ? (options.seedOptionalDatabaseImpl ?? options.seedDatabaseImpl)
+        : profile === 'demo'
+          ? (options.seedDemoDatabaseImpl ?? options.seedDatabaseImpl)
+          : null
+  if (!['required', 'optional', 'demo'].includes(profile)) {
     throw new Error(`Unsupported SQL Server seed profile: ${profile}`)
   }
-  const report = profile === 'required' ? createSeedCommandReport(env) : null
+  const report =
+    profile !== 'demo' ? createSeedCommandReport(env, profile) : null
   let dataSource
   let initialized = false
   let seedResult
@@ -1756,13 +1765,10 @@ export async function seedSqlServerDatabase(connectionString, options = {}) {
         ? caught
         : new Error(`SQL Server ${profile} seed failed.`, { cause: caught })
     if (report) {
-      if (failure.requiredSeedResult) {
-        Object.assign(report, failure.requiredSeedResult)
-        report.phase = 'legacy_optional'
-      } else if (failure.seedProfileResult)
-        report.required = failure.seedProfileResult
-      if (!failure.requiredSeedResult && failure.seedProfileResult)
+      if (failure.seedProfileResult) {
+        report[profile] = failure.seedProfileResult
         report.counts = failure.seedProfileResult.counts
+      }
       report.error = {
         code: failure.code ?? 'SEED_FAILED',
         message: failure.message,
@@ -2008,7 +2014,7 @@ export async function main(args, dependencies = {}) {
   if (!isSupportedCommand(command, env)) {
     if (isProductionDbJobImage(env) && DEMO_DATA_COMMANDS.includes(command)) {
       consoleObj.error(
-        `${command} is only available from local source workflows or the kravhantering-demo-seed image. Use bootstrap, migration-status, migrate and seed:required in the production db-job image.`,
+        `${command} is only available from local source workflows or the kravhantering-demo-seed image. Use bootstrap, migration-status, migrate, seed:required and seed:optional in the production db-job image.`,
       )
       return 1
     }
@@ -2039,6 +2045,7 @@ export async function main(args, dependencies = {}) {
         'permission-status',
         'seed:demo',
         'seed:required',
+        'seed:optional',
       ].includes(command)
     ) {
       connectionString = getSqlServerMigrationUrl(env)
@@ -2052,8 +2059,8 @@ export async function main(args, dependencies = {}) {
       )
     }
   } catch (error) {
-    if (command === 'seed:required' && jsonOutput) {
-      const report = createSeedCommandReport(env)
+    if (['seed:required', 'seed:optional'].includes(command) && jsonOutput) {
+      const report = createSeedCommandReport(env, command.split(':')[1])
       report.completedAt = new Date().toISOString()
       report.error = {
         code: 'SEED_CONFIGURATION_FAILED',
@@ -2292,8 +2299,8 @@ export async function main(args, dependencies = {}) {
     }
   }
 
-  if (command === 'seed:required' || command === 'seed:demo') {
-    const profile = command === 'seed:required' ? 'required' : 'demo'
+  if (['seed:required', 'seed:optional', 'seed:demo'].includes(command)) {
+    const profile = command.split(':')[1]
     try {
       const result = await seedSqlServerDatabase(connectionString, {
         ...dependencies,
@@ -2411,6 +2418,12 @@ export async function main(args, dependencies = {}) {
           profile: 'required',
         },
       )
+      consoleObj.log('Initializing optional SQL Server catalogs...')
+      await seedSqlServerDatabase(migrationConnectionString, {
+        ...dependencies,
+        configureReadonlyAccess: false,
+        profile: 'optional',
+      })
       consoleObj.log('Step 6/7: seeding demo SQL Server data...')
       const demoResult = await seedSqlServerDatabase(
         migrationConnectionString,

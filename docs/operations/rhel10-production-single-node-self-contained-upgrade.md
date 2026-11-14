@@ -31,6 +31,13 @@ migration evidence, including failed attempts. Check the exit status and each
 committed phase before continuing. See the [required-seed result contract](../../containers/db-job/README.md#required-seed-results)
 for identity conflicts, uncertain outcomes and company pipeline publication.
 
+Upgrades apply migrations and required reconciliation. The optional catalog
+transition marks existing installations complete without restoring missing
+starter entries or resetting administrator edits. Optional initialization is
+for fresh installations; rerunning it on a completed installation is a no-op.
+Keep initialization history with the database and its recovery set. Do not
+clear it to force catalog refill. Later default changes use release migrations.
+
 ## Identity Profile Upgrade Impact
 
 Explicitly supply `IDENTITY_PROVIDER_MODE` in `release.env` and
