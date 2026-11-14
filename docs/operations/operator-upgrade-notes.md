@@ -13,6 +13,10 @@ changes.
 
 ## Unreleased
 
+
+
+## v0.10.0 - 2026-11-14
+
 ### Bundled identity provider upgrade
 
 If you use the bundled identity provider, back up its database and configuration
@@ -62,8 +66,6 @@ PDF, or privacy exports. The secure application runtime removes this
 HTTP framing header. Use `X-Generated-Output-Bytes` to check the completed
 file size before HTTP compression. Compare this value with the downloaded
 file size after decompression. Verify complete downloads after upgrade.
-
-
 
 ## v0.9.1 - 2026-09-28
 
