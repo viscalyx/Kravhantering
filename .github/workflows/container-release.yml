@@ -779,6 +779,7 @@ jobs:
         if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          REGISTRY_AUTH_FILE: ${{ steps.ghcr-login.outputs.authfile }}
         run: |-
           node scripts/release/publish-github-release.mjs
         id: github-publication
