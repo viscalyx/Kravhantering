@@ -18,11 +18,9 @@ class InterruptedDataSource extends DataSource {
   }
 }
 
-process.exit(
-  await main(['seed:optional', '--json'], {
-    configureReadonlyAccess: false,
-    ...(process.env.INTERRUPT_OPTIONAL_INITIALIZATION === '1'
-      ? { dataSourceCtor: InterruptedDataSource }
-      : {}),
-  }),
-)
+process.exitCode = await main(['seed:optional', '--json'], {
+  configureReadonlyAccess: false,
+  ...(process.env.INTERRUPT_OPTIONAL_INITIALIZATION === '1'
+    ? { dataSourceCtor: InterruptedDataSource }
+    : {}),
+})

@@ -162,16 +162,17 @@ describe('one-time optional catalog command', () => {
         },
       )
     const interrupted = start(true)
+    const interruptedExit = once(interrupted, 'exit')
     try {
       await Promise.race([
         once(interrupted, 'message'),
-        once(interrupted, 'exit').then(() => {
+        interruptedExit.then(() => {
           throw new Error('Initializer exited before interruption point')
         }),
       ])
     } finally {
       interrupted.kill('SIGKILL')
-      await once(interrupted, 'exit')
+      await interruptedExit
     }
     expect(await source.query('SELECT id FROM requirement_types')).toEqual([])
     expect(
@@ -188,7 +189,7 @@ describe('one-time optional catalog command', () => {
     retry.stdout?.on('data', chunk => {
       stdout += chunk
     })
-    expect((await once(retry, 'exit'))[0]).toBe(0)
+    expect((await once(retry, 'close'))[0]).toBe(0)
     expect(JSON.parse(stdout).optional.initialization).toBe('initialized')
     expect(
       await source.query('SELECT id FROM quality_characteristics'),

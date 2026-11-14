@@ -787,6 +787,7 @@ verify_hsa_mtls_rotation_and_rollback() {
 
 database_job() {
   local command="$1" network
+  shift
   if [[ "$command" == wait ]]; then
     # Quadlet reports the process started before SQL Server accepts connections.
     wait_for_sqlserver_container kravhantering-sqlserver
@@ -796,7 +797,7 @@ database_job() {
   as_service podman run --rm --pull=never --network "$network" \
     --env-file "$CONFIG_ROOT/db-job.env" \
     --volume "$CONFIG_ROOT/tls/ca.crt:/run/kravhantering/sqlserver-ca.crt:ro" \
-    "$DB_JOB_IMAGE_REF" "$command"
+    "$DB_JOB_IMAGE_REF" "$command" "$@"
 }
 
 verify_sqlserver_identity_rejection() {
@@ -1771,7 +1772,14 @@ up() {
   database_job migration-status >"$EVIDENCE_DIR/migration-after.json"
   database_job permission-status >"$EVIDENCE_DIR/permissions.json"
   database_job seed:required
-  database_job seed:optional
+  database_job seed:optional --json \
+    >"$EVIDENCE_DIR/seed-optional.json" \
+    2>"$EVIDENCE_DIR/seed-optional-stderr.txt" || {
+      local status=$?
+      printf 'production-smoke: optional initialization failed (exit %s); see %s/seed-optional.json and %s/seed-optional-stderr.txt\n' \
+        "$status" "$EVIDENCE_DIR" "$EVIDENCE_DIR" >&2
+      return "$status"
+    }
   if [[ "$SMOKE_SCOPE" == core ]]; then
     local fixture_database
     fixture_database="$(sudo sed -n 's/^DB_NAME=//p' "$CONFIG_ROOT/app.env")"
