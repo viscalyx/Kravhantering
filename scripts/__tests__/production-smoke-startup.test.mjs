@@ -5,6 +5,92 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 describe('production smoke startup readiness', () => {
+  it.each([0, 23])(
+    'retains separate optional initialization evidence and exit status %i',
+    exitStatus => {
+      const evidence = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'smoke-optional-initialization-'),
+      )
+      try {
+        const result = spawnSync(
+          'bash',
+          ['-s', '--', path.resolve('scripts/containers/production-smoke.sh')],
+          {
+            input: String.raw`
+              source "$1"
+              required_env() { :; }
+              prepare_service_user() { :; }
+              install_archive() { :; }
+              render_runtime_configuration() { :; }
+              prepare_images() { :; }
+              render_ci_overlay() { :; }
+              service_systemctl() { :; }
+              assert_generated_quadlet_service() { :; }
+              configure_nginx_resolvers() { :; }
+              wait_for_sqlserver_container() { :; }
+              as_service() {
+                if [[ "$2" == print-network ]]; then
+                  printf 'database-network\n'
+                  return 0
+                fi
+                [[ "$1" == podman ]] || return 0
+                while [[ "$1" != "$DB_JOB_IMAGE_REF" ]]; do shift; done
+                shift
+                if [[ "$1" == seed:optional ]]; then
+                  printf '%s\n' "$@" >"$EVIDENCE_DIR/optional-arguments.txt"
+                  printf '{"optional":{"initialization":"initialized"}}\n'
+                  printf 'optional initialization diagnostic\n' >&2
+                  return "$OPTIONAL_EXIT_STATUS"
+                fi
+              }
+              sudo() { printf 'fixture_database\n'; }
+              sqlserver_query() { :; }
+              wait_for_url() { :; }
+              verify_containment() { printf 'startup-complete\n'; }
+              up fixture.tar.gz
+            `,
+            encoding: 'utf8',
+            timeout: 10_000,
+            env: {
+              ...process.env,
+              DB_JOB_IMAGE_REF: 'fixture-db-job',
+              OPTIONAL_EXIT_STATUS: String(exitStatus),
+              PRODUCTION_SMOKE_EVIDENCE_DIR: evidence,
+              PRODUCTION_SMOKE_SCOPE: 'core',
+            },
+          },
+        )
+        expect(result.error).toBeUndefined()
+        expect(result.status, result.stderr).toBe(exitStatus)
+        expect(
+          fs.readFileSync(
+            path.join(evidence, 'optional-arguments.txt'),
+            'utf8',
+          ),
+        ).toBe('seed:optional\n--json\n')
+        expect(
+          JSON.parse(
+            fs.readFileSync(path.join(evidence, 'seed-optional.json'), 'utf8'),
+          ),
+        ).toEqual({ optional: { initialization: 'initialized' } })
+        expect(
+          fs.readFileSync(
+            path.join(evidence, 'seed-optional-stderr.txt'),
+            'utf8',
+          ),
+        ).toBe('optional initialization diagnostic\n')
+        expect(result.stdout).toBe(exitStatus === 0 ? 'startup-complete\n' : '')
+        expect(result.stderr).toBe(
+          exitStatus === 0
+            ? ''
+            : `production-smoke: optional initialization failed (exit 23); see ${evidence}/seed-optional.json and ${evidence}/seed-optional-stderr.txt\n`,
+        )
+      } finally {
+        fs.rmSync(evidence, { recursive: true, force: true })
+      }
+    },
+  )
+
   it('enters a private service home only after switching users', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smoke-service-home-'))
     const serviceHome = path.join(root, 'private service home')

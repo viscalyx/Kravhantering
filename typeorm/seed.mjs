@@ -3,6 +3,10 @@ import {
   createRequirementResponsibilityPersonActorFingerprint,
   createRequirementResponsibilityPersonTargetFingerprint,
 } from '../lib/requirements/responsibility-person-verification-fingerprint.mjs'
+import {
+  OPTIONAL_SEED_DATA,
+  OPTIONAL_SEED_TABLES,
+} from './seed-optional-data.mjs'
 import { REQUIRED_SEED_TABLES, seedRequiredDatabase } from './seed-required.mjs'
 import { runSeedData, seedPositionDetail } from './seed-runner.mjs'
 import { applySpecificationAgreementSeed } from './seed-specification-agreements.mjs'
@@ -14799,7 +14803,14 @@ applySpecificationAgreementSeed(SEED_DATA, TABLE_ORDER)
 export { REQUIRED_SEED_TABLES, seedRequiredDatabase }
 
 export const DEMO_SEED_TABLES = Object.freeze(
-  TABLE_ORDER.filter(table => !REQUIRED_SEED_TABLES.includes(table)),
+  TABLE_ORDER.filter(
+    table =>
+      ![
+        ...REQUIRED_SEED_TABLES,
+        ...OPTIONAL_SEED_TABLES,
+        'requirement_list_column_defaults',
+      ].includes(table),
+  ),
 )
 
 export { seedPositionDetail }
@@ -14965,6 +14976,7 @@ async function seedDemoLifecycleRow({
 
 export async function seedDemoDatabase(executor) {
   await seedRequiredDatabase(executor)
+  await runSeedData(executor, OPTIONAL_SEED_DATA, OPTIONAL_SEED_TABLES)
   refreshDemoTransientTimestamps()
   return runSeedData(executor, SEED_DATA, TABLE_ORDER, {
     includeTables: DEMO_SEED_TABLES,

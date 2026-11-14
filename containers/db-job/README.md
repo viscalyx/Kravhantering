@@ -44,17 +44,20 @@ manual runs pass the admin command as arguments:
 - `permission-status` prints secret-free JSON evidence without changing state.
 - `permission-reconcile` reapplies the manifest and managed memberships, then
   prints the verified JSON status.
-- `seed:required` reconciles required records and then runs the legacy optional
-  catalog compatibility phase in a separate transaction.
+- `seed:required` reconciles required records in one transaction.
+- `seed:optional` initializes starter catalogs once for a fresh installation.
+  Completed initialization is a no-op, including on existing installations.
 - `seed:required --json` writes a versioned result to stdout and a concise
   summary to stderr.
 - `health` runs a simple SQL Server read check.
 - `wait` polls SQL Server until it responds.
 
 A production-like empty database is bootstrap, migration, and
-`seed:required`. The image intentionally includes `typeorm/seed-required.mjs`,
-its required seed helper modules, and excludes `typeorm/seed.mjs`, dogfood
-seed, archiving-retention demo seed, tests, and documentation.
+`seed:required`, then `seed:optional`. The image includes
+`typeorm/seed-required.mjs`, `typeorm/seed-optional.mjs`,
+`typeorm/seed-optional-data.mjs`, and their seed helper modules. It excludes
+`typeorm/seed.mjs`, dogfood seed, archiving-retention demo seed, tests, and
+documentation.
 
 [`runtime-permission-manifest.mjs`](../../typeorm/runtime-permission-manifest.mjs)
 is the release-versioned authority for exact object, operation, and
@@ -91,11 +94,11 @@ Demo/test data must not be baked into this production `db-job` image. See
 Supply `RELEASE_VERSION` (or `BUILD_VERSION`) to identify the deployed release;
 when neither is available, `release` is null. These values contain no secrets.
 
-`required` and `legacyOptional` each contain their profile, transaction outcome,
-counts and per-record entries. Each entry has a table, logical identity, resolved
-ID and outcome: `inserted`, `updated`, `unchanged` or `skipped`. `updated` includes
-invariant repair and release-owned AI synchronization. Top-level `counts` and
-`insertedRows` count confirmed committed work across phases. AI rules and terms
+`required` contains its profile, transaction outcome, counts and per-record
+entries. Each entry has a table, logical identity, resolved ID and outcome:
+`inserted`, `updated`, `unchanged` or `skipped`. `updated` includes invariant
+repair and release-owned AI synchronization. Top-level `counts` and
+`insertedRows` count confirmed committed work. AI rules and terms
 are included. Existing rows are not counted as inserted. A no-op rerun reports
 unchanged entries and does not alter metadata timestamps.
 
@@ -106,24 +109,47 @@ transactions publish zero committed counts and no committed entries. Original
 errors remain available to in-process callers with their cause and any rollback
 or cleanup error. Command failures include an error code, message and logical
 record when known. The command returns nonzero for conflicts and unexpected
-failures. A later optional or browse-access failure preserves the earlier
-required phase's committed counts. A failed commit or rollback acknowledgement
-reports `unknown`; inspect saved state before retrying.
+failures. A later browse-access failure preserves the profile's committed
+counts. A failed commit or rollback acknowledgement reports `unknown`; inspect
+saved state before retrying.
 
 Retain JSON and stderr with the deployment evidence, including failed attempts.
 Publish the summary with a link to the retained report through the company's
 pipeline. A later no-op report does not replace the earlier attempt's evidence.
-Required identity conflicts require administrator review of the reported mapping;
-editable labels are not authority to reassign identities. Keep the documented
+Required identity conflicts require administrator review of the reported
+mapping; editable labels are not authority to reassign identities. Keep the documented
 recovery procedure for failures after migrations start.
 
 The canonical [ownership table](../../docs/reference/database-schema.md#seed-ownership-and-upgrades)
-defines required, optional and configuration families. The compatibility phase
-can still restore missing optional starter records; it is not the durable
-one-time optional initializer. Saved column layouts are left intact. Both
-`db-job` and `demo-seed` must include `seed-reconciliation.mjs`, `seed-runner.mjs`,
-`seed-required.mjs` and `ai-safety-seed-data.mjs`; demo fixture modules remain
-exclusive to the demo image.
+defines required, optional and configuration families. Saved column layouts
+are left intact. Both `db-job` and `demo-seed` include `seed-reconciliation.mjs`,
+`seed-runner.mjs`, `seed-required.mjs`, `seed-optional.mjs`,
+`seed-optional-data.mjs` and `ai-safety-seed-data.mjs`; demo fixture modules
+remain exclusive to the demo image.
+
+### Optional Initialization Results
+
+`seed:optional --json` uses the same version 1 envelope and correlation fields,
+with operation `seed:optional` and an `optional` profile result.
+`optional.initialization` is `initialized` or `already_complete` on success.
+A completed no-op returns zero counts and an empty entry list. The completion
+record is not counted as a catalog entry. An equivalent existing entry counts
+as unchanged, with its actual saved ID.
+
+Conflicts return nonzero status and `OPTIONAL_SEED_CONFLICT` with the logical
+record; unexpected errors also fail. Rolled-back or uncertain transactions
+report zero committed counts. Inspect persisted state before retrying an
+uncertain outcome. A late cleanup failure can occur after data and completion
+commit; its transaction outcome remains committed. Keep each attempt's JSON
+and stderr summary with deployment evidence, using distinct filenames and a
+shared run/release correlation. A later no-op does not replace earlier evidence.
+Company pipelines control publication and notifications.
+
+Fresh deployment runs migrations, required reconciliation and initialization
+before admitting traffic. Upgrade runs migrations and required reconciliation;
+the transition records existing installations as complete without restoring
+missing catalogs. Never clear completion to force a refill. Later default
+changes use one-time migrations. Demo fixture loading is a separate operation.
 
 ## Environment Variables
 

@@ -13,6 +13,18 @@ changes.
 
 ## Unreleased
 
+### One-time starter catalogs
+
+Fresh installations must complete optional catalog initialization after
+migrations and required reconciliation, before traffic is admitted. Retain
+its result and summary with the deployment evidence. Resolve reported conflicts
+before retrying; inspect saved state when a transaction outcome is unknown.
+
+Upgrades preserve missing starter entries and administrator edits. The
+transition marks existing installations complete without refilling omissions.
+Do not clear initialization history to restore defaults. Keep the tested
+recovery procedure for failures after migrations start.
+
 ### Required seed reconciliation
 
 Required reconciliation stops and rolls back on conflicting required
@@ -23,7 +35,7 @@ the administrator's active state and direction.
 
 Retain the versioned seed report and separate summary with deployment evidence.
 Check each phase and the exit status: required records can commit before a
-later optional-catalog or browse-access failure. If the transaction outcome is
+later browse-access failure. If the transaction outcome is
 unknown, inspect saved state before retrying. Keep the tested recovery procedure
 for failures after migrations start.
 

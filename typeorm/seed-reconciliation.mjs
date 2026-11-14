@@ -7,10 +7,19 @@ export function seedCounts(entries = []) {
   return counts
 }
 
-export function createSeedCommandReport(env = process.env) {
+export function createSeedCommandReport(
+  env = process.env,
+  profile = 'required',
+) {
+  const result = {
+    profile,
+    transaction: 'not_started',
+    counts: seedCounts(),
+    entries: [],
+  }
   return {
     version: 1,
-    operation: 'seed:required',
+    operation: `seed:${profile}`,
     runId: env.DB_SEED_RUN_ID || randomUUID(),
     release: env.RELEASE_VERSION || env.BUILD_VERSION || null,
     startedAt: new Date().toISOString(),
@@ -18,18 +27,17 @@ export function createSeedCommandReport(env = process.env) {
     status: 'failed',
     phase: 'prepare',
     counts: seedCounts(),
-    required: {
-      profile: 'required',
-      transaction: 'not_started',
-      counts: seedCounts(),
-      entries: [],
-    },
+    ...(profile === 'optional' ? { optional: result } : { required: result }),
   }
 }
 
 export function seedCommandSummary(report) {
   const { inserted, updated, unchanged, skipped } = report.counts
-  return `SQL Server required seed ${report.status} (required transaction: ${report.required.transaction}; ${inserted} inserted, ${updated} updated/repaired, ${unchanged} unchanged, ${skipped} skipped; run ${report.runId}).`
+  const profile = report.operation === 'seed:optional' ? 'optional' : 'required'
+  const initialization = report[profile].initialization
+    ? `; initialization: ${report[profile].initialization}`
+    : ''
+  return `SQL Server ${profile} seed ${report.status} (${profile} transaction: ${report[profile].transaction}${initialization}; ${inserted} inserted, ${updated} updated/repaired, ${unchanged} unchanged, ${skipped} skipped; run ${report.runId}).`
 }
 
 export function seedConflict(table, identity, reason) {

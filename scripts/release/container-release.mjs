@@ -32,7 +32,7 @@ export const DEPLOYMENT_BUNDLE_SCHEMA_VERSION = 3
 export const APP_RUNTIME_DESCRIPTION =
   'Runnable Next.js application image for the production web runtime.'
 export const DB_JOB_DESCRIPTION =
-  'Database job image for SQL Server health checks, migrations and required seed operations.'
+  'Database job image for SQL Server health checks, migrations, required reconciliation and optional catalog initialization.'
 export const DEMO_SEED_DESCRIPTION =
   'Optional destructive demo seed image for disposable demonstration and test environments.'
 export const HSA_DIRECTORY_MOCK_DESCRIPTION =

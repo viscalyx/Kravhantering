@@ -41,9 +41,15 @@ function database(options = {}) {
           )
             throw options.releaseError
         },
-        query: async sql => {
+        query: async (sql, params) => {
+          const result = options.queryResult?.(sql, params)
+          if (result !== undefined) return result
           if (options.failTable && sql.includes(`[${options.failTable}]`))
             throw options.queryError
+          if (sql.startsWith('SELECT [completed_at]'))
+            return options.missingState
+              ? []
+              : [{ completed_at: options.completedAt ?? null }]
           if (sql.includes('OUTPUT INSERTED.'))
             return options.invalidInsertResult ? [] : [{ id: ++nextId }]
           return []
@@ -75,7 +81,6 @@ describe('required seed command results', () => {
       runId: 'test-run',
       release: 'test-release',
       required: { transaction: 'committed' },
-      legacyOptional: { transaction: 'committed' },
     })
     expect(report.counts.inserted).toBeGreaterThan(35)
     expect(report.insertedRows).toBe(report.counts.inserted)
@@ -85,24 +90,6 @@ describe('required seed command results', () => {
       ),
     )
     expect(report.completedAt).toEqual(expect.any(String))
-  })
-
-  it('retains committed required work when the separate compatibility phase fails', async () => {
-    const result = await seedSqlServerDatabase(
-      url,
-      database({
-        failTable: 'specification_implementation_types',
-        queryError: new Error('optional write failed'),
-      }),
-    ).catch(error => error.seedCommandResult)
-    expect(result).toMatchObject({
-      status: 'failed',
-      phase: 'legacy_optional',
-      required: { transaction: 'committed' },
-      legacyOptional: { transaction: 'rolled_back', counts: { inserted: 0 } },
-    })
-    expect(result.counts).toEqual(result.required.counts)
-    expect(result.counts.inserted).toBeGreaterThan(35)
   })
 
   it('preserves the original SQL failure when rollback, release and destruction also fail', async () => {
@@ -142,23 +129,6 @@ describe('required seed command results', () => {
     expect(failure).toBe(original)
     expect(failure.seedCommandResult.required.transaction).toBe('unknown')
     expect(failure.seedCommandResult.counts.inserted).toBe(0)
-  })
-
-  it('includes optional committed work when its post-commit release fails', async () => {
-    const failure = await seedSqlServerDatabase(
-      url,
-      database({
-        releaseError: new Error('second release failed'),
-        releaseAfter: 2,
-      }),
-    ).catch(error => error)
-    const report = failure.seedCommandResult
-    expect(report.legacyOptional).toMatchObject({
-      transaction: 'committed',
-      counts: { inserted: 61 },
-    })
-    expect(report.counts.inserted - report.required.counts.inserted).toBe(61)
-    expect(report.status).toBe('failed')
   })
 
   it.each(['releaseError', 'destroyError'])(
@@ -211,6 +181,137 @@ describe('required seed command results', () => {
       status: 'failed',
       phase: 'prepare',
       error: { code: 'SEED_CONFIGURATION_FAILED' },
+    })
+  })
+})
+
+describe('optional seed command results', () => {
+  it('dispatches production initialization with parseable committed evidence', async () => {
+    const log = vi.fn()
+    const error = vi.fn()
+    const dependencies = database()
+    const exit = await main(['seed:optional', '--json'], {
+      ...dependencies,
+      env: { ...dependencies.env, KRAVHANTERING_DB_ADMIN_IMAGE: 'db-job' },
+      consoleObj: { log, error },
+    })
+    expect(exit).toBe(0)
+    expect(log).toHaveBeenCalledOnce()
+    expect(JSON.parse(log.mock.calls[0][0])).toMatchObject({
+      operation: 'seed:optional',
+      status: 'completed',
+      optional: { transaction: 'committed', initialization: 'initialized' },
+      counts: { inserted: 61, unchanged: 0 },
+    })
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining('initialization: initialized'),
+    )
+  })
+
+  it('accepts an equivalent logical entry under another ID', async () => {
+    const result = await seedSqlServerDatabase(url, {
+      ...database({
+        queryResult: (sql, params) =>
+          sql.includes('FROM [requirement_types]') && params?.[0] === 1
+            ? [{ id: 901, name_sv: 'Funktionellt', name_en: 'Functional' }]
+            : undefined,
+      }),
+      profile: 'optional',
+    })
+    expect(result.optional.entries).toContainEqual({
+      table: 'requirement_types',
+      identity: 'id=1',
+      id: 901,
+      outcome: 'unchanged',
+    })
+    expect(result.counts).toMatchObject({ inserted: 60, unchanged: 1 })
+  })
+
+  it.each([
+    [{ id: 1, name_sv: 'Egen', name_en: 'Custom' }],
+    [
+      { id: 901, name_sv: 'Funktionellt', name_en: 'Functional' },
+      { id: 902, name_sv: 'Funktionellt', name_en: 'Functional' },
+    ],
+  ])('rejects an inconsistent or ambiguous entry', async (...rows) => {
+    const failure = await seedSqlServerDatabase(url, {
+      ...database({
+        queryResult: (sql, params) =>
+          sql.includes('FROM [requirement_types]') && params?.[0] === 1
+            ? rows
+            : undefined,
+      }),
+      profile: 'optional',
+    }).catch(error => error)
+    expect(failure.seedCommandResult).toMatchObject({
+      status: 'failed',
+      optional: { transaction: 'rolled_back', initialization: 'incomplete' },
+      counts: { inserted: 0 },
+      error: { code: 'OPTIONAL_SEED_CONFLICT' },
+    })
+  })
+
+  it('reports a completed initialization as a no-op', async () => {
+    const result = await seedSqlServerDatabase(url, {
+      ...database({ completedAt: new Date() }),
+      profile: 'optional',
+    })
+    expect(result.optional).toMatchObject({
+      initialization: 'already_complete',
+      transaction: 'committed',
+      entries: [],
+    })
+    expect(result.counts).toEqual({
+      inserted: 0,
+      updated: 0,
+      unchanged: 0,
+      skipped: 0,
+    })
+  })
+
+  it('rejects initialization without migrated state', async () => {
+    const failure = await seedSqlServerDatabase(url, {
+      ...database({ missingState: true }),
+      profile: 'optional',
+    }).catch(error => error)
+    expect(failure.seedCommandResult).toMatchObject({
+      status: 'failed',
+      optional: { transaction: 'rolled_back', initialization: 'incomplete' },
+      counts: { inserted: 0 },
+    })
+  })
+
+  it.each(['commitError', 'releaseError', 'destroyError'])(
+    'preserves the optional transaction outcome on %s',
+    async field => {
+      const failure = await seedSqlServerDatabase(url, {
+        ...database({ [field]: new Error('connection failure') }),
+        profile: 'optional',
+      }).catch(error => error)
+      const uncertain = field === 'commitError'
+      expect(failure.seedCommandResult).toMatchObject({
+        status: 'failed',
+        optional: {
+          transaction: uncertain ? 'unknown' : 'committed',
+          initialization: uncertain ? 'unknown' : 'initialized',
+        },
+        counts: { inserted: uncertain ? 0 : 61 },
+      })
+    },
+  )
+
+  it('returns parseable optional configuration failures', async () => {
+    const log = vi.fn()
+    expect(
+      await main(['seed:optional', '--json'], {
+        env: { ...env, DB_MIGRATION_USER: 'incomplete' },
+        consoleObj: { log, error: vi.fn() },
+      }),
+    ).toBe(1)
+    expect(JSON.parse(log.mock.calls[0][0])).toMatchObject({
+      operation: 'seed:optional',
+      status: 'failed',
+      optional: { transaction: 'not_started' },
     })
   })
 })

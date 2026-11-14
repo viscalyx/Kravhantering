@@ -2047,10 +2047,10 @@ describe('db-sqlserver-admin.mjs', () => {
     ).resolves.toBe(1)
 
     expect(error).toHaveBeenCalledWith(
-      'seed:demo is only available from local source workflows or the kravhantering-demo-seed image. Use bootstrap, migration-status, migrate and seed:required in the production db-job image.',
+      'seed:demo is only available from local source workflows or the kravhantering-demo-seed image. Use bootstrap, migration-status, migrate, seed:required and seed:optional in the production db-job image.',
     )
     expect(error).toHaveBeenCalledWith(
-      'demo:clear is only available from local source workflows or the kravhantering-demo-seed image. Use bootstrap, migration-status, migrate and seed:required in the production db-job image.',
+      'demo:clear is only available from local source workflows or the kravhantering-demo-seed image. Use bootstrap, migration-status, migrate, seed:required and seed:optional in the production db-job image.',
     )
     expect(log).not.toHaveBeenCalled()
     expect(dataSourceCtor).not.toHaveBeenCalled()
@@ -2098,6 +2098,10 @@ describe('db-sqlserver-admin.mjs', () => {
         events.push('reset')
       }),
       runSqlServerMigrationsImpl,
+      seedOptionalDatabaseImpl: vi.fn(async () => {
+        events.push('optional')
+        return 61
+      }),
       seedDemoDatabaseImpl: vi.fn(async () => {
         events.push('demo')
         return 11
@@ -2116,6 +2120,7 @@ describe('db-sqlserver-admin.mjs', () => {
       'bootstrap',
       'migrate',
       'required',
+      'optional',
       'demo',
     ])
     expect(log).toHaveBeenCalledWith(
@@ -2222,7 +2227,7 @@ describe('db-sqlserver-admin.mjs', () => {
 
     expect(exitCode).toBe(1)
     expect(error).toHaveBeenCalledWith(
-      'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migration-status|migrate|permission-status|permission-reconcile|provider-secret-root-rotate|provider-secret-restore-verify|seed:required|seed:demo|demo:clear|setup|browse-config>',
+      'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migration-status|migrate|permission-status|permission-reconcile|provider-secret-root-rotate|provider-secret-restore-verify|seed:required|seed:optional|seed:demo|demo:clear|setup|browse-config>',
     )
   })
 

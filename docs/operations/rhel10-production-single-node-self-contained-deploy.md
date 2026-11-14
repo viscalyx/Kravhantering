@@ -1611,6 +1611,14 @@ podman run --rm --network "$STACK_NETWORK" \
   "$DB_JOB_IMAGE_REF" seed:required --json \
   > "$EVIDENCE_DIR/seed-required-${VERSION}-${SEED_RUN_ID}.json" \
   2> "$EVIDENCE_DIR/seed-required-${VERSION}-${SEED_RUN_ID}.log"
+podman run --rm --network "$STACK_NETWORK" \
+  --env-file /etc/kravhantering/db-job.env \
+  --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
+  --env "RELEASE_VERSION=$VERSION" \
+  --env "DB_SEED_RUN_ID=$SEED_RUN_ID" \
+  "$DB_JOB_IMAGE_REF" seed:optional --json \
+  > "$EVIDENCE_DIR/seed-optional-${VERSION}-${SEED_RUN_ID}.json" \
+  2> "$EVIDENCE_DIR/seed-optional-${VERSION}-${SEED_RUN_ID}.log"
 
 exit
 ```
@@ -2052,7 +2060,7 @@ cleanup backlog.
 
 ## Operational Evidence
 
-Retain the required-seed JSON report and its separate summary with the
+Retain both seed profiles' JSON reports and separate summaries with the
 migration evidence, including failed attempts. Check the exit status and each
 committed phase before continuing. See the [required-seed result contract](../../containers/db-job/README.md#required-seed-results)
 for identity conflicts, uncertain outcomes and company pipeline publication.

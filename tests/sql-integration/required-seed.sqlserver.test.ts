@@ -37,7 +37,7 @@ describe('required seed command', () => {
         configureReadonlyAccess: false,
       },
     )
-    if (!result.required)
+    if (!('required' in result) || !result.required)
       throw new Error('Missing required reconciliation report')
     return { ...result, required: result.required }
   }

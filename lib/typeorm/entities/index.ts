@@ -1,3 +1,10 @@
+import { optionalCatalogInitializationEntity } from './optional-catalog-initialization'
+
+export {
+  type OptionalCatalogInitializationEntity,
+  optionalCatalogInitializationEntity,
+} from './optional-catalog-initialization'
+
 import { specificationDeviationEndingEntity } from '@/lib/typeorm/entities/specification-deviation-ending'
 
 export {
@@ -111,6 +118,7 @@ import { specificationRfiListEntity } from '@/lib/typeorm/entities/specification
 import { specificationRfiQuestionItemEntity } from '@/lib/typeorm/entities/specification-rfi-question-item'
 
 export const sqlServerEntities = [
+  optionalCatalogInitializationEntity,
   specificationAgreementCorrectionEntity,
   specificationDeviationEndingEntity,
   specificationAgreementItemEntity,

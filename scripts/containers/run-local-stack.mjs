@@ -453,7 +453,7 @@ function containerName(config, service) {
 
 function projectNameFromContainerName(name) {
   const match = String(name).match(
-    /^(kravhantering-container-stack-test-[^_]+)_(?:app-runtime|db-bootstrap|db-migrate|db-seed-required|keycloak|nginx|sqlserver)_\d+$/u,
+    /^(kravhantering-container-stack-test-[^_]+)_(?:app-runtime|db-bootstrap|db-migrate|db-seed-required|db-seed-optional|keycloak|nginx|sqlserver)_\d+$/u,
   )
   return match?.[1] ?? null
 }
@@ -583,6 +583,7 @@ function runDatabaseJob(service, config, options = {}) {
     'db-bootstrap': 'bootstrap',
     'db-migrate': 'migrate',
     'db-seed-required': 'seed:required',
+    'db-seed-optional': 'seed:optional',
   }
 
   runCommand(
@@ -774,7 +775,12 @@ async function up(config, options = {}) {
   assertContainerRunning(config, 'sqlserver', options)
   runWait('sqlserver', config, options)
 
-  for (const service of ['db-bootstrap', 'db-migrate', 'db-seed-required']) {
+  for (const service of [
+    'db-bootstrap',
+    'db-migrate',
+    'db-seed-required',
+    'db-seed-optional',
+  ]) {
     runDatabaseJob(service, config, options)
   }
   runAppRuntime(config, options)
