@@ -17,6 +17,7 @@
     }
   },
   "scripts": {
+    "modern-web-guidance": "cross-env DISABLE_TELEMETRY=1 modern-web-guidance",
     "predev": "npm run dev:prepare",
     "dev": "next dev",
     "dev:fresh": "npm run kill:port && npm run clean && npm run dev",
@@ -224,6 +225,7 @@
     "jsdom": "^31.0.0",
     "jsonc-parser": "^3.3.1",
     "markdownlint-cli2": "^0.24.1",
+    "modern-web-guidance": "1.0.0",
     "oidc-provider": "^9.14.0",
     "pyright": "^1.1.414",
     "rimraf": "^6.1.4",
