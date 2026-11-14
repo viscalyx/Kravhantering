@@ -1385,12 +1385,25 @@ samtidiga anrop.
 
 ### LIFE-01: skapa krav från UI
 
+**Syfte:** Kontrollera att ett sparat krav går att läsa och har skapandehistorik.
+
+**Användare:** Administratör.
+
+**Förutsättningar:** Ett kravområde finns att välja i formuläret.
+
 **Steg:** Öppna `/sv/requirements/new`, välj kravområde, fyll kravtext och
-spara kravet på både mobil och desktop.
+spara kravet på både mobil och desktop. Öppna som administratör
+`/sv/admin/audit-log`. Filtrera på `requirement.create`, måltypen `Requirement`
+och det skapade kravets databas-ID.
 
 **Förväntat resultat:** Kravet skapas, användaren skickas tillbaka till
 kravbiblioteket och den skapade kravversionen visas i inline-detalj utan
-`undefined` i URL:en.
+`undefined` i URL:en. Åtgärdsloggen innehåller exakt en tillåten skapandehändelse
+med kravets unika ID.
+
+**Integrationstest:** [requirements/create.spec.ts](../../tests/integration/requirements/create.spec.ts),
+”LIFE-01: form submit opens the saved requirement and records its action
+history (desktop)”.
 
 ### LIFE-01A: referensdata återhämtas i kravbibliotekets kravformulär
 

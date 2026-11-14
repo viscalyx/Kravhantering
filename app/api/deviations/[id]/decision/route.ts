@@ -19,6 +19,7 @@ import {
 import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { withSensitiveMutationAudit } from '@/lib/requirements/security-audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,15 +50,30 @@ export const POST = secureMutationRoute({
     try {
       const actor = requireHumanActorSnapshot(context)
       const db = authorizedDb ?? (await getRequestSqlServerDataSource())
-      await recordDecision(db, params.id, {
-        agreementId: body.agreementId,
-        conditions: body.conditions,
-        validThrough: body.validThrough,
-        decision: body.decision,
-        decisionMotivation: body.decisionMotivation,
-        decidedBy: actor.displayName,
-        decidedByHsaId: actor.hsaId,
-      })
+      await withSensitiveMutationAudit(context, audit =>
+        recordDecision(
+          db,
+          params.id,
+          {
+            agreementId: body.agreementId,
+            conditions: body.conditions,
+            validThrough: body.validThrough,
+            decision: body.decision,
+            decisionMotivation: body.decisionMotivation,
+            decidedBy: actor.displayName,
+            decidedByHsaId: actor.hsaId,
+          },
+          {
+            audit: executor =>
+              audit(executor, {
+                action: 'deviation.decision.recorded',
+                decision: body.decision,
+                deviationId: params.id,
+                operation: 'record_decision',
+              }),
+          },
+        ),
+      )
       return NextResponse.json({ ok: true })
     } catch (error) {
       if (isRequirementsServiceError(error)) {

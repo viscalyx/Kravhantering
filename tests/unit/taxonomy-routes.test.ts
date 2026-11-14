@@ -168,6 +168,43 @@ vi.mock('@/lib/dal/requirement-responsibility-people', () => ({
 }))
 
 vi.mock('@/lib/admin/privileged-audit', () => ({
+  withPrivilegedMutationAudit: async (
+    context: unknown,
+    commit: (
+      audit: (
+        executor: unknown,
+        detail: Record<string, unknown>,
+      ) => Promise<void>,
+    ) => Promise<unknown>,
+  ) =>
+    commit(async (_executor, detail) => {
+      await Reflect.apply(
+        'actorRole' in detail
+          ? auditState.recordDelegatedPrivilegedActionSucceeded
+          : auditState.recordAdminPrivilegedActionSucceeded,
+        undefined,
+        [context, detail],
+      )
+    }),
+  runPrivilegedMutation: async (
+    db: unknown,
+    context: unknown,
+    mutation: (
+      manager: unknown,
+      audit: (
+        executor: unknown,
+        detail: Record<string, unknown>,
+      ) => Promise<void>,
+    ) => Promise<unknown>,
+  ) =>
+    mutation(db, async (_executor, detail) => {
+      await Reflect.apply(
+        auditState.recordAdminPrivilegedActionSucceeded,
+        undefined,
+        [context, detail],
+      )
+    }),
+
   createAdminPrivilegedAuditContext:
     auditState.createAdminPrivilegedAuditContext,
   recordAdminPrivilegedActionSucceeded:
@@ -2026,6 +2063,7 @@ describe('requirement-areas/[id] routes', () => {
       expect.anything(),
       1,
       expect.objectContaining({ ownerHsaId: 'SE5560000001-coa1' }),
+      expect.objectContaining({ audit: expect.any(Function) }),
     )
   })
   it('PUT returns 404 without audit when the requirement area is missing', async () => {

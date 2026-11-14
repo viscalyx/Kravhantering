@@ -21,6 +21,7 @@ import { resolveIntegrationBaseUrl } from '@/tests/support/base-url'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 interface DeviationData {
+  applicability: string
   decidedAt: string | null
   decision: number | null
   decisionMotivation: string | null
@@ -132,6 +133,13 @@ async function createDeviationInReview(
   motivation: string,
 ): Promise<number> {
   await closeLatestPendingDeviation(authorRequest, reviewerRequest, itemRef)
+  const latestApproval = (await listDeviations(authorRequest, itemRef))
+    .filter(deviation => deviation.decision === 1)
+    .sort(
+      (a, b) =>
+        new Date(b.decidedAt ?? 0).getTime() -
+          new Date(a.decidedAt ?? 0).getTime() || b.id - a.id,
+    )[0]
 
   const createResponse = await expectApiResponseOkWithRetry(
     `create deviation for ${itemRef}`,
@@ -139,7 +147,12 @@ async function createDeviationInReview(
       authorRequest.post(
         `/api/specification-item-deviations/${encodeURIComponent(itemRef)}`,
         {
-          data: { motivation },
+          data: {
+            motivation,
+            ...(latestApproval && latestApproval.applicability !== 'closed'
+              ? { renewsDeviationId: latestApproval.id }
+              : {}),
+          },
           timeout: 30_000,
         },
       ),
@@ -591,7 +604,7 @@ for (const viewport of viewports) {
           )
 
           await detailPane
-            .getByRole('button', { name: 'Begär ett avsteg' })
+            .getByRole('button', { name: /^Begär (ett avsteg|förnyelse)$/ })
             .click()
 
           const dialog = coauthor.page.getByRole('dialog', {

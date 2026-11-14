@@ -33,12 +33,22 @@ export interface AiModelVerificationAttemptStore<TResult, TTransaction> {
     },
     transaction: TTransaction,
   ): Promise<Readonly<AiModelVerificationAttempt<TResult>>>
-  create(input: {
-    connectionId: string
-    fingerprint: string
-    result: TResult
-  }): Promise<Readonly<AiModelVerificationAttempt<TResult>>>
-  discard(input: { connectionId: string; attemptId: string }): Promise<void>
+  create(
+    input: {
+      connectionId: string
+      fingerprint: string
+      result: TResult
+    },
+    beforeCommit?: import('@/lib/audit/committed-mutation').MutationAudit<
+      [TTransaction]
+    >,
+  ): Promise<Readonly<AiModelVerificationAttempt<TResult>>>
+  discard(
+    input: { connectionId: string; attemptId: string },
+    beforeCommit?: import('@/lib/audit/committed-mutation').MutationAudit<
+      [TTransaction]
+    >,
+  ): Promise<void>
   list(
     connectionId: string,
   ): Promise<readonly Readonly<AiModelVerificationAttempt<TResult>>[]>

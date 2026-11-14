@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { runPrivilegedMutation } from '@/lib/admin/privileged-audit'
 import {
   deleteSpecificationLifecycleStatus,
   updateSpecificationLifecycleStatus,
@@ -36,21 +36,27 @@ export const PUT = secureMutationRoute({
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
     try {
-      const status = await updateSpecificationLifecycleStatus(
+      return await runPrivilegedMutation(
         db,
-        params.id,
-        body,
+        context,
+        async (manager, audit) => {
+          const status = await updateSpecificationLifecycleStatus(
+            manager,
+            params.id,
+            body,
+          )
+          if (!status) {
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
+          }
+          await audit(manager, {
+            changedFields: Object.keys(body),
+            operation: 'update',
+            resourceId: params.id,
+            resourceType: 'specification_lifecycle_status',
+          })
+          return NextResponse.json(status)
+        },
       )
-      if (!status) {
-        return NextResponse.json({ error: 'Not found' }, { status: 404 })
-      }
-      await recordAdminPrivilegedActionSucceeded(context, {
-        changedFields: Object.keys(body),
-        operation: 'update',
-        resourceId: params.id,
-        resourceType: 'specification_lifecycle_status',
-      })
-      return NextResponse.json(status)
     } catch (err) {
       logSanitizedError('Failed to update specification lifecycle status', err)
       return NextResponse.json(
@@ -67,19 +73,25 @@ export const DELETE = secureMutationRoute({
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
     try {
-      const deletedCount = await deleteSpecificationLifecycleStatus(
+      return await runPrivilegedMutation(
         db,
-        params.id,
+        context,
+        async (manager, audit) => {
+          const deletedCount = await deleteSpecificationLifecycleStatus(
+            manager,
+            params.id,
+          )
+          if (deletedCount === 0) {
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
+          }
+          await audit(manager, {
+            operation: 'delete',
+            resourceId: params.id,
+            resourceType: 'specification_lifecycle_status',
+          })
+          return NextResponse.json({ ok: true })
+        },
       )
-      if (deletedCount === 0) {
-        return NextResponse.json({ error: 'Not found' }, { status: 404 })
-      }
-      await recordAdminPrivilegedActionSucceeded(context, {
-        operation: 'delete',
-        resourceId: params.id,
-        resourceType: 'specification_lifecycle_status',
-      })
-      return NextResponse.json({ ok: true })
     } catch (err) {
       if (isForeignKeyViolation(err)) {
         return NextResponse.json(

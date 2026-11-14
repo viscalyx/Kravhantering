@@ -3,6 +3,7 @@ import {
   recordAllowedActionAuditEvent,
   recordDeniedActionAuditEvent,
 } from '@/lib/audit/action-audit'
+import { withCommittedAudit } from '@/lib/audit/committed-mutation'
 import {
   recordSecurityEvent,
   type SecurityEventActor,
@@ -571,21 +572,22 @@ export async function recordAuthorizationDeniedWithDatabase(
   await recordAuthorizationDeniedUsingDatabase(db, context, action, error)
 }
 
-export async function recordSensitiveMutationSucceeded(
+export async function withSensitiveMutationAudit<T>(
   context: RequestContext,
-  detail: SensitiveMutationAuditDetail,
-): Promise<void> {
-  const db = await getRequestSqlServerDataSource()
-  await recordSensitiveMutationSucceededWithExecutor(db, context, detail)
-}
-
-export async function recordSensitiveMutationSucceededWithExecutor(
-  executor: QueryExecutor,
-  context: RequestContext,
-  detail: SensitiveMutationAuditDetail,
-): Promise<void> {
-  await recordSensitiveMutationActionAuditEvent(executor, context, detail)
-  recordSensitiveMutationSecurityEvent(context, detail)
+  commitMutation: (
+    audit: (
+      executor: QueryExecutor,
+      detail: SensitiveMutationAuditDetail,
+    ) => Promise<void>,
+  ) => Promise<T>,
+): Promise<T> {
+  return withCommittedAudit(
+    async (executor: QueryExecutor, detail: SensitiveMutationAuditDetail) => {
+      await recordSensitiveMutationActionAuditEvent(executor, context, detail)
+      return () => recordSensitiveMutationSecurityEvent(context, detail)
+    },
+    commitMutation,
+  )
 }
 
 export async function recordSensitiveMutationActionAuditEvent(

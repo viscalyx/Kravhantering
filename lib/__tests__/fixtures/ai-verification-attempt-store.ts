@@ -6,6 +6,7 @@ import {
   type AiModelVerificationAttemptStore,
 } from '@/lib/ai/model-verification-attempts'
 import type { AiModelVerificationPayload } from '@/lib/ai/model-verification-payload'
+import { withCommittedAudit } from '@/lib/audit/committed-mutation'
 import type { SqlServerEntityManager } from '@/lib/db'
 
 /** Explicit test double; SQL integration tests own transactional concurrency coverage. */
@@ -22,23 +23,33 @@ export function createTestAiVerificationAttemptStore(): AiModelVerificationAttem
     AiModelVerificationAttempt<AiModelVerificationPayload>
   >()
   return {
-    async create(input) {
-      const attempt = {
-        ...input,
-        id: randomUUID(),
-        expiresAt: new Date(Date.now() + 900_000).toISOString(),
-      }
-      attempts.set(attempt.id, attempt)
-      return attempt
+    async create(input, beforeCommit) {
+      return withCommittedAudit(beforeCommit, audit =>
+        this.transaction(async manager => {
+          const attempt = {
+            ...input,
+            id: randomUUID(),
+            expiresAt: new Date(Date.now() + 900_000).toISOString(),
+          }
+          attempts.set(attempt.id, attempt)
+          await audit(manager)
+          return attempt
+        }),
+      )
     },
     async list(connectionId) {
       return [...attempts.values()].filter(
         attempt => attempt.connectionId === connectionId,
       )
     },
-    async discard({ connectionId, attemptId }) {
-      if (attempts.get(attemptId)?.connectionId === connectionId)
-        attempts.delete(attemptId)
+    async discard({ connectionId, attemptId }, beforeCommit) {
+      await withCommittedAudit(beforeCommit, audit =>
+        this.transaction(async manager => {
+          if (attempts.get(attemptId)?.connectionId === connectionId)
+            attempts.delete(attemptId)
+          await audit(manager)
+        }),
+      )
     },
     async consume(input) {
       const attempt = attempts.get(input.attemptId)

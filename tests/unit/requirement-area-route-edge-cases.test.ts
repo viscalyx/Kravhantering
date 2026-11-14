@@ -47,6 +47,19 @@ vi.mock('@/lib/dal/requirement-areas', () => ({
 }))
 
 vi.mock('@/lib/admin/privileged-audit', () => ({
+  withPrivilegedMutationAudit: async (
+    context: unknown,
+    commit: (
+      audit: (
+        executor: unknown,
+        detail: Record<string, unknown>,
+      ) => Promise<void>,
+    ) => Promise<unknown>,
+  ) =>
+    commit(async (_executor, detail) => {
+      if ('actorRole' in detail) await state.delegatedAudit(context, detail)
+      else await state.adminAudit(context, detail)
+    }),
   createAdminPrivilegedAuditContext: state.createAdminPrivilegedAuditContext,
   recordAdminPrivilegedActionSucceeded: state.adminAudit,
   recordDelegatedPrivilegedActionSucceeded: state.delegatedAudit,
@@ -85,13 +98,23 @@ describe('requirement-area routes', () => {
     state.createAdminPrivilegedAuditContext.mockResolvedValue(context)
     state.createRequestContext.mockResolvedValue(context)
     state.canManageAreaCoAuthors.mockResolvedValue(true)
-    state.deleteArea.mockResolvedValue(1)
+    state.deleteArea.mockImplementation(async (_db, _id, options) => {
+      const result = 1
+      await (result > 0 && options?.audit?.(_db))
+      return result
+    })
     state.getAreaById.mockResolvedValue({ id: 7 })
     state.listRequirementAreaCoAuthors.mockResolvedValue([{ hsaId: 'author' }])
     state.replaceRequirementAreaCoAuthors.mockResolvedValue({ areaId: 7 })
     state.resolvePeople.mockReturnValue([])
     state.resolvePerson.mockReturnValue({ hsaId: 'SE5560000001-next' })
-    state.updateAreaWithOwnerCheck.mockResolvedValue({ id: 7 })
+    state.updateAreaWithOwnerCheck.mockImplementation(
+      async (_db, _id, _data, options) => {
+        const result = { id: 7 }
+        await (result && options?.audit?.(_db, result))
+        return result
+      },
+    )
   })
 
   it('keeps requirement-area mutations behind the secure route wrapper', () => {
@@ -219,7 +242,11 @@ describe('requirement-area routes', () => {
       expect.objectContaining({ operation: 'delete', resourceId: 7 }),
     )
 
-    state.deleteArea.mockResolvedValueOnce(0)
+    state.deleteArea.mockImplementationOnce(async (_db, _id, options) => {
+      const result = 0
+      await (result > 0 && options?.audit?.(_db))
+      return result
+    })
     expect(
       (await callMutation(areaDelete, path, 'DELETE', { id: '7' })).status,
     ).toBe(404)
@@ -285,7 +312,13 @@ describe('requirement-area routes', () => {
     ).toBe(200)
     expect(state.delegatedAudit).toHaveBeenCalled()
 
-    state.updateAreaWithOwnerCheck.mockResolvedValueOnce(undefined)
+    state.updateAreaWithOwnerCheck.mockImplementationOnce(
+      async (_db, _id, _data, options) => {
+        const result = undefined
+        await (result && options?.audit?.(_db, result))
+        return result
+      },
+    )
     expect(
       (
         await callMutation(areaPut, path, 'PUT', {

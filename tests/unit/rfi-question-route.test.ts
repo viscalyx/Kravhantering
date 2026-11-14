@@ -116,12 +116,18 @@ describe('RFI question routes', () => {
       id: 12,
       questionCode: 'INF-RFI001',
     })
-    routeState.createRfiQuestion.mockResolvedValue({
-      areaId: 7,
-      id: 12,
-      questionCode: 'INF-RFI001',
-      questionText: 'How do you handle logs?',
-    })
+    routeState.createRfiQuestion.mockImplementation(
+      async (_db, _data, _actor, options) => {
+        const result = {
+          areaId: 7,
+          id: 12,
+          questionCode: 'INF-RFI001',
+          questionText: 'How do you handle logs?',
+        }
+        await options?.audit?.(_db, result)
+        return result
+      },
+    )
     routeState.listRfiQuestions.mockResolvedValue([])
     routeState.listRfiQuestionsForActor.mockResolvedValue([])
     routeState.setRfiQuestionArchived.mockResolvedValue({
@@ -384,6 +390,7 @@ describe('RFI question routes', () => {
         displayName: 'Route Tester',
         hsaId: 'SE5560000001-route',
       },
+      expect.objectContaining({ audit: expect.any(Function) }),
     )
     expect(routeState.recordAllowedActionAuditEvent).toHaveBeenCalledWith(
       routeState.db,

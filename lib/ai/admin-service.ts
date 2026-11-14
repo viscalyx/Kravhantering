@@ -500,10 +500,14 @@ export interface AiAdminAuditDetail {
     | 'ai_run_profile'
 }
 
-export type AiAdminAudit = (
-  detail: Readonly<AiAdminAuditDetail>,
-  executor?: import('./provider-secret-service').AiProviderSecretMutationExecutor,
-) => Promise<void>
+/** Transactional callers run any returned external delivery only after commit. */
+export type AiAdminAudit =
+  import('@/lib/audit/committed-mutation').MutationAudit<
+    [
+      detail: Readonly<AiAdminAuditDetail>,
+      executor?: import('./provider-secret-service').AiProviderSecretMutationExecutor,
+    ]
+  >
 
 function completeAttestation(attestation: SaveAiAttestation): boolean {
   return (
@@ -1069,20 +1073,32 @@ export class AiConnectionAdministrationService {
       result.testSuiteVersion,
     )
     const attempt = result.saveable
-      ? await this.#verificationAttempts.create({
-          connectionId: connection.id,
-          fingerprint: verificationFingerprint,
-          result: {
-            candidate,
-            verification: result,
+      ? await this.#verificationAttempts.create(
+          {
+            connectionId: connection.id,
+            fingerprint: verificationFingerprint,
+            result: {
+              candidate,
+              verification: result,
+            },
           },
-        })
+          executor =>
+            this.#audit(
+              {
+                operation: 'verify',
+                resourceId: connection.id,
+                resourceType: 'ai_connection',
+              },
+              executor,
+            ),
+        )
       : null
-    await this.#audit({
-      operation: 'verify',
-      resourceId: connection.id,
-      resourceType: 'ai_connection',
-    })
+    if (!result.saveable)
+      await this.#audit({
+        operation: 'verify',
+        resourceId: connection.id,
+        resourceType: 'ai_connection',
+      })
     return {
       ...result,
       attemptExpiresAt: attempt?.expiresAt ?? null,
@@ -1094,12 +1110,18 @@ export class AiConnectionAdministrationService {
     connectionId: string,
     attemptId: string,
   ): Promise<void> {
-    await this.#verificationAttempts.discard({ connectionId, attemptId })
-    await this.#audit({
-      operation: 'discard',
-      resourceId: connectionId,
-      resourceType: 'ai_connection',
-    })
+    await this.#verificationAttempts.discard(
+      { connectionId, attemptId },
+      executor =>
+        this.#audit(
+          {
+            operation: 'discard',
+            resourceId: connectionId,
+            resourceType: 'ai_connection',
+          },
+          executor,
+        ),
+    )
   }
 
   async probeHealth(input: {

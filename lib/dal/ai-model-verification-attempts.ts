@@ -4,6 +4,7 @@ import {
   AiModelVerificationAttemptError,
   type AiModelVerificationAttemptStore,
 } from '@/lib/ai/model-verification-attempts'
+import { withCommittedAudit } from '@/lib/audit/committed-mutation'
 import type { SqlServerDatabase, SqlServerEntityManager } from '@/lib/db'
 
 export const AI_VERIFICATION_PAYLOAD_MAX_BYTES = 65_536
@@ -40,7 +41,7 @@ export function createSqlServerAiModelVerificationAttemptStore<TResult>(
     TResult,
     SqlServerEntityManager
   > = {
-    async create(input) {
+    async create(input, beforeCommit) {
       const payload = JSON.stringify(parse(input.result))
       if (
         Buffer.byteLength(payload, 'utf16le') >
@@ -48,32 +49,36 @@ export function createSqlServerAiModelVerificationAttemptStore<TResult>(
       ) {
         throw new AiModelVerificationAttemptError('attempt_payload_invalid')
       }
-      return db.transaction(async manager => {
-        if (manager.queryRunner)
-          manager.queryRunner.data.aiModelVerification = true
-        const locks = await manager.query<{ result: number }[]>(`
+      return withCommittedAudit(beforeCommit, audit =>
+        db.transaction(async manager => {
+          if (manager.queryRunner)
+            manager.queryRunner.data.aiModelVerification = true
+          const locks = await manager.query<{ result: number }[]>(`
           DECLARE @result int;
           EXEC @result = sys.sp_getapplock @Resource = N'ai_model_verification_capacity',
             @LockMode = N'Exclusive', @LockOwner = N'Transaction', @LockTimeout = 5000;
           SELECT @result AS result;`)
-        if (!locks[0] || locks[0].result < 0)
-          throw new AiModelVerificationAttemptError('attempt_capacity')
-        const counts = await manager.query<{ count: number }[]>(`
+          if (!locks[0] || locks[0].result < 0)
+            throw new AiModelVerificationAttemptError('attempt_capacity')
+          const counts = await manager.query<{ count: number }[]>(`
           SELECT COUNT(*) AS count FROM [ai_model_verification_attempts] WITH (READCOMMITTEDLOCK)
           WHERE [expires_at] > SYSUTCDATETIME()`)
-        if (counts[0].count >= AI_VERIFICATION_MAX_PENDING_ATTEMPTS)
-          throw new AiModelVerificationAttemptError('attempt_capacity')
-        const rows = await manager.query<AttemptRow[]>(
-          `
+          if (counts[0].count >= AI_VERIFICATION_MAX_PENDING_ATTEMPTS)
+            throw new AiModelVerificationAttemptError('attempt_capacity')
+          const rows = await manager.query<AttemptRow[]>(
+            `
           DECLARE @created_at datetime2 = SYSUTCDATETIME();
           INSERT INTO [ai_model_verification_attempts]
             ([id], [ai_connection_id], [fingerprint], [payload_json], [created_at], [expires_at])
           VALUES (@0, @1, @2, @3, @created_at, DATEADD(minute, 15, @created_at));
           SELECT ${COLUMNS} FROM [ai_model_verification_attempts] WHERE [id] = @0`,
-          [randomUUID(), input.connectionId, input.fingerprint, payload],
-        )
-        return decode(rows[0])
-      })
+            [randomUUID(), input.connectionId, input.fingerprint, payload],
+          )
+          const attempt = decode(rows[0])
+          await audit(manager)
+          return attempt
+        }),
+      )
     },
     async list(connectionId) {
       const rows = await db.query<AttemptRow[]>(
@@ -85,11 +90,18 @@ export function createSqlServerAiModelVerificationAttemptStore<TResult>(
       )
       return rows.map(decode)
     },
-    async discard(input) {
-      await db.query(
-        `DELETE FROM [ai_model_verification_attempts] WITH (ROWLOCK, NOWAIT)
+    async discard(input, beforeCommit) {
+      await withCommittedAudit(beforeCommit, audit =>
+        db.transaction(async manager => {
+          if (manager.queryRunner)
+            manager.queryRunner.data.aiModelVerification = true
+          await manager.query(
+            `DELETE FROM [ai_model_verification_attempts] WITH (ROWLOCK, NOWAIT)
         WHERE [id] = @0 AND [ai_connection_id] = @1`,
-        [input.attemptId, input.connectionId],
+            [input.attemptId, input.connectionId],
+          )
+          await audit(manager)
+        }),
       )
     },
     async consume(input, manager) {
@@ -130,9 +142,11 @@ export function createSqlServerAiModelVerificationAttemptStore<TResult>(
     }
   }
   return {
-    create: input => bounded(() => store.create(input)),
+    create: (input, beforeCommit) =>
+      bounded(() => store.create(input, beforeCommit)),
     list: connectionId => bounded(() => store.list(connectionId)),
-    discard: input => bounded(() => store.discard(input)),
+    discard: (input, beforeCommit) =>
+      bounded(() => store.discard(input, beforeCommit)),
     consume: (input, transaction) =>
       bounded(() => store.consume(input, transaction)),
   }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { withPrivilegedMutationAudit } from '@/lib/admin/privileged-audit'
 import { isHsaId } from '@/lib/auth/hsa-id'
 import {
   createArea,
@@ -74,13 +74,21 @@ export const POST = secureMutationRoute({
       },
     )
     const { verificationEvidence: _verificationEvidence, ...areaInput } = body
-    const area = await createArea(db, { ...areaInput, ownerPerson })
-    await recordAdminPrivilegedActionSucceeded(context, {
-      changedFields: Object.keys(areaInput),
-      operation: 'create',
-      resourceId: area.id,
-      resourceType: 'requirement_area',
-    })
+    const area = await withPrivilegedMutationAudit(context, audit =>
+      createArea(
+        db,
+        { ...areaInput, ownerPerson },
+        {
+          audit: (executor, area) =>
+            audit(executor, {
+              changedFields: Object.keys(areaInput),
+              operation: 'create',
+              resourceId: area.id,
+              resourceType: 'requirement_area',
+            }),
+        },
+      ),
+    )
     return NextResponse.json(area, { status: 201 })
   },
 })

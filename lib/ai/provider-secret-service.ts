@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
+import { withCommittedAudit } from '@/lib/audit/committed-mutation'
 import type { SqlServerDatabase } from '@/lib/db'
 import { conflictError } from '@/lib/requirements/errors'
 import type {
@@ -779,9 +780,11 @@ export interface AiProviderSecretMutationExecutor {
   query<T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T>
 }
 
-export type AiProviderSecretBeforeCommit = (
-  executor: AiProviderSecretMutationExecutor,
-) => Promise<void>
+/** Required database history uses the executor; returned delivery runs after commit. */
+export type AiProviderSecretBeforeCommit =
+  import('@/lib/audit/committed-mutation').MutationAudit<
+    [executor: AiProviderSecretMutationExecutor]
+  >
 
 export type AiProviderSecretVersionStatus =
   | 'active'
@@ -1059,9 +1062,10 @@ export async function writeAiProviderSecretCandidate(
     },
     input.plaintext,
   )
-  const row = await db.transaction('SERIALIZABLE', async manager => {
-    const rows = await manager.query<AiProviderSecretRow[]>(
-      `IF NOT EXISTS (
+  const row = await withCommittedAudit(beforeCommit, writeAudit =>
+    db.transaction('SERIALIZABLE', async manager => {
+      const rows = await manager.query<AiProviderSecretRow[]>(
+        `IF NOT EXISTS (
          SELECT 1 FROM [ai_connections] WITH (UPDLOCK, HOLDLOCK)
          WHERE [id] = @0
        )
@@ -1094,22 +1098,24 @@ export async function writeAiProviderSecretCandidate(
          @1, @0, @revision_number, N'candidate', @2, @3, @4, @5, @6,
          SYSUTCDATETIME(), @7
        );`,
-      [
-        input.connectionId,
-        secretVersionId,
-        encrypted.ciphertext,
-        encrypted.nonce,
-        encrypted.authenticationTag,
-        encrypted.formatVersion,
-        encrypted.rootKeyVersion,
-        input.purpose ?? 'runtime',
-      ],
-    )
-    const saved = rows[0]
-    if (!saved) throw new Error('AI provider-secret candidate was not created')
-    await beforeCommit?.(manager)
-    return saved
-  })
+        [
+          input.connectionId,
+          secretVersionId,
+          encrypted.ciphertext,
+          encrypted.nonce,
+          encrypted.authenticationTag,
+          encrypted.formatVersion,
+          encrypted.rootKeyVersion,
+          input.purpose ?? 'runtime',
+        ],
+      )
+      const saved = rows[0]
+      if (!saved)
+        throw new Error('AI provider-secret candidate was not created')
+      await writeAudit(manager)
+      return saved
+    }),
+  )
   return metadata(row)
 }
 
@@ -1239,10 +1245,11 @@ async function activateAiProviderSecretVersion(
     decryptRow(keyring, candidate),
   )
 
-  const active = await db.transaction('SERIALIZABLE', async manager => {
-    const rows =
-      (await manager.query<AiProviderSecretRow[]>(
-        `DECLARE @now datetime2(3) = SYSUTCDATETIME();
+  const active = await withCommittedAudit(beforeCommit, writeAudit =>
+    db.transaction('SERIALIZABLE', async manager => {
+      const rows =
+        (await manager.query<AiProviderSecretRow[]>(
+          `DECLARE @now datetime2(3) = SYSUTCDATETIME();
        DECLARE @activated TABLE (
          [id] uniqueidentifier NOT NULL,
          [connectionId] uniqueidentifier NOT NULL,
@@ -1313,23 +1320,24 @@ async function activateAiProviderSecretVersion(
          AND [revision].[status] = N'verified';
 
        SELECT * FROM @activated;`,
-        [
-          input.secretVersionId,
-          input.connectionId,
-          candidate.revisionToken,
-          input.connectionConfigurationVersion,
-          input.connectionRevisionToken,
-        ],
-      )) ?? []
-    const saved = rows[0]
-    if (!saved) {
-      throw conflictError(
-        'AI connection or provider-secret state changed. Reload and try again.',
-      )
-    }
-    await beforeCommit?.(manager)
-    return saved
-  })
+          [
+            input.secretVersionId,
+            input.connectionId,
+            candidate.revisionToken,
+            input.connectionConfigurationVersion,
+            input.connectionRevisionToken,
+          ],
+        )) ?? []
+      const saved = rows[0]
+      if (!saved) {
+        throw conflictError(
+          'AI connection or provider-secret state changed. Reload and try again.',
+        )
+      }
+      await writeAudit(manager)
+      return saved
+    }),
+  )
   return metadata(active)
 }
 
@@ -1554,9 +1562,10 @@ export class AiProviderSecretAdminService {
       }
     }
     signal.throwIfAborted()
-    await this.#db.transaction('SERIALIZABLE', async manager => {
-      const changed = await manager.query<{ id: string }[]>(
-        `DECLARE @now datetime2(3) = SYSUTCDATETIME();
+    await withCommittedAudit(beforeCommit, writeAudit =>
+      this.#db.transaction('SERIALIZABLE', async manager => {
+        const changed = await manager.query<{ id: string }[]>(
+          `DECLARE @now datetime2(3) = SYSUTCDATETIME();
          IF NOT EXISTS (SELECT 1 FROM [ai_connections] WITH (UPDLOCK, HOLDLOCK)
            WHERE [id] = @1 AND [configuration_version] = @3 AND [revision_token] = @4) RETURN;
          IF NOT EXISTS (SELECT 1 FROM [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
@@ -1571,21 +1580,22 @@ export class AiProviderSecretAdminService {
          UPDATE [ai_provider_secret_versions] SET [status] = N'active', [verified_at] = @now,
            [activated_at] = @now, [revision_token] = NEWID() WHERE [id] = @0;
          SELECT [id] FROM [ai_provider_secret_versions] WHERE [id] = @0;`,
-        [
-          secretVersionId,
-          connection.id,
-          candidate.revisionToken,
-          connection.configurationVersion,
-          connection.revisionToken,
-          active?.id ?? null,
-        ],
-      )
-      if (!changed.length)
-        throw conflictError(
-          'Management credential or connection changed. Reload and try again.',
+          [
+            secretVersionId,
+            connection.id,
+            candidate.revisionToken,
+            connection.configurationVersion,
+            connection.revisionToken,
+            active?.id ?? null,
+          ],
         )
-      await beforeCommit(manager)
-    })
+        if (!changed.length)
+          throw conflictError(
+            'Management credential or connection changed. Reload and try again.',
+          )
+        await writeAudit(manager)
+      }),
+    )
   }
 
   async #execute<Result>(
@@ -2041,9 +2051,10 @@ export async function confirmAiProviderSecretRevocation(
   input: ConfirmAiProviderSecretRevocationInput,
   beforeCommit?: AiProviderSecretBeforeCommit,
 ): Promise<AiProviderSecretVersionMetadata> {
-  const row = await db.transaction('SERIALIZABLE', async manager => {
-    const rows = await manager.query<AiProviderSecretRow[]>(
-      `DECLARE @now datetime2(3) = SYSUTCDATETIME();
+  const row = await withCommittedAudit(beforeCommit, writeAudit =>
+    db.transaction('SERIALIZABLE', async manager => {
+      const rows = await manager.query<AiProviderSecretRow[]>(
+        `DECLARE @now datetime2(3) = SYSUTCDATETIME();
        DECLARE @revoked TABLE (
          [id] uniqueidentifier NOT NULL,
          [connectionId] uniqueidentifier NOT NULL,
@@ -2074,17 +2085,18 @@ export async function confirmAiProviderSecretRevocation(
        WHERE [id] = @0 AND [ai_connection_id] = @1
          AND [credential_purpose] = N'runtime' AND [status] = N'superseded' AND [ciphertext] IS NOT NULL;
        SELECT * FROM @revoked;`,
-      [input.secretVersionId, input.connectionId],
-    )
-    const saved = rows[0]
-    if (!saved) {
-      throw new Error(
-        'Only a superseded, encrypted AI provider-secret version can be confirmed revoked',
+        [input.secretVersionId, input.connectionId],
       )
-    }
-    await beforeCommit?.(manager)
-    return saved
-  })
+      const saved = rows[0]
+      if (!saved) {
+        throw new Error(
+          'Only a superseded, encrypted AI provider-secret version can be confirmed revoked',
+        )
+      }
+      await writeAudit(manager)
+      return saved
+    }),
+  )
   return metadata(row)
 }
 
@@ -2093,20 +2105,22 @@ export async function deleteAiProviderSecretCandidate(
   input: DeleteAiProviderSecretCandidateInput,
   beforeCommit?: AiProviderSecretBeforeCommit,
 ): Promise<boolean> {
-  return db.transaction('SERIALIZABLE', async manager => {
-    const rows = await manager.query<Array<{ deletedId: string }>>(
-      `DECLARE @deleted TABLE ([deletedId] uniqueidentifier NOT NULL);
+  return withCommittedAudit(beforeCommit, writeAudit =>
+    db.transaction('SERIALIZABLE', async manager => {
+      const rows = await manager.query<Array<{ deletedId: string }>>(
+        `DECLARE @deleted TABLE ([deletedId] uniqueidentifier NOT NULL);
        DELETE FROM [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
        OUTPUT DELETED.[id] INTO @deleted
        WHERE [id] = @0 AND [ai_connection_id] = @1
          AND [credential_purpose] = N'runtime' AND [status] = N'candidate';
        SELECT [deletedId] FROM @deleted;`,
-      [input.secretVersionId, input.connectionId],
-    )
-    const deleted = rows[0]?.deletedId === input.secretVersionId
-    if (deleted) await beforeCommit?.(manager)
-    return deleted
-  })
+        [input.secretVersionId, input.connectionId],
+      )
+      const deleted = rows[0]?.deletedId === input.secretVersionId
+      if (deleted) await writeAudit(manager)
+      return deleted
+    }),
+  )
 }
 
 export async function getAiManagementCredentialMetadata(
@@ -2140,34 +2154,36 @@ export async function removeAiManagementCredential(
   secretVersionId: string,
   beforeCommit: AiProviderSecretBeforeCommit,
 ): Promise<void> {
-  await db.transaction('SERIALIZABLE', async manager => {
-    const rows = await manager.query<{ status: string }[]>(
-      `SELECT [status] FROM [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
+  await withCommittedAudit(beforeCommit, writeAudit =>
+    db.transaction('SERIALIZABLE', async manager => {
+      const rows = await manager.query<{ status: string }[]>(
+        `SELECT [status] FROM [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
        WHERE [id] = @0 AND [ai_connection_id] = @1 AND [credential_purpose] = N'management'
          AND [status] IN (N'active', N'candidate')`,
-      [secretVersionId, connectionId],
-    )
-    if (!rows[0])
-      throw conflictError(
-        'Management credential changed. Reload and try again.',
+        [secretVersionId, connectionId],
       )
-    if (rows[0].status === 'candidate') {
-      await manager.query(
-        `DELETE FROM [ai_provider_secret_versions] WHERE [id] = @0 AND [credential_purpose] = N'management' AND [status] = N'candidate'`,
-        [secretVersionId],
-      )
-    } else {
-      await manager.query(
-        `DECLARE @now datetime2(3) = SYSUTCDATETIME();
+      if (!rows[0])
+        throw conflictError(
+          'Management credential changed. Reload and try again.',
+        )
+      if (rows[0].status === 'candidate') {
+        await manager.query(
+          `DELETE FROM [ai_provider_secret_versions] WHERE [id] = @0 AND [credential_purpose] = N'management' AND [status] = N'candidate'`,
+          [secretVersionId],
+        )
+      } else {
+        await manager.query(
+          `DECLARE @now datetime2(3) = SYSUTCDATETIME();
          UPDATE [ai_provider_secret_versions] SET [status] = N'superseded', [deactivated_at] = @now,
            [ciphertext] = NULL, [nonce] = NULL, [authentication_tag] = NULL,
            [ciphertext_deleted_at] = @now, [revision_token] = NEWID()
          WHERE [id] = @0 AND [credential_purpose] = N'management' AND [status] = N'active';`,
-        [secretVersionId],
-      )
-    }
-    await beforeCommit(manager)
-  })
+          [secretVersionId],
+        )
+      }
+      await writeAudit(manager)
+    }),
+  )
 }
 
 export async function reencryptAiProviderSecrets(

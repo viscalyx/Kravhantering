@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { withPrivilegedMutationAudit } from '@/lib/admin/privileged-audit'
 import {
   AI_SAFETY_TERM_DIRECTIONS,
   deleteCustomAiSafetyRuleTerm,
@@ -35,13 +35,18 @@ export const PATCH = secureMutationRoute({
   policy: adminMutationPolicy(),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const term = await updateAiSafetyRuleTerm(db, params.id, body)
-    await recordAdminPrivilegedActionSucceeded(context, {
-      changedFields: Object.keys(body),
-      operation: 'update',
-      resourceId: term.id,
-      resourceType: 'ai_safety_rule_term',
-    })
+    const term = await withPrivilegedMutationAudit(context, audit =>
+      updateAiSafetyRuleTerm(db, params.id, body, {
+        audit: (executor, term) =>
+          audit(executor, {
+            changedFields: Object.keys(body),
+            operation: 'update',
+            resourceId: term.id,
+            resourceType: 'ai_safety_rule_term',
+          }),
+      }),
+    )
+
     return NextResponse.json({ term })
   },
 })
@@ -51,12 +56,17 @@ export const DELETE = secureMutationRoute({
   policy: adminMutationPolicy(),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const term = await deleteCustomAiSafetyRuleTerm(db, params.id)
-    await recordAdminPrivilegedActionSucceeded(context, {
-      operation: 'delete',
-      resourceId: term.id,
-      resourceType: 'ai_safety_rule_term',
-    })
+    const term = await withPrivilegedMutationAudit(context, audit =>
+      deleteCustomAiSafetyRuleTerm(db, params.id, {
+        audit: (executor, term) =>
+          audit(executor, {
+            operation: 'delete',
+            resourceId: term.id,
+            resourceType: 'ai_safety_rule_term',
+          }),
+      }),
+    )
+
     return NextResponse.json({ term })
   },
 })

@@ -1,4 +1,8 @@
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import {
+  recordAdminPrivilegedActionAuditEvent,
+  recordAdminPrivilegedActionSucceeded,
+  recordAdminPrivilegedSecurityEvent,
+} from '@/lib/admin/privileged-audit'
 import { createSqlServerAiAdminStore } from '@/lib/dal/ai-connection-admin'
 import { createSqlServerAiModelVerificationAttemptStore } from '@/lib/dal/ai-model-verification-attempts'
 import type { SqlServerDatabase } from '@/lib/db'
@@ -42,15 +46,16 @@ export function createAiConnectionAdministrationRuntime(
   const keyring = (): AiProviderSecretKeyring => loadAiProviderSecretKeyring()
   const external =
     options.external ?? createProductionAiAdminExternalOperations(db, keyring)
-  const audit = (
+  const audit = async (
     detail: Parameters<typeof recordAdminPrivilegedActionSucceeded>[1],
     executor?: Parameters<typeof recordAdminPrivilegedActionSucceeded>[2],
-  ): Promise<void> =>
-    recordAdminPrivilegedActionSucceeded(
-      context,
-      detail,
-      executor ?? db.manager,
-    )
+  ): Promise<undefined | (() => void)> => {
+    if (executor) {
+      await recordAdminPrivilegedActionAuditEvent(context, detail, executor)
+      return () => recordAdminPrivilegedSecurityEvent(context, detail)
+    }
+    await recordAdminPrivilegedActionSucceeded(context, detail, db.manager)
+  }
   return new AiConnectionAdministrationService({
     management: {
       metadata: connectionId =>

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { withPrivilegedMutationAudit } from '@/lib/admin/privileged-audit'
 import {
   isAiSafetyRuleId,
   restoreAiSafetyRuleDefaults,
@@ -25,14 +25,19 @@ export const POST = secureMutationRoute({
   policy: adminMutationPolicy(),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const restoredCount = await restoreAiSafetyRuleDefaults(db, params.ruleId)
-    await recordAdminPrivilegedActionSucceeded(context, {
-      changedFields: ['direction', 'isActive'],
-      itemCount: restoredCount,
-      operation: 'update',
-      resourceId: params.ruleId,
-      resourceType: 'ai_safety_rule',
-    })
+    const restoredCount = await withPrivilegedMutationAudit(context, audit =>
+      restoreAiSafetyRuleDefaults(db, params.ruleId, {
+        audit: (executor, restoredCount) =>
+          audit(executor, {
+            changedFields: ['direction', 'isActive'],
+            itemCount: restoredCount,
+            operation: 'update',
+            resourceId: params.ruleId,
+            resourceType: 'ai_safety_rule',
+          }),
+      }),
+    )
+
     return NextResponse.json({ restoredCount })
   },
 })

@@ -1,4 +1,4 @@
-import type { SqlServerDatabase } from '@/lib/db'
+import type { SqlServerExecutor } from '@/lib/db'
 import {
   type SpecificationGovernanceObjectTypeEntity,
   specificationGovernanceObjectTypeEntity,
@@ -17,7 +17,7 @@ function map(
 }
 
 export async function listSpecificationGovernanceObjectTypes(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
 ): Promise<SpecificationGovernanceObjectTypeRow[]> {
   const rows = await db
     .getRepository(specificationGovernanceObjectTypeEntity)
@@ -26,7 +26,7 @@ export async function listSpecificationGovernanceObjectTypes(
 }
 
 export async function createSpecificationGovernanceObjectType(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   data: { nameSv: string; nameEn: string },
 ): Promise<SpecificationGovernanceObjectTypeRow> {
   const repository = db.getRepository(specificationGovernanceObjectTypeEntity)
@@ -37,7 +37,7 @@ export async function createSpecificationGovernanceObjectType(
 }
 
 export async function updateSpecificationGovernanceObjectType(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   id: number,
   data: { nameSv?: string; nameEn?: string },
 ): Promise<SpecificationGovernanceObjectTypeRow | undefined> {
@@ -53,7 +53,7 @@ export async function updateSpecificationGovernanceObjectType(
 }
 
 export async function deleteSpecificationGovernanceObjectType(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   id: number,
 ): Promise<number> {
   const result = await db

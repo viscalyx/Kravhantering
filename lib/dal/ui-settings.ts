@@ -317,7 +317,7 @@ export async function getVisibleHsaIdPrefixes(db: SqlServerDatabase) {
   return createUiSettingsLoader(db).getHsaIdPrefixes()
 }
 
-export async function listHsaIdPrefixesForAdmin(db: SqlServerDatabase) {
+export async function listHsaIdPrefixesForAdmin(db: QueryExecutor) {
   return listStoredHsaIdPrefixes(db)
 }
 
@@ -392,7 +392,7 @@ export async function updateHsaIdPrefixes(
   }
 
   const now = new Date().toISOString()
-  await db.transaction(async manager => {
+  return db.transaction(async manager => {
     for (const current of existing) {
       if (nextIds.has(current.id)) continue
       await manager.query(`DELETE FROM hsa_id_prefixes WHERE id = @0`, [
@@ -448,7 +448,6 @@ export async function updateHsaIdPrefixes(
       }
     }
     await options.audit?.(manager)
+    return listHsaIdPrefixesForAdmin(manager)
   })
-
-  return listHsaIdPrefixesForAdmin(db)
 }

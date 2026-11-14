@@ -1,4 +1,4 @@
-import type { SqlServerDatabase } from '@/lib/db'
+import type { SqlServerExecutor } from '@/lib/db'
 import {
   type RequirementTypeEntity,
   requirementTypeEntity,
@@ -29,7 +29,7 @@ function mapType(row: RequirementTypeEntity): RequirementTypeRow {
 }
 
 export async function listTypes(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
 ): Promise<RequirementTypeWithQualityCharacteristics[]> {
   const [typeRows, characteristics] = await Promise.all([
     db.getRepository(requirementTypeEntity).find({ order: { nameSv: 'ASC' } }),
@@ -56,7 +56,7 @@ export async function listTypes(
 // rows on every query. Raw SQL stays here to avoid that cost.
 
 export async function listQualityCharacteristics(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   typeId?: number,
 ): Promise<QualityCharacteristicRow[]> {
   return db.query(
@@ -82,7 +82,7 @@ export async function listQualityCharacteristics(
 }
 
 export async function hasChildQualityCharacteristics(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   id: number,
 ): Promise<boolean> {
   const rows = await db.query(
@@ -97,7 +97,7 @@ export async function hasChildQualityCharacteristics(
 }
 
 export async function createType(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   data: { nameSv: string; nameEn: string },
 ): Promise<RequirementTypeRow> {
   const repository = db.getRepository(requirementTypeEntity)
@@ -108,7 +108,7 @@ export async function createType(
 }
 
 export async function updateType(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   id: number,
   data: { nameSv?: string; nameEn?: string },
 ): Promise<RequirementTypeRow | undefined> {
@@ -123,12 +123,12 @@ export async function updateType(
   return row ? mapType(row) : undefined
 }
 
-export async function deleteType(db: SqlServerDatabase, id: number) {
+export async function deleteType(db: SqlServerExecutor, id: number) {
   await db.getRepository(requirementTypeEntity).delete(id)
 }
 
 export async function createQualityCharacteristic(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   data: {
     chapterId: string
     nameSv: string
@@ -167,7 +167,7 @@ export async function createQualityCharacteristic(
 }
 
 export async function updateQualityCharacteristic(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   id: number,
   data: {
     chapterId?: string
@@ -239,7 +239,7 @@ export async function updateQualityCharacteristic(
 }
 
 export async function deleteQualityCharacteristic(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   id: number,
 ) {
   const rows = await db.query(

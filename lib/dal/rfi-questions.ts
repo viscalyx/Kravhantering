@@ -618,6 +618,12 @@ export async function createRfiQuestion(
     sortOrder?: number
   },
   actor?: ActorSnapshot,
+  options: {
+    audit?: (
+      executor: SqlExecutor,
+      question: Pick<RfiQuestionRow, 'id' | 'areaId' | 'questionCode'>,
+    ) => Promise<void>
+  } = {},
 ): Promise<RfiQuestionRow> {
   const questionText = data.questionText.trim()
   if (!questionText) throw validationError('RFI question text is required')
@@ -704,6 +710,11 @@ export async function createRfiQuestion(
       ],
     )) as Array<{ id: number }>
     await replaceVersionLinks(manager, Number(versionRows[0]?.id), data)
+    await options.audit?.(manager, {
+      id: questionId,
+      areaId: data.areaId,
+      questionCode,
+    })
     return questionId
   })
   const question = await getRfiQuestion(db, createdId)

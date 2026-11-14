@@ -1,4 +1,4 @@
-import type { SqlServerDatabase } from '@/lib/db'
+import type { SqlServerExecutor } from '@/lib/db'
 import {
   type SpecificationLifecycleStatusEntity,
   specificationLifecycleStatusEntity,
@@ -17,7 +17,7 @@ function map(
 }
 
 export async function listSpecificationLifecycleStatuses(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
 ): Promise<SpecificationLifecycleStatusRow[]> {
   const rows = await db
     .getRepository(specificationLifecycleStatusEntity)
@@ -26,7 +26,7 @@ export async function listSpecificationLifecycleStatuses(
 }
 
 export async function createSpecificationLifecycleStatus(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   data: { nameSv: string; nameEn: string },
 ): Promise<SpecificationLifecycleStatusRow> {
   const nameSv = data.nameSv.trim()
@@ -40,7 +40,7 @@ export async function createSpecificationLifecycleStatus(
 }
 
 export async function updateSpecificationLifecycleStatus(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   id: number,
   data: { nameSv?: string; nameEn?: string },
 ): Promise<SpecificationLifecycleStatusRow | undefined> {
@@ -65,7 +65,7 @@ export async function updateSpecificationLifecycleStatus(
 }
 
 export async function deleteSpecificationLifecycleStatus(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   id: number,
 ): Promise<number> {
   const result = await db

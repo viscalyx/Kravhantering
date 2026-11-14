@@ -1,4 +1,4 @@
-import type { SqlServerDatabase } from '@/lib/db'
+import type { SqlServerExecutor } from '@/lib/db'
 import {
   type SpecificationImplementationTypeEntity,
   specificationImplementationTypeEntity,
@@ -17,7 +17,7 @@ function map(
 }
 
 export async function listSpecificationImplementationTypes(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
 ): Promise<SpecificationImplementationTypeRow[]> {
   const rows = await db
     .getRepository(specificationImplementationTypeEntity)
@@ -26,7 +26,7 @@ export async function listSpecificationImplementationTypes(
 }
 
 export async function createSpecificationImplementationType(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   data: { nameSv: string; nameEn: string },
 ): Promise<SpecificationImplementationTypeRow> {
   const repository = db.getRepository(specificationImplementationTypeEntity)
@@ -37,7 +37,7 @@ export async function createSpecificationImplementationType(
 }
 
 export async function updateSpecificationImplementationType(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   id: number,
   data: { nameSv?: string; nameEn?: string },
 ): Promise<SpecificationImplementationTypeRow | undefined> {
@@ -53,7 +53,7 @@ export async function updateSpecificationImplementationType(
 }
 
 export async function deleteSpecificationImplementationType(
-  db: SqlServerDatabase,
+  db: SqlServerExecutor,
   id: number,
 ): Promise<number> {
   const result = await db

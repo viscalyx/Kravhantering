@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { withPrivilegedMutationAudit } from '@/lib/admin/privileged-audit'
 import {
   AI_SAFETY_RULE_IDS,
   AI_SAFETY_TERM_DIRECTIONS,
@@ -69,19 +69,24 @@ export const POST = secureMutationRoute({
   handler: async ({ body, context }) => {
     try {
       const db = await getRequestSqlServerDataSource()
-      const term = await createAiSafetyRuleTerm(db, body)
-      await recordAdminPrivilegedActionSucceeded(context, {
-        changedFields: ['direction', 'ruleId', 'termText', 'termType'],
-        details: {
-          direction: body.direction,
-          ruleId: body.ruleId,
-          termText: body.termText,
-          termType: body.termType,
-        },
-        operation: 'create',
-        resourceId: term.id,
-        resourceType: 'ai_safety_rule_term',
-      })
+      const term = await withPrivilegedMutationAudit(context, audit =>
+        createAiSafetyRuleTerm(db, body, {
+          audit: (executor, term) =>
+            audit(executor, {
+              changedFields: ['direction', 'ruleId', 'termText', 'termType'],
+              details: {
+                direction: body.direction,
+                ruleId: body.ruleId,
+                termText: body.termText,
+                termType: body.termType,
+              },
+              operation: 'create',
+              resourceId: term.id,
+              resourceType: 'ai_safety_rule_term',
+            }),
+        }),
+      )
+
       return NextResponse.json({ term })
     } catch (error) {
       return errorResponse(error, 'Failed to create AI safety term.')

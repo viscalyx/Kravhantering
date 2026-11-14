@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { runPrivilegedMutation } from '@/lib/admin/privileged-audit'
 import {
   createSpecificationGovernanceObjectType,
   listSpecificationGovernanceObjectTypes,
@@ -30,16 +30,16 @@ export const POST = secureMutationRoute({
   policy: adminMutationPolicy(),
   handler: async ({ body, context }) => {
     const db = await getRequestSqlServerDataSource()
-    const governanceObjectType = await createSpecificationGovernanceObjectType(
-      db,
-      body,
-    )
-    await recordAdminPrivilegedActionSucceeded(context, {
-      changedFields: Object.keys(body),
-      operation: 'create',
-      resourceId: governanceObjectType.id,
-      resourceType: 'specification_governance_object_type',
+    return await runPrivilegedMutation(db, context, async (manager, audit) => {
+      const governanceObjectType =
+        await createSpecificationGovernanceObjectType(manager, body)
+      await audit(manager, {
+        changedFields: Object.keys(body),
+        operation: 'create',
+        resourceId: governanceObjectType.id,
+        resourceType: 'specification_governance_object_type',
+      })
+      return NextResponse.json(governanceObjectType, { status: 201 })
     })
-    return NextResponse.json(governanceObjectType, { status: 201 })
   },
 })

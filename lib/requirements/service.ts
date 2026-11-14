@@ -52,7 +52,7 @@ import type {
   RequirementApplicationMutationInput,
   RequirementApplicationMutationOutput,
 } from '@/lib/requirements/requirement-application-mutations'
-import { recordSensitiveMutationSucceeded } from '@/lib/requirements/security-audit'
+import { withSensitiveMutationAudit } from '@/lib/requirements/security-audit'
 import {
   createNeedsReferenceWorkflow,
   type NeedsReferenceWorkflowInput,
@@ -799,18 +799,29 @@ export function createRequirementsService(
               throw validationError('Invalid decision value')
             }
             const actor = requireHumanActorSnapshot(context)
-            await recordDecision(db, input.deviationId, {
-              decision: input.decision,
-              decisionMotivation: trimmedDecisionMotivation,
-              decidedBy: actor.displayName,
-              decidedByHsaId: actor.hsaId,
-            })
-            await recordSensitiveMutationSucceeded(context, {
-              action: 'deviation.decision.recorded',
-              decision: input.decision,
-              deviationId: input.deviationId,
-              operation: input.operation,
-            })
+            const deviationId = input.deviationId
+            const decision = input.decision
+            await withSensitiveMutationAudit(context, audit =>
+              recordDecision(
+                db,
+                deviationId,
+                {
+                  decision,
+                  decisionMotivation: trimmedDecisionMotivation,
+                  decidedBy: actor.displayName,
+                  decidedByHsaId: actor.hsaId,
+                },
+                {
+                  audit: executor =>
+                    audit(executor, {
+                      action: 'deviation.decision.recorded',
+                      decision: input.decision,
+                      deviationId: input.deviationId,
+                      operation: input.operation,
+                    }),
+                },
+              ),
+            )
             const decisionLabel =
               input.decision === DEVIATION_APPROVED
                 ? locale === 'sv'
@@ -835,11 +846,7 @@ export function createRequirementsService(
 
           // delete
           await deleteDeviation(db, input.deviationId)
-          await recordSensitiveMutationSucceeded(context, {
-            action: 'deviation.deleted',
-            deviationId: input.deviationId,
-            operation: input.operation,
-          })
+
           const summary =
             locale === 'sv'
               ? `Avvikelse ${input.deviationId} borttagen.`

@@ -53,10 +53,7 @@ import {
   findMcpSearchMatch,
   type McpSearchMatch,
 } from '@/lib/requirements/mcp-search'
-import {
-  recordSensitiveMutationSucceededWithExecutor,
-  type SensitiveMutationAuditDetail,
-} from '@/lib/requirements/security-audit'
+import { withSensitiveMutationAudit } from '@/lib/requirements/security-audit'
 import type {
   CatalogKind,
   GetRequirementInput,
@@ -499,14 +496,6 @@ async function getRequirementUniqueIdForAudit(
   return uniqueId == null ? undefined : String(uniqueId)
 }
 
-async function recordRequirementMutationAudit(
-  executor: RequirementAuditExecutor,
-  context: Parameters<typeof recordSensitiveMutationSucceededWithExecutor>[1],
-  detail: SensitiveMutationAuditDetail,
-): Promise<void> {
-  await recordSensitiveMutationSucceededWithExecutor(executor, context, detail)
-}
-
 function getLatestPublishedVersion(
   requirement: RequirementDetail,
 ): RequirementVersionDetail | null {
@@ -835,33 +824,36 @@ export function createRequirementWorkflow({
             }
 
             const actor = requireHumanActorSnapshot(context)
-            const created = await createRequirement(
-              db,
-              {
-                acceptanceCriteria: payload.acceptanceCriteria,
-                createdBy: actor.displayName,
-                createdByHsaId: actor.hsaId,
-                description,
-                normReferenceIds: payload.normReferenceIds,
-                requirementAreaId: payload.areaId,
-                requirementCategoryId: payload.categoryId,
-                qualityCharacteristicId: payload.qualityCharacteristicId,
-                requirementTypeId: payload.typeId,
-                verifiable: payload.verifiable,
-                priorityLevelId: payload.priorityLevelId,
-                verificationMethod: payload.verificationMethod,
-                requirementPackageIds: payload.requirementPackageIds,
-              },
-              {
-                audit: (executor, result) =>
-                  recordRequirementMutationAudit(executor, context, {
-                    action: 'requirement.create',
-                    operation: input.operation,
-                    requirementId: result.requirement.id,
-                    requirementUniqueId: result.requirement.uniqueId,
-                    versionNumber: result.version.versionNumber,
-                  }),
-              },
+            const areaId = payload.areaId
+            const created = await withSensitiveMutationAudit(context, audit =>
+              createRequirement(
+                db,
+                {
+                  acceptanceCriteria: payload.acceptanceCriteria,
+                  createdBy: actor.displayName,
+                  createdByHsaId: actor.hsaId,
+                  description,
+                  normReferenceIds: payload.normReferenceIds,
+                  requirementAreaId: areaId,
+                  requirementCategoryId: payload.categoryId,
+                  qualityCharacteristicId: payload.qualityCharacteristicId,
+                  requirementTypeId: payload.typeId,
+                  verifiable: payload.verifiable,
+                  priorityLevelId: payload.priorityLevelId,
+                  verificationMethod: payload.verificationMethod,
+                  requirementPackageIds: payload.requirementPackageIds,
+                },
+                {
+                  audit: (executor, result) =>
+                    audit(executor, {
+                      action: 'requirement.create',
+                      operation: input.operation,
+                      requirementId: result.requirement.id,
+                      requirementUniqueId: result.requirement.uniqueId,
+                      versionNumber: result.version.versionNumber,
+                    }),
+                },
+              ),
             )
 
             const detail = formatRequirementDetail(
@@ -920,42 +912,44 @@ export function createRequirementWorkflow({
             const actor = requireHumanActorSnapshot(context)
             let version: Awaited<ReturnType<typeof editRequirement>>
             try {
-              version = await editRequirement(
-                db,
-                requirementId,
-                {
-                  acceptanceCriteria: payload.acceptanceCriteria,
-                  baseRevisionToken: payload.baseRevisionToken,
-                  baseVersionId: payload.baseVersionId,
-                  createdBy: actor.displayName,
-                  createdByHsaId: actor.hsaId,
-                  description,
-                  normReferenceIds: payload.normReferenceIds,
-                  requirementAreaId: payload.areaId,
-                  requirementCategoryId: payload.categoryId,
-                  qualityCharacteristicId: payload.qualityCharacteristicId,
-                  requirementTypeId: payload.typeId,
-                  verifiable: payload.verifiable,
-                  priorityLevelId: payload.priorityLevelId,
-                  verificationMethod: payload.verificationMethod,
-                  requirementPackageIds: payload.requirementPackageIds,
-                },
-                {
-                  audit: async (executor, result) => {
-                    const requirementUniqueId =
-                      await getRequirementUniqueIdForAudit(
-                        executor,
-                        requirementId,
-                      )
-                    await recordRequirementMutationAudit(executor, context, {
-                      action: 'requirement.edit',
-                      operation: input.operation,
-                      requirementId,
-                      requirementUniqueId,
-                      versionNumber: result.versionNumber,
-                    })
+              version = await withSensitiveMutationAudit(context, audit =>
+                editRequirement(
+                  db,
+                  requirementId,
+                  {
+                    acceptanceCriteria: payload.acceptanceCriteria,
+                    baseRevisionToken: payload.baseRevisionToken,
+                    baseVersionId: payload.baseVersionId,
+                    createdBy: actor.displayName,
+                    createdByHsaId: actor.hsaId,
+                    description,
+                    normReferenceIds: payload.normReferenceIds,
+                    requirementAreaId: payload.areaId,
+                    requirementCategoryId: payload.categoryId,
+                    qualityCharacteristicId: payload.qualityCharacteristicId,
+                    requirementTypeId: payload.typeId,
+                    verifiable: payload.verifiable,
+                    priorityLevelId: payload.priorityLevelId,
+                    verificationMethod: payload.verificationMethod,
+                    requirementPackageIds: payload.requirementPackageIds,
                   },
-                },
+                  {
+                    audit: async (executor, result) => {
+                      const requirementUniqueId =
+                        await getRequirementUniqueIdForAudit(
+                          executor,
+                          requirementId,
+                        )
+                      await audit(executor, {
+                        action: 'requirement.edit',
+                        operation: input.operation,
+                        requirementId,
+                        requirementUniqueId,
+                        versionNumber: result.versionNumber,
+                      })
+                    },
+                  },
+                ),
               )
             } catch (error) {
               if (
@@ -994,18 +988,23 @@ export function createRequirementWorkflow({
           }
 
           if (input.operation === 'archive') {
-            await initiateArchiving(db, requirementId, {
-              audit: async executor => {
-                const requirementUniqueId =
-                  await getRequirementUniqueIdForAudit(executor, requirementId)
-                await recordRequirementMutationAudit(executor, context, {
-                  action: 'requirement.archiving.initiated',
-                  operation: input.operation,
-                  requirementId,
-                  requirementUniqueId,
-                })
-              },
-            })
+            await withSensitiveMutationAudit(context, audit =>
+              initiateArchiving(db, requirementId, {
+                audit: async executor => {
+                  const requirementUniqueId =
+                    await getRequirementUniqueIdForAudit(
+                      executor,
+                      requirementId,
+                    )
+                  await audit(executor, {
+                    action: 'requirement.archiving.initiated',
+                    operation: input.operation,
+                    requirementId,
+                    requirementUniqueId,
+                  })
+                },
+              }),
+            )
             const detail = formatRequirementDetail(
               (await getRequirementById(db, requirementId)) ??
                 (() => {
@@ -1027,33 +1026,38 @@ export function createRequirementWorkflow({
           }
 
           if (input.operation === 'approve_archiving') {
-            await approveArchiving(db, requirementId, {
-              audit: async executor => {
-                const requirementUniqueId =
-                  await getRequirementUniqueIdForAudit(executor, requirementId)
-                await recordRequirementMutationAudit(executor, context, {
-                  action: 'requirement.archiving.approved',
-                  operation: input.operation,
-                  requirementId,
-                  requirementUniqueId,
-                })
-                const cleanup =
-                  await cleanupRequirementSelectionRequirementLinksWithoutPublishedVersion(
+            await withSensitiveMutationAudit(context, audit =>
+              approveArchiving(db, requirementId, {
+                audit: async executor => {
+                  const requirementUniqueId =
+                    await getRequirementUniqueIdForAudit(
+                      executor,
+                      requirementId,
+                    )
+                  await audit(executor, {
+                    action: 'requirement.archiving.approved',
+                    operation: input.operation,
+                    requirementId,
+                    requirementUniqueId,
+                  })
+                  const cleanup =
+                    await cleanupRequirementSelectionRequirementLinksWithoutPublishedVersion(
+                      executor,
+                      [requirementId],
+                    )
+                  await recordRequirementSelectionCleanupAudit(
                     executor,
-                    [requirementId],
+                    context,
+                    {
+                      cleanup,
+                      originAction: 'requirement.archiving.approved',
+                      originTargetId: requirementId,
+                      originTargetKind: 'requirement',
+                    },
                   )
-                await recordRequirementSelectionCleanupAudit(
-                  executor,
-                  context,
-                  {
-                    cleanup,
-                    originAction: 'requirement.archiving.approved',
-                    originTargetId: requirementId,
-                    originTargetKind: 'requirement',
-                  },
-                )
-              },
-            })
+                },
+              }),
+            )
             const detail = formatRequirementDetail(
               (await getRequirementById(db, requirementId)) ??
                 (() => {
@@ -1075,18 +1079,23 @@ export function createRequirementWorkflow({
           }
 
           if (input.operation === 'cancel_archiving') {
-            await cancelArchiving(db, requirementId, {
-              audit: async executor => {
-                const requirementUniqueId =
-                  await getRequirementUniqueIdForAudit(executor, requirementId)
-                await recordRequirementMutationAudit(executor, context, {
-                  action: 'requirement.archiving.cancelled',
-                  operation: input.operation,
-                  requirementId,
-                  requirementUniqueId,
-                })
-              },
-            })
+            await withSensitiveMutationAudit(context, audit =>
+              cancelArchiving(db, requirementId, {
+                audit: async executor => {
+                  const requirementUniqueId =
+                    await getRequirementUniqueIdForAudit(
+                      executor,
+                      requirementId,
+                    )
+                  await audit(executor, {
+                    action: 'requirement.archiving.cancelled',
+                    operation: input.operation,
+                    requirementId,
+                    requirementUniqueId,
+                  })
+                },
+              }),
+            )
             const detail = formatRequirementDetail(
               (await getRequirementById(db, requirementId)) ??
                 (() => {
@@ -1108,23 +1117,25 @@ export function createRequirementWorkflow({
           }
 
           if (input.operation === 'delete_draft') {
-            const result = await deleteDraftVersion(db, requirementId, {
-              audit: async (executor, deleteResult) => {
-                const deletedDraft = deleteResult.deleted.find(
-                  item => item.type === 'draftRequirementVersion',
-                )
-                const requirementUniqueId =
-                  deletedDraft?.requirementUniqueId ?? input.uniqueId
-                await recordRequirementMutationAudit(executor, context, {
-                  action: 'requirement.draft.deleted',
-                  deletedTypes: deleteResult.deleted.map(item => item.type),
-                  deletedVersionNumber: deletedDraft?.versionNumber,
-                  operation: input.operation,
-                  requirementId,
-                  requirementUniqueId,
-                })
-              },
-            })
+            const result = await withSensitiveMutationAudit(context, audit =>
+              deleteDraftVersion(db, requirementId, {
+                audit: async (executor, deleteResult) => {
+                  const deletedDraft = deleteResult.deleted.find(
+                    item => item.type === 'draftRequirementVersion',
+                  )
+                  const requirementUniqueId =
+                    deletedDraft?.requirementUniqueId ?? input.uniqueId
+                  await audit(executor, {
+                    action: 'requirement.draft.deleted',
+                    deletedTypes: deleteResult.deleted.map(item => item.type),
+                    deletedVersionNumber: deletedDraft?.versionNumber,
+                    operation: input.operation,
+                    requirementId,
+                    requirementUniqueId,
+                  })
+                },
+              }),
+            )
             const requirementDeleted = result.deleted.some(
               item => item.type === 'requirement',
             )
@@ -1147,26 +1158,28 @@ export function createRequirementWorkflow({
 
           if (input.operation === 'reactivate') {
             const actor = requireHumanActorSnapshot(context)
-            await reactivateRequirement(
-              db,
-              requirementId,
-              actor.displayName,
-              actor.hsaId,
-              {
-                audit: async executor => {
-                  const requirementUniqueId =
-                    await getRequirementUniqueIdForAudit(
-                      executor,
+            await withSensitiveMutationAudit(context, audit =>
+              reactivateRequirement(
+                db,
+                requirementId,
+                actor.displayName,
+                actor.hsaId,
+                {
+                  audit: async executor => {
+                    const requirementUniqueId =
+                      await getRequirementUniqueIdForAudit(
+                        executor,
+                        requirementId,
+                      )
+                    await audit(executor, {
+                      action: 'requirement.reactivated',
+                      operation: input.operation,
                       requirementId,
-                    )
-                  await recordRequirementMutationAudit(executor, context, {
-                    action: 'requirement.reactivated',
-                    operation: input.operation,
-                    requirementId,
-                    requirementUniqueId,
-                  })
+                      requirementUniqueId,
+                    })
+                  },
                 },
-              },
+              ),
             )
             const detail = formatRequirementDetail(
               (await getRequirementById(db, requirementId)) ??
@@ -1212,26 +1225,31 @@ export function createRequirementWorkflow({
           }
 
           const actor = requireHumanActorSnapshot(context)
-          const restored = await restoreVersion(
-            db,
-            requirementId,
-            version.id,
-            actor.displayName,
-            actor.hsaId,
-            {
-              audit: async (executor, result) => {
-                const requirementUniqueId =
-                  await getRequirementUniqueIdForAudit(executor, requirementId)
-                await recordRequirementMutationAudit(executor, context, {
-                  action: 'requirement.version.restored',
-                  operation: input.operation,
-                  requirementId,
-                  requirementUniqueId,
-                  restoredVersionNumber: result.versionNumber,
-                  versionNumber: input.versionNumber,
-                })
+          const restored = await withSensitiveMutationAudit(context, audit =>
+            restoreVersion(
+              db,
+              requirementId,
+              version.id,
+              actor.displayName,
+              actor.hsaId,
+              {
+                audit: async (executor, result) => {
+                  const requirementUniqueId =
+                    await getRequirementUniqueIdForAudit(
+                      executor,
+                      requirementId,
+                    )
+                  await audit(executor, {
+                    action: 'requirement.version.restored',
+                    operation: input.operation,
+                    requirementId,
+                    requirementUniqueId,
+                    restoredVersionNumber: result.versionNumber,
+                    versionNumber: input.versionNumber,
+                  })
+                },
               },
-            },
+            ),
           )
 
           const detail = formatRequirementDetail(
@@ -1283,33 +1301,37 @@ export function createRequirementWorkflow({
         },
         async () => {
           const requirementId = await resolveRequirementId(db, input)
-          await transitionStatus(db, requirementId, input.toStatusId, {
-            audit: async (executor, result) => {
-              const requirementUniqueId = await getRequirementUniqueIdForAudit(
-                executor,
-                requirementId,
-              )
-              await recordRequirementMutationAudit(executor, context, {
-                action: 'requirement.transition',
-                operation: 'transition',
-                requirementId,
-                requirementUniqueId,
-                toStatusId: input.toStatusId,
-                versionNumber: result.versionNumber,
-              })
-              const cleanup =
-                await cleanupRequirementSelectionRequirementLinksWithoutPublishedVersion(
+          await withSensitiveMutationAudit(context, audit =>
+            transitionStatus(db, requirementId, input.toStatusId, {
+              audit: async (executor, result) => {
+                const requirementUniqueId =
+                  await getRequirementUniqueIdForAudit(executor, requirementId)
+                await audit(executor, {
+                  action: 'requirement.transition',
+                  operation: 'transition',
+                  requirementId,
+                  requirementUniqueId,
+                  toStatusId: input.toStatusId,
+                  versionNumber: result.versionNumber,
+                })
+                const cleanup =
+                  await cleanupRequirementSelectionRequirementLinksWithoutPublishedVersion(
+                    executor,
+                    [requirementId],
+                  )
+                await recordRequirementSelectionCleanupAudit(
                   executor,
-                  [requirementId],
+                  context,
+                  {
+                    cleanup,
+                    originAction: 'requirement.transition',
+                    originTargetId: requirementId,
+                    originTargetKind: 'requirement',
+                  },
                 )
-              await recordRequirementSelectionCleanupAudit(executor, context, {
-                cleanup,
-                originAction: 'requirement.transition',
-                originTargetId: requirementId,
-                originTargetKind: 'requirement',
-              })
-            },
-          })
+              },
+            }),
+          )
           const detail = formatRequirementDetail(
             (await getRequirementById(db, requirementId)) ??
               (() => {
