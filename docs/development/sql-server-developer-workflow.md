@@ -194,7 +194,7 @@ Runtime pool defaults are conservative for a single app process:
 | `npm run db:setup` | Wait, reset, bootstrap principals, migrate and reconcile permissions, seed required + demo profiles, and configure the read-only login |
 | `npm run db:migration-status` | Report expected, observed, pending, and unknown TypeORM migrations as JSON |
 | `npm run db:migrate` | Run TypeORM migrations and reconcile runtime permissions |
-| `npm run db:seed:required` | Apply only required system and lookup seed data |
+| `npm run db:seed:required` | Reconcile required records, then run the legacy optional-catalog compatibility phase |
 | `npm run db:seed:demo` | Reset non-required rows, then apply optional demo, smoke-test, guide, and integration seed data |
 | `npm run db:reset` | Drop and recreate the database |
 | `npm run test:sql-integration` | Reset a dedicated test database and run focused SQL Server invariant tests |
@@ -398,7 +398,9 @@ database to have reached the build metadata field
 
 ## Read-Only Browse Workflow
 
-Use VS Code SQLTools with a read-only login:
+Use VS Code SQLTools with your chosen development browse credential. You choose
+whether it has write access; the scaffold adds read grants without enforcing
+read-only permissions:
 
 1. Install or enable:
    - `mtxr.sqltools`
@@ -417,8 +419,8 @@ Use VS Code SQLTools with a read-only login:
    settings.
 
 The scaffold intentionally avoids printing a real password. By default it emits
-`${env:DB_READONLY_PASSWORD}` so the UI connection can remain read-only without
-committing secrets into the repo.
+`${env:DB_READONLY_PASSWORD}` without committing secrets into the repo. Keep
+development connection material separate from production secrets.
 
 ## Seed Data Preservation
 
@@ -430,15 +432,30 @@ necessary. That means:
 - preserve ordering assumptions that tests or guides rely on
 - document every unavoidable change explicitly
 
-Seed inserts in `typeorm/seed-required.mjs` must be idempotent: guard with
-`IF NOT EXISTS` (or composite-PK equivalent) and wrap identity-bearing tables
-in `SET IDENTITY_INSERT [table] ON/OFF` so the required seed can be re-run
-safely. The demo profile in `typeorm/seed.mjs` is reseeded from a clean
-non-required data set by `npm run db:seed:demo`.
+Follow the [canonical ownership table](../reference/database-schema.md#seed-ownership-and-upgrades)
+when changing seed data. Required reconciliation preserves administrator-owned
+values and matches application identities. The demo profile is reseeded from a
+clean non-required data set by `npm run db:seed:demo`.
 
-Put new system or lookup rows that the app needs to boot in the required
-profile. Put examples, screenshots, privacy exercises, Playwright fixtures,
-dogfood Krav and other disposable data in the demo profile.
+Put required identities and invariant repairs in required reconciliation. Put
+examples, screenshots, privacy exercises, Playwright fixtures and dogfood Krav
+in the demo profile. The optional starter catalogs currently run in a separate
+compatibility phase; their durable one-time initialization is separate work.
+
+### Inspect Required Reconciliation Results
+
+Use silent npm output when retaining parseable command output:
+
+```bash
+npm run --silent db:seed:required -- --json > seed-result.json 2> seed-summary.log
+```
+
+The versioned result records required and legacy optional outcomes separately.
+The summary goes to stderr. Nonzero exit status means failure, even when a prior
+phase committed. See the [database job result contract](../../containers/db-job/README.md#required-seed-results)
+for counts, correlation and uncertain outcomes. Keep both files when diagnosing
+a failed run. A required identity conflict needs a deliberate correction to
+the identified record; rerunning does not overwrite the conflicting mapping.
 
 ## Verify Disposable Demo Reset
 

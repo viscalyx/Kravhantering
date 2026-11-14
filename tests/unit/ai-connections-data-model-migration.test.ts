@@ -19,8 +19,10 @@ function collectSeedRows(): {
       if (sql.includes('SELECT @@ROWCOUNT AS [affectedRows]')) {
         return [{ affectedRows: 1 }]
       }
-      const match = sql.match(/INSERT INTO \[([^\]]+)\] \(([^)]+)\) VALUES/)
-      if (!match) return
+      const match = sql.match(
+        /INSERT INTO \[([^\]]+)\] \(([^)]+)\)(?: OUTPUT INSERTED\.\[id\])? VALUES/,
+      )
+      if (!match) return []
       const columns = match[2]
         .split(',')
         .map(column => column.trim().replace(/^\[|\]$/g, ''))
@@ -30,6 +32,7 @@ function collectSeedRows(): {
         ),
         table: match[1],
       })
+      return [{ id: rows.at(-1)?.row.id ?? rows.length }]
     }),
   }
 

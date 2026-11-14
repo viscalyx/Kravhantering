@@ -825,8 +825,13 @@ podman run --rm --env-file /etc/kravhantering/db-job.env \
 podman run --rm --env-file /etc/kravhantering/db-job.env \
   "$DB_JOB_IMAGE_REF" permission-status \
   > "$EVIDENCE_DIR/runtime-permissions-${VERSION}.json"
+SEED_RUN_ID="$(cat /proc/sys/kernel/random/uuid)"
 podman run --rm --env-file /etc/kravhantering/db-job.env \
-  "$DB_JOB_IMAGE_REF" seed:required
+  --env "RELEASE_VERSION=$VERSION" \
+  --env "DB_SEED_RUN_ID=$SEED_RUN_ID" \
+  "$DB_JOB_IMAGE_REF" seed:required --json \
+  > "$EVIDENCE_DIR/seed-required-${VERSION}-${SEED_RUN_ID}.json" \
+  2> "$EVIDENCE_DIR/seed-required-${VERSION}-${SEED_RUN_ID}.log"
 
 exit
 ```
@@ -1197,8 +1202,13 @@ podman run --rm --env-file /etc/kravhantering/db-job.env \
 podman run --rm --env-file /etc/kravhantering/db-job.env \
   "$DB_JOB_IMAGE_REF" permission-status \
   > "$EVIDENCE_DIR/runtime-permissions-${VERSION}.json"
+SEED_RUN_ID="$(cat /proc/sys/kernel/random/uuid)"
 podman run --rm --env-file /etc/kravhantering/db-job.env \
-  "$DB_JOB_IMAGE_REF" seed:required
+  --env "RELEASE_VERSION=$VERSION" \
+  --env "DB_SEED_RUN_ID=$SEED_RUN_ID" \
+  "$DB_JOB_IMAGE_REF" seed:required --json \
+  > "$EVIDENCE_DIR/seed-required-${VERSION}-${SEED_RUN_ID}.json" \
+  2> "$EVIDENCE_DIR/seed-required-${VERSION}-${SEED_RUN_ID}.log"
 
 exit
 ```
@@ -1207,6 +1217,11 @@ After bootstrap, remove `DB_BOOTSTRAP_ADMIN_USER` and
 `DB_BOOTSTRAP_ADMIN_PASSWORD` from `/etc/kravhantering/db-job.env`.
 
 ## Operational Evidence
+
+Retain the required-seed JSON report and its separate summary with the
+migration evidence, including failed attempts. Check the exit status and each
+committed phase before continuing. See the [required-seed result contract](../../containers/db-job/README.md#required-seed-results)
+for identity conflicts, uncertain outcomes and company pipeline publication.
 
 Keep these files with the deployment record:
 

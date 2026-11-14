@@ -1,3 +1,56 @@
+// A transaction-bound caller retains ownership of its final commit.
+export async function runSeedTransaction(executor, work) {
+  if (typeof executor?.createQueryRunner !== 'function') {
+    if (
+      executor?.isTransactionActive !== true &&
+      executor?.queryRunner?.isTransactionActive !== true
+    ) {
+      throw new Error(
+        'Seed reconciliation requires a DataSource or an active transaction',
+      )
+    }
+    return work(executor)
+  }
+  const runner = executor.createQueryRunner()
+  let phase = 'connect'
+  let failure
+  let result
+  try {
+    await runner.connect()
+    await runner.startTransaction()
+    phase = 'write'
+    result = await work(runner)
+    phase = 'commit'
+    await runner.commitTransaction()
+  } catch (caught) {
+    const error = caught instanceof Error ? caught : new Error(String(caught))
+    failure = error
+    error.seedTransactionOutcome =
+      phase === 'commit' ? 'unknown' : 'not_started'
+    if (phase === 'write' || phase === 'commit') {
+      try {
+        await runner.rollbackTransaction()
+        if (phase !== 'commit') error.seedTransactionOutcome = 'rolled_back'
+      } catch (rollbackError) {
+        error.rollbackError = rollbackError
+        error.seedTransactionOutcome = 'unknown'
+      }
+    }
+  } finally {
+    try {
+      await runner.release()
+    } catch (releaseError) {
+      if (failure) failure.releaseError = releaseError
+      else {
+        releaseError.seedTransactionOutcome = 'committed'
+        failure = releaseError
+      }
+    }
+  }
+  if (failure) throw failure
+  return result
+}
+
 export function seedPositionDetail({
   table,
   rowIndex,

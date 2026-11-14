@@ -44,7 +44,10 @@ manual runs pass the admin command as arguments:
 - `permission-status` prints secret-free JSON evidence without changing state.
 - `permission-reconcile` reapplies the manifest and managed memberships, then
   prints the verified JSON status.
-- `seed:required` applies only required system and lookup seed data.
+- `seed:required` reconciles required records and then runs the legacy optional
+  catalog compatibility phase in a separate transaction.
+- `seed:required --json` writes a versioned result to stdout and a concise
+  summary to stderr.
 - `health` runs a simple SQL Server read check.
 - `wait` polls SQL Server until it responds.
 
@@ -79,6 +82,48 @@ the Next.js application dependency tree.
 Demo/test data must not be baked into this production `db-job` image. See
 [../app/README.md](../app/README.md) for the separate opt-in
 `kravhantering-demo-seed` image contract.
+
+## Required Seed Results
+
+`seed:required --json` emits one JSON document with `version: 1`, `operation`,
+`runId`, `release`, `startedAt`, `completedAt`, `status` and `phase`. Supply
+`DB_SEED_RUN_ID` for company pipeline correlation, or retain the generated UUID.
+Supply `RELEASE_VERSION` (or `BUILD_VERSION`) to identify the deployed release;
+when neither is available, `release` is null. These values contain no secrets.
+
+`required` and `legacyOptional` each contain their profile, transaction outcome,
+counts and per-record entries. Each entry has a table, logical identity, resolved
+ID and outcome: `inserted`, `updated`, `unchanged` or `skipped`. `updated` includes
+invariant repair and release-owned AI synchronization. Top-level `counts` and
+`insertedRows` count confirmed committed work across phases. AI rules and terms
+are included. Existing rows are not counted as inserted. A no-op rerun reports
+unchanged entries and does not alter metadata timestamps.
+
+Transaction outcomes are `committed`, `rolled_back`, `not_started`, `unknown`
+and, for a transaction-bound in-process caller, `pending`. That caller owns the
+commit and must not publish pending counts as committed work. Failed or unknown
+transactions publish zero committed counts and no committed entries. Original
+errors remain available to in-process callers with their cause and any rollback
+or cleanup error. Command failures include an error code, message and logical
+record when known. The command returns nonzero for conflicts and unexpected
+failures. A later optional or browse-access failure preserves the earlier
+required phase's committed counts. A failed commit or rollback acknowledgement
+reports `unknown`; inspect saved state before retrying.
+
+Retain JSON and stderr with the deployment evidence, including failed attempts.
+Publish the summary with a link to the retained report through the company's
+pipeline. A later no-op report does not replace the earlier attempt's evidence.
+Required identity conflicts require administrator review of the reported mapping;
+editable labels are not authority to reassign identities. Keep the documented
+recovery procedure for failures after migrations start.
+
+The canonical [ownership table](../../docs/reference/database-schema.md#seed-ownership-and-upgrades)
+defines required, optional and configuration families. The compatibility phase
+can still restore missing optional starter records; it is not the durable
+one-time optional initializer. Saved column layouts are left intact. Both
+`db-job` and `demo-seed` must include `seed-reconciliation.mjs`, `seed-runner.mjs`,
+`seed-required.mjs` and `ai-safety-seed-data.mjs`; demo fixture modules remain
+exclusive to the demo image.
 
 ## Environment Variables
 

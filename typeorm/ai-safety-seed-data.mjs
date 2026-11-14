@@ -1,3 +1,5 @@
+import { reconcileSeedRecord } from './seed-reconciliation.mjs'
+
 const AI_SAFETY_SEED_TIMESTAMP = '2026-07-03 00:00:00'
 
 export const AI_SAFETY_RULE_SEED_ROWS = Object.freeze([
@@ -280,142 +282,67 @@ export function normalizeAiSafetyTerm(value) {
     .toLocaleLowerCase('sv-SE')
 }
 
-function getQuery(executor) {
-  if (typeof executor?.query === 'function') {
-    return (sql, params) => executor.query(sql, params)
-  }
-  throw new Error(
-    'seedAiSafetyRules requires a DataSource, QueryRunner, or EntityManager with a .query method',
-  )
-}
-
 export async function seedAiSafetyRules(executor) {
-  const query = getQuery(executor)
-
+  const entries = []
+  const ruleIds = new Map()
+  const metadata = [
+    'category',
+    'name_sv',
+    'name_en',
+    'description_sv',
+    'description_en',
+    'pattern_kind',
+    'window_chars',
+    'sort_order',
+  ]
   for (const row of AI_SAFETY_RULE_SEED_ROWS) {
-    await query(
-      `
-        MERGE [ai_safety_rules] AS target
-        USING (
-          SELECT
-            @0 AS [rule_id],
-            @1 AS [category],
-            @2 AS [name_sv],
-            @3 AS [name_en],
-            @4 AS [description_sv],
-            @5 AS [description_en],
-            @6 AS [pattern_kind],
-            @7 AS [window_chars],
-            @8 AS [sort_order],
-            @9 AS [timestamp]
-        ) AS source
-        ON target.[rule_id] = source.[rule_id]
-        WHEN MATCHED THEN
-          UPDATE SET
-            [category] = source.[category],
-            [name_sv] = source.[name_sv],
-            [name_en] = source.[name_en],
-            [description_sv] = source.[description_sv],
-            [description_en] = source.[description_en],
-            [pattern_kind] = source.[pattern_kind],
-            [window_chars] = source.[window_chars],
-            [sort_order] = source.[sort_order],
-            [updated_at] = source.[timestamp]
-        WHEN NOT MATCHED THEN
-          INSERT (
-            [rule_id],
-            [category],
-            [name_sv],
-            [name_en],
-            [description_sv],
-            [description_en],
-            [pattern_kind],
-            [window_chars],
-            [sort_order],
-            [created_at],
-            [updated_at]
-          )
-          VALUES (
-            source.[rule_id],
-            source.[category],
-            source.[name_sv],
-            source.[name_en],
-            source.[description_sv],
-            source.[description_en],
-            source.[pattern_kind],
-            source.[window_chars],
-            source.[sort_order],
-            source.[timestamp],
-            source.[timestamp]
-          );
-      `,
-      [...row, AI_SAFETY_SEED_TIMESTAMP],
+    const values = Object.fromEntries(
+      ['rule_id', ...metadata].map((column, index) => [column, row[index]]),
     )
+    const result = await reconcileSeedRecord(executor, {
+      table: 'ai_safety_rules',
+      values: {
+        ...values,
+        created_at: AI_SAFETY_SEED_TIMESTAMP,
+        updated_at: AI_SAFETY_SEED_TIMESTAMP,
+      },
+      keys: ['rule_id'],
+      update: metadata,
+      timestamp: new Date(),
+    })
+    ruleIds.set(row[0], result.id)
+    entries.push(result)
   }
-
-  for (const row of AI_SAFETY_TERM_SEED_ROWS) {
-    await query(
-      `
-        MERGE [ai_safety_rule_terms] AS target
-        USING (
-          SELECT
-            rules.[id] AS [rule_id],
-            @1 AS [term_type],
-            @2 AS [term_text],
-            @3 AS [normalized_term],
-            @4 AS [direction],
-            @5 AS [sort_order],
-            @6 AS [timestamp]
-          FROM [ai_safety_rules] rules
-          WHERE rules.[rule_id] = @0
-        ) AS source
-        ON target.[rule_id] = source.[rule_id]
-          AND target.[term_type] = source.[term_type]
-          AND target.[normalized_term] = source.[normalized_term]
-        WHEN MATCHED THEN
-          UPDATE SET
-            [term_text] = source.[term_text],
-            [standard_direction] = source.[direction],
-            [direction] = CASE
-              WHEN target.[is_standard] = 0 THEN source.[direction]
-              ELSE target.[direction]
-            END,
-            [is_standard] = 1,
-            [is_active] = CASE
-              WHEN target.[is_standard] = 0 THEN 1
-              ELSE target.[is_active]
-            END,
-            [sort_order] = source.[sort_order],
-            [updated_at] = source.[timestamp]
-        WHEN NOT MATCHED THEN
-          INSERT (
-            [rule_id],
-            [term_type],
-            [term_text],
-            [normalized_term],
-            [direction],
-            [standard_direction],
-            [is_standard],
-            [is_active],
-            [sort_order],
-            [created_at],
-            [updated_at]
-          )
-          VALUES (
-            source.[rule_id],
-            source.[term_type],
-            source.[term_text],
-            source.[normalized_term],
-            source.[direction],
-            source.[direction],
-            1,
-            1,
-            source.[sort_order],
-            source.[timestamp],
-            source.[timestamp]
-          );
-      `,
-      [...row, AI_SAFETY_SEED_TIMESTAMP],
-    )
+  for (const [
+    ruleKey,
+    termType,
+    text,
+    normalized,
+    direction,
+    order,
+  ] of AI_SAFETY_TERM_SEED_ROWS) {
+    const result = await reconcileSeedRecord(executor, {
+      table: 'ai_safety_rule_terms',
+      values: {
+        rule_id: ruleIds.get(ruleKey),
+        term_type: termType,
+        term_text: text,
+        normalized_term: normalized,
+        direction,
+        standard_direction: direction,
+        is_standard: 1,
+        is_active: 1,
+        sort_order: order,
+        created_at: AI_SAFETY_SEED_TIMESTAMP,
+        updated_at: AI_SAFETY_SEED_TIMESTAMP,
+      },
+      keys: ['rule_id', 'term_type', 'normalized_term'],
+      update: ['term_text', 'standard_direction', 'is_standard', 'sort_order'],
+      timestamp: new Date(),
+    })
+    // Reports use the stable application key, never a database-specific rule ID.
+    result.identity = `rule_id=${ruleKey},term_type=${termType},normalized_term=${normalized}`
+    entries.push(result)
   }
+  return entries
 }

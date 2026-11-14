@@ -1,5 +1,10 @@
 import { seedAiSafetyRules } from './ai-safety-seed-data.mjs'
-import { runSeedData, seedPositionDetail } from './seed-runner.mjs'
+import {
+  reconcileSeedProfile,
+  reconcileSeedRecord,
+  seedCounts,
+} from './seed-reconciliation.mjs'
+import { seedPositionDetail } from './seed-runner.mjs'
 
 export const REQUIRED_SEED_TABLES = Object.freeze([
   'archiving_retention_policies',
@@ -623,14 +628,96 @@ export const REQUIRED_SEED_DATA = {
 
 export { seedPositionDetail }
 
+// Retain the legacy table export for demo reset membership until the optional
+// initializer owns its durable completion marker and deployment dispatch.
+export const LEGACY_OPTIONAL_SEED_TABLES = Object.freeze([
+  'specification_implementation_types',
+  'specification_governance_object_types',
+  'requirement_categories',
+  'requirement_types',
+  'quality_characteristics',
+])
+export const REQUIRED_RECONCILIATION_TABLES = Object.freeze(
+  REQUIRED_SEED_TABLES.filter(
+    table =>
+      !LEGACY_OPTIONAL_SEED_TABLES.includes(table) &&
+      table !== 'requirement_list_column_defaults',
+  ),
+)
+const LOGICAL_KEYS = {
+  archiving_retention_policies: ['policy_key'],
+  ai_run_profiles: ['profile_key'],
+  requirement_status_transitions: [
+    'from_requirement_status_id',
+    'to_requirement_status_id',
+  ],
+}
+
+async function reconcileTables(target, tables, entries) {
+  const debug =
+    process.env.SEED_DEBUG === '1' || process.env.SEED_DEBUG === 'true'
+  for (const table of tables) {
+    const definition = REQUIRED_SEED_DATA[table]
+    if (debug && definition.rows.length) {
+      const identityInsert =
+        definition.identity !== false && !LOGICAL_KEYS[table]
+      console.error(
+        `[seed] table=${table} rows=${definition.rows.length} identityInsert=${identityInsert}`,
+      )
+    }
+    for (const row of definition.rows) {
+      const values = Object.fromEntries(
+        definition.columns.map((column, index) => [column, row[index]]),
+      )
+      entries.push(
+        await reconcileSeedRecord(target, {
+          table,
+          values,
+          keys: LOGICAL_KEYS[table] ?? ['id'],
+          identity: definition.identity !== false,
+          update: table === 'requirement_statuses' ? ['is_system'] : [],
+          unique: ['name_sv', 'name_en', 'code'].filter(column =>
+            definition.columns.includes(column),
+          ),
+          appendOrder: definition.columns.includes('sort_order'),
+        }),
+      )
+    }
+  }
+}
+
+export async function reconcileRequiredDatabase(executor) {
+  return reconcileSeedProfile(executor, 'required', async (target, entries) => {
+    await reconcileTables(target, REQUIRED_RECONCILIATION_TABLES, entries)
+    entries.push(...(await seedAiSafetyRules(target)))
+  })
+}
+
 export async function seedRequiredDatabase(executor) {
-  const inserted = await runSeedData(
-    executor,
-    REQUIRED_SEED_DATA,
-    REQUIRED_SEED_TABLES,
-  )
-  await seedAiSafetyRules(executor)
-  return inserted
+  const required = await reconcileRequiredDatabase(executor)
+  try {
+    const legacyOptional = await reconcileSeedProfile(
+      executor,
+      'legacy_optional',
+      (target, entries) =>
+        reconcileTables(target, LEGACY_OPTIONAL_SEED_TABLES, entries),
+    )
+    return {
+      required,
+      legacyOptional,
+      counts: seedCounts([...required.entries, ...legacyOptional.entries]),
+    }
+  } catch (error) {
+    error.requiredSeedResult = {
+      required,
+      legacyOptional: error.seedProfileResult,
+      counts: seedCounts([
+        ...required.entries,
+        ...(error.seedProfileResult?.entries ?? []),
+      ]),
+    }
+    throw error
+  }
 }
 
 export default seedRequiredDatabase

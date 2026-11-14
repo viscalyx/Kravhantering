@@ -13,6 +13,20 @@ changes.
 
 ## Unreleased
 
+### Required seed reconciliation
+
+Required reconciliation stops and rolls back on conflicting required
+identities. Review the reported record and resolve its identity with the
+application administrator before retrying. Saved settings and supported
+presentation edits are preserved. AI standard-term adoption also preserves
+the administrator's active state and direction.
+
+Retain the versioned seed report and separate summary with deployment evidence.
+Check each phase and the exit status: required records can commit before a
+later optional-catalog or browse-access failure. If the transaction outcome is
+unknown, inspect saved state before retrying. Keep the tested recovery procedure
+for failures after migrations start.
+
 ### Archive export and disposal
 
 After rollout, create a new archive export before disposal. Confirm that

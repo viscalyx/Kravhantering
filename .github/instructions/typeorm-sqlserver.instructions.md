@@ -1,5 +1,5 @@
 ---
-applyTo: "{lib/typeorm/**/*.ts,typeorm/**/*.ts,lib/db.ts,scripts/db-admin.mjs,scripts/db-sqlserver-admin.mjs,scripts/__tests__/db-sqlserver-admin.test.mjs,docker-compose.sqlserver.yml,package.json,docs/sql-server-*.md}"
+applyTo: "{lib/typeorm/**/*.ts,typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/*seed*.mjs,lib/db.ts,scripts/db-admin.mjs,scripts/db-sqlserver-admin.mjs,scripts/__tests__/db-sqlserver-admin*.test.mjs,docker-compose.sqlserver.yml,package.json,docs/development/sql-server-developer-workflow.md}"
 ---
 
 # TypeORM + Microsoft SQL Server
@@ -60,13 +60,20 @@ applyTo: "{lib/typeorm/**/*.ts,typeorm/**/*.ts,lib/db.ts,scripts/db-admin.mjs,sc
 - Avoid blanket eager loading and lazy loading in hot paths.
 - Do not create N+1 query patterns.
 
-## Transaction Rules
+## Transactions And Session State
 
-- Use `DataSource.transaction(...)` or `QueryRunner`.
-- Inside a TypeORM transaction, use only the provided transactional manager.
-- Keep one logical multi-table mutation inside one atomic helper.
-- Do not split transaction orchestration across route handlers and DAL helpers.
-- Use `QueryRunner` when a transaction must share one dedicated connection or mix multiple low-level operations.
+- Follow `database-writes.instructions.md` for application mutation boundaries.
+- Retain TypeORM ownership of the pending-migration transaction and history.
+- Use a verified supported connection boundary for work that depends on one
+  SQL Server session. A nontransactional QueryRunner alone does not reserve
+  a physical connection.
+- Verify session-setting scope and restoration before relying on pooled
+  connection state.
+- Verify supported nested-error recovery before continuing a transaction.
+- Preserve each caller's result-set, affected-row and procedure-return
+  contract; verify changes through the actual SQL Server driver.
+- Apply `NOCOUNT`, SQL error handling and procedure-return interpretation to
+  the caller's contract; do not impose one wrapper on every SQL call.
 
 ## Performance Rules
 
@@ -104,7 +111,8 @@ applyTo: "{lib/typeorm/**/*.ts,typeorm/**/*.ts,lib/db.ts,scripts/db-admin.mjs,sc
 ## Calling Stored Procedures From TypeORM
 
 - Use `dataSource.query(...)` for simple procedure calls.
-- Use `queryRunner.query(...)` when transaction boundaries or connection affinity matter.
+- For procedure calls that depend on transaction or session state, follow
+  Transactions And Session State above.
 - Always parameterize inputs. Never concatenate user input into `EXEC` strings.
 - Keep procedure calls isolated in repository or service-layer code.
 - Map results to typed DTOs or interfaces in TypeScript.
@@ -117,12 +125,12 @@ applyTo: "{lib/typeorm/**/*.ts,typeorm/**/*.ts,lib/db.ts,scripts/db-admin.mjs,sc
 - Prefer least-privilege DB permissions.
 - Procedures may be used to reduce direct table permissions when that improves the security model.
 
-## Read-Only Browse Workflow
+## Developer Browse Workflow
 
-- Preserve a supported read-only database browsing path for developers.
-- Prefer the SQLTools + MSSQL driver workflow documented in `docs/development/sql-server-developer-workflow.md`.
-- Do not document or generate browse flows that require write-capable credentials.
-- Keep read-only connection material separate from production secrets.
+- Preserve the SQLTools + MSSQL workflow documented in
+  `docs/development/sql-server-developer-workflow.md`.
+- Let the developer choose the development browse credential's write access.
+- Keep developer connection material separate from production secrets.
 
 ## Required Documentation Updates
 

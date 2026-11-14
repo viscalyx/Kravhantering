@@ -106,6 +106,8 @@ expect(result).toEqual([{ slug: 'post-1' }, { slug: 'post-2' }])
 
 ## Database Testing
 
-- See `.github/instructions/database-schema.instructions.md` for stack rules. Persistence tests should validate SQL Server connection parsing, `scripts/db-sqlserver-admin.mjs` admin workflows, seed coverage in `typeorm/seed.mjs`, and read-only browse behavior.
+- Follow `database-schema.instructions.md` for schema and seed contracts.
+- Verify connection resolution, database command outcomes and the supported
+  developer SQLTools configuration without requiring read-only credentials.
 - DAL tests should cover transactional rollback behavior, parameter binding (`@0`/`@1` placeholders), and any seed-data assumptions the unit relies on.
 - New entities or migrations require corresponding seed coverage in `typeorm/seed.mjs` and a focused unit test that exercises the new path.

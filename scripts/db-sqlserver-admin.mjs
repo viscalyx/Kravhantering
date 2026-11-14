@@ -10,6 +10,10 @@ import {
   RUNTIME_PERMISSION_MANIFEST_VERSION,
   SQL_SERVER_RUNTIME_ROLE,
 } from '../typeorm/runtime-permission-manifest.mjs'
+import {
+  createSeedCommandReport,
+  seedCommandSummary,
+} from '../typeorm/seed-reconciliation.mjs'
 
 export { SQL_SERVER_RUNTIME_ROLE }
 
@@ -1711,38 +1715,90 @@ export async function seedSqlServerDatabase(connectionString, options = {}) {
   if (profile !== 'required' && profile !== 'demo') {
     throw new Error(`Unsupported SQL Server seed profile: ${profile}`)
   }
-  const seedProfile =
-    injectedSeedProfile ??
-    (await (options.loadSeedProfileImpl ?? loadSeedProfile)(profile))
-  const migrationClasses = await getMigrationClasses()
-  const dataSource = new DataSourceCtor(
-    buildMigrationDataSourceOptions(connectionString, migrationClasses, env),
-  )
-
-  await dataSource.initialize()
-  let insertedRows = 0
+  const report = profile === 'required' ? createSeedCommandReport(env) : null
+  let dataSource
+  let initialized = false
+  let seedResult
   let resetTables = 0
-
+  let failure
+  let readonlyAccess
   try {
+    const seedProfile =
+      injectedSeedProfile ??
+      (await (options.loadSeedProfileImpl ?? loadSeedProfile)(profile))
+    const migrationClasses = await getMigrationClasses()
+    dataSource = new DataSourceCtor(
+      buildMigrationDataSourceOptions(connectionString, migrationClasses, env),
+    )
+    await dataSource.initialize()
+    initialized = true
     if (profile === 'demo') {
       const result = await resetDemoSqlServerData(dataSource, options)
       resetTables = result.tablesCleared
     }
-    insertedRows = await seedProfile(dataSource)
-  } finally {
-    if (typeof dataSource.destroy === 'function') {
-      await dataSource.destroy()
+    if (report) report.phase = 'reconciliation'
+    seedResult = await seedProfile(dataSource)
+    if (report && typeof seedResult === 'object')
+      Object.assign(report, seedResult)
+    if (report) report.phase = 'browse_access'
+    readonlyAccess =
+      options.configureReadonlyAccess === false
+        ? { configured: false }
+        : await ensureReadonlySqlServerAccess(connectionString, options)
+    if (report) {
+      report.status = 'completed'
+      report.phase = 'complete'
+      report.completedAt = new Date().toISOString()
     }
+  } catch (caught) {
+    failure =
+      caught instanceof Error
+        ? caught
+        : new Error(`SQL Server ${profile} seed failed.`, { cause: caught })
+    if (report) {
+      if (failure.requiredSeedResult) {
+        Object.assign(report, failure.requiredSeedResult)
+        report.phase = 'legacy_optional'
+      } else if (failure.seedProfileResult)
+        report.required = failure.seedProfileResult
+      if (!failure.requiredSeedResult && failure.seedProfileResult)
+        report.counts = failure.seedProfileResult.counts
+      report.error = {
+        code: failure.code ?? 'SEED_FAILED',
+        message: failure.message,
+        logicalRecord: failure.logicalRecord ?? null,
+      }
+      failure.seedCommandResult = report
+    }
+  } finally {
+    if (initialized && typeof dataSource.destroy === 'function') {
+      try {
+        await dataSource.destroy()
+      } catch (cleanupError) {
+        if (failure) failure.cleanupError = cleanupError
+        else {
+          if (report) {
+            report.status = 'failed'
+            report.phase = 'cleanup'
+            report.error = {
+              code: 'SEED_CLEANUP_FAILED',
+              message: cleanupError.message,
+            }
+            cleanupError.seedCommandResult = report
+          }
+          failure = cleanupError
+        }
+      } finally {
+        if (report) report.completedAt = new Date().toISOString()
+      }
+    } else if (report) report.completedAt = new Date().toISOString()
   }
-
-  const readonlyAccess =
-    options.configureReadonlyAccess === false
-      ? { configured: false }
-      : await ensureReadonlySqlServerAccess(connectionString, options)
-
+  if (failure) throw failure
   return {
+    ...(typeof seedResult === 'object' ? report : {}),
     demoResetTables: resetTables,
-    insertedRows,
+    insertedRows:
+      typeof seedResult === 'number' ? seedResult : seedResult.counts.inserted,
     profile,
     readonlyAccessConfigured: readonlyAccess.configured,
   }
@@ -1996,6 +2052,16 @@ export async function main(args, dependencies = {}) {
       )
     }
   } catch (error) {
+    if (command === 'seed:required' && jsonOutput) {
+      const report = createSeedCommandReport(env)
+      report.completedAt = new Date().toISOString()
+      report.error = {
+        code: 'SEED_CONFIGURATION_FAILED',
+        message: error.message,
+      }
+      consoleObj.log(JSON.stringify(report, null, 2))
+      consoleObj.error(seedCommandSummary(report))
+    }
     consoleObj.error(
       error instanceof Error
         ? error.message
@@ -2231,23 +2297,40 @@ export async function main(args, dependencies = {}) {
     try {
       const result = await seedSqlServerDatabase(connectionString, {
         ...dependencies,
+        env,
         profile,
       })
-      consoleObj.log(
-        `SQL Server ${profile} seed completed (${result.insertedRows} inserted row${result.insertedRows === 1 ? '' : 's'}).`,
-      )
+      if (result.version === 1) {
+        if (jsonOutput) consoleObj.log(JSON.stringify(result, null, 2))
+        const writeSummary = jsonOutput
+          ? consoleObj.error.bind(consoleObj)
+          : consoleObj.log.bind(consoleObj)
+        writeSummary(seedCommandSummary(result))
+      } else {
+        consoleObj.log(
+          `SQL Server ${profile} seed completed (${result.insertedRows} inserted row${result.insertedRows === 1 ? '' : 's'}).`,
+        )
+      }
       if (profile === 'demo') {
         consoleObj.log(
           `SQL Server demo seed reset ${result.demoResetTables} non-required table${result.demoResetTables === 1 ? '' : 's'} before seeding.`,
         )
       }
       if (result.readonlyAccessConfigured) {
-        consoleObj.log(
+        const writeDiagnostic = jsonOutput
+          ? consoleObj.error.bind(consoleObj)
+          : consoleObj.log.bind(consoleObj)
+        writeDiagnostic(
           'Configured read-only database access for browse tooling.',
         )
       }
       return 0
     } catch (error) {
+      if (error?.seedCommandResult) {
+        if (jsonOutput)
+          consoleObj.log(JSON.stringify(error.seedCommandResult, null, 2))
+        consoleObj.error(seedCommandSummary(error.seedCommandResult))
+      }
       consoleObj.error(
         error instanceof Error
           ? error.message

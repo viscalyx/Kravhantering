@@ -20,6 +20,11 @@ To uninstall a first install, use
 >and tells you which connected artifact and image steps it replaces on each
 >disconnected app node.
 
+Retain the required-seed JSON report and its separate summary with the
+migration evidence, including failed attempts. Check the exit status and each
+committed phase before continuing. See the [required-seed result contract](../../containers/db-job/README.md#required-seed-results)
+for identity conflicts, uncertain outcomes and company pipeline publication.
+
 ## Planned-Downtime Upgrade
 
 Before the downtime window, confirm the target images' CPU requirements in
@@ -349,6 +354,7 @@ place.
 
    ```bash
    sudo -iu kravhantering
+   set -euo pipefail
    cd /opt/kravhantering/current
    set -a
    . /etc/kravhantering/release.env
@@ -371,8 +377,13 @@ place.
    podman run --rm --env-file /etc/kravhantering/db-job.env \
      "$DB_JOB_IMAGE_REF" permission-status \
      > "$EVIDENCE_DIR/runtime-permissions-${VERSION}.json"
+   SEED_RUN_ID="$(cat /proc/sys/kernel/random/uuid)"
    podman run --rm --env-file /etc/kravhantering/db-job.env \
-     "$DB_JOB_IMAGE_REF" seed:required
+     --env "RELEASE_VERSION=$VERSION" \
+     --env "DB_SEED_RUN_ID=$SEED_RUN_ID" \
+     "$DB_JOB_IMAGE_REF" seed:required --json \
+     > "$EVIDENCE_DIR/seed-required-${VERSION}-${SEED_RUN_ID}.json" \
+     2> "$EVIDENCE_DIR/seed-required-${VERSION}-${SEED_RUN_ID}.log"
 
    exit
    ```

@@ -90,8 +90,10 @@ function collectSeedInsertRows(
         }
         return [{ affectedRows }]
       }
-      const match = sql.match(/INSERT INTO \[([^\]]+)\] \(([^)]+)\) VALUES/)
-      if (!match) return
+      const match = sql.match(
+        /INSERT INTO \[([^\]]+)\] \(([^)]+)\)(?: OUTPUT INSERTED\.\[id\])? VALUES/,
+      )
+      if (!match) return []
       const [, table, columnList] = match
       const columns = columnList
         .split(',')
@@ -107,6 +109,7 @@ function collectSeedInsertRows(
         ),
         table,
       })
+      return [{ id: rows.at(-1)?.row.id ?? rows.length }]
     }),
   }
 

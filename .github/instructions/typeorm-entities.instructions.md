@@ -77,4 +77,6 @@ export const exampleEntity = new EntitySchema<ExampleEntity>({
 1. Create `lib/typeorm/entities/<name>.ts` per the rules above.
 2. Add it to `sqlServerEntities` in `index.ts` and re-export the type + const.
 3. Run `npm run check` — `tests/unit/entities-metadata.test.ts` verifies naming + that the table appears in the migration SQL.
-4. If you also changed the schema, update the migration in `typeorm/migrations/`, `typeorm/seed.mjs`, and `docs/reference/database-schema.md`.
+4. For schema changes, add the migration, update representative demo fixtures
+   and `docs/reference/database-schema.md`, and follow
+   `database-schema.instructions.md` for production seed ownership and upgrades.

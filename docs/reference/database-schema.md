@@ -30,6 +30,69 @@ The developer setup, browse workflow, and CLI reference live in
 11. [Indexes & Constraints Reference](#indexes--constraints-reference)
 12. [Database Roles](#database-roles)
 
+## Seed Ownership And Upgrades
+
+This is the canonical ownership classification. Required identities and
+release-owned metadata are reconciled; administrator-owned values survive
+ordinary reruns. Editable labels are never identity evidence.
+
+<!-- markdownlint-disable MD013 -->
+| Table | Required identity or classification | Field treatment |
+| ----- | ----- | ----- |
+| `archiving_retention_policies` | Six required `policy_key` values; preserve the existing numeric ID and references. | Preserve existing `information_set`, `action`, `age_days`, `status_condition`, `is_enabled` and `decision_reference` on reruns. Change shipped values through targeted migrations. Preserve run history and timestamps. Runtime updates `last_run_at` and `updated_at`; descriptive `status_condition` is not an executable predicate. |
+| `specification_implementation_types` | Optional starter catalog. | Preserve existing IDs and both names. Apply additions, changes and removals through explicit migration rules. |
+| `specification_item_statuses` | Required IDs 1–6. | Preserve names, descriptions, color, icon and existing valid order. Retain the current writer restrictions on changing the order of Included and Deviated; do not infer a functional defect merely from a different stored order. |
+| `specification_lifecycle_statuses` | Required IDs 1–4. | Preserve both names and custom statuses. Protect the four built-in rows from deletion while retaining supported renaming and custom-status management. |
+| `specification_governance_object_types` | Optional starter catalog. | Preserve existing IDs and both names. |
+| `requirement_categories` | Optional starter catalog. | Preserve existing IDs and both names. A supported administration editor is not established by the current evidence. |
+| `ai_settings` | Required singleton ID 1. | Preserve operational flags, limits, quotas, time-to-live settings and timestamps, including settings omitted from the seed payload. |
+| `ai_run_profiles` | Three required `profile_key` values. | Preserve an existing matching row's actual UUID and references. Preserve model binding, operational status, configuration version, budgets, capacities, limits and timestamps. Shipped UUIDs are not a reason to replace a valid existing key mapping. |
+| `application_settings` | Required singleton ID 1. | Preserve logging flags, export/report/import limits and other saved settings, including fields initialized by schema defaults. Preserve timestamps. |
+| `ai_safety_rules` | Required natural `rule_id`; preserve resolved numeric ID. | Retain release synchronization of category, bilingual names/descriptions, pattern kind, window and sort order. Preserve creation time; update metadata timestamps only when the corresponding metadata changes. |
+| `ai_safety_rule_terms` | Match resolved rule, term type and normalized term. | Release owns standard text, standard direction, standard marker and standard order. Preserve active state and effective direction on both existing standard terms and custom-to-standard adoption. Keep one matching record, preserve creation time and leave unmatched custom terms untouched. Explicit restoration of standard settings remains separate. |
+| `requirement_list_column_defaults` | Administrator configuration identified by `column_id`. | Remove numeric-ID-based reseeding. Preserve saved order and visibility. Use runtime defaults when rows are absent. Append newly introduced columns to saved layouts with shipped visibility; retain personal selections. Fresh installations use the shipped layout. |
+| `requirement_statuses` | Required IDs 1–4 and system-status flag. | Preserve names, order, color and icon. Safely restore `is_system=true` on confirmed canonical rows; do not use editable labels to infer identity. |
+| `requirement_status_transitions` | Required endpoint pairs: 1→2, 2→3, 2→1, 3→2 and 2→4. | Accept a matching pair under an existing numeric ID. Insert missing conflict-free pairs without rewriting unrelated rows. No incidental removal of other transitions is authorized. |
+| `requirement_types` | Optional starter catalog; dependency of the shipped quality hierarchy. | Preserve IDs and both names. Resolve dependencies together with optional quality additions. A DAL CRUD function alone does not establish a supported administration editor. |
+| `quality_characteristics` | Optional starter hierarchy. | Preserve IDs, names, type, parent and chapter. Related structural fields must remain consistent; do not treat an edited chapter or name as a stable identity. |
+| `priority_levels` | Required IDs 1–5 with P1–P5 codes. | Preserve names, descriptions, assessment criteria, order, color and icon. Conflicting ID/code mappings require resolution rather than an automatic overwrite. |
+<!-- markdownlint-enable MD013 -->
+
+The six retention keys are `unused_taxonomy_delete`,
+`old_requirement_versions_delete`, `obsolete_specifications_delete`,
+`archived_requirement_selection_delete`,
+`orphaned_responsibility_people_delete` and `rfi_questions_retention_delete`.
+The run-profile keys are `generation_without_images`,
+`generation_with_images` and `invalid_json_repair`.
+
+Required reconciliation owns one transaction across ordinary and AI records.
+It matches natural keys under the database's uniqueness rules and preserves
+resolved IDs. Missing fixed identities are restored only when their code and
+unique presentation values are available. An occupied label does not identify
+another row as canonical. A conflict names the logical record and conflicting
+ID and rolls back the required transaction. New ordered records use the shipped
+position if free, otherwise append after existing records; existing relative
+order is preserved. Existing valid order is not rewritten.
+
+The current command also runs the legacy optional catalogs in a separate
+transaction for compatibility. This phase retains its existing insert-missing
+behavior until the durable first-install initializer and upgrade transition
+are supplied. Its results are reported separately as `legacyOptional`; it is
+not part of the atomic required profile. Saved requirement column layouts are
+not seeded; absent layouts use runtime defaults. Demo reset membership remains
+unchanged. Migrations, required reconciliation, optional catalogs and demo
+loading have separate transaction boundaries.
+
+The optional initialization contract is one committed initialization per
+installation, with data and completion saved together. Existing installations
+must be marked complete without refilling historical omissions. Later shipped
+default changes require one-time migrations that preserve customized and
+absent optional records, check coupled dependencies, and record conflicting
+optional additions as omissions. Removing a default does not itself authorize
+removing stored data. These ownership rules govern the separate initializer
+and default-upgrade work; the compatibility phase does not provide that
+completion mechanism.
+
 ## Database Naming Standard
 
 Apply these rules to all schema objects.
@@ -2737,9 +2800,11 @@ means adding the new word and removing/deactivating the old one.
 
 **Seed behavior:** Required seed updates or inserts standard terms. If a future
 standard term matches an existing custom term by rule, term type and normalized
-term, the row is converted to `is_standard = 1`, activated, and assigned the
-seeded standard direction. Existing standard rows that an admin has deactivated
-remain deactivated across repeated seed runs.
+term, the row is converted to `is_standard = 1` while preserving its active
+state, effective direction, ID and creation time. Standard text, standard
+direction and order follow the release. Unmatched custom terms remain unchanged.
+Metadata timestamps change only when the corresponding metadata changes;
+explicit restoration of standard settings is a separate administrator action.
 
 **Constraints:** `fk_ai_safety_rule_terms_rule_id` cascades deletes from
 rules. `uq_ai_safety_rule_terms_rule_type_normalized` prevents duplicate terms

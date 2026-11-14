@@ -9,9 +9,8 @@ applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,typ
 - The sole database stack is SQL Server + TypeORM.
 - Schema is defined by TypeORM entities under `lib/typeorm/entities/`.
 - Migrations live in `typeorm/migrations/` (one `.mjs` file per migration).
-- Seed data lives in `typeorm/seed.mjs`, `typeorm/seed-required.mjs`, or
-  directly imported seed helper modules under `typeorm/`, and is applied by
-  the explicit `npm run db:seed:required` and `npm run db:seed:demo` profiles.
+- Follow Seed Ownership And Upgrades below for production seed changes;
+  keep representative demo fixtures in `typeorm/seed.mjs`.
 - Preserve current seed-data meaning and identifiers wherever possible. Document unavoidable drift explicitly.
 
 ## Standard
@@ -71,8 +70,10 @@ ALTER TABLE [<table>]
 ## Sync
 
 - Update the affected TypeORM entity, the new migration in
-  `typeorm/migrations/`, `typeorm/seed.mjs`, the affected DAL/tests, and
+  `typeorm/migrations/`, the affected DAL/tests, and
   `docs/reference/database-schema.md` in the same change.
+- Follow Seed Ownership And Upgrades below for production seed changes;
+  keep representative demo fixtures in `typeorm/seed.mjs`.
 - When adding a new seed-data module under `typeorm/`, update every runtime and
   release surface that must carry the file. At minimum, review imports from
   `typeorm/seed-required.mjs` and `typeorm/seed.mjs`, container copy lists in
@@ -196,12 +197,25 @@ remove **all** references to it from `docs/reference/database-schema.md`:
    (sorted by filename) — do not maintain a manual import list.
 3. Prefer SQL Server `ALTER TABLE … ADD`, `ALTER COLUMN`, and `sp_rename`
    over drop-and-recreate for renames and additions, to keep FK safety.
-4. Update `typeorm/seed.mjs` so every table in the schema has
-   representative, idempotent seed rows. Wrap identity tables in
-   `SET IDENTITY_INSERT [table] ON/OFF` and guard inserts with
-   `IF NOT EXISTS`.
+4. Follow Seed Ownership And Upgrades below for production seed changes;
+   keep representative demo fixtures in `typeorm/seed.mjs`.
 5. Run `npm run db:setup` to verify the full clean migrate + seed flow
    against a local SQL Server.
+
+## Seed Ownership And Upgrades
+
+- Record each family's required identities, invariants, initial optional
+  defaults, administrator-owned values and release-owned metadata in
+  `docs/reference/database-schema.md`.
+- Match the identity used by the application. Preserve existing surrogate
+  IDs and references where the logical identity permits them.
+- Preserve supported edits and optional deletions on reruns and upgrades.
+- Commit the complete required profile, including required AI writes, in one
+  transaction. Roll back on ambiguous required identity conflicts.
+- Preserve family-specific release synchronization and supported edits;
+  do not infer ownership from the seed file's current contents.
+- Keep demo loading separate from production reconciliation; preserve demo
+  reset and fixture behavior when profile membership changes.
 
 ## Lifecycle Dates
 

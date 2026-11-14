@@ -178,6 +178,7 @@ COPY --chown=1000:1000 typeorm/runtime-permission-manifest.mjs ./typeorm/runtime
 COPY --chown=1000:1000 typeorm/seed-required.mjs ./typeorm/seed-required.mjs
 COPY --chown=1000:1000 typeorm/ai-safety-seed-data.mjs ./typeorm/ai-safety-seed-data.mjs
 COPY --chown=1000:1000 typeorm/seed-runner.mjs ./typeorm/seed-runner.mjs
+COPY --chown=1000:1000 typeorm/seed-reconciliation.mjs ./typeorm/seed-reconciliation.mjs
 
 USER 1000:1000
 ENTRYPOINT ["node", "scripts/db-sqlserver-admin.mjs"]
@@ -230,6 +231,7 @@ COPY --chown=1000:1000 typeorm/runtime-permission-manifest.mjs ./typeorm/runtime
 COPY --chown=1000:1000 typeorm/seed-required.mjs ./typeorm/seed-required.mjs
 COPY --chown=1000:1000 typeorm/ai-safety-seed-data.mjs ./typeorm/ai-safety-seed-data.mjs
 COPY --chown=1000:1000 typeorm/seed-runner.mjs ./typeorm/seed-runner.mjs
+COPY --chown=1000:1000 typeorm/seed-reconciliation.mjs ./typeorm/seed-reconciliation.mjs
 COPY --chown=1000:1000 lib/mcp/import-validation-fingerprint.mjs ./lib/mcp/import-validation-fingerprint.mjs
 COPY --chown=1000:1000 lib/requirements/responsibility-person-verification-fingerprint.mjs ./lib/requirements/responsibility-person-verification-fingerprint.mjs
 COPY --chown=1000:1000 typeorm/seed.mjs ./typeorm/seed.mjs
