@@ -146,9 +146,11 @@ function createRetentionDb(options?: {
         sql.includes('DELETE FROM specification_local_requirements')
       ) {
         const subjectId = String(parameters?.[0] ?? '')
-        return {
-          affected: options?.executeAffectedBySubjectId?.[subjectId] ?? 1,
-        }
+        return [
+          {
+            deletedCount: options?.executeAffectedBySubjectId?.[subjectId] ?? 1,
+          },
+        ]
       }
       if (sql.includes('FROM specification_rfi_assessments assessment'))
         return [
@@ -196,7 +198,7 @@ function createRetentionDb(options?: {
   const db = {
     query: typedQuery,
     transaction: vi.fn(async (_isolation: string, callback) => {
-      await callback({ query: typedQuery })
+      return await callback({ query: typedQuery })
     }),
   }
   return { db, query }
@@ -1117,6 +1119,62 @@ describe('archiving retention service', () => {
       details: { reason: 'stale_archiving_retention_preview' },
       status: 409,
     })
+  })
+
+  it('requires a new export after child content changes without a parent timestamp change', async () => {
+    const { db, query } = createRetentionDb({
+      policy: { id: 5, policyKey: 'obsolete_specifications_delete' },
+    })
+    const originalQuery = query.getMockImplementation()
+    if (!originalQuery) throw new Error('Missing query fixture')
+    let text = 'Reviewed need'
+    query.mockImplementation(async (sql, parameters) =>
+      sql.includes('FROM specification_needs_references')
+        ? [{ id: 1, text }]
+        : originalQuery(sql, parameters),
+    )
+    const preview = await previewArchivingRetention(db, { policyId: 5 })
+    const exported = await exportArchivingRetentionArchive(db as never, {
+      policyId: 5,
+      previewToken: preview.previewToken,
+    })
+    text = 'Changed need'
+    await expect(
+      executeArchivingRetention(
+        db as never,
+        {
+          policyId: 5,
+          previewToken: preview.previewToken,
+          exportToken: exported.exportToken,
+        },
+        { displayName: 'Privacy officer', hsaId: null },
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      details: { reason: 'stale_archiving_export_content' },
+    })
+    expect(
+      query.mock.calls.some(([sql]) =>
+        sql.includes('INSERT INTO archiving_retention_runs'),
+      ),
+    ).toBe(false)
+  })
+
+  it('collects archive content entirely through a serializable transaction', async () => {
+    const { db } = createRetentionDb({
+      policy: { id: 5, policyKey: 'obsolete_specifications_delete' },
+    })
+    const preview = await previewArchivingRetention(db, { policyId: 5 })
+    db.query = vi.fn().mockRejectedValue(new Error('Read outside transaction'))
+    const archive = await exportArchivingRetentionArchive(db as never, {
+      policyId: 5,
+      previewToken: preview.previewToken,
+    })
+    expect(archive.archive.specifications).toHaveLength(1)
+    expect(db.transaction).toHaveBeenCalledWith(
+      'SERIALIZABLE',
+      expect.any(Function),
+    )
   })
 
   it('refreshes expired retention exceptions in place', async () => {

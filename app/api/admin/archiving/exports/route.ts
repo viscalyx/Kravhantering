@@ -45,8 +45,11 @@ export const POST = secureMutationRoute({
         context,
         output: 'json',
         requestSignal: request.signal,
-        collect: async ({ query }) => {
-          const result = await exportArchivingRetentionArchive({ query }, body)
+        collect: async ({ transaction }) => {
+          const result = await exportArchivingRetentionArchive(
+            { transaction },
+            body,
+          )
           recordSecurityEvent({
             actor: auditActor(context),
             detail: {

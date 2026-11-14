@@ -13,6 +13,20 @@ changes.
 
 ## Unreleased
 
+### Archive export and disposal
+
+After rollout, create a new archive export before disposal. Confirm that
+unchanged content can be disposed of and that a change to preserved content
+requires a new export. Export and disposal can block competing changes or be
+rejected during concurrent work. Schedule disposal when affected content is
+stable. Officers remain responsible for keeping exported files.
+
+If a disposal response is lost, inspect the saved run and Action log before
+repeating the operation. A missing response does not prove rollback. Export
+proof remains valid for 15 minutes in one application process and is consumed
+by an execution attempt; restart, another process or rollback can require a
+new export. Keep recovery procedures aligned with these limits.
+
 ### Application changes and audit history
 
 After upgrade, verify that a saved application change has its matching Action

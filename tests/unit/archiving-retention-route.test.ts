@@ -315,7 +315,7 @@ describe('archiving retention routes', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(routeState.exportArchivingRetentionArchive).toHaveBeenCalledWith(
-      expect.objectContaining({ query: expect.any(Function) }),
+      expect.objectContaining({ transaction: expect.any(Function) }),
       { policyId: 3, previewToken: 'token' },
     )
     expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(

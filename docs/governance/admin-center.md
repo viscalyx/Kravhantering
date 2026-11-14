@@ -572,6 +572,27 @@ are written as `null`; the database is not anonymized by this flow. Browser
 downloads use UTF-8 with BOM and locale-specific ASCII-safe filenames beginning
 with `arkivexport` or `archive-export`.
 
+All required archive content is collected from one consistent database state.
+Before deletion, the application compares the preserved content with that
+export and protects the comparison through deletion. Edits, additions or
+removals in that content require a new export, including child changes that
+do not change the specification timestamp. Preview again, export the current
+content, and keep the downloaded file before choosing disposal.
+
+The officer is responsible for preserving the file. The application does not
+verify external archive storage or provide archive import or undo. Export
+proof lasts 15 minutes, belongs to one application process and can be used
+once. A restart, another process or an attempted disposal that rolls back can
+make the proof unavailable. Export again when proof is unavailable.
+
+Each disposal request commits its deletions, completed run, policy update and
+required Action log together. Counts describe retention subjects, not their
+dependent database rows. If the response is lost or uncertain, stop and inspect
+the persisted run and Action log before repeating the operation. Check the
+policy, preview token, counts and time; involve an operator when needed. The
+server-generated request identifier is not a client-known idempotency key
+after a lost response. A missing response does not prove rollback.
+
 The retention run emits security-audit events with policy key, counts, request
 id and export confirmation fingerprint, but not raw target HSA-id values or
 free-text payloads. Export responses and mutation responses use

@@ -169,6 +169,7 @@ const EXPORT_CONFIRMATION_TTL_MS = 15 * 60 * 1000
 
 interface ExportConfirmation {
   candidateKeys: string[]
+  contentHash: string
   expiresAt: number
   policyId: number
   previewToken: string
@@ -186,7 +187,8 @@ const ACTIVE_EXCEPTION_SQL = `NOT EXISTS (
         AND (exception.expires_at IS NULL OR exception.expires_at > SYSUTCDATETIME())
     )`
 
-const DELETE_REQUIREMENT_VERSION_SQL = `DECLARE @requirement_id int;
+const DELETE_REQUIREMENT_VERSION_SQL = `DECLARE @deleted_count int = 0;
+      DECLARE @requirement_id int;
       SELECT @requirement_id = version.requirement_id
       FROM requirement_versions version
       WHERE version.id = @0
@@ -202,15 +204,18 @@ const DELETE_REQUIREMENT_VERSION_SQL = `DECLARE @requirement_id int;
         UPDATE improvement_suggestions SET implementing_requirement_version_id = NULL
         WHERE implementing_requirement_version_id = @0;
         DELETE FROM requirement_versions WHERE id = @0;
+        SET @deleted_count = @@ROWCOUNT;
         IF NOT EXISTS (
           SELECT 1 FROM requirement_versions WHERE requirement_id = @requirement_id
         )
         BEGIN
           DELETE FROM requirements WHERE id = @requirement_id;
         END
-      END`
+      END;
+      SELECT @deleted_count AS deletedCount`
 
-const DELETE_REQUIREMENT_SELECTION_QUESTION_SQL = `DECLARE @question_id int;
+const DELETE_REQUIREMENT_SELECTION_QUESTION_SQL = `DECLARE @deleted_count int = 0;
+      DECLARE @question_id int;
       SELECT @question_id = question.id
       FROM requirement_selection_questions question
       WHERE question.id = @0
@@ -241,9 +246,12 @@ const DELETE_REQUIREMENT_SELECTION_QUESTION_SQL = `DECLARE @question_id int;
         WHERE answer.question_id = @question_id;
         DELETE FROM requirement_selection_answers WHERE question_id = @question_id;
         DELETE FROM requirement_selection_questions WHERE id = @question_id;
-      END`
+        SET @deleted_count = @@ROWCOUNT;
+      END;
+      SELECT @deleted_count AS deletedCount`
 
-const DELETE_REQUIREMENT_SELECTION_ANSWER_SQL = `DECLARE @answer_id int;
+const DELETE_REQUIREMENT_SELECTION_ANSWER_SQL = `DECLARE @deleted_count int = 0;
+      DECLARE @answer_id int;
       SELECT @answer_id = answer.id
       FROM requirement_selection_answers answer
       WHERE answer.id = @0
@@ -259,9 +267,12 @@ const DELETE_REQUIREMENT_SELECTION_ANSWER_SQL = `DECLARE @answer_id int;
         DELETE FROM requirement_selection_answer_packages WHERE answer_id = @answer_id;
         DELETE FROM requirement_selection_answer_requirements WHERE answer_id = @answer_id;
         DELETE FROM requirement_selection_answers WHERE id = @answer_id;
-      END`
+        SET @deleted_count = @@ROWCOUNT;
+      END;
+      SELECT @deleted_count AS deletedCount`
 
-const DELETE_RFI_QUESTION_VERSION_SQL = `DECLARE @version_id int;
+const DELETE_RFI_QUESTION_VERSION_SQL = `DECLARE @deleted_count int = 0;
+      DECLARE @version_id int;
       SELECT @version_id = version.id
       FROM rfi_question_versions version
       WHERE version.id = @0
@@ -281,9 +292,12 @@ const DELETE_RFI_QUESTION_VERSION_SQL = `DECLARE @version_id int;
         DELETE FROM rfi_question_version_requirement_packages WHERE rfi_question_version_id = @version_id;
         DELETE FROM rfi_question_version_requirements WHERE rfi_question_version_id = @version_id;
         DELETE FROM rfi_question_versions WHERE id = @version_id;
-      END`
+        SET @deleted_count = @@ROWCOUNT;
+      END;
+      SELECT @deleted_count AS deletedCount`
 
-const DELETE_RFI_QUESTION_SQL = `DECLARE @question_id int;
+const DELETE_RFI_QUESTION_SQL = `DECLARE @deleted_count int = 0;
+      DECLARE @question_id int;
       SELECT @question_id = question.id
       FROM rfi_questions question
       WHERE question.id = @0
@@ -330,7 +344,9 @@ const DELETE_RFI_QUESTION_SQL = `DECLARE @question_id int;
         WHERE version.rfi_question_id = @question_id;
         DELETE FROM rfi_question_versions WHERE rfi_question_id = @question_id;
         DELETE FROM rfi_questions WHERE id = @question_id;
-      END`
+        SET @deleted_count = @@ROWCOUNT;
+      END;
+      SELECT @deleted_count AS deletedCount`
 
 function requirementResponsibilityPersonNameSql(alias: string): string {
   return `NULLIF(LTRIM(RTRIM(CONCAT(
@@ -349,12 +365,15 @@ function requirementResponsibilityPersonNameSql(alias: string): string {
 const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
   {
     action: 'delete',
-    executeSql: `DELETE area
+    executeSql: `DECLARE @deleted_count int = 0;
+      DELETE area
       FROM requirement_areas area
       WHERE area.id = @0
         AND NOT EXISTS (
           SELECT 1 FROM requirements requirement WHERE requirement.requirement_area_id = area.id
-        )`,
+        );
+      SET @deleted_count = @@ROWCOUNT;
+      SELECT @deleted_count AS deletedCount`,
     fieldKey: 'taxonomy',
     objectKey: 'requirementAreas',
     policyKey: UNUSED_TAXONOMY_POLICY_KEY,
@@ -380,12 +399,15 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
   },
   {
     action: 'delete',
-    executeSql: `DELETE pkg
+    executeSql: `DECLARE @deleted_count int = 0;
+      DELETE pkg
       FROM requirement_packages pkg
       WHERE pkg.id = @0
         AND NOT EXISTS (
           SELECT 1 FROM requirement_version_requirement_packages link WHERE link.requirement_package_id = pkg.id
-        )`,
+        );
+      SET @deleted_count = @@ROWCOUNT;
+      SELECT @deleted_count AS deletedCount`,
     fieldKey: 'taxonomy',
     objectKey: 'requirementPackages',
     policyKey: UNUSED_TAXONOMY_POLICY_KEY,
@@ -411,7 +433,8 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
   },
   {
     action: 'delete',
-    executeSql: `DELETE norm_reference
+    executeSql: `DECLARE @deleted_count int = 0;
+      DELETE norm_reference
       FROM norm_references norm_reference
       WHERE norm_reference.id = @0
         AND NOT EXISTS (
@@ -419,7 +442,9 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
         )
         AND NOT EXISTS (
           SELECT 1 FROM specification_local_requirement_norm_references link WHERE link.norm_reference_id = norm_reference.id
-        )`,
+        );
+      SET @deleted_count = @@ROWCOUNT;
+      SELECT @deleted_count AS deletedCount`,
     fieldKey: 'taxonomy',
     objectKey: 'normReferences',
     policyKey: UNUSED_TAXONOMY_POLICY_KEY,
@@ -537,13 +562,16 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
   },
   {
     action: 'delete',
-    executeSql: `DELETE FROM specification_deviation_endings WHERE specification_id = @0;
+    executeSql: `DECLARE @deleted_count int = 0;
+      DELETE FROM specification_deviation_endings WHERE specification_id = @0;
       DELETE FROM specification_agreement_items WHERE specification_agreement_id IN (SELECT id FROM specification_agreements WHERE specification_id = @0);
       DELETE FROM specification_agreements WHERE specification_id = @0;
       DELETE FROM specification_local_requirements WHERE specification_id = @0;
       DELETE FROM requirements_specification_items WHERE requirements_specification_id = @0;
       DELETE FROM specification_needs_references WHERE specification_id = @0;
-      DELETE FROM requirements_specifications WHERE id = @0;`,
+      DELETE FROM requirements_specifications WHERE id = @0;
+      SET @deleted_count = @@ROWCOUNT;
+      SELECT @deleted_count AS deletedCount`,
     fieldKey: 'specificationArchive',
     objectKey: 'specifications',
     policyKey: OBSOLETE_SPECIFICATIONS_POLICY_KEY,
@@ -768,7 +796,8 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
   },
   {
     action: 'delete',
-    executeSql: `DELETE person
+    executeSql: `DECLARE @deleted_count int = 0;
+      DELETE person
       FROM requirement_responsibility_people person
       WHERE person.hsa_id = @0
         AND NOT EXISTS (
@@ -790,7 +819,9 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
         )
         AND NOT EXISTS (
           SELECT 1 FROM requirement_package_co_authors co_author WHERE co_author.hsa_id = person.hsa_id
-        )`,
+        );
+      SET @deleted_count = @@ROWCOUNT;
+      SELECT @deleted_count AS deletedCount`,
     fieldKey: 'identity',
     objectKey: 'requirementResponsibilityPeople',
     policyKey: ORPHANED_RESPONSIBILITY_PEOPLE_POLICY_KEY,
@@ -996,12 +1027,31 @@ function cleanupExportConfirmations(now = Date.now()): void {
   }
 }
 
-function mintExportToken(preview: ArchivingRetentionPreview): string {
+function archiveContentHash(archive: Record<string, unknown>): string {
+  // Generation time and run summaries are not preserved business content.
+  return createHash('sha256')
+    .update(
+      JSON.stringify({
+        candidates: archive.candidates,
+        cutoff: archive.cutoff,
+        policy: archive.policy,
+        schemaVersion: archive.schemaVersion,
+        specifications: archive.specifications,
+      }),
+    )
+    .digest('hex')
+}
+
+function mintExportToken(
+  preview: ArchivingRetentionPreview,
+  archive: Record<string, unknown>,
+): string {
   const now = Date.now()
   cleanupExportConfirmations(now)
   const token = randomBytes(32).toString('hex')
   exportConfirmations.set(token, {
     candidateKeys: exportCandidateKeys(preview),
+    contentHash: archiveContentHash(archive),
     expiresAt: now + EXPORT_CONFIRMATION_TTL_MS,
     policyId: preview.policy.id,
     previewToken: preview.previewToken,
@@ -1016,10 +1066,11 @@ function sameCandidateKeys(left: string[], right: string[]): boolean {
   )
 }
 
-function consumeExportToken(
+async function consumeExportToken(
+  tx: QueryExecutor,
   preview: ArchivingRetentionPreview,
   token: string | null | undefined,
-): boolean {
+): Promise<boolean> {
   if (!token) return false
   const now = Date.now()
   cleanupExportConfirmations(now)
@@ -1033,6 +1084,15 @@ function consumeExportToken(
     return false
   }
   exportConfirmations.delete(token)
+  const archive = await buildArchiveExport(tx, preview)
+  if (confirmation.contentHash !== archiveContentHash(archive)) {
+    throw conflictError(
+      'Archive content has changed. Export again before executing retention.',
+      {
+        reason: 'stale_archiving_export_content',
+      },
+    )
+  }
   return true
 }
 
@@ -1235,9 +1295,12 @@ async function executeCandidate(
       : null
   const result = (await tx.query(source.executeSql, [
     subjectIdParameter(candidate, source),
-  ])) as { affected?: number } | undefined
+  ])) as Array<{ deletedCount: number }>
+  if (!Array.isArray(result) || ![0, 1].includes(result[0]?.deletedCount)) {
+    throw new Error('Retention deletion did not return a subject count')
+  }
   return {
-    changed: result?.affected == null || result.affected > 0,
+    changed: result[0].deletedCount === 1,
     cleanup,
   }
 }
@@ -1318,7 +1381,7 @@ export async function executeArchivingRetention(
     }
     if (
       preview.candidates.some(candidate => candidate.requiresExport) &&
-      !consumeExportToken(preview, input.exportToken)
+      !(await consumeExportToken(tx, preview, input.exportToken))
     ) {
       throw conflictError(
         'Archive export confirmation is required before executing retention.',
@@ -1576,7 +1639,7 @@ async function exportSpecification(
         LEFT JOIN quality_characteristics quality_characteristic ON quality_characteristic.id = version.quality_characteristic_id
         LEFT JOIN priority_levels priority_level ON priority_level.id = version.priority_level_id
         WHERE specification_item.requirements_specification_id = @0
-        ORDER BY requirement.unique_id ASC`,
+        ORDER BY requirement.unique_id ASC, specification_item.id ASC`,
       [specificationId],
     ) as Promise<Row[]>,
     db.query(
@@ -1609,7 +1672,7 @@ async function exportSpecification(
           ON link.requirement_version_id = specification_item.requirement_version_id
         INNER JOIN requirement_packages pkg ON pkg.id = link.requirement_package_id
         WHERE specification_item.requirements_specification_id = @0
-        ORDER BY specification_item.id ASC, pkg.name ASC`,
+        ORDER BY specification_item.id ASC, pkg.name ASC, pkg.id ASC`,
       [specificationId],
     ) as Promise<Row[]>,
     db.query(
@@ -1679,7 +1742,7 @@ async function exportSpecification(
         LEFT JOIN quality_characteristics quality_characteristic ON quality_characteristic.id = local_requirement.quality_characteristic_id
         LEFT JOIN priority_levels priority_level ON priority_level.id = local_requirement.priority_level_id
         WHERE local_requirement.specification_id = @0
-        ORDER BY local_requirement.unique_id ASC`,
+        ORDER BY local_requirement.unique_id ASC, local_requirement.id ASC`,
       [specificationId],
     ) as Promise<Row[]>,
     db.query(
@@ -1828,26 +1891,31 @@ function publicArchiveValue(value: unknown): unknown {
 }
 
 export async function exportArchivingRetentionArchive(
-  db: QueryExecutor,
+  db: {
+    transaction<T>(
+      isolation: 'SERIALIZABLE',
+      collect: (tx: QueryExecutor) => Promise<T>,
+    ): Promise<T>
+  },
   input: ArchivingRetentionExportInput,
 ): Promise<ArchivingRetentionArchiveExport> {
-  const preview = await previewArchivingRetention(db, {
-    policyId: input.policyId,
-  })
-  if (preview.previewToken !== input.previewToken) {
-    throw conflictError(
-      'Archiving retention preview is stale. Run preview again before exporting.',
-      { reason: 'stale_archiving_retention_preview' },
-    )
-  }
-  const exportToken = mintExportToken(preview)
-  return {
-    archive: {
-      ...(await buildArchiveExport(db, preview)),
-      exportToken,
+  const { preview, archive } = await db.transaction(
+    'SERIALIZABLE',
+    async tx => {
+      const preview = await previewArchivingRetention(tx, {
+        policyId: input.policyId,
+      })
+      if (preview.previewToken !== input.previewToken) {
+        throw conflictError(
+          'Archiving retention preview is stale. Run preview again before exporting.',
+          { reason: 'stale_archiving_retention_preview' },
+        )
+      }
+      return { preview, archive: await buildArchiveExport(tx, preview) }
     },
-    exportToken,
-  }
+  )
+  const exportToken = mintExportToken(preview, archive)
+  return { archive: { ...archive, exportToken }, exportToken }
 }
 
 function mapException(row: Row): ArchivingRetentionException {

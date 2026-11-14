@@ -18,6 +18,10 @@ export interface BoundedOutputCollection {
   maxItems: number
   query: SqlServerDatabase['query']
   signal: AbortSignal
+  transaction<T>(
+    isolation: 'SERIALIZABLE',
+    collect: (db: Pick<SqlServerDatabase, 'query'>) => Promise<T>,
+  ): Promise<T>
 }
 
 export async function runBoundedStructuredOutput(options: {
@@ -54,48 +58,65 @@ export async function runBoundedStructuredOutput(options: {
           { output: options.output, limit, limitKind: 'items' },
         )
       let remaining = settings.csvExportMaxItems
+      const boundedQuery =
+        (
+          executor: Pick<SqlServerDatabase, 'query'>,
+        ): SqlServerDatabase['query'] =>
+        // This read-only executor caps every result before it reaches the collector.
+        async (sql: string, parameters: unknown[] = []) => {
+          const query = pendingQueries.then(async () => {
+            throwIfGenerationAborted(deadline.signal)
+            // Archive collectors issue SELECT statements. A TOP bound avoids
+            // connection-level SET options leaking into the shared SQL pool.
+            const select = /^\s*SELECT(?:\s+TOP\s*\(\s*(\d+)\s*\))?\s+/iu.exec(
+              sql,
+            )
+            if (!select)
+              throw new Error(
+                'Bounded output collection requires a SELECT query',
+              )
+            const limit = Math.min(
+              remaining + 1,
+              select[1] ? Number(select[1]) : remaining + 1,
+            )
+            const boundedSql = `SELECT TOP (@${parameters.length}) ${sql.slice(select[0].length)}`
+            const rows = await executor.query(boundedSql, [
+              ...parameters,
+              limit,
+            ])
+            throwIfGenerationAborted(deadline.signal)
+            if (Array.isArray(rows)) {
+              remaining -= rows.length
+              if (remaining < 0)
+                throw itemLimitError(settings.csvExportMaxItems)
+            }
+            return rows
+          })
+          pendingQueries = query.then(
+            () => {},
+            error => {
+              failedCollection.abort(error)
+            },
+          )
+          return query
+        }
       try {
         const payload = await options.collect({
           maxItems: settings.csvExportMaxItems,
           signal: deadline.signal,
           itemLimitError,
-          // This read-only executor caps every result before it reaches the collector.
-          query: async (sql: string, parameters: unknown[] = []) => {
-            const query = pendingQueries.then(async () => {
-              throwIfGenerationAborted(deadline.signal)
-              // Archive collectors issue SELECT statements. A TOP bound avoids
-              // connection-level SET options leaking into the shared SQL pool.
-              const select =
-                /^\s*SELECT(?:\s+TOP\s*\(\s*(\d+)\s*\))?\s+/iu.exec(sql)
-              if (!select)
-                throw new Error(
-                  'Bounded output collection requires a SELECT query',
-                )
-              const limit = Math.min(
-                remaining + 1,
-                select[1] ? Number(select[1]) : remaining + 1,
-              )
-              const boundedSql = `SELECT TOP (@${parameters.length}) ${sql.slice(select[0].length)}`
-              const rows = await options.db.query(boundedSql, [
-                ...parameters,
-                limit,
-              ])
-              throwIfGenerationAborted(deadline.signal)
-              if (Array.isArray(rows)) {
-                remaining -= rows.length
-                if (remaining < 0)
-                  throw itemLimitError(settings.csvExportMaxItems)
+          query: boundedQuery(options.db),
+          transaction: (isolation, collect) =>
+            options.db.transaction(isolation, async manager => {
+              try {
+                const result = await collect({ query: boundedQuery(manager) })
+                throwIfGenerationAborted(deadline.signal)
+                return result
+              } finally {
+                // Finish queued reads before TypeORM commits or rolls back the connection.
+                await pendingQueries
               }
-              return rows
-            })
-            pendingQueries = query.then(
-              () => {},
-              error => {
-                failedCollection.abort(error)
-              },
-            )
-            return query
-          },
+            }),
         })
         throwIfGenerationAborted(deadline.signal)
         const chunks =

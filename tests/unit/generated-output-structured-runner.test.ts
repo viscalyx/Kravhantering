@@ -107,6 +107,36 @@ describe('bounded structured output', () => {
       details: { limit: 2, limitKind: 'items' },
     })
   })
+
+  it('keeps transaction reads bounded and releases the transaction before returning output', async () => {
+    const transactionQuery = vi.fn().mockResolvedValue([{ id: 1 }])
+    const transaction = vi.fn(async (_isolation, collect) =>
+      collect({ query: transactionQuery }),
+    )
+    const response = await runBoundedStructuredOutput({
+      db: { ...db, transaction } as unknown as SqlServerDatabase,
+      context,
+      output: 'json',
+      collect: ({ transaction: read }) =>
+        read('SERIALIZABLE', async tx => tx.query('SELECT id FROM example')),
+    })
+    expect(await response.json()).toEqual([{ id: 1 }])
+    expect(transactionQuery).toHaveBeenCalledWith(
+      'SELECT TOP (@0) id FROM example',
+      [3],
+    )
+    expect(db.query).not.toHaveBeenCalled()
+    transactionQuery.mockResolvedValue([1, 2, 3])
+    await expect(
+      runBoundedStructuredOutput({
+        db: { ...db, transaction } as unknown as SqlServerDatabase,
+        context,
+        output: 'json',
+        collect: ({ transaction: read }) =>
+          read('SERIALIZABLE', async tx => tx.query('SELECT id FROM example')),
+      }),
+    ).rejects.toMatchObject({ code: 'output_limit_exceeded' })
+  })
   it('rejects mutating statements before execution', async () => {
     await expect(
       runBoundedStructuredOutput({

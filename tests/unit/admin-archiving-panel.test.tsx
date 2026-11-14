@@ -497,6 +497,9 @@ describe('ArchivingPanel', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'admin.archiving.retention.stalePreview',
     )
+    expect(
+      screen.getByRole('button', { name: 'admin.archiving.retention.execute' }),
+    ).toBeDisabled()
   })
 
   it('shows bounded messages when each retention mutation loses its network', async () => {

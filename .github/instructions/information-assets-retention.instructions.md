@@ -1,5 +1,5 @@
 ---
-applyTo: "{docs/security-privacy/informationsmangder-kravhantering.md,docs/governance/admin-center.md,docs/reference/database-schema.md,lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,lib/archiving/**/*.ts,app/api/admin/archiving/**/*.ts,app/[[]locale[]]/admin/**/*.tsx,tests/unit/archiving-retention*.test.ts}"
+applyTo: "{docs/security-privacy/informationsmangder-kravhantering.md,docs/governance/admin-center.md,docs/reference/database-schema.md,lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,lib/archiving/**/*.ts,lib/generated-output/structured-runner.ts,app/api/admin/archiving/**/*.ts,app/[[]locale[]]/admin/**/*.tsx,tests/unit/archiving-retention*.test.ts}"
 ---
 
 # Information Assets Retention
@@ -23,3 +23,15 @@ applyTo: "{docs/security-privacy/informationsmangder-kravhantering.md,docs/gover
   user explicitly asks to change both surfaces.
 - Include representative positive and negative seed fixtures with a recognizable
   prefix when adding a new Admin > Arkivering policy source.
+
+## Execution Consistency
+
+- Keep retention disposal atomic per request; retain execution-time eligibility
+  and authorization checks.
+- Collect required archive content from one consistent database state.
+- Before disposal, verify that preserved content still matches the export;
+  protect that match through deletion. Changed content requires a new export.
+- Preserve the existing archive content and de-identification contract.
+- Reject execution safely when required proof is unavailable.
+- Count retention subjects once; distinguish them from dependent SQL rows
+  and privacy preview occurrences.

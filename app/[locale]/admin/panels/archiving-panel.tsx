@@ -322,12 +322,17 @@ export default function ArchivingPanel() {
         method: 'POST',
       })
       if (!response.ok) {
+        setRetentionExportToken(null)
         setRetentionStatus('error')
         setRetentionMessage(
           response.status === 409
             ? ta('archiving.retention.stalePreview')
-            : ((await readResponseMessage(response)) ??
-                ta('archiving.retention.executeError')),
+            : [
+                await readResponseMessage(response),
+                ta('archiving.retention.executeError'),
+              ]
+                .filter(Boolean)
+                .join(' '),
         )
         return
       }
@@ -337,6 +342,7 @@ export default function ArchivingPanel() {
       setRetentionMessage(ta('archiving.retention.executeSuccess'))
       await loadRetentionPolicies()
     } catch {
+      setRetentionExportToken(null)
       setRetentionStatus('error')
       setRetentionMessage(ta('archiving.retention.executeError'))
     }
@@ -651,6 +657,11 @@ export default function ArchivingPanel() {
 
         {retentionMessage ? (
           <p
+            {...devMarker({
+              context: 'admin center',
+              name: 'retention result',
+              value: retentionStatus,
+            })}
             className={`mt-4 text-sm font-medium ${
               retentionStatus === 'error'
                 ? 'text-red-700 dark:text-red-300'
@@ -658,6 +669,11 @@ export default function ArchivingPanel() {
             }`}
             role={retentionStatus === 'error' ? 'alert' : 'status'}
           >
+            {retentionStatus === 'error' ? (
+              <CircleMinus aria-hidden="true" className="mr-2 inline size-4" />
+            ) : (
+              <ShieldCheck aria-hidden="true" className="mr-2 inline size-4" />
+            )}
             {retentionMessage}
           </p>
         ) : null}

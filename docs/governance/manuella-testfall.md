@@ -2857,6 +2857,70 @@ Resolverade prioriteter visar P-kod, tankstreck och lokaliserat namn.
 **Förväntat resultat:** Historiska sparade svar förekommer inte bland
 kandidaterna för gallring.
 
+### ADMIN-31: ändrat arkivinnehåll kräver ny export
+
+**Syfte:** Kontrollera att ett gammalt arkiv inte tillåter gallring av ändrat
+innehåll och att ett nytt arkiv kan användas.
+
+**Användare:** `ada.admin` med dataskyddsroll.
+
+**Förutsättningar:** Använd en disponibel testmiljö med ett gammalt kravunderlag
+utanför Förvaltning som ingår i gallringsförhandsgranskningen. Underlaget ska
+ha en behovsreferens. Bevara exporterade filer. Testet raderar underlaget.
+
+**Integrationstest:**
+[archiving-retention.spec.ts](../../tests/integration/admin/archiving-retention.spec.ts),
+“ADMIN-31: changed archive content requires a new export before disposal”.
+Webbläsartestet simulerar svaren för att undvika radering av gemensamma data.
+SQL-testet `archiving-retention.sqlserver.test.ts` provar innehållsmatchning,
+samtidiga ändringar, räknare och fullständig återställning vid fel.
+
+**Steg:**
+
+1. Öppna Admin > Arkivering och förhandsgranska kravunderlagspolicyn.
+2. Exportera JSON och bevara filen. Ändra sedan behovsreferensens text i
+   underlaget via en annan flik.
+3. Återgå till Arkivering, välj Kör gallring och bekräfta.
+4. Kontrollera felmeddelandet och att underlaget finns kvar.
+5. Förhandsgranska igen, exportera och bevara den nya filen. Kör gallring igen.
+
+**Förväntat resultat:**
+
+- Ändrat innehåll kräver ny förhandsgranskning och export. Kör gallring är
+  inaktiverad tills ett nytt arkiv har exporterats.
+- Bekräftelsen påminner om att bevara filen. Oförändrat innehåll efter den nya
+  exporten kan gallras och ett slutfört resultat visas.
+
+### ADMIN-32: osäkert gallringsresultat kräver kontroll av sparade bevis
+
+**Syfte:** Kontrollera att ett förlorat svar inte leder till automatisk
+upprepning eller ett påstående om återställning.
+
+**Användare:** `ada.admin` med dataskyddsroll.
+
+**Förutsättningar:** Använd samma typ av disponibla underlag som i ADMIN-31.
+Förbered ett nätverksavbrott i webbläsarens utvecklarverktyg för svaret på
+`/api/admin/archiving/runs`. Använd aldrig produktionsdata för provet.
+
+**Integrationstest:**
+[archiving-retention.spec.ts](../../tests/integration/admin/archiving-retention.spec.ts),
+“ADMIN-32: an uncertain retention response directs the officer to saved evidence
+before retrying”.
+
+**Steg:**
+
+1. Förhandsgranska och exportera underlaget. Bevara filen.
+2. Kör och bekräfta gallringen med det förberedda nätverksavbrottet.
+3. Läs felmeddelandet. Återställ nätverket och kontrollera senaste körningen
+   och Åtgärdsloggen, med operatörens hjälp vid behov, innan arbetet upprepas.
+
+**Förväntat resultat:**
+
+- Meddelandet anger att resultatet inte kunde bekräftas och hänvisar till den
+  sparade körningen och Åtgärdsloggen.
+- Ingen automatisk upprepning sker. Ett nytt exportbevis krävs för ett nytt
+  försök. Det förlorade svaret betyder inte att raderingen återställdes.
+
 ### ADMIN-13: kravområdesansvar visas i listan
 
 **Steg:** Öppna kravområdeslistan och kontrollera att kravområdesägaren visas
