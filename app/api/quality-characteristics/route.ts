@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { runPrivilegedMutation } from '@/lib/admin/privileged-audit'
 import {
   createQualityCharacteristic,
   listQualityCharacteristics,
@@ -65,13 +65,15 @@ export const POST = secureMutationRoute({
   policy: adminMutationPolicy(),
   handler: async ({ body, context }) => {
     const db = await getRequestSqlServerDataSource()
-    const category = await createQualityCharacteristic(db, body)
-    await recordAdminPrivilegedActionSucceeded(context, {
-      changedFields: Object.keys(body),
-      operation: 'create',
-      resourceId: category.id,
-      resourceType: 'quality_characteristic',
+    return await runPrivilegedMutation(db, context, async (manager, audit) => {
+      const category = await createQualityCharacteristic(manager, body)
+      await audit(manager, {
+        changedFields: Object.keys(body),
+        operation: 'create',
+        resourceId: category.id,
+        resourceType: 'quality_characteristic',
+      })
+      return NextResponse.json(category, { status: 201 })
     })
-    return NextResponse.json(category, { status: 201 })
   },
 })

@@ -8,9 +8,8 @@ applyTo: "{app/api/**/*.ts,next.config.ts,package.json}"
 
 - Do not add `export const runtime = 'edge'` to `app/api/**/route.ts`.
 - When a route handler needs database access, use
-  `await getRequestSqlServerDataSource()` from `@/lib/db` (returns a
-  `SqlServerDatabase` wrapper that exposes `query`, `transaction`, and
-  `getRepository`).
+  `await getRequestSqlServerDataSource()` from `@/lib/db`, which returns the
+  TypeORM DataSource typed as `SqlServerDatabase`.
 - Do not couple route handlers to platform-specific runtime bindings.
 
 ### Turbopack routing conflict — never nest API routes under `[locale]`

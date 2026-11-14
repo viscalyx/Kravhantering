@@ -35,12 +35,10 @@ import {
   type QualityCharacteristicRow,
 } from '@/lib/dal/requirement-types'
 import {
-  createRequirementsBatch,
   createRequirementsBatchWithExecutor,
   type RequirementMutationData,
 } from '@/lib/dal/requirements'
 import {
-  createSpecificationLocalRequirementsBatch,
   createSpecificationLocalRequirementsBatchWithExecutor,
   getSpecificationById,
   listSpecificationNeedsReferences,
@@ -102,7 +100,7 @@ import {
   findMcpSearchMatch,
   type McpSearchMatch,
 } from '@/lib/requirements/mcp-search'
-import { recordSensitiveMutationSucceededWithExecutor } from '@/lib/requirements/security-audit'
+import { withSensitiveMutationAudit } from '@/lib/requirements/security-audit'
 import { authorize, withLogging } from '@/lib/requirements/service-shared'
 
 export type RequirementsImportMode = 'library' | 'specification-local'
@@ -1767,6 +1765,19 @@ function receiptRowsForInputs(args: {
   mode: RequirementsImportMode
   referenceData: ImportReferenceData
 }): RequirementsImportReceiptRow[] {
+  if (
+    args.created.length !== args.inputs.length ||
+    args.created.some(
+      row => !Number.isInteger(row.id) || row.id <= 0 || !row.uniqueId,
+    )
+  ) {
+    throw validationError(
+      'Import receipt does not identify every created requirement',
+      {
+        reason: 'invalid_import_receipt',
+      },
+    )
+  }
   const normReferenceById = new Map(
     args.referenceData.normReferences.map(item => [item.id, item]),
   )
@@ -3010,274 +3021,262 @@ export function createRequirementsImportWorkflow({
           const diagnosticExecution = parseExecutionSession(session)
           try {
             return await withRequirementImportCapacity(() =>
-              db.transaction('SERIALIZABLE', async manager => {
-                const { budget: lockedEffectiveBudget } =
-                  await loadMcpImportBudget(
-                    manager,
-                    logger,
+              withSensitiveMutationAudit(context, audit =>
+                db.transaction('SERIALIZABLE', async manager => {
+                  const { budget: lockedEffectiveBudget } =
+                    await loadMcpImportBudget(
+                      manager,
+                      logger,
+                      context,
+                      'execution',
+                    )
+                  const lockedSession =
+                    await getOwnedRequirementImportValidationSession(
+                      manager,
+                      tokenHash,
+                      creatorPrincipalFingerprint,
+                      { lockForUpdate: true },
+                    )
+                  if (!lockedSession) {
+                    throw sessionNotFoundError()
+                  }
+
+                  const lockedDestination =
+                    destinationFromSession(lockedSession)
+                  await assertMcpImportDestinationAuthorized(
+                    transactionalAuthorizationFactory(manager),
                     context,
-                    'execution',
-                  )
-                const lockedSession =
-                  await getOwnedRequirementImportValidationSession(
-                    manager,
-                    tokenHash,
-                    creatorPrincipalFingerprint,
-                    { lockForUpdate: true },
-                  )
-                if (!lockedSession) {
-                  throw sessionNotFoundError()
-                }
-
-                const lockedDestination = destinationFromSession(lockedSession)
-                await assertMcpImportDestinationAuthorized(
-                  transactionalAuthorizationFactory(manager),
-                  context,
-                  destinationRefFromSnapshot(lockedDestination),
-                )
-                const validation =
-                  parseSessionJson<McpImportValidationSessionJson>(
-                    lockedSession.validationResultJson,
-                    'validation result',
-                  )
-                const execution = parseExecutionSession(lockedSession)
-                if (
-                  validation.budgetFingerprint !==
-                  requirementImportBudgetFingerprint(lockedEffectiveBudget)
-                ) {
-                  logger.info('requirements.manage_import.budget_stale', {
-                    operation: 'execute',
-                    request_id: context.requestId,
-                  })
-                  return errorIssueResponse({
-                    code: 'import_budget_stale',
-                    message:
-                      'The import budget changed since validation. Run validate again before executing.',
-                    path: '',
-                  })
-                }
-                const referenceData =
-                  await loadImportReferenceDataForDestination(
-                    manager as unknown as SqlServerDatabase,
-                    destinationRefFromSnapshot(lockedDestination),
-                    {
-                      includeArchivedNormReferences: true,
-                    },
-                  )
-                const currentFingerprint =
-                  referenceDataFingerprint(referenceData)
-                if (
-                  currentFingerprint !== lockedSession.referenceDataFingerprint
-                ) {
-                  logger.error(
-                    'requirements.manage_import.validation_session_diagnostic',
-                    validationSessionDiagnosticFields({
-                      creatorPrincipalFingerprint,
-                      execution,
-                      reason: 'reference_data_stale',
-                      session: lockedSession,
-                      validation,
-                    }),
-                  )
-                  return issueResponse(buildStaleReferenceDataIssue())
-                }
-
-                const currentDestination =
-                  await resolveImportableDestinationSnapshot(
-                    manager,
                     destinationRefFromSnapshot(lockedDestination),
                   )
-                if ('code' in currentDestination) {
-                  logger.error(
-                    'requirements.manage_import.validation_session_diagnostic',
-                    validationSessionDiagnosticFields({
-                      creatorPrincipalFingerprint,
-                      execution,
-                      reason: 'destination_invalid',
-                      session: lockedSession,
-                      validation,
-                    }),
+                  const validation =
+                    parseSessionJson<McpImportValidationSessionJson>(
+                      lockedSession.validationResultJson,
+                      'validation result',
+                    )
+                  const execution = parseExecutionSession(lockedSession)
+                  if (
+                    validation.budgetFingerprint !==
+                    requirementImportBudgetFingerprint(lockedEffectiveBudget)
+                  ) {
+                    logger.info('requirements.manage_import.budget_stale', {
+                      operation: 'execute',
+                      request_id: context.requestId,
+                    })
+                    return errorIssueResponse({
+                      code: 'import_budget_stale',
+                      message:
+                        'The import budget changed since validation. Run validate again before executing.',
+                      path: '',
+                    })
+                  }
+                  const referenceData =
+                    await loadImportReferenceDataForDestination(
+                      manager as unknown as SqlServerDatabase,
+                      destinationRefFromSnapshot(lockedDestination),
+                      {
+                        includeArchivedNormReferences: true,
+                      },
+                    )
+                  const currentFingerprint =
+                    referenceDataFingerprint(referenceData)
+                  if (
+                    currentFingerprint !==
+                    lockedSession.referenceDataFingerprint
+                  ) {
+                    logger.error(
+                      'requirements.manage_import.validation_session_diagnostic',
+                      validationSessionDiagnosticFields({
+                        creatorPrincipalFingerprint,
+                        execution,
+                        reason: 'reference_data_stale',
+                        session: lockedSession,
+                        validation,
+                      }),
+                    )
+                    return issueResponse(buildStaleReferenceDataIssue())
+                  }
+
+                  const currentDestination =
+                    await resolveImportableDestinationSnapshot(
+                      manager,
+                      destinationRefFromSnapshot(lockedDestination),
+                    )
+                  if ('code' in currentDestination) {
+                    logger.error(
+                      'requirements.manage_import.validation_session_diagnostic',
+                      validationSessionDiagnosticFields({
+                        creatorPrincipalFingerprint,
+                        execution,
+                        reason: 'destination_invalid',
+                        session: lockedSession,
+                        validation,
+                      }),
+                    )
+                    return issueResponse(currentDestination)
+                  }
+
+                  const importedByReviewRowId =
+                    persistedImportedRowsByReviewRowId(execution)
+                  const mode = destinationMode(
+                    destinationRefFromSnapshot(lockedDestination),
                   )
-                  return issueResponse(currentDestination)
-                }
+                  const eligibleRows = validation.rows.filter(
+                    row =>
+                      !importedByReviewRowId.has(row.reviewRowId) &&
+                      !rowHasBlockingErrors(row),
+                  )
+                  const reviewRows = eligibleRows.map(row =>
+                    importReviewRowFromValidationRow(row, referenceData, mode),
+                  )
+                  let importedRows: McpImportedSessionRow[] = []
 
-                const importedByReviewRowId =
-                  persistedImportedRowsByReviewRowId(execution)
-                const mode = destinationMode(
-                  destinationRefFromSnapshot(lockedDestination),
-                )
-                const eligibleRows = validation.rows.filter(
-                  row =>
-                    !importedByReviewRowId.has(row.reviewRowId) &&
-                    !rowHasBlockingErrors(row),
-                )
-                const reviewRows = eligibleRows.map(row =>
-                  importReviewRowFromValidationRow(row, referenceData, mode),
-                )
-                let importedRows: McpImportedSessionRow[] = []
-
-                if (reviewRows.length > 0) {
-                  const importedAt = new Date().toISOString()
-                  if (lockedDestination.kind === 'requirements_library') {
-                    const actor = requireHumanActorSnapshot(context)
-                    const created = []
-                    for (const group of importDatabaseGroups(reviewRows)) {
-                      created.push(
-                        ...(await createRequirementsBatchWithExecutor(
-                          manager,
-                          group.map(row =>
-                            toRequirementMutationInput(
-                              row,
-                              lockedDestination.areaId,
-                              actor,
+                  if (reviewRows.length > 0) {
+                    const importedAt = new Date().toISOString()
+                    if (lockedDestination.kind === 'requirements_library') {
+                      const actor = requireHumanActorSnapshot(context)
+                      const created = []
+                      for (const group of importDatabaseGroups(reviewRows)) {
+                        created.push(
+                          ...(await createRequirementsBatchWithExecutor(
+                            manager,
+                            group.map(row =>
+                              toRequirementMutationInput(
+                                row,
+                                lockedDestination.areaId,
+                                actor,
+                              ),
                             ),
-                          ),
-                          {
-                            audit: (executor, result) =>
-                              recordSensitiveMutationSucceededWithExecutor(
-                                executor,
-                                context,
-                                {
+                            {
+                              audit: (executor, result) =>
+                                audit(executor, {
                                   action: 'requirement.create',
                                   operation: 'create',
                                   requirementId: result.requirement.id,
                                   requirementUniqueId:
                                     result.requirement.uniqueId,
                                   versionNumber: result.version.versionNumber,
-                                },
-                              ),
-                          },
-                        )),
-                      )
-                    }
-                    await recordSensitiveMutationSucceededWithExecutor(
-                      manager,
-                      context,
-                      {
+                                }),
+                            },
+                          )),
+                        )
+                      }
+                      await audit(manager, {
                         action: 'requirement_import.execute',
                         operation: 'create',
                         requirementCount: created.length,
                         targetRequirementAreaId: lockedDestination.areaId,
-                      },
-                    )
-                    importedRows = created.map((result, index) => {
-                      const eligibleRow = eligibleRows[index]
-                      if (!eligibleRow) {
-                        throw validationError(
-                          'Invalid import execution state',
-                          {
-                            index,
-                            reason: 'eligible_row_missing',
-                          },
+                      })
+                      importedRows = created.map((result, index) => {
+                        const eligibleRow = eligibleRows[index]
+                        if (!eligibleRow) {
+                          throw validationError(
+                            'Invalid import execution state',
+                            {
+                              index,
+                              reason: 'eligible_row_missing',
+                            },
+                          )
+                        }
+
+                        return {
+                          importedAt,
+                          kravId: result.requirement.uniqueId,
+                          reviewRowId: eligibleRow.reviewRowId,
+                          sourceIndex: eligibleRow.sourceIndex,
+                          uniqueId: result.requirement.uniqueId,
+                        }
+                      })
+                    } else {
+                      const created = []
+                      for (const group of importDatabaseGroups(reviewRows)) {
+                        created.push(
+                          ...(await createSpecificationLocalRequirementsBatchWithExecutor(
+                            manager,
+                            lockedDestination.specificationId,
+                            group.map(toLocalRequirementMutationInput),
+                          )),
                         )
                       }
-
-                      return {
-                        importedAt,
-                        kravId: result.requirement.uniqueId,
-                        reviewRowId: eligibleRow.reviewRowId,
-                        sourceIndex: eligibleRow.sourceIndex,
-                        uniqueId: result.requirement.uniqueId,
-                      }
-                    })
-                  } else {
-                    const created = []
-                    for (const group of importDatabaseGroups(reviewRows)) {
-                      created.push(
-                        ...(await createSpecificationLocalRequirementsBatchWithExecutor(
-                          manager,
-                          lockedDestination.specificationId,
-                          group.map(toLocalRequirementMutationInput),
-                        )),
-                      )
-                    }
-                    for (const { id: localRequirementId } of created) {
-                      await recordSensitiveMutationSucceededWithExecutor(
-                        manager,
-                        context,
-                        {
+                      for (const { id: localRequirementId } of created) {
+                        await audit(manager, {
                           action: 'specification_local_requirement.create',
                           localRequirementId,
                           operation: 'create',
                           specificationId: lockedDestination.specificationId,
-                        },
-                      )
-                    }
-                    await recordSensitiveMutationSucceededWithExecutor(
-                      manager,
-                      context,
-                      {
+                        })
+                      }
+                      await audit(manager, {
                         action: 'requirement_import.execute',
                         operation: 'create',
                         requirementCount: created.length,
                         specificationId: lockedDestination.specificationId,
-                      },
-                    )
-                    importedRows = created.map((result, index) => {
-                      const eligibleRow = eligibleRows[index]
-                      if (!eligibleRow) {
-                        throw validationError(
-                          'Invalid import execution state',
-                          {
-                            index,
-                            reason: 'eligible_row_missing',
-                          },
-                        )
-                      }
+                      })
+                      importedRows = created.map((result, index) => {
+                        const eligibleRow = eligibleRows[index]
+                        if (!eligibleRow) {
+                          throw validationError(
+                            'Invalid import execution state',
+                            {
+                              index,
+                              reason: 'eligible_row_missing',
+                            },
+                          )
+                        }
 
-                      return {
-                        importedAt,
-                        localKravId: result.uniqueId,
-                        reviewRowId: eligibleRow.reviewRowId,
-                        sourceIndex: eligibleRow.sourceIndex,
-                        uniqueId: result.uniqueId,
-                      }
-                    })
+                        return {
+                          importedAt,
+                          localKravId: result.uniqueId,
+                          reviewRowId: eligibleRow.reviewRowId,
+                          sourceIndex: eligibleRow.sourceIndex,
+                          uniqueId: result.uniqueId,
+                        }
+                      })
+                    }
                   }
-                }
 
-                const nextExecution: McpImportExecutionSessionJson = {
-                  importedRows: [...execution.importedRows, ...importedRows],
-                  schemaVersion: 'mcp-requirement-import-execution.v1',
-                }
-                if (importedRows.length > 0) {
-                  const executionResultJson = canonicalJson(nextExecution)
-                  if (
-                    Buffer.byteLength(executionResultJson, 'utf16le') >
-                    maximumMcpImportExecutionReceiptBytes(
-                      validation.rows.length,
-                    )
-                  ) {
-                    throw validationError(
-                      'Import execution receipt exceeded its reserved capacity',
-                      { reason: 'execution_receipt_reservation_exceeded' },
+                  const nextExecution: McpImportExecutionSessionJson = {
+                    importedRows: [...execution.importedRows, ...importedRows],
+                    schemaVersion: 'mcp-requirement-import-execution.v1',
+                  }
+                  if (importedRows.length > 0) {
+                    const executionResultJson = canonicalJson(nextExecution)
+                    if (
+                      Buffer.byteLength(executionResultJson, 'utf16le') >
+                      maximumMcpImportExecutionReceiptBytes(
+                        validation.rows.length,
+                      )
+                    ) {
+                      throw validationError(
+                        'Import execution receipt exceeded its reserved capacity',
+                        { reason: 'execution_receipt_reservation_exceeded' },
+                      )
+                    }
+                    await updateRequirementImportValidationSessionExecutionResult(
+                      manager,
+                      lockedSession.id,
+                      executionResultJson,
+                      new Date(),
                     )
                   }
-                  await updateRequirementImportValidationSessionExecutionResult(
-                    manager,
-                    lockedSession.id,
-                    executionResultJson,
-                    new Date(),
+                  const nextImportedByReviewRowId =
+                    persistedImportedRowsByReviewRowId(nextExecution)
+                  const notImportedRows = notImportedRowsForValidation(
+                    validation.rows,
+                    nextImportedByReviewRowId,
                   )
-                }
-                const nextImportedByReviewRowId =
-                  persistedImportedRowsByReviewRowId(nextExecution)
-                const notImportedRows = notImportedRowsForValidation(
-                  validation.rows,
-                  nextImportedByReviewRowId,
-                )
 
-                return {
-                  destination: lockedDestination,
-                  importedRows,
-                  notImportedRows,
-                  summary: {
-                    importedCount: importedRows.length,
-                    notImportedCount: notImportedRows.length,
-                    totalRowCount: validation.rows.length,
-                  },
-                }
-              }),
+                  return {
+                    destination: lockedDestination,
+                    importedRows,
+                    notImportedRows,
+                    summary: {
+                      importedCount: importedRows.length,
+                      notImportedCount: notImportedRows.length,
+                      totalRowCount: validation.rows.length,
+                    },
+                  }
+                }),
+              ),
             )
           } catch (error) {
             logger.error(
@@ -3450,63 +3449,73 @@ export function createRequirementsImportWorkflow({
       const rows = [...input.rows].sort(
         (left, right) => left.sourceIndex - right.sourceIndex,
       )
-      return withRequirementImportCapacity(async () => {
-        const referenceData = await loadImportReferenceData(db)
-        const expectedToken = createReviewToken({
-          budgetFingerprint: requirementImportBudgetFingerprint(budget),
-          destinationId: input.areaId,
-          mode: 'library',
-          referenceDataFingerprint: referenceDataFingerprint(referenceData),
-        })
-        if (expectedToken !== input.previewToken) {
-          throw conflictError('Import preview is stale', {
-            reason: 'stale_requirement_import_preview',
-          })
-        }
+      return withRequirementImportCapacity(() =>
+        withSensitiveMutationAudit(context, audit =>
+          db.transaction(async manager => {
+            const referenceData = await loadImportReferenceData(
+              manager as unknown as SqlServerDatabase,
+            )
+            const expectedToken = createReviewToken({
+              budgetFingerprint: requirementImportBudgetFingerprint(budget),
+              destinationId: input.areaId,
+              mode: 'library',
+              referenceDataFingerprint: referenceDataFingerprint(referenceData),
+            })
+            if (expectedToken !== input.previewToken) {
+              throw conflictError('Import preview is stale', {
+                reason: 'stale_requirement_import_preview',
+              })
+            }
 
-        validateExecuteRows({ mode: 'library', referenceData, rows })
-        const actor = requireHumanActorSnapshot(context)
-        const created = await createRequirementsBatch(
-          db,
-          rows.map(row => toRequirementMutationInput(row, input.areaId, actor)),
-          {
-            beforeWrite: executor =>
-              assertCurrentImportBudgetForWrite(executor, budget, { rows }),
-            audit: (executor, result) =>
-              recordSensitiveMutationSucceededWithExecutor(executor, context, {
-                action: 'requirement.create',
-                operation: 'create',
-                requirementId: result.requirement.id,
-                requirementUniqueId: result.requirement.uniqueId,
-                versionNumber: result.version.versionNumber,
-              }),
-            batchAudit: (executor, results) =>
-              recordSensitiveMutationSucceededWithExecutor(executor, context, {
-                action: 'requirement_import.execute',
-                operation: 'create',
-                requirementCount: results.length,
-                targetRequirementAreaId: input.areaId,
-              }),
-            maxGroupSize: REQUIREMENT_IMPORT_DATABASE_BATCH_SIZE,
-          },
-        )
-        const createdRows = receiptRowsForInputs({
-          created: created.map(result => ({
-            id: result.requirement.id,
-            uniqueId: result.requirement.uniqueId,
-          })),
-          destinationId: input.areaId,
-          inputs: rows,
-          locale: input.locale,
-          mode: 'library',
-          referenceData,
-        })
-        return {
-          createdRows,
-          mode: 'library' as const,
-          summary: { createdCount: createdRows.length },
-        }
-      })
+            validateExecuteRows({ mode: 'library', referenceData, rows })
+            const actor = requireHumanActorSnapshot(context)
+            await assertCurrentImportBudgetForWrite(manager, budget, { rows })
+            const created = []
+            for (const group of importDatabaseGroups(rows)) {
+              created.push(
+                ...(await createRequirementsBatchWithExecutor(
+                  manager,
+                  group.map(row =>
+                    toRequirementMutationInput(row, input.areaId, actor),
+                  ),
+                  {
+                    audit: (executor, result) =>
+                      audit(executor, {
+                        action: 'requirement.create',
+                        operation: 'create',
+                        requirementId: result.requirement.id,
+                        requirementUniqueId: result.requirement.uniqueId,
+                        versionNumber: result.version.versionNumber,
+                      }),
+                  },
+                )),
+              )
+            }
+            await audit(manager, {
+              action: 'requirement_import.execute',
+              operation: 'create',
+              requirementCount: created.length,
+              targetRequirementAreaId: input.areaId,
+            })
+            const createdRows = receiptRowsForInputs({
+              created: created.map(result => ({
+                id: result.requirement.id,
+                uniqueId: result.requirement.uniqueId,
+              })),
+              destinationId: input.areaId,
+              inputs: rows,
+              locale: input.locale,
+              mode: 'library',
+              referenceData,
+            })
+            return {
+              createdRows,
+              mode: 'library' as const,
+              summary: { createdCount: createdRows.length },
+            }
+          }),
+        ),
+      )
     },
 
     async executeSpecificationLocalImport(
@@ -3534,77 +3543,79 @@ export function createRequirementsImportWorkflow({
       const rows = [...input.rows].sort(
         (left, right) => left.sourceIndex - right.sourceIndex,
       )
-      return withRequirementImportCapacity(async () => {
-        const referenceData = await loadImportReferenceData(db, {
-          specificationId,
-        })
-        const expectedToken = createReviewToken({
-          budgetFingerprint: requirementImportBudgetFingerprint(budget),
-          destinationId: specificationId,
-          mode: 'specification-local',
-          referenceDataFingerprint: referenceDataFingerprint(referenceData),
-        })
-        if (expectedToken !== input.previewToken) {
-          throw conflictError('Import preview is stale', {
-            reason: 'stale_requirement_import_preview',
-          })
-        }
+      return withRequirementImportCapacity(() =>
+        withSensitiveMutationAudit(context, audit =>
+          db.transaction(async manager => {
+            const referenceData = await loadImportReferenceData(
+              manager as unknown as SqlServerDatabase,
+              {
+                specificationId,
+              },
+            )
+            const expectedToken = createReviewToken({
+              budgetFingerprint: requirementImportBudgetFingerprint(budget),
+              destinationId: specificationId,
+              mode: 'specification-local',
+              referenceDataFingerprint: referenceDataFingerprint(referenceData),
+            })
+            if (expectedToken !== input.previewToken) {
+              throw conflictError('Import preview is stale', {
+                reason: 'stale_requirement_import_preview',
+              })
+            }
 
-        validateExecuteRows({
-          mode: 'specification-local',
-          referenceData,
-          rows,
-        })
-        const created = await createSpecificationLocalRequirementsBatch(
-          db,
-          specificationId,
-          rows.map(toLocalRequirementMutationInput),
-          {
-            agreementId: input.agreementId,
-            actorHsaId: context.actor.hsaId,
-            beforeWrite: executor =>
-              assertCurrentImportBudgetForWrite(executor, budget, { rows }),
-            batchAudit: async (executor, createdIds) => {
-              for (const localRequirementId of createdIds) {
-                await recordSensitiveMutationSucceededWithExecutor(
-                  executor,
-                  context,
-                  {
-                    action: 'specification_local_requirement.create',
-                    localRequirementId,
-                    operation: 'create',
-                    specificationId,
-                  },
-                )
-              }
-              await recordSensitiveMutationSucceededWithExecutor(
-                executor,
-                context,
-                {
-                  action: 'requirement_import.execute',
-                  operation: 'create',
-                  requirementCount: createdIds.length,
+            validateExecuteRows({
+              mode: 'specification-local',
+              referenceData,
+              rows,
+            })
+            await assertCurrentImportBudgetForWrite(manager, budget, { rows })
+            const created = []
+            for (const group of importDatabaseGroups(rows)) {
+              created.push(
+                ...(await createSpecificationLocalRequirementsBatchWithExecutor(
+                  manager,
                   specificationId,
-                },
+                  group.map(toLocalRequirementMutationInput),
+                  {
+                    agreementId: input.agreementId,
+                    actorHsaId: context.actor.hsaId,
+                    batchAudit: async (executor, createdIds) => {
+                      for (const localRequirementId of createdIds) {
+                        await audit(executor, {
+                          action: 'specification_local_requirement.create',
+                          localRequirementId,
+                          operation: 'create',
+                          specificationId,
+                        })
+                      }
+                    },
+                  },
+                )),
               )
-            },
-            maxGroupSize: REQUIREMENT_IMPORT_DATABASE_BATCH_SIZE,
-          },
-        )
-        const createdRows = receiptRowsForInputs({
-          created,
-          destinationId: specificationId,
-          inputs: rows,
-          locale: input.locale,
-          mode: 'specification-local',
-          referenceData,
-        })
-        return {
-          createdRows,
-          mode: 'specification-local' as const,
-          summary: { createdCount: createdRows.length },
-        }
-      })
+            }
+            await audit(manager, {
+              action: 'requirement_import.execute',
+              operation: 'create',
+              requirementCount: created.length,
+              specificationId,
+            })
+            const createdRows = receiptRowsForInputs({
+              created,
+              destinationId: specificationId,
+              inputs: rows,
+              locale: input.locale,
+              mode: 'specification-local',
+              referenceData,
+            })
+            return {
+              createdRows,
+              mode: 'specification-local' as const,
+              summary: { createdCount: createdRows.length },
+            }
+          }),
+        ),
+      )
     },
 
     async previewLibraryImport(

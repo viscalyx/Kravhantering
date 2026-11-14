@@ -401,6 +401,9 @@ export async function createAiSafetyRuleTerm(
     termText: string
     termType: AiSafetyTermType
   },
+  options: {
+    audit?: (executor: QueryExecutor, result: { id: number }) => Promise<void>
+  } = {},
 ): Promise<AiSafetyRuleAdminTerm> {
   const normalizedTerm = assertTermText(values.termText)
   const direction = assertTermDirection(values.direction)
@@ -469,6 +472,9 @@ export async function createAiSafetyRuleTerm(
       ],
     )) as { id: number | string }[]
     insertedId = Number(rows[0]?.id)
+    if (!insertedId)
+      throw new Error('Created AI safety term id was not returned.')
+    await options.audit?.(manager, { id: insertedId })
   })
 
   clearAiSafetyRuleSetCache()
@@ -485,6 +491,9 @@ export async function updateAiSafetyRuleTerm(
     direction?: AiSafetyTermDirection
     isActive?: boolean
   },
+  options: {
+    audit?: (executor: QueryExecutor, result: { id: number }) => Promise<void>
+  } = {},
 ): Promise<AiSafetyRuleAdminTerm> {
   if (!Number.isInteger(termId) || termId <= 0) {
     throw validationError('Expected a positive AI safety term id', {
@@ -517,6 +526,7 @@ export async function updateAiSafetyRuleTerm(
         now,
       ],
     )
+    await options.audit?.(manager, { id: termId })
   })
 
   clearAiSafetyRuleSetCache()
@@ -526,6 +536,9 @@ export async function updateAiSafetyRuleTerm(
 export async function deleteCustomAiSafetyRuleTerm(
   db: SqlServerDatabase,
   termId: number,
+  options: {
+    audit?: (executor: QueryExecutor, result: { id: number }) => Promise<void>
+  } = {},
 ): Promise<AiSafetyRuleAdminTerm> {
   if (!Number.isInteger(termId) || termId <= 0) {
     throw validationError('Expected a positive AI safety term id', {
@@ -546,6 +559,7 @@ export async function deleteCustomAiSafetyRuleTerm(
       termId,
     ])
     deleted = term
+    await options.audit?.(manager, term)
   })
 
   clearAiSafetyRuleSetCache()
@@ -556,6 +570,12 @@ export async function deleteCustomAiSafetyRuleTerm(
 export async function removeAiSafetyRuleTerms(
   db: SqlServerDatabase,
   termIds: readonly number[],
+  options: {
+    audit?: (
+      executor: QueryExecutor,
+      result: RemoveAiSafetyRuleTermsResult,
+    ) => Promise<void>
+  } = {},
 ): Promise<RemoveAiSafetyRuleTermsResult> {
   const ids = assertPositiveIds(termIds)
   let result: RemoveAiSafetyRuleTermsResult = {
@@ -612,6 +632,7 @@ export async function removeAiSafetyRuleTerms(
       deactivatedStandardCount: standardIds.length,
       deletedCustomCount: customIds.length,
     }
+    await options.audit?.(manager, result)
   })
 
   clearAiSafetyRuleSetCache()
@@ -621,6 +642,9 @@ export async function removeAiSafetyRuleTerms(
 export async function restoreAiSafetyRuleDefaults(
   db: SqlServerDatabase,
   ruleId: AiSafetyRuleId,
+  options: {
+    audit?: (executor: QueryExecutor, result: number) => Promise<void>
+  } = {},
 ): Promise<number> {
   let affectedCount = 0
   const now = new Date().toISOString()
@@ -639,6 +663,7 @@ export async function restoreAiSafetyRuleDefaults(
       [ruleDatabaseId, now],
     )) as unknown
     affectedCount = readAffectedCount(result)
+    await options.audit?.(manager, affectedCount)
   })
 
   clearAiSafetyRuleSetCache()

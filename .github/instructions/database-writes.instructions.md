@@ -1,17 +1,27 @@
 ---
-applyTo: "{lib/dal/**/*.ts,lib/requirements/service*.ts,app/api/**/*.ts}"
+applyTo: "{lib/dal/**/*.ts,lib/requirements/**/*.ts,lib/access-review/**/*.ts,lib/archiving/**/*.ts,lib/privacy/erasure.ts,app/api/**/*.ts}"
 ---
 
 # Database Writes
 
-## Atomic Multi-Table Mutations
+## Atomic Mutations
 
-- Treat one logical mutation that writes `2+` tables as one atomic database operation.
-- Use the active DB client's supported atomic primitive: `db.transaction(...)` on the `SqlServerDatabase` wrapper, which delegates to the underlying TypeORM `DataSource.transaction(...)`.
-- Do not emit raw SQL `BEGIN`, `COMMIT`, `ROLLBACK`, or `SAVEPOINT` directly from DAL or route code; keep transaction orchestration inside the DB client/provider layer.
-- Do not split multi-table write orchestration across route handlers and separate non-atomic DAL calls.
-- Prefer one DAL or service helper that owns the full multi-table mutation.
-- If atomic execution is impossible, implement deterministic cleanup in the same helper before returning success.
+- Keep all database steps of one logical mutation, including its required
+  Action log entry, in one TypeORM transaction.
+- Use `DataSource.transaction(...)` or a supported transactional QueryRunner;
+  propagate the transactional manager to every required database step.
+- Keep transaction ownership in one DAL or service helper.
+- Keep raw `BEGIN`, `COMMIT`, `ROLLBACK` and `SAVEPOINT` statements out of
+  application DAL and route orchestration.
+- Propagate unexpected database errors out of the transaction callback.
+- Continue after an expected conflict only under an explicit operation
+  contract verified against SQL Server.
+- Preserve the original failure when rollback or cleanup also fails.
+- Emit external Security audit log success only after confirmed commit.
+- Keep external-sink failure from reporting a committed mutation as rolled
+  back; preserve the existing best-effort delivery contract.
+- Keep retries operation-specific. Report uncertain write or commit outcomes
+  without claiming rollback; inspect saved state before repeating work.
 
 ## Assignment Authorization
 

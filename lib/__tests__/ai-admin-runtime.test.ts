@@ -33,6 +33,8 @@ const runtimeState = vi.hoisted(() => {
 })
 
 vi.mock('@/lib/admin/privileged-audit', () => ({
+  recordAdminPrivilegedActionAuditEvent: runtimeState.audit,
+  recordAdminPrivilegedSecurityEvent: vi.fn(),
   recordAdminPrivilegedActionSucceeded: runtimeState.audit,
 }))
 vi.mock('@/lib/dal/ai-connection-admin', () => ({

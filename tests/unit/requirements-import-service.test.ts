@@ -244,6 +244,40 @@ function makeManageImportDb() {
 }
 
 describe('requirements import service', () => {
+  it('rejects an incomplete import receipt before confirming the transaction', async () => {
+    const workflow = createRequirementsImportWorkflow({
+      authorization: { assertAuthorized: vi.fn() },
+      db: { transaction: auditState.transaction } as never,
+    })
+    const context = makeContext('rest')
+    const preview = await workflow.previewLibraryImport(context, {
+      areaId: 7,
+      locale: 'en',
+      payload: requirementsImportPayloadSchema.parse({
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        requirements: [
+          { description: 'Receipt must identify the created requirement' },
+        ],
+      }),
+    })
+    vi.mocked(createRequirementsBatchWithExecutor).mockResolvedValueOnce([])
+    await expect(
+      workflow.executeLibraryImport(context, {
+        areaId: 7,
+        locale: 'en',
+        previewToken: preview.previewToken,
+        rows: preview.rows.map(row => ({
+          ...row.values,
+          reviewRowId: row.reviewRowId,
+          sourceIndex: row.sourceIndex,
+        })),
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'invalid_import_receipt' },
+    })
+  })
+
   afterEach(() => {
     vi.unstubAllEnvs()
   })
@@ -2287,13 +2321,13 @@ describe('requirements import service', () => {
       },
     ])
     vi.mocked(getSpecificationById).mockResolvedValue({ id: 42 } as never)
-    vi.mocked(createSpecificationLocalRequirementsBatch).mockResolvedValue([
-      { id: 101, uniqueId: 'REQ0001' },
-    ] as never)
+    vi.mocked(
+      createSpecificationLocalRequirementsBatchWithExecutor,
+    ).mockResolvedValue([{ id: 101, uniqueId: 'REQ0001' }] as never)
     const authorization = { assertAuthorized: vi.fn() }
     const workflow = createRequirementsImportWorkflow({
       authorization,
-      db: {} as never,
+      db: { transaction: auditState.transaction } as never,
     })
     const payload = requirementsImportPayloadSchema.parse({
       requirements: [
@@ -2342,8 +2376,9 @@ describe('requirements import service', () => {
       },
     )
 
-    const mutationRows = vi.mocked(createSpecificationLocalRequirementsBatch)
-      .mock.calls[0]?.[2]
+    const mutationRows = vi.mocked(
+      createSpecificationLocalRequirementsBatchWithExecutor,
+    ).mock.calls[0]?.[2]
     expect(mutationRows?.[0]).not.toHaveProperty('requirementPackageIds')
     expect(result.createdRows[0]?.requirementPackageIds).toEqual([])
     expect(result.createdRows[0]?.requirementPackageNames).toEqual([])
@@ -2385,7 +2420,7 @@ describe('requirements import service', () => {
     const authorization = { assertAuthorized: vi.fn() }
     const workflow = createRequirementsImportWorkflow({
       authorization,
-      db: {} as never,
+      db: { transaction: auditState.transaction } as never,
     })
     const payload = requirementsImportPayloadSchema.parse({
       requirements: [
@@ -2426,14 +2461,14 @@ describe('requirements import service', () => {
       code: 'validation',
       message: 'qualityCharacteristicId must belong to the selected typeId',
     })
-    expect(createRequirementsBatch).not.toHaveBeenCalled()
+    expect(createRequirementsBatchWithExecutor).not.toHaveBeenCalled()
   })
 
   it('rejects library execute rows that are verifiable without verification method', async () => {
     const authorization = { assertAuthorized: vi.fn() }
     const workflow = createRequirementsImportWorkflow({
       authorization,
-      db: {} as never,
+      db: { transaction: auditState.transaction } as never,
     })
     const payload = requirementsImportPayloadSchema.parse({
       requirements: [
@@ -2472,7 +2507,7 @@ describe('requirements import service', () => {
       code: 'validation',
       message: 'verificationMethod is required when verifiable is true',
     })
-    expect(createRequirementsBatch).not.toHaveBeenCalled()
+    expect(createRequirementsBatchWithExecutor).not.toHaveBeenCalled()
   })
 
   it('nests selectable quality characteristics under their allowed type in import instruction reference data', async () => {
@@ -3215,7 +3250,7 @@ describe('requirements import service', () => {
     const authorization = { assertAuthorized: vi.fn() }
     const workflow = createRequirementsImportWorkflow({
       authorization,
-      db: {} as never,
+      db: { transaction: auditState.transaction } as never,
     })
     const payload = requirementsImportPayloadSchema.parse({
       requirements: [
@@ -3255,7 +3290,7 @@ describe('requirements import service', () => {
         versionNumber: 1,
       },
     }
-    vi.mocked(createRequirementsBatch).mockImplementationOnce(
+    vi.mocked(createRequirementsBatchWithExecutor).mockImplementationOnce(
       async (_db, _rows, options) => {
         const executor = { query: vi.fn().mockResolvedValue([]) }
         await options?.beforeWrite?.(executor as never)
@@ -3283,8 +3318,8 @@ describe('requirements import service', () => {
       mode: 'library',
       summary: { createdCount: 1 },
     })
-    expect(createRequirementsBatch).toHaveBeenCalledWith(
-      {},
+    expect(createRequirementsBatchWithExecutor).toHaveBeenCalledWith(
+      { query: auditState.query },
       [
         expect.objectContaining({
           acceptanceCriteria: 'Accepted after inspection',
@@ -3296,8 +3331,6 @@ describe('requirements import service', () => {
       ],
       expect.objectContaining({
         audit: expect.any(Function),
-        batchAudit: expect.any(Function),
-        beforeWrite: expect.any(Function),
       }),
     )
     expect(getApplicationSettingsForUpdate).toHaveBeenCalledOnce()
@@ -3305,9 +3338,19 @@ describe('requirements import service', () => {
       ...DEFAULT_APPLICATION_SETTINGS,
       requirementImportMaxRows: 499,
     })
-    const writeOptions = vi.mocked(createRequirementsBatch).mock.calls[0]?.[2]
     await expect(
-      writeOptions?.beforeWrite?.({ query: vi.fn() } as never),
+      workflow.executeLibraryImport(makeContext('rest'), {
+        areaId: 7,
+        locale: 'sv',
+        previewToken: preview.previewToken,
+        rows: [
+          {
+            ...row.values,
+            reviewRowId: row.reviewRowId,
+            sourceIndex: row.sourceIndex,
+          },
+        ],
+      }),
     ).rejects.toMatchObject({
       code: 'conflict',
       details: { reason: 'stale_requirement_import_preview' },
@@ -3319,7 +3362,7 @@ describe('requirements import service', () => {
     const authorization = { assertAuthorized: vi.fn() }
     const workflow = createRequirementsImportWorkflow({
       authorization,
-      db: {} as never,
+      db: { transaction: auditState.transaction } as never,
     })
     const payload = requirementsImportPayloadSchema.parse({
       requirements: [{ description: 'Lokalt krav.' }],
@@ -3332,16 +3375,13 @@ describe('requirements import service', () => {
     const row = preview.rows[0]
     if (!row) throw new Error('Expected preview row')
     const executor = { query: vi.fn().mockResolvedValue([]) }
-    vi.mocked(createSpecificationLocalRequirementsBatch).mockImplementationOnce(
-      async (_db, _specificationId, _rows, options) => {
-        await options?.beforeWrite?.(executor as never)
-        await options?.batchAudit?.(executor as never, [301, 302])
-        return [
-          { id: 301, uniqueId: 'LOCAL-301' },
-          { id: 302, uniqueId: 'LOCAL-302' },
-        ] as never
-      },
-    )
+    vi.mocked(
+      createSpecificationLocalRequirementsBatchWithExecutor,
+    ).mockImplementationOnce(async (_db, _specificationId, _rows, options) => {
+      await options?.beforeWrite?.(executor as never)
+      await options?.batchAudit?.(executor as never, [301])
+      return [{ id: 301, uniqueId: 'LOCAL-301' }] as never
+    })
 
     const result = await workflow.executeSpecificationLocalImport(
       makeContext('rest'),
@@ -3360,14 +3400,16 @@ describe('requirements import service', () => {
     )
 
     expect(result.summary.createdCount).toBe(1)
-    expect(getApplicationSettingsForUpdate).toHaveBeenLastCalledWith(executor)
+    expect(getApplicationSettingsForUpdate).toHaveBeenLastCalledWith({
+      query: auditState.query,
+    })
   })
 
   it('rejects stale REST preview tokens after normalizing row order', async () => {
     vi.mocked(getSpecificationById).mockResolvedValue({ id: 8 } as never)
     const workflow = createRequirementsImportWorkflow({
       authorization: { assertAuthorized: vi.fn() },
-      db: {} as never,
+      db: { transaction: auditState.transaction } as never,
     })
     const payload = requirementsImportPayloadSchema.parse({
       requirements: [

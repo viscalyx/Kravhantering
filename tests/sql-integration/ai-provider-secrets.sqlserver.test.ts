@@ -12,12 +12,16 @@ import {
   removeAiManagementCredential,
   writeAiProviderSecretCandidate,
 } from '@/lib/ai/provider-secret-service'
+import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   reencryptAiProviderSecretBatch,
   verifyAiProviderSecretRestoreSet,
 } from '@/scripts/ai-provider-secret-maintenance.mjs'
-import { useSqlIntegrationDatabase } from './helpers/sql-test-database'
+import {
+  makeRequestContext,
+  useSqlIntegrationDatabase,
+} from './helpers/sql-test-database'
 
 function keyring(activeWriteVersion: string, keys: Record<string, Buffer>) {
   return parseAiProviderSecretKeyring(
@@ -339,6 +343,67 @@ describe('AI provider secrets against SQL Server', () => {
     )) as Array<{ count: number | string }>
     expect(Number(rows[0]?.count ?? 0)).toBe(0)
   })
+
+  it.each([false, true])(
+    'delivers secret audit success only after confirmed commit (commit fails: %s)',
+    async commitFails => {
+      const db = appDb()
+      const connectionId = await createConnection(db, 'Secret commit ordering')
+      const ring = keyring('root-1', { 'root-1': randomBytes(32) })
+      const context = await makeRequestContext()
+      let committed = false
+      const deliveries: boolean[] = []
+      const originalCreateRunner = db.createQueryRunner.bind(db)
+      const createRunnerSpy = vi
+        .spyOn(db, 'createQueryRunner')
+        .mockImplementation(mode => {
+          const runner = originalCreateRunner(mode)
+          const commit = runner.commitTransaction.bind(runner)
+          runner.commitTransaction = async () => {
+            if (commitFails) throw new Error('Secret commit failure')
+            await commit()
+            committed = true
+          }
+          return runner
+        })
+      try {
+        const operation = writeAiProviderSecretCandidate(
+          db,
+          ring,
+          { connectionId, plaintext: 'synthetic-commit-test' },
+          async executor => {
+            await recordAllowedActionAuditEvent(executor, context, {
+              action: 'admin.ai_provider_secret.rotate',
+              targetKind: 'ai_provider_secret',
+              targetId: connectionId,
+            })
+            return () => {
+              deliveries.push(committed)
+              throw new Error('Unavailable external sink')
+            }
+          },
+        )
+        if (commitFails)
+          await expect(operation).rejects.toThrow('Secret commit failure')
+        else await expect(operation).resolves.toMatchObject({ connectionId })
+        expect(
+          await db.query(
+            'SELECT COUNT(*) AS count FROM ai_provider_secret_versions WHERE ai_connection_id = @0',
+            [connectionId],
+          ),
+        ).toEqual([{ count: commitFails ? 0 : 1 }])
+        expect(
+          await db.query(
+            'SELECT COUNT(*) AS count FROM action_audit_events WHERE target_id = @0',
+            [connectionId],
+          ),
+        ).toEqual([{ count: commitFails ? 0 : 1 }])
+        expect(deliveries).toEqual(commitFails ? [] : [true])
+      } finally {
+        createRunnerSpy.mockRestore()
+      }
+    },
+  )
 
   it('rejects changing the AAD-bound secret-version ID', async () => {
     const connectionId = await createConnection(appDb(), 'Immutable binding')

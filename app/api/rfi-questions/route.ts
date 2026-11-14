@@ -60,13 +60,15 @@ export const POST = secureMutationRoute({
   handler: async ({ body, context, db }) => {
     const actor = requireHumanActorSnapshot(context)
     const activeDb = db ?? (await getRequestSqlServerDataSource())
-    const question = await createRfiQuestion(activeDb, body, actor)
-    await recordAllowedActionAuditEvent(activeDb, context, {
-      action: 'rfi_question.create',
-      details: { areaId: question.areaId },
-      targetId: question.id,
-      targetKind: 'rfi_question',
-      targetUniqueId: question.questionCode,
+    const question = await createRfiQuestion(activeDb, body, actor, {
+      audit: (executor, question) =>
+        recordAllowedActionAuditEvent(executor, context, {
+          action: 'rfi_question.create',
+          details: { areaId: question.areaId },
+          targetId: question.id,
+          targetKind: 'rfi_question',
+          targetUniqueId: question.questionCode,
+        }),
     })
     return NextResponse.json(question, { status: 201 })
   },

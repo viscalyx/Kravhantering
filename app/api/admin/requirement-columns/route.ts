@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { withPrivilegedMutationAudit } from '@/lib/admin/privileged-audit'
 import {
   formatUiSettingsLoadError,
   getRequirementListColumnDefaults,
@@ -103,21 +103,15 @@ export const PUT = secureMutationRoute({
   handler: async ({ body, context }) => {
     try {
       const db = await getRequestSqlServerDataSource()
-      const columns = await updateRequirementListColumnDefaults(
-        db,
-        body.columns,
-        {
+      const columns = await withPrivilegedMutationAudit(context, audit =>
+        updateRequirementListColumnDefaults(db, body.columns, {
           audit: executor =>
-            recordAdminPrivilegedActionSucceeded(
-              context,
-              {
-                itemCount: body.columns.length,
-                operation: 'save',
-                resourceType: 'requirement_columns',
-              },
-              executor,
-            ),
-        },
+            audit(executor, {
+              itemCount: body.columns.length,
+              operation: 'save',
+              resourceType: 'requirement_columns',
+            }),
+        }),
       )
 
       return NextResponse.json({

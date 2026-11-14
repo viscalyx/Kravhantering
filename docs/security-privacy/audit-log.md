@@ -47,12 +47,28 @@ its request and correlation IDs, so the cleanup can be traced to that action.
 
 ## Failure Mode
 
-Action-log writes are fail-closed. If an action-log insert fails, the mutation
-or denial response fails instead of silently losing the action-log row. Where
-the underlying service owns a database transaction, the action-audit insert is
-executed in that transaction. A failed response alone does not guarantee that
-an earlier business write outside that transaction was rolled back; check the
-target before retrying.
+Required Action log history and its business mutation share a transaction.
+For requirement creation and lifecycle changes, RFI question creation,
+requirement-area changes, deviation decisions, specification creation,
+updates, membership and graduation, and library/specification imports, a
+required history failure rolls back the business writes too. Import execution
+includes receipt validation and stored receipt updates in that boundary.
+The same boundary covers privileged catalog and settings changes, AI safety
+terms, AI connection administration and provider-secret mutations. External
+provider probes retain their own outcome events; they do not make a database
+mutation committed.
+
+External Security audit log success follows confirmed commit. A later failure
+inside the transaction or a commit failure emits no success event. The external
+stream remains best effort: a sink failure cannot undo committed work, and a
+process crash after commit can prevent delivery. The database Action log is
+the durable application history; it is separate from Security audit events
+and restricted operational diagnostics.
+
+Authorization-denial history also remains required. A failed or interrupted
+response alone does not prove rollback: commit acknowledgement can be lost
+after the database commits. Check the target and its history before repeating
+the mutation. The application does not automatically retry uncertain writes.
 
 ## Admin Access
 

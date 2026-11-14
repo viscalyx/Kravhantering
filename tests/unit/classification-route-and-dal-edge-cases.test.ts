@@ -20,6 +20,33 @@ vi.mock('@/lib/db', () => ({
 }))
 
 vi.mock('@/lib/admin/privileged-audit', () => ({
+  withPrivilegedMutationAudit: async (
+    context: unknown,
+    commit: (
+      audit: (
+        executor: unknown,
+        detail: Record<string, unknown>,
+      ) => Promise<void>,
+    ) => Promise<unknown>,
+  ) =>
+    commit(async (_executor, detail) => {
+      await Reflect.apply(state.audit, undefined, [context, detail])
+    }),
+  runPrivilegedMutation: async (
+    db: unknown,
+    context: unknown,
+    mutation: (
+      manager: unknown,
+      audit: (
+        executor: unknown,
+        detail: Record<string, unknown>,
+      ) => Promise<void>,
+    ) => Promise<unknown>,
+  ) =>
+    mutation(db, async (_executor, detail) => {
+      await Reflect.apply(state.audit, undefined, [context, detail])
+    }),
+
   createAdminPrivilegedAuditContext: vi.fn(async () => ({
     actor: {
       displayName: 'Ada Admin',

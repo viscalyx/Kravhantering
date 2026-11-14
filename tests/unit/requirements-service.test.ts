@@ -399,27 +399,35 @@ describe('createRequirementsService', () => {
       specificationItemStatusId: 1,
       uniqueId: 'KRAV0001',
     })
-    mocks.graduateSpecificationLocalRequirementToLibrary.mockResolvedValue({
-      requirement: {
-        id: 2,
-        requirementAreaId: 1,
-        sequenceNumber: 1,
-        uniqueId: 'INT0001',
+    mocks.graduateSpecificationLocalRequirementToLibrary.mockImplementation(
+      async (_db, _data, options) => {
+        const result = {
+          requirement: {
+            id: 2,
+            requirementAreaId: 1,
+            sequenceNumber: 1,
+            uniqueId: 'INT0001',
+          },
+          sourceLocalRequirement: {
+            id: 12,
+            specificationId: 7,
+            uniqueId: 'KRAV0001',
+          },
+          version: {
+            id: 20,
+            requirementId: 2,
+            statusId: 1,
+            versionNumber: 1,
+          },
+        }
+        await options?.audit?.({ query: mocks.auditQuery }, result)
+        return result
       },
-      sourceLocalRequirement: {
-        id: 12,
-        specificationId: 7,
-        uniqueId: 'KRAV0001',
-      },
-      version: {
-        id: 20,
-        requirementId: 2,
-        statusId: 1,
-        versionNumber: 1,
-      },
-    })
+    )
     mocks.getPublishedVersionIdForRequirement.mockResolvedValue(101)
-    mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(0)
+    mocks.linkRequirementsToSpecificationAtomically.mockImplementation(
+      async () => 0,
+    )
     mocks.linkRequirementsToSpecification.mockResolvedValue(0)
     mocks.listDeviationsForSpecification.mockResolvedValue([])
     mocks.listAreasActorCanAuthor.mockResolvedValue([
@@ -436,7 +444,11 @@ describe('createRequirementsService', () => {
     })
     mocks.listSpecifications.mockResolvedValue([])
     mocks.listSuggestionsForRequirement.mockResolvedValue([])
-    mocks.recordDecision.mockResolvedValue(undefined)
+    mocks.recordDecision.mockImplementation(
+      async (_db, _id, _data, options) => {
+        await options?.audit?.({ query: mocks.auditQuery })
+      },
+    )
     mocks.recordResolution.mockResolvedValue(undefined)
     mocks.requestReview.mockResolvedValue(undefined)
     mocks.revertToDraft.mockResolvedValue(undefined)
@@ -1912,7 +1924,12 @@ describe('createRequirementsService', () => {
     mocks.getPublishedVersionIdForRequirement
       .mockResolvedValueOnce(201)
       .mockResolvedValueOnce(202)
-    mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(1)
+    mocks.linkRequirementsToSpecificationAtomically.mockImplementation(
+      async (_db, _id, _data, _actor, options) => {
+        await options?.audit?.({ query: mocks.auditQuery }, 1)
+        return 1
+      },
+    )
     const service = createTestRequirementsService()
 
     const result = await service.addToSpecification(makeContext(), {
@@ -1935,6 +1952,7 @@ describe('createRequirementsService', () => {
         needsReferenceText: undefined,
       },
       'SE5560000001-alice1',
+      expect.objectContaining({ audit: expect.any(Function) }),
     )
     expect(result.addedCount).toBe(1)
     expect(result.skippedCount).toBe(0)
@@ -2116,25 +2134,31 @@ describe('createRequirementsService', () => {
       ownerHsaId: 'SE5560000001-alice1',
       prefix: 'SEC',
     })
-    mocks.graduateSpecificationLocalRequirementToLibrary.mockResolvedValue({
-      requirement: {
-        id: 2,
-        requirementAreaId: 2,
-        sequenceNumber: 1,
-        uniqueId: 'SEC0001',
+    mocks.graduateSpecificationLocalRequirementToLibrary.mockImplementation(
+      async (_db, _data, options) => {
+        const result = {
+          requirement: {
+            id: 2,
+            requirementAreaId: 2,
+            sequenceNumber: 1,
+            uniqueId: 'SEC0001',
+          },
+          sourceLocalRequirement: {
+            id: 12,
+            specificationId: 7,
+            uniqueId: 'KRAV0001',
+          },
+          version: {
+            id: 20,
+            requirementId: 2,
+            statusId: 1,
+            versionNumber: 1,
+          },
+        }
+        await options?.audit?.({ query: mocks.auditQuery }, result)
+        return result
       },
-      sourceLocalRequirement: {
-        id: 12,
-        specificationId: 7,
-        uniqueId: 'KRAV0001',
-      },
-      version: {
-        id: 20,
-        requirementId: 2,
-        statusId: 1,
-        versionNumber: 1,
-      },
-    })
+    )
     mocks.getRequirementById.mockResolvedValue({
       ...makeRequirementRecord(),
       area: {
@@ -2171,13 +2195,17 @@ describe('createRequirementsService', () => {
     expect(mocks.canAuthorSpecification).not.toHaveBeenCalled()
     expect(
       mocks.graduateSpecificationLocalRequirementToLibrary,
-    ).toHaveBeenCalledWith(expect.anything(), {
-      actorDisplayName: 'alice',
-      actorHsaId: 'SE5560000001-alice1',
-      specificationId: 7,
-      specificationLocalRequirementId: 12,
-      targetRequirementAreaId: 2,
-    })
+    ).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        actorDisplayName: 'alice',
+        actorHsaId: 'SE5560000001-alice1',
+        specificationId: 7,
+        specificationLocalRequirementId: 12,
+        targetRequirementAreaId: 2,
+      },
+      expect.objectContaining({ audit: expect.any(Function) }),
+    )
     expect(result.detail.uniqueId).toBe('SEC0001')
     expect(result.requirementResourceUri).toBe(
       'requirements://requirement/SEC0001?version=1',
@@ -2273,7 +2301,9 @@ describe('createRequirementsService', () => {
   })
 
   it('does not emit specification addition audit events when no links are added', async () => {
-    mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(0)
+    mocks.linkRequirementsToSpecificationAtomically.mockImplementation(
+      async () => 0,
+    )
     const service = createTestRequirementsService()
 
     await service.addToSpecification(makeContext(), {
@@ -2312,6 +2342,7 @@ describe('createRequirementsService', () => {
       7,
       expect.objectContaining({ requirementIds: [11] }),
       'SE5560000001-alice1',
+      expect.objectContaining({ audit: expect.any(Function) }),
     )
   })
 
@@ -2415,7 +2446,12 @@ describe('createRequirementsService', () => {
     mocks.getPublishedVersionIdForRequirement
       .mockResolvedValueOnce(201)
       .mockResolvedValueOnce(202)
-    mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(2)
+    mocks.linkRequirementsToSpecificationAtomically.mockImplementation(
+      async (_db, _id, _data, _actor, options) => {
+        await options?.audit?.({ query: mocks.auditQuery }, 2)
+        return 2
+      },
+    )
     const service = createTestRequirementsService()
 
     await service.addToSpecification(makeContext(), {
@@ -2632,12 +2668,17 @@ describe('createRequirementsService', () => {
         '## Avvikelsebeslut\nBeslut registrerat för avvikelse 9: avvisad.',
       result: { decision: 2, id: 9 },
     })
-    expect(mocks.recordDecision).toHaveBeenCalledWith(expect.anything(), 9, {
-      decidedBy: 'alice',
-      decidedByHsaId: 'SE5560000001-alice1',
-      decision: 2,
-      decisionMotivation: 'Uppfyller inte policyn',
-    })
+    expect(mocks.recordDecision).toHaveBeenCalledWith(
+      expect.anything(),
+      9,
+      {
+        decidedBy: 'alice',
+        decidedByHsaId: 'SE5560000001-alice1',
+        decision: 2,
+        decisionMotivation: 'Uppfyller inte policyn',
+      },
+      expect.objectContaining({ audit: expect.any(Function) }),
+    )
   })
 
   it('deletes deviations and returns the deleted identity', async () => {
@@ -2731,12 +2772,17 @@ describe('createRequirementsService', () => {
       operation: 'record_decision',
     })
 
-    expect(mocks.recordDecision).toHaveBeenCalledWith(expect.anything(), 9, {
-      decision: 1,
-      decisionMotivation: 'Approved by security reviewer',
-      decidedBy: 'alice',
-      decidedByHsaId: 'SE5560000001-alice1',
-    })
+    expect(mocks.recordDecision).toHaveBeenCalledWith(
+      expect.anything(),
+      9,
+      {
+        decision: 1,
+        decisionMotivation: 'Approved by security reviewer',
+        decidedBy: 'alice',
+        decidedByHsaId: 'SE5560000001-alice1',
+      },
+      expect.objectContaining({ audit: expect.any(Function) }),
+    )
     expect(emittedSecurityEvents()).toEqual([
       expect.objectContaining({
         detail: expect.objectContaining({

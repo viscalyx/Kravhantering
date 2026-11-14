@@ -2,6 +2,7 @@ import {
   type QueryExecutor,
   recordAllowedActionAuditEvent,
 } from '@/lib/audit/action-audit'
+import { withCommittedAudit } from '@/lib/audit/committed-mutation'
 import {
   recordSecurityEvent,
   type SecurityEventActor,
@@ -15,7 +16,11 @@ import {
   isSignedIn,
   type LoggedInSession,
 } from '@/lib/auth/session'
-import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  getRequestSqlServerDataSource,
+  type SqlServerDatabase,
+  type SqlServerEntityManager,
+} from '@/lib/db'
 import { resolveRequestCorrelationIds } from '@/lib/observability/request-ids'
 import type { ActorContext, RequestContext } from '@/lib/requirements/auth'
 
@@ -216,7 +221,7 @@ function delegatedAuditDetail(
   })
 }
 
-export async function recordAdminPrivilegedActionSucceeded(
+export async function recordAdminPrivilegedActionAuditEvent(
   context: RequestContext,
   detail: AdminPrivilegedActionDetail,
   executor?: QueryExecutor,
@@ -229,6 +234,13 @@ export async function recordAdminPrivilegedActionSucceeded(
     targetId: detail.resourceId,
     targetKind: detail.resourceType,
   })
+}
+
+export function recordAdminPrivilegedSecurityEvent(
+  context: RequestContext,
+  detail: AdminPrivilegedActionDetail,
+): void {
+  const auditDetail = adminAuditDetail(context, detail)
   recordSecurityEvent({
     actor: auditActor(context),
     detail: auditDetail,
@@ -242,7 +254,7 @@ export async function recordAdminPrivilegedActionSucceeded(
   })
 }
 
-export async function recordDelegatedPrivilegedActionSucceeded(
+export async function recordDelegatedPrivilegedActionAuditEvent(
   context: RequestContext,
   detail: DelegatedPrivilegedActionDetail,
   executor?: QueryExecutor,
@@ -255,6 +267,13 @@ export async function recordDelegatedPrivilegedActionSucceeded(
     targetId: detail.resourceId,
     targetKind: detail.resourceType,
   })
+}
+
+function recordDelegatedPrivilegedSecurityEvent(
+  context: RequestContext,
+  detail: DelegatedPrivilegedActionDetail,
+): void {
+  const auditDetail = delegatedAuditDetail(context, detail)
   recordSecurityEvent({
     actor: auditActor(context),
     detail: auditDetail,
@@ -266,4 +285,67 @@ export async function recordDelegatedPrivilegedActionSucceeded(
       requestId: context.requestId,
     },
   })
+}
+
+export async function recordAdminPrivilegedActionSucceeded(
+  context: RequestContext,
+  detail: AdminPrivilegedActionDetail,
+  executor?: QueryExecutor,
+): Promise<void> {
+  await recordAdminPrivilegedActionAuditEvent(context, detail, executor)
+  recordAdminPrivilegedSecurityEvent(context, detail)
+}
+
+export async function recordDelegatedPrivilegedActionSucceeded(
+  context: RequestContext,
+  detail: DelegatedPrivilegedActionDetail,
+  executor?: QueryExecutor,
+): Promise<void> {
+  await recordDelegatedPrivilegedActionAuditEvent(context, detail, executor)
+  recordDelegatedPrivilegedSecurityEvent(context, detail)
+}
+
+export async function withPrivilegedMutationAudit<T>(
+  context: RequestContext,
+  commitMutation: (
+    audit: (
+      executor: QueryExecutor,
+      detail: AdminPrivilegedActionDetail | DelegatedPrivilegedActionDetail,
+    ) => Promise<void>,
+  ) => Promise<T>,
+): Promise<T> {
+  return withCommittedAudit(
+    async (
+      executor: QueryExecutor,
+      detail: AdminPrivilegedActionDetail | DelegatedPrivilegedActionDetail,
+    ) => {
+      if ('actorRole' in detail) {
+        await recordDelegatedPrivilegedActionAuditEvent(
+          context,
+          detail,
+          executor,
+        )
+        return () => recordDelegatedPrivilegedSecurityEvent(context, detail)
+      }
+      await recordAdminPrivilegedActionAuditEvent(context, detail, executor)
+      return () => recordAdminPrivilegedSecurityEvent(context, detail)
+    },
+    commitMutation,
+  )
+}
+
+export function runPrivilegedMutation<T>(
+  db: SqlServerDatabase,
+  context: RequestContext,
+  mutation: (
+    manager: SqlServerEntityManager,
+    audit: (
+      executor: QueryExecutor,
+      detail: AdminPrivilegedActionDetail,
+    ) => Promise<void>,
+  ) => Promise<T>,
+): Promise<T> {
+  return withPrivilegedMutationAudit(context, audit =>
+    db.transaction(manager => mutation(manager, audit)),
+  )
 }
