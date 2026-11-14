@@ -14,14 +14,14 @@ function matches(row, values) {
   )
 }
 
-function predicate(values, parameters, join = ' AND ') {
+function predicate(values, parameters) {
   return Object.entries(values)
     .map(([key, value]) => {
       if (value === null) return `${identifier(key)} IS NULL`
       parameters.push(value)
       return `${identifier(key)} = @${parameters.length - 1}`
     })
-    .join(join)
+    .join(' AND ')
 }
 
 /**
@@ -129,14 +129,24 @@ export async function evolveDefaults(queryRunner, migration, changes) {
           `Default addition requires an intended ID: ${logicalId}`,
         )
       const parameters = []
+      const groups = [
+        ['id'],
+        ...unique.map(key => (Array.isArray(key) ? key : [key])),
+      ]
+      const candidatePredicate = groups
+        .map(
+          keys =>
+            `(${predicate(Object.fromEntries(keys.map(key => [key, values[key]])), parameters)})`,
+        )
+        .join(' OR ')
       const candidates = await queryRunner.query(
-        `SELECT ${Object.keys(values).map(identifier).join(', ')} FROM ${identifier(table)} WITH (UPDLOCK, HOLDLOCK) WHERE ${predicate(Object.fromEntries(['id', ...unique].map(key => [key, values[key]])), parameters, ' OR ')}`,
+        `SELECT ${Object.keys(values).map(identifier).join(', ')} FROM ${identifier(table)} WITH (UPDLOCK, HOLDLOCK) WHERE ${candidatePredicate}`,
         parameters,
       )
       // Equivalence includes every coupled structural value, not names alone.
       const equivalent = candidates.filter(
         row =>
-          (!change.required || row.id === values.id) &&
+          (!change.fixedId || row.id === values.id) &&
           matches(
             row,
             Object.fromEntries(

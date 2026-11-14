@@ -410,7 +410,7 @@ Retain a migration result separately from its diagnostics, with a new run ID
 for each attempt:
 
 ```bash
-MIGRATION_RUN_ID="$(cat /proc/sys/kernel/random/uuid)"
+MIGRATION_RUN_ID="$(node -p 'require("node:crypto").randomUUID()')"
 DB_MIGRATION_RUN_ID="$MIGRATION_RUN_ID" \
   npm run --silent db:migrate -- --json \
   > "migration-${MIGRATION_RUN_ID}.json" \

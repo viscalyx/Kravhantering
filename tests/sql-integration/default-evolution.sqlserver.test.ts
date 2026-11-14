@@ -103,6 +103,7 @@ class RequiredConflict1800000003000 {
         logicalId: 'priority:P1',
         table: 'priority_levels',
         required: true,
+        fixedId: true,
         values: { id: 1, code: 'P1' },
         unique: ['code'],
       },
@@ -138,6 +139,7 @@ describe('one-time default evolution through the migration command', () => {
         DB_MIGRATION_USER: '',
         DB_MIGRATION_PASSWORD: '',
         DB_RUNTIME_USER: 'evolution_runtime',
+        DB_RUNTIME_USERS: '',
         DB_MIGRATION_RUN_ID: 'evolution-run',
         RELEASE_VERSION: 'fixture-release',
       },
@@ -584,4 +586,131 @@ describe('one-time default evolution through the migration command', () => {
       await source.query('SELECT id FROM quality_characteristics WHERE id = 2'),
     ).toEqual([])
   })
+  it('preserves a required endpoint-pair identity under an existing surrogate ID', async () => {
+    await seedSqlServerDatabase(resolveSqlIntegrationTestsUrl(), {
+      configureReadonlyAccess: false,
+    })
+    await source.query(`DELETE FROM requirement_status_transitions WHERE from_requirement_status_id = 1 AND to_requirement_status_id = 2;
+      SET IDENTITY_INSERT requirement_status_transitions ON;
+      INSERT INTO requirement_status_transitions (id, from_requirement_status_id, to_requirement_status_id) VALUES (901, 1, 2);
+      SET IDENTITY_INSERT requirement_status_transitions OFF;`)
+    class NaturalIdentity1800000007000 {
+      name = 'NaturalIdentity1800000007000'
+      async up(runner: Parameters<typeof evolveDefaults>[0]) {
+        await evolveDefaults(runner, this.name, [
+          {
+            logicalId: 'transition:1->2',
+            table: 'requirement_status_transitions',
+            required: true,
+            values: {
+              id: 1,
+              from_requirement_status_id: 1,
+              to_requirement_status_id: 2,
+            },
+            unique: [
+              ['from_requirement_status_id', 'to_requirement_status_id'],
+            ],
+          },
+        ])
+      }
+    }
+    const result = await migrate([NaturalIdentity1800000007000])
+    expect(result.exit).toBe(0)
+    expect(result.report.migration.entries).toEqual([
+      expect.objectContaining({
+        logicalId: 'transition:1->2',
+        id: 901,
+        outcome: 'unchanged',
+      }),
+    ])
+    expect(
+      await source.query(
+        'SELECT id FROM requirement_status_transitions WHERE from_requirement_status_id = 1 AND to_requirement_status_id = 2',
+      ),
+    ).toEqual([{ id: 901 }])
+  })
+
+  it('inserts a required transition when only part of its composite identity matches', async () => {
+    await seedSqlServerDatabase(resolveSqlIntegrationTestsUrl(), {
+      configureReadonlyAccess: false,
+    })
+    // Both endpoints occur in other pairs, but 1->2 is absent.
+    await source.query(`DELETE FROM requirement_status_transitions WHERE from_requirement_status_id = 1 AND to_requirement_status_id = 2;
+      INSERT INTO requirement_status_transitions (from_requirement_status_id, to_requirement_status_id) VALUES (1, 3);`)
+    class CompositeIdentity1800000008000 {
+      name = 'CompositeIdentity1800000008000'
+      async up(runner: Parameters<typeof evolveDefaults>[0]) {
+        await evolveDefaults(runner, this.name, [
+          {
+            logicalId: 'transition:1->2',
+            table: 'requirement_status_transitions',
+            required: true,
+            values: {
+              id: 1,
+              from_requirement_status_id: 1,
+              to_requirement_status_id: 2,
+            },
+            unique: [
+              ['from_requirement_status_id', 'to_requirement_status_id'],
+            ],
+          },
+        ])
+      }
+    }
+    const result = await migrate([CompositeIdentity1800000008000])
+    expect(result.exit).toBe(0)
+    expect(result.report.migration.entries).toEqual([
+      expect.objectContaining({ id: 1, outcome: 'inserted' }),
+    ])
+    expect(
+      await source.query(
+        'SELECT from_requirement_status_id, to_requirement_status_id FROM requirement_status_transitions ORDER BY from_requirement_status_id, to_requirement_status_id',
+      ),
+    ).toEqual([
+      { from_requirement_status_id: 1, to_requirement_status_id: 2 },
+      { from_requirement_status_id: 1, to_requirement_status_id: 3 },
+      { from_requirement_status_id: 2, to_requirement_status_id: 1 },
+      { from_requirement_status_id: 2, to_requirement_status_id: 3 },
+      { from_requirement_status_id: 2, to_requirement_status_id: 4 },
+      { from_requirement_status_id: 3, to_requirement_status_id: 2 },
+    ])
+  })
+
+  it.each([false, true])(
+    'enforces explicit fixed-ID ownership independently of required=%s',
+    async required => {
+      await seedSqlServerDatabase(resolveSqlIntegrationTestsUrl(), {
+        configureReadonlyAccess: false,
+      })
+      class FixedIdentity1800000009000 {
+        name = 'FixedIdentity1800000009000'
+        async up(runner: Parameters<typeof evolveDefaults>[0]) {
+          await evolveDefaults(runner, this.name, [
+            {
+              logicalId: 'priority:P1',
+              table: 'priority_levels',
+              required,
+              fixedId: true,
+              values: { id: 901, code: 'P1' },
+              unique: ['code'],
+            },
+          ])
+        }
+      }
+      const result = await migrate([FixedIdentity1800000009000])
+      expect(result.exit).toBe(required ? 1 : 0)
+      if (required)
+        expect(result.report.error.code).toBe('REQUIRED_DEFAULT_CONFLICT')
+      else
+        expect(result.report.migration.entries[0]).toMatchObject({
+          outcome: 'skipped',
+          reason: 'identity_or_value_conflict',
+        })
+      expect(
+        await source.query(
+          "SELECT id, code FROM priority_levels WHERE code = N'P1'",
+        ),
+      ).toEqual([{ id: 1, code: 'P1' }])
+    },
+  )
 })

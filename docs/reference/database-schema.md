@@ -108,8 +108,15 @@ migrations use this helper, preserve its version's semantics.
 
 - Give each entry a stable `logicalId`, `table` and `values`. For additions,
   include the proposed `id` and every coupled field. Supply all applicable
-  uniqueness fields in `unique`. The helper checks occupied IDs and those
-  fields before inserting. Entire equivalent records retain their actual ID.
+  uniqueness groups in `unique`: a string names a single-column key; an array
+  names a composite key, such as
+  `[['from_requirement_status_id', 'to_requirement_status_id']]` for transitions.
+  All fields within a group must match; separate groups and the proposed ID
+  are alternatives. The helper checks these candidates before inserting.
+  Entire equivalent records retain their actual ID. Set `fixedId: true` only
+  when the family's identity contract requires that numeric ID, such as
+  statuses and priorities. Required transitions use their endpoint pair and
+  preserve existing surrogate IDs.
 - List dependencies before their children. `dependencies` maps foreign-key
   columns to earlier logical IDs in the same call; children use the resolved
   IDs. An omitted dependency omits its dependent additions. A missing plan
@@ -123,8 +130,9 @@ migrations use this helper, preserve its version's semantics.
   changes. Missing optional records and customized values remain unchanged;
   surrogate IDs and existing references remain intact.
 - Optional addition conflicts produce a recorded omission. Use `required`
-  only for required additions; their conflicts fail. Unexpected SQL errors
-  always fail and roll back the pending migration transaction.
+  only for required additions; their conflicts fail. This failure policy is
+  independent of `fixedId`. Unexpected SQL errors always fail and roll back
+  the pending migration transaction.
 - Removing an entry from the fresh catalog does not delete stored records.
   State the retention decision in the new migration. Any deliberate stored
   deletion needs separate identity, customization and reference checks.
