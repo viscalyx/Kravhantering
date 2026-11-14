@@ -216,8 +216,13 @@ describe('AI safety rules DAL', () => {
   )
 
   it('creates a normalized custom term and returns its persisted shape', async () => {
-    const managerQuery = sequentialQuery([{ id: 3 }], [], [{ id: 77 }])
-    const dbQuery = sequentialQuery([{ ...activeStandardTermRow, id: 77 }])
+    const managerQuery = sequentialQuery(
+      [{ id: 3 }],
+      [],
+      [{ id: 77 }],
+      [{ ...activeStandardTermRow, id: 77 }],
+    )
+    const dbQuery = vi.fn()
     const db = databaseWithQueries(dbQuery, managerQuery)
 
     const result = await createAiSafetyRuleTerm(db, {
@@ -285,11 +290,12 @@ describe('AI safety rules DAL', () => {
   })
 
   it('updates both optional term fields and returns the persisted term', async () => {
-    const managerQuery = sequentialQuery([{ id: 11 }], [])
-    const db = databaseWithQueries(
-      sequentialQuery([activeStandardTermRow]),
-      managerQuery,
+    const managerQuery = sequentialQuery(
+      [{ id: 11 }],
+      [],
+      [activeStandardTermRow],
     )
+    const db = databaseWithQueries(vi.fn(), managerQuery)
 
     await expect(
       updateAiSafetyRuleTerm(db, 11, {

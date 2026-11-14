@@ -5,6 +5,8 @@ import {
   PATCH as updateSafetyTermRoute,
 } from '@/app/api/admin/ai-safety-rules/terms/[id]/route'
 import { PATCH as updateSettingsRoute } from '@/app/api/admin/application-settings/route'
+import { PUT as updatePrefixesRoute } from '@/app/api/admin/hsa-id-prefixes/route'
+import { POST as decideDeviationRoute } from '@/app/api/deviations/[id]/decision/route'
 import {
   DELETE as deleteAreaRoute,
   PUT as updateAreaRoute,
@@ -20,6 +22,7 @@ import {
   createSpecificationLocalRequirement,
   linkRequirementsToSpecificationAtomically,
 } from '@/lib/dal/requirements-specifications'
+import { listHsaIdPrefixesForAdmin } from '@/lib/dal/ui-settings'
 import type { SqlServerDatabase } from '@/lib/db'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
 import {
@@ -37,7 +40,7 @@ import {
   useSqlIntegrationDatabase,
 } from './helpers/sql-test-database'
 
-const routeDatabase = vi.hoisted(() => ({ get: vi.fn() }))
+const routeDatabase = vi.hoisted(() => ({ get: vi.fn(), roles: ['Admin'] }))
 vi.mock('@/lib/db', async importOriginal => ({
   ...(await importOriginal<typeof import('@/lib/db')>()),
   getRequestSqlServerDataSource: routeDatabase.get,
@@ -50,7 +53,7 @@ vi.mock('@/lib/auth/session', async importOriginal => ({
     givenName: 'SQL',
     name: 'SQL Integration Actor',
     hsaId: 'SE5560000001-sqltest1',
-    roles: ['Admin'],
+    roles: routeDatabase.roles,
     sub: 'sql-integration-actor',
   }),
 }))
@@ -66,11 +69,30 @@ async function successRows(db: SqlServerDatabase): Promise<unknown[]> {
   )
 }
 
+function failRead(db: SqlServerDatabase, matches: (sql: string) => boolean) {
+  const reached = vi.fn()
+  const createRunner = db.createQueryRunner.bind(db)
+  vi.spyOn(db, 'createQueryRunner').mockImplementation(mode => {
+    const runner = createRunner(mode)
+    const query = runner.query.bind(runner)
+    vi.spyOn(runner, 'query').mockImplementation(async (...args) => {
+      if (reached.mock.calls.length === 0 && matches(args[0])) {
+        reached(runner.isTransactionActive)
+        throw new Error('Injected saved-state read failure')
+      }
+      return query(...args)
+    })
+    return runner
+  })
+  return reached
+}
+
 describe('Business mutations and required audit history', () => {
   const appDb = useSqlIntegrationDatabase()
 
   beforeEach(() => {
     routeDatabase.get.mockImplementation(() => appDb())
+    routeDatabase.roles = ['Admin']
     resetAuthConfigForTests()
     vi.stubEnv('AUTH_OIDC_CLIENT_ID', 'sql-integration-client')
     vi.stubEnv('AUTH_OIDC_CLIENT_SECRET', 'sql-integration-client-secret')
@@ -507,6 +529,116 @@ describe('Business mutations and required audit history', () => {
     }
   })
 
+  it.each(['create', 'update'] as const)(
+    'rolls back AI safety term %s and history when the saved row cannot be read',
+    async operation => {
+      const db = appDb()
+      await db.query(`IF NOT EXISTS (SELECT 1 FROM ai_safety_rules WHERE rule_id = 'instruction_override')
+      INSERT INTO ai_safety_rules (rule_id, category, name_sv, name_en, pattern_kind, sort_order, created_at, updated_at)
+      VALUES ('instruction_override', 'test', 'Test', 'Test', 'paired_terms', 1, SYSUTCDATETIME(), SYSUTCDATETIME())`)
+      const request = (method: string, body: unknown) =>
+        new Request('https://example.test/api/admin/ai-safety-rules', {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            Origin: 'https://example.test',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify(body),
+        })
+      const input = {
+        direction: 'input',
+        ruleId: 'instruction_override',
+        termText: 'Read failure term',
+        termType: 'action',
+      }
+      let id = 0
+      if (operation === 'update') {
+        const response = await createSafetyTermRoute(request('POST', input))
+        expect(response.status).toBe(200)
+        id = (await response.json()).term.id
+      }
+      const original = await db.query(
+        'SELECT id, is_active FROM ai_safety_rule_terms',
+      )
+      const history = await successRows(db)
+      const output = vi.spyOn(console, 'info').mockImplementation(() => {})
+      const reached = failRead(db, sql =>
+        sql.includes('FROM [ai_safety_rule_terms] terms'),
+      )
+      const response =
+        operation === 'create'
+          ? await createSafetyTermRoute(request('POST', input))
+          : await updateSafetyTermRoute(request('PATCH', { isActive: false }), {
+              params: Promise.resolve({ id: String(id) }),
+            })
+      expect(response.status).toBe(500)
+      expect(reached).toHaveBeenCalledExactlyOnceWith(true)
+      expect(
+        await db.query('SELECT id, is_active FROM ai_safety_rule_terms'),
+      ).toEqual(original)
+      expect(await successRows(db)).toEqual(history)
+      expect(
+        parseSecurityAuditEvents(output).filter(
+          event => event.outcome === 'success',
+        ),
+      ).toEqual([])
+    },
+  )
+
+  it('rolls back HSA prefix changes and history when their saved usage cannot be read', async () => {
+    const db = appDb()
+    const prefixes = await listHsaIdPrefixesForAdmin(db)
+    const original = await db.query('SELECT * FROM hsa_id_prefixes')
+    const history = await successRows(db)
+    const output = vi.spyOn(console, 'info').mockImplementation(() => {})
+    let finalRead = false
+    const reached = failRead(db, sql => {
+      if (sql.includes('UPDATE hsa_id_prefixes SET is_default'))
+        finalRead = true
+      return (
+        finalRead &&
+        sql.includes('FROM [requirement_areas] WHERE [owner_hsa_id] LIKE')
+      )
+    })
+    const response = await updatePrefixesRoute(
+      new Request('https://example.test/api/admin/hsa-id-prefixes', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://example.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          prefixes: [
+            ...prefixes.map(({ id, prefix, label, isVisible, isDefault }) => ({
+              id,
+              prefix,
+              label,
+              isVisible,
+              isDefault,
+            })),
+            {
+              prefix: 'SE5560000099',
+              label: 'Read failure prefix',
+              isVisible: true,
+              isDefault: prefixes.length === 0,
+            },
+          ],
+        }),
+      }),
+    )
+    expect(response.status).toBe(500)
+    expect(reached).toHaveBeenCalledExactlyOnceWith(true)
+    expect(await db.query('SELECT * FROM hsa_id_prefixes')).toEqual(original)
+    expect(await successRows(db)).toEqual(history)
+    expect(
+      parseSecurityAuditEvents(output).filter(
+        event => event.outcome === 'success',
+      ),
+    ).toEqual([])
+  })
+
   it('does not announce settings success before its commit', async () => {
     const db = appDb()
     const original = await getApplicationSettings(db)
@@ -597,45 +729,125 @@ describe('Business mutations and required audit history', () => {
     },
   )
 
-  it('rolls back an authorized deviation decision when its history fails', async () => {
-    const db = appDb()
-    const area = await createArea(db)
-    const requirement = await createPublishedRequirement(
-      db,
-      area.id,
-      'Decision target',
-    )
-    const specification = await createSpecificationFixture(db, 'DECISION-AUDIT')
-    await linkRequirementsToSpecificationAtomically(db, specification.id, {
-      requirementIds: [requirement.requirementId],
-    })
-    const [item] = await db.query<Array<{ id: number }>>(
-      'SELECT id FROM requirements_specification_items',
-    )
-    const deviation = await createDeviation(db, {
-      specificationItemId: item.id,
-      motivation: 'Needs a decision',
-    })
-    await requestReview(db, deviation.id)
-    await failActionHistory(db)
-    await expect(
-      createRequirementsService(db).manageDeviation(
-        await makeRequestContext(),
-        {
-          operation: 'record_decision',
-          deviationId: deviation.id,
-          decision: 1,
-          decisionMotivation: 'Approved',
-        },
-      ),
-    ).rejects.toThrow()
-    expect(
-      await db.query('SELECT decision FROM deviations WHERE id = @0', [
-        deviation.id,
-      ]),
-    ).toEqual([{ decision: null }])
-    expect(await successRows(db)).toEqual([])
-  })
+  it.each(['service', 'rest'] as const)(
+    'rolls back an authorized %s deviation decision when its history fails',
+    async transport => {
+      const db = appDb()
+      const area = await createArea(db)
+      const requirement = await createPublishedRequirement(
+        db,
+        area.id,
+        'Decision target',
+      )
+      const specification = await createSpecificationFixture(
+        db,
+        'DECISION-AUDIT',
+      )
+      await linkRequirementsToSpecificationAtomically(db, specification.id, {
+        requirementIds: [requirement.requirementId],
+      })
+      const [item] = await db.query<Array<{ id: number }>>(
+        'SELECT id FROM requirements_specification_items',
+      )
+      const deviation = await createDeviation(db, {
+        specificationItemId: item.id,
+        motivation: 'Needs a decision',
+      })
+      await requestReview(db, deviation.id)
+      routeDatabase.roles = ['Reviewer']
+      const context = await makeRequestContext()
+      context.actor.roles = ['Reviewer']
+      const output = vi.spyOn(console, 'info').mockImplementation(() => {})
+      await failActionHistory(db)
+      const historyFailure = vi.fn()
+      const createRunner = db.createQueryRunner.bind(db)
+      vi.spyOn(db, 'createQueryRunner').mockImplementation(mode => {
+        const runner = createRunner(mode)
+        const query = runner.query.bind(runner)
+        vi.spyOn(runner, 'query').mockImplementation(async (...args) => {
+          try {
+            return await query(...args)
+          } catch (error) {
+            const parameters = Array.isArray(args[1]) ? args[1] : []
+            if (/INSERT INTO\s+\[?action_audit_events\]?/i.test(args[0]))
+              historyFailure(
+                error instanceof Error ? error.message : String(error),
+                parameters[5],
+                parameters[9],
+              )
+            throw error
+          }
+        })
+        return runner
+      })
+      const decide = () =>
+        decideDeviationRoute(
+          new Request(
+            `https://example.test/api/deviations/${deviation.id}/decision`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Origin: 'https://example.test',
+                'X-Requested-With': 'XMLHttpRequest',
+              },
+              body: JSON.stringify({
+                decision: 1,
+                decisionMotivation: 'Approved',
+              }),
+            },
+          ),
+          { params: Promise.resolve({ id: String(deviation.id) }) },
+        )
+      if (transport === 'service')
+        await expect(
+          createRequirementsService(db).manageDeviation(context, {
+            operation: 'record_decision',
+            deviationId: deviation.id,
+            decision: 1,
+            decisionMotivation: 'Approved',
+          }),
+        ).rejects.toThrow('Injected required history failure')
+      else {
+        const response = await decide()
+        expect(response.status).toBe(500)
+      }
+      expect(historyFailure).toHaveBeenCalledExactlyOnceWith(
+        expect.stringContaining('Injected required history failure'),
+        'deviation.decision',
+        'allowed',
+      )
+      expect(
+        await db.query('SELECT decision FROM deviations WHERE id = @0', [
+          deviation.id,
+        ]),
+      ).toEqual([{ decision: null }])
+      expect(await successRows(db)).toEqual([])
+      expect(
+        parseSecurityAuditEvents(output).filter(
+          event => event.outcome === 'success',
+        ),
+      ).toEqual([])
+      if (transport === 'rest') {
+        await db.query('DROP TRIGGER fail_mutation_action_history')
+        const response = await decide()
+        expect(response.status).toBe(200)
+        expect(await successRows(db)).toEqual([
+          { action: 'deviation.decision' },
+        ])
+        expect(
+          await db.query('SELECT decision FROM deviations WHERE id = @0', [
+            deviation.id,
+          ]),
+        ).toEqual([{ decision: 1 }])
+        expect(
+          parseSecurityAuditEvents(output).filter(
+            event => event.outcome === 'success',
+          ),
+        ).toHaveLength(1)
+      }
+    },
+  )
 
   it('rolls back requirement edits and transitions with their required history', async () => {
     const db = appDb()
@@ -661,10 +873,10 @@ describe('Business mutations and required audit history', () => {
           baseRevisionToken: version.revisionToken,
         },
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow('Injected required history failure')
     await expect(
       service.transitionRequirement(context, { id: detail.id, toStatusId: 2 }),
-    ).rejects.toThrow()
+    ).rejects.toThrow('Injected required history failure')
     expect(
       await db.query(
         'SELECT description, requirement_status_id AS status FROM requirement_versions WHERE id = @0',
@@ -699,14 +911,14 @@ describe('Business mutations and required audit history', () => {
         specificationId: specification.id,
         requirementIds: [published.requirementId],
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow('Injected required history failure')
     await expect(
       service.graduateSpecificationLocalRequirement(context, {
         specificationId: specification.id,
         localRequirementId: local.id,
         requirementAreaId: area.id,
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow('Injected required history failure')
     expect(
       await db.query('SELECT id FROM requirements_specification_items'),
     ).toEqual([])

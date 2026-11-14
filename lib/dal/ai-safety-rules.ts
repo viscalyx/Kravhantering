@@ -409,9 +409,7 @@ export async function createAiSafetyRuleTerm(
   const direction = assertTermDirection(values.direction)
   const termType = assertTermType(values.termType)
   const now = new Date().toISOString()
-  let insertedId: number | undefined
-
-  await db.transaction(async manager => {
+  const saved = await db.transaction(async manager => {
     const ruleDatabaseId = await getRuleDatabaseId(manager, values.ruleId)
     const existing = (await manager.query(
       `
@@ -471,17 +469,15 @@ export async function createAiSafetyRuleTerm(
         now,
       ],
     )) as { id: number | string }[]
-    insertedId = Number(rows[0]?.id)
+    const insertedId = Number(rows[0]?.id)
     if (!insertedId)
       throw new Error('Created AI safety term id was not returned.')
     await options.audit?.(manager, { id: insertedId })
+    return getAiSafetyRuleTermById(manager, insertedId)
   })
 
   clearAiSafetyRuleSetCache()
-  if (!insertedId) {
-    throw new Error('Created AI safety term id was not returned.')
-  }
-  return getAiSafetyRuleTermById(db, insertedId)
+  return saved
 }
 
 export async function updateAiSafetyRuleTerm(
@@ -508,7 +504,7 @@ export async function updateAiSafetyRuleTerm(
   if (values.direction !== undefined) assertTermDirection(values.direction)
   const now = new Date().toISOString()
 
-  await db.transaction(async manager => {
+  const saved = await db.transaction(async manager => {
     await assertTermExists(manager, termId)
     await manager.query(
       `
@@ -527,10 +523,11 @@ export async function updateAiSafetyRuleTerm(
       ],
     )
     await options.audit?.(manager, { id: termId })
+    return getAiSafetyRuleTermById(manager, termId)
   })
 
   clearAiSafetyRuleSetCache()
-  return getAiSafetyRuleTermById(db, termId)
+  return saved
 }
 
 export async function deleteCustomAiSafetyRuleTerm(
