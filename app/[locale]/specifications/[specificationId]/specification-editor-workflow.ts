@@ -567,7 +567,7 @@ export function createSpecificationEditorWorkflow({
   ): Promise<SpecificationListItem[]> => {
     publish({ bulkAction: { operation, phase: 'resolving' } })
     try {
-      if ([...itemRefs].some(ref => uncertainItemRefs.has(ref)))
+      if ([...itemRefs].some(ref => uncertainItemResults.has(ref)))
         throw new Error(inspectSavedStateMessage)
       const items = await resolveItemRefs(itemRefs)
       if (operation === 'remove-items') assertRemovalStatuses(items)
@@ -806,7 +806,17 @@ export function createSpecificationEditorWorkflow({
   }
 
   type SaveOutcome = 'succeeded' | 'failed' | 'uncertain'
-  const uncertainItemRefs = new Set<string>()
+  interface ItemSaveResult {
+    item: SpecificationListItem
+    outcome: SaveOutcome
+  }
+  const uncertainItemResults = new Map<string, ItemSaveResult>()
+
+  function getUncertainUniqueIds(): string[] {
+    return [...uncertainItemResults.values()].map(
+      result => result.item.uniqueId,
+    )
+  }
 
   function saveFailureOutcome(error: unknown): SaveOutcome {
     return error instanceof SpecificationEditorSaveError
@@ -816,7 +826,7 @@ export function createSpecificationEditorWorkflow({
 
   async function finishBulkAction(
     operation: SpecificationEditorBulkOperation,
-    results: Array<{ item: SpecificationListItem; outcome: SaveOutcome }>,
+    results: ItemSaveResult[],
     refresh: () => Promise<void>,
   ): Promise<SpecificationEditorBulkOutcome> {
     const outcome: SpecificationEditorBulkOutcome = {
@@ -827,21 +837,20 @@ export function createSpecificationEditorWorkflow({
       refreshFailed: false,
     }
     const nextSelected = new Set(state.selectedItemRefs)
-    results.forEach(({ item, outcome: result }) => {
+    results.forEach(record => {
+      const { item, outcome: result } = record
       if (result === 'succeeded') outcome.succeededUniqueIds.push(item.uniqueId)
       else if (result === 'failed') outcome.failedUniqueIds.push(item.uniqueId)
       else {
         outcome.uncertainUniqueIds.push(item.uniqueId)
-        if (item.itemRef) uncertainItemRefs.add(item.itemRef)
+        if (item.itemRef) uncertainItemResults.set(item.itemRef, record)
       }
       if (result !== 'failed' && item.itemRef) nextSelected.delete(item.itemRef)
     })
     outcome.succeededCount = outcome.succeededUniqueIds.length
     publish({
       selectedItemRefs: nextSelected,
-      inspectionRequiredUniqueIds: [...uncertainItemRefs].map(
-        ref => knownItemsByRef.get(ref)?.uniqueId ?? ref,
-      ),
+      inspectionRequiredUniqueIds: getUncertainUniqueIds(),
     })
     if (outcome.succeededCount > 0) {
       try {
@@ -891,12 +900,16 @@ export function createSpecificationEditorWorkflow({
   }
 
   const inspectSavedState = async (): Promise<boolean> => {
+    const inspectedResults = new Map(uncertainItemResults)
     if (!(await refreshItemsAndPackages())) return false
     try {
       await adapter.refreshSavedDetails()
-      await resolveItemRefs(uncertainItemRefs)
-      uncertainItemRefs.clear()
-      publish({ inspectionRequiredUniqueIds: [] })
+      await resolveItemRefs(new Set(inspectedResults.keys()))
+      for (const [itemRef, result] of inspectedResults) {
+        if (uncertainItemResults.get(itemRef) === result)
+          uncertainItemResults.delete(itemRef)
+      }
+      publish({ inspectionRequiredUniqueIds: getUncertainUniqueIds() })
       return true
     } catch {
       return false
@@ -1113,7 +1126,7 @@ export function createSpecificationEditorWorkflow({
       if (operation === 'assign-needs-reference' && needsReferenceReviewError)
         throw needsReferenceReviewError
       const refs = preparedBulkAction?.itemRefs ?? state.selectedItemRefs
-      if ([...refs].some(ref => uncertainItemRefs.has(ref)))
+      if ([...refs].some(ref => uncertainItemResults.has(ref)))
         throw new Error(inspectSavedStateMessage)
       const result = await action()
       preparedBulkAction = null

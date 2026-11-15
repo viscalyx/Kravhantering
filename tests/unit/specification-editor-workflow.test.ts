@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   createSpecificationEditorWorkflow,
   InvalidSpecificationEditorCursorError,
@@ -35,6 +35,82 @@ function item(
 }
 
 describe('specification editor workflow', () => {
+  it('retains uncertainty created for another item while inspection is pending', async () => {
+    const items = [item(1, 'lib:1', 'FIRST'), item(2, 'lib:2', 'SECOND')]
+    const details = Promise.withResolvers<void>()
+    const adapter = new InMemorySpecificationEditorAdapter({
+      items,
+      uncertainDeviationItemRefs: ['lib:1', 'lib:2'],
+      refreshSavedDetails: () => details.promise,
+    })
+    const refreshDetails = vi.spyOn(adapter, 'refreshSavedDetails')
+    const workflow = createSpecificationEditorWorkflow({
+      adapter,
+      initialItems: page(items),
+      initialPackageCatalog: emptyPackageCatalog(),
+      query: defaultQuery,
+    })
+    workflow.actions.selectLoadedItems(new Set([1]))
+    await workflow.actions.createDeviations('First uncertain save')
+    const inspection = workflow.actions.inspectSavedState()
+    await expect.poll(() => refreshDetails.mock.calls.length).toBe(1)
+    workflow.actions.selectLoadedItems(new Set([2]))
+    await workflow.actions.createDeviations('Later uncertain save')
+    details.resolve()
+    expect(await inspection).toBe(true)
+    expect(workflow.getState().inspectionRequiredUniqueIds).toEqual(['SECOND'])
+    await expect(
+      workflow.actions.prepareBulkAction(
+        'create-deviations',
+        new Set(['lib:2']),
+      ),
+    ).rejects.toThrow('Inspect saved state')
+    await expect(
+      workflow.actions.prepareBulkAction(
+        'create-deviations',
+        new Set(['lib:1']),
+      ),
+    ).resolves.toHaveLength(1)
+  })
+
+  it('keeps newer uncertainty for the same item when an older inspection completes', async () => {
+    const first = item(1, 'lib:1', 'FIRST')
+    const adapter = new InMemorySpecificationEditorAdapter({
+      items: [first],
+      uncertainDeviationItemRefs: ['lib:1'],
+    })
+    const workflow = createSpecificationEditorWorkflow({
+      adapter,
+      initialItems: page([first]),
+      initialPackageCatalog: emptyPackageCatalog(),
+      query: defaultQuery,
+    })
+    workflow.actions.selectLoadedItems(new Set([1]))
+    await workflow.actions.createDeviations('Initial uncertain save')
+    const savedItems = await adapter.resolveItems(['lib:1'])
+    const oldRead = Promise.withResolvers<typeof savedItems>()
+    const resolveItems = vi.spyOn(adapter, 'resolveItems')
+    resolveItems.mockImplementationOnce(() => oldRead.promise)
+    const olderInspection = workflow.actions.inspectSavedState()
+    await expect.poll(() => resolveItems.mock.calls.length).toBe(1)
+
+    expect(await workflow.actions.inspectSavedState()).toBe(true)
+    expect(workflow.getState().inspectionRequiredUniqueIds).toEqual([])
+    workflow.actions.selectLoadedItems(new Set([1]))
+    await workflow.actions.createDeviations(
+      'New uncertain save after inspection',
+    )
+    oldRead.resolve(savedItems)
+    expect(await olderInspection).toBe(true)
+    expect(workflow.getState().inspectionRequiredUniqueIds).toEqual(['FIRST'])
+    await expect(
+      workflow.actions.prepareBulkAction(
+        'create-deviations',
+        new Set(['lib:1']),
+      ),
+    ).rejects.toThrow('Inspect saved state')
+  })
+
   it('keeps uncertain work blocked until saved detail inspection succeeds', async () => {
     let rejectInspection: ((error: Error) => void) | undefined
     let allowInspection = false

@@ -8,6 +8,30 @@ import {
 import { toHttpErrorPayload } from '@/lib/requirements/service'
 
 describe('toHttpErrorPayload', () => {
+  it('preserves only the safe needs-reference conflict reason', () => {
+    const result = toHttpErrorPayload(
+      conflictError('Requirement applications changed during update', {
+        reason: 'needs_reference_conflict',
+        reviewedNeedsReferences: [{ itemRef: 'lib:1', needsReferenceId: 42 }],
+      }),
+    )
+    expect(result).toEqual({
+      status: 409,
+      body: {
+        code: 'conflict',
+        error: 'Requirement applications changed during update',
+        details: { reason: 'needs_reference_conflict' },
+      },
+    })
+    expect(
+      toHttpErrorPayload(
+        validationError('Invalid request', {
+          reason: 'needs_reference_conflict',
+        }),
+      ).body.details,
+    ).toBeUndefined()
+  })
+
   it('maps status-bearing auth errors to handled HTTP payloads', () => {
     const result = toHttpErrorPayload(
       new CsrfError('Cross-origin request rejected.'),
