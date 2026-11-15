@@ -23,7 +23,10 @@ applyTo: "{components/**/*.tsx,app/[locale]/requirements/**/*.tsx,app/api/**/*.t
 
 - Treat list order and default visibility as org-managed defaults, not hardcoded UI state.
 - Ensure the new column flows through `DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS` via the list-view registry.
-- Seed `requirement_list_column_defaults` in `typeorm/seed.mjs` with the new column id, `sort_order`, and `is_default_visible`.
+- Preserve saved column order and visibility. Append new columns in shipped
+  relative order with shipped visibility; use runtime defaults when rows
+  are absent. Preserve mandatory visibility and personal selections.
+- Follow `database-schema.instructions.md` for default ownership and upgrades.
 - If the column is persisted in the admin API payload, ensure `app/api/admin/requirement-columns/route.ts` still validates the full column set.
 - Reset actions must return to admin-managed defaults, not stale local defaults.
 

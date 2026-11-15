@@ -2769,10 +2769,22 @@ bilingual renaming and custom CRUD”.
 
 ### ADMIN-01: kolumnstandarder påverkar nya kravbiblioteksvyer
 
-**Steg:** Som Admin, ändra standardkolumn och öppna kravbiblioteket i ny
-session.
+**Automatiserat:** `tests/integration/admin/entrypoint.spec.ts` —
+`ADMIN-01: persists column changes through library reloads (desktop)`.
 
-**Förväntat resultat:** Ny vy följer Admin-inställningen.
+**Steg:** Som Admin, dölj Typ och visa Version i kravbibliotekets
+kolumnväljare. Öppna Administrationscenter, flytta Kategori före Kravområde,
+dölj Kategori som standard och spara. Öppna kravbiblioteket igen och ladda om.
+Öppna sedan kravbiblioteket i en webbläsarsession utan sparade kolumnval.
+
+**Förväntat resultat:** Den befintliga vyn behåller Kategori och Version
+synliga och Typ dold. Kategori ligger före Kravområde. Den nya sessionen
+visar Typ men döljer Kategori och Version. Krav-ID och Kravtext är alltid
+synliga. Administrationscenter behåller den sparade ordningen efter omladdning.
+
+**Testägarskap:** Fokuserade listvy- och SQL-tester verifierar uppgraderingar
+med flera nya kolumner, saknade inställningar, nya numeriska rad-ID:n och
+upprepad obligatorisk avstämning utan att sparade inställningar ändras.
 
 ### ADMIN-02: taxonomi- och statussidor sparar ändringar
 

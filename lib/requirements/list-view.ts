@@ -468,12 +468,7 @@ export const DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS =
 export function normalizeRequirementListColumnDefaults(
   values: readonly Partial<RequirementListColumnDefault>[] | null | undefined,
 ): RequirementListColumnDefault[] {
-  const byId = new Map<RequirementColumnId, RequirementListColumnDefault>(
-    DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS.map(column => [
-      column.columnId,
-      { ...column },
-    ]),
-  )
+  const byId = new Map<RequirementColumnId, RequirementListColumnDefault>()
 
   const seenColumnIds = new Set<RequirementColumnId>()
   const seenSortOrders = new Set<number>()
@@ -514,11 +509,11 @@ export function normalizeRequirementListColumnDefaults(
     (left, right) => left.sortOrder - right.sortOrder,
   )
 
-  if (normalized.length !== REQUIREMENT_COLUMN_ORDER.length) {
-    return DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS.map(column => ({
-      ...column,
-    }))
-  }
+  normalized.push(
+    ...DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS.filter(
+      column => !byId.has(column.columnId),
+    ),
+  )
 
   return normalized.map((column, index) => ({
     columnId: column.columnId,

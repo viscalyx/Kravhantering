@@ -9,6 +9,7 @@ import {
   updateRequirementListColumnDefaults,
 } from '@/lib/dal/ui-settings'
 import type { SqlServerDatabase } from '@/lib/db'
+import { getDefaultVisibleRequirementColumns } from '@/lib/requirements/list-view'
 
 function createSqlServerDb() {
   const query =
@@ -63,6 +64,58 @@ describe('ui-settings DAL', () => {
     await expect(getRequirementListColumnDefaults(db)).rejects.toThrow(
       /Failed to load requirement column defaults/,
     )
+  })
+
+  it('uses the shipped layout when no administrator rows exist', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValue([])
+
+    const columns = await getRequirementListColumnDefaults(db)
+
+    expect(columns.map(column => column.columnId)).toEqual([
+      'uniqueId',
+      'description',
+      'area',
+      'category',
+      'type',
+      'qualityCharacteristic',
+      'priorityLevel',
+      'status',
+      'verifiable',
+      'version',
+      'needsReference',
+      'specificationItemStatus',
+      'normReferences',
+      'requirementPackage',
+      'suggestionCount',
+    ])
+    expect(getDefaultVisibleRequirementColumns(columns)).toEqual([
+      'uniqueId',
+      'description',
+      'area',
+      'category',
+      'type',
+      'status',
+    ])
+  })
+
+  it('loads column identities independently of numeric IDs and appends missing columns', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValue([
+      { id: 903, columnId: 'status', sortOrder: 50, isDefaultVisible: 0 },
+      { id: 901, columnId: 'description', sortOrder: 70, isDefaultVisible: 0 },
+      { id: 902, columnId: 'uniqueId', sortOrder: 90, isDefaultVisible: 0 },
+    ])
+
+    const columns = await getRequirementListColumnDefaults(db)
+
+    expect(columns.slice(0, 5)).toEqual([
+      { columnId: 'status', sortOrder: 0, defaultVisible: false },
+      { columnId: 'description', sortOrder: 1, defaultVisible: true },
+      { columnId: 'uniqueId', sortOrder: 2, defaultVisible: true },
+      { columnId: 'area', sortOrder: 3, defaultVisible: true },
+      { columnId: 'category', sortOrder: 4, defaultVisible: true },
+    ])
   })
 
   it('createUiSettingsLoader caches column defaults between calls', async () => {

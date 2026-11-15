@@ -95,6 +95,12 @@ not create another action-log row.
 The `Columns` tab controls organization-wide default behavior for the
 requirements list.
 
+Saved order and visibility survive reconciliation and upgrades. Newly introduced
+columns append after saved columns, in shipped relative order and with shipped
+visibility. Mandatory columns remain visible. Personal visibility choices stay
+in effect until the user resets the view. When no settings have been saved, the
+application uses its shipped layout.
+
 Admin-managed column settings include:
 
 - default order
