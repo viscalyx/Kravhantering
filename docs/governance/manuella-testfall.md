@@ -2584,6 +2584,145 @@ fokuserade avdelaren flyttas fokus till vänster panels hopfällningsknapp.
 Slutförda gester med
 touch och penna ändrar bredderna på samma sätt som med mus.
 
+### SPEC-37: granska behovsreferenser igen efter konflikt
+
+**Syfte:** Skydda värdena som granskats före en gemensam tilldelning.
+
+**Användare:** `ada.admin` i två separata webbläsarsessioner.
+
+**Förutsättningar:** Ett redigerbart kravunderlag med tre inkluderade krav
+utan avsteg och två behovsreferenser. Markera alla tre i första sessionen.
+
+**Integrationstest:**
+[requirement-detail.spec.ts](../../tests/integration/specifications/requirement-detail.spec.ts),
+testfallet “SPEC-37: rejects needs-reference conflicts until renewed review”.
+
+**Steg:**
+
+1. Öppna **Tilldela behovsreferens** och välj den andra referensen.
+2. Ändra ett av kravens behovsreferens i den andra sessionen.
+3. Bekräfta tilldelningen i första sessionen och försök bekräfta en gång till.
+4. Stäng dialogen, öppna den igen, granska aktuellt urval och bekräfta.
+
+**Förväntat resultat:**
+
+- Konflikten kräver ny granskning. Ingen del av tilldelningen sparas.
+- Upprepad bekräftelse i samma dialog skickar inte en ny tilldelning.
+- Efter ny granskning sparas hela urvalet. Bekräftade krav-ID:n visas.
+
+### SPEC-38: behåll blandade avstegsresultat när vyn inte kan uppdateras
+
+**Syfte:** Skilja sparade, avvisade och osäkra avstegsansökningar.
+
+**Användare:** `ada.admin`.
+
+**Förutsättningar:** Tre inkluderade krav utan avsteg i ett redigerbart
+kravunderlag. Använd webbläsarens nätverksverktyg eller en testproxy för att
+avvisa den andra avstegsbegäran med 409, tappa svaret för den tredje och
+blockera efterföljande läsning av kravlistan. Playwright simulerar dessa fel.
+
+**Integrationstest:**
+[requirement-detail.spec.ts](../../tests/integration/specifications/requirement-detail.spec.ts),
+testfallet “SPEC-38: retains mixed deviation results when refresh fails”.
+
+**Steg:**
+
+1. Markera tre krav och begär avsteg med en gemensam motivering.
+2. Kontrollera resultatet när listans uppdatering misslyckas.
+3. Släpp blockeringen och välj **Läs in sparat tillstånd**.
+4. Öppna det osäkra kravets detalj och kontrollera dess avsteg innan du
+   överväger att markera det och upprepa åtgärden.
+
+**Förväntat resultat:**
+
+- Resultatet identifierar sparat, inte sparat och okänt resultat med krav-ID.
+- Endast det avvisade kravet är fortfarande markerat. Sparade avsteg upprepas
+  inte när tillståndet läses in.
+- Texten skiljer ett misslyckat sparande från en misslyckad uppdatering av
+  vyn och kräver kontroll av sparat tillstånd för osäkra resultat.
+
+### SPEC-39: behåll lyckade avsteg när vyn inte kan uppdateras
+
+**Syfte:** Visa bekräftade sparningar även när efterföljande läsning fallerar.
+
+**Användare:** `ada.admin`.
+
+**Förutsättningar:** Tre inkluderade krav utan avsteg. Blockera listans
+läsning efter att avstegsbegärandena har lyckats, enligt SPEC-38.
+
+**Integrationstest:**
+[requirement-detail.spec.ts](../../tests/integration/specifications/requirement-detail.spec.ts),
+testfallet “SPEC-39: retains all successful deviation results when refresh fails”.
+
+**Steg:**
+
+1. Markera kraven och begär avsteg med gemensam motivering.
+2. Kontrollera resultatet när listans uppdatering misslyckas.
+3. Släpp blockeringen och läs in sparat tillstånd.
+
+**Förväntat resultat:**
+
+- Alla tre krav-ID:n visas som sparade och är avmarkerade.
+- Vyns uppdateringsfel ändrar inte de bekräftade sparresultaten.
+- Inläsningen skapar inga ytterligare avsteg.
+
+### SPEC-40: avvisa hela borttagningen vid konflikt
+
+**Syfte:** Behålla hela urvalet när en gemensam borttagning avvisas.
+
+**Användare:** `ada.admin` i två separata webbläsarsessioner.
+
+**Förutsättningar:** Tre inkluderade krav i ett redigerbart kravunderlag.
+
+**Integrationstest:**
+[requirement-detail.spec.ts](../../tests/integration/specifications/requirement-detail.spec.ts),
+testfallet “SPEC-40: reports atomic removal rejection without partial success”.
+
+**Steg:**
+
+1. Markera kraven och öppna bekräftelsen för **Ta bort valda**.
+2. Ändra ett kravs användningsstatus i andra sessionen så att borttagning
+   inte längre tillåts. Bekräfta i första sessionen.
+3. Kontrollera resultatraden och läs in kravunderlaget igen.
+
+**Förväntat resultat:**
+
+- Alla tre krav finns kvar. Resultatet visar hela urvalet som inte sparat.
+- Inga krav rapporteras som borttagna; urvalet behålls för ny granskning.
+
+### SPEC-41: kontrollera sparat avsteg efter förlorat svar
+
+**Syfte:** Uppdatera öppna detaljer före upprepning av en osäker åtgärd.
+
+**Användare:** `petra.specresp` med ett eget redigerbart kravunderlag.
+
+**Förutsättningar:** Ett bibliotekskrav och ett lokalt krav utan aktiva avsteg.
+Använd en testproxy som släpper igenom sparandet men tappar svaret.
+
+**Integrationstest:**
+[agreements.spec.ts](../../tests/integration/specifications/agreements.spec.ts),
+testfallen “SPEC-41: inspect committed library deviation after lost bulk response”
+“SPEC-41: inspect committed local deviation after lost bulk response” och
+“SPEC-41: inspect committed local needs reference after lost bulk response”.
+
+**Steg:**
+
+1. Öppna kravets detalj och markera kravet.
+2. Begär avsteg för det markerade kravet. Tappa svaret efter sparandet.
+3. Kontrollera att resultatet är okänt och välj **Läs in sparat tillstånd**.
+4. Öppna detaljen igen och kontrollera den sparade motiveringen.
+5. Upprepa med den andra kravtypen.
+6. Gör samma kontroll vid tilldelning av en behovsreferens till ett lokalt
+   krav: tappa svaret, läs in och öppna detaljen igen.
+
+**Förväntat resultat:**
+
+- Inläsningen behåller valt avtal och uppdaterar dess avstegsuppgifter.
+- Den gamla detaljen stängs så att nästa öppning läser aktuella uppgifter.
+- Motiveringen och den sparade behovsreferensen visas efter respektive
+  inläsning. Ingen ny ändring skickas av inläsningen.
+- Om inläsningen misslyckas krävs fortfarande kontroll av sparat tillstånd.
+
 ## Avsteg
 
 ### DEV-01: skapa avstegsutkast

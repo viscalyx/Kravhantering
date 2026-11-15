@@ -1,6 +1,7 @@
 import {
   InvalidSpecificationEditorCursorError,
   type ResolvedSpecificationEditorItem,
+  SpecificationEditorSaveError,
   type SpecificationEditorWorkflowAdapter,
   type SpecificationEditorWorkflowItemPageRequest,
   type SpecificationEditorWorkflowPackagePageRequest,
@@ -18,36 +19,54 @@ const SPECIFICATION_ITEM_RESOLUTION_CHUNK_SIZE = 50
 interface HttpSpecificationEditorAdapterOptions {
   loadItemsFailedMessage: string
   loadRequirementPackagesFailedMessage: string
+  needsReferenceConflictMessage?: string
   refreshAvailableRequirements: () => Promise<unknown>
   refreshNeedsReferences: () => Promise<unknown>
   refreshNeedsReferencesFailedMessage: string
+  refreshSavedDetails: () => Promise<void>
   removalRequiresIncludedMessage?: string
   specificationId: number
 }
 
 export function createHttpSpecificationEditorAdapter({
+  needsReferenceConflictMessage = 'Needs references changed. Close this dialog and review the selection again.',
   removalRequiresIncludedMessage,
   loadItemsFailedMessage,
   loadRequirementPackagesFailedMessage,
   refreshAvailableRequirements,
   refreshNeedsReferences,
+  refreshSavedDetails,
   refreshNeedsReferencesFailedMessage,
   specificationId,
 }: HttpSpecificationEditorAdapterOptions): SpecificationEditorWorkflowAdapter {
   const specificationItemsPath = `/api/requirements-specifications/${specificationId}/items`
 
   return {
-    async assignNeedsReference(itemRefs, needsReferenceId, agreementId) {
+    refreshSavedDetails,
+    async assignNeedsReference(
+      itemRefs,
+      needsReferenceId,
+      reviewedNeedsReferences,
+      agreementId,
+    ) {
       const response = await apiFetch(specificationItemsPath, {
         body: JSON.stringify({
           itemRefs,
           needsReferenceId,
+          reviewedNeedsReferences,
           ...(agreementId === undefined ? {} : { agreementId }),
         }),
         headers: { 'Content-Type': 'application/json' },
         method: 'PATCH',
       })
-      await assertOk(response, loadItemsFailedMessage)
+      await assertSaveAccepted(
+        response,
+        loadItemsFailedMessage,
+        needsReferenceConflictMessage,
+      )
+      const receipt = await response.json()
+      if (receipt?.ok !== true || receipt.updatedCount !== itemRefs.length)
+        throw new Error('Uncertain assignment receipt')
     },
     async createDeviation(itemRef, motivation, agreementId) {
       const response = await apiFetch(
@@ -61,7 +80,14 @@ export function createHttpSpecificationEditorAdapter({
           method: 'POST',
         },
       )
-      await assertOk(response, loadItemsFailedMessage)
+      await assertSaveAccepted(response, loadItemsFailedMessage)
+      const receipt = await response.json()
+      if (
+        receipt?.ok !== true ||
+        !Number.isInteger(receipt.id) ||
+        receipt.id <= 0
+      )
+        throw new Error('Uncertain deviation receipt')
     },
     async loadItems(request) {
       return loadItemsPage(
@@ -104,9 +130,12 @@ export function createHttpSpecificationEditorAdapter({
           .json()
           .catch(() => null)) as { details?: { reason?: string } } | null
         if (body?.details?.reason === 'removal_requires_included')
-          throw new Error(removalRequiresIncludedMessage)
+          throw new SpecificationEditorSaveError(
+            removalRequiresIncludedMessage,
+            'failed',
+          )
       }
-      await assertOk(response, loadItemsFailedMessage)
+      await assertSaveAccepted(response, loadItemsFailedMessage)
       return (await response.json()) as { removedCount: number }
     },
     async resolveItems(itemRefs, agreementId) {
@@ -132,6 +161,28 @@ export function createHttpSpecificationEditorAdapter({
       await assertOk(response, loadItemsFailedMessage)
     },
   }
+}
+
+async function assertSaveAccepted(
+  response: Response,
+  fallbackMessage: string,
+  conflictMessage?: string,
+): Promise<void> {
+  if (response.ok) return
+  if (response.status === 409 && conflictMessage) {
+    const body = await response
+      .clone()
+      .json()
+      .catch(() => null)
+    if (body?.details?.reason === 'needs_reference_conflict') {
+      throw new SpecificationEditorSaveError(conflictMessage, 'conflict')
+    }
+  }
+  if ([400, 401, 403, 404, 409, 413, 422, 429].includes(response.status)) {
+    throw new SpecificationEditorSaveError(fallbackMessage, 'failed')
+  }
+  // Server and connection failures do not prove that the transaction rolled back.
+  throw new Error(fallbackMessage)
 }
 
 async function loadItemsPage(

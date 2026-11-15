@@ -3,11 +3,13 @@ import type {
   SpecificationEditorWorkflowAdapter,
   SpecificationEditorWorkflowItemPageRequest,
 } from '@/app/[locale]/specifications/[specificationId]/specification-editor-workflow'
+import { SpecificationEditorSaveError } from '@/app/[locale]/specifications/[specificationId]/specification-editor-workflow'
 import type {
   SpecificationItemsPageData,
   SpecificationListItem,
   SpecificationRequirementPackageCatalogPageData,
 } from '@/lib/specifications/preload-types'
+import type { ReviewedNeedsReference } from '@/lib/specifications/reviewed-needs-reference'
 
 interface InMemorySpecificationEditorAdapterOptions {
   failedDeviationItemRefs?: string[]
@@ -18,7 +20,9 @@ interface InMemorySpecificationEditorAdapterOptions {
     request: SpecificationEditorWorkflowItemPageRequest,
   ) => Promise<SpecificationItemsPageData>
   loadRequirementPackages?: SpecificationEditorWorkflowAdapter['loadRequirementPackages']
+  refreshSavedDetails?: () => Promise<void>
   resolveItems?: SpecificationEditorWorkflowAdapter['resolveItems']
+  uncertainDeviationItemRefs?: string[]
 }
 
 export class InMemorySpecificationEditorAdapter
@@ -34,6 +38,7 @@ export class InMemorySpecificationEditorAdapter
   availableRequirementsRefreshes = 0
   needsReferencesRefreshes = 0
 
+  private readonly uncertainDeviationItemRefs: Set<string>
   private readonly failedDeviationItemRefs: Set<string>
   private readonly failedNeedsReferenceAssignment?: string
   private readonly failedRemovalItemRefs: Set<string>
@@ -41,8 +46,13 @@ export class InMemorySpecificationEditorAdapter
   private readonly loadItemsOverride?: InMemorySpecificationEditorAdapterOptions['loadItems']
   private readonly loadRequirementPackagesOverride?: InMemorySpecificationEditorAdapterOptions['loadRequirementPackages']
   private readonly resolveItemsOverride?: InMemorySpecificationEditorAdapterOptions['resolveItems']
+  private readonly refreshSavedDetailsOverride?: () => Promise<void>
 
   constructor(options: InMemorySpecificationEditorAdapterOptions = {}) {
+    this.refreshSavedDetailsOverride = options.refreshSavedDetails
+    this.uncertainDeviationItemRefs = new Set(
+      options.uncertainDeviationItemRefs ?? [],
+    )
     this.failedDeviationItemRefs = new Set(
       options.failedDeviationItemRefs ?? [],
     )
@@ -57,18 +67,39 @@ export class InMemorySpecificationEditorAdapter
   async createDeviation(itemRef: string, motivation: string): Promise<void> {
     this.deviationRequests.push({ itemRef, motivation })
     if (this.failedDeviationItemRefs.has(itemRef)) {
-      throw new Error(itemRef)
+      throw new SpecificationEditorSaveError(itemRef, 'failed')
     }
+    if (this.uncertainDeviationItemRefs.has(itemRef))
+      throw new Error('Response lost')
   }
 
   async assignNeedsReference(
     itemRefs: string[],
     needsReferenceId: number | null,
+    reviewedNeedsReferences: ReviewedNeedsReference[],
   ): Promise<void> {
     this.needsReferenceAssignments.push({ itemRefs, needsReferenceId })
     if (this.failedNeedsReferenceAssignment) {
-      throw new Error(this.failedNeedsReferenceAssignment)
+      throw new SpecificationEditorSaveError(
+        this.failedNeedsReferenceAssignment,
+        'failed',
+      )
     }
+    if (
+      reviewedNeedsReferences.some(reviewed => {
+        const current = this.items.find(
+          item => item.itemRef === reviewed.itemRef,
+        )
+        return (
+          !current ||
+          (current.needsReferenceId ?? null) !== reviewed.needsReferenceId
+        )
+      })
+    )
+      throw new SpecificationEditorSaveError(
+        'Needs references changed. Review the selection again.',
+        'conflict',
+      )
     this.items = this.items.map(item =>
       item.itemRef && itemRefs.includes(item.itemRef)
         ? { ...item, needsReferenceId }
@@ -131,9 +162,9 @@ export class InMemorySpecificationEditorAdapter
   }
 
   async removeItems(itemRefs: string[]): Promise<{ removedCount: number }> {
-    const removedRefs = new Set(
-      itemRefs.filter(itemRef => !this.failedRemovalItemRefs.has(itemRef)),
-    )
+    if (itemRefs.some(ref => this.failedRemovalItemRefs.has(ref)))
+      throw new SpecificationEditorSaveError('Removal rejected', 'failed')
+    const removedRefs = new Set(itemRefs)
     this.items = this.items.filter(
       item => !item.itemRef || !removedRefs.has(item.itemRef),
     )
@@ -146,6 +177,10 @@ export class InMemorySpecificationEditorAdapter
 
   async refreshNeedsReferences(): Promise<void> {
     this.needsReferencesRefreshes += 1
+  }
+
+  async refreshSavedDetails(): Promise<void> {
+    await this.refreshSavedDetailsOverride?.()
   }
 
   async updateItem(

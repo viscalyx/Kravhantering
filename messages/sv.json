@@ -850,7 +850,6 @@
     "clearNeedsReferenceAction": "Rensa behovsreferenser",
     "clearNeedsReferenceTitle": "Rensa länkar till behovsreferenser",
     "clearNeedsReferenceConfirm": "Rensa länkarna till behovsreferenser för krav-ID:n: {ids}?",
-    "bulkNeedsReferencePartialFail": "Ändringen av behovsreferenser misslyckades för krav-ID:n: {ids}. De kraven är fortfarande markerade.",
     "affectedRequirementIds": "Berörda krav-ID:n",
     "selectionStatus": "{total, plural, one {# krav markerat} other {# krav markerade}}; {hidden, plural, =0 {inga dolda} one {# är inte inläst} other {# är inte inlästa}}.",
     "selectionActionLimitExceeded": "{total, plural, one {# krav markerat} other {# krav markerade}}; {hidden, plural, =0 {inga dolda} one {# är inte inläst} other {# är inte inlästa}}. Gemensamma åtgärder stöder högst {limit} krav. Avmarkera exakt {excess, plural, one {# krav} other {# krav}} för att fortsätta.",
@@ -888,7 +887,6 @@
     "removeSpecificationLocalConfirm": "Radera {count, plural, one {1 unikt krav} other {# unika krav}} permanent från detta kravunderlag? Krav-ID:n: {ids}. De kan inte återskapas.",
     "removeMixedConfirmTitle": "Ta bort valda objekt",
     "removeMixedConfirm": "Koppla bort {libraryCount, plural, one {1 bibliotekskrav} other {# bibliotekskrav}} ({libraryIds}) och radera {specificationLocalCount, plural, one {1 unikt krav} other {# unika krav}} ({specificationLocalIds}) permanent? Raderade unika krav kan inte återskapas.",
-    "removePartialFail": "Borttagningen misslyckades för krav-ID:n: {ids}. De kraven är fortfarande markerade.",
     "unlinkLibraryRequirementAction": "Ta bort från underlaget",
     "noItems": "Det finns inga krav kopplade till detta underlag.",
     "specificationNotFound": "Kravunderlaget hittades inte.",
@@ -981,7 +979,15 @@
     },
     "actions": "Åtgärder",
     "filterHelp": "Hjälp: filtrera på namn",
-    "filterHelpText": "Skriv hela eller delar av kravunderlagets namn. Sökningen gäller alla tre vyer."
+    "filterHelpText": "Skriv hela eller delar av kravunderlagets namn. Sökningen gäller alla tre vyer.",
+    "bulkNeedsReferenceConflict": "En vald behovsreferens har ändrats. Stäng dialogen och granska urvalet igen. Inga behovsreferenser har tilldelats.",
+    "bulkSaveResults": "Resultat av sparandet",
+    "bulkSaveSucceeded": "Sparade: {ids}. Dessa krav är inte längre markerade.",
+    "bulkSaveFailed": "Inte sparade: {ids}. Granska dessa krav innan du försöker igen.",
+    "bulkSaveUncertain": "Okänt resultat: {ids}. Läs in och kontrollera deras sparade tillstånd innan du markerar dem igen. Upprepa inte åtgärden förrän du vet om den sparades.",
+    "bulkSaveRefreshFailed": "Sparade resultat ovan är bekräftade, men vyn kunde inte uppdateras. Läs in det sparade tillståndet; upprepa inte bekräftade sparningar.",
+    "bulkInspectSavedState": "Läs in sparat tillstånd",
+    "bulkInspectRequired": "Läs in och kontrollera det sparade tillståndet innan du upprepar en åtgärd med okänt resultat."
   },
   "deviation": {
     "title": "Avsteg",
@@ -1043,7 +1049,6 @@
     "priorityLevel": "Prioritet",
     "priorityLevels": "Prioriteter",
     "affectedRequirementIds": "Berörda krav-ID:n",
-    "bulkDeviationPartialFail": "Avstegsförfrågningar misslyckades för krav-ID:n: {ids}. De kraven är fortfarande markerade.",
     "statusCancelled": "Avbrutet",
     "manageApproval": "Hantera godkännande och förnyelse",
     "manageCancellation": "Avbryt i kravunderlaget",
@@ -3273,6 +3278,10 @@
       "deviations": {
         "heading": "Avsteg",
         "body": "Avsteg visas ovanför kravet med egna åtgärder innanför ramen. Begär ett avsteg och Ta bort krav finns i kravets åtgärdskolumn. Utkast och Granskning begärd är olika tillstånd. Avsluta utan beslut kräver en orsak och bevarar ärendet som Avbrutet. Registrerande information och Tidigare avsteg kan fällas ut. Fel visas i dialogen med inmatningen kvar. Avtalslåsning och behörighet styr vilka åtgärder som är tillgängliga."
+      },
+      "bulkResults": {
+        "heading": "Gemensamma åtgärder och sparresultat",
+        "body": "Tilldelning av behovsreferenser och borttagning gäller hela urvalet tillsammans. Om en granskad behovsreferens ändras ska du stänga dialogen och granska urvalet igen. Avsteg sparas var för sig. Sparresultatet identifierar bekräftade, avvisade och osäkra åtgärder även när vyn inte kan uppdateras. Läs in och kontrollera sparat tillstånd innan du upprepar osäkra åtgärder; upprepa aldrig bekräftade sparningar."
       }
     },
     "specificationRequirementSelection": {

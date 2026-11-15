@@ -665,6 +665,10 @@ describe('requirements-specifications/[id]/items route', () => {
       {
         body: JSON.stringify({
           itemRefs: ['lib:31', 'local:41'],
+          reviewedNeedsReferences: [
+            { itemRef: 'lib:31', needsReferenceId: null },
+            { itemRef: 'local:41', needsReferenceId: 3 },
+          ],
           needsReferenceId: 7,
         }),
         headers: { 'Content-Type': 'application/json' },
@@ -684,11 +688,50 @@ describe('requirements-specifications/[id]/items route', () => {
       {
         fields: { needsReferenceId: 7 },
         itemRefs: ['lib:31', 'local:41'],
+        reviewedNeedsReferences: [
+          { itemRef: 'lib:31', needsReferenceId: null },
+          { itemRef: 'local:41', needsReferenceId: 3 },
+        ],
         operation: 'update',
         specificationId: 5,
       },
     )
   })
+
+  it.each([
+    undefined,
+    [],
+    [{ itemRef: 'lib:31', needsReferenceId: null }],
+    [
+      { itemRef: 'lib:31', needsReferenceId: null },
+      { itemRef: 'lib:31', needsReferenceId: 7 },
+    ],
+    [
+      { itemRef: 'lib:31', needsReferenceId: null },
+      { itemRef: 'local:99', needsReferenceId: 7 },
+    ],
+  ])(
+    'requires a complete, unique reviewed baseline before any write: %j',
+    async reviewedNeedsReferences => {
+      const response = await PATCH(
+        new NextRequest(
+          'http://localhost/api/requirements-specifications/5/items',
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              itemRefs: ['lib:31', 'local:41'],
+              needsReferenceId: 7,
+              reviewedNeedsReferences,
+            }),
+          },
+        ),
+        makeParams('5'),
+      )
+      expect(response.status).toBe(400)
+      expect(mocks.mutateRequirementApplications).not.toHaveBeenCalled()
+    },
+  )
 
   it('returns an update-specific JSON 500 error for unexpected failures', async () => {
     const consoleErrorSpy = vi
@@ -706,6 +749,9 @@ describe('requirements-specifications/[id]/items route', () => {
             body: JSON.stringify({
               itemRefs: ['lib:31'],
               needsReferenceId: 7,
+              reviewedNeedsReferences: [
+                { itemRef: 'lib:31', needsReferenceId: null },
+              ],
             }),
             headers: { 'Content-Type': 'application/json' },
             method: 'PATCH',
@@ -736,6 +782,10 @@ describe('requirements-specifications/[id]/items route', () => {
         {
           body: JSON.stringify({
             itemRefs: ['lib:31', 'local:41'],
+            reviewedNeedsReferences: [
+              { itemRef: 'lib:31', needsReferenceId: null },
+              { itemRef: 'local:41', needsReferenceId: 3 },
+            ],
             needsReferenceId: 7,
           }),
           headers: { 'Content-Type': 'application/json' },
@@ -920,6 +970,9 @@ describe('requirements-specifications/[id]/items route', () => {
           body: JSON.stringify({
             itemRefs: ['lib:1'],
             needsReferenceId: null,
+            reviewedNeedsReferences: [
+              { itemRef: 'lib:1', needsReferenceId: null },
+            ],
           }),
           headers: { 'Content-Type': 'application/json' },
           method: 'PATCH',

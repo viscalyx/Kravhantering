@@ -1200,9 +1200,145 @@ async function deviationFixture(
   return { data, uniqueId, item, read, createEndpoint }
 }
 
+test('SPEC-41: inspect committed local needs reference after lost bulk response', async ({
+  page,
+}, testInfo) => {
+  const owner = await newRoleContext(testInfo, 'specificationResponsible')
+  try {
+    const { data, uniqueId } = await deviationFixture(owner, 'local')
+    const referenceResponse = await owner.post(
+      `/api/requirements-specifications/${data.id}/needs-references`,
+      { data: { text: 'Confirmed inspection reference' } },
+    )
+    await expectOk(referenceResponse, 'create inspection reference')
+    const { needsReference } = await referenceResponse.json()
+    await test.step('Open the loaded agreement and select its requirement', async () => {
+      await page.goto(`/en/specifications/${data.id}`)
+      await page
+        .getByRole('button', { name: 'Expand header', exact: true })
+        .click()
+      await expect(
+        page.getByRole('button', { name: 'Register agreement', exact: true }),
+      ).toBeEnabled()
+      await expand(page, uniqueId)
+      await page
+        .getByRole('checkbox', { name: `Select ${uniqueId}`, exact: true })
+        .check()
+    })
+    let writes = 0
+    await page.route(
+      `**/api/requirements-specifications/${data.id}/items`,
+      async route => {
+        if (route.request().method() !== 'PATCH') return route.continue()
+        writes += 1
+        const response = await route.fetch()
+        expect(response.ok()).toBe(true)
+        await route.abort('failed')
+      },
+    )
+    await page
+      .getByRole('button', { name: 'Assign needs reference', exact: true })
+      .click()
+    const dialog = page.getByRole('dialog', {
+      name: 'Assign needs reference to selected requirements',
+      exact: true,
+    })
+    await dialog
+      .getByLabel('Needs reference', { exact: true })
+      .selectOption(String(needsReference.id))
+    await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Save results' }),
+    ).toContainText(`Outcome unknown: ${uniqueId}`)
+    await page
+      .getByRole('button', { name: 'Reload saved state', exact: true })
+      .click()
+    await expect(
+      page.getByRole('button', { name: 'Reload saved state', exact: true }),
+    ).toHaveCount(0)
+    await expand(page, uniqueId)
+    await expect(
+      page
+        .locator('[data-expanded-detail-cell="true"]')
+        .getByText('Confirmed inspection reference', { exact: true }),
+    ).toHaveCount(1)
+    expect(writes).toBe(1)
+  } finally {
+    await owner.dispose()
+  }
+})
+
 // Keep each workflow independent so their combined navigation and mutation
 // time does not exhaust a single test's timeout on CI.
 for (const kind of ['library', 'local'] as const) {
+  test(`SPEC-41: inspect committed ${kind} deviation after lost bulk response`, async ({
+    page,
+  }, testInfo) => {
+    const owner = await newRoleContext(testInfo, 'specificationResponsible')
+    try {
+      const { data, uniqueId, item, read, createEndpoint } =
+        await deviationFixture(owner, kind)
+      await test.step('Open the loaded agreement and select its requirement', async () => {
+        await page.goto(`/en/specifications/${data.id}`)
+        await page
+          .getByRole('button', { name: 'Expand header', exact: true })
+          .click()
+        await expect(
+          page.getByRole('button', { name: 'Register agreement', exact: true }),
+        ).toBeEnabled()
+        await expand(page, uniqueId)
+        await page
+          .getByRole('checkbox', { name: `Select ${uniqueId}`, exact: true })
+          .check()
+      })
+      let writes = 0
+      await page.route(`**${createEndpoint}`, async route => {
+        if (route.request().method() !== 'POST') return route.continue()
+        writes += 1
+        const response = await route.fetch()
+        expect(response.ok()).toBe(true)
+        await route.abort('failed')
+      })
+      await page
+        .getByRole('button', {
+          name: 'Request deviation for selected (1)',
+          exact: true,
+        })
+        .click()
+      const dialog = page.getByRole('dialog', {
+        name: 'Request a deviation',
+        exact: true,
+      })
+      await dialog
+        .getByRole('textbox', { name: /^Motivation/ })
+        .fill('Committed before response loss')
+      await dialog
+        .getByRole('button', { name: 'Register deviation', exact: true })
+        .click()
+      await expect(
+        page.getByRole('status').filter({ hasText: 'Save results' }),
+      ).toContainText(`Outcome unknown: ${uniqueId}`)
+      expect(
+        (await read()).deviations.filter(
+          deviation => deviation.itemRef === item.itemRef,
+        ),
+      ).toHaveLength(1)
+      await page
+        .getByRole('button', { name: 'Reload saved state', exact: true })
+        .click()
+      await expect(
+        page.getByRole('button', { name: 'Reload saved state', exact: true }),
+      ).toHaveCount(0)
+      await expand(page, uniqueId)
+      await expect(
+        page.getByText('Committed before response loss', { exact: true }),
+      ).toHaveCount(1)
+      expect(writes).toBe(1)
+    } finally {
+      await owner.dispose()
+    }
+  })
+
   test(`DEV-08 DEV-09: ${kind} deviation conflict recovery, editing and review`, async ({
     page,
     browser,

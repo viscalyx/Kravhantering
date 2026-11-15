@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   createDeviation,
   recordDecision,
@@ -6,6 +6,7 @@ import {
 } from '@/lib/dal/deviations'
 import {
   createSpecificationLocalRequirement,
+  createSpecificationNeedsReference,
   deleteSpecificationLocalRequirement,
   linkRequirementsToSpecificationAtomically,
 } from '@/lib/dal/requirements-specifications'
@@ -84,6 +85,191 @@ async function removalAuditRows(
 
 describe('requirement application mutation workflow', () => {
   const appDb = useSqlIntegrationDatabase()
+
+  it('clears matching non-null reviewed needs references for both item kinds', async () => {
+    const db = appDb()
+    const { libraryItemId, specification } = await seedLinkedLibraryItem(
+      db,
+      'SQL-BULK-CLEAR',
+      'Reviewed reference clearing',
+    )
+    const reference = await createSpecificationNeedsReference(
+      db,
+      specification.id,
+      { text: 'Reviewed' },
+    )
+    const local = await createSpecificationLocalRequirement(
+      db,
+      specification.id,
+      {
+        description: 'Reviewed local reference',
+        needsReferenceId: reference.id,
+      },
+    )
+    await db.query(
+      'UPDATE requirements_specification_items SET needs_reference_id = @0 WHERE id = @1',
+      [reference.id, libraryItemId],
+    )
+    const reviewedNeedsReferences = [
+      { itemRef: `lib:${libraryItemId}`, needsReferenceId: reference.id },
+      { itemRef: local.itemRef, needsReferenceId: reference.id },
+    ]
+    await expect(
+      createRequirementsService(db).mutateRequirementApplications(
+        await makeRequestContext(),
+        {
+          fields: { needsReferenceId: null },
+          itemRefs: reviewedNeedsReferences.map(item => item.itemRef),
+          reviewedNeedsReferences,
+          operation: 'update',
+          specificationId: specification.id,
+        },
+      ),
+    ).resolves.toEqual({ operation: 'update', updatedCount: 2 })
+    await expect(
+      db.query(
+        'SELECT needs_reference_id AS id FROM requirements_specification_items WHERE id = @0 UNION ALL SELECT needs_reference_id AS id FROM specification_local_requirements WHERE id = @1',
+        [libraryItemId, local.id],
+      ),
+    ).resolves.toEqual([{ id: null }, { id: null }])
+  })
+
+  it.each([
+    'unchanged',
+    'unrelated edit',
+    'changed local reference',
+    'changed library reference',
+    'concurrent reference edit',
+  ])('compares reviewed needs references atomically: %s', async scenario => {
+    const db = appDb()
+    const { libraryItemId, specification } = await seedLinkedLibraryItem(
+      db,
+      'SQL-BULK-BASELINE',
+      'Reviewed library requirement',
+    )
+    const local = await createSpecificationLocalRequirement(
+      db,
+      specification.id,
+      { description: 'Reviewed local requirement' },
+    )
+    const target = await createSpecificationNeedsReference(
+      db,
+      specification.id,
+      { text: 'Target' },
+    )
+    const intervening = await createSpecificationNeedsReference(
+      db,
+      specification.id,
+      { text: 'Intervening' },
+    )
+    const reviewedNeedsReferences = [
+      { itemRef: `lib:${libraryItemId}`, needsReferenceId: null },
+      { itemRef: `local:${local.id}`, needsReferenceId: null },
+    ]
+    if (scenario === 'unrelated edit')
+      await db.query(
+        'UPDATE specification_local_requirements SET note = @0 WHERE id = @1',
+        ['Keep this note', local.id],
+      )
+    if (scenario === 'changed local reference')
+      await db.query(
+        'UPDATE specification_local_requirements SET needs_reference_id = @0 WHERE id = @1',
+        [intervening.id, local.id],
+      )
+    if (scenario === 'changed library reference')
+      await db.query(
+        'UPDATE requirements_specification_items SET needs_reference_id = @0 WHERE id = @1',
+        [intervening.id, libraryItemId],
+      )
+    let competingWrite = false
+    if (scenario === 'concurrent reference edit') {
+      const createRunner = db.createQueryRunner.bind(db)
+      vi.spyOn(db, 'createQueryRunner').mockImplementation(mode => {
+        const runner = createRunner(mode)
+        const query = runner.query.bind(runner)
+        vi.spyOn(runner, 'query').mockImplementation(async (...args) => {
+          if (
+            !competingWrite &&
+            args[0].includes('UPDATE specification_local_requirements')
+          ) {
+            competingWrite = true
+            // A second connection commits after the final eligibility read, before the conditional update.
+            await db.query(
+              'UPDATE specification_local_requirements SET needs_reference_id = @0 WHERE id = @1',
+              [intervening.id, local.id],
+            )
+          }
+          return query(...args)
+        })
+        return runner
+      })
+    }
+    const conflicting = scenario.includes('reference')
+    try {
+      const mutation = createRequirementsService(
+        db,
+      ).mutateRequirementApplications(await makeRequestContext(), {
+        fields: { needsReferenceId: target.id },
+        reviewedNeedsReferences,
+        itemRefs: reviewedNeedsReferences.map(item => item.itemRef),
+        operation: 'update',
+        specificationId: specification.id,
+      })
+      if (conflicting)
+        await expect(mutation).rejects.toMatchObject({
+          code: 'conflict',
+          details: { reason: 'needs_reference_conflict' },
+        })
+      else
+        await expect(mutation).resolves.toEqual({
+          operation: 'update',
+          updatedCount: 2,
+        })
+      expect(
+        await db.query(
+          'SELECT needs_reference_id AS needsReferenceId FROM requirements_specification_items WHERE id = @0',
+          [libraryItemId],
+        ),
+      ).toEqual([
+        {
+          needsReferenceId:
+            scenario === 'changed library reference'
+              ? intervening.id
+              : conflicting
+                ? null
+                : target.id,
+        },
+      ])
+      expect(
+        await db.query(
+          'SELECT needs_reference_id AS needsReferenceId, note FROM specification_local_requirements WHERE id = @0',
+          [local.id],
+        ),
+      ).toEqual([
+        {
+          needsReferenceId: conflicting
+            ? scenario === 'changed library reference'
+              ? null
+              : intervening.id
+            : target.id,
+          note: scenario === 'unrelated edit' ? 'Keep this note' : null,
+        },
+      ])
+      expect(
+        await db.query(
+          'SELECT COUNT(*) AS count FROM action_audit_events WHERE action = @0 AND target_id = @1',
+          [
+            'specification.requirement_applications.updated',
+            String(specification.id),
+          ],
+        ),
+      ).toEqual([{ count: conflicting ? 0 : 1 }])
+      if (scenario === 'concurrent reference edit')
+        expect(competingWrite).toBe(true)
+    } finally {
+      vi.restoreAllMocks()
+    }
+  })
 
   it.each(
     [2, 3, 4, 5, 6].flatMap(statusId =>

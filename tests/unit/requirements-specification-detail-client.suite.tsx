@@ -1209,8 +1209,10 @@ describe('RequirementsSpecificationDetailClient', () => {
           }
           return Promise.resolve(
             failedDeviationItemRefs.has(itemRef)
-              ? { json: async () => ({ error: 'Failed' }), ok: false }
-              : okJson({ deviation: { id: 1 }, ok: true }),
+              ? new Response(JSON.stringify({ error: 'Failed' }), {
+                  status: 409,
+                })
+              : okJson({ id: 1, ok: true }),
           )
         }
 
@@ -1300,10 +1302,11 @@ describe('RequirementsSpecificationDetailClient', () => {
           }
           if (bulkNeedsReferencePatchResponse) {
             const response = bulkNeedsReferencePatchResponse
-            return Promise.resolve({
-              json: async () => response.body,
-              ok: response.ok,
-            })
+            return Promise.resolve(
+              new Response(JSON.stringify(response.body), {
+                status: response.ok ? 200 : 409,
+              }),
+            )
           }
           const body = JSON.parse(String(init?.body)) as {
             itemRefs: string[]
@@ -1314,7 +1317,9 @@ describe('RequirementsSpecificationDetailClient', () => {
               ? { ...item, needsReferenceId: body.needsReferenceId }
               : item,
           )
-          return Promise.resolve(okJson({ ok: true, updatedCount: 1 }))
+          return Promise.resolve(
+            okJson({ ok: true, updatedCount: body.itemRefs.length }),
+          )
         }
 
         if (url === specificationApiPath('/items') && method === 'DELETE') {
@@ -1325,7 +1330,9 @@ describe('RequirementsSpecificationDetailClient', () => {
           specificationItemsGetItems = specificationItemsGetItems.filter(
             item => !item.itemRef || !body.itemRefs.includes(item.itemRef),
           )
-          return Promise.resolve(okJson({ ok: true, removedCount: 1 }))
+          return Promise.resolve(
+            okJson({ ok: true, removedCount: body.itemRefs.length }),
+          )
         }
 
         if (
@@ -1350,6 +1357,7 @@ describe('RequirementsSpecificationDetailClient', () => {
                   itemRef: item.itemRef,
                   kind: item.kind,
                   needsReference: item.needsReference ?? null,
+                  needsReferenceId: item.needsReferenceId ?? null,
                   uniqueId: item.uniqueId,
                 })),
             }),

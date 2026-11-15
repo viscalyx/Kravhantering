@@ -372,14 +372,29 @@ klicka på den för att starta avstegsprocessen.
 ### Ta bort krav ur kravunderlaget
 
 Bibliotekskrav och lokala krav kan bara tas bort med användningsstatus
-**Inkluderad**. Regeln gäller enskilda krav och markerade krav, både utan avtal
-och i redigerbara avtalsutkast. Alla markerade krav måste vara Inkluderad.
-Skrivbehörighet, avtalslåsning och avstegsregler gäller samtidigt. Ett väntande
-avsteg måste avslutas först; ett gällande godkännande kräver ansvarigs beslut om
-avstegsavslut. Den inaktiverade åtgärden förklarar hindret vid hovring eller
-tangentbordsfokus. Borttagningen sparas, men själva bibliotekskravet finns kvar
-i kravbiblioteket. Om status ändras i en annan session kan servern avvisa
-borttagningen; ladda då om och kontrollera statusen.
+**Inkluderad**. Regeln gäller enskilda krav och markerade krav, både utan
+avtal och i redigerbara avtalsutkast. Alla markerade krav måste vara
+Inkluderad. Skrivbehörighet, avtalslåsning och avstegsregler gäller samtidigt.
+Ett väntande avsteg måste avslutas först; ett gällande godkännande kräver
+ansvarigs beslut om avstegsavslut. Den inaktiverade åtgärden förklarar hindret
+vid hovring eller tangentbordsfokus. Borttagningen sparas, men själva
+bibliotekskravet finns kvar i kravbiblioteket. Om status ändras i en annan
+session kan servern avvisa borttagningen; ladda då om och kontrollera
+statusen.
+
+**Gemensamma åtgärder och sparresultat.** Tilldelning av behovsreferenser och
+borttagning sparas för hela urvalet tillsammans. Om en behovsreferens ändras
+efter att dialogen öppnats avvisas hela tilldelningen. Stäng dialogen och
+granska urvalet igen innan du bekräftar på nytt. Ändringar i andra fält
+hindrar inte tilldelningen. Avsteg sparas däremot var för sig och kan lyckas
+för vissa krav.
+
+Resultatraden visar krav-ID:n för sparade, inte sparade och osäkra åtgärder.
+Bekräftade sparningar gäller även om vyn inte kan uppdateras; upprepa dem
+inte. Sparade och osäkra krav avmarkeras. Vid okänt resultat väljer du **Läs
+in sparat tillstånd** och kontrollerar kravets detalj och avsteg innan du
+markerar det igen. Inläsningen upprepar inga sparningar. Ett nätverksfel
+bevisar inte att åtgärden återställdes.
 
 ### Formulär för avstegsansökan
 

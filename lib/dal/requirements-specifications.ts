@@ -3404,6 +3404,18 @@ export type SpecificationItemFieldUpdate = {
   specificationItemStatusId?: number
 }
 
+function needsReferenceBaselinePredicate(
+  params: unknown[],
+  options: { reviewedNeedsReferenceId?: number | null },
+): string {
+  if (options.reviewedNeedsReferenceId === undefined) return ''
+  if (options.reviewedNeedsReferenceId === null)
+    return ' AND needs_reference_id IS NULL'
+  const placeholder = `@${params.length}`
+  params.push(options.reviewedNeedsReferenceId)
+  return ` AND needs_reference_id = ${placeholder}`
+}
+
 export async function updateSpecificationItemFields(
   db: SqlServerDatabase,
   itemId: number,
@@ -3421,7 +3433,10 @@ export async function updateSpecificationItemFieldsWithExecutor(
   db: SqlExecutor,
   itemId: number,
   data: SpecificationItemFieldUpdate,
-  options: { agreementId?: number } = {},
+  options: {
+    agreementId?: number
+    reviewedNeedsReferenceId?: number | null
+  } = {},
 ): Promise<number> {
   await assertApplicationFollowupAllowed(
     db,
@@ -3484,12 +3499,13 @@ export async function updateSpecificationItemFieldsWithExecutor(
   const idPlaceholder = `@${params.length}`
   params.push(itemId)
 
+  const baselinePredicate = needsReferenceBaselinePredicate(params, options)
   const rows = (await db.query(
     `
       UPDATE requirements_specification_items
       SET ${setClauses.join(', ')}
       OUTPUT INSERTED.id AS id
-      WHERE id = ${idPlaceholder}
+      WHERE id = ${idPlaceholder}${baselinePredicate}
     `,
     params,
   )) as Array<{ id: number }>
@@ -3518,7 +3534,10 @@ export async function updateSpecificationLocalRequirementFieldsWithExecutor(
   db: SqlExecutor,
   specificationLocalRequirementId: number,
   data: SpecificationItemFieldUpdate,
-  options: { agreementId?: number } = {},
+  options: {
+    agreementId?: number
+    reviewedNeedsReferenceId?: number | null
+  } = {},
 ): Promise<number> {
   await assertApplicationFollowupAllowed(
     db,
@@ -3582,12 +3601,13 @@ export async function updateSpecificationLocalRequirementFieldsWithExecutor(
   const idPlaceholder = `@${params.length}`
   params.push(specificationLocalRequirementId)
 
+  const baselinePredicate = needsReferenceBaselinePredicate(params, options)
   const rows = (await db.query(
     `
       UPDATE specification_local_requirements
       SET ${setClauses.join(', ')}
       OUTPUT INSERTED.id AS id
-      WHERE id = ${idPlaceholder}
+      WHERE id = ${idPlaceholder}${baselinePredicate}
     `,
     params,
   )) as Array<{ id: number }>

@@ -36,12 +36,14 @@ import { authorize, withLogging } from '@/lib/requirements/service-shared'
 
 import { restoreOrRemoveAgreementRequirement } from '@/lib/specifications/agreement-content'
 import { assertSpecificationContentEditable } from '@/lib/specifications/agreement-policy'
+import type { ReviewedNeedsReference } from '@/lib/specifications/reviewed-needs-reference'
 
 export interface UpdateRequirementApplicationsInput {
   agreementId?: number
   fields: SpecificationItemFieldUpdate
   itemRefs: string[]
   operation: 'update'
+  reviewedNeedsReferences?: ReviewedNeedsReference[]
   specificationId: number
 }
 
@@ -229,6 +231,20 @@ export function createRequirementApplicationMutationWorkflow({
 
               if (input.operation === 'update') {
                 const targets = parseItemRefs(input.itemRefs)
+                const reviewed = input.reviewedNeedsReferences
+                if (
+                  reviewed &&
+                  (!('needsReferenceId' in input.fields) ||
+                    reviewed.length !== input.itemRefs.length ||
+                    new Set(reviewed.map(item => item.itemRef)).size !==
+                      input.itemRefs.length ||
+                    reviewed.some(
+                      item => !input.itemRefs.includes(item.itemRef),
+                    ))
+                )
+                  throw validationError(
+                    'Provide one reviewed needs reference for every selected item',
+                  )
                 if (
                   input.fields.needsReferenceId != null &&
                   !(await findSpecificationNeedsReferenceIdentity(
@@ -244,25 +260,41 @@ export function createRequirementApplicationMutationWorkflow({
 
                 let updatedCount = 0
                 for (const itemRef of targets) {
+                  const baseline = reviewed?.find(item => {
+                    const parsed = parseSpecificationItemRef(item.itemRef)
+                    return (
+                      parsed?.kind === itemRef.kind && parsed.id === itemRef.id
+                    )
+                  })
+                  const options = {
+                    agreementId: input.agreementId,
+                    ...(baseline
+                      ? { reviewedNeedsReferenceId: baseline.needsReferenceId }
+                      : {}),
+                  }
                   updatedCount +=
                     itemRef.kind === 'library'
                       ? await updateSpecificationItemFieldsWithExecutor(
                           manager,
                           itemRef.id,
                           input.fields,
-                          { agreementId: input.agreementId },
+                          options,
                         )
                       : await updateSpecificationLocalRequirementFieldsWithExecutor(
                           manager,
                           itemRef.id,
                           input.fields,
-                          { agreementId: input.agreementId },
+                          options,
                         )
                 }
                 if (updatedCount !== input.itemRefs.length) {
                   throw conflictError(
                     'Requirement applications changed during update',
-                    { reason: 'requirement_applications_changed' },
+                    {
+                      reason: reviewed
+                        ? 'needs_reference_conflict'
+                        : 'requirement_applications_changed',
+                    },
                   )
                 }
 

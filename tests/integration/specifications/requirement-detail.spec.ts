@@ -1328,6 +1328,259 @@ test.describe('Requirements specification deterministic manual cases', () => {
   test.setTimeout(180_000)
   test.use({ viewport: DESKTOP_VIEWPORT })
 
+  for (const scenario of [
+    {
+      id: 'SPEC-37',
+      title: 'rejects needs-reference conflicts until renewed review',
+      mode: 'conflict',
+    },
+    {
+      id: 'SPEC-38',
+      title: 'retains mixed deviation results when refresh fails',
+      mode: 'mixed',
+    },
+    {
+      id: 'SPEC-39',
+      title: 'retains all successful deviation results when refresh fails',
+      mode: 'saved',
+    },
+    {
+      id: 'SPEC-40',
+      title: 'reports atomic removal rejection without partial success',
+      mode: 'remove',
+    },
+  ]) {
+    test(`${scenario.id}: ${scenario.title}`, async ({ page }) => {
+      let refreshFails = false
+      let baseline = 81
+      let assignmentCalls = 0
+      const deviationCalls: string[] = []
+      const items = [1, 2, 3].map(number => ({
+        id: 910000 + number,
+        requirementId: 910000 + number,
+        itemRef: `lib:${910000 + number}`,
+        kind: 'library',
+        uniqueId: `PWT-BULK-${number}`,
+        needsReferenceId: 81,
+        needsReference: 'Reviewed reference',
+        specificationItemStatusId: 1,
+        version: {
+          description: `Bulk requirement ${number}`,
+          status: 3,
+          statusNameSv: 'Publicerad',
+          statusNameEn: 'Published',
+          versionNumber: 1,
+        },
+      }))
+      await page.route(
+        `**/api/requirements-specifications/${specificationId}/items?*`,
+        async route => {
+          if (refreshFails)
+            return route.fulfill({
+              status: 503,
+              json: { error: 'Refresh unavailable' },
+            })
+          return route.fulfill({
+            json: {
+              items,
+              pagination: {
+                count: 3,
+                hasMore: false,
+                limit: 50,
+                nextCursor: null,
+              },
+            },
+          })
+        },
+      )
+      await page.route(
+        `**/api/specification-item-resolutions/${specificationId}?*`,
+        async route => {
+          const refs = new URL(route.request().url()).searchParams.getAll(
+            'refs',
+          )
+          return route.fulfill({
+            json: {
+              items: items
+                .filter(item => refs.includes(item.itemRef))
+                .map(item => ({ ...item, needsReferenceId: baseline })),
+            },
+          })
+        },
+      )
+      await page.route(
+        `**/api/requirements-specifications/${specificationId}/needs-references`,
+        route =>
+          route.fulfill({
+            json: {
+              needsReferences: [
+                { id: 81, text: 'Reviewed reference' },
+                { id: 82, text: 'Target reference' },
+              ],
+            },
+          }),
+      )
+      await page.route(
+        `**/api/requirements-specifications/${specificationId}/items`,
+        async route => {
+          if (route.request().method() === 'DELETE')
+            return route.fulfill({
+              status: 409,
+              json: { code: 'conflict', error: 'Selection changed' },
+            })
+          if (route.request().method() !== 'PATCH') return route.continue()
+          assignmentCalls += 1
+          const body = route.request().postDataJSON()
+          expect(body.reviewedNeedsReferences).toEqual(
+            items.map(item => ({
+              itemRef: item.itemRef,
+              needsReferenceId: assignmentCalls === 1 ? 81 : 82,
+            })),
+          )
+          if (assignmentCalls === 1) {
+            baseline = 82
+            return route.fulfill({
+              status: 409,
+              json: {
+                code: 'conflict',
+                details: { reason: 'needs_reference_conflict' },
+              },
+            })
+          }
+          return route.fulfill({ json: { ok: true, updatedCount: 3 } })
+        },
+      )
+      await page.route(
+        '**/api/specification-item-deviations/*',
+        async route => {
+          if (route.request().method() !== 'POST')
+            return route.fulfill({ json: { deviations: [] } })
+          const ref = decodeURIComponent(
+            new URL(route.request().url()).pathname.split('/').at(-1) ?? '',
+          )
+          deviationCalls.push(ref)
+          refreshFails = true
+          if (scenario.mode === 'mixed' && ref === 'lib:910002')
+            return route.fulfill({ status: 409, json: { error: 'Rejected' } })
+          if (scenario.mode === 'mixed' && ref === 'lib:910003')
+            return route.abort('failed')
+          return route.fulfill({ status: 201, json: { ok: true, id: 900001 } })
+        },
+      )
+      await test.step('Open the reviewed selection', async () => {
+        await gotoSpecificationDetail(page)
+        const panel = page.locator(
+          '[data-specification-detail-list-panel="items"]',
+        )
+        for (const item of items)
+          await panel
+            .getByRole('checkbox', { name: `Markera ${item.uniqueId}` })
+            .check()
+      })
+      const panel = page.locator(
+        '[data-specification-detail-list-panel="items"]',
+      )
+      if (scenario.mode === 'conflict') {
+        const openAssignment = async () => {
+          await panel
+            .getByRole('button', {
+              name: 'Tilldela behovsreferens',
+              exact: true,
+            })
+            .click()
+          const dialog = page.getByRole('dialog', {
+            name: 'Tilldela behovsreferens till valda krav',
+          })
+          await dialog
+            .getByLabel('Behovsreferens', { exact: true })
+            .selectOption('82')
+          await dialog
+            .getByRole('button', { name: 'Bekräfta', exact: true })
+            .click()
+          return dialog
+        }
+        const dialog = await openAssignment()
+        await expect(dialog.getByRole('alert')).toContainText(
+          'granska urvalet igen',
+        )
+        await dialog
+          .getByRole('button', { name: 'Bekräfta', exact: true })
+          .click()
+        expect(assignmentCalls).toBe(1)
+        await dialog
+          .getByRole('button', { name: 'Avbryt', exact: true })
+          .click()
+        await openAssignment()
+        await expect(
+          page.getByText('Sparade: PWT-BULK-1, PWT-BULK-2, PWT-BULK-3.', {
+            exact: false,
+          }),
+        ).toHaveCount(1)
+        expect(assignmentCalls).toBe(2)
+      } else if (scenario.mode === 'remove') {
+        await panel
+          .getByRole('button', { name: 'Ta bort valda (3)', exact: true })
+          .click()
+        await page
+          .getByRole('alertdialog')
+          .getByRole('button', { name: 'Ta bort', exact: true })
+          .click()
+        await expect(
+          page.getByText('Inte sparade: PWT-BULK-1, PWT-BULK-2, PWT-BULK-3.', {
+            exact: false,
+          }),
+        ).toHaveCount(1)
+        for (const item of items)
+          await expect(
+            panel.getByRole('checkbox', { name: `Markera ${item.uniqueId}` }),
+          ).toBeChecked()
+      } else {
+        await panel
+          .getByRole('button', { name: 'Begär avsteg för valda (3)' })
+          .click()
+        const dialog = page.getByRole('dialog', {
+          name: 'Begär ett avsteg',
+          exact: true,
+        })
+        await dialog
+          .getByRole('textbox', { name: /^Motivering/u })
+          .fill('A reviewed common reason')
+        await dialog
+          .getByRole('button', { name: 'Registrera avsteg', exact: true })
+          .click()
+        const results = page
+          .getByRole('status')
+          .filter({ hasText: 'Resultat av sparandet' })
+        await expect(results).toContainText('vyn kunde inte uppdateras')
+        await expect(results).toHaveAttribute(
+          'data-developer-mode-name',
+          'bulk save results',
+        )
+        await expect(results).toContainText(
+          scenario.mode === 'mixed'
+            ? 'Sparade: PWT-BULK-1.'
+            : 'Sparade: PWT-BULK-1, PWT-BULK-2, PWT-BULK-3.',
+        )
+        if (scenario.mode === 'mixed') {
+          await expect(results).toContainText('Inte sparade: PWT-BULK-2.')
+          await expect(results).toContainText('Okänt resultat: PWT-BULK-3.')
+          await expect(
+            panel.getByRole('checkbox', { name: 'Markera PWT-BULK-2' }),
+          ).toBeChecked()
+        }
+        expect(deviationCalls.sort()).toEqual(items.map(item => item.itemRef))
+        refreshFails = false
+        await results
+          .getByRole('button', { name: 'Läs in sparat tillstånd' })
+          .click()
+        await expect(
+          panel.getByRole('checkbox', { name: 'Markera PWT-BULK-1' }),
+        ).not.toBeChecked()
+        expect(deviationCalls).toHaveLength(3)
+      }
+    })
+  }
+
   test('SPEC-21: intent prefetch reuses one main request in both requirement lists', async ({
     page,
   }) => {

@@ -77,8 +77,32 @@ const patchItemsSchema = z
     agreementId: positiveIntegerSchema.optional(),
     itemRefs: itemRefsSchema,
     needsReferenceId: positiveIntegerSchema.nullable(),
+    reviewedNeedsReferences: z
+      .array(
+        z
+          .object({
+            itemRef: routeSegmentSchema,
+            needsReferenceId: positiveIntegerSchema.nullable(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT),
   })
   .strict()
+  .refine(
+    value =>
+      value.reviewedNeedsReferences.length === value.itemRefs.length &&
+      new Set(value.reviewedNeedsReferences.map(item => item.itemRef)).size ===
+        value.itemRefs.length &&
+      value.reviewedNeedsReferences.every(item =>
+        value.itemRefs.includes(item.itemRef),
+      ),
+    {
+      message: 'Provide one reviewed needs reference for every selected item',
+      path: ['reviewedNeedsReferences'],
+    },
+  )
 
 const deleteItemsSchema = z.union([
   z
@@ -223,6 +247,7 @@ export const PATCH = secureMutationRoute({
         ? {}
         : { agreementId: body.agreementId }),
       fields: { needsReferenceId: body.needsReferenceId },
+      reviewedNeedsReferences: body.reviewedNeedsReferences,
       itemRefs: body.itemRefs,
       operation: 'update',
       specificationId: params.id,
