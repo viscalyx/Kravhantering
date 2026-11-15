@@ -7,6 +7,8 @@ import CrudAdminPanel, {
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
+import { devMarker } from '@/lib/developer-mode-markers'
+import { isBuiltInSpecificationLifecycleStatus } from '@/lib/specifications/lifecycle-status-policy'
 
 const LIFECYCLE_STATUSES_HELP: HelpContent = {
   sections: [
@@ -64,6 +66,8 @@ export default function LifecycleStatusesClient() {
       errorMessage: tc('unexpectedError'),
       getCaughtErrorMessage: () => tc('unexpectedError'),
       getInitialForm,
+      itemEndpoint: id =>
+        `/api/specification-lifecycle-statuses/${id}?locale=${locale}`,
       listKey: 'statuses',
       toForm,
       toPayload,
@@ -75,12 +79,29 @@ export default function LifecycleStatusesClient() {
       className: 'py-3 px-4 font-medium',
       header: t('name'),
       key: 'name',
-      render: item => getName(item),
+      render: item => (
+        <>
+          {getName(item)}
+          {isBuiltInSpecificationLifecycleStatus(item.id) && (
+            <p
+              className="mt-1 text-sm font-normal text-secondary-600 dark:text-secondary-300"
+              {...devMarker({
+                context: 'specification lifecycle statuses',
+                name: 'help text',
+                value: 'protected lifecycle status',
+              })}
+            >
+              {t('protectedDeletion')}
+            </p>
+          )}
+        </>
+      ),
     },
   ]
 
   return (
     <CrudAdminPanel
+      canDelete={item => !isBuiltInSpecificationLifecycleStatus(item.id)}
       columns={columns}
       controller={controller}
       devContext="specification lifecycle statuses"

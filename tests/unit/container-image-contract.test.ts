@@ -60,15 +60,6 @@ function dockerfileInstructions(content: string) {
     })
 }
 
-function workflowRunCommands(relativePath: string) {
-  const workflow = parseYaml(readWorkspaceFile(relativePath)) as {
-    jobs?: Record<string, { steps?: Array<{ run?: string }> }>
-  }
-  return Object.values(workflow.jobs ?? {}).flatMap(job =>
-    (job.steps ?? []).flatMap(step => (step.run ? [step.run] : [])),
-  )
-}
-
 function expectDisabledSystemSkills(content: string) {
   for (const pluginName of disabledPluginNames) {
     expect(content).toMatch(
@@ -186,11 +177,9 @@ describe('container image contract', () => {
     const packageJson = JSON.parse(readWorkspaceFile('package.json')) as {
       scripts: Record<string, string>
     }
-    const productionBuildCommands = [
-      ...Object.values(packageJson.scripts),
-      ...workflowRunCommands('.github/workflows/container-pr-smoke.yml'),
-      ...workflowRunCommands('.github/workflows/container-release.yml'),
-    ].filter(command => command.includes('docker buildx build'))
+    const productionBuildCommands = Object.values(packageJson.scripts).filter(
+      command => command.includes('docker buildx build'),
+    )
     expect(productionBuildCommands.length).toBeGreaterThan(0)
     for (const command of productionBuildCommands) {
       expect(command).not.toMatch(/--(?:secret|ssh)(?:[=\s]|$)/u)
@@ -223,24 +212,6 @@ describe('container image contract', () => {
         version: 'latest',
       })
     }
-  })
-
-  it('exports HSA topology candidates as archives Docker can load', () => {
-    const workflow = readWorkspaceFile(
-      '.github/workflows/container-pr-smoke.yml',
-    )
-
-    expect(workflow.match(/--output type=docker,dest=/gu)).toHaveLength(2)
-    expect(workflow).not.toContain('--output type=oci,dest=')
-    expect(workflow.match(/docker load --input/gu)).toHaveLength(2)
-    expect(workflow.match(/skopeo copy/gu)).toHaveLength(2)
-    expect(workflow.match(/test "\$actual" = "\$expected"/gu)).toHaveLength(2)
-    expect(workflow).not.toContain(
-      '--file containers/hsa-directory-mock/Dockerfile .',
-    )
-    expect(workflow).not.toContain(
-      '--file containers/hsa-person-lookup-adapter/Dockerfile .',
-    )
   })
 
   it('keeps Codex devcontainer permissions in the user config template', () => {

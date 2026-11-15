@@ -50,6 +50,7 @@ hämtning i flera sidor verifierar inte ensamma rapportens fullständiga innehå
 - [Kravunderlag](#kravunderlag)
 - [Avsteg](#avsteg)
 - [Admincenter](#admincenter)
+  - [Skyddade livscykelstatusar och egna statusar](#admin-33-skyddade-livscykelstatusar-och-egna-statusar)
 - [Dataskydd och personuppgifter](#dataskydd-och-personuppgifter)
 - [Utvecklar- och robusthetsytor](#utvecklar--och-robusthetsytor)
 
@@ -2723,6 +2724,48 @@ från Verifierad. Avviken kan inte väljas på nytt utan gällande tillåtelse.
 En obeslutad förnyelse förlänger inte tillåtelsen. Fryst historik behålls.
 
 ## Admincenter
+
+### ADMIN-33: Skyddade livscykelstatusar och egna statusar
+
+**Syfte:** Verifiera skydd mot radering, namnändring på båda språken och
+hantering av egna livscykelstatusar för kravunderlag.
+
+**Användare:** `ada.admin` (`Admin`).
+
+**Förutsättningar:** Inbyggda statusar med ID 1–4 finns. Anteckna deras
+svenska och engelska namn före testet. Återställ namnen och ta bort egna
+teststatusar efter testet, även om en kontroll misslyckas.
+
+**Integrationstest:**
+[lifecycle-statuses.spec.ts](../../tests/integration/admin/lifecycle-statuses.spec.ts),
+testfallet “ADMIN-33: protects built-in lifecycle statuses while allowing
+bilingual renaming and custom CRUD”.
+
+**Steg:**
+
+1. Läs `/api/specification-lifecycle-statuses` med `scripts/dev-curl.sh`.
+   Skicka `DELETE` till `/api/specification-lifecycle-statuses/1?locale=sv`
+   med mutationshuvudena från manualens inledning. Upprepa för ID 2, 3 och 4
+   och sedan med `locale=en`. Läs listan igen efter varje språk.
+2. Öppna `/sv/specifications/lifecycle-statuses` från Admincenters flik
+   **Statusar och arbetsflöden**. Kontrollera förklaringen vid de inbyggda
+   statusarna och att redigering är tillgänglig men radering saknas.
+3. Redigera båda namnen på statusen med ID 1. Spara och läs listan via API.
+   Försök radera ID 1 igen. Växla till engelska och kontrollera det sparade
+   engelska namnet och den översatta förklaringen.
+4. Skapa en egen status med unika svenska och engelska namn. Redigera båda
+   namnen, spara och kontrollera dem i API-listan. Radera statusen och
+   bekräfta i dialogen. Läs listan igen.
+
+**Förväntat resultat:**
+
+- Alla raderingsförsök mot ID 1–4 ger `409` och felkoden
+  `protected_specification_lifecycle_status` med förklaring på valt språk.
+  Listan förblir oförändrad efter nekade raderingar.
+- Namnändringen sparas på båda språken med samma ID. Skyddet gäller även
+  efter namnändringen.
+- Den egna statusen kan skapas, läsas, redigeras och raderas. Den försvinner
+  från både sidan och API-listan efter bekräftad radering.
 
 ### ADMIN-01: kolumnstandarder påverkar nya kravbiblioteksvyer
 

@@ -35,23 +35,17 @@ const LYCHEE_ARCHITECTURES = [
 ]
 const LYCHEE_INSPECTED_SURFACES = [
   {
-    checksums: true,
     path: '.devcontainer/Dockerfile',
     versionPattern: /^ARG LYCHEE_VERSION=(?<version>v\d+\.\d+\.\d+)$/gmu,
   },
   {
-    checksums: true,
     path: 'scripts/azure-dev/templates/bootstrap-host.sh',
     versionPattern: /^LYCHEE_VERSION="(?<version>v\d+\.\d+\.\d+)"$/gmu,
   },
-  {
-    checksums: false,
-    path: '.github/workflows/quality-checks.yml',
-    versionPattern: /^\s*lycheeVersion:\s*(?<version>v\d+\.\d+\.\d+)$/gmu,
-  },
 ]
 const LYCHEE_AUXILIARY_SURFACES = new Set([
-  'tests/unit/github-actions-workflow-security.test.ts',
+  '.github/workflows/quality-checks.yml',
+  'tests/unit/security-tooling-config.test.ts',
 ])
 
 export const IMAGE_CONFIGS = {
@@ -769,12 +763,10 @@ export function readLycheeCurrent(unit, root = process.cwd()) {
     )
   }
 
-  const checksumSurfaces = LYCHEE_INSPECTED_SURFACES.filter(
-    surface => surface.checksums,
-  )
-  const [dockerfileChecksums, bootstrapChecksums] = checksumSurfaces.map(
-    surface => lycheeChecksums(sources.get(surface.path), surface.path),
-  )
+  const [dockerfileChecksums, bootstrapChecksums] =
+    LYCHEE_INSPECTED_SURFACES.map(surface =>
+      lycheeChecksums(sources.get(surface.path), surface.path),
+    )
   if (
     LYCHEE_ARCHITECTURES.some(
       ({ architecture }) =>

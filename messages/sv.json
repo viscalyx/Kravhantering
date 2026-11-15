@@ -1579,6 +1579,7 @@
     "emptyState": "Inga genomförandeformer ännu. Skapa din första genomförandeform."
   },
   "lifecycleStatusMgmt": {
+    "protectedDeletion": "Inbyggda livscykelstatusar för kravunderlag kan byta namn men kan inte tas bort.",
     "name": "Namn",
     "nameSvLabel": "Namn (svenska)",
     "nameEnLabel": "Namn (engelska)",
@@ -3325,7 +3326,7 @@
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Klicka på redigeringsikonen för att byta namn på en livscykelstatus för kravunderlag. Använd borttagningsikonen för att ta bort den - enbart kravunderlagets livscykelstatusar som inte är kopplade till några kravunderlag kan tas bort."
+        "body": "Använd redigeringsikonen för att ändra de svenska och engelska namnen. Inbyggda statusar kan inte tas bort, även om de inte används. Skapa egna statusar vid behov; endast egna statusar som inte är kopplade till ett kravunderlag kan tas bort."
       }
     },
     "admin": {

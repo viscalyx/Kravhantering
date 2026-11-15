@@ -1,5 +1,9 @@
 import type { SqlServerExecutor } from '@/lib/db'
 import {
+  isBuiltInSpecificationLifecycleStatus,
+  ProtectedSpecificationLifecycleStatusError,
+} from '@/lib/specifications/lifecycle-status-policy'
+import {
   type SpecificationLifecycleStatusEntity,
   specificationLifecycleStatusEntity,
 } from '@/lib/typeorm/entities'
@@ -68,6 +72,9 @@ export async function deleteSpecificationLifecycleStatus(
   db: SqlServerExecutor,
   id: number,
 ): Promise<number> {
+  if (isBuiltInSpecificationLifecycleStatus(id)) {
+    throw new ProtectedSpecificationLifecycleStatusError()
+  }
   const result = await db
     .getRepository(specificationLifecycleStatusEntity)
     .delete(id)

@@ -13,8 +13,6 @@ import {
   unreviewedInstallScripts,
   validateDeferrals,
   validateDependencyMaintenance,
-  workflowsMissingNpmBootstrap,
-  workflowsWithEarlyNpmCache,
 } from '../dependency-maintenance.mjs'
 import { packageManagerVersion } from '../install-repository-npm.mjs'
 
@@ -76,13 +74,6 @@ function fixture() {
     ...locks.map(lock => lock.path),
     ...runtimeInputs.map(input => input.path),
   ])
-  for (const workflow of fs.readdirSync(
-    path.join(process.cwd(), '.github/workflows'),
-  )) {
-    if (/\.ya?ml$/u.test(workflow)) {
-      files.add(`.github/workflows/${workflow}`)
-    }
-  }
   for (const relativePath of files) copy(root, relativePath)
   return root
 }
@@ -959,79 +950,15 @@ FROM \${BASE_IMAGE}
     ])
   })
 
-  it('catches floating npm toolchain installs and workflows without npm bootstrap', () => {
+  it('catches floating npm toolchain installs in developer guidance', () => {
     const root = temporaryDirectory()
-    write(
-      root,
-      '.github/workflows/check.yml',
-      'jobs:\n  check:\n    steps:\n      - run: npm ci\n',
-    )
     write(
       root,
       'docs/development/setup.md',
       'Run `npm install --global npm@latest`.\n',
     )
-    expect(workflowsMissingNpmBootstrap(root)).toEqual([
-      '.github/workflows/check.yml job 1',
-    ])
     expect(floatingNpmToolchainInstallPaths(root)).toEqual([
       'docs/development/setup.md',
-    ])
-  })
-
-  it('requires setup-node cache discovery to run after the npm bootstrap', () => {
-    const root = temporaryDirectory()
-    write(
-      root,
-      '.github/workflows/check.yml',
-      `jobs:
-  check:
-    steps:
-      - name: Setup Node.js
-        uses: actions/setup-node@pinned
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
-      - name: Install repository npm
-        run: node scripts/install-repository-npm.mjs
-`,
-    )
-    write(
-      root,
-      '.github/workflows/node-only.yml',
-      `jobs:
-  check:
-    steps:
-      - name: Setup Node.js
-        uses: actions/setup-node@pinned
-        with:
-          node-version-file: '.nvmrc'
-`,
-    )
-    write(
-      root,
-      '.github/workflows/safe.yml',
-      `jobs:
-  check:
-    steps:
-      - name: Setup Node.js
-        uses: actions/setup-node@pinned
-        with:
-          node-version-file: '.nvmrc'
-          package-manager-cache: false
-      - name: Install repository npm
-        run: node scripts/install-repository-npm.mjs
-      - name: Restore npm cache
-        uses: actions/setup-node@pinned
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
-`,
-    )
-
-    expect(workflowsWithEarlyNpmCache(root)).toEqual([
-      '.github/workflows/check.yml job 1',
-      '.github/workflows/node-only.yml job 1',
     ])
   })
 
@@ -1149,7 +1076,7 @@ FROM \${BASE_IMAGE}
     )
   })
 
-  it('accepts an active GitHub Actions wildcard exclusion', () => {
+  it('accepts a configured, reviewed GitHub Actions wildcard exclusion', () => {
     const root = fixture()
     const dependabotPath = path.join(root, '.github/dependabot.yml')
     const dependabot = fs

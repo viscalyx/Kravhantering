@@ -1,5 +1,5 @@
 ---
-applyTo: "{.github/workflows/*.yml,.github/workflows/*.yaml,.github/dependabot.yml,tests/unit/github-actions-workflow-security.test.ts}"
+applyTo: "{.github/workflows/*.yml,.github/workflows/*.yaml,.github/dependabot.yml}"
 ---
 
 # GitHub Actions Security
@@ -20,8 +20,5 @@ applyTo: "{.github/workflows/*.yml,.github/workflows/*.yaml,.github/dependabot.y
 
 - Keep `.github/dependabot.yml` configured for the `github-actions` ecosystem at
   directory `/`.
-- Do not assert specific action commit SHAs in tests. Tests may enforce the
-  action identity and full 40-character SHA shape, but the selected revision
-  belongs to Dependabot so its update pull requests remain self-contained.
-- When adding or renaming workflow files, keep
-  `tests/unit/github-actions-workflow-security.test.ts` passing.
+- Keep action revision selection in Dependabot so its update pull requests
+  remain self-contained.

@@ -408,7 +408,7 @@ install_lychee() {
   # lychee-${LYCHEE_VERSION} release API, independently confirmed by downloading
   # both *-unknown-linux-gnu.tar.gz assets and running sha256sum. Version bumps
   # must repeat both checks and update both hashes here and in the devcontainer
-  # Dockerfile; github-actions-workflow-security.test.ts enforces alignment.
+  # Dockerfile; security-tooling-config.test.ts enforces alignment.
   local lychee_target lychee_sha256
   case "$(dpkg --print-architecture)" in
     amd64)

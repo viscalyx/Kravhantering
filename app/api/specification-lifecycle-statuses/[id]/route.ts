@@ -15,7 +15,11 @@ import {
   adminMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
+import { requestErrorLocale } from '@/lib/http/service-limit-message'
 import { boundedDbStringSchema, idParamSchema } from '@/lib/http/validation'
+import { ProtectedSpecificationLifecycleStatusError } from '@/lib/specifications/lifecycle-status-policy'
+import en from '@/messages/en.json'
+import sv from '@/messages/sv.json'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,7 +74,7 @@ export const PUT = secureMutationRoute({
 export const DELETE = secureMutationRoute({
   paramsSchema: idParamSchema,
   policy: adminMutationPolicy(),
-  handler: async ({ context, params }) => {
+  handler: async ({ context, params, request }) => {
     const db = await getRequestSqlServerDataSource()
     try {
       return await runPrivilegedMutation(
@@ -93,6 +97,16 @@ export const DELETE = secureMutationRoute({
         },
       )
     } catch (err) {
+      if (err instanceof ProtectedSpecificationLifecycleStatusError) {
+        const messages = requestErrorLocale(request) === 'sv' ? sv : en
+        return NextResponse.json(
+          {
+            code: 'protected_specification_lifecycle_status',
+            error: messages.lifecycleStatusMgmt.protectedDeletion,
+          },
+          { status: 409 },
+        )
+      }
       if (isForeignKeyViolation(err)) {
         return NextResponse.json(
           { error: 'Cannot delete: specification lifecycle status is in use' },
