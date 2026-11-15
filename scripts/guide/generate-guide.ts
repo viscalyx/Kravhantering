@@ -658,43 +658,20 @@ async function setReactInputValue(
 }
 
 async function revealRequirementStatusStepper(page: Page): Promise<void> {
-  await page
+  const stepper = page
     .locator('[data-developer-mode-name="status stepper"]')
     .first()
-    .waitFor({ state: 'visible', timeout: 10_000 })
-
-  await page.evaluate(() => {
-    const stepper = document.querySelector<HTMLElement>(
-      '[data-developer-mode-name="status stepper"]',
-    )
-    const target =
-      document.querySelector<HTMLElement>(
-        '[data-requirement-detail-stepper-anchor="true"]',
-      ) ?? stepper
-    if (!target) return
-
-    const stickyBlockers = [
-      '[data-sticky-table-chrome="true"]',
-      '[data-sticky-table-header="true"]',
-    ]
-      .map(selector => document.querySelector<HTMLElement>(selector))
-      .filter((el): el is HTMLElement => el != null)
-
-    const stickyBottom = stickyBlockers.reduce((bottom, el) => {
-      const rect = el.getBoundingClientRect()
-      if (rect.bottom <= 0 || rect.top >= window.innerHeight) return bottom
-      return Math.max(bottom, rect.bottom)
-    }, 0)
-
-    const margin = 8
-    const targetTop = stickyBottom + margin
-    const targetRect = target.getBoundingClientRect()
-    window.scrollTo({
-      top: Math.max(0, window.scrollY + targetRect.top - targetTop),
+  await expect(stepper).toBeVisible({ timeout: 10_000 })
+  // Scroll the actual element through all ancestor scroll containers and keep
+  // it clear of sticky table chrome, including after a workflow refresh.
+  await stepper.evaluate(el => {
+    el.scrollIntoView({
+      block: 'center',
+      inline: 'nearest',
       behavior: 'instant',
     })
   })
-  await page.waitForTimeout(150)
+  await expect(stepper).toBeInViewport({ ratio: 1 })
 }
 
 async function snap(
@@ -1450,12 +1427,15 @@ test.describe('Kravhantering — Guidegenerering', () => {
     currentSection = 'Kravdetaljer och statusövergångar'
 
     await guideStep(page, 'Statusstegare — närbild', async () => {
+      await revealRequirementStatusStepper(page)
       await snap(
         page,
         'statusstegare',
         'Statusstegare',
         'Statusstegaren visar kravets position i livscykeln: **Utkast** → **Granskning** → **Publicerad** → **Arkiverad**. Den aktuella statusen är markerad. Knappar för statusövergångar visas intill stegaren.',
-        { fullPage: false },
+        {
+          selector: '[data-requirement-detail-stepper-anchor="true"]',
+        },
       )
     })
 

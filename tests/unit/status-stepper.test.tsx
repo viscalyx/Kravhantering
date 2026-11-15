@@ -25,6 +25,31 @@ function findActiveSlider(
 }
 
 describe('StatusStepper', () => {
+  it.each([1, 2, 3])(
+    'keeps the active status %s inside a pointed polygon outline',
+    currentStatusId => {
+      const { container } = render(
+        <StatusStepper currentStatusId={currentStatusId} />,
+      )
+      const highlight = container.querySelector<HTMLElement>(
+        '[aria-hidden="true"].absolute',
+      )
+      const fill = highlight?.firstElementChild as HTMLElement
+
+      expect(highlight).toHaveClass('bg-secondary-500')
+      // The border reaches the point; the fill is inset by one pixel measured
+      // perpendicular to the 6px-by-12px diagonal, including at the apex.
+      expect(highlight?.style.clipPath).toMatch(/calc\(100% [+-] 0px\) 50%/u)
+      const tipInset = fill.style.clipPath.match(
+        /calc\(100% - ([\d.]+)px\) 50%/u,
+      )
+      expect(Number(tipInset?.[1])).toBeCloseTo(1.118, 3)
+      expect(fill).toHaveTextContent(
+        ['Utkast', 'Granskning', 'Publicerad'][currentStatusId - 1],
+      )
+    },
+  )
+
   it('renders fallback steps and highlights the first status', () => {
     const { container } = render(<StatusStepper currentStatusId={1} />)
 

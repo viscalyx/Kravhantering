@@ -46,9 +46,6 @@ const FALLBACK_STEPS: StatusStep[] = [
 /** Pixel depth of the arrow point / notch */
 const ARROW = 6
 
-const DROP_SHADOW =
-  'drop-shadow(1px 0 0 var(--color-secondary-500)) drop-shadow(-1px 0 0 var(--color-secondary-500)) drop-shadow(0 1px 0 var(--color-secondary-500)) drop-shadow(0 -1px 0 var(--color-secondary-500))'
-
 /** Clip-path for background (inactive) chevron steps. */
 function stepClipPath(isFirst: boolean) {
   const a = `${ARROW}px`
@@ -62,11 +59,15 @@ function stepClipPath(isFirst: boolean) {
  * so CSS can smoothly interpolate between first (flat left) and
  * non-first (notched left) shapes.
  */
-function sliderClipPath(isFirst: boolean) {
-  const a = `${ARROW}px`
-  if (isFirst)
-    return `polygon(0 0, calc(100% - ${a}) 0, 100% 50%, calc(100% - ${a}) 100%, 0 100%, 0 50%)`
-  return `polygon(0 0, calc(100% - ${a}) 0, 100% 50%, calc(100% - ${a}) 100%, 0 100%, ${a} 50%)`
+function sliderClipPath(isFirst: boolean, inset = 0) {
+  // Offset each diagonal perpendicular to its edge for a uniform 1px border.
+  // Stacked drop shadows produce a flat face at the arrow point instead.
+  const slope = ARROW / 12
+  const diagonal = Math.hypot(1, slope) * inset
+  const shoulder = ARROW + diagonal - slope * inset
+  const left = isFirst ? inset : diagonal + slope * inset
+  const notch = isFirst ? inset : ARROW + diagonal
+  return `polygon(${left}px ${inset}px, calc(100% - ${shoulder}px) ${inset}px, calc(100% - ${diagonal}px) 50%, calc(100% - ${shoulder}px) calc(100% - ${inset}px), ${left}px calc(100% - ${inset}px), ${notch}px 50%)`
 }
 
 interface StatusStepperProps {
@@ -170,7 +171,7 @@ export default function StatusStepper({
       {steps.map((step, i) => (
         <div
           aria-current={i === targetIndex ? 'step' : undefined}
-          className="flex-1 min-w-max"
+          className="flex-1 min-w-max bg-secondary-500"
           key={`status-step-${step.id}`}
           {...devMarker({
             context: developerModeContext,
@@ -184,12 +185,12 @@ export default function StatusStepper({
           style={{
             marginLeft: i === 0 ? 0 : -ARROW,
             zIndex: i,
-            filter: DROP_SHADOW,
+            clipPath: stepClipPath(i === 0),
           }}
         >
           <div
             className="h-6 flex items-center justify-center bg-secondary-300 dark:bg-secondary-600 text-secondary-600 dark:text-secondary-300"
-            style={{ clipPath: stepClipPath(i === 0) }}
+            style={{ clipPath: sliderClipPath(i === 0, 1) }}
           >
             <span
               className="flex items-center justify-center gap-1 text-xs select-none font-medium"
@@ -206,14 +207,14 @@ export default function StatusStepper({
       {sliderPos && targetIndex >= 0 && (
         <div
           aria-hidden="true"
-          className="absolute top-0 pointer-events-none"
+          className="absolute top-0 pointer-events-none bg-secondary-500"
           style={{
             left: sliderPos.left,
             width: sliderPos.width,
             height: '100%',
             zIndex: steps.length + 1,
-            filter: DROP_SHADOW,
-            transition: 'left 300ms ease-out',
+            clipPath: sliderClipPath(targetIndex === 0),
+            transition: 'left 300ms ease-out, clip-path 300ms ease-out',
           }}
         >
           <div
@@ -221,7 +222,7 @@ export default function StatusStepper({
             style={{
               backgroundColor: activeColor ?? undefined,
               color: sliderTextColor ?? undefined,
-              clipPath: sliderClipPath(targetIndex === 0),
+              clipPath: sliderClipPath(targetIndex === 0, 1),
               transition:
                 'clip-path 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out',
             }}
