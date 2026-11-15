@@ -13,6 +13,15 @@ changes.
 
 ## Unreleased
 
+### Built-in specification lifecycle statuses
+
+Before rollout, update administrative automation that deletes the built-in
+specification lifecycle statuses for procurement, implementation, development
+or management. The application rejects these requests with a conflict response,
+even when the status is unused or renamed. Preserve these identities and use
+the supported name-editing action to change their Swedish and English labels.
+Custom statuses can still be deleted when no specification references them.
+
 ### Migration outcomes and optional omissions
 
 Update deployment result consumers for versioned migration results. Keep each
