@@ -1808,22 +1808,22 @@
       "exportingPdf": "Exporterar PDF…",
       "exportError": "Kunde inte exportera data: {detail}",
       "previewError": "Kunde inte förhandsgranska dataskyddsradering.",
-      "executeError": "Kunde inte köra dataskyddsradering.",
+      "executeError": "Raderingens resultat kunde inte bekräftas. Kontrollera sparade uppgifter och åtgärdsloggen innan du upprepar åtgärden.",
       "disabledTooltip": "Du behöver behörigheten Dataskyddshandläggare.",
       "permissionError": "Du saknar rollen Dataskyddshandläggare. Logga in som dataskyddshandläggare för att köra dataskyddsradering.",
       "replacementIncomplete": "Ange både ersättande HSA-id och ersättande namn, eller lämna båda fälten tomma för anonymisering.",
       "invalidReplacementEmail": "Kontrollera den ersättande e-postadressen.",
       "invalidHsaId": "Kontrollera HSA-id. Formatet ska vara två versala bokstäver för landskod, 10 siffror, bindestreck och en alfanumerisk ändelse.",
       "serverPreviewError": "Servern kunde inte förhandsgranska dataskyddsraderingen.",
-      "serverExecuteError": "Servern kunde inte köra dataskyddsraderingen.",
+      "serverExecuteError": "Raderingens resultat kunde inte bekräftas. Kontrollera sparade uppgifter och åtgärdsloggen innan du upprepar åtgärden.",
       "serverErrorWithDetail": "{message} Teknisk feltext: {detail}",
       "errorWithDetail": "{message} Fel: {detail}",
       "executeSuccess": "Dataskyddsradering slutförd.",
-      "stalePreview": "Förhandsgranskningen är inaktuell. Kör en ny förhandsgranskning innan radering.",
+      "stalePreview": "De granskade posterna eller valen har ändrats, eller förhandsgranskningen kan inte verifieras. Inget raderades av denna begäran. Uppdatera förhandsgranskningen och granska den innan du kör igen.",
       "confirmTitle": "Kör dataskyddsradering",
-      "confirmMessage": "Detta byter {switch}, anonymiserar {anonymize}, tar bort {delete} och hoppar över {skip} förekomster.",
+      "confirmMessage": "Utför granskade åtgärder på förhandsgranskningens förekomster: byt {switch}, anonymisera {anonymize}, ta bort {delete} och hoppa över {skip}. Antalen anger inte fysiskt raderade databasrader.",
       "guidanceTitle": "Rekommenderad hantering och export",
-      "guidanceBody": "Använd förhandsgranskningen för att kontrollera exakt vilka HSA-id-träffar som kan exporteras eller raderas. Exporten påverkar inte uppgifterna. Aktiva tilldelningar, inklusive kravunderlagsansvarig, byts oftast till ett annat HSA-id vid radering. Historiska fält för skapare, beslut och åtgärd anonymiseras oftast i stället för att tilldelas om. Beskrivningsfält och fritext skannas inte eftersom gränssnittet instruerar användare att inte ange personidentifierande uppgifter där.",
+      "guidanceBody": "Använd förhandsgranskningen för att kontrollera exakt vilka HSA-id-träffar som kan exporteras eller raderas. Exporten påverkar inte uppgifterna. Aktiva tilldelningar, inklusive kravunderlagsansvarig, byts oftast till ett annat HSA-id vid radering. Historiska fält för skapare, beslut och åtgärd anonymiseras oftast i stället för att tilldelas om. Beskrivningsfält och fritext skannas inte eftersom gränssnittet instruerar användare att inte ange personidentifierande uppgifter där. Ändrade åtgärder eller ersättningsuppgifter kräver en ny förhandsgranskning. Vid körning kontrolleras de granskade posterna och berörda värdena igen. Samma antal eller namn garanterar inte oförändrade poster.",
       "previewResult": "{count} HSA-id-förekomster",
       "object": "Objekt",
       "count": "Antal",
@@ -1942,7 +1942,9 @@
       },
       "readOnly": {
         "controlledByOwner": "Visas som information. Kravområden och kravpaket byts automatiskt när ägarraden byts."
-      }
+      },
+      "refreshRequired": "Uppdatera förhandsgranskningen och granska poster, valda åtgärder och ersättningsuppgifter innan du kör raderingen.",
+      "activeExport": "Vänta tills personens export eller rapport är klar. Uppdatera och granska sedan förhandsgranskningen."
     },
     "aiConnections": {
       "title": "AI-anslutningar och körprofiler",

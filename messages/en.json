@@ -1808,22 +1808,22 @@
       "exportingPdf": "Exporting PDF…",
       "exportError": "Could not export data: {detail}",
       "previewError": "Could not preview privacy erasure.",
-      "executeError": "Could not execute privacy erasure.",
+      "executeError": "The erasure result could not be confirmed. Check the saved data and Action log before repeating the operation.",
       "disabledTooltip": "You need the Privacy officer permission.",
       "permissionError": "You need the Privacy officer role. Sign in as a privacy officer to run privacy erasure.",
       "replacementIncomplete": "Enter both replacement HSA-id and replacement name, or leave both fields empty to anonymize.",
       "invalidReplacementEmail": "Check the replacement email address.",
       "invalidHsaId": "Check the HSA-id. The format is two uppercase country-code letters, 10 digits, a hyphen, and an alphanumeric suffix.",
       "serverPreviewError": "The server could not preview privacy erasure.",
-      "serverExecuteError": "The server could not execute privacy erasure.",
+      "serverExecuteError": "The erasure result could not be confirmed. Check the saved data and Action log before repeating the operation.",
       "serverErrorWithDetail": "{message} Technical detail: {detail}",
       "errorWithDetail": "{message} Error: {detail}",
       "executeSuccess": "Privacy erasure completed.",
-      "stalePreview": "The preview is stale. Run preview again before executing.",
+      "stalePreview": "The reviewed records or choices have changed, or the preview proof is unavailable. Nothing was erased by this request. Refresh the preview and review it before executing.",
       "confirmTitle": "Execute privacy erasure",
-      "confirmMessage": "This will switch {switch}, anonymize {anonymize}, delete {delete}, and skip {skip} occurrence(s).",
+      "confirmMessage": "Apply the reviewed actions to preview occurrences: switch {switch}, anonymize {anonymize}, delete {delete}, and skip {skip}. These are not physical row-deletion totals.",
       "guidanceTitle": "Recommended handling and export",
-      "guidanceBody": "Use the preview to verify exactly which HSA-id matches can be exported or erased. Export does not change the data. Live assignments, including specification leads, are usually switched to another HSA-id during erasure. Historical creator, decision, and resolution fields are usually anonymized instead of reassigned. Description and free-text fields are not scanned because the UI instructs users not to enter person-identifying details there.",
+      "guidanceBody": "Use the preview to verify exactly which HSA-id matches can be exported or erased. Export does not change the data. Live assignments, including specification leads, are usually switched to another HSA-id during erasure. Historical creator, decision, and resolution fields are usually anonymized instead of reassigned. Description and free-text fields are not scanned because the UI instructs users not to enter person-identifying details there. Changes to actions or replacement details require a new preview. Execution checks the reviewed records and relevant values again; equal counts or labels do not prove that the records are unchanged.",
       "previewResult": "{count} HSA-id occurrence(s)",
       "object": "Object",
       "count": "Count",
@@ -1942,7 +1942,9 @@
       },
       "readOnly": {
         "controlledByOwner": "Shown for information. Requirement areas and packages are switched automatically when the owner row is switched."
-      }
+      },
+      "refreshRequired": "Refresh the preview and review the records, selected actions, and replacement details before executing.",
+      "activeExport": "Wait for the person’s export or report to finish, then refresh and review the preview."
     },
     "aiConnections": {
       "title": "AI connections and run profiles",

@@ -3044,8 +3044,10 @@ export async function linkRequirementsToSpecification(
 
   let inserted = 0
   for (const item of items) {
+    // Use the database clock and datetime2 precision used by the current view.
     const rows = (await db.query(
       `
+        DECLARE @binding_time datetime2 = SYSUTCDATETIME();
         INSERT INTO requirements_specification_items (
           requirements_specification_id,
           requirement_id,
@@ -3055,13 +3057,14 @@ export async function linkRequirementsToSpecification(
           created_at, valid_from, valid_until, owning_agreement_id, binding_created_by_hsa_id
         )
         OUTPUT INSERTED.id AS id
-        SELECT @0, @1, @2, @3, @4, @5, @5, CASE WHEN @6 IS NULL THEN NULL ELSE @5 END, @6, @7
+        SELECT @0, @1, @2, @3, @4, @binding_time, @binding_time,
+          CASE WHEN @5 IS NULL THEN NULL ELSE @binding_time END, @5, @6
         WHERE NOT EXISTS (
           ${
             options.agreementId === undefined
               ? 'SELECT 1 FROM current_requirement_applications WHERE requirements_specification_id = @0 AND requirement_id = @1'
               : `SELECT 1 FROM specification_agreement_items membership INNER JOIN requirements_specification_items existing ON existing.id = membership.specification_item_id
-               WHERE membership.specification_agreement_id = @6 AND existing.requirement_id = @1`
+               WHERE membership.specification_agreement_id = @5 AND existing.requirement_id = @1`
           }
         )
       `,
@@ -3071,7 +3074,6 @@ export async function linkRequirementsToSpecification(
         item.requirementVersionId,
         item.needsReferenceId ?? null,
         DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
-        new Date(),
         options.agreementId ?? null,
         options.actorHsaId ?? null,
       ],

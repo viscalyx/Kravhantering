@@ -145,6 +145,32 @@ describe('PrivacyPanel', () => {
     )
     expect(state.download).toHaveBeenCalledTimes(2)
 
+    fireEvent.change(screen.getByLabelText('admin.privacy.replacementName'), {
+      target: { value: 'Reviewed replacement' },
+    })
+    expect(
+      screen.getByRole('button', { name: 'admin.privacy.execute' }),
+    ).toBeDisabled()
+    expect(screen.getByText('admin.privacy.refreshRequired')).toHaveAttribute(
+      'role',
+      'status',
+    )
+    expect(screen.getByText('admin.privacy.refreshRequired')).toHaveAttribute(
+      'data-developer-mode-name',
+      'preview refresh notice',
+    )
+    expect(
+      screen.getByRole('button', { name: 'admin.privacy.execute' }),
+    ).toHaveAttribute('data-developer-mode-name', 'execute reviewed actions')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'admin.privacy.execute' }),
+      ).toBeEnabled(),
+    )
+
     fireEvent.click(
       screen.getByRole('button', { name: 'admin.privacy.execute' }),
     )
