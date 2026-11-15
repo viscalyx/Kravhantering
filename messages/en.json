@@ -1579,6 +1579,7 @@
     "emptyState": "No implementation types yet. Create your first implementation type."
   },
   "lifecycleStatusMgmt": {
+    "protectedDeletion": "Built-in specification lifecycle statuses can be renamed but cannot be deleted.",
     "name": "Name",
     "nameSvLabel": "Name (Swedish)",
     "nameEnLabel": "Name (English)",
@@ -3325,7 +3326,7 @@
       },
       "manage": {
         "heading": "Managing",
-        "body": "Click the edit icon to rename a specification lifecycle status. Use the delete icon to remove it — only specification lifecycle statuses not linked to any specification can be deleted."
+        "body": "Use the edit icon to change the Swedish and English names. Built-in statuses cannot be deleted, even when unused. Create custom statuses as needed; only custom statuses not linked to a specification can be deleted."
       }
     },
     "admin": {

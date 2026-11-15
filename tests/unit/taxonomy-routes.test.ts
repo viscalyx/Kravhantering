@@ -14,6 +14,7 @@ import {
   createRequirementResponsibilityPersonVerificationEvidence,
   type RequirementResponsibilityPersonVerificationPurpose,
 } from '@/lib/requirements/responsibility-person-verification'
+import { ProtectedSpecificationLifecycleStatusError } from '@/lib/specifications/lifecycle-status-policy'
 
 /* ── shared request DB mocks ─────────────────────────────────────── */
 
@@ -1464,6 +1465,39 @@ describe('specification-lifecycle-statuses routes', () => {
     vi.clearAllMocks()
   })
 
+  it.each([
+    [
+      'en',
+      'Built-in specification lifecycle statuses can be renamed but cannot be deleted.',
+    ],
+    [
+      'sv',
+      'Inbyggda livscykelstatusar för kravunderlag kan byta namn men kan inte tas bort.',
+    ],
+  ])(
+    'DELETE explains protected deletion in %s without a success audit',
+    async (locale, error) => {
+      mockDeleteLifecycle.mockRejectedValue(
+        new ProtectedSpecificationLifecycleStatusError(),
+      )
+      const response = await deleteLifecycle(
+        new NextRequest(
+          `http://l/api/specification-lifecycle-statuses/1?locale=${locale}`,
+          { method: 'DELETE' },
+        ),
+        makeParams('1'),
+      )
+      expect(response.status).toBe(409)
+      await expect(response.json()).resolves.toEqual({
+        error,
+        code: 'protected_specification_lifecycle_status',
+      })
+      expect(
+        auditState.recordAdminPrivilegedActionSucceeded,
+      ).not.toHaveBeenCalled()
+    },
+  )
+
   it('GET returns statuses', async () => {
     const r = await getLifecycleStatuses()
     const j = (await r.json()) as { statuses: { id: number }[] }
@@ -1519,7 +1553,7 @@ describe('specification-lifecycle-statuses routes', () => {
     mockDeleteLifecycle.mockResolvedValue(1)
     const r = await deleteLifecycle(
       new NextRequest('http://l', { method: 'DELETE' }),
-      makeParams('1'),
+      makeParams('5'),
     )
     expect(((await r.json()) as { ok: boolean }).ok).toBe(true)
   })
@@ -1542,7 +1576,7 @@ describe('specification-lifecycle-statuses routes', () => {
     )
     const r = await deleteLifecycle(
       new NextRequest('http://l', { method: 'DELETE' }),
-      makeParams('1'),
+      makeParams('5'),
     )
 
     expect(r.status).toBe(409)
@@ -1558,7 +1592,7 @@ describe('specification-lifecycle-statuses routes', () => {
     mockDeleteLifecycle.mockRejectedValue(new Error('database offline'))
     const r = await deleteLifecycle(
       new NextRequest('http://l', { method: 'DELETE' }),
-      makeParams('1'),
+      makeParams('5'),
     )
 
     expect(r.status).toBe(500)

@@ -166,6 +166,18 @@ describe('specification reference type DALs', () => {
   })
 
   describe('lifecycle statuses', () => {
+    it.each([1, 2, 3, 4])(
+      'rejects deletion of built-in status %s before writing',
+      async id => {
+        const { db, repository } = createSqlServerDb()
+        await expect(
+          deleteSpecificationLifecycleStatus(db as never, id),
+        ).rejects.toThrow(
+          'Built-in specification lifecycle statuses can be renamed but cannot be deleted',
+        )
+        expect(repository.delete).not.toHaveBeenCalled()
+      },
+    )
     it('lists and creates trimmed localized lifecycle statuses', async () => {
       const { db, repository } = createSqlServerDb()
       repository.find.mockResolvedValueOnce([
@@ -248,10 +260,10 @@ describe('specification reference type DALs', () => {
         .mockResolvedValueOnce({})
 
       await expect(
-        deleteSpecificationLifecycleStatus(db as never, 3),
+        deleteSpecificationLifecycleStatus(db as never, 5),
       ).resolves.toBe(1)
       await expect(
-        deleteSpecificationLifecycleStatus(db as never, 4),
+        deleteSpecificationLifecycleStatus(db as never, 99),
       ).resolves.toBe(0)
     })
   })

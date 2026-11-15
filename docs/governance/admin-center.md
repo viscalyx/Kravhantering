@@ -702,6 +702,20 @@ existing stable routes for:
 
 `?tab=taxonomy` and `?tab=statusesAndWorkflows` are the supported tab query
 values for reaching these administration pages.
+
+On **Specification lifecycle statuses**, administrators can edit both the
+Swedish and English names. The four built-in statuses (procurement,
+implementation, development and management) cannot be deleted, even when
+unused or renamed. Each protected row explains this restriction and keeps
+its edit action. Renaming changes the displayed names, not the lifecycle
+meaning used by reports and retention policies.
+
+Administrators can create, rename and delete custom lifecycle statuses.
+Deletion is allowed only when no specification references the custom status.
+Direct API deletion of a built-in status returns `409` with code
+`protected_specification_lifecycle_status` and a safe localized explanation;
+the status remains unchanged.
+
 Requirement packages and the norm library are managed from
 `/requirements/stewardship` together with requirement-selection questions,
 since package leads and requirement-area stewards can work there without

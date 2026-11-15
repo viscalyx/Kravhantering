@@ -174,6 +174,9 @@ describe('LifecycleStatusesClient', () => {
   })
 
   it('deletes with confirm', async () => {
+    fetchMock.mockResolvedValue(
+      okJson({ statuses: [{ ...sampleItems[0], id: 5 }] }),
+    )
     confirmMock.mockResolvedValue(true)
     render(<LifecycleStatusesClient />)
     await waitForItemsLoaded()
@@ -192,9 +195,30 @@ describe('LifecycleStatusesClient', () => {
         expect.objectContaining({ variant: 'danger', icon: 'caution' }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specification-lifecycle-statuses/1',
+        '/api/specification-lifecycle-statuses/5?locale=en',
         expect.objectContaining({ method: 'DELETE' }),
       )
     })
   })
+
+  it.each([1, 2, 3, 4])(
+    'keeps renamed built-in status %s editable and explains protected deletion',
+    async id => {
+      fetchMock.mockResolvedValue(
+        okJson({ statuses: [{ id, nameEn: 'Renamed', nameSv: 'Omdöpt' }] }),
+      )
+      render(<LifecycleStatusesClient />)
+      await screen.findByText('Renamed')
+      expect(screen.getByRole('button', { name: /common.edit/ })).toBeEnabled()
+      expect(
+        screen.queryByRole('button', { name: /common.delete/ }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.getByText('lifecycleStatusMgmt.protectedDeletion'),
+      ).toHaveAttribute(
+        'data-developer-mode-value',
+        'protected lifecycle status',
+      )
+    },
+  )
 })
