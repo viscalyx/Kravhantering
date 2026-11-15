@@ -114,6 +114,7 @@ describe('privacy erasure routes', () => {
     const { POST } = await import('@/app/api/privacy/erasure-preview/route')
     const response = await POST(
       jsonPost('http://localhost/api/privacy/erasure-preview', {
+        actions: { 'requirement_versions.created_by': 'skip' },
         target: { hsaId: 'SE5560000001-kalle1' },
       }) as never,
     )
@@ -124,6 +125,7 @@ describe('privacy erasure routes', () => {
       { db: true },
       {
         replacement: null,
+        actions: { 'requirement_versions.created_by': 'skip' },
         target: { hsaId: 'SE5560000001-kalle1' },
       },
     )
@@ -274,24 +276,29 @@ describe('privacy erasure routes', () => {
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
   })
 
-  it('returns conflict when execution detects a stale preview', async () => {
-    routeState.executePrivacyErasure.mockRejectedValueOnce(
-      conflictError('Privacy erasure preview is stale', {
-        reason: 'stale_privacy_preview',
-      }),
-    )
-    const { POST } = await import('@/app/api/privacy/erasure-requests/route')
-    const response = await POST(
-      jsonPost('http://localhost/api/privacy/erasure-requests', {
-        previewToken: 'preview-token',
-        target: { hsaId: 'SE5560000001-kalle1' },
-      }) as never,
-    )
+  it.each(['stale_privacy_preview', 'active_export_actor_quota'])(
+    'returns a safe conflict reason for %s',
+    async reason => {
+      routeState.executePrivacyErasure.mockRejectedValueOnce(
+        conflictError('Privacy erasure preview is stale', {
+          reason,
+          hsaId: 'SE5560000001-private',
+        }),
+      )
+      const { POST } = await import('@/app/api/privacy/erasure-requests/route')
+      const response = await POST(
+        jsonPost('http://localhost/api/privacy/erasure-requests', {
+          previewToken: 'preview-token',
+          target: { hsaId: 'SE5560000001-kalle1' },
+        }) as never,
+      )
 
-    expect(response.status).toBe(409)
-    expect(response.headers.get('Cache-Control')).toBe('no-store')
-    expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
-  })
+      expect(response.status).toBe(409)
+      expect((await response.json()).details).toEqual({ reason })
+      expect(response.headers.get('Cache-Control')).toBe('no-store')
+      expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
+    },
+  )
 
   it('rejects erasure execution when CSRF validation fails before executing', async () => {
     routeState.createRequestContext.mockRejectedValueOnce(

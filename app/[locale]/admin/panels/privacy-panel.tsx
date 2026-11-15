@@ -125,6 +125,7 @@ export default function PrivacyErasurePanel() {
   const [replacementLastName, setReplacementLastName] = useState('')
   const [replacementEmail, setReplacementEmail] = useState('')
   const [preview, setPreview] = useState<PrivacyPreview | null>(null)
+  const [previewNeedsRefresh, setPreviewNeedsRefresh] = useState(false)
   const [actions, setActions] = useState<Record<string, PrivacyAction>>({})
   const [executionStatuses, setExecutionStatuses] =
     useState<PrivacyExecutionStatuses | null>(null)
@@ -197,6 +198,7 @@ export default function PrivacyErasurePanel() {
   )
 
   const resetExecutionFeedback = () => {
+    setPreviewNeedsRefresh(true)
     setExecutionStatuses(null)
     setStatus(current => (current === 'saved' ? 'idle' : current))
     setMessage(null)
@@ -279,13 +281,27 @@ export default function PrivacyErasurePanel() {
   }
 
   const runPreview = async () => {
+    setPreviewNeedsRefresh(true)
+    const selectedActions = Object.fromEntries(
+      (preview?.groups ?? []).map(group => [
+        group.key,
+        effectivePrivacyAction(group, actions, {
+          canSwitch: canUseSwitchAction,
+        }),
+      ]),
+    )
     setStatus('saving')
     setMessage(null)
     setMessageScope('preview')
     setExecutionStatuses(null)
     try {
       const response = await apiFetch('/api/privacy/erasure-preview', {
-        body: JSON.stringify(previewPayload()),
+        body: JSON.stringify({
+          ...previewPayload(),
+          ...(Object.keys(selectedActions).length
+            ? { actions: selectedActions }
+            : {}),
+        }),
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       })
@@ -302,10 +318,16 @@ export default function PrivacyErasurePanel() {
       setPreview(data)
       setActions(
         Object.fromEntries(
-          data.groups.map(group => [group.key, group.recommendedAction]),
+          data.groups.map(group => [
+            group.key,
+            effectivePrivacyAction(group, selectedActions, {
+              canSwitch: canUseSwitchAction,
+            }),
+          ]),
         ),
       )
       setStatus('idle')
+      setPreviewNeedsRefresh(false)
     } catch {
       setStatus('error')
       setMessage(ta('privacy.previewError'))
@@ -313,7 +335,7 @@ export default function PrivacyErasurePanel() {
   }
 
   const executeErasure = async () => {
-    if (!preview) return
+    if (!preview || previewNeedsRefresh || status === 'saving') return
     const effectiveActions = Object.fromEntries(
       preview.groups.map(group => [
         group.key,
@@ -329,6 +351,7 @@ export default function PrivacyErasurePanel() {
       },
       { anonymize: 0, delete: 0, skip: 0, switch: 0 },
     )
+    setStatus('saving')
     const confirmed = await confirm({
       confirmText: ta('privacy.execute'),
       icon: 'caution',
@@ -336,7 +359,10 @@ export default function PrivacyErasurePanel() {
       title: ta('privacy.confirmTitle'),
       variant: 'danger',
     })
-    if (!confirmed) return
+    if (!confirmed) {
+      setStatus('idle')
+      return
+    }
 
     setStatus('saving')
     setMessage(null)
@@ -352,6 +378,7 @@ export default function PrivacyErasurePanel() {
         method: 'POST',
       })
       if (!response.ok) {
+        setPreviewNeedsRefresh(true)
         const error = await readPrivacyError(response, {
           fallback: ta('privacy.executeError'),
           serverFallback: ta('privacy.serverExecuteError'),
@@ -370,7 +397,11 @@ export default function PrivacyErasurePanel() {
             : null,
         )
         setMessage(
-          response.status === 409 ? ta('privacy.stalePreview') : error.message,
+          error.body?.details?.reason === 'stale_privacy_preview'
+            ? ta('privacy.stalePreview')
+            : error.body?.details?.reason === 'active_export_actor_quota'
+              ? ta('privacy.activeExport')
+              : error.message,
         )
         return
       }
@@ -386,6 +417,7 @@ export default function PrivacyErasurePanel() {
       setMessageScope('preview')
       setMessage(ta('privacy.executeSuccess'))
     } catch {
+      setPreviewNeedsRefresh(true)
       setStatus('error')
       setMessageScope('execute')
       setMessage(ta('privacy.executeError'))
@@ -440,6 +472,7 @@ export default function PrivacyErasurePanel() {
               {helpPanel('targetHsaId')}
               <input
                 className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 font-mono text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                disabled={status === 'saving'}
                 id="privacy-target-hsa-id"
                 onChange={event => {
                   resetExecutionFeedback()
@@ -469,6 +502,7 @@ export default function PrivacyErasurePanel() {
                 {helpPanel('replacementHsaId')}
                 <input
                   className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 font-mono text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                  disabled={status === 'saving'}
                   id="privacy-replacement-hsa-id"
                   onChange={event => {
                     resetExecutionFeedback()
@@ -490,6 +524,7 @@ export default function PrivacyErasurePanel() {
                 {helpPanel('replacementName')}
                 <input
                   className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                  disabled={status === 'saving'}
                   id="privacy-replacement-name"
                   onChange={event => {
                     resetExecutionFeedback()
@@ -514,6 +549,7 @@ export default function PrivacyErasurePanel() {
                 {helpPanel('replacementFirstName')}
                 <input
                   className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                  disabled={status === 'saving'}
                   id="privacy-replacement-first-name"
                   onChange={event => {
                     resetExecutionFeedback()
@@ -538,6 +574,7 @@ export default function PrivacyErasurePanel() {
                 {helpPanel('replacementLastName')}
                 <input
                   className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                  disabled={status === 'saving'}
                   id="privacy-replacement-last-name"
                   onChange={event => {
                     resetExecutionFeedback()
@@ -570,6 +607,7 @@ export default function PrivacyErasurePanel() {
                 {helpPanel('replacementEmail')}
                 <input
                   className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                  disabled={status === 'saving'}
                   id="privacy-replacement-email"
                   onChange={event => {
                     resetExecutionFeedback()
@@ -618,6 +656,18 @@ export default function PrivacyErasurePanel() {
 
         {preview ? (
           <div className="mt-6 overflow-hidden rounded-2xl border border-secondary-200/70 dark:border-secondary-700/60">
+            {previewNeedsRefresh ? (
+              <p
+                className="p-4 text-sm text-secondary-700 dark:text-secondary-200"
+                role="status"
+                {...devMarker({
+                  name: 'preview refresh notice',
+                  context: 'privacy erasure',
+                })}
+              >
+                {ta('privacy.refreshRequired')}
+              </p>
+            ) : null}
             <div className="flex flex-col gap-2 border-b border-secondary-200/70 bg-secondary-50 px-4 py-3 dark:border-secondary-700/60 dark:bg-secondary-950/40 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
@@ -883,7 +933,11 @@ export default function PrivacyErasurePanel() {
               <div className="flex flex-wrap items-center justify-end gap-3 border-t border-secondary-200/70 bg-white px-4 py-4 dark:border-secondary-700/60 dark:bg-secondary-900">
                 <button
                   className="inline-flex min-h-11 items-center gap-2 rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-800 disabled:opacity-60"
-                  disabled={status === 'saving'}
+                  disabled={status === 'saving' || previewNeedsRefresh}
+                  {...devMarker({
+                    name: 'execute reviewed actions',
+                    context: 'privacy erasure',
+                  })}
                   onClick={executeErasure}
                   type="button"
                 >

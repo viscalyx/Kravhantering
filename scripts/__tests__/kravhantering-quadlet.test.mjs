@@ -1952,6 +1952,40 @@ rotate_sqlserver_certificate
     ).toBe('active SQL Server unit\n')
   })
 
+  it('fits the production smoke resource limits within hosted runner memory', () => {
+    const limits = childProcess.spawnSync(
+      'bash',
+      ['-s', '--', PRODUCTION_SMOKE_PATH],
+      {
+        input: 'source "$1"\nrender_smoke_resource_limits\n',
+        encoding: 'utf8',
+        timeout: 10_000,
+      },
+    )
+    expect(limits.status, limits.stderr).toBe(0)
+    const fixture = createFixture(
+      releaseEnv(
+        Object.fromEntries(
+          limits.stdout
+            .trim()
+            .split('\n')
+            .map(line => line.split('=')),
+        ),
+      ),
+    )
+    const runnerMemory = path.join(fixture.root, 'runner-memory')
+    // MemTotal reported by the failing Ubuntu 24.04 hosted runner.
+    fs.writeFileSync(runnerMemory, 'MemTotal:       16078424 kB\n')
+
+    const result = runHelper(
+      ['verify-host', '--topology', 'single-node'],
+      fixture,
+      { KRAVHANTERING_MEMINFO_FILE: runnerMemory },
+    )
+
+    expect(result.status, result.stderr).toBe(0)
+  })
+
   it('rejects host memory that cannot enforce the topology envelope', () => {
     const fixture = createFixture(releaseEnv())
     const lowMemory = path.join(fixture.root, 'low-memory')

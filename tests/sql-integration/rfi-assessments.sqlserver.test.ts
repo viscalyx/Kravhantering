@@ -19,6 +19,7 @@ import {
   executePrivacyErasure,
   previewPrivacyErasure,
 } from '@/lib/privacy/erasure'
+import { privacyContext } from '@/tests/helpers/privacy-context'
 import {
   createArea,
   createSpecificationFixture,
@@ -491,6 +492,7 @@ describe('RFI assessment persistence', () => {
       )?.count,
     ).toBe(1)
     await executePrivacyErasure(db, {
+      context: privacyContext(),
       target,
       previewToken: preview.previewToken,
     })

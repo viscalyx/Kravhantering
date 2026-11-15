@@ -439,11 +439,12 @@ from the visible dropdowns before execution.
 The execute action is only shown after a preview with at least one occurrence,
 and it appears below the preview rows so the handler reviews the exact rows
 before running the erasure.
-After a successful erasure the preview remains visible as a receipt: executed
+After a successful erasure the preview remains visible as an action summary: executed
 rows are marked green, skipped rows stay neutral, and the execute action is
 hidden. If execution fails with a safe row key, only that row is marked red;
-stale previews and unexpected failures remain global errors because no row has
-been changed.
+stale previews and unexpected failures remain global errors. A stale-preview
+rejection makes no changes. An unexpected or lost response can leave the outcome
+unknown: inspect saved data and the Action log before repeating the operation.
 
 After preview, the handler can export the same HSA-id scope as JSON or PDF.
 The JSON payload is the authoritative machine-readable format and uses schema
@@ -491,8 +492,31 @@ Description and other free-text fields are not scanned or rewritten by this
 workflow. Their help text tells users not to enter names or other details that
 can identify a living person.
 
-The execution endpoint recomputes matches in a single transaction and rejects
-stale previews. Privacy execution emits both the platform security-log event
+Preview and execution each read one consistent database state. The execution
+endpoint checks authorization, eligibility and the proof inside its serializable
+transaction. The proof binds the underlying record identities, all affected
+identity values, selected actions, and supplied and stored replacement details.
+Equal counts or display labels do not authorize substituted records. Changes or
+unavailable proof reject the complete request and require a new preview.
+
+After changing an action or any replacement detail, choose **Preview** again.
+Review the refreshed rows and choices before confirmation. Existing valid action
+choices remain selected. A failed refresh leaves execution disabled. Wait for
+active exports or reports to finish before refreshing quota erasure. There is no
+automatic retry. Later activity by the same person remains possible.
+
+Action counts describe preview occurrences assigned to each action. They are
+not verified physical row-deletion totals or retention subject counts. Required
+business history remains; an overlapping group or dependent evidence can affect
+a different number of physical rows. Erasure and its required Action log entry
+commit together; a later failure rolls back the complete request.
+
+API clients must include chosen `actions` in the preview request and submit the
+same actions, replacement details and returned `previewToken` for execution.
+Omitted actions use the recommended choices. Refresh old previews after an
+upgrade. Conflict responses distinguish `stale_privacy_preview` from
+`active_export_actor_quota` without exposing record values. Privacy execution
+emits both the platform security-log event
 and a database action-audit event. Platform security logs are outside this
 privacy matrix, but `action_audit_events.actor` is included: erasure preserves
 the row and may anonymize or switch only the actor HSA-id/display-name

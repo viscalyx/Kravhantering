@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   createSpecificationLocalRequirement,
   createSpecificationNeedsReference,
@@ -15,6 +15,49 @@ import {
 
 describe('requirements specification mutations', () => {
   const appDb = useSqlIntegrationDatabase()
+
+  it('makes new library bindings current even when the application clock is ahead', async () => {
+    const db = appDb()
+    const area = await createArea(db)
+    const published = await createPublishedRequirement(
+      db,
+      area.id,
+      'Immediately current',
+    )
+    const specification = await createSpecificationFixture(db, 'SQL-CLOCK')
+    const [{ now }] = await db.query<Array<{ now: Date }>>(
+      'SELECT SYSUTCDATETIME() AS now',
+    )
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(now.getTime() + 60_000))
+    try {
+      expect(
+        await linkRequirementsToSpecificationAtomically(db, specification.id, {
+          requirementIds: [published.requirementId],
+        }),
+      ).toBe(1)
+      expect(
+        await db.query(
+          'SELECT requirement_id FROM current_requirement_applications WHERE requirements_specification_id = @0',
+          [specification.id],
+        ),
+      ).toEqual([{ requirement_id: published.requirementId }])
+      expect(
+        await linkRequirementsToSpecificationAtomically(db, specification.id, {
+          requirementIds: [published.requirementId],
+          needsReferenceText: 'Duplicate-only clock need',
+        }),
+      ).toBe(0)
+      expect(
+        await db.query(
+          'SELECT id FROM specification_needs_references WHERE specification_id = @0',
+          [specification.id],
+        ),
+      ).toEqual([])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 
   it('removes an auto-created needs reference when a duplicate-only add links nothing', async () => {
     const area = await createArea(appDb())
