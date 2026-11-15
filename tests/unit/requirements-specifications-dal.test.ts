@@ -2106,7 +2106,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         101,
         33,
         DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
-        expect.any(Date),
         null,
         null,
       ],
