@@ -2752,8 +2752,12 @@ test.describe('Kravhantering — Guidegenerering', () => {
     })
 
     await guideStep(page, 'Admin — Taxonomi', async () => {
-      await page.getByRole('tab', { name: 'Taxonomi' }).click()
-      await page.waitForTimeout(300)
+      const tab = page.getByRole('tab', { name: 'Taxonomi', exact: true })
+      await tab.click()
+      await expect(tab).toHaveAttribute('aria-selected', 'true')
+      await expect(
+        page.getByRole('tabpanel', { name: 'Taxonomi', exact: true }),
+      ).toHaveCount(1)
       await snap(
         page,
         'admin-taxonomi',
@@ -2763,8 +2767,18 @@ test.describe('Kravhantering — Guidegenerering', () => {
     })
 
     await guideStep(page, 'Admin — Statusar och arbetsflöden', async () => {
-      await page.getByRole('tab', { name: 'Statusar och arbetsflöden' }).click()
-      await page.waitForTimeout(300)
+      const tab = page.getByRole('tab', {
+        name: 'Statusar och arbetsflöden',
+        exact: true,
+      })
+      await tab.click()
+      await expect(tab).toHaveAttribute('aria-selected', 'true')
+      await expect(
+        page.getByRole('tabpanel', {
+          name: 'Statusar och arbetsflöden',
+          exact: true,
+        }),
+      ).toHaveCount(1)
       await snap(
         page,
         'admin-statusar-arbetsfloden',
