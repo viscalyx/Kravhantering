@@ -2218,9 +2218,12 @@ for (const locale of ['en', 'sv'] as const) {
             })
             .click()
           await showContext()
+          // Retry connection resets on verification reads after browser work
+          // leaves the API context's keep-alive connection idle.
           const viewAfterLocal = (await (
             await owner.get(
               `${data.endpoint}${agreementId ? `?agreementId=${agreementId}` : ''}`,
+              { maxRetries: 2 },
             )
           ).json()) as SpecificationAgreementView
           expect(
@@ -2261,6 +2264,7 @@ for (const locale of ['en', 'sv'] as const) {
           const finalView = (await (
             await owner.get(
               `${data.endpoint}${agreementId ? `?agreementId=${agreementId}` : ''}`,
+              { maxRetries: 2 },
             )
           ).json()) as SpecificationAgreementView
           expect(finalView.items.filter(item => !item.isRemoved)).toHaveLength(
