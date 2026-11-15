@@ -2959,6 +2959,11 @@ test.describe('Kravhantering — Guidegenerering', () => {
       }
     })
 
+    currentSection = 'Dataskydd'
+    textEntry(
+      'Granska personuppgifter före radering',
+      'Som dataskyddshandläggare öppnar du **Admin Center > Dataskydd** och söker med exakt HSA-id. Ange ersättningsperson vid byte av ansvar och välj **Förhandsgranska**. Granska poster och välj åtgärder. Ändrar du en åtgärd eller någon ersättningsuppgift måste du välja **Förhandsgranska** igen innan **Kör radering** blir tillgänglig. Giltiga åtgärdsval behålls.\n\nBekräftelsen gäller de granskade posterna och berörda värdena. Samma antal och namn räcker inte om posterna har bytts ut. Vid inaktuell granskning avvisas hela begäran utan radering. Uppdatera och granska igen. Antalen beskriver förhandsgranskningens förekomster, inte fysiskt raderade databasrader. Export är en separat åtgärd och godkänner inte radering.\n\nOm resultatet inte kan bekräftas eller svaret försvinner, kontrollera sparade uppgifter och åtgärdsloggen innan du upprepar åtgärden. Vänta tills pågående exporter eller rapporter är klara innan du uppdaterar förhandsgranskning för deras kvotuppgifter.',
+    )
     guideRunCompleted = true
   })
 })

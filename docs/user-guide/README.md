@@ -18,6 +18,7 @@
 10. [Administrationscenter](#administrationscenter)
 11. [Taxonomi och statusar](#taxonomi-och-statusar)
 12. [Rapporter](#rapporter)
+13. [Dataskydd](#dataskydd)
 
 ## Översikt och navigering
 
@@ -1036,3 +1037,24 @@ Från kravdetaljsidan kan du öppna rapportmenyn för att generera
 som PDF.
 
 ![Rapporter från kravdetaljsidan](images/087-rapporter-kravdetalj.png)
+
+## Dataskydd
+
+### Granska personuppgifter före radering
+
+Som dataskyddshandläggare öppnar du **Admin Center > Dataskydd** och söker med
+exakt HSA-id. Ange ersättningsperson vid byte av ansvar och välj
+**Förhandsgranska**. Granska poster och välj åtgärder. Ändrar du en åtgärd eller
+någon ersättningsuppgift måste du välja **Förhandsgranska** igen innan **Kör
+radering** blir tillgänglig. Giltiga åtgärdsval behålls.
+
+Bekräftelsen gäller de granskade posterna och berörda värdena. Samma antal och
+namn räcker inte om posterna har bytts ut. Vid inaktuell granskning avvisas hela
+begäran utan radering. Uppdatera och granska igen. Antalen beskriver
+förhandsgranskningens förekomster, inte fysiskt raderade databasrader. Export är
+en separat åtgärd och godkänner inte radering.
+
+Om resultatet inte kan bekräftas eller svaret försvinner, kontrollera sparade
+uppgifter och åtgärdsloggen innan du upprepar åtgärden. Vänta tills pågående
+exporter eller rapporter är klara innan du uppdaterar förhandsgranskning för
+deras kvotuppgifter.

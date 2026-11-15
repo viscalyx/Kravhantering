@@ -7,6 +7,12 @@ import {
 import type { SqlServerDatabase } from '@/lib/db'
 import { mcpImportValidationPrincipalFingerprint } from '@/lib/mcp/import-validation-principal'
 import { DELETED_USER_INTERNAL_NAME } from '@/lib/privacy/display-name'
+import {
+  reviewedPrivacyRecords,
+  reviewedReplacementPerson,
+} from '@/lib/privacy/erasure-reviewed-records'
+import { assertPrivacyOfficer } from '@/lib/privacy/route-helpers'
+import type { RequestContext } from '@/lib/requirements/auth'
 import { conflictError, validationError } from '@/lib/requirements/errors'
 import {
   REQUIREMENT_RESPONSIBILITY_PERSON_MISSING_NAME,
@@ -31,13 +37,14 @@ export interface PrivacyErasureTargetInput {
 }
 
 export interface PrivacyErasurePreviewInput {
+  actions?: Record<string, PrivacyErasureAction>
   replacement?: PrivacyReplacementInput | null
   target: PrivacyErasureTargetInput
 }
 
 export interface PrivacyErasureExecutionInput
   extends PrivacyErasurePreviewInput {
-  actions?: Record<string, PrivacyErasureAction>
+  context: RequestContext
   previewToken: string
 }
 
@@ -975,13 +982,18 @@ function previewTokenFor(
   targetHsaId: string,
   replacement: PrivacyReplacementInput | null,
   groups: PrivacyOccurrenceGroup[],
+  records: Record<string, string[]>,
+  actions: Record<string, PrivacyErasureAction>,
 ): string {
   const stablePayload = JSON.stringify({
+    actions,
+    records,
     groups: groups.map(group => ({
       affectedReferences: group.affectedReferences ?? [],
       allowedActions: group.allowedActions,
       blockingReferences: group.blockingReferences ?? [],
       count: group.count,
+      currentDisplayValue: group.currentDisplayValue,
       controlledByGroupKey: group.controlledByGroupKey ?? null,
       disabledReasonKey: group.disabledReasonKey ?? null,
       key: group.key,
@@ -1015,12 +1027,25 @@ async function listAffectedReferences(
 }
 
 export async function previewPrivacyErasure(
+  db: QueryExecutor & Partial<Pick<SqlServerDatabase, 'transaction'>>,
+  input: PrivacyErasurePreviewInput,
+): Promise<PrivacyErasurePreview> {
+  if (db.transaction) {
+    return db.transaction('SERIALIZABLE', manager =>
+      collectPrivacyErasurePreview(manager, input),
+    )
+  }
+  return collectPrivacyErasurePreview(db, input)
+}
+
+async function collectPrivacyErasurePreview(
   db: QueryExecutor,
   input: PrivacyErasurePreviewInput,
 ): Promise<PrivacyErasurePreview> {
   const target = normalizeTarget(input.target)
   const replacement = normalizeReplacement(input.replacement)
   const groups: PrivacyOccurrenceGroup[] = []
+  const records: Record<string, string[]> = {}
 
   for (const policy of GROUP_POLICIES) {
     const targetValue = policyTargetValue(policy, target.hsaId)
@@ -1029,6 +1054,12 @@ export async function previewPrivacyErasure(
     >
     const count = countFromRows(countRows)
     if (count < 1) continue
+    records[policy.key] = await reviewedPrivacyRecords(
+      db,
+      policy,
+      targetValue,
+      displayColumnFor(policy),
+    )
     const valueRows = policy.currentDisplaySql
       ? ((await db.query(policy.currentDisplaySql, [targetValue])) as Array<
           Record<string, unknown>
@@ -1064,12 +1095,26 @@ export async function previewPrivacyErasure(
     })
   }
 
-  return {
+  if (replacement) {
+    records.replacementPerson = await reviewedReplacementPerson(
+      db,
+      replacement.hsaId,
+    )
+  }
+  const preview = {
     groups,
-    previewToken: previewTokenFor(target.hsaId, replacement, groups),
+    previewToken: '',
     targetFingerprint: privacyTargetFingerprint(target.hsaId),
     totalCount: groups.reduce((sum, group) => sum + group.count, 0),
   }
+  preview.previewToken = previewTokenFor(
+    target.hsaId,
+    replacement,
+    groups,
+    records,
+    resolveActions(preview, input.actions),
+  )
+  return preview
 }
 
 function resolveActions(
@@ -1384,6 +1429,7 @@ export async function executePrivacyErasure(
   const requestId = randomUUID()
   let result!: PrivacyErasureResult
   await db.transaction('SERIALIZABLE', async manager => {
+    assertPrivacyOfficer(input.context)
     const tx: QueryExecutor = {
       query: (sql, params) => manager.query(sql, params),
     }

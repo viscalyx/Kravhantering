@@ -13,6 +13,18 @@ changes.
 
 ## Unreleased
 
+### Reviewed personal data erasure
+
+Update privacy API clients before rollout. Include selected actions in the
+preview request and execute with the same choices and replacement details.
+Create new previews after upgrade. Changed records or relevant values require
+another preview even when the displayed counts and labels remain the same.
+
+Erasure can block competing writes while it checks and applies the reviewed
+request. Schedule it when affected data is stable. If the response is lost,
+inspect saved data and the Action log before repeating the operation. Action
+summaries count preview occurrences, not physically deleted rows.
+
 ### Built-in specification lifecycle statuses
 
 Before rollout, update administrative automation that deletes the built-in

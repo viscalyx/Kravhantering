@@ -30,6 +30,7 @@ import { createSpecificationCsvFormatter } from '@/lib/reports/specification-csv
 import { querySpecificationItemPage } from '@/lib/requirements/specification-item-page'
 import { applicableDeviationSql } from '@/lib/specifications/agreement-deviation-state'
 import { createSpecificationAgreementWorkflow } from '@/lib/specifications/agreements'
+import { privacyContext } from '@/tests/helpers/privacy-context'
 import { requireTestValue } from '@/tests/helpers/require-test-value'
 import { DeviationValidity1789516800000 } from '@/typeorm/migrations/0070_deviation_validity.mjs'
 import {
@@ -1052,9 +1053,14 @@ describe('deviation approval terms', () => {
           : 'skip',
       ]),
     ) as Record<string, 'anonymize' | 'skip'>
-    await executePrivacyErasure(db, {
+    const reviewedActions = await previewPrivacyErasure(db, {
       target: { hsaId: requireTestValue(context.actor.hsaId) },
-      previewToken: preview.previewToken,
+      actions,
+    })
+    await executePrivacyErasure(db, {
+      context: privacyContext(),
+      target: { hsaId: requireTestValue(context.actor.hsaId) },
+      previewToken: reviewedActions.previewToken,
       actions,
     })
     const evidence = await db.query<

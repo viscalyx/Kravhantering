@@ -5,6 +5,7 @@ import {
   previewPrivacyErasure,
   privacyTargetFingerprint,
 } from '@/lib/privacy/erasure'
+import { privacyContext } from '@/tests/helpers/privacy-context'
 
 const TARGET_HSA_ID = 'SE5560000001-kalle1'
 const OTHER_HSA_ID = 'SE5560000001-kalle2'
@@ -155,6 +156,41 @@ function createTransactionalDb(query: ReturnType<typeof vi.fn>) {
 }
 
 describe('privacy erasure service', () => {
+  it('requires review again when the selected action changes', async () => {
+    const { db, query } = createPrivacyDb({
+      'requirement_versions.created_by': { count: 1, value: 'Reviewed name' },
+    })
+    const preview = await previewPrivacyErasure(db, {
+      target: { hsaId: TARGET_HSA_ID },
+    })
+    await expect(
+      executePrivacyErasure(createTransactionalDb(query), {
+        context: privacyContext(),
+        actions: { 'requirement_versions.created_by': 'skip' },
+        target: { hsaId: TARGET_HSA_ID },
+        previewToken: preview.previewToken,
+      }),
+    ).rejects.toMatchObject({ details: { reason: 'stale_privacy_preview' } })
+  })
+
+  it('requires a new preview when an affected display value changes', async () => {
+    const occurrences = {
+      'requirement_versions.created_by': { count: 1, value: 'Reviewed name' },
+    }
+    const { db, query } = createPrivacyDb(occurrences)
+    const preview = await previewPrivacyErasure(db, {
+      target: { hsaId: TARGET_HSA_ID },
+    })
+    occurrences['requirement_versions.created_by'].value = 'Changed name'
+    await expect(
+      executePrivacyErasure(createTransactionalDb(query), {
+        context: privacyContext(),
+        target: { hsaId: TARGET_HSA_ID },
+        previewToken: preview.previewToken,
+      }),
+    ).rejects.toMatchObject({ details: { reason: 'stale_privacy_preview' } })
+  })
+
   it('previews and deletes exact MCP principal fingerprints without querying raw HSA-id', async () => {
     const previewDb = createPrivacyDb({
       'requirement_import_validation_rate_buckets.principal': { count: 1 },
@@ -191,6 +227,7 @@ describe('privacy erasure service', () => {
       'requirement_import_validation_sessions.creator': { count: 2 },
     })
     await executePrivacyErasure(createTransactionalDb(executionDb.query), {
+      context: privacyContext(),
       previewToken: preview.previewToken,
       target: { hsaId: TARGET_HSA_ID },
     })
@@ -228,6 +265,7 @@ describe('privacy erasure service', () => {
       'hsa_verification_quota_buckets.subject': { count: 2 },
     })
     await executePrivacyErasure(createTransactionalDb(executionDb.query), {
+      context: privacyContext(),
       previewToken: preview.previewToken,
       target: { hsaId: TARGET_HSA_ID },
     })
@@ -499,6 +537,7 @@ describe('privacy erasure service', () => {
     query.mockClear()
 
     await executePrivacyErasure(createTransactionalDb(query), {
+      context: privacyContext(),
       actions: { 'requirement_packages.owner': 'skip' },
       previewToken: preview.previewToken,
       target: { hsaId: TARGET_HSA_ID },
@@ -544,6 +583,7 @@ describe('privacy erasure service', () => {
     query.mockClear()
 
     const result = await executePrivacyErasure(createTransactionalDb(query), {
+      context: privacyContext(),
       actions: { 'requirement_packages.owner': 'switch' },
       previewToken: preview.previewToken,
       replacement,
@@ -589,6 +629,7 @@ describe('privacy erasure service', () => {
     query.mockClear()
 
     const result = await executePrivacyErasure(createTransactionalDb(query), {
+      context: privacyContext(),
       actions: { 'requirement_areas.owner': 'switch' },
       previewToken: preview.previewToken,
       replacement,
@@ -617,6 +658,7 @@ describe('privacy erasure service', () => {
     })
 
     const result = await executePrivacyErasure(createTransactionalDb(query), {
+      context: privacyContext(),
       actions: { 'requirement_versions.created_by': 'anonymize' },
       previewToken: preview.previewToken,
       target: { hsaId: TARGET_HSA_ID },
@@ -642,11 +684,13 @@ describe('privacy erasure service', () => {
       hsaId: 'SE5560000001-johlju',
     }
     const preview = await previewPrivacyErasure(db, {
+      actions: { 'requirement_versions.created_by': 'switch' },
       replacement,
       target: { hsaId: TARGET_HSA_ID },
     })
 
     await executePrivacyErasure(createTransactionalDb(query), {
+      context: privacyContext(),
       actions: { 'requirement_versions.created_by': 'switch' },
       previewToken: preview.previewToken,
       replacement,
@@ -678,6 +722,7 @@ describe('privacy erasure service', () => {
     expect(preview.groups[0]?.currentDisplayValue).toBe('Kalle Svensson')
 
     const result = await executePrivacyErasure(createTransactionalDb(query), {
+      context: privacyContext(),
       actions: { 'requirement_area_co_authors.created_by': 'anonymize' },
       previewToken: preview.previewToken,
       target: { hsaId: TARGET_HSA_ID },
@@ -720,6 +765,7 @@ describe('privacy erasure service', () => {
     )
 
     const result = await executePrivacyErasure(createTransactionalDb(query), {
+      context: privacyContext(),
       actions: { 'action_audit_events.actor': 'anonymize' },
       previewToken: preview.previewToken,
       target: { hsaId: TARGET_HSA_ID },
@@ -772,6 +818,7 @@ describe('privacy erasure service', () => {
     )
 
     await executePrivacyErasure(createTransactionalDb(query), {
+      context: privacyContext(),
       previewToken: preview.previewToken,
       target: { hsaId: TARGET_HSA_ID },
     })
@@ -805,6 +852,7 @@ describe('privacy erasure service', () => {
       target: { hsaId: TARGET_HSA_ID },
     })
     const result = await executePrivacyErasure(createTransactionalDb(query), {
+      context: privacyContext(),
       actions: {
         'requirement_area_co_authors.hsa_id': 'delete',
         'requirements_specifications.responsible': 'anonymize',
@@ -850,6 +898,7 @@ describe('privacy erasure service', () => {
 
     query.mockClear()
     const result = await executePrivacyErasure(createTransactionalDb(query), {
+      context: privacyContext(),
       actions: {
         'requirements_specifications.responsible': 'switch',
         'specification_co_authors.hsa_id': 'switch',
@@ -895,11 +944,13 @@ describe('privacy erasure service', () => {
       },
     })
     const preview = await previewPrivacyErasure(db, {
+      actions: { 'requirement_versions.created_by': 'skip' },
       target: { hsaId: TARGET_HSA_ID },
     })
 
     query.mockClear()
     const result = await executePrivacyErasure(createTransactionalDb(query), {
+      context: privacyContext(),
       actions: { 'requirement_versions.created_by': 'skip' },
       previewToken: preview.previewToken,
       target: { hsaId: TARGET_HSA_ID },
@@ -933,6 +984,7 @@ describe('privacy erasure service', () => {
     })
     await expect(
       executePrivacyErasure(createTransactionalDb(query), {
+        context: privacyContext(),
         actions: { 'requirement_versions.created_by': 'delete' },
         previewToken: preview.previewToken,
         target: { hsaId: TARGET_HSA_ID },
@@ -961,6 +1013,7 @@ describe('privacy erasure service', () => {
 
     await expect(
       executePrivacyErasure(createTransactionalDb(staleDb.query), {
+        context: privacyContext(),
         previewToken: preview.previewToken,
         target: { hsaId: TARGET_HSA_ID },
       }),
@@ -999,6 +1052,7 @@ describe('privacy erasure service', () => {
 
     await expect(
       executePrivacyErasure(createTransactionalDb(executionDb.query), {
+        context: privacyContext(),
         actions: { 'requirement_versions.created_by': 'switch' },
         previewToken: preview.previewToken,
         replacement: {

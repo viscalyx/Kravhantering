@@ -1618,6 +1618,11 @@ components:
       required: [ target ]
       additionalProperties: false
       properties:
+        actions:
+          type: object
+          maxProperties: 100
+          additionalProperties:
+            $ref: '#/components/schemas/PrivacyErasureAction'
         replacement:
           nullable: true
           allOf:

@@ -77,6 +77,7 @@ export const POST = secureMutationRoute({
     try {
       const db = await getRequestSqlServerDataSource()
       const result = await executePrivacyErasure(db, {
+        context,
         actions: body.actions,
         audit: (executor, auditResult) =>
           recordAllowedActionAuditEventWithExecutor(executor, context, {
