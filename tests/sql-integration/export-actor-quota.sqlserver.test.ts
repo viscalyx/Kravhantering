@@ -26,6 +26,7 @@ import type { RequestContext } from '@/lib/requirements/auth'
 import { requirementResponsibilityPersonTargetFingerprint } from '@/lib/requirements/responsibility-person-verification'
 import { createExportActorQuotaCleanupTarget } from '@/lib/transient-cleanup/export-actor-quota-entries'
 import { createAppDataSource } from '@/lib/typeorm/data-source'
+import { privacyContext } from '@/tests/helpers/privacy-context'
 import {
   resolveSqlIntegrationTestsUrl,
   useSqlIntegrationDatabase,
@@ -212,6 +213,7 @@ describe('Export and report actor quota in SQL Server', () => {
     )
     await expect(
       executePrivacyErasure(db(), {
+        context: privacyContext(),
         target: { hsaId },
         previewToken: preview.previewToken,
       }),
@@ -219,9 +221,11 @@ describe('Export and report actor quota in SQL Server', () => {
       details: { reason: 'active_export_actor_quota' },
     })
     await releaseExportActor(replica, first.id)
+    const refreshed = await previewPrivacyErasure(db(), { target: { hsaId } })
     await executePrivacyErasure(db(), {
+      context: privacyContext(),
       target: { hsaId },
-      previewToken: preview.previewToken,
+      previewToken: refreshed.previewToken,
     })
     const after = await previewPrivacyErasure(db(), { target: { hsaId } })
     expect(after.groups).not.toContainEqual(

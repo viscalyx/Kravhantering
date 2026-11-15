@@ -3363,22 +3363,83 @@ leverantörssvar visas. Nyckelbyte återanvänder inte den gamla nyckelns rappor
 
 ### PRIV-05: ersättningsperson med växlingsåtgärd
 
-**Steg:** Välj åtgärden som byter personansvar till ersättare.
+**Syfte:** Kontrollera att ändrade ersättningsuppgifter kräver ny granskning.
 
-**Förväntat resultat:** Förhandsgranskningen visar vilka rader som byts.
+**Användare:** `disa.privacy` med rollen `PrivacyOfficer`.
+
+**Förutsättningar:** Ett test-HSA-id har ett kravområde med ägaransvar.
+Använd testdata som får byta ägare.
+
+**Integrationstest:**
+[data-export.spec.ts](../../tests/integration/privacy/data-export.spec.ts),
+testfallet “PRIV-05: replacement-person action sends switch execution with
+replacement data”.
+
+**Steg:**
+
+1. Öppna Admin Center > Dataskydd. Ange målpersonens HSA-id, ersättande HSA-id,
+   namn, förnamn, efternamn och e-postadress. Välj **Förhandsgranska**.
+2. Kontrollera ägarraden och åtgärden **Byt**. Ändra ersättarens e-postadress.
+3. Kontrollera uppmaningen att uppdatera förhandsgranskningen och att
+   **Kör radering** är inaktiverad.
+4. Välj **Förhandsgranska** igen, granska uppgifterna och bekräfta körningen.
+
+**Förväntat resultat:** Ny granskning krävs efter ändringen. Den granskade
+ersättaren och den nya e-postadressen används. Slutförd körning visas.
 
 ### PRIV-06: anonymisera och hoppa över
 
-**Steg:** Välj en anonymiseringsåtgärd och en hoppa-över-åtgärd i samma
-förhandsgranskning.
+**Syfte:** Granska och verkställa valda åtgärder tillsammans.
 
-**Förväntat resultat:** Åtgärderna visas separat och kan verkställas korrekt.
+**Användare:** `disa.privacy` med rollen `PrivacyOfficer`.
+
+**Förutsättningar:** Testpersonen förekommer i en kravversion och ett
+förbättringsförslag som får anonymiseras.
+
+**Integrationstest:**
+[data-export.spec.ts](../../tests/integration/privacy/data-export.spec.ts),
+testfallet “PRIV-06: anonymize and skip actions execute separately from one
+preview”.
+
+**Steg:**
+
+1. Förhandsgranska testpersonens HSA-id i Admin Center > Dataskydd.
+2. Behåll **Anonymisera** för kravversionen och välj **Hoppa över** för
+   förbättringsförslaget. Kontrollera att **Kör radering** är inaktiverad.
+3. Välj **Förhandsgranska** igen. Kontrollera att de valda åtgärderna finns kvar.
+4. Granska sammanfattningen och bekräfta körningen.
+
+**Förväntat resultat:** Åtgärderna verkställs enligt granskningen. Antalen
+avser förhandsgranskningens förekomster, inte fysiskt raderade databasrader.
 
 ### PRIV-07: gammal förhandsgranskning avvisas
 
-**Steg:** Skapa förhandsgranskning, gör den inaktuell och försök verkställa.
+**Syfte:** Avvisa ändrade poster eller värden utan att radera något.
 
-**Förväntat resultat:** Verkställandet avvisas och ny förhandsgranskning krävs.
+**Användare:** `disa.privacy` med rollen `PrivacyOfficer` och en testadministratör.
+
+**Förutsättningar:** Isolerad testdata som får ändras. Administratören kan ändra
+en berörd identitetsuppgift mellan förhandsgranskning och körning.
+
+**Integrationstest:**
+[data-export.spec.ts](../../tests/integration/privacy/data-export.spec.ts),
+testfallet “PRIV-07: stale privacy preview is rejected and keeps the preview
+editable”. Webbläsartestet simulerar konfliktresponsen. SQL-tester verifierar
+postbyten med samma antal och namn, ändrade värden, konkurrerande skrivningar
+och återställning vid senare fel.
+
+**Steg:**
+
+1. Förhandsgranska testpersonens HSA-id.
+2. Låt administratören ändra ett berört visningsnamn eller ersätta en berörd
+   medförfattartilldelning med en annan under samma paketnamn.
+3. Försök köra och bekräfta den gamla förhandsgranskningen.
+4. Kontrollera felmeddelandet och att **Kör radering** är inaktiverad.
+5. Välj **Förhandsgranska** igen och granska de aktuella uppgifterna.
+
+**Förväntat resultat:** Den gamla granskningen avvisas utan ändringar från
+raderingen. En ny förhandsgranskning krävs även vid oförändrat antal och namn.
+Först efter uppdateringen kan de nya uppgifterna bekräftas.
 
 ### PRIV-08: dataskyddsverkställande skapar åtgärdslogg
 

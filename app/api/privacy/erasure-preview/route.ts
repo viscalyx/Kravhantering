@@ -44,6 +44,9 @@ const replacementSchema = z
 
 const erasurePreviewSchema = z
   .object({
+    actions: z
+      .record(z.string(), z.enum(['anonymize', 'delete', 'skip', 'switch']))
+      .optional(),
     replacement: replacementSchema.nullable().optional(),
     target: z
       .object({
@@ -62,6 +65,7 @@ export const POST = secureMutationRoute({
     try {
       const db = await getRequestSqlServerDataSource()
       const preview = await previewPrivacyErasure(db, {
+        actions: body.actions,
         replacement: body.replacement ?? null,
         target: body.target,
       })

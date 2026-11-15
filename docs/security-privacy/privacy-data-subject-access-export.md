@@ -177,3 +177,21 @@ business history, separately from the action log. The extract contains actor
 HSA-id and display-name snapshots with a reference to the business record; it
 does not export the agreement content.
 Generating an extract does not anonymize or delete the source records.
+
+## Review before erasure
+
+For privacy officers, export and erasure are separate decisions. An export does
+not approve erasure. Use Admin Center **Privacy** to preview the exact HSA-id,
+select actions and enter replacement details. After editing these choices,
+refresh the preview and review it before execution.
+
+Execution verifies the actual records and relevant values, including records
+with identical labels or counts. Changed records, changed replacement details
+or unavailable proof require a new preview. The complete request is atomic;
+required business history is preserved through anonymization where supported.
+Action summaries count preview occurrences, not physically deleted rows.
+
+If a response is lost or the result cannot be confirmed, inspect saved data and
+the Action log before repeating the operation. See the
+[administrator workflow](../governance/admin-center.md#privacy) for supported
+actions and refresh handling.

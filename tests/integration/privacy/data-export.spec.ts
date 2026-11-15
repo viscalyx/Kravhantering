@@ -353,14 +353,29 @@ test('PRIV-05: replacement-person action sends switch execution with replacement
     await page
       .getByRole('textbox', { name: 'Ersättande namn' })
       .fill('Linnea B')
-    await page.getByRole('textbox', { name: 'Förnamn' }).fill('Linnea')
-    await page.getByRole('textbox', { name: 'Efternamn' }).fill('B')
     await page
-      .getByRole('textbox', { name: 'E-post' })
+      .getByRole('textbox', { name: 'Ersättande förnamn' })
+      .fill('Linnea')
+    await page.getByRole('textbox', { name: 'Ersättande efternamn' }).fill('B')
+    await page
+      .getByRole('textbox', { name: 'Ersättande e-postadress' })
       .fill('linnea@example.test')
     await page.getByRole('button', { name: 'Förhandsgranska' }).click()
 
     await expect(page.getByText('INT Integration')).toHaveCount(1)
+    await page
+      .getByRole('textbox', { name: 'Ersättande e-postadress' })
+      .fill('reviewed@example.test')
+    await expect(
+      page.getByRole('button', { name: 'Kör radering' }),
+    ).toBeDisabled()
+    await expect(page.getByRole('status')).toContainText(
+      'Uppdatera förhandsgranskningen',
+    )
+    await page.getByRole('button', { name: 'Förhandsgranska' }).click()
+    await expect(
+      page.getByRole('button', { name: 'Kör radering' }),
+    ).toBeEnabled()
   })
 
   await test.step('execute the switch erasure request', async () => {
@@ -376,7 +391,7 @@ test('PRIV-05: replacement-person action sends switch execution with replacement
       previewToken: 'switch-preview-token',
       replacement: {
         displayName: 'Linnea B',
-        email: 'linnea@example.test',
+        email: 'reviewed@example.test',
         firstName: 'Linnea',
         hsaId: 'SE5560000001-linneab',
         lastName: 'B',
@@ -450,6 +465,14 @@ test('PRIV-06: anonymize and skip actions execute separately from one preview', 
       .getByText('Förbättringsförslag')
       .locator('xpath=ancestor::tr')
     await suggestionRow.getByRole('combobox').selectOption('skip')
+    await expect(
+      page.getByRole('button', { name: 'Kör radering' }),
+    ).toBeDisabled()
+    await page.getByRole('button', { name: 'Förhandsgranska' }).click()
+    await expect(suggestionRow.getByRole('combobox')).toHaveValue('skip')
+    await expect(
+      page.getByRole('button', { name: 'Kör radering' }),
+    ).toBeEnabled()
   })
 
   await test.step('execute anonymize and skip actions', async () => {
@@ -499,7 +522,11 @@ test('PRIV-07: stale privacy preview is rejected and keeps the preview editable'
     await page.route('**/api/privacy/erasure-requests', async route => {
       await fulfillJson(
         route,
-        { code: 'conflict', error: 'Privacy erasure preview is stale' },
+        {
+          code: 'conflict',
+          error: 'Privacy erasure preview is stale',
+          details: { reason: 'stale_privacy_preview' },
+        },
         409,
       )
     })
@@ -524,13 +551,17 @@ test('PRIV-07: stale privacy preview is rejected and keeps the preview editable'
 
     await expect(
       page.getByText(
-        'Förhandsgranskningen är inaktuell. Kör en ny förhandsgranskning innan radering.',
+        'De granskade posterna eller valen har ändrats, eller förhandsgranskningen kan inte verifieras. Inget raderades av denna begäran. Uppdatera förhandsgranskningen och granska den innan du kör igen.',
       ),
     ).toHaveCount(1)
     await expect(
       page
         .getByLabel('Dataskydd', { exact: true })
         .getByRole('button', { name: 'Kör radering' }),
+    ).toBeDisabled()
+    await page.getByRole('button', { name: 'Förhandsgranska' }).click()
+    await expect(
+      page.getByRole('button', { name: 'Kör radering' }),
     ).toBeEnabled()
   })
 })

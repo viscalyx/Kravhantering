@@ -3313,7 +3313,7 @@ describe('AdminClient', () => {
     )
     expect(
       screen.getByRole('button', { name: 'admin.privacy.execute' }),
-    ).toBeEnabled()
+    ).toBeDisabled()
   })
 
   it('keeps stale privacy previews in preview mode without row failure status', async () => {
@@ -3344,6 +3344,7 @@ describe('AdminClient', () => {
           {
             code: 'conflict',
             error: 'Privacy erasure preview is stale',
+            details: { reason: 'stale_privacy_preview' },
           },
           409,
         ),
@@ -3390,7 +3391,7 @@ describe('AdminClient', () => {
     expect(versionRow).toHaveTextContent('admin.privacy.warnings.historySwitch')
     expect(
       screen.getByRole('button', { name: 'admin.privacy.execute' }),
-    ).toBeEnabled()
+    ).toBeDisabled()
   })
 
   it('offers only skip for requirement area owner rows when no replacement exists', async () => {

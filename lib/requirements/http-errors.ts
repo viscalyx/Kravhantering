@@ -121,6 +121,7 @@ const SAFE_AGREEMENT_REASONS = [
 type SafeAgreementReason = (typeof SAFE_AGREEMENT_REASONS)[number]
 
 type SafeHttpErrorDetails =
+  | { reason: 'stale_privacy_preview' | 'active_export_actor_quota' }
   | { reason: SafeAgreementReason }
   | { blocker: 'attempt_expired' | 'attempt_mismatch' | 'attempt_unavailable' }
   | SafeAiAdminBlockerHttpDetails
@@ -233,6 +234,13 @@ function toSafeHttpErrorDetails(
   details: Record<string, unknown> | undefined,
   safeDetails: HttpErrorPayloadOptions['safeDetails'],
 ): SafeHttpErrorDetails | undefined {
+  if (
+    code === 'conflict' &&
+    (details?.reason === 'stale_privacy_preview' ||
+      details?.reason === 'active_export_actor_quota')
+  ) {
+    return { reason: details.reason }
+  }
   if (
     (code === 'conflict' || code === 'validation') &&
     SAFE_AGREEMENT_REASONS.includes(details?.reason as SafeAgreementReason)
