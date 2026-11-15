@@ -64,11 +64,6 @@ function writeLycheeState(
     'scripts/azure-dev/templates/bootstrap-host.sh',
     `LYCHEE_VERSION="${version}"\n${installerChecksums}`,
   )
-  write(
-    root,
-    '.github/workflows/quality-checks.yml',
-    `with:\n  lycheeVersion: ${version}\n`,
-  )
 }
 
 function lycheeRelease(version, checksums = { amd64: 'c', arm64: 'd' }) {
@@ -96,7 +91,7 @@ function lycheeUnit(overrides = {}) {
       '.devcontainer/Dockerfile',
       'scripts/azure-dev/templates/bootstrap-host.sh',
       '.github/workflows/quality-checks.yml',
-      'tests/unit/github-actions-workflow-security.test.ts',
+      'tests/unit/security-tooling-config.test.ts',
     ],
     repository: 'lycheeverse/lychee',
     skill: 'resolve-dependency-drift',
@@ -919,10 +914,13 @@ describe('drift detection', () => {
   it('requires synchronized Lychee versions', () => {
     const root = temporaryDirectory()
     writeLycheeState(root, 'v1.2.3')
-    const workflowPath = path.join(root, '.github/workflows/quality-checks.yml')
+    const bootstrapPath = path.join(
+      root,
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
     fs.writeFileSync(
-      workflowPath,
-      fs.readFileSync(workflowPath, 'utf8').replace('v1.2.3', 'v1.2.4'),
+      bootstrapPath,
+      fs.readFileSync(bootstrapPath, 'utf8').replace('v1.2.3', 'v1.2.4'),
     )
 
     expect(() => readLycheeCurrent(lycheeUnit(), root)).toThrow(

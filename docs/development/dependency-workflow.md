@@ -167,12 +167,20 @@ after editing the registry; expired entries fail that check and must be removed
 or reviewed again.
 
 The scheduled Lychee detector reads the aligned version and AMD64 and ARM64
-asset checksums from the devcontainer, Azure bootstrap, and quality workflow.
+asset checksums from the devcontainer and Azure bootstrap installers.
 It compares that state with the latest supported stable GitHub release and its
 published asset digests. A generated issue lists every synchronized surface
 and requires both installer versions, the workflow `lycheeVersion`, and both
 architecture checksums to be updated together. The Lychee action remains
 commit-SHA pinned and continues through the GitHub Actions Dependabot lane.
+
+Workflow YAML contents are reviewed with workflow changes and verified by CI
+execution. Unit tests and dependency checks do not assert job definitions,
+runner labels, npm setup or cache ordering, or synchronized versions inside
+workflow files. The Lychee issue still lists the quality workflow for the
+maintainer to update. Dependency policy continues to validate package,
+installer, image-lock, and Dependabot configuration; it does not infer active
+GitHub Actions dependencies from workflow source when reviewing exclusions.
 
 ## Development Service Image References
 

@@ -1,5 +1,5 @@
 ---
-applyTo: '{.devcontainer/Dockerfile,.github/workflows/quality-checks.yml,scripts/azure-dev/templates/bootstrap-host.sh,tests/unit/github-actions-workflow-security.test.ts}'
+applyTo: '{.devcontainer/Dockerfile,.github/workflows/quality-checks.yml,scripts/azure-dev/templates/bootstrap-host.sh,tests/unit/security-tooling-config.test.ts}'
 ---
 
 ## Lychee Toolchain
@@ -17,3 +17,6 @@ applyTo: '{.devcontainer/Dockerfile,.github/workflows/quality-checks.yml,scripts
   require both installer versions, workflow `lycheeVersion`, and both
   architecture checksums to change together. Keep detector tests relational;
   do not assert whichever Lychee release is currently latest.
+- Derive detector state from the two installers. Keep workflow paths as
+  update guidance; review workflow versions without parsing their contents
+  in tests or dependency checks.

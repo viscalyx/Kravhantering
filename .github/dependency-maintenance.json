@@ -53,7 +53,7 @@
         ".devcontainer/Dockerfile",
         "scripts/azure-dev/templates/bootstrap-host.sh",
         ".github/workflows/quality-checks.yml",
-        "tests/unit/github-actions-workflow-security.test.ts"
+        "tests/unit/security-tooling-config.test.ts"
       ]
     },
     {
