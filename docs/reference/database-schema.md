@@ -2924,9 +2924,9 @@ missing columns in their shipped relative order with shipped visibility.
 continue to apply in the resulting organization-wide order.
 
 An empty table uses the shipped runtime layout without inserting rows. Fresh
-installations and demo resets use this same fallback. New columns need no
-persisted seed rows or layout migration; the runtime registry supplies them
-until an administrator saves the complete layout.
+installations use this fallback. Demo resets leave this table and its saved
+rows intact. New columns need no persisted seed rows or layout migration; the
+runtime registry supplies them until an administrator saves the complete layout.
 
 ### `hsa_id_prefixes`
 
