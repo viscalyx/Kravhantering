@@ -2100,15 +2100,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(query).toHaveBeenNthCalledWith(
       4,
       expect.stringContaining('INSERT INTO requirements_specification_items'),
-      [
-        5,
-        7,
-        101,
-        33,
-        DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
-        null,
-        null,
-      ],
+      [5, 7, 101, 33, DEFAULT_SPECIFICATION_ITEM_STATUS_ID, null, null],
     )
   })
 
