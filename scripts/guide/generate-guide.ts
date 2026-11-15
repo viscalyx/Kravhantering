@@ -1147,7 +1147,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           page,
           'kolumnkonfig',
           'Kolumnkonfiguration',
-          'Klicka på kolumnväljaren (tabellikon) för att visa eller dölja kolumner. Du kan anpassa vyn efter din arbetsprocess. Inställningarna sparas i webbläsaren.',
+          'Klicka på kolumnväljaren (tabellikon) för att visa eller dölja kolumner. Du kan anpassa vyn efter din arbetsprocess. Inställningarna sparas i webbläsaren. Dina kolumnval behålls när administratören ändrar standardvyn och efter uppgraderingar. Återställ standardvyn för att använda administratörens aktuella val.',
           { fullPage: false },
         )
         await removeAnnotation(page)
@@ -2747,7 +2747,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'admin-kolumner',
         'Admin — Kolumnhantering',
-        'Fliken **Kolumner** konfigurerar vilka kolumner som visas som standard i kravbiblioteket och deras ordning. Ändringar gäller för alla användare. Du kan också ange standardvyer för olika kontexter.',
+        'Fliken **Kolumner** konfigurerar kravbibliotekets standardkolumner och deras ordning. Sparad ordning och synlighet behålls efter uppgraderingar. Nya kolumner läggs sist i sin levererade ordning och med sin levererade synlighet. Krav-ID och Kravtext är alltid synliga. Användarnas egna kolumnval behålls tills de återställer standardvyn. Utan sparade administratörsinställningar används programmets standardvy.',
       )
     })
 

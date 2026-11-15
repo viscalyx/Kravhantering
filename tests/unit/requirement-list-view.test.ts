@@ -55,6 +55,54 @@ function makeRow(overrides: Record<string, unknown> = {}) {
 }
 
 describe('requirement list view helpers', () => {
+  it('keeps saved relative order and appends missing columns in shipped order', () => {
+    const saved = [
+      { columnId: 'status' as const, defaultVisible: false, sortOrder: 30 },
+      {
+        columnId: 'description' as const,
+        defaultVisible: false,
+        sortOrder: 10,
+      },
+      { columnId: 'uniqueId' as const, defaultVisible: false, sortOrder: 20 },
+      { columnId: 'version' as const, defaultVisible: true, sortOrder: 40 },
+    ]
+    const normalized = normalizeRequirementListColumnDefaults(saved)
+
+    expect(normalized.map(column => column.columnId)).toEqual([
+      'description',
+      'uniqueId',
+      'status',
+      'version',
+      'area',
+      'category',
+      'type',
+      'qualityCharacteristic',
+      'priorityLevel',
+      'verifiable',
+      'needsReference',
+      'specificationItemStatus',
+      'normReferences',
+      'requirementPackage',
+      'suggestionCount',
+    ])
+    expect(getDefaultVisibleRequirementColumns(normalized)).toEqual([
+      'description',
+      'uniqueId',
+      'version',
+      'area',
+      'category',
+      'type',
+    ])
+    expect(normalizeRequirementListColumnDefaults(normalized)).toEqual(
+      normalized,
+    )
+    expect(
+      parseRequirementVisibleColumns('["status","needsReference"]', {
+        columnDefaults: normalized,
+      }),
+    ).toEqual(['description', 'uniqueId', 'status', 'needsReference'])
+  })
+
   it('builds requirement list params with locale and sort state', () => {
     const params = buildRequirementListParams({
       filters: {

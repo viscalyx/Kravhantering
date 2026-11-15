@@ -1,7 +1,7 @@
 <!-- AUTO-GENERERAD — redigera inte manuellt. Kör: npm run generate:guide -->
 # Kravhantering — Användarguide
 
-> Guiden genererades automatiskt av Playwright 2026-09-29.
+> Guiden genererades automatiskt av Playwright 2026-11-15.
 > Alla skärmdumpar visar det svenska gränssnittet.
 
 ## Innehållsförteckning
@@ -59,7 +59,10 @@ Kolumnerna kan konfigureras efter behov.
 ### Kolumnkonfiguration
 
 Klicka på kolumnväljaren (tabellikon) för att visa eller dölja kolumner. Du kan
-anpassa vyn efter din arbetsprocess. Inställningarna sparas i webbläsaren.
+anpassa vyn efter din arbetsprocess. Inställningarna sparas i webbläsaren. Dina
+kolumnval behålls när administratören ändrar standardvyn och efter
+uppgraderingar. Återställ standardvyn för att använda administratörens aktuella
+val.
 
 ![Kolumnkonfiguration](images/005-kolumnkonfig.png)
 
@@ -847,9 +850,12 @@ kräver ny verifiering. Panelen finns kvar hela tiden.
 
 ### Admin — Kolumnhantering
 
-Fliken **Kolumner** konfigurerar vilka kolumner som visas som standard i
-kravbiblioteket och deras ordning. Ändringar gäller för alla användare. Du kan
-också ange standardvyer för olika kontexter.
+Fliken **Kolumner** konfigurerar kravbibliotekets standardkolumner och deras
+ordning. Sparad ordning och synlighet behålls efter uppgraderingar. Nya kolumner
+läggs sist i sin levererade ordning och med sin levererade synlighet. Krav-ID
+och Kravtext är alltid synliga. Användarnas egna kolumnval behålls tills de
+återställer standardvyn. Utan sparade administratörsinställningar används
+programmets standardvy.
 
 ![Admin — Kolumnhantering](images/070-admin-kolumner.png)
 

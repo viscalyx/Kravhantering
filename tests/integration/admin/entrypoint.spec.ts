@@ -293,8 +293,22 @@ for (const { name, viewport } of viewportVariants) {
 
     if (name === 'desktop') {
       test(`ADMIN-01: persists column changes through library reloads (${name})`, async ({
+        browser,
         page,
       }) => {
+        await test.step('save personal column selections', async () => {
+          await page.goto('/sv/requirements')
+          await page.locator('[data-column-picker-trigger="true"]').click()
+          const picker = page.locator('[data-column-picker-popover="true"]')
+          await picker
+            .locator('[data-column-picker-option="type"]')
+            .getByRole('checkbox')
+            .uncheck()
+          await picker
+            .locator('[data-column-picker-option="version"]')
+            .getByRole('checkbox')
+            .check()
+        })
         await page.goto('/sv/admin')
 
         await expect
@@ -305,6 +319,18 @@ for (const { name, viewport } of viewportVariants) {
         await expect(page.getByRole('button', { name: 'Spara' })).toBeDisabled()
 
         await setAdminColumnOrder(page, targetOrder)
+        await page
+          .getByTestId('admin-column-row-category')
+          .getByRole('checkbox')
+          .uncheck()
+        await expect(
+          page.getByTestId('admin-column-row-uniqueId').getByRole('checkbox'),
+        ).toBeDisabled()
+        await expect(
+          page
+            .getByTestId('admin-column-row-description')
+            .getByRole('checkbox'),
+        ).toBeChecked()
         await page.getByRole('button', { name: 'Spara' }).click()
         await expect(page.getByText('Sparat')).toBeVisible()
 
@@ -340,6 +366,28 @@ for (const { name, viewport } of viewportVariants) {
         await expect(
           page.locator(VISIBLE_REQUIREMENTS_HEADER_SELECTOR),
         ).toContainText('Kategori')
+        const headers = page.locator(VISIBLE_REQUIREMENTS_HEADER_SELECTOR)
+        await expect(headers).toContainText('Version')
+        await expect(headers).not.toContainText('Typ')
+
+        await test.step('apply administrator visibility in a fresh browser', async () => {
+          const freshContext = await browser.newContext({
+            storageState: 'test-results/auth/admin.json',
+            viewport,
+          })
+          try {
+            const freshPage = await freshContext.newPage()
+            await freshPage.goto('/sv/requirements')
+            const freshHeaders = freshPage.locator(
+              VISIBLE_REQUIREMENTS_HEADER_SELECTOR,
+            )
+            await expect(freshHeaders).toContainText('Typ')
+            await expect(freshHeaders).not.toContainText('Kategori')
+            await expect(freshHeaders).not.toContainText('Version')
+          } finally {
+            await freshContext.close()
+          }
+        })
 
         await page.goto('/sv/admin')
         await expect

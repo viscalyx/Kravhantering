@@ -3811,9 +3811,10 @@ describe('AdminClient', () => {
         defaultVisible: false,
         sortOrder: 5,
       },
-      { columnId: 'status', defaultVisible: true, sortOrder: 6 },
-      { columnId: 'verifiable', defaultVisible: false, sortOrder: 7 },
-      { columnId: 'version', defaultVisible: false, sortOrder: 8 },
+      { columnId: 'priorityLevel', defaultVisible: false, sortOrder: 6 },
+      { columnId: 'status', defaultVisible: true, sortOrder: 7 },
+      { columnId: 'verifiable', defaultVisible: false, sortOrder: 8 },
+      { columnId: 'version', defaultVisible: false, sortOrder: 9 },
     ])
     fetchMock.mockResolvedValueOnce(okJson({ columns: reorderedColumns }))
 

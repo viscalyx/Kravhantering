@@ -2915,6 +2915,19 @@ Organization-wide default layout for the requirements list.
 `uq_requirement_list_column_defaults_column_id`,
 `uq_requirement_list_column_defaults_sort_order`.
 
+**Ownership and upgrades:** Administrator configuration is matched by
+`column_id`; numeric IDs are generated on save and are not shipped identities.
+Required reconciliation and optional initialization leave these rows unchanged.
+The runtime preserves valid saved relative order and visibility, then appends
+missing columns in their shipped relative order with shipped visibility.
+`uniqueId` and `description` remain visible. Personal visibility selections
+continue to apply in the resulting organization-wide order.
+
+An empty table uses the shipped runtime layout without inserting rows. Fresh
+installations and demo resets use this same fallback. New columns need no
+persisted seed rows or layout migration; the runtime registry supplies them
+until an administrator saves the complete layout.
+
 ### `hsa_id_prefixes`
 
 Organization-wide UI guidance for editable HSA-id fields. Each row represents

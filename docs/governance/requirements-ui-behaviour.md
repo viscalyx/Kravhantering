@@ -309,6 +309,9 @@ an explicit in-modal error.
   Do not replace it with a table library unless there is a clear product
   decision to do so.
 - `uniqueId` and `description` are locked columns. They are always visible.
+- Upgrades preserve saved column order and visibility. Missing columns append
+  in shipped relative order with shipped visibility. Personal visibility
+  selections remain in effect; an empty organization layout uses runtime defaults.
 - The organization-wide default column order and default visible column set are
   loaded from admin-managed settings.
 - `uniqueId` and `description` remain locked, but their relative order still

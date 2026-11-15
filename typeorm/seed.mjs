@@ -1094,33 +1094,6 @@ const SEED_DATA = {
     pk: [],
     rows: [],
   },
-  requirement_list_column_defaults: {
-    columns: [
-      'id',
-      'column_id',
-      'sort_order',
-      'is_default_visible',
-      'updated_at',
-    ],
-    pk: ['id'],
-    rows: [
-      [1, 'normReferences', 10, 0, '2026-04-20 20:07:00'],
-      [2, 'uniqueId', 0, 1, '2026-04-20 20:07:00'],
-      [3, 'description', 1, 1, '2026-04-20 20:07:00'],
-      [4, 'area', 2, 1, '2026-04-20 20:07:00'],
-      [5, 'category', 3, 1, '2026-04-20 20:07:00'],
-      [6, 'type', 4, 1, '2026-04-20 20:07:00'],
-      [7, 'qualityCharacteristic', 5, 0, '2026-04-20 20:07:00'],
-      [8, 'status', 6, 1, '2026-04-20 20:07:00'],
-      [9, 'verifiable', 7, 0, '2026-04-20 20:07:00'],
-      [10, 'version', 8, 0, '2026-04-20 20:07:00'],
-      [11, 'needsReference', 9, 0, '2026-04-20 20:07:00'],
-      [16, 'requirementPackage', 11, 0, '2026-04-20 20:07:00'],
-      [13, 'priorityLevel', 12, 0, '2026-04-20 20:07:00'],
-      [14, 'specificationItemStatus', 13, 0, '2026-04-20 20:07:00'],
-      [15, 'suggestionCount', 14, 0, '2026-04-20 20:07:00'],
-    ],
-  },
   hsa_id_prefixes: {
     columns: [
       'id',

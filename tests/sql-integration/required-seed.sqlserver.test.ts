@@ -59,6 +59,42 @@ describe('required seed command', () => {
     ).toEqual(before)
   })
 
+  it('preserves administrator layouts with regenerated IDs and leaves absent layouts to runtime defaults', async () => {
+    await run()
+    const shipped = await getRequirementListColumnDefaults(database())
+    expect(
+      await database().query('SELECT * FROM requirement_list_column_defaults'),
+    ).toEqual([])
+    const custom = shipped.map((column, index) => ({
+      ...column,
+      sortOrder: shipped.length - index,
+      defaultVisible: column.columnId === 'version',
+    }))
+    // Two supported saves advance identity values past the shipped numeric IDs.
+    await updateRequirementListColumnDefaults(database(), custom)
+    const saved = await updateRequirementListColumnDefaults(database(), custom)
+    const rows = await database().query(
+      'SELECT * FROM requirement_list_column_defaults ORDER BY id',
+    )
+    expect(rows[0].id).toBeGreaterThan(shipped.length)
+
+    await run()
+    await run()
+    expect(await getRequirementListColumnDefaults(database())).toEqual(saved)
+    expect(
+      await database().query(
+        'SELECT * FROM requirement_list_column_defaults ORDER BY id',
+      ),
+    ).toEqual(rows)
+
+    await database().query('DELETE FROM requirement_list_column_defaults')
+    await run()
+    expect(await getRequirementListColumnDefaults(database())).toEqual(shipped)
+    expect(
+      await database().query('SELECT * FROM requirement_list_column_defaults'),
+    ).toEqual([])
+  })
+
   it('preserves logical identities, settings and custom AI term overrides during adoption', async () => {
     await run()
     await database().query(
