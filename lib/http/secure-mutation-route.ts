@@ -13,6 +13,8 @@ import {
   getSafeErrorMessage,
   logSanitizedError,
   redactSensitiveText,
+  reportSqlFailure,
+  type SqlFailureContext,
 } from '@/lib/http/safe-errors'
 import { parseRouteParams, readJsonWithSchema } from '@/lib/http/validation'
 import { scheduleActorResponsibilityPersonRefresh } from '@/lib/requirements/actor-responsibility-refresh'
@@ -140,7 +142,10 @@ function errorResponse(
   message: string,
   error: unknown,
   safeDetails?: HttpErrorPayloadOptions['safeDetails'],
+  context?: SqlFailureContext,
 ): NextResponse {
+  const failure = reportSqlFailure(error, context)
+  if (failure) return NextResponse.json(failure, { status: 500 })
   if (error instanceof CsrfError || isRequirementsServiceError(error)) {
     const { body, status } = toHttpErrorPayload(error, { safeDetails })
     return NextResponse.json(body, { status })
@@ -251,7 +256,7 @@ async function recordAuthorizationDeniedForPolicy<TBody, TParams>(
       policyKind: policy.kind,
       reason,
     })
-    throw internalError()
+    throw internalError(undefined, undefined, { cause: auditError })
   }
 }
 
@@ -264,9 +269,9 @@ async function authorizationErrorResponse<TBody, TParams>(
 ): Promise<NextResponse> {
   try {
     await recordAuthorizationDeniedForPolicy(policy, context, error, db)
-    return errorResponse(errorMessage, error)
+    return errorResponse(errorMessage, error, undefined, context)
   } catch (auditError) {
-    return errorResponse(errorMessage, auditError)
+    return errorResponse(errorMessage, auditError, undefined, context)
   }
 }
 
@@ -366,7 +371,12 @@ export function secureMutationRoute<TBody = undefined, TParams = undefined>(
       return decorateErrorResponse(
         options,
         request,
-        errorResponse(errorMessage, error, options.handlerErrorDetails),
+        errorResponse(
+          errorMessage,
+          error,
+          options.handlerErrorDetails,
+          context,
+        ),
       )
     }
   }

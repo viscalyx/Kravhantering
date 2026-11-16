@@ -3745,6 +3745,40 @@ kan fortsätta skicka rapporter och CSP-skyddet förblir aktivt. Fel visas och
 kontrollen återgår till sparat värde. Endast Admin får läsa eller ändra
 inställningen; ändringen följer ordinarie åtgärdslogg och säkerhetsaudit.
 
+### ADMIN-34: SQL-fel visar referens utan automatisk upprepning
+
+**Syfte:** Användaren kan lämna en säker felreferens till driftpersonalen
+och kontrollera sparat tillstånd innan en åtgärd upprepas.
+
+**Användare:** Ada Admin.
+
+**Förutsättningar:** En isolerad testmiljö med ett kontrollerat SQL-fel vid
+sparning av en programinställning. Använd inte produktionsmiljön.
+
+**Integrationstest:**
+[ai-settings.spec.ts](../../tests/integration/admin/ai-settings.spec.ts),
+testfallet “ADMIN-34: SQL failures show safe references without repeating
+mutations”. Webbläsartestet simulerar felsvaret; fokuserade SQL-tester
+verifierar kopplingen mellan referens och driftlogg med riktig SQL Server.
+
+**Steg:**
+
+1. Öppna Inställningar och anteckna aktuell gräns för CSV-export.
+2. Ändra gränsen under det kontrollerade felvillkoret och lämna fältet.
+3. Läs felmeddelandet och kopiera referens, kod och tidpunkt.
+4. Kontrollera nätverksfliken: endast ett sparförsök ska göras.
+5. Aktivera ett kontrollerat SQL-fel även vid inläsning och ladda om sidan.
+   Kontrollera referens, kod och tidpunkt i Importer, Exporter och Rapporter.
+   Varje felruta ska erbjuda **Försök igen**.
+6. Återställ felvillkoret och läs in sparat tillstånd före nästa ändring.
+
+**Förväntat resultat:**
+
+- Felrutan visar säker text, referens, `sql_failure` och UTC-tidpunkt.
+- Texten uppmanar till kontroll av sparat tillstånd före upprepning.
+- Intern SQL, stack och hemligheter visas inte. Ingen automatisk upprepning
+  sker. Fältets lokala återställning är inte bevis på databasens tillstånd.
+
 ### AUTH-13: Webbläsarens CSP-rapporter når säkerhetsloggen
 
 **Steg:** Kör i produktionslik miljö med tillgång till applikationens

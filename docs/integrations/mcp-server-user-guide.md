@@ -719,3 +719,13 @@ invalidates existing sessions, run `validate` again.
   <https://code.visualstudio.com/docs/copilot/reference/mcp-configuration>
 - Visual Studio Code tool usage:
   <https://code.visualstudio.com/docs/copilot/agents/agent-tools>
+
+## SQL failure references
+
+A SQL failure returns `isError: true` and a safe message with `sql_failure`,
+a correlation reference and a UTC timestamp. The error details are in text
+content. SQL error results omit
+`structuredContent` so they do not conflict with the tool output schema.
+The code identifies the category; the reference identifies the occurrence.
+Give the reference and timestamp to your operator. Check saved state before
+repeating a mutation: a failed response does not prove that nothing was saved.

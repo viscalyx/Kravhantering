@@ -475,7 +475,15 @@ export default function SettingsPanel() {
             className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100"
             role="alert"
           >
-            <span>{message}</span>
+            <span
+              {...devMarker({
+                name: 'error reference',
+                context: 'admin settings',
+                priority: 350,
+              })}
+            >
+              {message}
+            </span>
           </div>
         ) : null}
       </div>
@@ -606,7 +614,15 @@ export default function SettingsPanel() {
               className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100"
               role="alert"
             >
-              <span>{ta('applicationSettings.loadError')}</span>
+              <span
+                {...devMarker({
+                  name: 'error reference',
+                  context: 'admin settings',
+                  priority: 350,
+                })}
+              >
+                {message ?? ta('applicationSettings.loadError')}
+              </span>
               <button
                 className="min-h-11 rounded-full border border-red-300 px-4 py-2 font-medium hover:bg-red-100 dark:border-red-700 dark:hover:bg-red-900"
                 onClick={() => void loadSettings()}
@@ -644,7 +660,15 @@ export default function SettingsPanel() {
               className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100"
               role="alert"
             >
-              <span>{ta('applicationSettings.loadError')}</span>
+              <span
+                {...devMarker({
+                  name: 'error reference',
+                  context: 'admin settings',
+                  priority: 350,
+                })}
+              >
+                {message ?? ta('applicationSettings.loadError')}
+              </span>
               <button
                 className="min-h-11 rounded-full border border-red-300 px-4 py-2 font-medium hover:bg-red-100 dark:border-red-700 dark:hover:bg-red-900"
                 onClick={() => void loadSettings()}
@@ -682,7 +706,15 @@ export default function SettingsPanel() {
               className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100"
               role="alert"
             >
-              <span>{ta('applicationSettings.loadError')}</span>
+              <span
+                {...devMarker({
+                  name: 'error reference',
+                  context: 'admin settings',
+                  priority: 350,
+                })}
+              >
+                {message ?? ta('applicationSettings.loadError')}
+              </span>
               <button
                 className="min-h-11 rounded-full border border-red-300 px-4 py-2 font-medium hover:bg-red-100 dark:border-red-700 dark:hover:bg-red-900"
                 onClick={() => void loadSettings()}

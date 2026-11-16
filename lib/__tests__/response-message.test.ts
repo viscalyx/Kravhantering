@@ -2,6 +2,27 @@ import { describe, expect, it, vi } from 'vitest'
 import { readResponseMessage } from '@/lib/http/response-message'
 
 describe('readResponseMessage', () => {
+  it.each(['sv', 'en'] as const)(
+    'displays SQL references and safe recovery guidance in %s',
+    async locale => {
+      const result = await readResponseMessage(
+        Response.json({
+          code: 'sql_failure',
+          correlationId: 'sql-test-reference',
+          timestamp: '2026-11-16T12:00:00.000Z',
+          error: 'unsafe server detail SELECT secret FROM sessions',
+        }),
+        locale,
+      )
+      expect(result).toContain('sql-test-reference')
+      expect(result).toContain('sql_failure')
+      expect(result).toContain('2026-11-16T12:00:00.000Z')
+      expect(result).toContain(
+        locale === 'sv' ? 'Kontrollera sparat tillstånd' : 'Check saved state',
+      )
+      expect(result).not.toMatch(/SELECT|secret/)
+    },
+  )
   it('reads trimmed API error and message fields from JSON responses', async () => {
     await expect(
       readResponseMessage(

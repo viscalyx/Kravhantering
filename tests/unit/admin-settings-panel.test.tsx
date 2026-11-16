@@ -561,12 +561,38 @@ describe('SettingsPanel', () => {
     render(<SettingsPanel />)
 
     expect(
-      await screen.findAllByText('admin.applicationSettings.loadError'),
+      await screen.findAllByText('admin.applicationSettings.serverUnavailable'),
     ).toHaveLength(3)
     expect(response.bodyUsed).toBe(true)
     expect(
       screen.getAllByRole('button', { name: 'common.retry' }),
     ).toHaveLength(3)
+  })
+
+  it('displays the SQL load reference in all three marked section alerts', async () => {
+    fetchMock.mockResolvedValueOnce(
+      errorJson({
+        code: 'sql_failure',
+        correlationId: 'settings-load-reference',
+        timestamp: '2026-11-16T12:00:00.000Z',
+      }),
+    )
+    render(<SettingsPanel />)
+    const alerts = await screen.findAllByRole('alert')
+    expect(alerts).toHaveLength(3)
+    for (const alert of alerts) {
+      expect(alert).toHaveTextContent('settings-load-reference')
+      expect(alert).toHaveTextContent('sql_failure')
+      expect(alert).toHaveTextContent('2026-11-16T12:00:00.000Z')
+      expect(alert.querySelector('[data-developer-mode-name]')).toHaveAttribute(
+        'data-developer-mode-name',
+        'error reference',
+      )
+      expect(
+        within(alert).getByRole('button', { name: 'common.retry' }),
+      ).toBeEnabled()
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('rolls back an optimistic edit when saving is rejected', async () => {
@@ -590,6 +616,32 @@ describe('SettingsPanel', () => {
     expect(
       screen.getByText('admin.applicationSettings.saveError'),
     ).toBeVisible()
+  })
+
+  it('announces a SQL reference with a curated Developer Mode marker', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okJson(settingsResponse()))
+      .mockResolvedValueOnce(
+        errorJson({
+          code: 'sql_failure',
+          correlationId: 'settings-error-reference',
+          timestamp: '2026-11-16T12:00:00.000Z',
+        }),
+      )
+    render(<SettingsPanel />)
+    const input = await screen.findByLabelText(
+      'admin.applicationSettings.fields.csvExportMaxItems.label',
+    )
+    fireEvent.change(input, { target: { value: '4000' } })
+    fireEvent.blur(input)
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('settings-error-reference')
+    expect(alert).toHaveTextContent('sql_failure')
+    expect(alert.querySelector('[data-developer-mode-name]')).toHaveAttribute(
+      'data-developer-mode-name',
+      'error reference',
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('rolls back an optimistic edit after a save network failure', async () => {

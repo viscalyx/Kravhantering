@@ -32,8 +32,9 @@ export class RequirementsServiceError extends Error {
     code: RequirementsErrorCode,
     message: string,
     details?: Record<string, unknown>,
+    options?: ErrorOptions,
   ) {
-    super(message)
+    super(message, options)
     this.name = 'RequirementsServiceError'
     this.code = code
     this.status = STATUS_BY_CODE[code]
@@ -51,8 +52,9 @@ export function createRequirementsError(
   code: RequirementsErrorCode,
   message: string,
   details?: Record<string, unknown>,
+  options?: ErrorOptions,
 ) {
-  return new RequirementsServiceError(code, message, details)
+  return new RequirementsServiceError(code, message, details, options)
 }
 
 export function notFoundError(
@@ -118,8 +120,9 @@ export function importCapacityBusyError() {
 export function internalError(
   message = 'An internal error occurred',
   details?: Record<string, unknown>,
+  options?: ErrorOptions,
 ) {
-  return createRequirementsError('internal', message, details)
+  return createRequirementsError('internal', message, details, options)
 }
 
 export function normalizeRequirementsError(error: unknown) {

@@ -13,6 +13,19 @@ changes.
 
 ## Unreleased
 
+### SQL failure references
+
+Update REST and MCP error consumers to retain the safe message, correlation
+reference, error code and timestamp. SQL failures now use a distinct error
+category. Keep the full reference when passing a failure report to operators.
+
+After rollout, verify that displayed references can be found in the restricted
+application log stream, including when database query logging is disabled.
+Follow [SQL failure references](sql-error-references.md). Check saved state
+before repeating a write with an uncertain outcome; a failed response does
+not prove rollback. Keep operational diagnostics separate from the Action log
+and Security audit log.
+
 ### Application SQL identity verification
 
 Before rollout, configure the intended database runtime identity in the

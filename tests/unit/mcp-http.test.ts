@@ -1733,6 +1733,46 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
+  it('returns SQL failures with the reference that locates restricted diagnostics', async () => {
+    const fakeService = createFakeService()
+    fakeService.getRequirement.mockRejectedValueOnce(
+      Object.assign(new Error('Invalid object name missing_requirements'), {
+        name: 'QueryFailedError',
+        driverError: { number: 208 },
+      }),
+    )
+    serviceState.getService.mockReturnValue(fakeService)
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { client, transport } = await createClient()
+    try {
+      await client.listTools()
+      const result = await client.callTool({
+        arguments: { uniqueId: 'INT0001' },
+        name: 'requirements_get_requirement',
+      })
+      expect(result.isError).toBe(true)
+      const diagnostic = JSON.parse(log.mock.calls[0][0])
+      expect(result.content).toEqual([
+        { type: 'text', text: expect.stringContaining('Error [sql_failure]:') },
+      ])
+      expect(JSON.stringify(result.content)).toContain(
+        diagnostic.correlation_id,
+      )
+      expect(JSON.stringify(result.content)).toContain(diagnostic.timestamp)
+      expect(result.structuredContent).toBeUndefined()
+      expect(JSON.stringify(result)).not.toContain('missing_requirements')
+      expect(diagnostic).toMatchObject({
+        correlation_id: expect.any(String),
+        timestamp: expect.any(String),
+        error: { sql: { number: 208 } },
+      })
+    } finally {
+      log.mockRestore()
+      await client.close()
+      await transport.close()
+    }
+  })
+
   it('returns denial-audit persistence failures as generic isError results', async () => {
     const fakeService = createFakeService()
     fakeService.getRequirement.mockRejectedValueOnce(

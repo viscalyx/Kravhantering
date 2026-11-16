@@ -11,6 +11,7 @@ import {
 } from '@/lib/dal/application-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -166,7 +167,12 @@ async function getHandler(request: Request): Promise<NextResponse> {
       const { body, status } = toHttpErrorPayload(error)
       return NextResponse.json(body, { status })
     }
-    console.error('Failed to load application settings', error)
+    const failure = reportSqlFailure(error, {
+      source: 'rest',
+      operation: 'application-settings.read',
+    })
+    if (failure) return NextResponse.json(failure, { status: 500 })
+    logSanitizedError('Failed to load application settings', error)
     return NextResponse.json(
       { error: 'Failed to load application settings.' },
       { status: 500 },
@@ -207,7 +213,12 @@ export const PATCH = secureMutationRoute({
         const { body, status } = toHttpErrorPayload(error)
         return NextResponse.json(body, { status })
       }
-      console.error('Failed to update application settings', error)
+      const failure = reportSqlFailure(error, {
+        ...context,
+        operation: 'application-settings.update',
+      })
+      if (failure) return NextResponse.json(failure, { status: 500 })
+      logSanitizedError('Failed to update application settings', error)
       return NextResponse.json(
         { error: 'Failed to save application settings.' },
         { status: 500 },
