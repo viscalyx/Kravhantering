@@ -111,6 +111,50 @@ describe('specification editor workflow', () => {
     ).rejects.toThrow('Inspect saved state')
   })
 
+  it.each(['stale values', 'stale absence'] as const)(
+    'preserves a newer assignment and selection when an older inspection returns %s',
+    async responseKind => {
+      const first = item(1, 'lib:1', 'FIRST')
+      const adapter = new InMemorySpecificationEditorAdapter({
+        items: [first],
+        uncertainDeviationItemRefs: ['lib:1'],
+      })
+      const workflow = createSpecificationEditorWorkflow({
+        adapter,
+        initialItems: page([first]),
+        initialPackageCatalog: emptyPackageCatalog(),
+        query: defaultQuery,
+      })
+      workflow.actions.selectLoadedItems(new Set([1]))
+      await workflow.actions.createDeviations('Initial uncertain save')
+      const savedItems = await adapter.resolveItems(['lib:1'])
+      const oldRead = Promise.withResolvers<typeof savedItems>()
+      const resolveItems = vi.spyOn(adapter, 'resolveItems')
+      resolveItems.mockImplementationOnce(() => oldRead.promise)
+      const olderInspection = workflow.actions.inspectSavedState()
+      await expect.poll(() => resolveItems.mock.calls.length).toBe(1)
+
+      expect(await workflow.actions.inspectSavedState()).toBe(true)
+      workflow.actions.selectLoadedItems(new Set([1]))
+      await workflow.actions.prepareBulkAction('assign-needs-reference')
+      await expect(
+        workflow.actions.assignNeedsReference(7),
+      ).resolves.toMatchObject({
+        succeededUniqueIds: ['FIRST'],
+      })
+      workflow.actions.selectLoadedItems(new Set([1]))
+      expect(workflow.getState().items[0]?.needsReferenceId).toBe(7)
+
+      oldRead.resolve(responseKind === 'stale values' ? savedItems : [])
+      expect(await olderInspection).toBe(true)
+      expect(workflow.getState().items[0]?.needsReferenceId).toBe(7)
+      expect(workflow.getState().selectedItems[0]?.needsReferenceId).toBe(7)
+      expect(workflow.getState().selectedItemRefs).toEqual(new Set(['lib:1']))
+      expect(workflow.getState().selectionNotice).toBeNull()
+      expect(workflow.getState().inspectionRequiredUniqueIds).toEqual([])
+    },
+  )
+
   it('keeps uncertain work blocked until saved detail inspection succeeds', async () => {
     let rejectInspection: ((error: Error) => void) | undefined
     let allowInspection = false

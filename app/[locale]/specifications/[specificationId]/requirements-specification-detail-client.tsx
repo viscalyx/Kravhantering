@@ -4318,6 +4318,7 @@ export default function KravunderlagDetailClient({
                 </div>
               )}
               <div
+                className="empty:sr-only"
                 role="status"
                 {...devMarker({
                   context: 'requirements specification detail',

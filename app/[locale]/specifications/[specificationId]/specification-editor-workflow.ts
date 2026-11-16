@@ -507,13 +507,19 @@ export function createSpecificationEditorWorkflow({
 
   const resolveItemRefs = async (
     itemRefs: ReadonlySet<string>,
+    isCurrent?: (itemRef: string) => boolean,
   ): Promise<SpecificationListItem[]> => {
     const resolved = await adapter.resolveItems(
       [...itemRefs],
       currentQuery.agreementId,
     )
+    const currentItemRefs = isCurrent
+      ? new Set([...itemRefs].filter(isCurrent))
+      : itemRefs
+    if (isCurrent && currentItemRefs.size === 0) return []
     const resolvedByRef = new Map(
       resolved.flatMap(item => {
+        if (isCurrent && !currentItemRefs.has(item.itemRef)) return []
         const known = knownItemsByRef.get(item.itemRef)
         if (!known) return []
         const refreshed: SpecificationListItem = {
@@ -532,7 +538,7 @@ export function createSpecificationEditorWorkflow({
         return [[item.itemRef, refreshed] as const]
       }),
     )
-    const disappearedRefs = [...itemRefs].filter(
+    const disappearedRefs = [...currentItemRefs].filter(
       itemRef => !resolvedByRef.has(itemRef),
     )
     const nextSelected = new Set(state.selectedItemRefs)
@@ -553,7 +559,7 @@ export function createSpecificationEditorWorkflow({
           }
         : {}),
     })
-    return [...itemRefs].flatMap(itemRef => {
+    return [...currentItemRefs].flatMap(itemRef => {
       const item = resolvedByRef.get(itemRef)
       return item ? [item] : []
     })
@@ -904,7 +910,11 @@ export function createSpecificationEditorWorkflow({
     if (!(await refreshItemsAndPackages())) return false
     try {
       await adapter.refreshSavedDetails()
-      await resolveItemRefs(new Set(inspectedResults.keys()))
+      await resolveItemRefs(
+        new Set(inspectedResults.keys()),
+        itemRef =>
+          uncertainItemResults.get(itemRef) === inspectedResults.get(itemRef),
+      )
       for (const [itemRef, result] of inspectedResults) {
         if (uncertainItemResults.get(itemRef) === result)
           uncertainItemResults.delete(itemRef)

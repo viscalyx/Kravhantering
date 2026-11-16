@@ -918,6 +918,12 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       context.specificationItemsGetItems = initialData.specificationItems.items
       context.failedDeviationItemRefs.add('local:41')
       context.renderRequirementsSpecificationDetailClient(initialData)
+      const liveRegion = screen
+        .getAllByRole('status')
+        .find(
+          region => region.dataset.developerModeName === 'bulk save results',
+        )
+      expect(liveRegion).toBeEmptyDOMElement()
       context.selectRequirementRows([101, -41])
       fireEvent.click(
         screen.getByRole('button', {
@@ -946,6 +952,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       const results = screen
         .getByText('specification.bulkSaveResults')
         .closest('[role="status"]')
+      expect(results).toBe(liveRegion)
       expect(results).toHaveAttribute(
         'data-developer-mode-name',
         'bulk save results',
