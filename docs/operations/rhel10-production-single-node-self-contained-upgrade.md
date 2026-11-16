@@ -604,7 +604,9 @@ it before the new stack starts.
    Stop on any failed job. Inspect the saved migration and permission evidence
    before proceeding; later successful commands do not override a failure.
 
-9. Start the stack from the new release. Reinstall the units after correcting
+9. Before starting the stack, set the intended `DB_RUNTIME_USER` in `app.env`.
+   Keep user traffic closed. Start the stack from the new release.
+   Reinstall the units after correcting
    `NGINX_RESOLVER` and, for bundled profiles, `NGINX_IDENTITY_RESOLVER`. Then
    enable and start the target:
 
@@ -618,7 +620,10 @@ it before the new stack starts.
    exit
    ```
 
-10. Check `/api/health`, `/api/ready`, the API documentation edge contract,
+10. Keep user traffic closed until each new instance passes the
+    [application SQL verification gate](./readiness-probe-boundary.md#application-sql-verification-gate).
+    Retain its application log evidence. Check `/api/health`, `/api/ready`,
+    the API documentation edge contract,
     sign-in and a read-only UI workflow. Check readiness, then sign in through
     the browser and open an existing read-only requirement view:
 

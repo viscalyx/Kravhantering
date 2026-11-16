@@ -77,10 +77,58 @@ check fails, inspect the application readiness warning for its check, reason,
 diagnostic, request, and correlation identifiers. Dependency names and reasons
 never appear in the response.
 
-Readiness checks runtime configuration, SQL Server connectivity, database
-migration compatibility, temporary export storage, and OIDC discovery. A 200
+Readiness checks runtime configuration, SQL Server connectivity and runtime
+identity, database migration compatibility, temporary export storage, and OIDC
+discovery. A 200
 confirms these checks passed; it does not guarantee every application feature
 or external integration is available.
+
+## Application SQL verification gate
+
+Production images require `DB_RUNTIME_USER` in `app.env`: the intended database
+user, independently configured from the connection credential. Set the same
+name in `db-job.env` for permission reconciliation. Keep each credential in its
+own environment. The gate uses the application's shared DataSource inside the
+running process. `DATABASE_URL` takes precedence over the `DB_*` scaffold;
+changing `DB_USER` does not override a configured URL.
+
+Before admitting user traffic, probe every new application instance from an
+allowed monitoring source. Keep the load-balancer member disabled or ingress
+restricted to deployment operators until readiness returns HTTP 200. A failed
+or unavailable probe blocks deployment verification. Liveness alone does not
+authorize traffic. This applies to external TLS, bundled TLS, and HTTP upstream
+topologies, including first installation, upgrade, and recovery.
+
+The gate checks the actual database user, original and effective login, custom
+runtime-role membership, required manifest operations, and excess effective
+server, database, schema, object, column, and database-user impersonation
+permissions. It permits SQL Server's baseline connection and public metadata
+permissions. It performs no permission repair. Manifest reconciliation by the
+separate database job remains required; its success cannot substitute for this
+application check.
+
+Successful verification is retained for the DataSource and expected identity
+for the process lifetime. Restart the app after changing credentials, identity,
+or grants, then repeat readiness before admitting traffic. Failed checks can be
+retried by readiness. Development and local-prod builds opt in by setting
+`DB_RUNTIME_USER`; production builds cannot opt out by leaving it empty.
+
+Retain the `[sql-runtime-verification] passed` record with the release's run
+identifier, image identity, and readiness result. It contains the expected and
+actual database user, login, database, manifest digest, and permission counts.
+Failure warnings carry the reason and request/correlation identifiers. Keep
+these records in restricted operator logs; the HTTP response remains generic.
+Do not record connection URLs, passwords, or environment dumps.
+
+For `sql_runtime_identity_not_configured`, set the intended user in `app.env`.
+For `sql_runtime_identity_mismatch`, correct the actual connection configuration,
+including any URL override. For `sql_runtime_permissions_mismatch`, have the DBA
+inspect missing or excess grants and run the separate manifest reconciliation.
+For `sql_runtime_verification_unavailable`, check connectivity, TLS, and database
+availability without increasing the app's privileges. Restart after correction
+and repeat the gate. If recovery follows started migrations, restore the complete
+tested recovery set from the topology's upgrade guide; an app-image-only rollback
+does not restore database compatibility.
 
 ## Roll out and verify
 
@@ -106,6 +154,7 @@ the documented 503 and `Retry-After` response while ordinary application and
 
 Record the boundary networks, verification sources, response statuses, and
 rollout time in the change ticket. If monitoring cannot reach readiness after
-rollout, keep liveness and normal traffic available, correct the probe file,
-reinstall the topology, and repeat verification. Do not widen the boundary to
-`/0` as a recovery measure.
+rollout, keep liveness and normal traffic available only for previously verified
+instances. Keep new instances out of user traffic until readiness returns HTTP
+200. Correct the probe file, reinstall the topology, and repeat verification.
+Do not widen the boundary to `/0` as a recovery measure.

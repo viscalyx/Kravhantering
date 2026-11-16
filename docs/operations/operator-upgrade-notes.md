@@ -13,6 +13,20 @@ changes.
 
 ## Unreleased
 
+### Application SQL identity verification
+
+Before rollout, configure the intended database runtime identity in the
+application environment as well as the database job environment. Keep the
+credentials separate. Check any explicit connection URL because it takes
+precedence over individual connection settings.
+
+Keep user traffic closed until each new application instance passes readiness.
+Readiness now rejects an unexpected database identity, missing or excessive
+permissions, and results that cannot be verified. Retain the application
+verification evidence with the release record. After a correction, restart the
+application and repeat verification before opening traffic. If migrations have
+started and recovery is needed, use the complete tested recovery set.
+
 ### Bulk needs-reference updates
 
 Before rollout, update any integrations that assign needs references to

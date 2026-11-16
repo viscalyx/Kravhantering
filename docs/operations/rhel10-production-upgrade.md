@@ -407,7 +407,9 @@ place.
    exit
    ```
 
-9. Start each app node from the new release. Select the same TLS or HTTP
+9. Before starting each app node, set the intended `DB_RUNTIME_USER` in its
+   `app.env`. Keep user traffic closed. Start each app node from the new release.
+   Select the same TLS or HTTP
    topology used on this host, install its concrete Quadlet files, and start
    `app-runtime` first:
 
@@ -525,7 +527,10 @@ place.
    exit
    ```
 
-10. Check `/api/health`, `/api/ready`, the API documentation edge contract,
+10. Keep user traffic closed until each new instance passes the
+    [application SQL verification gate](./readiness-probe-boundary.md#application-sql-verification-gate).
+    Retain its application log evidence. Check `/api/health`, `/api/ready`,
+    the API documentation edge contract,
     sign-in and a read-only UI workflow. Check readiness, then sign in through
     the browser and open an existing read-only requirement view:
 

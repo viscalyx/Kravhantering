@@ -565,6 +565,7 @@ DB_HOST=sqlserver.example.internal
 DB_PORT=1433
 DB_NAME=kravhantering
 DB_USER=kravhantering_app
+DB_RUNTIME_USER=kravhantering_app
 DB_PASSWORD=<app-runtime-password>
 DB_ENCRYPT=true
 DB_TRUST_SERVER_CERTIFICATE=false
@@ -1028,7 +1029,10 @@ The full start command reads the corrected value from
 The app-facing public URLs in `app.env` must still use the external HTTPS
 origin exposed by the load balancer.
 
-After either alternative, check readiness:
+After either alternative, keep normal traffic closed and check readiness on
+every new instance. Follow the
+[application SQL verification gate](./readiness-probe-boundary.md#application-sql-verification-gate).
+Open traffic only after HTTP 200 and retain the application verification record:
 
 ```bash
 curl --fail --silent --show-error \

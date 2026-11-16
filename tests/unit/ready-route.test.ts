@@ -137,6 +137,59 @@ describe('GET /api/ready', () => {
     expect(await readJson(response)).toEqual({ status: 'ready' })
   })
 
+  it('blocks traffic admission when the actual SQL identity cannot be verified', async () => {
+    setReadyDefaults()
+    vi.stubEnv('DB_RUNTIME_USER', 'expected_app')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const response = await route.GET(request())
+
+    expect(response.status).toBe(503)
+    expect(await readJson(response)).toEqual({ status: 'not_ready' })
+    expect(fetch).not.toHaveBeenCalled()
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('secret')
+  })
+
+  it.each([
+    ['expected_app', '[]', 200],
+    ['migration_user', '[]', 503],
+    ['expected_app', '[{"permissionName":"CONTROL"}]', 503],
+  ])(
+    'checks SQL identity %s and effective permissions before admitting traffic',
+    async (databaseUser, unexpected, status) => {
+      const { query } = setReadyDefaults()
+      vi.stubEnv('DB_RUNTIME_USER', 'expected_app')
+      vi.spyOn(console, 'info').mockImplementation(() => {})
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      query.mockImplementation(async sql => {
+        if (sql === 'SELECT 1 AS ready') return [{ ready: 1 }]
+        if (sql.includes('ORIGINAL_LOGIN()'))
+          return [
+            {
+              loginName: databaseUser,
+              effectiveLogin: databaseUser,
+              databaseUser,
+              databaseName: 'application',
+              runtimeRole: 1,
+              missing: '[]',
+              unexpected,
+              canConnect: 1,
+            },
+          ]
+        return [{ name: 'InitialSchema1713720000000' }]
+      })
+
+      const response = await route.GET(request())
+
+      expect(response.status).toBe(status)
+      expect(await readJson(response)).toEqual({
+        status: status === 200 ? 'ready' : 'not_ready',
+      })
+      expect(JSON.stringify(warn.mock.calls)).not.toContain('secret')
+      if (status === 503) expect(fetch).not.toHaveBeenCalled()
+    },
+  )
+
   it('returns not_ready without leaking details when runtime config is missing', async () => {
     setReadyDefaults()
     vi.stubEnv('NEXT_PUBLIC_SITE_URL', '')
