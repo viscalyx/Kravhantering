@@ -95,7 +95,8 @@ SELECT N'SERVER_GRANT', p.class_desc, p.permission_name, NULL
 FROM sys.server_permissions p
 JOIN sys.login_token t ON t.principal_id = p.grantee_principal_id
 WHERE p.state IN (N'G', N'W')
-  AND (p.class NOT IN (100, 101) OR p.state = N'W')
+  -- Class 101 includes server roles as well as logins.
+  AND (p.class <> 100 OR p.state = N'W')
   AND NOT (p.class_desc = N'ENDPOINT' AND p.permission_name = N'CONNECT'
     AND t.name = N'public' AND p.state = N'G');
 SELECT ORIGINAL_LOGIN() AS loginName, SUSER_SNAME() AS effectiveLogin,

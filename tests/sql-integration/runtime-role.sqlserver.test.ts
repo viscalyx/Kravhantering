@@ -267,6 +267,38 @@ describe('least-privilege SQL Server runtime role', () => {
     }
   })
 
+  it('rejects permission to alter an elevated server role without ownership or membership', async () => {
+    const roleName = `runtime_verification_server_${randomUUID().replaceAll('-', '')}`
+    await masterDb.query(`CREATE SERVER ROLE [${roleName}]`)
+    try {
+      await masterDb.query(`
+        GRANT CONTROL SERVER TO [${roleName}];
+        GRANT ALTER ON SERVER ROLE::[${roleName}] TO [${RUNTIME_LOGIN}];
+      `)
+      const roleState = await masterDb.query(
+        `SELECT
+           CASE WHEN owning_principal_id = SUSER_ID(@1) THEN 1 ELSE 0 END AS ownsRole,
+           IS_SRVROLEMEMBER(@0, @1) AS isMember
+         FROM sys.server_principals WHERE name = @0`,
+        [roleName, RUNTIME_LOGIN],
+      )
+      expect(roleState).toEqual([{ ownsRole: 0, isMember: 0 }])
+      await expect(
+        verifyRuntimeSqlConnection(runtimeDb, RUNTIME_LOGIN),
+      ).rejects.toMatchObject({
+        reason: 'sql_runtime_permissions_mismatch',
+      })
+    } finally {
+      await masterDb.query(`DROP SERVER ROLE [${roleName}]`)
+    }
+    await expect(
+      verifyRuntimeSqlConnection(runtimeDb, RUNTIME_LOGIN),
+    ).resolves.toMatchObject({
+      missingPermissions: 0,
+      unexpectedPermissions: 0,
+    })
+  })
+
   it('rejects ownership of an elevated custom role without explicit grants', async () => {
     await adminDb.query(`
       CREATE ROLE [runtime_verification_owned] AUTHORIZATION [${RUNTIME_LOGIN}];

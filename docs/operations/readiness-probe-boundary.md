@@ -154,6 +154,7 @@ the documented 503 and `Retry-After` response while ordinary application and
 
 Record the boundary networks, verification sources, response statuses, and
 rollout time in the change ticket. If monitoring cannot reach readiness after
-rollout, keep liveness and normal traffic available, correct the probe file,
-reinstall the topology, and repeat verification. Do not widen the boundary to
-`/0` as a recovery measure.
+rollout, keep liveness and normal traffic available only for previously verified
+instances. Keep new instances out of user traffic until readiness returns HTTP
+200. Correct the probe file, reinstall the topology, and repeat verification.
+Do not widen the boundary to `/0` as a recovery measure.
