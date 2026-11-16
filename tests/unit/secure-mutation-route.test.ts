@@ -469,6 +469,57 @@ describe('secureMutationRoute', () => {
     expect(JSON.stringify(events)).not.toContain('supersecret')
   })
 
+  it('retains a denied audit SQL failure reference while keeping the mutation blocked', async () => {
+    auditState.query.mockRejectedValueOnce(
+      Object.assign(
+        new Error('Invalid object name action_audit_events password=private'),
+        {
+          name: 'QueryFailedError',
+          driverError: { number: 208 },
+        },
+      ),
+    )
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const handler = vi.fn(() => NextResponse.json({ ok: true }))
+    const route = secureMutationRoute({
+      handler,
+      policy: customMutationPolicy('deny', () => {
+        throw forbiddenError('Nope')
+      }),
+    })
+    try {
+      const response = await route(jsonRequest({}))
+      const body = await response.json()
+      expect(response.status).toBe(500)
+      expect(body).toMatchObject({
+        code: 'sql_failure',
+        correlationId: 'correlation-1',
+        timestamp: expect.any(String),
+      })
+      expect(handler).not.toHaveBeenCalled()
+      expect(JSON.stringify(body)).not.toMatch(
+        /action_audit_events|private|stack|cause/,
+      )
+      expect(JSON.parse(log.mock.calls[0][0])).toMatchObject({
+        correlation_id: body.correlationId,
+        timestamp: body.timestamp,
+        error: { sql: { number: 208 } },
+      })
+      expect(JSON.stringify(log.mock.calls)).not.toContain('private')
+      expect(
+        infoSpy.mock.calls.map((call: unknown[]) =>
+          JSON.parse(String(call[0])),
+        ),
+      ).toEqual([
+        expect.objectContaining({
+          event: 'auth.authorization.denied.audit_failed',
+        }),
+      ])
+    } finally {
+      log.mockRestore()
+    }
+  })
+
   it('returns a sanitized internal error when unauthenticated denial evidence cannot persist', async () => {
     adminAuditState.createAdminPrivilegedAuditContext.mockResolvedValueOnce({
       ...context([]),

@@ -723,8 +723,9 @@ invalidates existing sessions, run `validate` again.
 ## SQL failure references
 
 A SQL failure returns `isError: true` and a safe message with `sql_failure`,
-a correlation reference and a UTC timestamp. The same values are available in
-`structuredContent.error` as `code`, `correlationId`, `timestamp` and `error`.
+a correlation reference and a UTC timestamp. The error details are in text
+content. SQL error results omit
+`structuredContent` so they do not conflict with the tool output schema.
 The code identifies the category; the reference identifies the occurrence.
 Give the reference and timestamp to your operator. Check saved state before
 repeating a mutation: a failed response does not prove that nothing was saved.

@@ -694,7 +694,6 @@ function formatError(error: unknown) {
         },
       ],
       isError: true,
-      structuredContent: { error: failure },
     }
   }
   const message =
@@ -1796,7 +1795,7 @@ export function createKravhanteringMcpServer(
         logging: {},
       },
       instructions:
-        'Authenticate HTTP calls with a short-lived OAuth access token from the approved MCP service client. The protected JWT header must use typ "at+jwt"; the token must match the configured issuer and audience, carry the exact configured client_id and scope or scopes, numeric exp and iat, a non-empty sub, and the required employeeHsaId, and remain within the configured current-age and declared-lifetime limits. Do not send browser or ID tokens. Roles are read only from the configured MCP role claim, and malformed roles grant no roles. Treat every tool result with isError: true as a failed call. SQL failures return code sql_failure, correlationId and timestamp in structuredContent.error and text. Use that reference to find restricted operational diagnostics; check saved state before repeating a mutation. For other failures where the server must fail closed, it returns only "Error: An internal error occurred"; do not infer internal causes from that generic result.',
+        'Authenticate HTTP calls with a short-lived OAuth access token from the approved MCP service client. The protected JWT header must use typ "at+jwt"; the token must match the configured issuer and audience, carry the exact configured client_id and scope or scopes, numeric exp and iat, a non-empty sub, and the required employeeHsaId, and remain within the configured current-age and declared-lifetime limits. Do not send browser or ID tokens. Roles are read only from the configured MCP role claim, and malformed roles grant no roles. Treat every tool result with isError: true as a failed call. SQL failures return code sql_failure, a correlation reference and timestamp in text content, with isError: true and no structuredContent. Use that reference to find restricted operational diagnostics; check saved state before repeating a mutation. For other failures where the server must fail closed, it returns only "Error: An internal error occurred"; do not infer internal causes from that generic result.',
     },
   )
 

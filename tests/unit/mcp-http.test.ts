@@ -1745,24 +1745,25 @@ describe('handleRequirementsMcpRequest', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { client, transport } = await createClient()
     try {
+      await client.listTools()
       const result = await client.callTool({
         arguments: { uniqueId: 'INT0001' },
         name: 'requirements_get_requirement',
       })
       expect(result.isError).toBe(true)
-      const failure = (
-        result.structuredContent as {
-          error: { correlationId: string; timestamp: string }
-        }
-      ).error
-      expect(result.structuredContent).toMatchObject({
-        error: { code: 'sql_failure' },
-      })
-      expect(JSON.stringify(result.content)).toContain(failure.correlationId)
-      expect(JSON.stringify(result.content)).toContain(failure.timestamp)
+      const diagnostic = JSON.parse(log.mock.calls[0][0])
+      expect(result.content).toEqual([
+        { type: 'text', text: expect.stringContaining('Error [sql_failure]:') },
+      ])
+      expect(JSON.stringify(result.content)).toContain(
+        diagnostic.correlation_id,
+      )
+      expect(JSON.stringify(result.content)).toContain(diagnostic.timestamp)
+      expect(result.structuredContent).toBeUndefined()
       expect(JSON.stringify(result)).not.toContain('missing_requirements')
-      expect(JSON.parse(log.mock.calls[0][0])).toMatchObject({
-        correlation_id: failure.correlationId,
+      expect(diagnostic).toMatchObject({
+        correlation_id: expect.any(String),
+        timestamp: expect.any(String),
         error: { sql: { number: 208 } },
       })
     } finally {

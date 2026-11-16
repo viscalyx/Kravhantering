@@ -84,21 +84,25 @@ async function patchApplicationSetting(
 test.describe('Admin settings', () => {
   test.use({ viewport: DESKTOP_VIEWPORT })
 
-  test('ADMIN-34: SQL save failure shows a safe reference and does not repeat the mutation', async ({
+  test('ADMIN-34: SQL failures show safe references without repeating mutations', async ({
     page,
   }) => {
     await page.goto('/sv/admin?tab=settings')
     const control = page.locator('#admin-application-setting-csvExportMaxItems')
     await expect(control).toBeEnabled()
     let attempts = 0
+    let failReads = false
     await page.route('**/api/admin/application-settings', async route => {
-      if (route.request().method() !== 'PATCH') return route.continue()
-      attempts += 1
+      const isRead = route.request().method() === 'GET'
+      if (route.request().method() === 'PATCH') attempts += 1
+      else if (!(isRead && failReads)) return route.continue()
       await route.fulfill({
         status: 500,
         json: {
           code: 'sql_failure',
-          correlationId: 'sql-browser-reference',
+          correlationId: isRead
+            ? 'sql-browser-load-reference'
+            : 'sql-browser-reference',
           timestamp: '2026-11-16T12:00:00.000Z',
           error: 'The database operation could not be confirmed.',
         },
@@ -120,6 +124,26 @@ test.describe('Admin settings', () => {
       expect(attempts).toBe(1)
       await expect(control).toBeEnabled()
       await expect(control).toHaveValue(String(initial))
+    })
+    await test.step('retain the load reference in Imports, Exports and Reports', async () => {
+      failReads = true
+      await page.reload()
+      const alerts = page
+        .locator('#settings-panel')
+        .getByRole('alert')
+        .filter({ hasText: 'sql-browser-load-reference' })
+      await expect(alerts).toHaveCount(3)
+      for (const alert of await alerts.all()) {
+        await expect(alert).toContainText('sql_failure')
+        await expect(alert).toContainText('2026-11-16T12:00:00.000Z')
+        await expect(
+          alert.locator('[data-developer-mode-name="error reference"]'),
+        ).toContainText('sql-browser-load-reference')
+        await expect(
+          alert.getByRole('button', { name: 'Försök igen' }),
+        ).toBeEnabled()
+      }
+      expect(attempts).toBe(1)
     })
   })
 

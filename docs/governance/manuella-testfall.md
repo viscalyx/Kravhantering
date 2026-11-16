@@ -3757,8 +3757,8 @@ sparning av en programinställning. Använd inte produktionsmiljön.
 
 **Integrationstest:**
 [ai-settings.spec.ts](../../tests/integration/admin/ai-settings.spec.ts),
-testfallet “ADMIN-34: SQL save failure shows a safe reference and does not repeat
-the mutation”. Webbläsartestet simulerar felsvaret; fokuserade SQL-tester
+testfallet “ADMIN-34: SQL failures show safe references without repeating
+mutations”. Webbläsartestet simulerar felsvaret; fokuserade SQL-tester
 verifierar kopplingen mellan referens och driftlogg med riktig SQL Server.
 
 **Steg:**
@@ -3767,7 +3767,10 @@ verifierar kopplingen mellan referens och driftlogg med riktig SQL Server.
 2. Ändra gränsen under det kontrollerade felvillkoret och lämna fältet.
 3. Läs felmeddelandet och kopiera referens, kod och tidpunkt.
 4. Kontrollera nätverksfliken: endast ett sparförsök ska göras.
-5. Återställ felvillkoret och läs in sparat tillstånd före nästa ändring.
+5. Aktivera ett kontrollerat SQL-fel även vid inläsning och ladda om sidan.
+   Kontrollera referens, kod och tidpunkt i Importer, Exporter och Rapporter.
+   Varje felruta ska erbjuda **Försök igen**.
+6. Återställ felvillkoret och läs in sparat tillstånd före nästa ändring.
 
 **Förväntat resultat:**
 

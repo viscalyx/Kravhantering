@@ -802,9 +802,10 @@ for the full setup.
 ## SQL diagnostic linkage
 
 Keep SQL failure handling at the shared service and transport boundaries.
-SQL tool failures include a safe message, `sql_failure`, `correlationId` and
-`timestamp` in `structuredContent.error` and readable text. Preserve the
-occurrence reference across catches. The restricted operational stream records
+SQL tool failures include a safe message, `sql_failure`, a correlation reference
+and timestamp in readable text. Omit `structuredContent` for SQL errors because
+it must conform to the tool output schema. Preserve the occurrence reference
+across catches. The restricted operational stream records
 `sql.operation.failed` with the same reference and timestamp independently of
 database query logging. Preserve the content limits of AI verification,
 AI telemetry and capacity telemetry; do not log their raw payloads in a

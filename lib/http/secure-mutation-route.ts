@@ -256,7 +256,7 @@ async function recordAuthorizationDeniedForPolicy<TBody, TParams>(
       policyKind: policy.kind,
       reason,
     })
-    throw internalError()
+    throw internalError(undefined, undefined, { cause: auditError })
   }
 }
 
