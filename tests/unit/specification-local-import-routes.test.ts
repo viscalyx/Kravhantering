@@ -32,7 +32,8 @@ vi.mock('@/lib/requirements/auth', async importOriginal => ({
 vi.mock('@/lib/audit/action-audit', () => ({
   recordDeniedActionAuditEvent: vi.fn(),
 }))
-vi.mock('@/lib/http/safe-errors', () => ({
+vi.mock('@/lib/http/safe-errors', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/lib/http/safe-errors')>()),
   logSanitizedError: routeState.logSanitizedError,
 }))
 vi.mock('@/lib/requirements/server', () => ({

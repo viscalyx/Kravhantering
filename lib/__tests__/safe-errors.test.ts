@@ -13,6 +13,35 @@ import {
 import { AiVerificationSqlLogger } from '@/lib/typeorm/ai-verification-sql-logger'
 
 describe('safe error helpers', () => {
+  it('keeps caller context linked to an already reported SQL occurrence', () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const error = Object.assign(new Error('Invalid object name requirements'), {
+      name: 'QueryFailedError',
+    })
+    try {
+      const reference = reportSqlFailure(error, {
+        correlationId: 'known-occurrence',
+      })
+      logSanitizedError('Failed to preload specification data', error, {
+        resourceKey: 'available requirements',
+        token: 'Bearer private',
+      })
+      expect(log).toHaveBeenLastCalledWith(
+        'Failed to preload specification data',
+        expect.objectContaining({
+          correlation_id: reference?.correlationId,
+          timestamp: reference?.timestamp,
+          detail: {
+            resourceKey: 'available requirements',
+            token: 'Bearer [REDACTED]',
+          },
+        }),
+      )
+      expect(JSON.stringify(log.mock.calls)).not.toContain('private')
+    } finally {
+      log.mockRestore()
+    }
+  })
   it('keeps enabled driver diagnostics useful without exposing query parameters or credentials', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {

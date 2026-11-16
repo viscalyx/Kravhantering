@@ -89,7 +89,7 @@ export function getSafeErrorMessage(error: unknown): string | null {
 export function toSafeErrorLogValue(error: unknown): SafeErrorLogValue {
   const sqlError = findSqlError(error)
   if (sqlError) {
-    const protectedContent = /\bai_model_verification_attempts\b/iu.test(
+    const protectedContent = containsProtectedSqlContent(
       `${sqlError.query ?? ''} ${sqlError.message ?? ''}`,
     )
     const metadata: Record<string, string | number> = {}
@@ -145,6 +145,21 @@ export interface SqlFailureReference {
   timestamp: string
 }
 
+export interface SqlFailureContext {
+  correlationId?: string
+  operation?: string
+  requestId?: string
+  source?: string
+  toolName?: string
+}
+
+export function containsProtectedSqlContent(value: unknown): boolean {
+  return (
+    typeof value === 'string' &&
+    /\bai_model_verification_attempts\b/iu.test(value)
+  )
+}
+
 const sqlFailures = new WeakMap<object, SqlFailureReference>()
 
 function findSqlError(
@@ -169,13 +184,7 @@ function findSqlError(
 /** One occurrence survives service and transport catches without depending on DB_LOGGING. */
 export function reportSqlFailure(
   error: unknown,
-  context: {
-    correlationId?: string
-    requestId?: string
-    source?: string
-    toolName?: string
-    operation?: string
-  } = {},
+  context: SqlFailureContext = {},
 ): SqlFailureReference | undefined {
   const sqlError = findSqlError(error)
   if (!sqlError) return undefined
@@ -232,8 +241,15 @@ export function logSanitizedError(
   error: unknown,
   detail?: Record<string, unknown>,
 ): void {
-  if (reportSqlFailure(error)) return
+  const failure = reportSqlFailure(error, { operation: message })
   const payload = {
+    ...(failure
+      ? {
+          code: failure.code,
+          correlation_id: failure.correlationId,
+          timestamp: failure.timestamp,
+        }
+      : {}),
     error: toSafeErrorLogValue(error),
     ...(detail ? { detail: sanitizeLogDetailValue(detail) } : {}),
   }

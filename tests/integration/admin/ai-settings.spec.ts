@@ -84,7 +84,7 @@ async function patchApplicationSetting(
 test.describe('Admin settings', () => {
   test.use({ viewport: DESKTOP_VIEWPORT })
 
-  test('ADMIN-31: SQL save failure shows a safe reference and does not repeat the mutation', async ({
+  test('ADMIN-34: SQL save failure shows a safe reference and does not repeat the mutation', async ({
     page,
   }) => {
     await page.goto('/sv/admin?tab=settings')

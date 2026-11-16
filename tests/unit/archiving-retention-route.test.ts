@@ -46,7 +46,8 @@ vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
 }))
 
-vi.mock('@/lib/http/safe-errors', () => ({
+vi.mock('@/lib/http/safe-errors', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/lib/http/safe-errors')>()),
   logSanitizedError: routeState.logSanitizedError,
 }))
 

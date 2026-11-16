@@ -9,7 +9,10 @@ import {
   AI_RUN_PROFILE_KEYS,
   type AiRunProfileKey,
 } from '@/lib/ai/profile-resolver'
-import { reportSqlFailure } from '@/lib/http/safe-errors'
+import {
+  reportSqlFailure,
+  type SqlFailureContext,
+} from '@/lib/http/safe-errors'
 import {
   internalError,
   isRequirementsServiceError,
@@ -28,7 +31,7 @@ export interface HttpErrorPayload {
 }
 
 export interface HttpErrorPayloadOptions {
-  context?: Parameters<typeof reportSqlFailure>[1]
+  context?: SqlFailureContext
   safeDetails?: 'ai_admin_blockers' | 'ai_admin_model_dependencies'
 }
 

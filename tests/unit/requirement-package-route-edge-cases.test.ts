@@ -86,7 +86,8 @@ vi.mock('@/lib/audit/requirement-selection-cleanup-audit', () => ({
   recordRequirementSelectionCleanupAudit: state.cleanupAudit,
 }))
 
-vi.mock('@/lib/http/safe-errors', () => ({
+vi.mock('@/lib/http/safe-errors', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/lib/http/safe-errors')>()),
   logSanitizedError: state.logSanitizedError,
 }))
 

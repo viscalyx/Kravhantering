@@ -14,6 +14,7 @@ import {
   logSanitizedError,
   redactSensitiveText,
   reportSqlFailure,
+  type SqlFailureContext,
 } from '@/lib/http/safe-errors'
 import { parseRouteParams, readJsonWithSchema } from '@/lib/http/validation'
 import { scheduleActorResponsibilityPersonRefresh } from '@/lib/requirements/actor-responsibility-refresh'
@@ -141,7 +142,7 @@ function errorResponse(
   message: string,
   error: unknown,
   safeDetails?: HttpErrorPayloadOptions['safeDetails'],
-  context?: Parameters<typeof reportSqlFailure>[1],
+  context?: SqlFailureContext,
 ): NextResponse {
   const failure = reportSqlFailure(error, context)
   if (failure) return NextResponse.json(failure, { status: 500 })

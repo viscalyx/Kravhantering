@@ -3745,7 +3745,7 @@ kan fortsätta skicka rapporter och CSP-skyddet förblir aktivt. Fel visas och
 kontrollen återgår till sparat värde. Endast Admin får läsa eller ändra
 inställningen; ändringen följer ordinarie åtgärdslogg och säkerhetsaudit.
 
-### ADMIN-31: SQL-fel visar referens utan automatisk upprepning
+### ADMIN-34: SQL-fel visar referens utan automatisk upprepning
 
 **Syfte:** Användaren kan lämna en säker felreferens till driftpersonalen
 och kontrollera sparat tillstånd innan en åtgärd upprepas.
@@ -3757,7 +3757,7 @@ sparning av en programinställning. Använd inte produktionsmiljön.
 
 **Integrationstest:**
 [ai-settings.spec.ts](../../tests/integration/admin/ai-settings.spec.ts),
-testfallet “ADMIN-31: SQL save failure shows a safe reference and does not repeat
+testfallet “ADMIN-34: SQL save failure shows a safe reference and does not repeat
 the mutation”. Webbläsartestet simulerar felsvaret; fokuserade SQL-tester
 verifierar kopplingen mellan referens och driftlogg med riktig SQL Server.
 
