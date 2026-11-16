@@ -121,7 +121,12 @@ const SAFE_AGREEMENT_REASONS = [
 type SafeAgreementReason = (typeof SAFE_AGREEMENT_REASONS)[number]
 
 type SafeHttpErrorDetails =
-  | { reason: 'stale_privacy_preview' | 'active_export_actor_quota' }
+  | {
+      reason:
+        | 'stale_privacy_preview'
+        | 'active_export_actor_quota'
+        | 'needs_reference_conflict'
+    }
   | { reason: SafeAgreementReason }
   | { blocker: 'attempt_expired' | 'attempt_mismatch' | 'attempt_unavailable' }
   | SafeAiAdminBlockerHttpDetails
@@ -237,7 +242,8 @@ function toSafeHttpErrorDetails(
   if (
     code === 'conflict' &&
     (details?.reason === 'stale_privacy_preview' ||
-      details?.reason === 'active_export_actor_quota')
+      details?.reason === 'active_export_actor_quota' ||
+      details?.reason === 'needs_reference_conflict')
   ) {
     return { reason: details.reason }
   }

@@ -1052,7 +1052,7 @@ export default function RequirementDetailClient({
                   processSteps={
                     !isSpecificationItemContext ? (
                       <div
-                        className="max-w-full overflow-x-auto py-px scroll-mt-32"
+                        className="max-w-full overflow-x-auto p-0.5 scroll-mt-32"
                         data-requirement-detail-stepper-anchor="true"
                         ref={workflowStepperAnchorRef}
                       >

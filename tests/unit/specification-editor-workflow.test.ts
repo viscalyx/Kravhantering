@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   createSpecificationEditorWorkflow,
   InvalidSpecificationEditorCursorError,
@@ -35,6 +35,266 @@ function item(
 }
 
 describe('specification editor workflow', () => {
+  it('retains uncertainty created for another item while inspection is pending', async () => {
+    const items = [item(1, 'lib:1', 'FIRST'), item(2, 'lib:2', 'SECOND')]
+    const details = Promise.withResolvers<void>()
+    const adapter = new InMemorySpecificationEditorAdapter({
+      items,
+      uncertainDeviationItemRefs: ['lib:1', 'lib:2'],
+      refreshSavedDetails: () => details.promise,
+    })
+    const refreshDetails = vi.spyOn(adapter, 'refreshSavedDetails')
+    const workflow = createSpecificationEditorWorkflow({
+      adapter,
+      initialItems: page(items),
+      initialPackageCatalog: emptyPackageCatalog(),
+      query: defaultQuery,
+    })
+    workflow.actions.selectLoadedItems(new Set([1]))
+    await workflow.actions.createDeviations('First uncertain save')
+    const inspection = workflow.actions.inspectSavedState()
+    await expect.poll(() => refreshDetails.mock.calls.length).toBe(1)
+    workflow.actions.selectLoadedItems(new Set([2]))
+    await workflow.actions.createDeviations('Later uncertain save')
+    details.resolve()
+    expect(await inspection).toBe(true)
+    expect(workflow.getState().inspectionRequiredUniqueIds).toEqual(['SECOND'])
+    await expect(
+      workflow.actions.prepareBulkAction(
+        'create-deviations',
+        new Set(['lib:2']),
+      ),
+    ).rejects.toThrow('Inspect saved state')
+    await expect(
+      workflow.actions.prepareBulkAction(
+        'create-deviations',
+        new Set(['lib:1']),
+      ),
+    ).resolves.toHaveLength(1)
+  })
+
+  it('keeps newer uncertainty for the same item when an older inspection completes', async () => {
+    const first = item(1, 'lib:1', 'FIRST')
+    const adapter = new InMemorySpecificationEditorAdapter({
+      items: [first],
+      uncertainDeviationItemRefs: ['lib:1'],
+    })
+    const workflow = createSpecificationEditorWorkflow({
+      adapter,
+      initialItems: page([first]),
+      initialPackageCatalog: emptyPackageCatalog(),
+      query: defaultQuery,
+    })
+    workflow.actions.selectLoadedItems(new Set([1]))
+    await workflow.actions.createDeviations('Initial uncertain save')
+    const savedItems = await adapter.resolveItems(['lib:1'])
+    const oldRead = Promise.withResolvers<typeof savedItems>()
+    const resolveItems = vi.spyOn(adapter, 'resolveItems')
+    resolveItems.mockImplementationOnce(() => oldRead.promise)
+    const olderInspection = workflow.actions.inspectSavedState()
+    await expect.poll(() => resolveItems.mock.calls.length).toBe(1)
+
+    expect(await workflow.actions.inspectSavedState()).toBe(true)
+    expect(workflow.getState().inspectionRequiredUniqueIds).toEqual([])
+    workflow.actions.selectLoadedItems(new Set([1]))
+    await workflow.actions.createDeviations(
+      'New uncertain save after inspection',
+    )
+    oldRead.resolve(savedItems)
+    expect(await olderInspection).toBe(true)
+    expect(workflow.getState().inspectionRequiredUniqueIds).toEqual(['FIRST'])
+    await expect(
+      workflow.actions.prepareBulkAction(
+        'create-deviations',
+        new Set(['lib:1']),
+      ),
+    ).rejects.toThrow('Inspect saved state')
+  })
+
+  it.each(['stale values', 'stale absence'] as const)(
+    'preserves a newer assignment and selection when an older inspection returns %s',
+    async responseKind => {
+      const first = item(1, 'lib:1', 'FIRST')
+      const adapter = new InMemorySpecificationEditorAdapter({
+        items: [first],
+        uncertainDeviationItemRefs: ['lib:1'],
+      })
+      const workflow = createSpecificationEditorWorkflow({
+        adapter,
+        initialItems: page([first]),
+        initialPackageCatalog: emptyPackageCatalog(),
+        query: defaultQuery,
+      })
+      workflow.actions.selectLoadedItems(new Set([1]))
+      await workflow.actions.createDeviations('Initial uncertain save')
+      const savedItems = await adapter.resolveItems(['lib:1'])
+      const oldRead = Promise.withResolvers<typeof savedItems>()
+      const resolveItems = vi.spyOn(adapter, 'resolveItems')
+      resolveItems.mockImplementationOnce(() => oldRead.promise)
+      const olderInspection = workflow.actions.inspectSavedState()
+      await expect.poll(() => resolveItems.mock.calls.length).toBe(1)
+
+      expect(await workflow.actions.inspectSavedState()).toBe(true)
+      workflow.actions.selectLoadedItems(new Set([1]))
+      await workflow.actions.prepareBulkAction('assign-needs-reference')
+      await expect(
+        workflow.actions.assignNeedsReference(7),
+      ).resolves.toMatchObject({
+        succeededUniqueIds: ['FIRST'],
+      })
+      workflow.actions.selectLoadedItems(new Set([1]))
+      expect(workflow.getState().items[0]?.needsReferenceId).toBe(7)
+
+      oldRead.resolve(responseKind === 'stale values' ? savedItems : [])
+      expect(await olderInspection).toBe(true)
+      expect(workflow.getState().items[0]?.needsReferenceId).toBe(7)
+      expect(workflow.getState().selectedItems[0]?.needsReferenceId).toBe(7)
+      expect(workflow.getState().selectedItemRefs).toEqual(new Set(['lib:1']))
+      expect(workflow.getState().selectionNotice).toBeNull()
+      expect(workflow.getState().inspectionRequiredUniqueIds).toEqual([])
+    },
+  )
+
+  it('keeps uncertain work blocked until saved detail inspection succeeds', async () => {
+    let rejectInspection: ((error: Error) => void) | undefined
+    let allowInspection = false
+    const first = item(1, 'lib:1', 'FIRST')
+    const adapter = new InMemorySpecificationEditorAdapter({
+      items: [first],
+      uncertainDeviationItemRefs: ['lib:1'],
+      refreshSavedDetails: () =>
+        allowInspection
+          ? Promise.resolve()
+          : new Promise((_resolve, reject) => {
+              rejectInspection = reject
+            }),
+    })
+    const workflow = createSpecificationEditorWorkflow({
+      adapter,
+      initialItems: page([first]),
+      initialPackageCatalog: emptyPackageCatalog(),
+      query: defaultQuery,
+    })
+    workflow.actions.selectLoadedItems(new Set([1]))
+    await workflow.actions.createDeviations('Reason')
+    workflow.actions.selectLoadedItems(new Set([1]))
+    const inspection = workflow.actions.inspectSavedState()
+    await expect.poll(() => rejectInspection).toBeDefined()
+    await expect(workflow.actions.createDeviations('Too soon')).rejects.toThrow(
+      'Inspect saved state',
+    )
+    rejectInspection?.(new Error('Detail unavailable'))
+    expect(await inspection).toBe(false)
+    expect(workflow.getState().inspectionRequiredUniqueIds).toEqual(['FIRST'])
+    allowInspection = true
+    expect(await workflow.actions.inspectSavedState()).toBe(true)
+    expect(workflow.getState().inspectionRequiredUniqueIds).toEqual([])
+  })
+  it('keeps mixed deviation outcomes through refresh failure and requires inspection before uncertain work repeats', async () => {
+    const items = [
+      item(1, 'lib:1', 'SAVED'),
+      item(2, 'lib:2', 'FAILED'),
+      item(3, 'local:3', 'UNCERTAIN'),
+    ]
+    let refreshFails = true
+    const adapter = new InMemorySpecificationEditorAdapter({
+      items,
+      failedDeviationItemRefs: ['lib:2'],
+      uncertainDeviationItemRefs: ['local:3'],
+      loadItems: async () => {
+        if (refreshFails) throw new Error('Refresh failed')
+        return page(items)
+      },
+    })
+    const workflow = createSpecificationEditorWorkflow({
+      adapter,
+      initialItems: page(items),
+      initialPackageCatalog: emptyPackageCatalog(),
+      query: defaultQuery,
+    })
+    workflow.actions.selectLoadedItems(new Set([1, 2, 3]))
+    await expect(
+      workflow.actions.createDeviations('Reason'),
+    ).resolves.toMatchObject({
+      succeededUniqueIds: ['SAVED'],
+      failedUniqueIds: ['FAILED'],
+      uncertainUniqueIds: ['UNCERTAIN'],
+      refreshFailed: true,
+    })
+    await workflow.actions.createDeviations('Retry known failure')
+    expect(adapter.deviationRequests.map(request => request.itemRef)).toEqual([
+      'lib:1',
+      'lib:2',
+      'local:3',
+      'lib:2',
+    ])
+    workflow.actions.selectLoadedItems(new Set([3]))
+    await expect(
+      workflow.actions.createDeviations('Unsafe retry'),
+    ).rejects.toThrow('Inspect saved state')
+    refreshFails = false
+    expect(await workflow.actions.refreshItems()).toBe(true)
+    await expect(
+      workflow.actions.prepareBulkAction('create-deviations'),
+    ).rejects.toThrow('Inspect saved state')
+    expect(await workflow.actions.inspectSavedState()).toBe(true)
+    await expect(
+      workflow.actions.prepareBulkAction('create-deviations'),
+    ).resolves.toHaveLength(1)
+  })
+  it('preserves identifiable deviation saves when the display refresh fails', async () => {
+    const first = item(1, 'lib:1', 'FIRST')
+    const adapter = new InMemorySpecificationEditorAdapter({
+      items: [first],
+      loadItems: async () => {
+        throw new Error('Refresh failed')
+      },
+    })
+    const workflow = createSpecificationEditorWorkflow({
+      adapter,
+      initialItems: page([first]),
+      initialPackageCatalog: emptyPackageCatalog(),
+      query: defaultQuery,
+    })
+    workflow.actions.selectLoadedItems(new Set([1]))
+    await expect(
+      workflow.actions.createDeviations('Reason'),
+    ).resolves.toMatchObject({
+      succeededUniqueIds: ['FIRST'],
+      failedUniqueIds: [],
+      uncertainUniqueIds: [],
+      refreshFailed: true,
+    })
+    expect(workflow.getState().bulkAction).toMatchObject({
+      phase: 'complete',
+      succeededUniqueIds: ['FIRST'],
+      refreshFailed: true,
+    })
+    expect(workflow.getState().selectedItemRefs.size).toBe(0)
+  })
+  it('rejects the whole assignment when a reviewed needs reference changes after confirmation opens', async () => {
+    const first = item(1, 'lib:1', 'FIRST')
+    const second = item(2, 'local:2', 'SECOND')
+    const adapter = new InMemorySpecificationEditorAdapter({
+      items: [first, second],
+    })
+    const workflow = createSpecificationEditorWorkflow({
+      adapter,
+      initialItems: page([first, second]),
+      initialPackageCatalog: emptyPackageCatalog(),
+      query: defaultQuery,
+    })
+    workflow.actions.selectLoadedItems(new Set([1, 2]))
+    await workflow.actions.prepareBulkAction('assign-needs-reference')
+    await adapter.updateItem('local:2', { needsReferenceId: 82 })
+
+    await expect(workflow.actions.assignNeedsReference(81)).rejects.toThrow()
+    expect(await adapter.resolveItems(['lib:1', 'local:2'])).toMatchObject([
+      { itemRef: 'lib:1', needsReferenceId: null },
+      { itemRef: 'local:2', needsReferenceId: 82 },
+    ])
+  })
+
   it('rejects a mixed removal when authoritative resolution finds a changed usage status', async () => {
     const library = {
       ...item(1, 'lib:1', 'LIBRARY'),
@@ -236,9 +496,13 @@ describe('specification editor workflow', () => {
 
     const outcome = await workflow.actions.createDeviations('Documented need')
 
-    expect(outcome).toEqual({ failedUniqueIds: ['SECOND'], succeededCount: 1 })
+    expect(outcome).toMatchObject({
+      failedUniqueIds: ['SECOND'],
+      succeededCount: 1,
+    })
+    expect(await adapter.resolveItems(['lib:1', 'lib:2'])).toHaveLength(2)
     expect(workflow.getState().selectedItemRefs).toEqual(new Set(['lib:2']))
-    expect(workflow.getState().bulkAction).toEqual({
+    expect(workflow.getState().bulkAction).toMatchObject({
       failedUniqueIds: ['SECOND'],
       operation: 'create-deviations',
       phase: 'complete',
@@ -308,18 +572,18 @@ describe('specification editor workflow', () => {
     })
     workflow.actions.selectLoadedItems(new Set([1]))
 
-    await expect(workflow.actions.assignNeedsReference(81)).rejects.toThrow(
-      'Assignment rejected',
-    )
+    await expect(
+      workflow.actions.assignNeedsReference(81),
+    ).resolves.toMatchObject({ failedUniqueIds: ['FIRST'], succeededCount: 0 })
 
-    expect(workflow.getState().bulkAction).toEqual({
-      error: 'Assignment rejected',
+    expect(workflow.getState().bulkAction).toMatchObject({
+      failedUniqueIds: ['FIRST'],
       operation: 'assign-needs-reference',
-      phase: 'failed',
+      phase: 'complete',
     })
   })
 
-  it('fails a bulk action when its authoritative refresh fails', async () => {
+  it('retains the committed assignment when its refresh fails', async () => {
     const first = item(1, 'lib:1', 'FIRST')
     const adapter = new InMemorySpecificationEditorAdapter({
       items: [first],
@@ -333,14 +597,17 @@ describe('specification editor workflow', () => {
     })
     workflow.actions.selectLoadedItems(new Set([1]))
 
-    await expect(workflow.actions.assignNeedsReference(81)).rejects.toThrow(
-      'Refresh failed',
-    )
+    await expect(
+      workflow.actions.assignNeedsReference(81),
+    ).resolves.toMatchObject({
+      succeededUniqueIds: ['FIRST'],
+      refreshFailed: true,
+    })
 
-    expect(workflow.getState().bulkAction).toEqual({
-      error: 'Refresh failed',
+    expect(workflow.getState().bulkAction).toMatchObject({
+      refreshFailed: true,
       operation: 'assign-needs-reference',
-      phase: 'failed',
+      phase: 'complete',
     })
   })
 
@@ -382,7 +649,7 @@ describe('specification editor workflow', () => {
     })
     releaseRefresh?.(page([{ ...first, needsReferenceId: 81 }]))
 
-    await expect(mutation).resolves.toEqual({
+    await expect(mutation).resolves.toMatchObject({
       failedUniqueIds: [],
       succeededCount: 1,
     })
@@ -435,7 +702,13 @@ describe('specification editor workflow', () => {
       needsReferenceId: 81,
     }
     const adapter = new InMemorySpecificationEditorAdapter({
-      items: [first],
+      items: [
+        {
+          ...first,
+          needsReferenceId: 82,
+          needsReference: 'Authoritative text',
+        },
+      ],
       resolveItems: () =>
         Promise.resolve([
           {
@@ -461,7 +734,9 @@ describe('specification editor workflow', () => {
     )
     expect(resolved[0]).toMatchObject({ needsReferenceId: 82 })
 
-    await expect(workflow.actions.assignNeedsReference(81)).resolves.toEqual({
+    await expect(
+      workflow.actions.assignNeedsReference(81),
+    ).resolves.toMatchObject({
       failedUniqueIds: [],
       succeededCount: 1,
     })
@@ -477,7 +752,13 @@ describe('specification editor workflow', () => {
       needsReferenceId: 81,
     }
     const adapter = new InMemorySpecificationEditorAdapter({
-      items: [first],
+      items: [
+        {
+          ...first,
+          needsReferenceId: 82,
+          needsReference: 'Authoritative text',
+        },
+      ],
       resolveItems: () =>
         Promise.resolve([
           {
@@ -498,12 +779,16 @@ describe('specification editor workflow', () => {
     })
     workflow.actions.selectLoadedItems(new Set([1]))
 
-    await expect(workflow.actions.assignNeedsReference(82)).resolves.toEqual({
+    await expect(
+      workflow.actions.assignNeedsReference(82),
+    ).resolves.toMatchObject({
       failedUniqueIds: [],
-      succeededCount: 0,
+      succeededCount: 1,
     })
 
-    expect(adapter.needsReferenceAssignments).toEqual([])
+    expect(adapter.needsReferenceAssignments).toEqual([
+      { itemRefs: ['lib:1'], needsReferenceId: 82 },
+    ])
     expect(workflow.getState()).toMatchObject({
       items: [
         expect.objectContaining({
@@ -511,12 +796,7 @@ describe('specification editor workflow', () => {
           needsReferenceId: 82,
         }),
       ],
-      selectedItems: [
-        expect.objectContaining({
-          needsReference: 'Authoritative text',
-          needsReferenceId: 82,
-        }),
-      ],
+      selectedItems: [],
     })
   })
 
@@ -627,7 +907,7 @@ describe('specification editor workflow', () => {
 
     const outcome = await workflow.actions.assignNeedsReference(81)
 
-    expect(outcome).toEqual({ failedUniqueIds: [], succeededCount: 1 })
+    expect(outcome).toMatchObject({ failedUniqueIds: [], succeededCount: 1 })
     expect(adapter.needsReferenceAssignments).toEqual([
       { itemRefs: ['lib:1'], needsReferenceId: 81 },
     ])
@@ -638,7 +918,7 @@ describe('specification editor workflow', () => {
     expect(workflow.getState().selectedItemRefs).toEqual(new Set())
   })
 
-  it('reports partial removals and refreshes every affected editor surface', async () => {
+  it('rejects removal atomically and retains the entire selection', async () => {
     const first = item(1, 'lib:1', 'FIRST')
     const second = item(2, 'lib:2', 'SECOND')
     const adapter = new InMemorySpecificationEditorAdapter({
@@ -655,14 +935,20 @@ describe('specification editor workflow', () => {
 
     const outcome = await workflow.actions.removeItems()
 
-    expect(outcome).toEqual({ failedUniqueIds: ['SECOND'], succeededCount: 1 })
-    expect(workflow.getState().selectedItemRefs).toEqual(new Set(['lib:2']))
-    expect(adapter.availableRequirementsRefreshes).toBe(1)
-    expect(adapter.needsReferencesRefreshes).toBe(1)
-    expect(adapter.itemPageRequests).toHaveLength(1)
+    expect(outcome).toMatchObject({
+      failedUniqueIds: ['FIRST', 'SECOND'],
+      succeededCount: 0,
+    })
+    expect(await adapter.resolveItems(['lib:1', 'lib:2'])).toHaveLength(2)
+    expect(workflow.getState().selectedItemRefs).toEqual(
+      new Set(['lib:1', 'lib:2']),
+    )
+    expect(adapter.availableRequirementsRefreshes).toBe(0)
+    expect(adapter.needsReferencesRefreshes).toBe(0)
+    expect(adapter.itemPageRequests).toHaveLength(0)
   })
 
-  it('refreshes returned requirement details after removal while retaining failed-removal cache entries', async () => {
+  it('refreshes removed requirement details while retaining unrelated cache entries', async () => {
     const first = item(1, 'lib:1', 'FIRST')
     const second = item(2, 'lib:2', 'SECOND')
     let firstSpecificationCount = 2
@@ -682,7 +968,6 @@ describe('specification editor workflow', () => {
     await cache.load(1, 'activate', context)
     const retainedDetail = await cache.load(2, 'activate', context)
     const adapter = new InMemorySpecificationEditorAdapter({
-      failedRemovalItemRefs: ['lib:2'],
       items: [first, second],
     })
     const removeItems = adapter.removeItems.bind(adapter)
@@ -704,7 +989,7 @@ describe('specification editor workflow', () => {
       },
       query: defaultQuery,
     })
-    workflow.actions.selectLoadedItems(new Set([1, 2]))
+    workflow.actions.selectLoadedItems(new Set([1]))
 
     try {
       await workflow.actions.removeItems()

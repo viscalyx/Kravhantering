@@ -13,6 +13,17 @@ changes.
 
 ## Unreleased
 
+### Bulk needs-reference updates
+
+Before rollout, update any integrations that assign needs references to
+multiple requirement applications. Send the reviewed needs-reference value
+for each selected application with the update. Requests without this
+information are rejected.
+
+After rollout, reload specification editors that were open before the upgrade.
+If a selected needs reference has changed since review, the complete update
+is rejected. Review the selection again before submitting another update.
+
 ### Reviewed personal data erasure
 
 Update privacy API clients before rollout. Include selected actions in the

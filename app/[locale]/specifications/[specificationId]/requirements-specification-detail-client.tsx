@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Download,
   Ellipsis,
+  Info,
   Link2,
   Link2Off,
   Pencil,
@@ -61,6 +62,7 @@ import RequirementsTable, {
   FloatingActionPill,
 } from '@/components/RequirementsTable'
 import SpecificationAgreementBox, {
+  type SpecificationAgreementHandle,
   type SpecificationAgreementView,
 } from '@/components/SpecificationAgreementBox'
 import SpecificationAgreementRequirement from '@/components/SpecificationAgreementRequirement'
@@ -132,6 +134,11 @@ const REQUIREMENT_SPECIFICATION_DETAIL_HELP: HelpContent = {
       kind: 'text',
       headingKey: 'requirementsSpecificationDetail.deviations.heading',
       bodyKey: 'requirementsSpecificationDetail.deviations.body',
+    },
+    {
+      kind: 'text',
+      headingKey: 'requirementsSpecificationDetail.bulkResults.heading',
+      bodyKey: 'requirementsSpecificationDetail.bulkResults.body',
     },
     {
       kind: 'text',
@@ -574,6 +581,7 @@ export default function KravunderlagDetailClient({
   const canEditContent = permissions.canEditContent === true
   const [agreementContext, setAgreementContext] =
     useState<SpecificationAgreementView | null>(null)
+  const agreementRef = useRef<SpecificationAgreementHandle>(null)
   const [agreementRefreshKey, setAgreementRefreshKey] = useState(0)
   const canChangeContent =
     canEditContent && agreementContext?.canEditContent === true
@@ -884,6 +892,7 @@ export default function KravunderlagDetailClient({
   }, [agreementContext?.selectedAgreement, leftFilters, leftSort, locale])
   const [editorWorkflow] = useState(() => {
     const editorAdapter = createHttpSpecificationEditorAdapter({
+      needsReferenceConflictMessage: t('bulkNeedsReferenceConflict'),
       removalRequiresIncludedMessage: ta('removalSelectionRequiresIncluded'),
       loadItemsFailedMessage: t('loadSpecificationItemsFailed'),
       loadRequirementPackagesFailedMessage: t('loadRequirementPackagesFailed'),
@@ -892,9 +901,19 @@ export default function KravunderlagDetailClient({
       refreshNeedsReferences: () =>
         workflowRefreshRef.current.needsReferences(),
       refreshNeedsReferencesFailedMessage: t('failedToLoadNeedsReferences'),
+      refreshSavedDetails: async () => {
+        libraryDetailCache.clear()
+        localDetailCache.clear()
+        if (!(await agreementRef.current?.refresh()))
+          throw new Error(t('bulkInspectRequired'))
+        // Mounted details keep local state. Reopen from the invalidated cache
+        // so inspection cannot present a pre-save needs reference or deviation.
+        setLeftExpandedItemRef(null)
+      },
       specificationId,
     })
     return createSpecificationEditorWorkflow({
+      inspectSavedStateMessage: t('bulkInspectRequired'),
       adapter: editorAdapter,
       initialItems: initialData.specificationItems,
       initialPackageCatalog: initialData.leftRequirementPackageCatalog,
@@ -941,29 +960,12 @@ export default function KravunderlagDetailClient({
       : editorState.bulkAction.operation
   const bulkDeviationSaving =
     bulkActionSaving && bulkOperation === 'create-deviations'
-  const bulkDeviationError =
-    bulkOperation === 'create-deviations'
-      ? editorState.bulkAction.phase === 'failed'
-        ? editorState.bulkAction.error
-        : editorState.bulkAction.phase === 'complete' &&
-            editorState.bulkAction.failedUniqueIds.length > 0
-          ? td('bulkDeviationPartialFail', {
-              ids: editorState.bulkAction.failedUniqueIds.join(', '),
-            })
-          : null
-      : null
   const bulkNeedsReferenceError =
-    bulkOperation !== 'create-deviations'
-      ? editorState.bulkAction.phase === 'failed'
-        ? editorState.bulkAction.error
-        : editorState.bulkAction.phase === 'complete' &&
-            bulkOperation === 'remove-items' &&
-            editorState.bulkAction.failedUniqueIds.length > 0
-          ? t('removePartialFail', {
-              ids: editorState.bulkAction.failedUniqueIds.join(', '),
-            })
-          : null
+    editorState.bulkAction.phase === 'failed'
+      ? editorState.bulkAction.error
       : null
+  const bulkOutcome =
+    editorState.bulkAction.phase === 'complete' ? editorState.bulkAction : null
 
   const reconcileRequirementPackageFilters = useCallback(
     (selectedIds: ReadonlySet<number>) => {
@@ -2191,8 +2193,10 @@ export default function KravunderlagDetailClient({
           authorizeDeviationEndings,
         )
         setAgreementRefreshKey(key => key + 1)
-        const failedIds = new Set(outcome.failedUniqueIds)
-        const removedItems = items.filter(item => !failedIds.has(item.uniqueId))
+        const succeededIds = new Set(outcome.succeededUniqueIds)
+        const removedItems = items.filter(item =>
+          succeededIds.has(item.uniqueId),
+        )
         setLeftExpandedItemRef(current =>
           current != null && removedItems.some(item => item.itemRef === current)
             ? null
@@ -2234,9 +2238,10 @@ export default function KravunderlagDetailClient({
       try {
         const outcome =
           await editorWorkflow.actions.createDeviations(motivation)
-        if (outcome.failedUniqueIds.length === 0) {
-          setShowBulkDeviationModal(false)
-        }
+        setBulkDeviationItems(items =>
+          items.filter(item => outcome.failedUniqueIds.includes(item.uniqueId)),
+        )
+        setShowBulkDeviationModal(false)
       } catch {
         // The workflow exposes the failure through its observable state.
       }
@@ -3299,6 +3304,7 @@ export default function KravunderlagDetailClient({
                     if (refreshItems || stateChanged)
                       void fetchSpecificationItems()
                   }}
+                  ref={agreementRef}
                   refreshKey={agreementRefreshKey}
                   specificationId={specificationId}
                 />
@@ -4311,10 +4317,81 @@ export default function KravunderlagDetailClient({
                   ) : null}
                 </div>
               )}
+              <div
+                className="empty:sr-only"
+                role="status"
+                {...devMarker({
+                  context: 'requirements specification detail',
+                  name: 'bulk save results',
+                  priority: 305,
+                  value: 'confirmed failed and uncertain saves',
+                })}
+              >
+                {(bulkOutcome ||
+                  editorState.inspectionRequiredUniqueIds.length > 0) && (
+                  <div className="rounded-xl border border-secondary-300 bg-secondary-50 px-3 py-2 text-sm text-secondary-900 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100">
+                    <p className="flex items-center gap-2 font-medium">
+                      <Info aria-hidden="true" className="h-4 w-4 shrink-0" />
+                      {t('bulkSaveResults')}
+                    </p>
+                    {bulkOutcome &&
+                      bulkOutcome.succeededUniqueIds.length > 0 && (
+                        <p>
+                          {t('bulkSaveSucceeded', {
+                            ids: bulkOutcome.succeededUniqueIds.join(', '),
+                          })}
+                        </p>
+                      )}
+                    {bulkOutcome && bulkOutcome.failedUniqueIds.length > 0 && (
+                      <p>
+                        {t('bulkSaveFailed', {
+                          ids: bulkOutcome.failedUniqueIds.join(', '),
+                        })}
+                      </p>
+                    )}
+                    {editorState.inspectionRequiredUniqueIds.length > 0 && (
+                      <p>
+                        {t('bulkSaveUncertain', {
+                          ids: editorState.inspectionRequiredUniqueIds.join(
+                            ', ',
+                          ),
+                        })}
+                      </p>
+                    )}
+                    {bulkOutcome?.refreshFailed && (
+                      <p>{t('bulkSaveRefreshFailed')}</p>
+                    )}
+                    {(bulkOutcome?.refreshFailed ||
+                      editorState.inspectionRequiredUniqueIds.length > 0) && (
+                      <button
+                        className="mt-2 min-h-6 min-w-6 rounded-md px-2 py-1 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                        disabled={specificationItemsLoading}
+                        onClick={() =>
+                          void editorWorkflow.actions.inspectSavedState()
+                        }
+                        type="button"
+                        {...devMarker({
+                          context: 'requirements specification detail',
+                          name: 'inspect bulk save state',
+                          priority: 305,
+                          value: 'reload saved state without repeating writes',
+                        })}
+                      >
+                        {t('bulkInspectSavedState')}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
               <DeviationFormModal
                 affectedRequirementIds={bulkDeviationItems.map(
                   item => item.uniqueId,
                 )}
+                error={
+                  bulkOperation === 'create-deviations'
+                    ? bulkNeedsReferenceError
+                    : null
+                }
                 loading={bulkDeviationSaving}
                 onClose={() => {
                   setShowBulkDeviationModal(false)
@@ -4344,14 +4421,6 @@ export default function KravunderlagDetailClient({
                 }
                 open={showBulkNeedsReferenceModal}
               />
-              {bulkDeviationError && showBulkDeviationModal && (
-                <div
-                  className="fixed bottom-6 left-1/2 z-60 -translate-x-1/2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-lg dark:border-red-900/60 dark:bg-red-950/90 dark:text-red-300"
-                  role="alert"
-                >
-                  {bulkDeviationError}
-                </div>
-              )}
             </div>
 
             {/* Right panel: Tillgängliga krav / Kravurvalsfrågor */}

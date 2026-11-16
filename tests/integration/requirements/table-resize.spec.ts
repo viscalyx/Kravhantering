@@ -587,10 +587,33 @@ for (const viewport of [
             await expect(stepper.locator('[aria-current="step"]')).toHaveCount(
               1,
             )
-            for (const step of await stepper
-              .locator(
-                ':scope > [data-developer-mode-name="status step"] > div',
+            // Keep both scroll endpoints clear of the first edge and final tip.
+            await expect
+              .poll(() =>
+                stepper.evaluate(el => {
+                  const viewport = el.closest<HTMLElement>(
+                    '[data-requirement-detail-stepper-anchor="true"]',
+                  )
+                  const steps = el.querySelectorAll<HTMLElement>(
+                    ':scope > [data-developer-mode-name="status step"]',
+                  )
+                  if (!viewport || steps.length === 0) return false
+                  const bounds = viewport.getBoundingClientRect()
+                  const first = steps[0].getBoundingClientRect()
+                  const last = steps[steps.length - 1].getBoundingClientRect()
+                  const contentLeft = bounds.left - viewport.scrollLeft
+                  const contentRight = contentLeft + viewport.scrollWidth
+                  return (
+                    first.left - contentLeft >= 2 &&
+                    contentRight - last.right >= 2 &&
+                    first.top - bounds.top >= 2 &&
+                    bounds.bottom - first.bottom >= 2
+                  )
+                }),
               )
+              .toBe(true)
+            for (const step of await stepper
+              .locator(':scope > [data-developer-mode-name="status step"]')
               .all()) {
               await expect(step).toHaveCSS('height', '24px')
               expect(

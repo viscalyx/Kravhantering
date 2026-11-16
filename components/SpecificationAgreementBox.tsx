@@ -10,7 +10,14 @@ import {
   Plus,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  type Ref,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
@@ -31,6 +38,10 @@ export type SpecificationAgreementView = Awaited<
   ReturnType<ReturnType<typeof createSpecificationAgreementWorkflow>['read']>
 >
 
+export interface SpecificationAgreementHandle {
+  refresh(): Promise<boolean>
+}
+
 interface ComponentProps {
   compact?: boolean
   itemRefs?: string
@@ -38,6 +49,7 @@ interface ComponentProps {
     view: SpecificationAgreementView,
     refreshItems?: boolean,
   ) => void
+  ref?: Ref<SpecificationAgreementHandle>
   refreshKey?: number
   specificationId: number
 }
@@ -60,6 +72,7 @@ function StateIcon({ state }: { state: string }) {
 }
 
 export default function SpecificationAgreementBox({
+  ref,
   compact = false,
   specificationId,
   onContextChange,
@@ -169,7 +182,7 @@ export default function SpecificationAgreementBox({
   const loadedSpecificationId = useRef(specificationId)
 
   const load = useCallback(
-    async (agreementId?: number, refreshItems = false) => {
+    async (agreementId?: number, refreshItems = false): Promise<boolean> => {
       const request = ++requestId.current
       setBusy(true)
       setError(null)
@@ -184,18 +197,26 @@ export default function SpecificationAgreementBox({
         )
         if (!response.ok) throw new Error(t('loadFailed'))
         const next = (await response.json()) as SpecificationAgreementView
-        if (request !== requestId.current) return
+        if (request !== requestId.current) return false
         selectedId.current = next.selectedAgreement?.id
         setView(next)
         onContextChangeRef.current(next, refreshItems)
+        return true
       } catch (cause) {
         if (request === requestId.current)
           setError(cause instanceof Error ? cause.message : t('loadFailed'))
+        return false
       } finally {
         if (request === requestId.current) setBusy(false)
       }
     },
     [specificationId, t, itemRefs],
+  )
+
+  useImperativeHandle(
+    ref,
+    () => ({ refresh: () => load(selectedId.current) }),
+    [load],
   )
 
   useEffect(() => {

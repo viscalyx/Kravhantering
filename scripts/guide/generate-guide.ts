@@ -658,43 +658,20 @@ async function setReactInputValue(
 }
 
 async function revealRequirementStatusStepper(page: Page): Promise<void> {
-  await page
+  const stepper = page
     .locator('[data-developer-mode-name="status stepper"]')
     .first()
-    .waitFor({ state: 'visible', timeout: 10_000 })
-
-  await page.evaluate(() => {
-    const stepper = document.querySelector<HTMLElement>(
-      '[data-developer-mode-name="status stepper"]',
-    )
-    const target =
-      document.querySelector<HTMLElement>(
-        '[data-requirement-detail-stepper-anchor="true"]',
-      ) ?? stepper
-    if (!target) return
-
-    const stickyBlockers = [
-      '[data-sticky-table-chrome="true"]',
-      '[data-sticky-table-header="true"]',
-    ]
-      .map(selector => document.querySelector<HTMLElement>(selector))
-      .filter((el): el is HTMLElement => el != null)
-
-    const stickyBottom = stickyBlockers.reduce((bottom, el) => {
-      const rect = el.getBoundingClientRect()
-      if (rect.bottom <= 0 || rect.top >= window.innerHeight) return bottom
-      return Math.max(bottom, rect.bottom)
-    }, 0)
-
-    const margin = 8
-    const targetTop = stickyBottom + margin
-    const targetRect = target.getBoundingClientRect()
-    window.scrollTo({
-      top: Math.max(0, window.scrollY + targetRect.top - targetTop),
+  await expect(stepper).toBeVisible({ timeout: 10_000 })
+  // Scroll the actual element through all ancestor scroll containers and keep
+  // it clear of sticky table chrome, including after a workflow refresh.
+  await stepper.evaluate(el => {
+    el.scrollIntoView({
+      block: 'center',
+      inline: 'nearest',
       behavior: 'instant',
     })
   })
-  await page.waitForTimeout(150)
+  await expect(stepper).toBeInViewport({ ratio: 1 })
 }
 
 async function snap(
@@ -1450,12 +1427,15 @@ test.describe('Kravhantering — Guidegenerering', () => {
     currentSection = 'Kravdetaljer och statusövergångar'
 
     await guideStep(page, 'Statusstegare — närbild', async () => {
+      await revealRequirementStatusStepper(page)
       await snap(
         page,
         'statusstegare',
         'Statusstegare',
         'Statusstegaren visar kravets position i livscykeln: **Utkast** → **Granskning** → **Publicerad** → **Arkiverad**. Den aktuella statusen är markerad. Knappar för statusövergångar visas intill stegaren.',
-        { fullPage: false },
+        {
+          selector: '[data-requirement-detail-stepper-anchor="true"]',
+        },
       )
     })
 
@@ -1818,7 +1798,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
       textEntry(
         'Ta bort krav ur kravunderlaget',
-        'Bibliotekskrav och lokala krav kan bara tas bort med användningsstatus **Inkluderad**. Regeln gäller enskilda krav och markerade krav, både utan avtal och i redigerbara avtalsutkast. Alla markerade krav måste vara Inkluderad. Skrivbehörighet, avtalslåsning och avstegsregler gäller samtidigt. Ett väntande avsteg måste avslutas först; ett gällande godkännande kräver ansvarigs beslut om avstegsavslut. Den inaktiverade åtgärden förklarar hindret vid hovring eller tangentbordsfokus. Borttagningen sparas, men själva bibliotekskravet finns kvar i kravbiblioteket. Om status ändras i en annan session kan servern avvisa borttagningen; ladda då om och kontrollera statusen.',
+        'Bibliotekskrav och lokala krav kan bara tas bort med användningsstatus **Inkluderad**. Regeln gäller enskilda krav och markerade krav, både utan avtal och i redigerbara avtalsutkast. Alla markerade krav måste vara Inkluderad. Skrivbehörighet, avtalslåsning och avstegsregler gäller samtidigt. Ett väntande avsteg måste avslutas först; ett gällande godkännande kräver ansvarigs beslut om avstegsavslut. Den inaktiverade åtgärden förklarar hindret vid hovring eller tangentbordsfokus. Borttagningen sparas, men själva bibliotekskravet finns kvar i kravbiblioteket. Om status ändras i en annan session kan servern avvisa borttagningen; ladda då om och kontrollera statusen.\n\n**Gemensamma åtgärder och sparresultat.** Tilldelning av behovsreferenser och borttagning sparas för hela urvalet tillsammans. Om en behovsreferens ändras efter att dialogen öppnats avvisas hela tilldelningen. Stäng dialogen och granska urvalet igen innan du bekräftar på nytt. Ändringar i andra fält hindrar inte tilldelningen. Avsteg sparas däremot var för sig och kan lyckas för vissa krav.\n\nResultatraden visar krav-ID:n för sparade, inte sparade och osäkra åtgärder. Bekräftade sparningar gäller även om vyn inte kan uppdateras; upprepa dem inte. Sparade och osäkra krav avmarkeras. Vid okänt resultat väljer du **Läs in sparat tillstånd** och kontrollerar kravets detalj och avsteg innan du markerar det igen. Inläsningen upprepar inga sparningar. Ett nätverksfel bevisar inte att åtgärden återställdes.',
       )
 
       await guideStep(page, 'Avstegsformulär — öppet', async () => {
@@ -2752,8 +2732,12 @@ test.describe('Kravhantering — Guidegenerering', () => {
     })
 
     await guideStep(page, 'Admin — Taxonomi', async () => {
-      await page.getByRole('tab', { name: 'Taxonomi' }).click()
-      await page.waitForTimeout(300)
+      const tab = page.getByRole('tab', { name: 'Taxonomi', exact: true })
+      await tab.click()
+      await expect(tab).toHaveAttribute('aria-selected', 'true')
+      await expect(
+        page.getByRole('tabpanel', { name: 'Taxonomi', exact: true }),
+      ).toHaveCount(1)
       await snap(
         page,
         'admin-taxonomi',
@@ -2763,8 +2747,18 @@ test.describe('Kravhantering — Guidegenerering', () => {
     })
 
     await guideStep(page, 'Admin — Statusar och arbetsflöden', async () => {
-      await page.getByRole('tab', { name: 'Statusar och arbetsflöden' }).click()
-      await page.waitForTimeout(300)
+      const tab = page.getByRole('tab', {
+        name: 'Statusar och arbetsflöden',
+        exact: true,
+      })
+      await tab.click()
+      await expect(tab).toHaveAttribute('aria-selected', 'true')
+      await expect(
+        page.getByRole('tabpanel', {
+          name: 'Statusar och arbetsflöden',
+          exact: true,
+        }),
+      ).toHaveCount(1)
       await snap(
         page,
         'admin-statusar-arbetsfloden',

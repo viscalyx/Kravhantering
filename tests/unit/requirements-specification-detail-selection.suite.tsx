@@ -7,6 +7,33 @@ import type { SpecDetailWorkflowContext } from './requirements-specification-det
 
 export function registerSelectionTests(context: SpecDetailWorkflowContext) {
   describe('selection, removal, deviations, and bulk actions', () => {
+    it('shows a submit-time resolution failure inside the deviation dialog', async () => {
+      context.renderRequirementsSpecificationDetailClient()
+      context.selectRequirementRows([101])
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'deviation.requestDeviationSelected',
+        }),
+      )
+      const dialog = await screen.findByRole('dialog', {
+        name: 'deviation.requestDeviation',
+      })
+      context.specificationItemResolutionHandler = async () => {
+        throw new Error('Resolution unavailable')
+      }
+      fireEvent.change(
+        within(dialog).getByLabelText(/deviation\.motivation/, {
+          selector: 'textarea',
+        }),
+        { target: { value: 'Reviewed reason' } },
+      )
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: 'deviation.newDeviation' }),
+      )
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+        'Resolution unavailable',
+      )
+    })
     it('explains and blocks removal of a mixed Included and In Progress selection', async () => {
       const local = {
         ...context.initialSpecificationItem,
@@ -360,6 +387,9 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
             body: JSON.stringify({
               itemRefs: ['lib:31'],
               needsReferenceId: null,
+              reviewedNeedsReferences: [
+                { itemRef: 'lib:31', needsReferenceId: 81 },
+              ],
             }),
             method: 'PATCH',
           }),
@@ -423,7 +453,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       expect(screen.queryByRole('dialog')).toBeNull()
     })
 
-    it('closes bulk assignment if selected applications disappear before save', async () => {
+    it('sends the reviewed selection even if later resolution would return different items', async () => {
       context.renderRequirementsSpecificationDetailClient({
         ...context.createInitialData(),
         availableNeedsRefs: [{ description: null, id: 81, text: 'IAM-42' }],
@@ -452,7 +482,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
             url === context.specificationApiPath('/items') &&
             (init as RequestInit | undefined)?.method === 'PATCH',
         ),
-      ).toBe(false)
+      ).toBe(true)
     })
 
     it('distinguishes mixed removal and resolves all selected item refs before deletion', async () => {
@@ -614,7 +644,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       },
     ])(
       'reports a server rejection ($expected) while keeping a library application selected',
-      async ({ body, expected }) => {
+      async ({ body }) => {
         context.deleteItemsHandler = async () =>
           new Response(JSON.stringify(body), {
             status: 409,
@@ -630,14 +660,16 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
           within(confirmation).getByRole('button', { name: 'common.delete' }),
         )
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(expected)
+        expect(
+          await screen.findByText('specification.bulkSaveFailed'),
+        ).toBeInTheDocument()
         expect(
           screen.getByRole('button', { name: 'specification.removeSelected' }),
         ).toBeInTheDocument()
       },
     )
 
-    it('reports a removal network failure without dropping the selection', async () => {
+    it('reports uncertain removal and requires inspection before repeating it', async () => {
       context.deleteItemsHandler = async () => {
         throw new Error('Removal network unavailable')
       }
@@ -651,13 +683,15 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         within(confirmation).getByRole('button', { name: 'common.delete' }),
       )
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        'Removal network unavailable',
-      )
-      expect(context.requirementRowCheckbox('items', 'BEH0001')).toBeChecked()
+      expect(
+        await screen.findByText('specification.bulkSaveUncertain'),
+      ).toBeInTheDocument()
+      expect(
+        context.requirementRowCheckbox('items', 'BEH0001'),
+      ).not.toBeChecked()
     })
 
-    it('reports partial mixed removal and keeps only the failed application selected', async () => {
+    it('treats an inconsistent atomic removal receipt as uncertain for the whole selection', async () => {
       const localItem = {
         ...context.initialSpecificationItem,
         id: -41,
@@ -692,10 +726,12 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         within(confirmation).getByRole('button', { name: 'common.delete' }),
       )
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        'specification.removePartialFail',
-      )
-      expect(context.requirementRowCheckbox('items', 'KRAV0001')).toBeChecked()
+      expect(
+        await screen.findByText('specification.bulkSaveUncertain'),
+      ).toBeInTheDocument()
+      expect(
+        context.requirementRowCheckbox('items', 'KRAV0001'),
+      ).not.toBeChecked()
       expect(
         context.requirementRowCheckbox('items', 'BEH0001'),
       ).not.toBeChecked()
@@ -882,6 +918,12 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       context.specificationItemsGetItems = initialData.specificationItems.items
       context.failedDeviationItemRefs.add('local:41')
       context.renderRequirementsSpecificationDetailClient(initialData)
+      const liveRegion = screen
+        .getAllByRole('status')
+        .find(
+          region => region.dataset.developerModeName === 'bulk save results',
+        )
+      expect(liveRegion).toBeEmptyDOMElement()
       context.selectRequirementRows([101, -41])
       fireEvent.click(
         screen.getByRole('button', {
@@ -904,9 +946,18 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         within(dialog).getByRole('button', { name: 'deviation.newDeviation' }),
       )
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        'deviation.bulkDeviationPartialFail',
+      expect(
+        await screen.findByText('specification.bulkSaveFailed'),
+      ).toBeInTheDocument()
+      const results = screen
+        .getByText('specification.bulkSaveResults')
+        .closest('[role="status"]')
+      expect(results).toBe(liveRegion)
+      expect(results).toHaveAttribute(
+        'data-developer-mode-name',
+        'bulk save results',
       )
+      expect(results).toHaveTextContent('specification.bulkSaveSucceeded')
       expect(context.requirementRowCheckbox('items', 'KRAV0001')).toBeChecked()
       expect(
         context.requirementRowCheckbox('items', 'BEH0001'),
@@ -945,7 +996,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
           maxInFlight = Math.max(maxInFlight, inFlight)
           completeRequests.push(() => {
             inFlight -= 1
-            resolve(context.okJson({ deviation: { id: 1 }, ok: true }))
+            resolve(context.okJson({ id: 1, ok: true }))
           })
         })
       context.renderRequirementsSpecificationDetailClient({
@@ -1034,6 +1085,9 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
             body: JSON.stringify({
               itemRefs: ['lib:31'],
               needsReferenceId: 81,
+              reviewedNeedsReferences: [
+                { itemRef: 'lib:31', needsReferenceId: null },
+              ],
             }),
             method: 'PATCH',
           }),
@@ -1113,20 +1167,10 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         within(dialog).getByRole('button', { name: 'common.confirm' }),
       )
 
-      await waitFor(() => {
-        expect(within(dialog).getByRole('alert')).toHaveTextContent(
-          'Could not update selected requirements',
-        )
-      })
-
-      fireEvent.click(
-        within(dialog).getByRole('button', { name: 'common.cancel' }),
-      )
       expect(
-        screen.getByRole('button', {
-          name: 'specification.assignNeedsReferenceAction',
-        }),
+        await screen.findByText('specification.bulkSaveFailed'),
       ).toBeInTheDocument()
+      expect(context.requirementRowCheckbox('items', 'BEH0001')).toBeChecked()
     })
 
     it('catches thrown bulk needs reference request errors', async () => {
@@ -1157,11 +1201,14 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         within(dialog).getByRole('button', { name: 'common.confirm' }),
       )
 
-      await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent(
-          'Network unavailable',
-        )
-      })
+      expect(
+        await screen.findByText('specification.bulkSaveUncertain'),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'specification.bulkInspectSavedState',
+        }),
+      ).toBeInTheDocument()
     })
   })
 }
