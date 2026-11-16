@@ -7,6 +7,7 @@ import {
   readStewardshipBundleReport,
   runStewardshipBundleCheck,
   runStewardshipBundleCli,
+  STEWARDSHIP_WORKSPACE_GZIP_MAX_BYTES,
   STEWARDSHIP_WORKSPACES,
   stewardshipBudgetFailures,
   workspaceChunksFromManifest,
@@ -225,7 +226,11 @@ describe('stewardship bundle contract', () => {
 
   it('fails an over-budget workspace with actionable diagnostics', () => {
     const root = writeCompleteFixture()
-    write(root, '.next/static/chunks/rfi.js', deterministicBytes(20_000))
+    write(
+      root,
+      '.next/static/chunks/rfi.js',
+      deterministicBytes(STEWARDSHIP_WORKSPACE_GZIP_MAX_BYTES.rfi + 16_384),
+    )
     vi.spyOn(console, 'log').mockImplementation(() => undefined)
     const errorSpy = vi
       .spyOn(console, 'error')

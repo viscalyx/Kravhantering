@@ -8,7 +8,7 @@ import {
 import {
   containsProtectedSqlContent,
   toSafeErrorLogValue,
-} from '@/lib/http/safe-errors'
+} from '../http/safe-errors'
 
 /** Candidate snapshots must not reach TypeORM's parameter or error logging. */
 export class AiVerificationSqlLogger extends AdvancedConsoleLogger {

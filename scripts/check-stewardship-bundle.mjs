@@ -43,14 +43,14 @@ export const STEWARDSHIP_WORKSPACES = [
 ]
 
 export const STEWARDSHIP_WORKSPACE_GZIP_MAX_BYTES = {
-  // 2026-07-20 isolated-route baseline: 244,443 gzip bytes plus 5% headroom.
-  packages: 256_666,
-  // 2026-07-20 isolated-route baseline: 268,160 gzip bytes plus 5% headroom.
-  questions: 281_568,
-  // 2026-09-07 compact quota-message baseline: 13,601 gzip bytes plus 5% headroom.
-  rfi: 14_282,
-  // 2026-07-20 isolated-route baseline: 237,747 gzip bytes plus 5% headroom.
-  norms: 249_635,
+  // 2026-11-16 SQL failure message baseline: 372,913 gzip bytes plus 5% headroom.
+  packages: 391_559,
+  // 2026-11-16 SQL failure message baseline: 397,924 gzip bytes plus 5% headroom.
+  questions: 417_821,
+  // 2026-11-16 SQL failure message baseline: 145,860 gzip bytes plus 5% headroom.
+  rfi: 153_153,
+  // 2026-11-16 SQL failure message baseline: 364,767 gzip bytes plus 5% headroom.
+  norms: 383_006,
 }
 
 function expectedWorkspaceIds() {

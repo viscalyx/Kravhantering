@@ -1,10 +1,10 @@
-import { HSA_ID_PATTERN_SOURCE } from '@/lib/auth/hsa-id'
+import { HSA_ID_PATTERN_SOURCE } from '../auth/hsa-id'
 import {
   BEARER_TOKEN_PATTERN,
   OPENROUTER_KEY_PATTERN,
   redactJwtCredentials,
   SECRET_ASSIGNMENT_PATTERN,
-} from '@/lib/credential-patterns'
+} from '../credential-patterns'
 
 export const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error'
 export const AI_PROVIDER_UNAVAILABLE_MESSAGE = 'AI provider is unavailable'
