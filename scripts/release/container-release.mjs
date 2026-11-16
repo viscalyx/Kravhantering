@@ -77,6 +77,10 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
     target: 'docs/operations/api-docs-edge-verification.md',
   },
   {
+    source: 'docs/operations/readiness-probe-boundary.md',
+    target: 'docs/operations/readiness-probe-boundary.md',
+  },
+  {
     source: 'docs/operations/ai-connections.md',
     target: 'docs/operations/ai-connections.md',
   },

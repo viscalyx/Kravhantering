@@ -22,6 +22,10 @@ import {
   type ReadinessEvaluationContext,
   type ReadinessResult,
 } from '@/lib/readiness/coordinator'
+import {
+  RuntimeSqlVerificationError,
+  requireVerifiedRuntimeSqlConnection,
+} from '@/lib/typeorm/runtime-verification'
 import { getSqlServerDatabaseUrl } from '@/lib/typeorm/sqlserver-config'
 
 export const dynamic = 'force-dynamic'
@@ -134,6 +138,7 @@ async function checkRuntimeConfig() {
 async function checkSqlServer() {
   const db = await getRequestSqlServerDataSource()
   await db.query('SELECT 1 AS ready')
+  await requireVerifiedRuntimeSqlConnection(db)
 }
 
 async function checkDatabaseMigrationCompatibility() {
@@ -179,6 +184,14 @@ async function runCheck(
       diagnostic: readinessDiagnostic(check.name, error),
       reason,
       ...readinessLogIds(context),
+      ...(error instanceof RuntimeSqlVerificationError
+        ? {
+            reason: error.reason,
+            ...error.evidence,
+            action:
+              'Keep traffic closed. Check app connection precedence and DB_RUNTIME_USER; reconcile grants with the separate database job, then restart the app and verify readiness.',
+          }
+        : {}),
     })
     return false
   }

@@ -884,6 +884,10 @@ instead.
 
 ### `/etc/kravhantering/app.env`
 
+Before starting the app, set `DB_RUNTIME_USER=kravhantering_app`, or the site's
+intended runtime database user. This non-secret expected identity is separate
+from connection credentials and must match the user provisioned for the app.
+
 Set the app runtime to use the internal SQL Server service, the app principal
 created by `db-bootstrap`, and the public Keycloak issuer through nginx:
 
@@ -1754,7 +1758,10 @@ Before opening normal user traffic, complete
 for `hardened-bundled`, the administrator and access checks in Appendix C.
 Keep ingress restricted to deployment operators until these gates pass.
 
-Check readiness:
+Follow the
+[application SQL verification gate](./readiness-probe-boundary.md#application-sql-verification-gate).
+Keep normal traffic closed until readiness returns HTTP 200 and retain the
+application verification record:
 
 ```bash
 curl --fail --silent --show-error \

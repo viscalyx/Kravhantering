@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import {
   createArea,
   deleteArea,
@@ -7,8 +7,10 @@ import {
   updateArea,
 } from '@/lib/dal/requirement-areas'
 import { createSpecificationLocalRequirement } from '@/lib/dal/requirements-specifications'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { createSpecificationAgreementWorkflow } from '@/lib/specifications/agreements'
 import { createAppDataSource } from '@/lib/typeorm/data-source'
+import { verifyRuntimeSqlConnection } from '@/lib/typeorm/runtime-verification'
 import {
   getSqlServerRuntimePermissionStatus,
   reconcileSqlServerRuntimePermissions,
@@ -180,6 +182,172 @@ describe('least-privilege SQL Server runtime role', () => {
       await masterDb.destroy()
     }
   })
+
+  it('verifies the actual application connection with the runtime permission contract', async () => {
+    await expect(
+      verifyRuntimeSqlConnection(runtimeDb, RUNTIME_LOGIN),
+    ).resolves.toMatchObject({
+      databaseUser: RUNTIME_LOGIN,
+      loginName: RUNTIME_LOGIN,
+      missingPermissions: 0,
+      unexpectedPermissions: 0,
+    })
+    await expect(
+      verifyRuntimeSqlConnection(migrationDb, RUNTIME_LOGIN),
+    ).rejects.toMatchObject({
+      reason: 'sql_runtime_identity_mismatch',
+    })
+  })
+
+  it.each([
+    [RUNTIME_LOGIN, RUNTIME_PASSWORD],
+    [MIGRATION_LOGIN, MIGRATION_PASSWORD],
+  ])(
+    'uses the app URL identity %s before scaffold values after reconciliation',
+    async (login, password) => {
+      vi.stubEnv(
+        'DATABASE_URL',
+        connectionStringFor(adminConnectionString, login, password),
+      )
+      vi.stubEnv('DB_USER', RUNTIME_LOGIN)
+      vi.stubEnv('DB_PASSWORD', RUNTIME_PASSWORD)
+      const db = await getRequestSqlServerDataSource()
+      try {
+        if (login === RUNTIME_LOGIN) {
+          await expect(
+            verifyRuntimeSqlConnection(db, RUNTIME_LOGIN),
+          ).resolves.toMatchObject({ databaseUser: RUNTIME_LOGIN })
+        } else {
+          await expect(
+            verifyRuntimeSqlConnection(db, RUNTIME_LOGIN),
+          ).rejects.toMatchObject({
+            reason: 'sql_runtime_identity_mismatch',
+            evidence: { databaseUser: MIGRATION_LOGIN },
+          })
+        }
+      } finally {
+        await db.destroy()
+        globalThis.__kravhanteringSqlServerDataSourceCache?.clear()
+        vi.unstubAllEnvs()
+      }
+    },
+  )
+
+  it('rejects effective login impersonation privileges', async () => {
+    await masterDb.query(
+      `GRANT IMPERSONATE ON LOGIN::[${MIGRATION_LOGIN}] TO [${RUNTIME_LOGIN}]`,
+    )
+    try {
+      await expect(
+        verifyRuntimeSqlConnection(runtimeDb, RUNTIME_LOGIN),
+      ).rejects.toMatchObject({
+        reason: 'sql_runtime_permissions_mismatch',
+      })
+    } finally {
+      await masterDb.query(
+        `REVOKE IMPERSONATE ON LOGIN::[${MIGRATION_LOGIN}] FROM [${RUNTIME_LOGIN}]`,
+      )
+    }
+  })
+
+  it('rejects permission to administer an elevated custom role', async () => {
+    await adminDb.query(`
+      CREATE ROLE [runtime_verification_elevated];
+      GRANT CONTROL TO [runtime_verification_elevated];
+      GRANT ALTER ON ROLE::[runtime_verification_elevated] TO [${RUNTIME_LOGIN}];
+    `)
+    try {
+      await expect(
+        verifyRuntimeSqlConnection(runtimeDb, RUNTIME_LOGIN),
+      ).rejects.toMatchObject({
+        reason: 'sql_runtime_permissions_mismatch',
+      })
+    } finally {
+      await adminDb.query('DROP ROLE [runtime_verification_elevated]')
+    }
+  })
+
+  it('rejects ownership of an elevated custom role without explicit grants', async () => {
+    await adminDb.query(`
+      CREATE ROLE [runtime_verification_owned] AUTHORIZATION [${RUNTIME_LOGIN}];
+      GRANT CONTROL TO [runtime_verification_owned];
+    `)
+    try {
+      await expect(
+        verifyRuntimeSqlConnection(runtimeDb, RUNTIME_LOGIN),
+      ).rejects.toMatchObject({
+        reason: 'sql_runtime_permissions_mismatch',
+      })
+    } finally {
+      await adminDb.query('DROP ROLE [runtime_verification_owned]')
+    }
+  })
+
+  it('rejects delegation of a manifest permission', async () => {
+    await adminDb.query(
+      `GRANT SELECT ON dbo.requirement_areas TO [${RUNTIME_LOGIN}] WITH GRANT OPTION`,
+    )
+    try {
+      await expect(
+        verifyRuntimeSqlConnection(runtimeDb, RUNTIME_LOGIN),
+      ).rejects.toMatchObject({
+        reason: 'sql_runtime_permissions_mismatch',
+      })
+    } finally {
+      await adminDb.query(
+        `REVOKE SELECT ON dbo.requirement_areas FROM [${RUNTIME_LOGIN}] CASCADE`,
+      )
+    }
+  })
+
+  it.each([
+    ['database DDL', 'GRANT CREATE TABLE', 'REVOKE CREATE TABLE'],
+    [
+      'protected audit column',
+      'GRANT UPDATE (action) ON dbo.action_audit_events',
+      'REVOKE UPDATE (action) ON dbo.action_audit_events',
+    ],
+    [
+      'migration history',
+      'GRANT DELETE ON dbo.migrations',
+      'REVOKE DELETE ON dbo.migrations',
+    ],
+    [
+      'schema alteration',
+      'GRANT ALTER ON SCHEMA::dbo',
+      'REVOKE ALTER ON SCHEMA::dbo',
+    ],
+    [
+      'missing object read',
+      'DENY SELECT ON dbo.requirement_areas',
+      'REVOKE SELECT ON dbo.requirement_areas',
+    ],
+    [
+      'missing column read',
+      'DENY SELECT (name) ON dbo.requirement_areas',
+      'REVOKE SELECT (name) ON dbo.requirement_areas',
+    ],
+  ])(
+    'rejects actual runtime permissions with %s',
+    async (_label, grant, revoke) => {
+      await adminDb.query(`${grant} TO [${RUNTIME_LOGIN}]`)
+      try {
+        await expect(
+          verifyRuntimeSqlConnection(runtimeDb, RUNTIME_LOGIN),
+        ).rejects.toMatchObject({
+          reason: 'sql_runtime_permissions_mismatch',
+        })
+      } finally {
+        await adminDb.query(`${revoke} FROM [${RUNTIME_LOGIN}]`)
+      }
+      await expect(
+        verifyRuntimeSqlConnection(runtimeDb, RUNTIME_LOGIN),
+      ).resolves.toMatchObject({
+        missingPermissions: 0,
+        unexpectedPermissions: 0,
+      })
+    },
+  )
 
   it('records and reads complete agreement history with only the runtime role', async () => {
     const specification = await createSpecificationFixture(
