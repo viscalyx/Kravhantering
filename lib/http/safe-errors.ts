@@ -16,6 +16,8 @@ export interface SafeMessageError extends Error {
 interface SafeErrorLogValue {
   message: string
   name?: string
+  query?: string
+  sql?: Record<string, string | number>
   stack?: string
 }
 
@@ -32,8 +34,8 @@ const SQL_FRAGMENT_PATTERNS: readonly RegExp[] = [
   /\bMERGE\s+INTO\b\s+[\w.[\]"`-]+/gi,
 ]
 
-export function redactSensitiveText(value: string): string {
-  let redacted = redactJwtCredentials(
+export function redactDiagnosticText(value: string): string {
+  return redactJwtCredentials(
     value
       .replace(BEARER_TOKEN_PATTERN, '$1Bearer [REDACTED]')
       .replace(OPENROUTER_KEY_PATTERN, '[OPENROUTER_KEY_REDACTED]'),
@@ -41,6 +43,10 @@ export function redactSensitiveText(value: string): string {
   )
     .replace(HSA_ID_PATTERN, '[HSA_ID_REDACTED]')
     .replace(SECRET_ASSIGNMENT_PATTERN, '$1=[REDACTED]')
+}
+
+export function redactSensitiveText(value: string): string {
+  let redacted = redactDiagnosticText(value)
 
   for (const pattern of SQL_FRAGMENT_PATTERNS) {
     redacted = redacted.replace(pattern, '[SQL_REDACTED]')
@@ -81,6 +87,44 @@ export function getSafeErrorMessage(error: unknown): string | null {
 }
 
 export function toSafeErrorLogValue(error: unknown): SafeErrorLogValue {
+  const sqlError = findSqlError(error)
+  if (sqlError) {
+    const protectedContent = /\bai_model_verification_attempts\b/iu.test(
+      `${sqlError.query ?? ''} ${sqlError.message ?? ''}`,
+    )
+    const metadata: Record<string, string | number> = {}
+    const driver = sqlError.driverError as Record<string, unknown> | undefined
+    for (const key of [
+      'code',
+      'number',
+      'state',
+      'class',
+      'lineNumber',
+      'procName',
+      'serverName',
+    ]) {
+      const value = driver?.[key] ?? sqlError[key]
+      if (typeof value === 'number' || typeof value === 'string') {
+        metadata[key] =
+          typeof value === 'string' ? redactDiagnosticText(value) : value
+      }
+    }
+    return {
+      message: protectedContent
+        ? 'Protected SQL operation failed'
+        : redactDiagnosticText(
+            String(sqlError.message ?? 'SQL operation failed'),
+          ),
+      name: String(sqlError.name ?? 'Error'),
+      ...(!protectedContent && typeof sqlError.stack === 'string'
+        ? { stack: redactDiagnosticText(sqlError.stack) }
+        : {}),
+      ...(!protectedContent && typeof sqlError.query === 'string'
+        ? { query: redactDiagnosticText(sqlError.query) }
+        : {}),
+      sql: metadata,
+    }
+  }
   if (error instanceof Error) {
     return {
       message: redactSensitiveText(error.message),
@@ -92,6 +136,74 @@ export function toSafeErrorLogValue(error: unknown): SafeErrorLogValue {
   }
 
   return { message: redactSensitiveText(stringifyUnknown(error)) }
+}
+
+export interface SqlFailureReference {
+  code: 'sql_failure'
+  correlationId: string
+  error: string
+  timestamp: string
+}
+
+const sqlFailures = new WeakMap<object, SqlFailureReference>()
+
+function findSqlError(
+  error: unknown,
+  seen = new Set<object>(),
+): Record<string, unknown> | undefined {
+  if (!error || typeof error !== 'object' || seen.has(error)) return undefined
+  seen.add(error)
+  const record = error as Record<string, unknown>
+  if (
+    record.name === 'QueryFailedError' ||
+    ((record.name === 'RequestError' ||
+      record.name === 'ConnectionError' ||
+      record.name === 'TransactionError') &&
+      typeof record.code === 'string' &&
+      /^E[A-Z]+$/.test(record.code))
+  )
+    return record
+  return findSqlError(record.cause, seen)
+}
+
+/** One occurrence survives service and transport catches without depending on DB_LOGGING. */
+export function reportSqlFailure(
+  error: unknown,
+  context: {
+    correlationId?: string
+    requestId?: string
+    source?: string
+    toolName?: string
+    operation?: string
+  } = {},
+): SqlFailureReference | undefined {
+  const sqlError = findSqlError(error)
+  if (!sqlError) return undefined
+  const existing = sqlFailures.get(sqlError)
+  if (existing) return existing
+  const reference: SqlFailureReference = {
+    code: 'sql_failure',
+    correlationId: context.correlationId ?? crypto.randomUUID(),
+    error:
+      'The database operation could not be confirmed. Check saved state before repeating the operation.',
+    timestamp: new Date().toISOString(),
+  }
+  sqlFailures.set(sqlError, reference)
+  console.error(
+    JSON.stringify({
+      event: 'sql.operation.failed',
+      level: 'error',
+      code: reference.code,
+      correlation_id: reference.correlationId,
+      timestamp: reference.timestamp,
+      request_id: context.requestId,
+      source: context.source,
+      tool_name: context.toolName,
+      operation: context.operation,
+      error: toSafeErrorLogValue(error),
+    }),
+  )
+  return reference
 }
 
 function sanitizeLogDetailValue(value: unknown): unknown {
@@ -120,6 +232,7 @@ export function logSanitizedError(
   error: unknown,
   detail?: Record<string, unknown>,
 ): void {
+  if (reportSqlFailure(error)) return
   const payload = {
     error: toSafeErrorLogValue(error),
     ...(detail ? { detail: sanitizeLogDetailValue(detail) } : {}),

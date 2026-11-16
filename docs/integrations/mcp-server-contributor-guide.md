@@ -619,7 +619,7 @@ Rules:
   `lib/mcp/server.ts`. Cursor errors explain how to restart pagination;
   `import_capacity_busy` includes the five-second retry delay.
 - Unexpected errors, `internal`, and `service_unavailable` domain errors return
-  only `Error: An internal error occurred`.
+  only `Error: An internal error occurred`, except for SQL failures.
 - Authorization denial evidence is required and fail-closed. If its action-log
   write fails, keep the protected work blocked, emit the redacted
   `auth.authorization.denied.audit_failed` security event, and throw an
@@ -798,3 +798,14 @@ for the full setup.
 ## Related Docs
 
 - [mcp-server-user-guide.md](./mcp-server-user-guide.md)
+
+## SQL diagnostic linkage
+
+Keep SQL failure handling at the shared service and transport boundaries.
+SQL tool failures include a safe message, `sql_failure`, `correlationId` and
+`timestamp` in `structuredContent.error` and readable text. Preserve the
+occurrence reference across catches. The restricted operational stream records
+`sql.operation.failed` with the same reference and timestamp independently of
+database query logging. Preserve the content limits of AI verification,
+AI telemetry and capacity telemetry; do not log their raw payloads in a
+second error path. An uncertain mutation must not trigger an automatic retry.

@@ -7,10 +7,93 @@ import {
   isForeignKeyViolation,
   logSanitizedError,
   redactSensitiveText,
+  reportSqlFailure,
   toSafeErrorLogValue,
 } from '@/lib/http/safe-errors'
+import { AiVerificationSqlLogger } from '@/lib/typeorm/ai-verification-sql-logger'
 
 describe('safe error helpers', () => {
+  it('keeps enabled driver diagnostics useful without exposing query parameters or credentials', () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const logger = new AiVerificationSqlLogger(['error'])
+      logger.logQueryError(
+        Object.assign(
+          new Error('SELECT name FROM requirements failed password=private'),
+          { number: 208 },
+        ),
+        'SELECT name FROM requirements WHERE id=@0',
+        ['PRIVATE_PARAMETER'],
+      )
+      const entry = JSON.parse(log.mock.calls[0][0])
+      expect(entry.error).toMatchObject({
+        message: expect.stringContaining('SELECT name FROM requirements'),
+        stack: expect.any(String),
+        sql: { number: 208 },
+      })
+      expect(JSON.stringify(log.mock.calls)).not.toMatch(
+        /PRIVATE_PARAMETER|private/,
+      )
+      log.mockClear()
+      new AiVerificationSqlLogger(false).logQueryError('failed', 'SELECT 1')
+      logger.logQueryError(
+        'PRIVATE_PAYLOAD',
+        'INSERT INTO ai_model_verification_attempts VALUES (@0)',
+        ['PRIVATE_PAYLOAD'],
+      )
+      expect(log).not.toHaveBeenCalled()
+    } finally {
+      log.mockRestore()
+    }
+  })
+
+  it('retains one SQL occurrence through a cause wrapper and safely handles cyclic causes', () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const cause = Object.assign(new Error('Connection lost'), {
+        name: 'ConnectionError',
+        code: 'ESOCKET',
+      })
+      const original = reportSqlFailure(cause, {
+        correlationId: 'known-occurrence',
+      })
+      expect(reportSqlFailure(new Error('service failed', { cause }))).toEqual(
+        original,
+      )
+      const cyclic = new Error('ordinary failure')
+      cyclic.cause = cyclic
+      expect(reportSqlFailure(cyclic)).toBeUndefined()
+      expect(log).toHaveBeenCalledTimes(1)
+    } finally {
+      log.mockRestore()
+    }
+  })
+  it('keeps protected verification payloads out of all generic SQL logging paths', () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const error = Object.assign(
+      new Error('Truncated candidate PRIVATE_PAYLOAD'),
+      {
+        name: 'QueryFailedError',
+        query: 'INSERT INTO ai_model_verification_attempts VALUES (@0)',
+        parameters: ['PRIVATE_PAYLOAD'],
+        driverError: { number: 2628 },
+      },
+    )
+    try {
+      const reference = reportSqlFailure(error)
+      logSanitizedError('failed', error)
+      expect(reference?.code).toBe('sql_failure')
+      expect(toSafeErrorLogValue(error)).toMatchObject({
+        message: 'Protected SQL operation failed',
+        sql: { number: 2628 },
+      })
+      expect(JSON.stringify(log.mock.calls)).not.toMatch(
+        /PRIVATE_PAYLOAD|INSERT INTO|Truncated/,
+      )
+    } finally {
+      log.mockRestore()
+    }
+  })
   it.each([
     ['sk-or-mgmt-syntheticCredential_-', '[OPENROUTER_KEY_REDACTED]'],
     ['"sk-or-v1-syntheticCredential"', '"[OPENROUTER_KEY_REDACTED]"'],

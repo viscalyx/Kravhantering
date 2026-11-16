@@ -546,6 +546,43 @@ describe('secureMutationRoute', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-store')
   })
 
+  it.each(['development', 'production'])(
+    'keeps SQL details restricted and avoids repeating uncertain commits in %s',
+    async environment => {
+      vi.stubEnv('NODE_ENV', environment)
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const handler = vi.fn(() => {
+        throw Object.assign(
+          new Error('COMMIT outcome unavailable password=private'),
+          { name: 'TransactionError', code: 'EABORT' },
+        )
+      })
+      try {
+        const route = secureMutationRoute({
+          handler,
+          policy: adminMutationPolicy(),
+        })
+        const response = await route(jsonRequest({}))
+        const body = await response.json()
+        expect(response.status).toBe(500)
+        expect(body).toMatchObject({
+          code: 'sql_failure',
+          correlationId: expect.any(String),
+          timestamp: expect.any(String),
+        })
+        expect(JSON.stringify(body)).not.toMatch(/COMMIT|private|debugMessage/)
+        expect(JSON.parse(log.mock.calls[0][0])).toMatchObject({
+          correlation_id: body.correlationId,
+          error: { sql: { code: 'EABORT' } },
+        })
+        expect(handler).toHaveBeenCalledTimes(1)
+      } finally {
+        log.mockRestore()
+        vi.unstubAllEnvs()
+      }
+    },
+  )
+
   it('exposes an explicit safe handler-error message without exposing internal details', async () => {
     const route = secureMutationRoute({
       errorMessage: 'Failed to perform action.',

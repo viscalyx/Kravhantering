@@ -14,6 +14,7 @@ import {
 } from '@/lib/ai/generation-availability'
 import type { McpRuntimeSettings } from '@/lib/dal/ai-settings'
 import type { SqlServerDatabase } from '@/lib/db'
+import { reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   ARRAY_INPUT_MAX_ITEMS,
   uniquePositiveIntegerArraySchema,
@@ -683,6 +684,19 @@ function toRequirementResourceUri(uniqueId: string, versionNumber?: number) {
 }
 
 function formatError(error: unknown) {
+  const failure = reportSqlFailure(error, { source: 'mcp' })
+  if (failure) {
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error [${failure.code}]: ${failure.error} Reference: ${failure.correlationId}. Timestamp: ${failure.timestamp}.`,
+        },
+      ],
+      isError: true,
+      structuredContent: { error: failure },
+    }
+  }
   const message =
     isRequirementsServiceError(error) &&
     READABLE_MCP_ERROR_CODES.has(error.code)
@@ -1782,7 +1796,7 @@ export function createKravhanteringMcpServer(
         logging: {},
       },
       instructions:
-        'Authenticate HTTP calls with a short-lived OAuth access token from the approved MCP service client. The protected JWT header must use typ "at+jwt"; the token must match the configured issuer and audience, carry the exact configured client_id and scope or scopes, numeric exp and iat, a non-empty sub, and the required employeeHsaId, and remain within the configured current-age and declared-lifetime limits. Do not send browser or ID tokens. Roles are read only from the configured MCP role claim, and malformed roles grant no roles. Treat every tool result with isError: true as a failed call. When the server must fail closed, it returns only "Error: An internal error occurred"; do not infer internal causes from that generic result.',
+        'Authenticate HTTP calls with a short-lived OAuth access token from the approved MCP service client. The protected JWT header must use typ "at+jwt"; the token must match the configured issuer and audience, carry the exact configured client_id and scope or scopes, numeric exp and iat, a non-empty sub, and the required employeeHsaId, and remain within the configured current-age and declared-lifetime limits. Do not send browser or ID tokens. Roles are read only from the configured MCP role claim, and malformed roles grant no roles. Treat every tool result with isError: true as a failed call. SQL failures return code sql_failure, correlationId and timestamp in structuredContent.error and text. Use that reference to find restricted operational diagnostics; check saved state before repeating a mutation. For other failures where the server must fail closed, it returns only "Error: An internal error occurred"; do not infer internal causes from that generic result.',
     },
   )
 

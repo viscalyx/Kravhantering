@@ -5,6 +5,7 @@ import {
   DEFAULT_APPLICATION_SETTINGS,
   MIB,
 } from '@/lib/application-settings'
+import { readResponseMessage } from '@/lib/http/response-message'
 import { RequirementsServiceError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => {
@@ -105,6 +106,46 @@ vi.mock('@/lib/dal/application-settings', () => ({
 import { GET, PATCH } from '@/app/api/admin/application-settings/route'
 
 describe('admin application settings route', () => {
+  it('keeps the SQL reference from the admin mutation through UI extraction and diagnostics', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    routeState.updateApplicationSetting.mockRejectedValueOnce(
+      Object.assign(new Error('Commit acknowledgement lost password=private'), {
+        name: 'RequestError',
+        code: 'ESOCKET',
+      }),
+    )
+    try {
+      const response = await PATCH(
+        new NextRequest('https://example.test/api/admin/application-settings', {
+          method: 'PATCH',
+          headers: {
+            Origin: 'https://example.test',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ cspViolationLoggingEnabled: true }),
+        }),
+      )
+      expect(response.status).toBe(500)
+      const body = await response.clone().json()
+      expect(body).toMatchObject({
+        code: 'sql_failure',
+        correlationId: 'correlation-settings',
+      })
+      expect(await readResponseMessage(response, 'en')).toContain(
+        'Reference: correlation-settings',
+      )
+      expect(JSON.parse(log.mock.calls[0][0])).toMatchObject({
+        correlation_id: body.correlationId,
+        timestamp: body.timestamp,
+        error: { sql: { code: 'ESOCKET' } },
+      })
+      expect(routeState.updateApplicationSetting).toHaveBeenCalledTimes(1)
+      expect(JSON.stringify(body)).not.toMatch(/private|acknowledgement/)
+    } finally {
+      log.mockRestore()
+    }
+  })
   beforeEach(() => {
     vi.clearAllMocks()
     routeState.getAdminApplicationSettings.mockResolvedValue({

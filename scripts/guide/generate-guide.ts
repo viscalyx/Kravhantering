@@ -936,6 +936,12 @@ function buildMarkdown(allEntries: ScreenshotEntry[]): string {
     `> Guiden genererades automatiskt av Playwright ${date}.`,
     `> Alla skärmdumpar visar det svenska gränssnittet.`,
     '',
+    `## När en databasåtgärd inte kan bekräftas`,
+    '',
+    wrapProse(
+      'Felmeddelandet visar en referens, koden `sql_failure` och en UTC-tidpunkt. Lämna dessa uppgifter till driftpersonalen som kan söka i den skyddade driftloggen. Kontrollera sparat tillstånd innan du upprepar en ändring. Ett felsvar eller ett lokalt återställt fält bevisar inte att databasen återställdes. Intern SQL och stack visas inte i felmeddelandet.',
+    ),
+    '',
     `## Innehållsförteckning`,
     '',
     toc,

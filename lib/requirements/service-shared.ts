@@ -1,5 +1,5 @@
 import type { SqlServerDatabase } from '@/lib/db'
-import { redactSensitiveText } from '@/lib/http/safe-errors'
+import { reportSqlFailure, toSafeErrorLogValue } from '@/lib/http/safe-errors'
 import {
   type CapacityMetrics,
   type CapacityPageSurface,
@@ -256,6 +256,7 @@ export async function withLogging<T>(
     return result
   } catch (error) {
     const durationMs = Date.now() - startedAt
+    reportSqlFailure(error, { ...context, operation: event })
     const statusCode = getErrorStatusCode(error)
     const isClientError = isClientErrorStatusCode(statusCode)
     const logFields = {
@@ -268,7 +269,7 @@ export async function withLogging<T>(
       status_code: statusCode,
       error:
         error instanceof Error
-          ? redactSensitiveText(error.message)
+          ? toSafeErrorLogValue(error).message
           : 'Unknown requirements error',
       ...logMetadata,
     }

@@ -9,6 +9,7 @@ import {
   AI_RUN_PROFILE_KEYS,
   type AiRunProfileKey,
 } from '@/lib/ai/profile-resolver'
+import { reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   internalError,
   isRequirementsServiceError,
@@ -17,14 +18,17 @@ import {
 
 export interface HttpErrorPayload {
   body: {
-    code: RequirementsErrorCode
+    code: RequirementsErrorCode | 'sql_failure'
     details?: SafeHttpErrorDetails
     error: string
+    correlationId?: string
+    timestamp?: string
   }
   status: number
 }
 
 export interface HttpErrorPayloadOptions {
+  context?: Parameters<typeof reportSqlFailure>[1]
   safeDetails?: 'ai_admin_blockers' | 'ai_admin_model_dependencies'
 }
 
@@ -331,6 +335,8 @@ export function toHttpErrorPayload(
   error: unknown,
   options: HttpErrorPayloadOptions = {},
 ): HttpErrorPayload {
+  const failure = reportSqlFailure(error, options.context)
+  if (failure) return { body: failure, status: 500 }
   if (isRequirementsServiceError(error)) {
     const details = toSafeHttpErrorDetails(
       error.code,

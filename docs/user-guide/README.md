@@ -4,6 +4,14 @@
 > Guiden genererades automatiskt av Playwright 2026-11-15.
 > Alla skärmdumpar visar det svenska gränssnittet.
 
+## När en databasåtgärd inte kan bekräftas
+
+Felmeddelandet visar en referens, koden `sql_failure` och en UTC-tidpunkt.
+Lämna dessa uppgifter till driftpersonalen som kan söka i den skyddade
+driftloggen. Kontrollera sparat tillstånd innan du upprepar en ändring.
+Ett felsvar eller ett lokalt återställt fält bevisar inte att databasen
+återställdes. Intern SQL och stack visas inte i felmeddelandet.
+
 ## Innehållsförteckning
 
 1. [Översikt och navigering](#översikt-och-navigering)

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { CsrfError } from '@/lib/auth/csrf'
 import {
   conflictError,
@@ -8,6 +8,46 @@ import {
 import { toHttpErrorPayload } from '@/lib/requirements/service'
 
 describe('toHttpErrorPayload', () => {
+  it('returns a SQL occurrence reference with matching restricted diagnostics', () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const error = Object.assign(
+        new Error('Invalid object name missing_requirements; password=private'),
+        {
+          name: 'QueryFailedError',
+          query: 'SELECT * FROM missing_requirements',
+          driverError: { number: 208, code: 'EREQUEST', lineNumber: 1 },
+        },
+      )
+      const payload = toHttpErrorPayload(error)
+      expect(payload).toMatchObject({
+        status: 500,
+        body: {
+          code: 'sql_failure',
+          correlationId: expect.any(String),
+          timestamp: expect.any(String),
+        },
+      })
+      const entry = JSON.parse(log.mock.calls[0][0])
+      expect(entry).toMatchObject({
+        correlation_id: payload.body.correlationId,
+        timestamp: payload.body.timestamp,
+        error: {
+          message: expect.stringContaining('missing_requirements'),
+          stack: expect.any(String),
+          sql: { number: 208, code: 'EREQUEST' },
+        },
+      })
+      expect(JSON.stringify(payload)).not.toMatch(
+        /missing_requirements|private|stack|SELECT/,
+      )
+      expect(JSON.stringify(entry)).not.toContain('private')
+      expect(toHttpErrorPayload(error)).toEqual(payload)
+      expect(log).toHaveBeenCalledTimes(1)
+    } finally {
+      log.mockRestore()
+    }
+  })
   it('preserves only the safe needs-reference conflict reason', () => {
     const result = toHttpErrorPayload(
       conflictError('Requirement applications changed during update', {

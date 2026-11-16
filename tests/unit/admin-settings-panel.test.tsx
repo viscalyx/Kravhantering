@@ -592,6 +592,32 @@ describe('SettingsPanel', () => {
     ).toBeVisible()
   })
 
+  it('announces a SQL reference with a curated Developer Mode marker', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okJson(settingsResponse()))
+      .mockResolvedValueOnce(
+        errorJson({
+          code: 'sql_failure',
+          correlationId: 'settings-error-reference',
+          timestamp: '2026-11-16T12:00:00.000Z',
+        }),
+      )
+    render(<SettingsPanel />)
+    const input = await screen.findByLabelText(
+      'admin.applicationSettings.fields.csvExportMaxItems.label',
+    )
+    fireEvent.change(input, { target: { value: '4000' } })
+    fireEvent.blur(input)
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('settings-error-reference')
+    expect(alert).toHaveTextContent('sql_failure')
+    expect(alert.querySelector('[data-developer-mode-name]')).toHaveAttribute(
+      'data-developer-mode-name',
+      'error reference',
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
   it('rolls back an optimistic edit after a save network failure', async () => {
     fetchMock
       .mockResolvedValueOnce(okJson(settingsResponse()))
