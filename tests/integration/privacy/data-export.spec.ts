@@ -540,13 +540,14 @@ test('ADMIN-34: privacy SQL failures retain safe references without repeating ex
     .getByRole('alertdialog')
     .getByRole('button', { name: 'Kör radering' })
     .click()
-  const alert = page.getByLabel('Dataskydd', { exact: true }).getByRole('alert')
+  const panel = page.getByRole('tabpanel', { name: 'Dataskydd', exact: true })
+  const alert = panel.getByRole('alert')
   await expect(alert).toContainText('privacy-execution-reference')
   await expect(alert).toContainText('sql_failure')
   await expect(alert).toContainText('2026-11-17T12:00:00.000Z')
   await expect(alert).toContainText('Kontrollera sparat tillstånd')
   await expect(
-    page.getByRole('button', { name: 'Kör radering' }),
+    panel.getByRole('button', { name: 'Kör radering', exact: true }),
   ).toBeDisabled()
   expect(attempts).toBe(1)
 })

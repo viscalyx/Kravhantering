@@ -7,6 +7,14 @@ test('ADMIN-34: required catalog SQL failures keep safe references and form edit
 }) => {
   let fail = true
   let attempts = 0
+  let saveAttempts = 0
+  page.on('request', request => {
+    if (
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/requirements'
+    )
+      saveAttempts++
+  })
   await page.route('**/api/requirement-types', route => {
     attempts++
     return fail
@@ -28,14 +36,18 @@ test('ADMIN-34: required catalog SQL failures keep safe references and form edit
   await expect(error).toContainText('sql_failure')
   await expect(error).toContainText('2026-11-17T12:00:00.000Z')
   await expect(page.locator('button[type="submit"]')).toBeDisabled()
-  expect(attempts).toBe(1)
+  // Development Strict Mode may restart the initial GET; measure the explicit retry from the settled failure state.
+  const initialAttempts = attempts
+  expect(initialAttempts).toBeGreaterThan(0)
+  expect(saveAttempts).toBe(0)
   fail = false
   await error.getByRole('button', { name: 'Försök igen', exact: true }).click()
   await expect(error).toHaveCount(0)
   await expect(page.locator('#description')).toHaveValue(
     'Keep these reviewed edits',
   )
-  expect(attempts).toBe(2)
+  expect(attempts).toBe(initialAttempts + 1)
+  expect(saveAttempts).toBe(0)
 })
 
 test.describe('Requirement creation', () => {
