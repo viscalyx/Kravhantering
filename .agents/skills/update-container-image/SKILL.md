@@ -25,11 +25,13 @@ verify the release/smoke/test surfaces that consume it.
    - Prefer immutable, version-specific tags for release locks. Avoid moving
      tags such as `stable-alpine`, `latest`, or `2025-latest` unless the repo's
      existing product lane explicitly uses that moving tag.
-   - Preserve the lane policy from `IMAGE_CONFIGS.parseTag`,
-     `laneFromVersion`, and `versionSortValue`.
+   - Derive the release lane from the matching `IMAGE_CONFIGS` entry and
+     `selectAvailableVersion` in `.github/workflows/dependency-drift.mjs`.
 
 3. Resolve immutable image identity for `linux/amd64`.
-   - Record both the platform manifest digest and the image config digest.
+   - Follow `resolveImageIdentity` in `.github/workflows/dependency-drift.mjs`:
+     record the platform manifest digest, or the index digest when the matching
+     config sets `indexDigest`, and the platform image config digest.
    - For manifest lists, select platform `{ os: "linux", architecture:
      "amd64" }`, then fetch that platform manifest.
    - Update `tag`, `manifestDigest`, and `imageId` together in
@@ -39,19 +41,23 @@ verify the release/smoke/test surfaces that consume it.
      normalization.
 
 4. Update companion files and usage surfaces.
-   - Check `IMAGE_CONFIGS[image].companionFiles`; keep it complete when adding
-     or discovering hardcoded refs.
-   - Any time this task changes a file because it contains a hardcoded image
-     reference, release example, devcontainer/devfile example, or active
-     deployment/doc workflow reference, update
-     `.github/workflows/dependency-drift.mjs` in the same change so
-     `IMAGE_CONFIGS[image].companionFiles` or the replacement logic covers
-     that file for future automated updates.
+   - Discover consumers from `.github/dependency-maintenance.json`,
+     `scripts/dependency-maintenance.mjs`, and repository searches.
+   - Synchronize every active hardcoded reference and release example with
+     the canonical lock. Review workflow references directly; extend the
+     maintenance coverage invariant in `scripts/dependency-maintenance.mjs`
+     when adding supported development consumers.
    - Known companion files:
      - `nginx`: `containers/production/env/release.env.template`
      - `sqlserver`: `docker-compose.sqlserver.yml`,
        `.devcontainer/docker-compose.yml`,
-       `.devcontainer/elevated/docker-compose.yml`
+       `.devcontainer/elevated/docker-compose.yml`,
+       `.github/workflows/container-pr-smoke.yml`,
+       `.github/workflows/container-release.yml`,
+       `scripts/azure-dev/templates/quadlet/krav-db.container`,
+       `containers/production/env/release.env.template`
+       (including its direct public image example). Preserve site-specific
+       placeholder refs in the release template.
      - `keycloak`: `docker-compose.idp.yml`,
        `.devcontainer/docker-compose.yml`,
        `.devcontainer/elevated/docker-compose.yml`,
@@ -92,7 +98,7 @@ rg --hidden -n "OLD_TAG|NEW_TAG|docker.io/library/nginx|NGINX_IMAGE_REF|stable-a
 7. Verify.
    - Run targeted tests for changed scripts when useful.
    - Run `node --check .github/workflows/dependency-drift.mjs` when the
-     updater changed.
+     detector changed.
    - Run `npm run check` before final response unless the user asked for a
      narrower pass or the change is documentation-only.
    - Re-run the broad `rg` search and explain any remaining old/moving tag
@@ -100,9 +106,9 @@ rg --hidden -n "OLD_TAG|NEW_TAG|docker.io/library/nginx|NGINX_IMAGE_REF|stable-a
 
 ## Safety Rules
 
-- Do not run `.github/workflows/dependency-drift.mjs` locally unless the
-  user explicitly wants the workflow branch/PR behavior and the GitHub env is
-  configured. It switches branches, commits, pushes, and opens PRs.
+- Use the detector's exported lookup functions for read-only verification.
+  Run its CLI only when GitHub issue reconciliation is authorized and the
+  GitHub environment is configured: it creates, comments on, and closes issues.
 - Do not update only the tag in an image lock. Digest and image ID must move
   with it.
 - Do not leave the release/prodlike example behind when a direct public image

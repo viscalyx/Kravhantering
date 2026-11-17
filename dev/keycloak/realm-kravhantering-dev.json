@@ -358,7 +358,7 @@
       "defaultClientScopes": ["kravhantering:mcp"],
       "attributes": {
         "access.token.header.type.rfc9068": "true",
-        "access.token.lifespan": "300"
+        "access.token.lifespan": "240"
       },
       "protocolMappers": [
         {

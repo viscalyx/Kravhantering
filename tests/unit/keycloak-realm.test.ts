@@ -140,6 +140,7 @@ function expectMcpServiceTokenContract(
   realm: KeycloakRealm,
   client: KeycloakRealmClient | undefined,
   expectedRoles: string[],
+  expectedLifespan = '300',
 ) {
   // Keycloak otherwise skips its built-in profile and email scopes when a
   // realm import declares at least one custom client scope.
@@ -148,7 +149,7 @@ function expectMcpServiceTokenContract(
   })
   expect(client?.attributes).toMatchObject({
     'access.token.header.type.rfc9068': 'true',
-    'access.token.lifespan': '300',
+    'access.token.lifespan': expectedLifespan,
   })
   expect(client?.defaultClientScopes).toContain('kravhantering:mcp')
   expect(realm.clientScopes).toContainEqual(
@@ -318,7 +319,12 @@ describe('dev Keycloak realm', () => {
   it('emits the expected audience, local privileged roles, and real-format HSA-id for MCP tokens', () => {
     const realm = readDevRealm()
     const mcpClient = getClient(realm, 'kravhantering-mcp')
-    expectMcpServiceTokenContract(realm, mcpClient, ['Admin', 'Reviewer'])
+    expectMcpServiceTokenContract(
+      realm,
+      mcpClient,
+      ['Admin', 'Reviewer'],
+      '240',
+    )
 
     const audienceMapper = getMapper(mcpClient, 'mcp-audience')
     expect(audienceMapper?.protocolMapper).toBe('oidc-audience-mapper')
