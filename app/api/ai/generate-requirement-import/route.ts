@@ -61,6 +61,7 @@ import {
   requirementImportDestination,
   requirementImportScopeAction,
   toAiTaskContent,
+  toSqlFailureStreamError,
   validateRequirementImportImages,
   validateRequirementImportScope,
 } from '../requirement-import-shared'
@@ -211,8 +212,10 @@ export const POST = secureMutationRoute<GenerateRequirementImportBody>({
       }
     } catch (error) {
       logSanitizedError('AI requirement import availability failed', error)
-      return createUnavailableAiStreamResponse(context, () =>
-        recordTerminal('failure', 503),
+      return createUnavailableAiStreamResponse(
+        context,
+        () => recordTerminal('failure', 503),
+        error,
       )
     }
 
@@ -224,8 +227,10 @@ export const POST = secureMutationRoute<GenerateRequirementImportBody>({
       onBlockedInput: () => recordTerminal('failure', 400),
       onSafetyFilterFailure: error => {
         logSanitizedError('AI requirement import safety filter failed', error)
-        return createUnavailableAiStreamResponse(context, () =>
-          recordTerminal('failure', 503),
+        return createUnavailableAiStreamResponse(
+          context,
+          () => recordTerminal('failure', 503),
+          error,
         )
       },
       operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
@@ -248,8 +253,10 @@ export const POST = secureMutationRoute<GenerateRequirementImportBody>({
       )
     } catch (error) {
       logSanitizedError('AI requirement import instruction failed', error)
-      return createUnavailableAiStreamResponse(context, () =>
-        recordTerminal('failure', 503),
+      return createUnavailableAiStreamResponse(
+        context,
+        () => recordTerminal('failure', 503),
+        error,
       )
     }
 
@@ -258,8 +265,10 @@ export const POST = secureMutationRoute<GenerateRequirementImportBody>({
       runtime = createProductionAiAuthoringRuntime(db)
     } catch (error) {
       logSanitizedError('AI authoring runtime unavailable', error)
-      return createUnavailableAiStreamResponse(context, () =>
-        recordTerminal('failure', 503),
+      return createUnavailableAiStreamResponse(
+        context,
+        () => recordTerminal('failure', 503),
+        error,
       )
     }
     const applicationRunId = randomUUID()
@@ -393,10 +402,14 @@ export const POST = secureMutationRoute<GenerateRequirementImportBody>({
         } catch (error) {
           const profileError = aiRunProfileError(error, body.locale)
           if (!request.signal.aborted) {
-            send('error', {
-              code: profileError?.code ?? 'ai_provider_unavailable',
-              message: profileError?.message ?? AI_PROVIDER_UNAVAILABLE_MESSAGE,
-            })
+            send(
+              'error',
+              toSqlFailureStreamError(error, context) ?? {
+                code: profileError?.code ?? 'ai_provider_unavailable',
+                message:
+                  profileError?.message ?? AI_PROVIDER_UNAVAILABLE_MESSAGE,
+              },
+            )
           }
           if (!profileError) {
             logSanitizedError('AI requirement import run failed', error)

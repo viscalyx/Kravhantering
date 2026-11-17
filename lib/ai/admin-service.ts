@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto'
 import type { SqlServerEntityManager } from '@/lib/db'
+import { reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   conflictError,
+  internalError,
   isRequirementsServiceError,
   notFoundError,
   validationError,
@@ -1183,15 +1185,20 @@ export class AiConnectionAdministrationService {
         },
       })
     } catch (error) {
+      if (
+        reportSqlFailure(error, {
+          operation: 'ai.model_revision.save',
+          protectedContent: true,
+        })
+      )
+        throw error
       if (error instanceof AiModelVerificationAttemptError) {
         throw conflictError('The model verification cannot be used.', {
           blocker: error.code,
         })
       }
       if (isRequirementsServiceError(error)) throw error
-      throw conflictError('The model save outcome is unavailable.', {
-        blocker: 'attempt_unavailable',
-      })
+      throw internalError(undefined, undefined, { cause: error })
     }
   }
 

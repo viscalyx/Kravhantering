@@ -21,6 +21,7 @@ import { useModalFocus } from '@/hooks/useModalFocus'
 import { useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { getResponseMessage } from '@/lib/http/response-message'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 import type {
   RequirementDetailPrefetchContext,
@@ -99,19 +100,6 @@ interface SpecificationLocalRequirementDetailClientProps {
   }
   specificationId: number
   usageStatus?: SpecificationLocalRequirementUsageStatusSnapshot
-}
-
-function readResponseError(body: unknown): string | null {
-  if (!body || typeof body !== 'object') {
-    return null
-  }
-
-  const error = (body as { error?: unknown }).error
-  if (typeof error === 'string' && error.trim().length > 0) {
-    return error.trim()
-  }
-
-  return null
 }
 
 interface GraduationTargetAreaModalProps {
@@ -515,7 +503,7 @@ export default function SpecificationLocalRequirementDetailClient({
           if (!response.ok) {
             const body = (await response.json().catch(() => null)) as unknown
             throw new Error(
-              readResponseError(body) ?? tp('localRequirementNotFound'),
+              getResponseMessage(body) ?? tp('localRequirementNotFound'),
             )
           }
 
@@ -669,7 +657,7 @@ export default function SpecificationLocalRequirementDetailClient({
 
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as unknown
-        throw new Error(readResponseError(body) ?? tc('error'))
+        throw new Error(getResponseMessage(body) ?? tc('error'))
       }
 
       const saved = (await response.json()) as {
@@ -736,7 +724,7 @@ export default function SpecificationLocalRequirementDetailClient({
           setError(
             body?.details?.reason === 'removal_requires_included'
               ? agreementErrorMessage(body, ta)
-              : (readResponseError(body) ?? tc('error')),
+              : (getResponseMessage(body) ?? tc('error')),
           )
           return
         }
@@ -803,7 +791,7 @@ export default function SpecificationLocalRequirementDetailClient({
 
       if (!response.ok) {
         setGraduationError(
-          readResponseError(body) ?? tp('graduateLocalRequirementFailed'),
+          getResponseMessage(body) ?? tp('graduateLocalRequirementFailed'),
         )
         return
       }

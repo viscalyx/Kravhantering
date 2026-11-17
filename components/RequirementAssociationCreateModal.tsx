@@ -20,6 +20,7 @@ import type {
 } from '@/hooks/useTaxonomyOptions'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { getResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 
 export interface RequirementAssociationDraft {
@@ -106,7 +107,7 @@ export default function RequirementAssociationCreateModal({
       )
       const result = await response.json()
       if (!response.ok) {
-        setError(result?.error ?? tc('error'))
+        setError(getResponseMessage(result) ?? tc('error'))
         return
       }
       onCreate(result)

@@ -24,6 +24,7 @@ import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FormModal from '@/components/FormModal'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { readResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import {
   type AgreementHttpError,
@@ -195,7 +196,10 @@ export default function SpecificationAgreementBox({
         const response = await fetch(
           `/api/requirements-specifications/${specificationId}/agreement${query}`,
         )
-        if (!response.ok) throw new Error(t('loadFailed'))
+        if (!response.ok)
+          throw new Error(
+            (await readResponseMessage(response)) ?? t('loadFailed'),
+          )
         const next = (await response.json()) as SpecificationAgreementView
         if (request !== requestId.current) return false
         selectedId.current = next.selectedAgreement?.id

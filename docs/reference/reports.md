@@ -380,6 +380,11 @@ worker failure codes. Actor quota failures are described under
 shows localized messages instead of raw server error text. A busy response
 enables manual retry only after the countdown and never retries automatically.
 
+SQL failures during synchronous report collection return a safe JSON error
+with the `sql_failure` code, correlation reference and UTC timestamp. Preserve
+these fields when reporting a failed download to operators. SQL details stay
+in the restricted log stream; no incomplete PDF is returned.
+
 ## Output Behavior
 
 Server PDF is the report delivery mechanism for report sharing, archival use,

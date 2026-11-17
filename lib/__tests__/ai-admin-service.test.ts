@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { QueryFailedError } from 'typeorm'
 import { describe, expect, it, vi } from 'vitest'
 import { createTestAiVerificationAttemptStore } from '@/lib/__tests__/fixtures/ai-verification-attempt-store'
 import type { AiAdminSecretOperations } from '@/lib/ai/admin-service'
@@ -10,6 +11,7 @@ import {
   AiConnectionAdministrationService,
 } from '@/lib/ai/admin-service'
 import { AiModelVerificationAttemptError } from '@/lib/ai/model-verification-attempts'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 const capabilities = {
   reasoning: {
@@ -193,6 +195,74 @@ function harness(
 }
 
 describe('AI administration model verification attempts', () => {
+  it.each(['write', 'commit'])(
+    'preserves a protected SQL %s failure from model saving through the HTTP envelope',
+    async phase => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const failure =
+        phase === 'write'
+          ? new QueryFailedError(
+              "INSERT INTO ai_connection_models VALUES ('PRIVATE_CANDIDATE')",
+              [],
+              Object.assign(new Error('PRIVATE_CANDIDATE truncated'), {
+                number: 2628,
+              }),
+            )
+          : Object.assign(
+              new Error('Commit outcome unknown PRIVATE_CANDIDATE'),
+              { name: 'TransactionError', code: 'EABORT' },
+            )
+      const { connection: current, service } = harness(
+        vi.fn().mockRejectedValue(failure),
+      )
+      const candidate = {
+        reasoning: verification.reasoning,
+        externalModelId: 'controlled/model',
+        externalModelVersion: null,
+      }
+      const attempt = await service.verifyModelCandidate({
+        candidate,
+        connectionId: current.id,
+        signal: new AbortController().signal,
+      })
+      if (!attempt.attemptId) throw new Error('Missing fixture attempt')
+      try {
+        const error = await service
+          .saveModelRevision({
+            connectionId: current.id,
+            modelRevision: {
+              ...candidate,
+              attemptId: attempt.attemptId,
+              name: 'Model',
+              description: null,
+              modelId: null,
+              modelToken: null,
+            },
+          })
+          .then(
+            () => undefined,
+            error => error,
+          )
+        expect(error).toBe(failure)
+        const response = toHttpErrorPayload(error)
+        expect(response).toMatchObject({
+          status: 500,
+          body: {
+            code: 'sql_failure',
+            error: expect.stringContaining('Check saved state'),
+            correlationId: expect.any(String),
+            timestamp: expect.any(String),
+          },
+        })
+        expect(JSON.stringify(log.mock.calls)).not.toMatch(
+          /PRIVATE_CANDIDATE|INSERT INTO/,
+        )
+      } finally {
+        log.mockRestore()
+      }
+    },
+  )
+
   it('keeps non-verification operations available when pending verification loading fails', async () => {
     const {
       connection: current,
@@ -457,8 +527,9 @@ describe('AI administration model verification attempts', () => {
     }
 
     await expect(service.saveModelRevision(input)).rejects.toMatchObject({
-      message: 'The model save outcome is unavailable.',
-      details: { blocker: 'attempt_unavailable' },
+      code: 'internal',
+      status: 500,
+      cause: expect.objectContaining({ message: 'database unavailable' }),
     })
     await expect(service.saveModelRevision(input)).resolves.toBe(savedModel)
   })

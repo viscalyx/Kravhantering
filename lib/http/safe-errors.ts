@@ -89,9 +89,11 @@ export function getSafeErrorMessage(error: unknown): string | null {
 export function toSafeErrorLogValue(error: unknown): SafeErrorLogValue {
   const sqlError = findSqlError(error)
   if (sqlError) {
-    const protectedContent = containsProtectedSqlContent(
-      `${sqlError.query ?? ''} ${sqlError.message ?? ''}`,
-    )
+    const protectedContent =
+      protectedSqlFailures.has(sqlError) ||
+      containsProtectedSqlContent(
+        `${sqlError.query ?? ''} ${sqlError.message ?? ''}`,
+      )
     const metadata: Record<string, string | number> = {}
     const driver = sqlError.driverError as Record<string, unknown> | undefined
     for (const key of [
@@ -148,6 +150,7 @@ export interface SqlFailureReference {
 export interface SqlFailureContext {
   correlationId?: string
   operation?: string
+  protectedContent?: boolean
   requestId?: string
   source?: string
   toolName?: string
@@ -161,6 +164,7 @@ export function containsProtectedSqlContent(value: unknown): boolean {
 }
 
 const sqlFailures = new WeakMap<object, SqlFailureReference>()
+const protectedSqlFailures = new WeakSet<object>()
 
 function findSqlError(
   error: unknown,
@@ -188,6 +192,7 @@ export function reportSqlFailure(
 ): SqlFailureReference | undefined {
   const sqlError = findSqlError(error)
   if (!sqlError) return undefined
+  if (context.protectedContent) protectedSqlFailures.add(sqlError)
   const existing = sqlFailures.get(sqlError)
   if (existing) return existing
   const reference: SqlFailureReference = {

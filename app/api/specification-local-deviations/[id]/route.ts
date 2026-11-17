@@ -7,7 +7,7 @@ import {
 } from '@/lib/dal/deviations'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
@@ -66,7 +66,10 @@ async function getHandler(
 
     logSanitizedError('Failed to get specification-local deviation', error)
     return NextResponse.json(
-      { error: 'Failed to get specification-local deviation' },
+      reportSqlFailure(error, {
+        source: 'rest',
+        operation: 'specification-local-deviations/[id]',
+      }) ?? { error: 'Failed to get specification-local deviation' },
       { status: 500 },
     )
   }
@@ -101,7 +104,10 @@ export const PUT = secureMutationRoute({
 
       logSanitizedError('Failed to update specification-local deviation', error)
       return NextResponse.json(
-        { error: 'Failed to update specification-local deviation' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'specification-local-deviations/[id]',
+        }) ?? { error: 'Failed to update specification-local deviation' },
         { status: 500 },
       )
     }
@@ -131,7 +137,10 @@ export const DELETE = secureMutationRoute({
 
       logSanitizedError('Failed to delete specification-local deviation', error)
       return NextResponse.json(
-        { error: 'Failed to delete specification-local deviation' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'specification-local-deviations/[id]',
+        }) ?? { error: 'Failed to delete specification-local deviation' },
         { status: 500 },
       )
     }

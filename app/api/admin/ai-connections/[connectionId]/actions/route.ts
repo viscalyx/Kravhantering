@@ -6,6 +6,7 @@ import {
 import { createAiConnectionAdministrationRuntime } from '@/lib/ai/admin-runtime'
 import { assertAiStagingLiveVerificationAllowed } from '@/lib/ai/staging-live-policy'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -174,9 +175,15 @@ export const POST = secureMutationRoute({
                 signal: verificationAbort.signal,
               })
               send({ result, type: 'completed' })
-            } catch {
+            } catch (error) {
               send({
-                error: 'Model verification could not be completed.',
+                ...(reportSqlFailure(error, {
+                  ...context,
+                  operation: 'admin.ai.verify_model_candidate',
+                  protectedContent: true,
+                }) ?? {
+                  error: 'Model verification could not be completed.',
+                }),
                 type: 'failed',
               })
             } finally {

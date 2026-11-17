@@ -17,6 +17,7 @@ import { downloadBlob } from '@/lib/browser-download'
 import { devMarker } from '@/lib/developer-mode-markers'
 import type { GeneratedOutputKind } from '@/lib/generated-output/errors'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { getResponseMessage } from '@/lib/http/response-message'
 import { filenameFromContentDisposition } from '@/lib/pdf/filename'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 
@@ -50,6 +51,7 @@ interface OutputErrorDetails {
 interface OutputDownloadError {
   code: string
   details: OutputErrorDetails
+  message?: string
   retryAfterSeconds: number
 }
 
@@ -133,7 +135,12 @@ async function parseOutputError(
     retryAfterSeconds,
     timeoutSeconds: boundedInteger(rawDetails?.timeoutSeconds, 0, 600),
   }
+  const message =
+    record?.code === 'sql_failure' || record?.sqlFailure
+      ? getResponseMessage(record, undefined, response)
+      : null
   return {
+    ...(message ? { message } : {}),
     code:
       typeof record?.code === 'string'
         ? record.code
@@ -330,6 +337,7 @@ function localizeOutputError(
   error: OutputDownloadError,
   t: ReturnType<typeof useTranslations<'generatedOutput'>>,
 ): string {
+  if (error.message) return error.message
   const { details } = error
   if (error.code === 'actor_rate_limit')
     return t('limits.actorRate', { seconds: error.retryAfterSeconds || 60 })

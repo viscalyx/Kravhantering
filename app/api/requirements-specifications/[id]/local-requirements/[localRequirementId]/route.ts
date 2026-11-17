@@ -8,7 +8,7 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
@@ -154,7 +154,11 @@ export const PUT = secureMutationRoute<
         error,
       )
       return NextResponse.json(
-        { error: 'Failed to update specification-local requirement' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation:
+            'requirements-specifications/[id]/local-requirements/[localRequirementId]',
+        }) ?? { error: 'Failed to update specification-local requirement' },
         { status: 500 },
       )
     }
@@ -205,7 +209,11 @@ export const DELETE = secureMutationRoute<
         error,
       )
       return NextResponse.json(
-        { error: 'Failed to delete specification-local requirement' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation:
+            'requirements-specifications/[id]/local-requirements/[localRequirementId]',
+        }) ?? { error: 'Failed to delete specification-local requirement' },
         { status: 500 },
       )
     }

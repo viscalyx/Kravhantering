@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { withPrivilegedMutationAudit } from '@/lib/admin/privileged-audit'
 import {
-  formatUiSettingsLoadError,
   getRequirementListColumnDefaults,
   updateRequirementListColumnDefaults,
 } from '@/lib/dal/ui-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -84,12 +84,15 @@ async function getHandler(request: Request) {
       const { body, status } = toHttpErrorPayload(error)
       return NextResponse.json(body, { status })
     }
-    console.error(
+    logSanitizedError(
       'Failed to load stored requirement column defaults',
-      formatUiSettingsLoadError(error),
+      error,
     )
     return NextResponse.json(
-      { error: 'Failed to load requirement column defaults.' },
+      reportSqlFailure(error, {
+        source: 'rest',
+        operation: 'admin/requirement-columns',
+      }) ?? { error: 'Failed to load requirement column defaults.' },
       { status: 500 },
     )
   }
@@ -118,12 +121,12 @@ export const PUT = secureMutationRoute({
         columns,
       })
     } catch (error) {
-      console.error(
-        'Failed to save requirement column defaults',
-        formatUiSettingsLoadError(error),
-      )
+      logSanitizedError('Failed to save requirement column defaults', error)
       return NextResponse.json(
-        { error: 'Failed to save requirement column defaults.' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'admin/requirement-columns',
+        }) ?? { error: 'Failed to save requirement column defaults.' },
         { status: 500 },
       )
     }

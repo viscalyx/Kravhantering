@@ -18,6 +18,7 @@ import FieldHelpButton from '@/components/FieldHelpButton'
 import { useDataSubjectExportDownload } from '@/components/privacy/useDataSubjectExportDownload'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { getResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 
 type SaveState = 'error' | 'idle' | 'saved' | 'saving'
@@ -206,6 +207,7 @@ export default function PrivacyErasurePanel() {
   }
 
   type PrivacyErrorBody = {
+    code?: string
     debugMessage?: string
     details?: { groupKey?: string; reason?: string }
     error?: string
@@ -276,7 +278,14 @@ export default function PrivacyErasurePanel() {
       .catch(() => null)) as PrivacyErrorBody | null
     return {
       body,
-      message: privacyErrorMessage(response, body, copy),
+      message:
+        body?.code === 'sql_failure'
+          ? (getResponseMessage(
+              body,
+              locale === 'sv' ? 'sv' : 'en',
+              response,
+            ) ?? copy.serverFallback)
+          : privacyErrorMessage(response, body, copy),
     }
   }
 

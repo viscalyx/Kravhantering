@@ -192,7 +192,9 @@ describe('admin requirement columns route', () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Failed to load stored requirement column defaults',
         expect.objectContaining({
-          message: 'column defaults unavailable',
+          error: expect.objectContaining({
+            message: 'column defaults unavailable',
+          }),
         }),
       )
     } finally {

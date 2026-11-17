@@ -10,6 +10,7 @@ import {
 } from '@/lib/dal/ai-safety-rules'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -47,8 +48,14 @@ function errorResponse(error: unknown, fallbackMessage: string): NextResponse {
     return NextResponse.json(body, { status })
   }
 
-  console.error(fallbackMessage, error)
-  return NextResponse.json({ error: fallbackMessage }, { status: 500 })
+  logSanitizedError(fallbackMessage, error)
+  return NextResponse.json(
+    reportSqlFailure(error, {
+      source: 'rest',
+      operation: 'admin/ai-safety-rules',
+    }) ?? { error: fallbackMessage },
+    { status: 500 },
+  )
 }
 
 async function getHandler(request: Request) {

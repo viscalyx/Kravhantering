@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementForm from '@/components/RequirementForm'
 import { requirementEditSnapshot } from '@/components/requirement-edit-reconciliation'
+import { readResponseMessage } from '@/lib/http/response-message'
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
 
 const EDIT_REQUIREMENT_HELP: HelpContent = {
@@ -78,7 +79,7 @@ export default function EditRequirementClient({
     try {
       const res = await fetch(`/api/requirements/${requirementId}`)
       if (!res.ok) {
-        setFetchError(tc('error'))
+        setFetchError((await readResponseMessage(res)) ?? tc('error'))
         setLoading(false)
         return
       }

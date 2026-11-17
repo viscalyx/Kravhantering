@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
-import {
-  formatUiSettingsLoadError,
-  getVisibleHsaIdPrefixes,
-} from '@/lib/dal/ui-settings'
+import { getVisibleHsaIdPrefixes } from '@/lib/dal/ui-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 
 export async function GET() {
   try {
@@ -12,12 +10,12 @@ export async function GET() {
       prefixes: await getVisibleHsaIdPrefixes(db),
     })
   } catch (error) {
-    console.error(
-      'Failed to load visible HSA-id prefixes',
-      formatUiSettingsLoadError(error),
-    )
+    logSanitizedError('Failed to load visible HSA-id prefixes', error)
     return NextResponse.json(
-      { error: 'Failed to load HSA-id prefixes.' },
+      reportSqlFailure(error, {
+        source: 'rest',
+        operation: 'hsa-id-prefixes',
+      }) ?? { error: 'Failed to load HSA-id prefixes.' },
       { status: 500 },
     )
   }

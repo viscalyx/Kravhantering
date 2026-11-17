@@ -13,6 +13,18 @@ changes.
 
 ## Unreleased
 
+### Scheduled cleanup evidence
+
+Update cleanup monitoring to retain deletion-count status and reporting outcomes.
+A successful bounded run can leave expired data for later schedules. A failed
+batch can commit work before its response is lost, so reported counts can cover
+only acknowledged work. A later command failure also preserves completed work.
+
+Check service exit status as well as logs. Reporting failures now return a
+nonzero command status while independent cleanup targets continue. Correct
+persistent faults and verify the next scheduled run. Use the retained cleanup
+service and its normal bounds for recovery.
+
 ### SQL failure references
 
 Update REST and MCP error consumers to retain the safe message, correlation

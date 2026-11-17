@@ -10,6 +10,7 @@ import {
 } from '@/lib/ai/forensic-capture'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
+import { reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   adminMutationPolicy,
   customMutationPolicy,
@@ -54,7 +55,10 @@ async function getHandler(request: NextRequest) {
       errorKind: error instanceof Error ? 'Error' : 'NonError',
     })
     return NextResponse.json(
-      { error: 'Failed to read AI forensic evidence.' },
+      reportSqlFailure(error, {
+        source: 'rest',
+        operation: 'admin/ai-forensic-captures',
+      }) ?? { error: 'Failed to read AI forensic evidence.' },
       { status: 500 },
     )
   }

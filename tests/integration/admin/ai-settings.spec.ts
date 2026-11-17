@@ -145,6 +145,43 @@ test.describe('Admin settings', () => {
       }
       expect(attempts).toBe(1)
     })
+    await test.step('retain references when column settings fail to load or save', async () => {
+      let failColumnReads = true
+      let saves = 0
+      await page.route('**/api/admin/requirement-columns', async route => {
+        if (route.request().method() === 'GET' && !failColumnReads)
+          return route.continue()
+        if (route.request().method() === 'PUT') saves++
+        return route.fulfill({
+          status: 500,
+          json: {
+            code: 'sql_failure',
+            correlationId: 'columns-browser-reference',
+            timestamp: '2026-11-17T12:00:00.000Z',
+          },
+        })
+      })
+      await page.goto('/sv/admin?tab=columns')
+      const panel = page.locator('#columns-panel')
+      await expect(panel.getByRole('alert')).toContainText(
+        'columns-browser-reference',
+      )
+      failColumnReads = false
+      await panel.getByRole('button', { name: 'Försök igen' }).click()
+      await panel
+        .locator('input[type="checkbox"]:not(:disabled)')
+        .first()
+        .click()
+      await panel.getByRole('button', { name: 'Spara', exact: true }).click()
+      await expect(panel.getByRole('alert')).toContainText(
+        'columns-browser-reference',
+      )
+      await expect(panel.getByRole('alert')).toContainText('sql_failure')
+      await expect(panel.getByRole('alert')).toContainText(
+        '2026-11-17T12:00:00.000Z',
+      )
+      expect(saves).toBe(1)
+    })
   })
 
   test('ADMIN-30: Security saves the CSP logging switch and explains enforcement', async ({

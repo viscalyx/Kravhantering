@@ -897,6 +897,60 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       expect(priorityBadges[1]?.querySelector('svg')).toBeTruthy()
     })
 
+    it('retains the SQL reference and uncertain item identity in bulk results without another save', async () => {
+      context.deviationPostHandler = async () =>
+        Response.json(
+          {
+            code: 'sql_failure',
+            correlationId: 'bulk-ui-reference',
+            timestamp: '2026-11-17T12:00:00.000Z',
+            error: 'Safe server fallback',
+          },
+          { status: 500 },
+        )
+      context.renderRequirementsSpecificationDetailClient()
+      context.selectRequirementRows([101])
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'deviation.requestDeviationSelected',
+        }),
+      )
+      const dialog = await screen.findByRole('dialog', {
+        name: 'deviation.requestDeviation',
+      })
+      fireEvent.change(
+        within(dialog).getByLabelText(/deviation\.motivation/, {
+          selector: 'textarea',
+        }),
+        {
+          target: { value: 'Reviewed reason' },
+        },
+      )
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: 'deviation.newDeviation' }),
+      )
+      const reference = await screen.findByText(/bulk-ui-reference/)
+      const results = reference.closest('[role="status"]')
+      expect(results).toHaveTextContent('BEH0001')
+      expect(results).toHaveTextContent('specification.bulkSaveUncertain')
+      expect(results).toHaveTextContent('sql_failure')
+      expect(results).toHaveTextContent('2026-11-17T12:00:00.000Z')
+      expect(results).toHaveAttribute(
+        'data-developer-mode-name',
+        'bulk save results',
+      )
+      expect(
+        context.fetchMock.mock.calls.filter(
+          ([url, init]) =>
+            String(url).startsWith('/api/specification-item-deviations/') &&
+            (init as RequestInit | undefined)?.method === 'POST',
+        ),
+      ).toHaveLength(1)
+      expect(
+        context.requirementRowCheckbox('items', 'BEH0001'),
+      ).not.toBeChecked()
+    })
+
     it('creates one deviation per application and retains failed Requirement IDs in selection', async () => {
       const localItem = {
         ...context.initialSpecificationItem,

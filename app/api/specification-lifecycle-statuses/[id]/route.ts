@@ -10,6 +10,7 @@ import {
   INTERNAL_SERVER_ERROR_MESSAGE,
   isForeignKeyViolation,
   logSanitizedError,
+  reportSqlFailure,
 } from '@/lib/http/safe-errors'
 import {
   adminMutationPolicy,
@@ -64,7 +65,10 @@ export const PUT = secureMutationRoute({
     } catch (err) {
       logSanitizedError('Failed to update specification lifecycle status', err)
       return NextResponse.json(
-        { error: INTERNAL_SERVER_ERROR_MESSAGE },
+        reportSqlFailure(err, {
+          source: 'rest',
+          operation: 'specification-lifecycle-statuses/[id]',
+        }) ?? { error: INTERNAL_SERVER_ERROR_MESSAGE },
         { status: 500 },
       )
     }
@@ -115,7 +119,10 @@ export const DELETE = secureMutationRoute({
       }
       logSanitizedError('Failed to delete specification lifecycle status', err)
       return NextResponse.json(
-        { error: INTERNAL_SERVER_ERROR_MESSAGE },
+        reportSqlFailure(err, {
+          source: 'rest',
+          operation: 'specification-lifecycle-statuses/[id]',
+        }) ?? { error: INTERNAL_SERVER_ERROR_MESSAGE },
         { status: 500 },
       )
     }

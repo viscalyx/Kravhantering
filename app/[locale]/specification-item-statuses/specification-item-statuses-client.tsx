@@ -15,6 +15,7 @@ import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { isStrictHexColor } from '@/lib/color-contrast'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { getResponseMessage } from '@/lib/http/response-message'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
 import {
   DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
@@ -147,7 +148,11 @@ export default function SpecificationItemStatusesClient() {
         )
         if (requestId !== linkedItemRequestId.current) return
         if (!response.ok) {
-          setLinkedItemsError(tc('error'))
+          const body = await response.json().catch(() => null)
+          setLinkedItemsError(
+            (body?.code === 'sql_failure' ? getResponseMessage(body) : null) ??
+              tc('error'),
+          )
           return
         }
         const data = (await response.json()) as {

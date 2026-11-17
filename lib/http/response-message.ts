@@ -1,10 +1,13 @@
-import en from '@/messages/en.json'
-import sv from '@/messages/sv.json'
+import en from '@/messages/sql-failures.en.json'
+import sv from '@/messages/sql-failures.sv.json'
 
-function getResponseMessage(
+export function getResponseMessage(
   body: unknown,
-  locale: 'sv' | 'en',
-  response: Response,
+  locale: 'sv' | 'en' = typeof document !== 'undefined' &&
+  document.documentElement.lang === 'sv'
+    ? 'sv'
+    : 'en',
+  response?: Response,
 ): string | null {
   if (typeof body === 'string') {
     const trimmed = body.trim()
@@ -12,21 +15,30 @@ function getResponseMessage(
   }
 
   if (body && typeof body === 'object') {
-    const failure = body as {
-      code?: unknown
-      correlationId?: unknown
-      timestamp?: unknown
-    }
-    if (failure.code === 'sql_failure') {
+    const record = body as { code?: unknown; sqlFailure?: unknown }
+    const failure = (
+      record.code === 'sql_failure' ? record : record.sqlFailure
+    ) as
+      | {
+          code?: unknown
+          correlationId?: unknown
+          timestamp?: unknown
+        }
+      | undefined
+    if (
+      failure &&
+      typeof failure === 'object' &&
+      failure.code === 'sql_failure'
+    ) {
       const reference =
-        failure.correlationId ?? response.headers?.get?.('x-correlation-id')
+        failure.correlationId ?? response?.headers?.get?.('x-correlation-id')
       if (
         typeof reference === 'string' &&
         /^[A-Za-z0-9._:@/-]{1,128}$/.test(reference) &&
         typeof failure.timestamp === 'string' &&
         /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(failure.timestamp)
       ) {
-        return (locale === 'sv' ? sv.common.sqlFailure : en.common.sqlFailure)
+        return (locale === 'sv' ? sv.sqlFailure : en.sqlFailure)
           .replace('{reference}', reference)
           .replace('{timestamp}', failure.timestamp)
       }

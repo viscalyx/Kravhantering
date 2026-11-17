@@ -204,7 +204,9 @@ describe('admin HSA-id prefixes route', () => {
     })
     expect(consoleError).toHaveBeenCalledWith(
       'Failed to load admin HSA-id prefixes',
-      { message: 'database credential' },
+      expect.objectContaining({
+        error: expect.objectContaining({ message: 'database credential' }),
+      }),
     )
   })
 
@@ -385,7 +387,9 @@ describe('admin HSA-id prefixes route', () => {
     })
     expect(consoleError).toHaveBeenCalledWith(
       'Failed to save HSA-id prefixes',
-      { message: 'database credential' },
+      expect.objectContaining({
+        error: expect.objectContaining({ message: 'database credential' }),
+      }),
     )
   })
 })

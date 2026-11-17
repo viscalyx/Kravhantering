@@ -87,6 +87,56 @@ function validBody(overrides: Record<string, unknown> = {}) {
 }
 
 describe('POST /api/ai/repair-requirement-import-json', () => {
+  it.each(['availability', 'instruction', 'run'])(
+    'returns a traceable SQL error when %s fails',
+    async phase => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const failure = Object.assign(
+        new Error('SQL unavailable password=private'),
+        {
+          name: 'QueryFailedError',
+          query: 'SELECT id FROM ai_run_profiles',
+          driverError: { number: 1205 },
+        },
+      )
+      if (phase === 'availability')
+        routeState.getAiGenerationAvailability.mockRejectedValueOnce(failure)
+      if (phase === 'instruction')
+        routeState.buildImportInstruction.mockRejectedValueOnce(failure)
+      if (phase === 'run')
+        routeState.run.mockImplementationOnce(() =>
+          (async function* () {
+            yield* []
+            throw failure
+          })(),
+        )
+      try {
+        const response = await POST(request(validBody()))
+        expect(response.status).toBe(503)
+        const body = await response.json()
+        expect(body).toMatchObject({
+          code: 'sql_failure',
+          error: expect.stringContaining('Check saved state'),
+          correlationId: expect.any(String),
+          timestamp: expect.any(String),
+        })
+        const occurrence = log.mock.calls
+          .map(call => call[0])
+          .find(value => typeof value === 'string' && value.startsWith('{'))
+        expect(JSON.parse(String(occurrence))).toMatchObject({
+          event: 'sql.operation.failed',
+          correlation_id: body.correlationId,
+          timestamp: body.timestamp,
+        })
+        expect(JSON.stringify(body)).not.toMatch(
+          /private|SELECT|ai_run_profiles/,
+        )
+      } finally {
+        log.mockRestore()
+      }
+    },
+  )
+
   beforeEach(() => {
     vi.clearAllMocks()
     clearInMemoryThrottleForTests()

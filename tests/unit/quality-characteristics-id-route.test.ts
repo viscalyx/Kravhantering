@@ -113,6 +113,43 @@ async function expectInvalidRequest(
 }
 
 describe('quality-characteristics/[id] route', () => {
+  it('returns the SQL reference when deletion fails outside the expected constraint contract', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockDeleteQualityCharacteristic.mockRejectedValueOnce(
+      Object.assign(new Error('Deadlock victim password=private'), {
+        name: 'RequestError',
+        code: 'EREQUEST',
+        number: 1205,
+      }),
+    )
+    try {
+      const response = await DELETE(
+        new NextRequest('http://localhost/api/quality-characteristics/1', {
+          method: 'DELETE',
+        }),
+        makeParams('1'),
+      )
+      expect(response.status).toBe(500)
+      const body = await response.json()
+      expect(body).toMatchObject({
+        code: 'sql_failure',
+        correlationId: expect.any(String),
+        timestamp: expect.any(String),
+      })
+      expect(JSON.stringify(body)).not.toContain('private')
+      const occurrence = log.mock.calls
+        .map(call => call[0])
+        .find(value => typeof value === 'string' && value.startsWith('{'))
+      expect(JSON.parse(String(occurrence))).toMatchObject({
+        event: 'sql.operation.failed',
+        correlation_id: body.correlationId,
+        timestamp: body.timestamp,
+      })
+    } finally {
+      log.mockRestore()
+    }
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockHasChildQualityCharacteristics.mockResolvedValue(false)

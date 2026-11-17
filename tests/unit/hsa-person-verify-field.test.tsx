@@ -52,6 +52,47 @@ describe('HsaPersonVerifyField', () => {
     vi.unstubAllGlobals()
   })
 
+  it('displays nested SQL quota references without repeating the verification request', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === '/api/hsa-person-lookup-capability')
+        return okJson({ available: true })
+      if (String(input) === '/api/hsa-id-prefixes')
+        return okJson({
+          prefixes: [
+            { id: 1, isDefault: true, label: null, prefix: 'SE5560000001' },
+          ],
+        })
+      return Response.json(
+        {
+          code: 'service_unavailable',
+          error: 'Service unavailable',
+          retryAfterSeconds: 5,
+          sqlFailure: {
+            code: 'sql_failure',
+            correlationId: 'hsa-quota-reference',
+            timestamp: '2026-11-17T12:00:00.000Z',
+          },
+        },
+        { status: 503, headers: { 'Retry-After': '5' } },
+      )
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<ControlledHsaPersonVerifyField />)
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Fetch' })).toBeEnabled(),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Fetch' }))
+    const alert = await screen.findByText(/hsa-quota-reference/)
+    expect(alert).toHaveTextContent('hsa-quota-reference')
+    expect(alert).toHaveTextContent('sql_failure')
+    expect(
+      fetchMock.mock.calls.filter(
+        ([input]) =>
+          String(input) === '/api/requirement-responsibility-people/verify',
+      ),
+    ).toHaveLength(1)
+  })
+
   it('marks the unavailable lookup status for Developer Mode', async () => {
     vi.stubGlobal(
       'fetch',

@@ -461,19 +461,24 @@ describe('Azure Codex installation orchestration', () => {
     ['timeout', 'timeout' as const],
     ['post-activation failure', 'post-activation' as const],
     ['final-version mismatch', 'version-mismatch' as const],
-  ])('restores the previous complete release after %s', (_name, failure) => {
-    const fixture = userFixture({ failure, previousVersion: '1.1.0' })
-    const previousTarget = readlinkSync(fixture.currentLink)
+  ])(
+    'restores the previous complete release after %s',
+    (_name, failure) => {
+      const fixture = userFixture({ failure, previousVersion: '1.1.0' })
+      const previousTarget = readlinkSync(fixture.currentLink)
 
-    const result = runFixture(fixture)
+      const result = runFixture(fixture)
 
-    expect(result.status).not.toBe(0)
-    expect(readlinkSync(fixture.currentLink)).toBe(previousTarget)
-    expect(readlinkSync(fixture.launcher)).toBe(
-      `${fixture.currentLink}/bin/codex`,
-    )
-    expect(result.stderr).toContain('rollback=')
-  })
+      expect(result.status).not.toBe(0)
+      expect(readlinkSync(fixture.currentLink)).toBe(previousTarget)
+      expect(readlinkSync(fixture.launcher)).toBe(
+        `${fixture.currentLink}/bin/codex`,
+      )
+      expect(result.stderr).toContain('rollback=')
+    },
+    // Allow shell startup and rollback work beyond the one-second installer deadline.
+    15_000,
+  )
 
   it('restores the previous release when the orchestration wrapper receives TERM', async () => {
     const fixture = userFixture({

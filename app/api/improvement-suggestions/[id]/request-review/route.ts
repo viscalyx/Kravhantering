@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
@@ -36,7 +36,10 @@ export const POST = secureMutationRoute({
       }
       logSanitizedError('Failed to request suggestion review', error)
       return NextResponse.json(
-        { error: 'Failed to request review' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'improvement-suggestions/[id]/request-review',
+        }) ?? { error: 'Failed to request review' },
         { status: 500 },
       )
     }

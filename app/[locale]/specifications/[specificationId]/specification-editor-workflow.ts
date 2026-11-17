@@ -21,7 +21,7 @@ const SPECIFICATION_REQUIREMENT_PACKAGES_PAGE_SIZE = 50
 export class SpecificationEditorSaveError extends Error {
   constructor(
     message: string,
-    readonly outcome: 'failed' | 'conflict',
+    readonly outcome: 'failed' | 'conflict' | 'uncertain',
   ) {
     super(message)
     this.name = 'SpecificationEditorSaveError'
@@ -140,7 +140,9 @@ export type SpecificationEditorExternalMutation =
 
 export interface SpecificationEditorBulkOutcome {
   failedUniqueIds: string[]
+  refreshError?: string
   refreshFailed: boolean
+  saveErrors?: Array<{ uniqueId: string; message: string }>
   succeededCount: number
   succeededUniqueIds: string[]
   uncertainUniqueIds: string[]
@@ -149,6 +151,7 @@ export interface SpecificationEditorBulkOutcome {
 export interface SpecificationEditorWorkflowState {
   announcement: 'pagination-restarted' | null
   bulkAction: SpecificationEditorBulkActionState
+  inlineSaveOutcome: SpecificationEditorBulkOutcome | null
   inspectionRequiredUniqueIds: string[]
   items: SpecificationListItem[]
   itemsContinuationError: 'continuation' | 'recovery' | null
@@ -261,6 +264,7 @@ export function createSpecificationEditorWorkflow({
   )
   let state: SpecificationEditorWorkflowInternalState = {
     inspectionRequiredUniqueIds: [],
+    inlineSaveOutcome: null,
     announcement: null,
     bulkAction: { phase: 'idle' },
     items: [...initialItems.items],
@@ -628,6 +632,10 @@ export function createSpecificationEditorWorkflow({
       'create-deviations',
       results.map((result, index) => ({
         item: items[index],
+        ...(result.status === 'rejected' &&
+        result.reason instanceof SpecificationEditorSaveError
+          ? { error: result.reason.message }
+          : {}),
         outcome:
           result.status === 'fulfilled'
             ? 'succeeded'
@@ -662,6 +670,7 @@ export function createSpecificationEditorWorkflow({
       bulkAction: { operation: 'assign-needs-reference', phase: 'mutating' },
     })
     let outcome: SaveOutcome = 'succeeded'
+    let saveError: string | undefined
     try {
       if (reviewedNeedsReferences.length > 0)
         await adapter.assignNeedsReference(
@@ -679,10 +688,12 @@ export function createSpecificationEditorWorkflow({
         throw error
       }
       outcome = saveFailureOutcome(error)
+      if (error instanceof SpecificationEditorSaveError)
+        saveError = error.message
     }
     return finishBulkAction(
       'assign-needs-reference',
-      items.map(item => ({ item, outcome })),
+      items.map(item => ({ item, outcome, error: saveError })),
       () => refreshItemSurfaces(true),
     )
   }
@@ -694,7 +705,8 @@ export function createSpecificationEditorWorkflow({
   ): Promise<boolean> => {
     const originalItem =
       state.items.find(item => item.itemRef === itemRef) ?? null
-    if (!originalItem) return false
+    if (!originalItem || uncertainItemResults.has(itemRef)) return false
+    publish({ inlineSaveOutcome: null, bulkAction: { phase: 'idle' } })
     replaceItem(itemRef, {
       ...originalItem,
       needsReference,
@@ -706,15 +718,16 @@ export function createSpecificationEditorWorkflow({
         { needsReferenceId },
         currentQuery.agreementId,
       )
-    } catch {
+    } catch (error) {
       replaceItem(itemRef, originalItem)
+      reportInlineSaveResult(originalItem, saveFailureOutcome(error), error)
       return false
     }
     try {
       await refreshItemSurfaces(true)
-    } catch {
-      // The mutation committed. Preserve its optimistic value while the
-      // workflow's refresh surfaces expose their own failure state.
+    } catch (error) {
+      // Keep the confirmed save distinct from a later failed read.
+      reportInlineSaveResult(originalItem, 'succeeded', error)
     }
     return true
   }
@@ -729,6 +742,8 @@ export function createSpecificationEditorWorkflow({
       await loadFirstPage(currentQuery)
       return false
     }
+    if (uncertainItemResults.has(itemRef)) return false
+    publish({ inlineSaveOutcome: null, bulkAction: { phase: 'idle' } })
     replaceItem(itemRef, {
       ...originalItem,
       specificationItemStatusColor: status.color ?? null,
@@ -745,15 +760,16 @@ export function createSpecificationEditorWorkflow({
         },
         currentQuery.agreementId,
       )
-    } catch {
+    } catch (error) {
       replaceItem(itemRef, originalItem)
+      reportInlineSaveResult(originalItem, saveFailureOutcome(error), error)
       return false
     }
     try {
       await refreshItemSurfaces(false)
-    } catch {
-      // The mutation committed. Preserve its optimistic value while the
-      // workflow's refresh surfaces expose their own failure state.
+    } catch (error) {
+      // Keep the confirmed save distinct from a later failed read.
+      reportInlineSaveResult(originalItem, 'succeeded', error)
     }
     return true
   }
@@ -782,6 +798,7 @@ export function createSpecificationEditorWorkflow({
     )
     publish({ bulkAction: { operation: 'remove-items', phase: 'mutating' } })
     let outcome: SaveOutcome = 'succeeded'
+    let saveError: string | undefined
     try {
       if (requestedRefs.length > 0) {
         const result = await adapter.removeItems(
@@ -794,11 +811,13 @@ export function createSpecificationEditorWorkflow({
       }
     } catch (error) {
       outcome = saveFailureOutcome(error)
+      if (error instanceof SpecificationEditorSaveError)
+        saveError = error.message
     }
     if (outcome === 'succeeded') onItemsRemoved?.(items)
     return finishBulkAction(
       'remove-items',
-      items.map(item => ({ item, outcome })),
+      items.map(item => ({ item, outcome, error: saveError })),
       async () => {
         const results = await Promise.all([
           refreshItemsOrThrow(),
@@ -813,6 +832,7 @@ export function createSpecificationEditorWorkflow({
 
   type SaveOutcome = 'succeeded' | 'failed' | 'uncertain'
   interface ItemSaveResult {
+    error?: string
     item: SpecificationListItem
     outcome: SaveOutcome
   }
@@ -825,9 +845,34 @@ export function createSpecificationEditorWorkflow({
   }
 
   function saveFailureOutcome(error: unknown): SaveOutcome {
-    return error instanceof SpecificationEditorSaveError
+    return error instanceof SpecificationEditorSaveError &&
+      error.outcome !== 'uncertain'
       ? 'failed'
       : 'uncertain'
+  }
+
+  function reportInlineSaveResult(
+    item: SpecificationListItem,
+    outcome: SaveOutcome,
+    error: unknown,
+  ): void {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    if (outcome === 'uncertain' && item.itemRef) {
+      uncertainItemResults.set(item.itemRef, { item, outcome, error: message })
+    }
+    publish({
+      inlineSaveOutcome: {
+        succeededCount: outcome === 'succeeded' ? 1 : 0,
+        succeededUniqueIds: outcome === 'succeeded' ? [item.uniqueId] : [],
+        failedUniqueIds: outcome === 'failed' ? [item.uniqueId] : [],
+        uncertainUniqueIds: outcome === 'uncertain' ? [item.uniqueId] : [],
+        refreshFailed: outcome === 'succeeded',
+        ...(outcome === 'succeeded'
+          ? { refreshError: message }
+          : { saveErrors: [{ uniqueId: item.uniqueId, message }] }),
+      },
+      inspectionRequiredUniqueIds: getUncertainUniqueIds(),
+    })
   }
 
   async function finishBulkAction(
@@ -845,6 +890,13 @@ export function createSpecificationEditorWorkflow({
     const nextSelected = new Set(state.selectedItemRefs)
     results.forEach(record => {
       const { item, outcome: result } = record
+      if (record.error) {
+        outcome.saveErrors ??= []
+        outcome.saveErrors.push({
+          uniqueId: item.uniqueId,
+          message: record.error,
+        })
+      }
       if (result === 'succeeded') outcome.succeededUniqueIds.push(item.uniqueId)
       else if (result === 'failed') outcome.failedUniqueIds.push(item.uniqueId)
       else {
@@ -861,8 +913,9 @@ export function createSpecificationEditorWorkflow({
     if (outcome.succeededCount > 0) {
       try {
         await refresh()
-      } catch {
+      } catch (error) {
         outcome.refreshFailed = true
+        if (error instanceof Error) outcome.refreshError = error.message
       }
     }
     publish({ bulkAction: { ...outcome, operation, phase: 'complete' } })

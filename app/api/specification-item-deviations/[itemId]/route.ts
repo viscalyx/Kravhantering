@@ -9,7 +9,7 @@ import {
 import { parseSpecificationItemRef } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
@@ -182,7 +182,10 @@ async function getHandler(
       error,
     )
     return NextResponse.json(
-      { error: 'Internal server error' },
+      reportSqlFailure(error, {
+        source: 'rest',
+        operation: 'specification-item-deviations/[itemId]',
+      }) ?? { error: 'Internal server error' },
       { status: 500 },
     )
   }
@@ -234,7 +237,10 @@ export const POST = secureMutationRoute({
       }
       logSanitizedError('Failed to create deviation', error)
       return NextResponse.json(
-        { error: 'Failed to create deviation' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'specification-item-deviations/[itemId]',
+        }) ?? { error: 'Failed to create deviation' },
         { status: 500 },
       )
     }

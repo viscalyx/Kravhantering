@@ -67,6 +67,25 @@ describe('AI connection financial details', () => {
     vi.mocked(apiFetch).mockReset()
   })
 
+  it('shows the SQL reference in the existing financial failure alert', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(
+      Response.json(
+        {
+          code: 'sql_failure',
+          correlationId: 'financial-reference',
+          timestamp: '2026-11-17T12:00:00.000Z',
+        },
+        { status: 500 },
+      ),
+    )
+    render(<FinancialStatusPanel connection={connection} expanded />)
+    fireEvent.click(screen.getByRole('button', { name: /title/ }))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('financial-reference')
+    expect(alert).toHaveTextContent('sql_failure')
+    expect(apiFetch).toHaveBeenCalledTimes(1)
+  })
+
   it.each([
     'unsupported',
     'missing_credential',

@@ -1324,6 +1324,101 @@ for (const viewport of viewports) {
   })
 }
 
+for (const field of ['needs-reference', 'status'] as const) {
+  test(`SPEC-08/SPEC-09: inline ${field} SQL failures preserve references until saved-state inspection`, async ({
+    page,
+  }) => {
+    const item = {
+      id: 910001,
+      requirementId: 910001,
+      itemRef: 'lib:910001',
+      kind: 'library',
+      uniqueId: 'PWT-INLINE',
+      needsReferenceId: null,
+      needsReference: null,
+      specificationItemStatusId: 1,
+      version: {
+        description: 'Inline save requirement',
+        status: 3,
+        statusNameSv: 'Publicerad',
+        statusNameEn: 'Published',
+        versionNumber: 1,
+      },
+    }
+    await page.route(
+      `**/api/requirements-specifications/${specificationId}/items?*`,
+      route =>
+        route.fulfill({
+          json: {
+            items: [item],
+            pagination: {
+              count: 1,
+              hasMore: false,
+              limit: 50,
+              nextCursor: null,
+            },
+          },
+        }),
+    )
+    await page.route(
+      `**/api/requirements-specifications/${specificationId}/needs-references`,
+      route =>
+        route.fulfill({
+          json: { needsReferences: [{ id: 81, text: 'Inline reference' }] },
+        }),
+    )
+    let attempts = 0
+    await page.route(
+      `**/api/requirements-specifications/${specificationId}/items/*`,
+      route => {
+        attempts++
+        return route.fulfill({
+          status: 500,
+          json: {
+            code: 'sql_failure',
+            correlationId: 'inline-browser-reference',
+            timestamp: '2026-11-17T12:00:00.000Z',
+          },
+        })
+      },
+    )
+    await page.route(
+      `**/api/specification-item-resolutions/${specificationId}?*`,
+      route => route.fulfill({ json: { items: [item] } }),
+    )
+    await gotoSpecificationDetail(page)
+    const panel = page.locator('[data-specification-detail-list-panel="items"]')
+    const column =
+      field === 'status' ? 'specificationItemStatus' : 'needsReference'
+    const popover = await openColumnPicker(page, panel)
+    const columnChoice = popover.locator(
+      `[data-column-picker-option="${column}"] input[type="checkbox"]`,
+    )
+    if (!(await columnChoice.isChecked())) await columnChoice.check()
+    await page.keyboard.press('Escape')
+    const control = panel
+      .getByRole('row')
+      .filter({ hasText: 'PWT-INLINE' })
+      .getByRole('combobox', {
+        name: field === 'status' ? 'Användningsstatus' : 'Behovsreferens',
+        exact: true,
+      })
+    await control.selectOption(field === 'status' ? '2' : '81')
+    const results = page
+      .getByRole('status')
+      .filter({ hasText: 'Resultat av sparandet' })
+    await expect(results).toContainText('inline-browser-reference')
+    await expect(results).toContainText('sql_failure')
+    await expect(results).toContainText('2026-11-17T12:00:00.000Z')
+    await expect(results).toContainText('Okänt resultat: PWT-INLINE.')
+    await control.selectOption(field === 'status' ? '2' : '81')
+    expect(attempts).toBe(1)
+    await expect(
+      results.getByRole('button', { name: 'Läs in sparat tillstånd' }),
+    ).toBeEnabled()
+  })
+}
+
 test.describe('Requirements specification deterministic manual cases', () => {
   test.setTimeout(180_000)
   test.use({ viewport: DESKTOP_VIEWPORT })
@@ -1463,7 +1558,15 @@ test.describe('Requirements specification deterministic manual cases', () => {
           if (scenario.mode === 'mixed' && ref === 'lib:910002')
             return route.fulfill({ status: 409, json: { error: 'Rejected' } })
           if (scenario.mode === 'mixed' && ref === 'lib:910003')
-            return route.abort('failed')
+            return route.fulfill({
+              status: 500,
+              json: {
+                code: 'sql_failure',
+                correlationId: 'bulk-save-reference',
+                timestamp: '2026-11-17T12:00:00.000Z',
+                error: 'Safe server fallback',
+              },
+            })
           return route.fulfill({ status: 201, json: { ok: true, id: 900001 } })
         },
       )
@@ -1564,6 +1667,10 @@ test.describe('Requirements specification deterministic manual cases', () => {
         if (scenario.mode === 'mixed') {
           await expect(results).toContainText('Inte sparade: PWT-BULK-2.')
           await expect(results).toContainText('Okänt resultat: PWT-BULK-3.')
+          await expect(results).toContainText('PWT-BULK-3:')
+          await expect(results).toContainText('bulk-save-reference')
+          await expect(results).toContainText('sql_failure')
+          await expect(results).toContainText('2026-11-17T12:00:00.000Z')
           await expect(
             panel.getByRole('checkbox', { name: 'Markera PWT-BULK-2' }),
           ).toBeChecked()

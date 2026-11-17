@@ -42,7 +42,10 @@ import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
-import { readResponseMessage } from '@/lib/http/response-message'
+import {
+  getResponseMessage,
+  readResponseMessage,
+} from '@/lib/http/response-message'
 import { isSwedish } from '@/lib/i18n/localized'
 import {
   formatActorDisplayNameForLocale,
@@ -306,7 +309,11 @@ export default function RequirementPackagesClient() {
         if (requestId !== linkedReqRequestId.current) return
         if (!response.ok) {
           setLinkedRequirements([])
-          setLinkedRequirementsError(tc('error'))
+          const body = await response.json().catch(() => null)
+          setLinkedRequirementsError(
+            (body?.code === 'sql_failure' ? getResponseMessage(body) : null) ??
+              tc('error'),
+          )
           return
         }
         const data = (await response.json()) as {

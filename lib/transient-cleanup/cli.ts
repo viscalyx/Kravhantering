@@ -6,7 +6,9 @@ import { createTransientCleanupTargets } from './registry'
 import type { TransientCleanupQueryExecutor } from './requirement-import-validation-sessions'
 import {
   runTransientStateCleanup,
+  type TransientCleanupDeletionCountStatus,
   type TransientCleanupLogEvent,
+  type TransientCleanupRunResult,
   type TransientCleanupTarget,
 } from './runner'
 import { cleanupSchemaFingerprint } from './schema'
@@ -41,6 +43,7 @@ interface CleanupCommandConfig {
 interface SafeCommandEvent {
   channel: 'transient-cleanup'
   deleted_rows: number
+  deletion_count_status: TransientCleanupDeletionCountStatus
   duration_ms: number
   event:
     | 'transient_cleanup.run.completed'
@@ -54,6 +57,7 @@ interface SafeCommandEvent {
   operation: 'transient_state_cleanup'
   outcome: 'failure' | 'success' | 'not_applicable'
   remaining_expired_row_count: number | null
+  reporting_outcome?: 'failure' | 'success'
   timestamp: string
 }
 
@@ -110,26 +114,36 @@ function safeEvent(event: TransientCleanupLogEvent): SafeCommandEvent {
   return {
     channel: 'transient-cleanup',
     deleted_rows: event.deletedRows,
+    deletion_count_status: event.deletionCountStatus,
     duration_ms: event.durationMs,
     event: event.event,
     expired_row_count: event.expiredRowCount,
     expired_stored_bytes: event.expiredStoredBytes,
     ...(event.failureCode ? { failure_code: event.failureCode } : {}),
     kind: event.kind,
-    level: event.outcome === 'failure' ? 'error' : 'info',
+    level:
+      event.outcome === 'failure' || event.reportingOutcome === 'failure'
+        ? 'error'
+        : 'info',
     oldest_expired_age_ms: event.oldestExpiredAgeMs,
     operation: event.operation,
     outcome: event.outcome,
     remaining_expired_row_count: event.remainingExpiredRowCount,
+    ...(event.reportingOutcome
+      ? { reporting_outcome: event.reportingOutcome }
+      : {}),
     timestamp: new Date().toISOString(),
   }
 }
 
-function runnerFailureEvent(): SafeCommandEvent {
+function runnerFailureEvent(
+  result?: TransientCleanupRunResult,
+): SafeCommandEvent {
   return {
     channel: 'transient-cleanup',
-    deleted_rows: 0,
-    duration_ms: 0,
+    deleted_rows: result?.deletedRows ?? 0,
+    deletion_count_status: result?.deletionCountStatus ?? 'incomplete',
+    duration_ms: result?.durationMs ?? 0,
     event: 'transient_cleanup.run.completed',
     expired_row_count: null,
     expired_stored_bytes: null,
@@ -184,6 +198,7 @@ export async function runTransientCleanupCommand(
 
   let connection: CleanupConnection | null = null
   let exitCode = 1
+  let cleanupResult: TransientCleanupRunResult | undefined
   try {
     const config = readConfig(dependencies.env ?? process.env)
     connection = await (dependencies.connect ?? connect)()
@@ -233,7 +248,11 @@ export async function runTransientCleanupCommand(
       ...config,
       record: event => write(JSON.stringify(safeEvent(event))),
     })
-    exitCode = result.outcome === 'success' ? 0 : 1
+    cleanupResult = result
+    exitCode =
+      result.outcome === 'success' && result.reportingOutcome === 'success'
+        ? 0
+        : 1
     if (collectingEvidence && exitCode === 0) {
       write(
         JSON.stringify({
@@ -249,14 +268,15 @@ export async function runTransientCleanupCommand(
       )
     }
   } catch {
-    write(JSON.stringify(runnerFailureEvent()))
+    write(JSON.stringify(runnerFailureEvent(cleanupResult)))
     exitCode = 1
   } finally {
     if (connection) {
       try {
         await connection.destroy()
       } catch {
-        if (exitCode === 0) write(JSON.stringify(runnerFailureEvent()))
+        if (exitCode === 0)
+          write(JSON.stringify(runnerFailureEvent(cleanupResult)))
         exitCode = 1
       }
     }

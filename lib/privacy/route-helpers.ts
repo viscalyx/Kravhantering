@@ -1,11 +1,17 @@
-import { getErrorMessage, redactSensitiveText } from '@/lib/http/safe-errors'
+import {
+  getErrorMessage,
+  redactSensitiveText,
+  reportSqlFailure,
+  type SqlFailureReference,
+} from '@/lib/http/safe-errors'
 import {
   type RequestContext,
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
 import { forbiddenError } from '@/lib/requirements/errors'
 
-export interface PrivacyUnexpectedErrorBody {
+export interface PrivacyUnexpectedErrorBody
+  extends Partial<SqlFailureReference> {
   debugMessage?: string
   error: string
 }
@@ -37,6 +43,11 @@ export function unexpectedErrorBody(
   message: string,
   error: unknown,
 ): PrivacyUnexpectedErrorBody {
+  const failure = reportSqlFailure(error, {
+    source: 'rest',
+    operation: message,
+  })
+  if (failure) return failure
   return {
     ...(process.env.NODE_ENV === 'development'
       ? { debugMessage: redactSensitiveText(getErrorMessage(error)) }

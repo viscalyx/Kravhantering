@@ -1,6 +1,5 @@
 {
   "common": {
-    "sqlFailure": "Databasåtgärden kunde inte bekräftas. Kontrollera sparat tillstånd innan du upprepar åtgärden. Referens: {reference}. Kod: sql_failure. Tidpunkt: {timestamp}.",
     "appName": "Kravhantering",
     "appDescription": "En webbapplikation för kravhantering som stödjer företagets kravmodell och kravprocess",
     "loading": "Laddar...",

@@ -252,4 +252,29 @@ describe('PrivacyPanel', () => {
       ).toHaveTextContent('admin.privacy.executionStatus.failed'),
     )
   })
+  it('shows the SQL reference for a production-shaped preview failure without repeating it', async () => {
+    state.fetch.mockResolvedValue(
+      Response.json(
+        {
+          code: 'sql_failure',
+          correlationId: 'privacy-sql-reference',
+          timestamp: '2026-11-17T12:00:00.000Z',
+          error: 'Safe server fallback',
+        },
+        { status: 500 },
+      ),
+    )
+    renderAdminPanel(<PrivacyPanel />, { confirmModal: true })
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE5560000001-target1' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('privacy-sql-reference')
+    expect(alert).toHaveTextContent('sql_failure')
+    expect(alert).toHaveTextContent('2026-11-17T12:00:00.000Z')
+    expect(state.fetch).toHaveBeenCalledTimes(1)
+  })
 })

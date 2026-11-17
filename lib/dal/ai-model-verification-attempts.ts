@@ -6,6 +6,8 @@ import {
 } from '@/lib/ai/model-verification-attempts'
 import { withCommittedAudit } from '@/lib/audit/committed-mutation'
 import type { SqlServerDatabase, SqlServerEntityManager } from '@/lib/db'
+import { reportSqlFailure } from '@/lib/http/safe-errors'
+import { internalError } from '@/lib/requirements/errors'
 
 export const AI_VERIFICATION_PAYLOAD_MAX_BYTES = 65_536
 const AI_VERIFICATION_MAX_PENDING_ATTEMPTS = 512
@@ -107,18 +109,12 @@ export function createSqlServerAiModelVerificationAttemptStore<TResult>(
     async consume(input, manager) {
       if (!manager.queryRunner?.isTransactionActive)
         throw new Error('Model verification requires a transaction.')
-      let rows: AttemptRow[]
-      try {
-        rows = await manager.query<AttemptRow[]>(
-          `
+      const rows = await manager.query<AttemptRow[]>(
+        `
           SELECT ${COLUMNS} FROM [ai_model_verification_attempts] WITH (XLOCK, ROWLOCK, NOWAIT)
           WHERE [id] = @0 AND [ai_connection_id] = @1`,
-          [input.attemptId, input.connectionId],
-        )
-      } catch {
-        // Lock contention and SQL failures expose only a bounded, retry-safe conflict.
-        throw new AiModelVerificationAttemptError('attempt_unavailable')
-      }
+        [input.attemptId, input.connectionId],
+      )
       const row = rows[0]
       if (!row) throw new AiModelVerificationAttemptError('attempt_unavailable')
       if (row.fingerprint !== input.fingerprint)
@@ -138,7 +134,22 @@ export function createSqlServerAiModelVerificationAttemptStore<TResult>(
       return await work()
     } catch (error) {
       if (error instanceof AiModelVerificationAttemptError) throw error
-      throw new AiModelVerificationAttemptError('attempt_unavailable')
+      const metadata = error as {
+        number?: unknown
+        driverError?: { number?: unknown }
+      } | null
+      const number = metadata?.driverError?.number ?? metadata?.number
+      // NOWAIT conflicts have a verified operation-specific recovery contract.
+      if (number === 1222 || number === '1222')
+        throw new AiModelVerificationAttemptError('attempt_unavailable')
+      if (
+        reportSqlFailure(error, {
+          operation: 'ai.model_verification_attempt',
+          protectedContent: true,
+        })
+      )
+        throw error
+      throw internalError(undefined, undefined, { cause: error })
     }
   }
   return {

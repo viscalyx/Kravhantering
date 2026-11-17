@@ -4,6 +4,7 @@ import {
   getErrorMessage,
   logSanitizedError,
   redactSensitiveText,
+  reportSqlFailure,
 } from '@/lib/http/safe-errors'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
@@ -16,6 +17,11 @@ export type AccessReviewItemRouteParams = Promise<{
 }>
 
 function unexpectedErrorBody(message: string, error: unknown) {
+  const failure = reportSqlFailure(error, {
+    source: 'rest',
+    operation: message,
+  })
+  if (failure) return failure
   return {
     ...(process.env.NODE_ENV === 'development'
       ? { debugMessage: redactSensitiveText(getErrorMessage(error)) }

@@ -27,7 +27,10 @@ import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirma
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
-import { readResponseMessage } from '@/lib/http/response-message'
+import {
+  getResponseMessage,
+  readResponseMessage,
+} from '@/lib/http/response-message'
 import { getBrowserLinkUri } from '@/lib/norm-references/browser-link-uri'
 
 const NORM_REFERENCES_HELP: HelpContent = {
@@ -183,7 +186,11 @@ export default function NormReferencesClient() {
         if (requestId !== linkedReqRequestId.current) return
         if (!response.ok) {
           setLinkedRequirements([])
-          setLinkedRequirementsError(tc('error'))
+          const body = await response.json().catch(() => null)
+          setLinkedRequirementsError(
+            (body?.code === 'sql_failure' ? getResponseMessage(body) : null) ??
+              tc('error'),
+          )
           return
         }
         const data = (await response.json()) as {

@@ -676,6 +676,79 @@ export function registerNeedsReferenceTests(
       await context.settleInitialEditorEffects()
     })
 
+    it.each(['needs-reference', 'status'] as const)(
+      'displays the safe SQL reference for an inline %s save without silently repeating it',
+      async field => {
+        context.specificationItemMutationHandler = async () =>
+          Response.json(
+            {
+              code: 'sql_failure',
+              correlationId: 'inline-ui-reference',
+              timestamp: '2026-11-17T12:00:00.000Z',
+            },
+            { status: 500 },
+          )
+        context.renderRequirementsSpecificationDetailClient({
+          ...context.createInitialData(),
+          availableNeedsRefs: [{ id: 81, text: 'IAM-42', description: null }],
+          specificationItemStatuses: [
+            {
+              id: 1,
+              nameEn: 'Included',
+              nameSv: 'Inkluderad',
+              color: '#000000',
+              descriptionEn: '',
+              descriptionSv: '',
+              sortOrder: 1,
+            },
+            {
+              id: 2,
+              nameEn: 'In progress',
+              nameSv: 'Pågående',
+              color: '#000000',
+              descriptionEn: '',
+              descriptionSv: '',
+              sortOrder: 2,
+            },
+          ],
+        })
+        await context.settleInitialEditorEffects()
+        if (
+          field === 'status' &&
+          !screen.queryByRole('combobox', {
+            name: 'requirement.specificationItemStatus',
+          })
+        )
+          context.toggleRequirementColumn('items', 'specificationItemStatus')
+        const control = () =>
+          field === 'needs-reference'
+            ? context.requirementNeedsReferenceSelect('items', 'BEH0001')
+            : context.requirementStatusSelect('BEH0001')
+        fireEvent.change(control(), {
+          target: { value: field === 'needs-reference' ? '81' : '2' },
+        })
+        const reference = await screen.findByText(/inline-ui-reference/)
+        const result = reference.closest('[role="status"]')
+        expect(result).toHaveTextContent('BEH0001')
+        expect(result).toHaveTextContent('sql_failure')
+        expect(result).toHaveTextContent('specification.bulkSaveUncertain')
+        expect(result).toHaveAttribute(
+          'data-developer-mode-name',
+          'bulk save results',
+        )
+        fireEvent.change(control(), {
+          target: { value: field === 'needs-reference' ? '81' : '2' },
+        })
+        expect(
+          context.fetchMock.mock.calls.filter(
+            ([url, init]) =>
+              String(url).endsWith('/items/lib%3A31') &&
+              (init as RequestInit | undefined)?.method === 'PATCH',
+          ),
+        ).toHaveLength(1)
+      },
+    )
+
     it('updates a single item needs reference inline from the requirements table', async () => {
       context.renderRequirementsSpecificationDetailClient({
         ...context.createInitialData(),
@@ -725,10 +798,8 @@ export function registerNeedsReferenceTests(
           originalItem,
         ]),
       })
-      context.specificationItemMutationHandler = async () => ({
-        json: async () => ({ error: 'Assignment rejected' }),
-        ok: false,
-      })
+      context.specificationItemMutationHandler = async () =>
+        Response.json({ error: 'Assignment rejected' }, { status: 409 })
       fireEvent.change(
         context.requirementNeedsReferenceSelect('items', 'BEH0001'),
         { target: { value: '81' } },

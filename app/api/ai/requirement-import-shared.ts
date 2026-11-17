@@ -24,6 +24,7 @@ import type { SqlServerDatabase } from '@/lib/db'
 import {
   AI_PROVIDER_UNAVAILABLE_MESSAGE,
   logSanitizedError,
+  reportSqlFailure,
 } from '@/lib/http/safe-errors'
 import { localeSchema, positiveIntegerSchema } from '@/lib/http/validation'
 import { recordCapacityEvent } from '@/lib/observability/capacity'
@@ -457,15 +458,24 @@ export function createAiRequirementImportThrottleResponse(
 export function createUnavailableAiStreamResponse(
   context: RequestCorrelationIds,
   recordFailure: () => void,
+  cause?: unknown,
 ) {
   return createAiErrorStreamResponse(
     context,
-    {
+    toSqlFailureStreamError(cause, context) ?? {
       code: 'ai_provider_unavailable',
       message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
     },
     recordFailure,
   )
+}
+
+export function toSqlFailureStreamError(
+  error: unknown,
+  context: RequestCorrelationIds,
+) {
+  const failure = reportSqlFailure(error, { ...context, source: 'rest' })
+  return failure ? { ...failure, message: failure.error } : undefined
 }
 
 export function createAiErrorStreamResponse(
@@ -478,8 +488,11 @@ export function createAiErrorStreamResponse(
       | 'ai_provider_invalid_response'
       | 'ai_provider_rate_limited'
       | 'ai_provider_unavailable'
+      | 'sql_failure'
+    correlationId?: string
     message: string
     technicalCode?: string
+    timestamp?: string
   },
   recordFailure: (statusCode: number) => void,
 ) {

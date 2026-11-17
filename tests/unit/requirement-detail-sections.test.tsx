@@ -203,6 +203,27 @@ describe('requirement detail presentation', () => {
     expect(button).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('retains the safe SQL reference in area read failures', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json(
+          {
+            code: 'sql_failure',
+            correlationId: 'area-reference',
+            timestamp: '2026-11-17T12:00:00.000Z',
+          },
+          { status: 500 },
+        ),
+      ),
+    )
+    render(<RequirementAreaInfo areaId={7} name="Security" ownerName={null} />)
+    fireEvent.click(screen.getByRole('button', { name: 'areaInfo' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('area-reference')
+    expect(alert).toHaveTextContent('sql_failure')
+  })
+
   it('anchors information above a low trigger and keeps the opposite viewport edge automatic', () => {
     vi.stubGlobal('innerHeight', 900)
     vi.stubGlobal(

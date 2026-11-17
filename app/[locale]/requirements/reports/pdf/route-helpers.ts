@@ -103,10 +103,10 @@ export function reportErrorResponse(
 
   if (!(error instanceof ReportDataError)) {
     const { body, status } = toHttpErrorPayload(error)
-    return NextResponse.json(
-      { error: body.error },
-      { headers: { 'Cache-Control': 'no-store' }, status },
-    )
+    return NextResponse.json(body, {
+      headers: { 'Cache-Control': 'no-store' },
+      status,
+    })
   }
 
   const status = error.status

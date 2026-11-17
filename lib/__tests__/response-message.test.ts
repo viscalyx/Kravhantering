@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { readResponseMessage } from '@/lib/http/response-message'
+import {
+  getResponseMessage,
+  readResponseMessage,
+} from '@/lib/http/response-message'
 
 describe('readResponseMessage', () => {
   it.each(['sv', 'en'] as const)(
@@ -20,9 +23,57 @@ describe('readResponseMessage', () => {
       expect(result).toContain(
         locale === 'sv' ? 'Kontrollera sparat tillstånd' : 'Check saved state',
       )
+      expect(result).toBe(
+        locale === 'sv'
+          ? 'Databasåtgärden kunde inte bekräftas. Kontrollera sparat tillstånd innan du upprepar åtgärden. Referens: sql-test-reference. Kod: sql_failure. Tidpunkt: 2026-11-16T12:00:00.000Z.'
+          : 'The database operation could not be confirmed. Check saved state before repeating the operation. Reference: sql-test-reference. Code: sql_failure. Timestamp: 2026-11-16T12:00:00.000Z.',
+      )
       expect(result).not.toMatch(/SELECT|secret/)
     },
   )
+  it('formats an already parsed stream or JSON SQL failure using the same contract', () => {
+    const result = getResponseMessage(
+      {
+        code: 'sql_failure',
+        correlationId: 'stream-reference',
+        timestamp: '2026-11-17T12:00:00.000Z',
+        message: 'SELECT private FROM secret',
+      },
+      'sv',
+    )
+    expect(result).toContain('stream-reference')
+    expect(result).toContain('sql_failure')
+    expect(result).toContain('Kontrollera sparat tillstånd')
+    expect(result).not.toContain('SELECT')
+  })
+
+  it('retains the SQL reference nested in an operation-specific service-unavailable response', async () => {
+    const body = {
+      code: 'service_unavailable',
+      error: 'Service unavailable',
+      retryAfterSeconds: 5,
+      sqlFailure: {
+        code: 'sql_failure',
+        correlationId: 'quota-reference',
+        timestamp: '2026-11-17T12:00:00.000Z',
+        error: 'Internal database text',
+      },
+    }
+    expect(getResponseMessage(body, 'en')).toContain('quota-reference')
+    expect(
+      await readResponseMessage(
+        Response.json(body, { status: 503, headers: { 'Retry-After': '5' } }),
+        'en',
+      ),
+    ).toContain('quota-reference')
+    expect(
+      getResponseMessage(
+        { ...body, sqlFailure: { code: 'sql_failure' } },
+        'en',
+      ),
+    ).toBe('Service unavailable')
+  })
+
   it('reads trimmed API error and message fields from JSON responses', async () => {
     await expect(
       readResponseMessage(

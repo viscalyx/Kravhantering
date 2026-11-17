@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   idParamSchema,
   parseRouteParams,
@@ -58,7 +58,11 @@ export async function GET(
       error,
     )
     return NextResponse.json(
-      { error: 'Failed to list graduation target requirement areas' },
+      reportSqlFailure(error, {
+        source: 'rest',
+        operation:
+          'requirements-specifications/[id]/local-requirements/[localRequirementId]/graduation-target-areas',
+      }) ?? { error: 'Failed to list graduation target requirement areas' },
       { status: 500 },
     )
   }

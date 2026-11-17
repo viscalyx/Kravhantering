@@ -11,6 +11,7 @@ import {
   INTERNAL_SERVER_ERROR_MESSAGE,
   isForeignKeyOrConstraintError,
   logSanitizedError,
+  reportSqlFailure,
 } from '@/lib/http/safe-errors'
 import {
   adminMutationPolicy,
@@ -107,7 +108,10 @@ export const DELETE = secureMutationRoute({
       }
       logSanitizedError('Failed to delete quality characteristic', error)
       return NextResponse.json(
-        { error: INTERNAL_SERVER_ERROR_MESSAGE },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'quality-characteristics/[id]',
+        }) ?? { error: INTERNAL_SERVER_ERROR_MESSAGE },
         { status: 500 },
       )
     }

@@ -1,13 +1,17 @@
 import { fork } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { once } from 'node:events'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { POST as modelConnectionAction } from '@/app/api/admin/ai-connections/[connectionId]/actions/route'
 import { VERIFICATION } from '@/lib/__tests__/fixtures/ai-model-verification'
 import { createAiConnectionAdministrationRuntime } from '@/lib/ai/admin-runtime'
 import type { AiAdminExternalOperations } from '@/lib/ai/admin-service'
 import { parseAiModelVerificationPayload } from '@/lib/ai/model-verification-payload'
+import { resetAuthConfigForTests } from '@/lib/auth/config'
 import { createSqlServerAiAdminStore } from '@/lib/dal/ai-connection-admin'
 import { createSqlServerAiModelVerificationAttemptStore } from '@/lib/dal/ai-model-verification-attempts'
+import { attachVerifiedActor } from '@/lib/requirements/auth'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import {
   inspectExpiredAiModelVerificationAttempts,
   purgeExpiredAiModelVerificationAttempts,
@@ -18,8 +22,44 @@ import {
   useSqlIntegrationDatabase,
 } from './helpers/sql-test-database'
 
+const routeDatabase = vi.hoisted(() => ({ get: vi.fn() }))
+vi.mock('@/lib/db', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/lib/db')>()),
+  getRequestSqlServerDataSource: routeDatabase.get,
+}))
+vi.mock('@/lib/auth/session', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/lib/auth/session')>()),
+  getSessionFromRequest: async () => ({
+    accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+    familyName: 'Actor',
+    givenName: 'SQL',
+    name: 'SQL Integration Actor',
+    hsaId: 'SE5560000001-sqltest1',
+    roles: ['Admin'],
+    sub: 'sql-integration-actor',
+  }),
+}))
+
 describe('Shared completed model verifications', () => {
   const database = useSqlIntegrationDatabase()
+  beforeEach(() => {
+    routeDatabase.get.mockImplementation(() => database())
+    resetAuthConfigForTests()
+    for (const [name, value] of Object.entries({
+      AUTH_OIDC_CLIENT_ID: 'sql-integration-client',
+      AUTH_OIDC_CLIENT_SECRET: 'sql-integration-client-secret',
+      AUTH_OIDC_ISSUER_URL: 'https://idp.example.test',
+      AUTH_OIDC_REDIRECT_URI: 'https://example.test/api/auth/callback',
+      AUTH_OIDC_POST_LOGOUT_REDIRECT_URI: 'https://example.test/',
+      AUTH_SESSION_COOKIE_PASSWORD:
+        'sql-integration-session-secret-at-least-32-characters',
+    }))
+      vi.stubEnv(name, value)
+  })
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    resetAuthConfigForTests()
+  })
 
   const parse = (value: unknown): { saveable: boolean } => {
     if (
@@ -357,10 +397,18 @@ describe('Shared completed model verifications', () => {
     await db.query(`CREATE TRIGGER [fail_verification_audit] ON [action_audit_events]
       AFTER INSERT AS THROW 51000, 'verification_audit_failed', 1;`)
     try {
-      await expect(
-        creator.verifyModelCandidate(candidateInput),
-      ).rejects.toMatchObject({
-        code: 'attempt_unavailable',
+      const failure = await creator.verifyModelCandidate(candidateInput).then(
+        () => undefined,
+        error => error,
+      )
+      expect(failure).toMatchObject({ name: 'QueryFailedError' })
+      expect(toHttpErrorPayload(failure)).toMatchObject({
+        status: 500,
+        body: {
+          code: 'sql_failure',
+          correlationId: expect.any(String),
+          timestamp: expect.any(String),
+        },
       })
       expect(await attempts.list(connectionId)).toEqual([])
     } finally {
@@ -371,10 +419,20 @@ describe('Shared completed model verifications', () => {
     await db.query(`CREATE TRIGGER [fail_verification_audit] ON [action_audit_events]
       AFTER INSERT AS THROW 51000, 'verification_audit_failed', 1;`)
     try {
-      await expect(
-        creator.discardModelVerification(connectionId, result.attemptId),
-      ).rejects.toMatchObject({
-        code: 'attempt_unavailable',
+      const failure = await creator
+        .discardModelVerification(connectionId, result.attemptId)
+        .then(
+          () => undefined,
+          error => error,
+        )
+      expect(failure).toMatchObject({ name: 'QueryFailedError' })
+      expect(toHttpErrorPayload(failure)).toMatchObject({
+        status: 500,
+        body: {
+          code: 'sql_failure',
+          correlationId: expect.any(String),
+          timestamp: expect.any(String),
+        },
       })
       expect(await attempts.list(connectionId)).toHaveLength(1)
     } finally {
@@ -401,6 +459,56 @@ describe('Shared completed model verifications', () => {
       ...pending.result.candidate,
       name: 'Reviewed by another administrator',
       attemptId: pending.id,
+    }
+    await db.query(`CREATE TRIGGER [fail_verification_model_save] ON [ai_connection_models]
+      AFTER INSERT AS THROW 51000, 'PRIVATE_MODEL_CANDIDATE', 1;`)
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const request = new Request(
+        `https://example.test/api/admin/ai-connections/${connectionId}/actions`,
+        {
+          method: 'POST',
+          headers: {
+            Origin: 'https://example.test',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'save_model_revision',
+            modelRevision,
+          }),
+        },
+      )
+      attachVerifiedActor(request, secondContext.actor)
+      const response = await modelConnectionAction(request, {
+        params: Promise.resolve({ connectionId }),
+      })
+      expect(response.status).toBe(500)
+      const body = await response.json()
+      expect(body, JSON.stringify(log.mock.calls)).toMatchObject({
+        code: 'sql_failure',
+        correlationId: expect.any(String),
+        timestamp: expect.any(String),
+      })
+      const occurrence = log.mock.calls
+        .map(call => call[0])
+        .find(value => typeof value === 'string' && value.startsWith('{'))
+      expect(JSON.parse(String(occurrence))).toMatchObject({
+        event: 'sql.operation.failed',
+        correlation_id: body.correlationId,
+        error: {
+          message: 'Protected SQL operation failed',
+          sql: { number: 51000 },
+        },
+      })
+      expect(JSON.stringify(log.mock.calls)).not.toMatch(
+        /PRIVATE_MODEL_CANDIDATE|INSERT INTO|candidate/iu,
+      )
+      expect((await second.getConnection(connectionId)).models).toEqual([])
+      expect(await attempts.list(connectionId)).toHaveLength(1)
+    } finally {
+      log.mockRestore()
+      await db.query('DROP TRIGGER [fail_verification_model_save]')
     }
     const failingStore = createSqlServerAiAdminStore(db, async () => {
       throw new Error('audit_failed')
@@ -512,7 +620,7 @@ describe('Shared completed model verifications', () => {
             verification: VERIFICATION,
           },
         }),
-      ).rejects.toMatchObject({ code: 'attempt_unavailable' })
+      ).rejects.toMatchObject({ name: 'QueryFailedError' })
       const logs = JSON.stringify(output.flatMap(spy => spy.mock.calls))
       expect(logs).not.toMatch(
         /Private|candidate|description|truncated|INSERT INTO/iu,

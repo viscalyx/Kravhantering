@@ -45,7 +45,10 @@ import {
 } from '@/lib/ai/requirement-prompt'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
-import { readResponseMessage } from '@/lib/http/response-message'
+import {
+  getResponseMessage,
+  readResponseMessage,
+} from '@/lib/http/response-message'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 import { resolveAiRequestFileDestination } from '@/lib/requirements/ai-request-files'
 import type { ImportRequirementsPayload } from '@/lib/requirements/import-schema'
@@ -983,7 +986,10 @@ export default function AiRequirementGenerator({
           } else if (parsed.event === 'error') {
             flushQueuedThinking()
             throw new Error(
-              importBudgetErrorMessage(payload.code, t) ??
+              (payload.code === 'sql_failure'
+                ? getResponseMessage(payload, locale)
+                : null) ??
+                importBudgetErrorMessage(payload.code, t) ??
                 providerFailureMessage(
                   payload.message,
                   payload.technicalCode,
@@ -1066,6 +1072,9 @@ export default function AiRequirementGenerator({
         },
       )
       const body = (await response.json()) as {
+        code?: string
+        correlationId?: string
+        timestamp?: string
         error?: string
         issues?: SchemaIssue[]
         payload?: ImportRequirementsPayload
@@ -1077,11 +1086,14 @@ export default function AiRequirementGenerator({
       if (!response.ok || !body.payload) {
         setSchemaIssues(body.issues ?? schemaIssues)
         throw new Error(
-          providerFailureMessage(
-            body.error,
-            body.technicalCode,
-            t('validationErrors'),
-          ),
+          (body.code === 'sql_failure'
+            ? getResponseMessage(body, locale)
+            : null) ??
+            providerFailureMessage(
+              body.error,
+              body.technicalCode,
+              t('validationErrors'),
+            ),
         )
       }
       setRawResponse(body.rawContent ?? JSON.stringify(body.payload))

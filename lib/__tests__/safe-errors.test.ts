@@ -1,3 +1,4 @@
+import type { QueryRunner } from 'typeorm'
 import { describe, expect, it, vi } from 'vitest'
 import {
   getErrorMessage,
@@ -13,6 +14,39 @@ import {
 import { AiVerificationSqlLogger } from '@/lib/typeorm/ai-verification-sql-logger'
 
 describe('safe error helpers', () => {
+  it('retains verification-context protection through subsequent diagnostic catches', () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const error = Object.assign(new Error('PRIVATE_CANDIDATE truncated'), {
+      name: 'QueryFailedError',
+      query: "SELECT 'PRIVATE_CANDIDATE' FROM ai_connections",
+      driverError: { number: 2628 },
+    })
+    try {
+      new AiVerificationSqlLogger(['error']).logQueryError(
+        error,
+        error.query,
+        ['PRIVATE_CANDIDATE'],
+        { data: { aiModelVerification: true } } as unknown as QueryRunner,
+      )
+      expect(log).not.toHaveBeenCalled()
+      const reference = reportSqlFailure(error, { protectedContent: true })
+      logSanitizedError(
+        'subsequent failure',
+        new Error('wrapper', { cause: error }),
+      )
+      expect(reference?.code).toBe('sql_failure')
+      expect(toSafeErrorLogValue(error)).toMatchObject({
+        message: 'Protected SQL operation failed',
+        sql: { number: 2628 },
+      })
+      expect(JSON.stringify(log.mock.calls)).not.toMatch(
+        /PRIVATE_CANDIDATE|SELECT|ai_connections/,
+      )
+    } finally {
+      log.mockRestore()
+    }
+  })
+
   it('keeps caller context linked to an already reported SQL occurrence', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
     const error = Object.assign(new Error('Invalid object name requirements'), {

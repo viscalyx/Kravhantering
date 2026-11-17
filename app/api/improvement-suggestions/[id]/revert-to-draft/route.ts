@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
@@ -36,7 +36,10 @@ export const POST = secureMutationRoute({
       }
       logSanitizedError('Failed to revert suggestion to draft', error)
       return NextResponse.json(
-        { error: 'Failed to revert to draft' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'improvement-suggestions/[id]/revert-to-draft',
+        }) ?? { error: 'Failed to revert to draft' },
         { status: 500 },
       )
     }

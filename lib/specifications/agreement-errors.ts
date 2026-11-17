@@ -1,3 +1,5 @@
+import { getResponseMessage } from '@/lib/http/response-message'
+
 const reasonKeys = {
   removal_requires_included: 'removalRequiresIncluded',
   deviation_date_invalid: 'deviationDateError',
@@ -23,7 +25,9 @@ const reasonKeys = {
 
 export interface AgreementHttpError {
   code?: string
+  correlationId?: string
   details?: { reason?: string }
+  timestamp?: string
 }
 
 /** Translate stable public conflict reasons; never display server text as UI copy. */
@@ -32,6 +36,8 @@ export function agreementErrorMessage(
   translate: (key: string) => string,
   fallback = 'saveFailed',
 ): string {
+  if (payload.code === 'sql_failure')
+    return getResponseMessage(payload) ?? translate(fallback)
   const reason = payload.details?.reason
   if (reason && Object.hasOwn(reasonKeys, reason))
     return translate(reasonKeys[reason as keyof typeof reasonKeys])
