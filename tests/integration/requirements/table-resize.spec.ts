@@ -362,7 +362,7 @@ test('REQ-09: reads full-width primary texts and area information in inline and 
       route.fulfill({ status: 503, json: { error: 'Unavailable' } }),
     )
     await button.click()
-    await expect(panel.getByRole('alert')).toContainText('Kunde inte läsa in')
+    await expect(panel.getByRole('alert')).toHaveText('Unavailable')
     await page.keyboard.press('Escape')
     await page.unroute(/\/api\/requirement-areas\/\d+$/)
     await page.route(/\/api\/requirement-areas\/\d+$/, route =>
