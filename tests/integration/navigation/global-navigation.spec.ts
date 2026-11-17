@@ -43,6 +43,18 @@ test.describe('Global navigation', () => {
       await expect(closeButton).toBeVisible()
       await closeButton.click()
       await expect(drawer).toBeHidden()
+      await openButton.click()
+      await expect(drawer).toBeVisible()
+      await page.setViewportSize({ height: 1200, width: 1440 })
+      await expect(drawer).toBeHidden()
+      const desktopToggle = desktopRail.getByRole('button', {
+        name: 'Expandera navigation',
+      })
+      await desktopToggle.click()
+      await expect(
+        desktopRail.getByRole('button', { name: 'Fäll ihop navigation' }),
+      ).toBeVisible()
+      await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden')
     })
   })
 })

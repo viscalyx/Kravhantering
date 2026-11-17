@@ -71,6 +71,23 @@ including unbroken text. Forms and dialogs retain their own width limits.
   Escape asks the user to confirm discarding unsaved changes with the shared
   danger confirmation dialog. Rejecting the confirmation leaves the form open
   with the entered values intact.
+- Every modal moves focus inside when opened. An available explicit target
+  takes precedence; otherwise the heading provides a reading position, followed
+  by an available control or the dialog itself. Tab and Shift+Tab stay inside,
+  including while controls are disabled or replaced during loading.
+- Only the topmost modal accepts interaction. Underlying content is inert and
+  unavailable to assistive technology. Escape closes only the active modal,
+  subject to saving and unsaved-change guards. Closing restores the invoking
+  control, a surviving parent dialog, or the page's main heading.
+- These guarantees cover forms, confirmations, help and navigation drawers,
+  requirement details, association pickers, AI/import loading and error panels,
+  and generated-output dialogs. Account details and the agreement selector are
+  intentionally non-modal popovers; the page stays available while they open.
+- Custom portal layers preserve anchored confirmations and existing animation
+  and backdrop rules. Shared ownership restores prior inert, accessibility and
+  scrolling state even when layers close out of order. Native modal top-layer
+  rendering would also require migrating the existing portalled child pickers
+  and confirmations together, so these surfaces use shared custom isolation.
 - Clicking outside a modal form does not close it. Users must use the explicit
   cancel or close controls.
 - When a priority is selected, its description and assessment criteria are

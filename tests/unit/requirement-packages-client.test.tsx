@@ -587,6 +587,9 @@ describe('RequirementPackagesClient', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
     expect(fetchMock).not.toHaveBeenCalledWith('/api/requirement-packages/1')
+    const editDialog = screen.getByRole('dialog', {
+      name: /requirementPackage\.editRequirementPackage/i,
+    })
 
     fireEvent.click(
       screen.getByRole('button', {
@@ -597,11 +600,8 @@ describe('RequirementPackagesClient', () => {
     const linkedDialog = await screen.findByRole('dialog', {
       name: /requirementPackage\.linkedRequirementsTitle/i,
     })
-    expect(
-      screen.getByRole('dialog', {
-        name: /requirementPackage\.editRequirementPackage/i,
-      }),
-    ).toBeInTheDocument()
+    expect(editDialog).toBeInTheDocument()
+    expect(editDialog.closest('[inert]')).not.toBeNull()
     expect(within(linkedDialog).getByText('REQ-10')).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('/api/requirement-packages/1')
   })
@@ -1037,6 +1037,7 @@ describe('RequirementPackagesClient', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    const originalLead = requirementPackageLeadHsaIdInput()
     fireEvent.click(
       screen.getByRole('button', { name: /requirementPackage\.changeLead/ }),
     )
@@ -1087,7 +1088,7 @@ describe('RequirementPackagesClient', () => {
         name: /requirementPackage\.changeLeadTitle/,
       }),
     ).toBeInTheDocument()
-    expect(requirementPackageLeadHsaIdInput()).toHaveValue('SE5560000001-anna1')
+    expect(originalLead).toHaveValue('SE5560000001-anna1')
   })
 
   it('confirms unsaved edits before a non-admin changes away from their package lead assignment', async () => {

@@ -309,6 +309,9 @@ describe('Requirement edit recovery', () => {
   it('blocks unresolved same-field saves and preserves all values until an explicit choice', async () => {
     const user = await openEditor()
     server = detail({ description: 'Server text', revisionToken: latestToken })
+    const form = screen
+      .getByRole('textbox', { name: /^Requirement text/ })
+      .closest('form') as HTMLFormElement
     const dialog = await compare(user)
     const row = within(dialog).getByRole('region', { name: 'Requirement text' })
     for (const text of ['Starting text', 'Local text', 'Server text'])
@@ -317,11 +320,7 @@ describe('Requirement edit recovery', () => {
       name: 'Review result in form',
     })
     expect(apply).toBeDisabled()
-    fireEvent.submit(
-      screen
-        .getByRole('textbox', { name: /^Requirement text/ })
-        .closest('form') as HTMLFormElement,
-    )
+    fireEvent.submit(form)
     expect(submitted).toHaveLength(1)
     await user.click(
       within(row).getByRole('button', { name: 'Keep latest value' }),
@@ -1089,6 +1088,7 @@ describe('Requirement edit recovery', () => {
 
   it('keeps navigation guarded when an approved traversal is superseded', async () => {
     const user = await openEditor()
+    const input = screen.getByRole('textbox', { name: /^Requirement text/ })
     navigation.traverseTo.mockImplementationOnce(() => ({
       committed: Promise.reject(new Error('Superseded')),
       finished: Promise.reject(new Error('Superseded')),
@@ -1111,8 +1111,6 @@ describe('Requirement edit recovery', () => {
       navigation.dispatchEvent(event())
     })
     expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
-    expect(
-      screen.getByRole('textbox', { name: /^Requirement text/ }),
-    ).toHaveValue('Local text')
+    expect(input).toHaveValue('Local text')
   })
 })

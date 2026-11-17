@@ -1336,17 +1336,21 @@ export default function RequirementSelectionQuestionsClient() {
       setPackageSelectorOpen(false)
     }
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (
+        event.key === 'Escape' &&
+        !packageSelectorRef.current?.closest('[inert]')
+      ) {
+        event.stopPropagation()
         setPackageSelectorOpen(false)
         packageSelectorButtonRef.current?.focus()
       }
     }
 
     document.addEventListener('mousedown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('keydown', handleKeyDown, true)
     return () => {
       document.removeEventListener('mousedown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keydown', handleKeyDown, true)
     }
   }, [packageSelectorOpen])
 

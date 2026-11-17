@@ -352,6 +352,12 @@ test.describe('Stewardship navigation memory', () => {
     await expect(suggestionsDialog).toContainText('I granskning')
     await expect(suggestionsDialog).toContainText('Behandlade (1)')
     await suggestionsDialog
+      .getByRole('button', { name: 'Markera hanterad' })
+      .click()
+    await expect(suggestionsDialog.getByRole('alert')).toHaveText(
+      'Ange beslutsmotivering.',
+    )
+    await suggestionsDialog
       .getByRole('textbox', { name: /Beslutsmotivering/u })
       .fill('PWT SPEC-16c frågeförslag hanterat efter granskning.')
     await suggestionsDialog

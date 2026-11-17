@@ -15,6 +15,7 @@ import {
   ROLE_STORAGE_STATE,
   withPlaywrightSqlServerDataSource,
 } from '@/tests/support/authorization-test-helpers'
+import { expectModalKeyboardContainment } from '@/tests/support/modal-keyboard'
 
 test.use({ storageState: ROLE_STORAGE_STATE.specificationResponsible })
 
@@ -511,7 +512,7 @@ test('SPEC-23: center wrapped Swedish action labels and keep room for requiremen
   }
 })
 
-test('SPEC-22/SPEC-23/SPEC-28: edit the complete agreement in the requirement list and retain historical content and output', async ({
+test('SPEC-22/SPEC-23/SPEC-28/A11Y-02: edit the complete agreement in the requirement list and retain historical content and output', async ({
   page,
 }, testInfo) => {
   const owner = await newRoleContext(testInfo, 'specificationResponsible')
@@ -621,17 +622,24 @@ test('SPEC-22/SPEC-23/SPEC-28: edit the complete agreement in the requirement li
         }),
       )
       .toBe(true)
-    await compare.click()
+    await compare.focus()
+    await page.keyboard.press('Enter')
     const comparison = page.getByRole('dialog', {
       name: 'Compare with previous agreement',
       exact: true,
     })
+    await expect(
+      comparison.getByRole('heading', {
+        name: 'Compare with previous agreement',
+        exact: true,
+      }),
+    ).toBeFocused()
+    await expect(compare).toBeHidden()
+    await expectModalKeyboardContainment(page, comparison)
     await expect(comparison).toContainText('Original agreed service')
-    await comparison
-      .getByRole('button', { name: 'Close', exact: true })
-      .last()
-      .click()
+    await page.keyboard.press('Escape')
     await expect(comparison).toBeHidden()
+    await expect(compare).toBeFocused()
     await page
       .getByRole('button', { name: 'Edit requirement', exact: true })
       .click()

@@ -319,6 +319,17 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
     setMobileOpen(false)
   }, [])
 
+  useEffect(() => {
+    if (!mobileOpen) return
+    const desktop = window.matchMedia('(min-width: 48rem)')
+    const closeOnDesktop = () => {
+      if (desktop.matches) closeMobileDrawer()
+    }
+    closeOnDesktop()
+    desktop.addEventListener('change', closeOnDesktop)
+    return () => desktop.removeEventListener('change', closeOnDesktop)
+  }, [closeMobileDrawer, mobileOpen])
+
   const openMobileDrawer = useCallback((trigger: HTMLButtonElement) => {
     mobileDrawerReturnFocusRef.current = trigger
     setMobileOpen(true)

@@ -32,6 +32,20 @@ test.describe('Requirement selection question detail preview', () => {
     })
     const requirementId = 'SÄK0042'
 
+    await test.step('close the package selector without closing its answer editor', async () => {
+      const packages = dialog.getByRole('button', {
+        exact: true,
+        name: 'Kravpaket',
+      })
+      await packages.click()
+      await expect(packages).toHaveAttribute('aria-expanded', 'true')
+      await dialog.getByRole('textbox', { name: /Kravpaket$/u }).focus()
+      await page.keyboard.press('Escape')
+      await expect(packages).toHaveAttribute('aria-expanded', 'false')
+      await expect(packages).toBeFocused()
+      await expect(dialog).toBeVisible()
+    })
+
     await test.step('expand a requirement in the selection preview', async () => {
       const requirementButton = dialog.getByRole('button', {
         name: `Öppna kravdetaljer ${requirementId}`,

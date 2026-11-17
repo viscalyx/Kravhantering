@@ -120,6 +120,9 @@ och rullning. Öppna och stäng därefter sidolådan.
 respektive kontroll. Kravbibliotekets liståtgärder kan användas även efter
 växling av navigation, ändring av fönstret och rullning.
 
+Öppna mobilmenyn och bredda sedan fönstret till skrivbordsläge utan att
+stänga menyn först. Menyn stängs och sidans kontroller och rullning fungerar.
+
 ## Tillgänglighet
 
 ### A11Y-01: enhetliga hjälpkontroller är åtkomliga
@@ -132,6 +135,54 @@ förbättringsförslagsmodal.
 **Förväntat resultat:** Hjälpknappen har ett begripligt tillgänglighetsnamn,
 synlig tangentbordsfokus och växlar hjälppanelen. När panelen är öppen är den
 kopplad till knappen för hjälpmedel.
+
+### A11Y-02: fokus och bakgrund i staplade dialoger
+
+**Syfte:** Kontrollera tangentbordsfokus, bakgrundsskydd och återgång när
+flera dialoger öppnas ovanpå varandra.
+
+**Användare:** `ada.admin` för kravpaket och kravformulär;
+`petra.specresp` för avtal.
+
+**Förutsättningar:** Kravpaketet Mobil användning och ett kravunderlag med
+avtal och en senare arbetskopia med jämförbart kravinnehåll.
+
+**Integrationstest:**
+[list.spec.ts](../../tests/integration/requirement-packages/list.spec.ts),
+testfallet “REQ-14a/A11Y-02: keeps local responsibility data visible when
+external lookup is unavailable”;
+[agreements.spec.ts](../../tests/integration/specifications/agreements.spec.ts),
+testfallet “SPEC-22/SPEC-23/SPEC-28/A11Y-02: edit the complete agreement in the
+requirement list and retain historical content and output”;
+[form-associations.spec.ts](../../tests/integration/requirements/form-associations.spec.ts),
+testfallet “LIFE-01B/A11Y-02: association drafts, fixed groups and nested
+creation persist through requirement save”.
+
+**Steg:**
+
+1. Öppna kravpaketets redigering. Nå **Byt kravpaketsansvarig** med
+   tangentbordet och tryck Enter. Kontrollera fokus direkt efter öppning.
+2. Använd Tab och Shift+Tab runt hela dialogen. Tryck Escape och kontrollera
+   att fokus återgår till öppningsknappen i redigeringen.
+3. Öppna kravunderlagets arbetskopia, visa ett krav och öppna jämförelsen
+   med föregående avtal med Enter. Upprepa fokus- och stängningskontrollen.
+4. Öppna ett nytt krav och välj kravpaket. Öppna **Nytt kravpaket**, skriv
+   ett namn och välj **Avbryt**. Kontrollera att bekräftelsens säkra val har
+   fokus och att Tab och Shift+Tab stannar i bekräftelsen. Tryck Escape.
+5. Fyll obligatoriska fält och spara. Medan sparandet pågår, prova Tab,
+   Shift+Tab och Escape. Upprepa för en ny normreferens.
+6. Upprepa navigeringen med skärmläsare, exempelvis NVDA med Firefox.
+   Läs rubriker och kontroller i den översta dialogen. Försök läsa och
+   aktivera bakgrundens kontroller. Anteckna webbläsarens och skärmläsarens
+   versioner samt resultat; automatiska DOM-kontroller ersätter inte detta.
+
+**Förväntat resultat:** Fokus går direkt till dialogens rubrik eller avsedda
+kontroll. Bakgrunden kan varken nås, läsas eller aktiveras medan den översta
+dialogen är öppen. Escape stänger bara den översta dialogen när stängning
+är tillåten. Under sparande stannar fokus i dialogen och Escape stänger inte.
+Efter stängning återfår föregående dialog fokus och funktion; efter sista
+stängningen återfår sidan fokus och rullning. Inmatning bevaras när kassering
+nekas. Den manuella skärmläsarkontrollen redovisas separat från Playwright.
 
 ## Autentisering och behörighet
 
@@ -915,13 +966,15 @@ när den ändras med tangentbord.
 ### REQ-14c: kravurvalsförhandsvisning visar skrivskyddat krav
 
 **Steg:** Öppna en seedad kravurvalsfråga, redigera ett svar och öppna ett
-krav från svarets kravurvalsförhandsvisning. Öppna områdesinformationen med
+krav från svarets kravurvalsförhandsvisning. Öppna paketväljaren, fokusera
+dess sökfält och stäng den med Escape. Öppna områdesinformationen med
 Enter, tabba till panelen och stäng den med Escape.
 
 **Förväntat resultat:** Kravet visas skrivskyddat med `Kravtext` och utan
 arkiverings- eller livscykelåtgärder. Områdesinformationen kan läsas med
 tangentbord; Escape återför fokus till infoikonen och lämnar svarsredigeraren
-öppen.
+öppen. Escape i paketväljaren stänger bara väljaren och återför fokus till
+dess öppningsknapp.
 
 ### REQ-14d: borttagningsknappar i kravurvalsvar är användbara
 
@@ -2324,15 +2377,19 @@ förslaget.
 **Steg:** Öppna Kravbiblioteksförvaltning och fliken `RFI-frågor`. Kontrollera
 seedade RFI-frågeförslag på rubriker för kravområde och RFI-frågerader. Klicka
 på ett obehandlat förslag. Kontrollera att ett nytt förslag bara kan skickas
-till granskning. Begär granskning och markera därefter förslaget som hanterat
-med beslutsmotivering. Upprepa flödet för ett områdesförslag.
+till granskning. Begär granskning och försök markera förslaget som hanterat
+utan beslutsmotivering. Kontrollera felmeddelandet i den öppna dialogen.
+Fyll därefter i beslutsmotivering och markera förslaget som hanterat.
+Upprepa flödet för ett områdesförslag.
 
 **Förväntat resultat:** Obehandlade förslag visas på den nivå de gäller:
 kravområdesrubrik för områdesförslag och RFI-frågerad för frågespecifika
 förslag. Antalet obehandlade förslag visas. När alla förslag på nivån är
 behandlade visas ingen räknare för obehandlade förslag. Modalen visar `Nya`,
 `I granskning` och `Behandlade`, inklusive kravunderlagskälla och skapande
-person. Ett förslag kan inte beslutas före granskning och kan bara beslutas en
+person. Saknad beslutsmotivering visas som ett tillgängligt felmeddelande
+inne i dialogen, där tangentbordsfokus stannar. Ett förslag kan inte beslutas
+före granskning och kan bara beslutas en
 gång.
 
 ### SPEC-16d: läs och använd RFI-frågornas sammanfattningar
@@ -2501,7 +2558,7 @@ när det valda avtalet har ett föregående avtal, även vid visning av äldre a
 
 **Integrationstest:**
 [agreements.spec.ts](../../tests/integration/specifications/agreements.spec.ts),
-testfallet “SPEC-22/SPEC-23/SPEC-28: edit the complete agreement in the
+testfallet “SPEC-22/SPEC-23/SPEC-28/A11Y-02: edit the complete agreement in the
 requirement list and retain historical content and output”.
 
 **Steg:** Skapa ett nytt avtal från det aktuella avtalet. Redigera ett

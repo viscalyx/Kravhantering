@@ -1,8 +1,9 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { lazy } from 'react'
+import { lazy, useRef, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import OnDemandFeatureDialog from '@/components/OnDemandFeatureDialog'
+import { useModalFocus } from '@/hooks/useModalFocus'
 
 const defaultProps = {
   closeLabel: 'Close',
@@ -36,7 +37,62 @@ function LoadedFeature() {
   )
 }
 
+function LoadedModal({ onClose }: { onClose: () => void }) {
+  const modalRef = useRef<HTMLElement>(null)
+  const { handleKeyDown } = useModalFocus({ modalRef, open: true, onClose })
+  return (
+    <section
+      aria-label="Loaded"
+      onKeyDown={handleKeyDown}
+      ref={modalRef}
+      role="dialog"
+    >
+      <h2>Loaded</h2>
+      <button onClick={onClose} type="button">
+        Close loaded
+      </button>
+    </section>
+  )
+}
+
 describe('OnDemandFeatureDialog', () => {
+  it('restores the page invoker after the loading panel hands ownership to the loaded modal', async () => {
+    let resolveFeature: (module: { default: typeof LoadedModal }) => void =
+      () => {}
+    const LazyModal = lazy(
+      () =>
+        new Promise<{ default: typeof LoadedModal }>(resolve => {
+          resolveFeature = resolve
+        }),
+    )
+    function Harness() {
+      const [open, setOpen] = useState(false)
+      return (
+        <>
+          <button onClick={() => setOpen(true)} type="button">
+            Open feature
+          </button>
+          {open && (
+            <OnDemandFeatureDialog {...defaultProps}>
+              <LazyModal onClose={() => setOpen(false)} />
+            </OnDemandFeatureDialog>
+          )}
+        </>
+      )
+    }
+    const user = userEvent.setup()
+    render(<Harness />)
+    const trigger = screen.getByRole('button', { name: 'Open feature' })
+    await user.click(trigger)
+    await act(async () => {
+      resolveFeature({ default: LoadedModal })
+    })
+    await user.click(
+      await screen.findByRole('button', { name: 'Close loaded' }),
+    )
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
   beforeEach(() => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined)
   })
@@ -103,7 +159,6 @@ describe('OnDemandFeatureDialog', () => {
   it('restores a nonzero page position after the modal unmounts', () => {
     vi.spyOn(window, 'scrollX', 'get').mockReturnValue(12)
     vi.spyOn(window, 'scrollY', 'get').mockReturnValue(34)
-    const scrollTo = vi.mocked(window.scrollTo)
 
     const { unmount } = render(
       <OnDemandFeatureDialog {...defaultProps}>
@@ -111,10 +166,13 @@ describe('OnDemandFeatureDialog', () => {
       </OnDemandFeatureDialog>,
     )
 
-    expect(document.body.style.left).toBe('-12px')
-    expect(document.body.style.top).toBe('-34px')
+    expect(document.body.style.overflow).toBe('hidden')
+    expect(window.scrollX).toBe(12)
+    expect(window.scrollY).toBe(34)
     unmount()
-    expect(scrollTo).toHaveBeenCalledWith(12, 34)
+    expect(document.body.style.overflow).toBe('')
+    expect(window.scrollX).toBe(12)
+    expect(window.scrollY).toBe(34)
   })
 
   it('replaces the loading body with the loaded feature and moves focus into it', async () => {

@@ -243,18 +243,25 @@ describe('ImprovementSuggestionsSection', () => {
     const workflow = makeWorkflow({
       editSuggestionTarget: draftSuggestion,
       resolutionTarget: draftSuggestion,
-      showEditSuggestionForm: true,
-      showResolutionForm: true,
+      showEditSuggestionForm: false,
+      showResolutionForm: false,
       suggestionSaving: true,
       versionSuggestionItems: [draftSuggestion],
     })
-    render(<ImprovementSuggestionsSection workflow={workflow} />)
+    const { rerender } = render(
+      <ImprovementSuggestionsSection workflow={workflow} />,
+    )
 
     const section = screen.getByRole('region', { name: /title/ })
     for (const button of within(section).getAllByRole('button')) {
       expect(button).toBeDisabled()
     }
 
+    rerender(
+      <ImprovementSuggestionsSection
+        workflow={{ ...workflow, showEditSuggestionForm: true }}
+      />,
+    )
     const editDialog = screen.getByRole('dialog', { name: 'editSuggestion' })
     expect(
       within(editDialog).getByLabelText(/content/, { selector: 'textarea' }),
@@ -262,6 +269,11 @@ describe('ImprovementSuggestionsSection', () => {
     expect(
       within(editDialog).getByRole('status', { name: 'createdBy' }),
     ).toHaveTextContent('Alice')
+    rerender(
+      <ImprovementSuggestionsSection
+        workflow={{ ...workflow, showResolutionForm: true }}
+      />,
+    )
     expect(
       screen.getByRole('dialog', { name: 'recordResolution' }),
     ).toBeInTheDocument()

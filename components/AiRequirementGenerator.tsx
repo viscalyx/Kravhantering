@@ -29,6 +29,7 @@ import { modalResizableTextareaRows4ClassName } from '@/components/modal-textare
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 import SafeMarkdown from '@/components/SafeMarkdown'
 import StatusBadge from '@/components/StatusBadge'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import type {
   AiAuthoringProfileDescription,
   AiAuthoringProfileUnavailableReason,
@@ -580,17 +581,6 @@ export default function AiRequirementGenerator({
       cancelQueuedThinking()
     }
   }, [cancelQueuedThinking])
-
-  useEffect(() => {
-    if (!open || embedded || typeof document === 'undefined') return
-
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [embedded, open])
 
   useEffect(() => {
     if (phase !== 'error' || !error) return
@@ -1268,6 +1258,13 @@ export default function AiRequirementGenerator({
     targetAreaId,
   ])
 
+  const modalRef = useRef<HTMLDivElement>(null)
+  const { handleKeyDown } = useModalFocus({
+    modalRef,
+    open,
+    onClose: () => void handleClose(),
+  })
+
   if (!open || typeof document === 'undefined') return null
 
   const generateDisabled =
@@ -1289,6 +1286,7 @@ export default function AiRequirementGenerator({
             ? 'contents'
             : 'fixed inset-0 z-50 flex items-center justify-center bg-secondary-900/60 p-4 backdrop-blur-sm'
         }
+        data-modal-layer={embedded ? undefined : ''}
         role="presentation"
       >
         <motion.div
@@ -1296,6 +1294,8 @@ export default function AiRequirementGenerator({
           aria-labelledby="ai-requirement-generator-title"
           aria-modal="true"
           className="flex max-h-[90dvh] w-full max-w-7xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-secondary-900"
+          onKeyDown={handleKeyDown}
+          ref={modalRef}
           role="dialog"
           {...devMarker({
             context: 'ai-requirement-generator',

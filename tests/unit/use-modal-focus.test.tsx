@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useRef, useState } from 'react'
+import { StrictMode, useRef, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useModalFocus } from '@/hooks/useModalFocus'
 
@@ -137,7 +137,73 @@ function ExplicitReturnFocusModal() {
   )
 }
 
+function EmptyModal() {
+  const modalRef = useRef<HTMLDivElement>(null)
+  const { handleKeyDown } = useModalFocus({
+    modalRef,
+    open: true,
+    onClose: () => {},
+  })
+  return (
+    <div
+      aria-label="Empty"
+      onKeyDown={handleKeyDown}
+      ref={modalRef}
+      role="dialog"
+    />
+  )
+}
+
 describe('useModalFocus', () => {
+  it('does not reset keyboard focus when the opening animation frame runs late', async () => {
+    let frame: FrameRequestCallback = () => {}
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frame = callback
+      return 1
+    })
+    const user = userEvent.setup()
+    render(<TestModal />)
+    await user.click(screen.getByRole('button', { name: 'Open' }))
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Middle' })).toHaveFocus()
+    frame(0)
+    expect(screen.getByRole('button', { name: 'Middle' })).toHaveFocus()
+  })
+
+  it('contains focus in an empty dialog, including programmatic attempts to focus the background', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <>
+        <button type="button">Background</button>
+        <EmptyModal />
+      </>,
+    )
+    const dialog = screen.getByRole('dialog', { name: 'Empty' })
+    expect(dialog).toHaveFocus()
+    await user.tab()
+    expect(dialog).toHaveFocus()
+    await user.tab({ shift: true })
+    expect(dialog).toHaveFocus()
+    container.querySelector('button')?.focus()
+    expect(dialog).toHaveFocus()
+  })
+
+  it('restores interaction after Strict Mode effect replay and close', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <StrictMode>
+        <TestModal />
+      </StrictMode>,
+    )
+    const trigger = screen.getByRole('button', { name: 'Open' })
+    await user.click(trigger)
+    expect(screen.getByTestId('first')).toHaveFocus()
+    await user.keyboard('{Escape}')
+    expect(trigger).toHaveFocus()
+    expect(container.querySelector('[inert]')).toBeNull()
+    expect(document.body.style.overflow).toBe('')
+  })
+
   beforeEach(() => {
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
       cb(0)

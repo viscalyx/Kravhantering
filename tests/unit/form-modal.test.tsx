@@ -1,12 +1,80 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useRef, useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  ConfirmModalProvider,
+  useConfirmModal,
+} from '@/components/ConfirmModal'
 import FormModal from '@/components/FormModal'
+import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
 }))
 
 let restoreViewportScrolling: (() => void) | undefined
+
+function NestedModalHarness() {
+  const [open, setOpen] = useState(false)
+  const { confirm } = useConfirmModal()
+  return (
+    <>
+      <button onClick={() => setOpen(true)} type="button">
+        Open form
+      </button>
+      <FormModal
+        onClose={() => setOpen(false)}
+        open={open}
+        title="Parent"
+        titleId="parent-title"
+      >
+        <button
+          onClick={() =>
+            void confirm({ message: 'Discard?', variant: 'danger' })
+          }
+          type="button"
+        >
+          Discard
+        </button>
+      </FormModal>
+    </>
+  )
+}
+
+function ChangingControls({
+  disabled = false,
+  hidden = false,
+  removed = false,
+}) {
+  const initialFocusRef = useRef<HTMLButtonElement>(null)
+  return (
+    <FormModal
+      closeDisabled={disabled}
+      initialFocusRef={initialFocusRef}
+      onClose={() => {}}
+      open
+      showHeader={false}
+      title="Saving"
+      titleId="saving-title"
+    >
+      {!removed && (
+        <button
+          disabled={disabled}
+          hidden={hidden}
+          ref={initialFocusRef}
+          type="button"
+        >
+          Save
+        </button>
+      )}
+      <input type="hidden" />
+      <fieldset disabled>
+        <button type="button">Unavailable</button>
+      </fieldset>
+    </FormModal>
+  )
+}
 
 function mockViewportScrolling(initialScrollTop: number) {
   const originalWindowScrollY = Object.getOwnPropertyDescriptor(
@@ -58,6 +126,135 @@ function mockViewportScrolling(initialScrollTop: number) {
 }
 
 describe('FormModal', () => {
+  it('keeps a portalled description belonging to the active modal available', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <FormModal
+        onClose={() => {}}
+        open
+        title="Packages"
+        titleId="packages-title"
+      >
+        <RequirementPackagePurposeTooltip purposeAndScope="Package purpose">
+          <button type="button">Selected package</button>
+        </RequirementPackagePurposeTooltip>
+      </FormModal>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Selected package' }))
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent('Package purpose')
+    expect(tooltip.closest('[inert]')).toBeNull()
+    expect(container).toHaveAttribute('inert')
+  })
+
+  it('gives a nested danger confirmation exclusive focus and restores each invoking control', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <ConfirmModalProvider>
+        <NestedModalHarness />
+      </ConfirmModalProvider>,
+    )
+    const trigger = screen.getByRole('button', { name: 'Open form' })
+    await user.click(trigger)
+    const parent = screen.getByRole('dialog', { name: 'Parent' })
+    const discard = screen.getByRole('button', { name: 'Discard' })
+    await user.click(discard)
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'cancel' })).toHaveFocus(),
+    )
+    expect(parent.closest('[inert]')).not.toBeNull()
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'confirm' })).toHaveFocus()
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'cancel' })).toHaveFocus()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(discard).toHaveFocus())
+    expect(parent.closest('[inert]')).toBeNull()
+    expect(container).toHaveAttribute('inert')
+    expect(document.body.style.overflow).toBe('hidden')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(trigger).toHaveFocus())
+    expect(container).not.toHaveAttribute('inert')
+    expect(document.body.style.overflow).toBe('')
+  })
+
+  it.each(['disabled', 'hidden', 'removed'] as const)(
+    'retains focus when the active control becomes %s',
+    async change => {
+      const user = userEvent.setup()
+      const { rerender } = render(<ChangingControls />)
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'Save' })).toHaveFocus(),
+      )
+      rerender(<ChangingControls {...{ [change]: true }} />)
+      const title = screen.getByRole('heading', { name: 'Saving' })
+      await waitFor(() => expect(title).toHaveFocus())
+      await user.tab()
+      expect(title).toHaveFocus()
+      await user.tab({ shift: true })
+      expect(title).toHaveFocus()
+      await user.keyboard('{Escape}')
+      expect(title).toHaveFocus()
+    },
+  )
+
+  it('restores pre-existing background state on unmount and focuses a surviving page destination', async () => {
+    const background = document.createElement('aside')
+    background.setAttribute('inert', '')
+    background.setAttribute('aria-hidden', 'false')
+    document.body.append(background)
+    const { rerender } = render(
+      <>
+        <main>
+          <h1>Workspace</h1>
+        </main>
+        <FormModal
+          onClose={() => {}}
+          open
+          title="Dialog"
+          titleId="unmount-title"
+        >
+          Content
+        </FormModal>
+      </>,
+    )
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Dialog' })).toHaveFocus(),
+    )
+    rerender(
+      <main>
+        <h1>Workspace</h1>
+      </main>,
+    )
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Workspace' })).toHaveFocus(),
+    )
+    expect(background).toHaveAttribute('inert')
+    expect(background).toHaveAttribute('aria-hidden', 'false')
+    background.remove()
+  })
+
+  it('focuses its title and isolates the page without an explicit focus target', async () => {
+    const { container } = render(
+      <>
+        <button type="button">Background action</button>
+        <FormModal
+          onClose={vi.fn()}
+          open
+          title="Compare"
+          titleId="compare-title"
+        >
+          <button type="button">Compare versions</button>
+        </FormModal>
+      </>,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Compare' })).toHaveFocus(),
+    )
+    expect(container).toHaveAttribute('inert')
+  })
+
   afterEach(() => {
     restoreViewportScrolling?.()
     restoreViewportScrolling = undefined

@@ -162,6 +162,7 @@ function GraduationTargetAreaModal({
       {open ? (
         <motion.div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          data-modal-layer=""
           key="graduation-target-area-modal"
           {...fadeMotion(shouldReduceMotion)}
         >
@@ -342,6 +343,7 @@ function SpecificationLocalRequirementEditModal({
       {open && requirement ? (
         <motion.div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          data-modal-layer=""
           key="specification-local-requirement-edit-backdrop"
           {...fadeMotion(shouldReduceMotion)}
         >

@@ -15,6 +15,7 @@ import StatusBadge from '@/components/StatusBadge'
 import StatusIcon from '@/components/StatusIcon'
 import StatusStepper from '@/components/StatusStepper'
 import VersionHistory from '@/components/VersionHistory'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import { useRouter } from '@/i18n/routing'
 import { isStrictHexColor } from '@/lib/color-contrast'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -283,6 +284,13 @@ export default function RequirementDetailClient({
     [locale],
   )
 
+  const modalRef = useRef<HTMLDivElement>(null)
+  const { handleKeyDown } = useModalFocus({
+    modalRef,
+    open: !inline && !!onClose,
+    onClose: () => onClose?.(),
+  })
+
   const handleModalDocumentKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
       if (event.key !== 'Escape') {
@@ -315,16 +323,21 @@ export default function RequirementDetailClient({
     if (onClose) {
       return (
         <div
+          aria-label={t('title')}
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm"
           onClick={onClose}
-          onKeyDown={event => event.key === 'Escape' && onClose()}
+          onKeyDown={handleKeyDown}
+          ref={modalRef}
           role="dialog"
         >
           <div
             className="relative mt-16 w-full max-w-5xl max-h-[calc(100vh-8rem)] overflow-y-auto rounded-2xl bg-white dark:bg-secondary-900 shadow-2xl"
             onClick={event => event.stopPropagation()}
-            onKeyDown={handleModalDocumentKeyDown}
+            onKeyDown={event => {
+              handleKeyDown(event)
+              handleModalDocumentKeyDown(event)
+            }}
             role="document"
           >
             {loadingContent}
@@ -351,16 +364,21 @@ export default function RequirementDetailClient({
     if (onClose) {
       return (
         <div
+          aria-label={t('title')}
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm"
           onClick={onClose}
-          onKeyDown={event => event.key === 'Escape' && onClose()}
+          onKeyDown={handleKeyDown}
+          ref={modalRef}
           role="dialog"
         >
           <div
             className="relative mt-16 w-full max-w-5xl max-h-[calc(100vh-8rem)] overflow-y-auto rounded-2xl bg-white dark:bg-secondary-900 shadow-2xl"
             onClick={event => event.stopPropagation()}
-            onKeyDown={handleModalDocumentKeyDown}
+            onKeyDown={event => {
+              handleKeyDown(event)
+              handleModalDocumentKeyDown(event)
+            }}
             role="document"
           >
             {emptyContent}
@@ -1222,16 +1240,21 @@ export default function RequirementDetailClient({
     return (
       <>
         <div
+          aria-label={t('title')}
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm"
           onClick={onClose}
-          onKeyDown={event => event.key === 'Escape' && onClose()}
+          onKeyDown={handleKeyDown}
+          ref={modalRef}
           role="dialog"
         >
           <div
             className="relative mt-8 mb-8 w-full max-w-5xl max-h-[calc(100vh-4rem)] overflow-y-auto rounded-2xl bg-white dark:bg-secondary-900 shadow-2xl"
             onClick={event => event.stopPropagation()}
-            onKeyDown={handleModalDocumentKeyDown}
+            onKeyDown={event => {
+              handleKeyDown(event)
+              handleModalDocumentKeyDown(event)
+            }}
             role="document"
           >
             <button

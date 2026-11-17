@@ -154,31 +154,23 @@ function MenuDownloadProbe() {
 
 function ConcurrentDownloadProbe() {
   const download = useGeneratedOutputDownload()
-
   return (
     <>
       <button
-        onClick={() =>
+        onClick={() => {
           void download.download({
             fallbackFilename: 'first.csv',
             output: 'csv',
             url: '/exports/first',
           })
-        }
-        type="button"
-      >
-        First
-      </button>
-      <button
-        onClick={() =>
           void download.download({
             fallbackFilename: 'second.pdf',
             url: '/reports/second',
           })
-        }
+        }}
         type="button"
       >
-        Second
+        Start competing downloads
       </button>
       {download.dialog}
     </>
@@ -315,8 +307,9 @@ describe('useGeneratedOutputDownload', () => {
     fetchMock.mockReturnValueOnce(new Promise(() => {}))
     render(<ConcurrentDownloadProbe />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'First' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Second' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Start competing downloads' }),
+    )
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock).toHaveBeenCalledWith(
@@ -388,6 +381,7 @@ describe('useGeneratedOutputDownload', () => {
 
     blob.resolve(new Blob(['%PDF'], { type: 'application/pdf' }))
     await flushMicrotasks()
+    expect(reportsButton).toHaveFocus()
     act(() => {
       vi.runOnlyPendingTimers()
     })

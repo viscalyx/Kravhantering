@@ -293,7 +293,8 @@ export default function RequirementsPackageFilter({
       }
     }
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
+      if (event.key !== 'Escape' || chooserRef.current?.closest('[inert]'))
+        return
       event.preventDefault()
       closeChooser(true)
       triggerRef.current?.focus()
