@@ -388,26 +388,32 @@ describe('dependency maintenance policy', () => {
     expect(validateDependencyMaintenance(fixture())).toEqual([])
   })
 
-  it('requires development runtime tags to match the image lock without a digest', () => {
-    const root = fixture()
-    const quadletPath =
-      'scripts/azure-dev/templates/quadlet/krav-kong.container'
-    const lock = JSON.parse(
-      fs.readFileSync(path.join(root, 'containers/kong/image.lock.json')),
-    )
-    const expectedReference = `${lock.image}:${lock.tag}`
-    write(
-      root,
-      quadletPath,
-      fs
-        .readFileSync(path.join(root, quadletPath), 'utf8')
-        .replace(expectedReference, `${lock.image}:stale@${digest('f')}`),
-    )
+  it.each([
+    ['kong', 'scripts/azure-dev/templates/quadlet/krav-kong.container'],
+    ['sqlserver', 'scripts/azure-dev/templates/quadlet/krav-db.container'],
+    ['sqlserver', '.devcontainer/docker-compose.yml'],
+    ['sqlserver', '.devcontainer/elevated/docker-compose.yml'],
+  ])(
+    'requires %s runtime %s to match its lock without a digest',
+    (name, runtimePath) => {
+      const root = fixture()
+      const lock = JSON.parse(
+        fs.readFileSync(path.join(root, `containers/${name}/image.lock.json`)),
+      )
+      const expectedReference = `${lock.image}:${lock.tag}`
+      write(
+        root,
+        runtimePath,
+        fs
+          .readFileSync(path.join(root, runtimePath), 'utf8')
+          .replace(expectedReference, `${lock.image}:stale@${digest('f')}`),
+      )
 
-    expect(validateDependencyMaintenance(root)).toContain(
-      `Development runtime image "${quadletPath}" must use tag-only reference "${expectedReference}".`,
-    )
-  })
+      expect(validateDependencyMaintenance(root)).toContain(
+        `Development runtime image "${runtimePath}" must use tag-only reference "${expectedReference}".`,
+      )
+    },
+  )
 
   it('requires the development base image to match its lock and use an exact version tag', () => {
     const root = fixture()

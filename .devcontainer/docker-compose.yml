@@ -87,7 +87,7 @@ services:
     init: true
 
   db:
-    image: mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-24.04
+    image: mcr.microsoft.com/mssql/server:2025-CU11-ubuntu-24.04
     env_file:
     - path: .env
       required: false
