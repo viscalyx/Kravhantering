@@ -7,14 +7,14 @@ default_permissions = "kravhantering-development"
 
 personality = "pragmatic"
 
-model = "gpt-6-astra"
+model = "gpt-6.2-astra"
 model_reasoning_effort = "high"
 
 [features]
 default_mode_request_user_input = false
 
 [agents]
-default_subagent_model = "gpt-6.1-sol"
+default_subagent_model = "gpt-6.2-sol"
 default_subagent_reasoning_effort = "high"
 
 [permissions.kravhantering-development]
