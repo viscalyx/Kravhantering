@@ -20,7 +20,7 @@
     "modern-web-guidance": "cross-env DISABLE_TELEMETRY=1 modern-web-guidance",
     "predev": "npm run dev:prepare",
     "dev": "next dev",
-    "prototype:1677": "cross-env FOCUS_PROTOTYPE_SHARED_DEPS=1 npm run dev -- --port 3001",
+    "prototype:1677": "node 'app/[locale]/requirements/focus-prototype-server.mjs'",
     "prototype:1677:capture": "node 'app/[locale]/requirements/focus-prototype-capture.mjs'",
     "dev:fresh": "npm run kill:port && npm run clean && npm run dev",
     "storage-report:install": "bash scripts/azure-dev/install-storage-report.sh",

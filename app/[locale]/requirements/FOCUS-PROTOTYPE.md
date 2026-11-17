@@ -29,6 +29,15 @@ Windows High Contrast. The state panel reports what the browser is using;
 there is no fake high-contrast toggle.
 
 The server uses port 3001 and the existing development environment. In this
+preview, sign in with the local development account `ada.admin` / `devpass`.
+The launcher selects the existing Keycloak client registered for port 3001,
+so login returns to the comparison. It uses the session cookie
+`kravhantering_focus_prototype` to keep preview sign-in separate from the
+development app; its lifetime and security settings follow the development
+configuration. These overrides apply only to the launched process and do not
+change environment files or the identity service.
+
+In this
 workspace the prototype uses shared dependencies via a node_modules symlink;
 its command enables a development-only Turbopack root override to resolve them.
 The prototype renders only with the explicit variant parameter in development.
