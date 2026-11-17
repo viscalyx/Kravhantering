@@ -1,0 +1,370 @@
+[
+  {
+    "theme": "light",
+    "forcedColors": "none",
+    "variant": "today",
+    "control": "Save",
+    "focusVisible": true,
+    "outline": "rgb(16, 16, 16) none 1px",
+    "outlineOffset": "0px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(255, 255, 255) 0px 0px 0px 2px, oklab(0.680099 0.0191423 -0.157128 / 0.5) 0px 0px 0px 4px, rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px -1px"
+  },
+  {
+    "theme": "light",
+    "forcedColors": "none",
+    "variant": "today",
+    "control": "Cancel",
+    "focusVisible": true,
+    "outline": "rgb(15, 23, 42) none 3px",
+    "outlineOffset": "0px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklab(0 0 0 / 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px -1px"
+  },
+  {
+    "theme": "light",
+    "forcedColors": "none",
+    "variant": "today",
+    "control": "Delete",
+    "focusVisible": true,
+    "outline": "rgb(193, 0, 7) none 3px",
+    "outlineOffset": "0px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklab(0 0 0 / 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px -1px"
+  },
+  {
+    "theme": "light",
+    "forcedColors": "none",
+    "variant": "today",
+    "control": "Open form dialog",
+    "focusVisible": true,
+    "outline": "rgb(15, 23, 42) none 3px",
+    "outlineOffset": "0px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklab(0 0 0 / 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px -1px"
+  },
+  {
+    "theme": "light",
+    "forcedColors": "none",
+    "variant": "today",
+    "restored": true
+  },
+  {
+    "theme": "light",
+    "forcedColors": "none",
+    "variant": "desired",
+    "control": "Save",
+    "focusVisible": true,
+    "outline": "rgb(17, 24, 39) solid 2px",
+    "outlineOffset": "3px",
+    "shadow": "none"
+  },
+  {
+    "theme": "light",
+    "forcedColors": "none",
+    "variant": "desired",
+    "control": "Cancel",
+    "focusVisible": true,
+    "outline": "rgb(15, 23, 42) solid 3px",
+    "outlineOffset": "0px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px -1px"
+  },
+  {
+    "theme": "light",
+    "forcedColors": "none",
+    "variant": "desired",
+    "control": "Delete",
+    "focusVisible": true,
+    "outline": "rgb(193, 0, 7) solid 3px",
+    "outlineOffset": "0px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px -1px"
+  },
+  {
+    "theme": "light",
+    "forcedColors": "none",
+    "variant": "desired",
+    "control": "Open form dialog",
+    "focusVisible": true,
+    "outline": "rgb(15, 23, 42) solid 3px",
+    "outlineOffset": "0px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px -1px"
+  },
+  {
+    "theme": "light",
+    "forcedColors": "none",
+    "variant": "desired",
+    "restored": true
+  },
+  {
+    "theme": "light",
+    "forcedColors": "active",
+    "variant": "today",
+    "control": "Save",
+    "focusVisible": true,
+    "outline": "rgba(5, 0, 73, 0.8) none 1px",
+    "outlineOffset": "0px",
+    "shadow": "none"
+  },
+  {
+    "theme": "light",
+    "forcedColors": "active",
+    "variant": "today",
+    "control": "Cancel",
+    "focusVisible": true,
+    "outline": "rgba(5, 0, 73, 0.8) none 3px",
+    "outlineOffset": "0px",
+    "shadow": "none"
+  },
+  {
+    "theme": "light",
+    "forcedColors": "active",
+    "variant": "today",
+    "control": "Delete",
+    "focusVisible": true,
+    "outline": "rgba(5, 0, 73, 0.8) none 3px",
+    "outlineOffset": "0px",
+    "shadow": "none"
+  },
+  {
+    "theme": "light",
+    "forcedColors": "active",
+    "variant": "today",
+    "control": "Open form dialog",
+    "focusVisible": true,
+    "outline": "rgba(5, 0, 73, 0.8) none 3px",
+    "outlineOffset": "0px",
+    "shadow": "none"
+  },
+  {
+    "theme": "light",
+    "forcedColors": "active",
+    "variant": "today",
+    "restored": true
+  },
+  {
+    "theme": "light",
+    "forcedColors": "active",
+    "variant": "desired",
+    "control": "Save",
+    "focusVisible": true,
+    "outline": "rgb(0, 0, 0) solid 2px",
+    "outlineOffset": "3px",
+    "shadow": "none"
+  },
+  {
+    "theme": "light",
+    "forcedColors": "active",
+    "variant": "desired",
+    "control": "Cancel",
+    "focusVisible": true,
+    "outline": "rgba(5, 0, 73, 0.8) solid 3px",
+    "outlineOffset": "0px",
+    "shadow": "none"
+  },
+  {
+    "theme": "light",
+    "forcedColors": "active",
+    "variant": "desired",
+    "control": "Delete",
+    "focusVisible": true,
+    "outline": "rgba(5, 0, 73, 0.8) solid 3px",
+    "outlineOffset": "0px",
+    "shadow": "none"
+  },
+  {
+    "theme": "light",
+    "forcedColors": "active",
+    "variant": "desired",
+    "control": "Open form dialog",
+    "focusVisible": true,
+    "outline": "rgba(5, 0, 73, 0.8) solid 3px",
+    "outlineOffset": "0px",
+    "shadow": "none"
+  },
+  {
+    "theme": "light",
+    "forcedColors": "active",
+    "variant": "desired",
+    "restored": true
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "none",
+    "variant": "today",
+    "control": "Save",
+    "focusVisible": true,
+    "outline": "rgb(238, 238, 238) none 1px",
+    "outlineOffset": "0px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(2, 6, 23) 0px 0px 0px 2px, oklab(0.680099 0.0191423 -0.157128 / 0.5) 0px 0px 0px 4px, rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px -1px"
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "none",
+    "variant": "today",
+    "control": "Cancel",
+    "focusVisible": true,
+    "outline": "rgb(241, 245, 249) none 3px",
+    "outlineOffset": "0px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklab(0 0 0 / 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px -1px"
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "none",
+    "variant": "today",
+    "control": "Delete",
+    "focusVisible": true,
+    "outline": "rgb(255, 100, 103) none 3px",
+    "outlineOffset": "0px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklab(0 0 0 / 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px -1px"
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "none",
+    "variant": "today",
+    "control": "Open form dialog",
+    "focusVisible": true,
+    "outline": "rgb(241, 245, 249) none 3px",
+    "outlineOffset": "0px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklab(0 0 0 / 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px -1px"
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "none",
+    "variant": "today",
+    "restored": true
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "none",
+    "variant": "desired",
+    "control": "Save",
+    "focusVisible": true,
+    "outline": "rgb(248, 250, 252) solid 2px",
+    "outlineOffset": "3px",
+    "shadow": "none"
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "none",
+    "variant": "desired",
+    "control": "Cancel",
+    "focusVisible": true,
+    "outline": "rgb(241, 245, 249) solid 3px",
+    "outlineOffset": "0px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px -1px"
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "none",
+    "variant": "desired",
+    "control": "Delete",
+    "focusVisible": true,
+    "outline": "rgb(255, 100, 103) solid 3px",
+    "outlineOffset": "0px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px -1px"
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "none",
+    "variant": "desired",
+    "control": "Open form dialog",
+    "focusVisible": true,
+    "outline": "rgb(241, 245, 249) solid 3px",
+    "outlineOffset": "0px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px -1px"
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "none",
+    "variant": "desired",
+    "restored": true
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "active",
+    "variant": "today",
+    "control": "Save",
+    "focusVisible": true,
+    "outline": "rgba(0, 230, 255, 0.8) none 1px",
+    "outlineOffset": "0px",
+    "shadow": "none"
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "active",
+    "variant": "today",
+    "control": "Cancel",
+    "focusVisible": true,
+    "outline": "rgba(0, 230, 255, 0.8) none 3px",
+    "outlineOffset": "0px",
+    "shadow": "none"
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "active",
+    "variant": "today",
+    "control": "Delete",
+    "focusVisible": true,
+    "outline": "rgba(0, 230, 255, 0.8) none 3px",
+    "outlineOffset": "0px",
+    "shadow": "none"
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "active",
+    "variant": "today",
+    "control": "Open form dialog",
+    "focusVisible": true,
+    "outline": "rgba(0, 230, 255, 0.8) none 3px",
+    "outlineOffset": "0px",
+    "shadow": "none"
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "active",
+    "variant": "today",
+    "restored": true
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "active",
+    "variant": "desired",
+    "control": "Save",
+    "focusVisible": true,
+    "outline": "rgb(255, 255, 255) solid 2px",
+    "outlineOffset": "3px",
+    "shadow": "none"
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "active",
+    "variant": "desired",
+    "control": "Cancel",
+    "focusVisible": true,
+    "outline": "rgba(0, 230, 255, 0.8) solid 3px",
+    "outlineOffset": "0px",
+    "shadow": "none"
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "active",
+    "variant": "desired",
+    "control": "Delete",
+    "focusVisible": true,
+    "outline": "rgba(0, 230, 255, 0.8) solid 3px",
+    "outlineOffset": "0px",
+    "shadow": "none"
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "active",
+    "variant": "desired",
+    "control": "Open form dialog",
+    "focusVisible": true,
+    "outline": "rgba(0, 230, 255, 0.8) solid 3px",
+    "outlineOffset": "0px",
+    "shadow": "none"
+  },
+  {
+    "theme": "dark",
+    "forcedColors": "active",
+    "variant": "desired",
+    "restored": true
+  }
+]

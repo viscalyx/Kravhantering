@@ -16,6 +16,7 @@ import {
 } from '@/lib/dal/ui-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS } from '@/lib/requirements/list-view'
+import FocusPrototype from './focus-prototype'
 import RequirementsClient from './requirements-client'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -31,7 +32,11 @@ function isMissingSqlServerConfigurationError(error: unknown) {
   )
 }
 
-export default async function RequirementsPage() {
+export default async function RequirementsPage({
+  searchParams = Promise.resolve({}),
+}: {
+  searchParams?: Promise<{ variant?: string }>
+} = {}) {
   let initialColumnDefaults = DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS
   let aiGenerationAvailability: AiRequirementGenerationAvailability =
     resolveAiGenerationAvailability()
@@ -73,6 +78,13 @@ export default async function RequirementsPage() {
   }
 
   const session = await getSession()
+  const { variant } = await searchParams
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    (variant === 'today' || variant === 'desired')
+  ) {
+    return <FocusPrototype />
+  }
   return (
     <RequirementsClient
       aiGenerationAvailability={aiGenerationAvailability}

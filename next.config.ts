@@ -162,6 +162,7 @@ const nextConfig: NextConfig = {
   // Next.js 16 production builds use Turbopack for this app. These aliases
   // swap in the right `build-target.*.ts` and developer-mode no-op modules.
   turbopack: {
+    ...(process.env.FOCUS_PROTOTYPE_SHARED_DEPS === '1' ? { root: '/' } : {}),
     resolveAlias: {
       'expo-sqlite': expoSqliteUnavailablePathRelative,
       ...(resolvedBuildTarget !== 'dev'

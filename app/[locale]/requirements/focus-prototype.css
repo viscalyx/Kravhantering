@@ -1,0 +1,28 @@
+/* THROWAWAY. Unlayered to override layered Tailwind outline-none utilities.
+ * Applies to the live navigation and portalled dialogs as well as samples.
+ * Current behavior is deliberately untouched in the today variant.
+ */
+html[data-focus-prototype="desired"]
+  :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid #111827;
+  outline-offset: 3px;
+  box-shadow: none;
+}
+
+html:where(.dark)[data-focus-prototype="desired"]
+  :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline-color: #f8fafc;
+}
+
+@media (forced-colors: active) {
+  html[data-focus-prototype="desired"]
+    :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline-color: CanvasText;
+  }
+}
+
+/* Keep the prototype switcher usable even while demonstrating the bug. */
+.focus-prototype-switcher button:focus-visible {
+  outline: 2px solid CanvasText;
+  outline-offset: 3px;
+}
