@@ -103,6 +103,65 @@ async function events(response: Response) {
 }
 
 describe('POST /api/ai/generate-requirement-import', () => {
+  it.each(['availability', 'instruction', 'run'])(
+    'returns a traceable SQL error when %s fails',
+    async phase => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const failure = Object.assign(
+        new Error('SQL connection unavailable password=private'),
+        {
+          name: 'QueryFailedError',
+          query: 'SELECT id FROM ai_run_profiles',
+          driverError: { code: 'EREQUEST', number: 1205 },
+        },
+      )
+      if (phase === 'availability')
+        routeState.getAiGenerationAvailability.mockRejectedValueOnce(failure)
+      if (phase === 'instruction')
+        routeState.buildImportInstruction.mockRejectedValueOnce(failure)
+      if (phase === 'run')
+        routeState.run.mockImplementationOnce(() =>
+          (async function* () {
+            yield* []
+            throw failure
+          })(),
+        )
+      try {
+        const response = await POST(request(validBody()))
+        expect(response.status).toBe(phase === 'run' ? 200 : 503)
+        const output = await events(response)
+        expect(output).toEqual([
+          {
+            event: 'error',
+            data: expect.objectContaining({
+              code: 'sql_failure',
+              message: expect.stringContaining('Check saved state'),
+              correlationId: expect.any(String),
+              timestamp: expect.any(String),
+            }),
+          },
+        ])
+        const data = output[0].data as {
+          correlationId: string
+          timestamp: string
+        }
+        const occurrence = log.mock.calls
+          .map(call => call[0])
+          .find(value => typeof value === 'string' && value.startsWith('{'))
+        expect(JSON.parse(String(occurrence))).toMatchObject({
+          event: 'sql.operation.failed',
+          correlation_id: data.correlationId,
+          timestamp: data.timestamp,
+        })
+        expect(JSON.stringify(output)).not.toMatch(
+          /private|SELECT|ai_run_profiles/,
+        )
+      } finally {
+        log.mockRestore()
+      }
+    },
+  )
+
   beforeEach(() => {
     vi.clearAllMocks()
     clearInMemoryThrottleForTests()

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { revertToDraft } from '@/lib/dal/deviations'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { readOptionalAgreementContext } from '@/lib/http/agreement-context'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
@@ -37,7 +37,10 @@ export const POST = secureMutationRoute({
       }
       logSanitizedError('Failed to revert deviation to draft', error)
       return NextResponse.json(
-        { error: 'Failed to revert to draft' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'deviations/[id]/revert-to-draft',
+        }) ?? { error: 'Failed to revert to draft' },
         { status: 500 },
       )
     }

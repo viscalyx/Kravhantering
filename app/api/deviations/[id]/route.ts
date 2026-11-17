@@ -7,7 +7,7 @@ import {
 } from '@/lib/dal/deviations'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
@@ -94,7 +94,10 @@ export const PUT = secureMutationRoute({
       }
       logSanitizedError('Failed to update deviation', error)
       return NextResponse.json(
-        { error: 'Failed to update deviation' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'deviations/[id]',
+        }) ?? { error: 'Failed to update deviation' },
         { status: 500 },
       )
     }
@@ -123,7 +126,10 @@ export const DELETE = secureMutationRoute({
       }
       logSanitizedError('Failed to delete deviation', error)
       return NextResponse.json(
-        { error: 'Failed to delete deviation' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'deviations/[id]',
+        }) ?? { error: 'Failed to delete deviation' },
         { status: 500 },
       )
     }

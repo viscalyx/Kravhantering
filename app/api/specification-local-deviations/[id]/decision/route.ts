@@ -6,7 +6,7 @@ import {
   recordSpecificationLocalDecision,
 } from '@/lib/dal/deviations'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
@@ -70,7 +70,10 @@ export const POST = secureMutationRoute({
         error,
       )
       return NextResponse.json(
-        { error: 'Failed to record decision' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'specification-local-deviations/[id]/decision',
+        }) ?? { error: 'Failed to record decision' },
         { status: 500 },
       )
     }

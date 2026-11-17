@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
@@ -217,7 +217,10 @@ export const POST = secureMutationRoute({
         error,
       )
       return NextResponse.json(
-        { error: ADD_REQUIREMENTS_ERROR },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'requirements-specifications/[id]/items',
+        }) ?? { error: ADD_REQUIREMENTS_ERROR },
         { status: 500 },
       )
     }

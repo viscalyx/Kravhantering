@@ -4,7 +4,7 @@ import {
   SUGGESTION_DISMISSED,
   SUGGESTION_RESOLVED,
 } from '@/lib/dal/improvement-suggestions'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
@@ -67,7 +67,10 @@ export const POST = secureMutationRoute({
       }
       logSanitizedError('Failed to record suggestion resolution', error)
       return NextResponse.json(
-        { error: 'Failed to record resolution' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'improvement-suggestions/[id]/resolution',
+        }) ?? { error: 'Failed to record resolution' },
         { status: 500 },
       )
     }

@@ -55,7 +55,9 @@ describe('visible HSA-id prefixes route', () => {
     })
     expect(consoleError).toHaveBeenCalledWith(
       'Failed to load visible HSA-id prefixes',
-      { message: 'database password leaked' },
+      expect.objectContaining({
+        error: expect.objectContaining({ message: 'database password leaked' }),
+      }),
     )
   })
 })

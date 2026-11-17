@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
@@ -88,7 +88,10 @@ export const POST = secureMutationRoute({
       }
       logSanitizedError('Failed to create improvement suggestion', error)
       return NextResponse.json(
-        { error: 'Failed to create improvement suggestion' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'requirement-suggestions/[id]',
+        }) ?? { error: 'Failed to create improvement suggestion' },
         { status: 500 },
       )
     }

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requestReview } from '@/lib/dal/deviations'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { readOptionalAgreementContext } from '@/lib/http/agreement-context'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
@@ -37,7 +37,10 @@ export const POST = secureMutationRoute({
       }
       logSanitizedError('Failed to request deviation review', error)
       return NextResponse.json(
-        { error: 'Failed to request review' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'deviations/[id]/request-review',
+        }) ?? { error: 'Failed to request review' },
         { status: 500 },
       )
     }

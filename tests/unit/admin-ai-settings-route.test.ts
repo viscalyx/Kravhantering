@@ -154,6 +154,49 @@ const enabledResponse = {
 }
 
 describe('admin AI settings route', () => {
+  it('returns a reference and protects candidate content when a local read fails', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    routeState.getAdminAiSettings.mockRejectedValueOnce(
+      Object.assign(new Error('Truncated private-candidate-value'), {
+        name: 'QueryFailedError',
+        query: 'UPDATE ai_model_verification_attempts SET candidate_json = @0',
+        parameters: ['private-candidate-value'],
+        driverError: { number: 2628 },
+      }),
+    )
+    try {
+      const response = await GET(
+        new NextRequest('https://example.test/api/admin/ai-settings'),
+      )
+      const body = await response.json()
+      expect(response.status).toBe(500)
+      expect(body).toMatchObject({
+        code: 'sql_failure',
+        correlationId: expect.any(String),
+        timestamp: expect.any(String),
+      })
+      const occurrence = log.mock.calls
+        .map(call => call[0])
+        .find(value => typeof value === 'string' && value.startsWith('{'))
+      expect(JSON.parse(String(occurrence))).toMatchObject({
+        event: 'sql.operation.failed',
+        correlation_id: body.correlationId,
+        error: {
+          message: 'Protected SQL operation failed',
+          sql: { number: 2628 },
+        },
+      })
+      expect(JSON.stringify(log.mock.calls)).not.toMatch(
+        /private-candidate-value|candidate_json/,
+      )
+      expect(JSON.stringify(body)).not.toMatch(
+        /private-candidate-value|candidate_json/,
+      )
+    } finally {
+      log.mockRestore()
+    }
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     routeState.getAdminAiSettings.mockResolvedValue(enabledResponse)
@@ -253,7 +296,9 @@ describe('admin AI settings route', () => {
       expect(response.headers.get('Cache-Control')).toBe('no-store')
       expect(errorSpy).toHaveBeenCalledWith(
         'Failed to load admin AI settings',
-        { message: 'database unavailable' },
+        expect.objectContaining({
+          error: expect.objectContaining({ message: 'database unavailable' }),
+        }),
       )
     } finally {
       errorSpy.mockRestore()

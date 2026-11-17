@@ -92,6 +92,65 @@ async function responseJson(response: Response) {
 }
 
 describe('privacy erasure routes', () => {
+  it.each(['false', 'error'])(
+    'returns a traceable SQL failure from a local catch with DB_LOGGING=%s',
+    async logging => {
+      vi.stubEnv('DB_LOGGING', logging)
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const failure = Object.assign(
+        new Error('Database unavailable password=private'),
+        {
+          name: 'QueryFailedError',
+          query: 'SELECT id FROM requirement_areas',
+          parameters: ['private-payload'],
+          driverError: { number: 1205, code: 'EREQUEST' },
+        },
+      )
+      routeState.previewPrivacyErasure.mockRejectedValueOnce(failure)
+      try {
+        const { POST } = await import('@/app/api/privacy/erasure-preview/route')
+        const response = await POST(
+          jsonPost('http://localhost/api/privacy/erasure-preview', {
+            target: { hsaId: 'SE5560000001-kalle1' },
+          }) as never,
+        )
+        expect(response.status).toBe(500)
+        const body = await responseJson(response)
+        expect(body).toMatchObject({
+          code: 'sql_failure',
+          correlationId: expect.any(String),
+          timestamp: expect.any(String),
+          error: expect.stringContaining('Check saved state'),
+        })
+        expect(
+          log.mock.calls
+            .map(call => call[0])
+            .filter(value => typeof value === 'string')
+            .map(value => JSON.parse(value)),
+        ).toContainEqual(
+          expect.objectContaining({
+            event: 'sql.operation.failed',
+            correlation_id: body.correlationId,
+            timestamp: body.timestamp,
+            error: expect.objectContaining({
+              message: 'Database unavailable password=[REDACTED]',
+              sql: { number: 1205, code: 'EREQUEST' },
+            }),
+          }),
+        )
+        expect(JSON.stringify(body)).not.toMatch(
+          /private|SELECT|requirement_areas/,
+        )
+        expect(JSON.stringify(log.mock.calls)).not.toMatch(
+          /private|private-payload/,
+        )
+      } finally {
+        log.mockRestore()
+        vi.unstubAllEnvs()
+      }
+    },
+  )
+
   beforeEach(() => {
     vi.clearAllMocks()
     routeState.createRequestContext.mockResolvedValue(privacyContext())

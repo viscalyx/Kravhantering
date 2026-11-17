@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import { createRequestContext } from '@/lib/requirements/auth'
 import {
   forbiddenError,
@@ -61,7 +61,10 @@ export async function adminAiRead(
     }
     logSanitizedError('Failed to read AI administration metadata.', error)
     return NextResponse.json(
-      { error: 'Failed to read AI administration metadata.' },
+      reportSqlFailure(error, {
+        source: 'rest',
+        operation: 'lib/ai/admin-http.ts',
+      }) ?? { error: 'Failed to read AI administration metadata.' },
       { status: 500 },
     )
   }

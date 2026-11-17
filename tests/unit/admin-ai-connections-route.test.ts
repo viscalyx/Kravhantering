@@ -91,6 +91,63 @@ function mutationRequest(body: unknown, signal?: AbortSignal): NextRequest {
 }
 
 describe('Admin AI stable-profile and model-verification routes', () => {
+  it('keeps ordinary administration read failures bounded without labelling them as SQL', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    routeState.service.getConnection.mockRejectedValueOnce(
+      new Error('unexpected private service failure'),
+    )
+    try {
+      const response = await getConnection(
+        new NextRequest(
+          `https://example.test/api/admin/ai-connections/${connectionId}`,
+        ),
+        { params: Promise.resolve({ connectionId }) },
+      )
+      expect(response.status).toBe(500)
+      expect(await response.json()).toEqual({
+        error: 'Failed to read AI administration metadata.',
+      })
+    } finally {
+      log.mockRestore()
+    }
+  })
+
+  it('retains a safe SQL reference from a shared administration read', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    routeState.service.getConnection.mockRejectedValueOnce(
+      Object.assign(new Error('Connection lost token=private'), {
+        name: 'ConnectionError',
+        code: 'ESOCKET',
+      }),
+    )
+    try {
+      const response = await getConnection(
+        new NextRequest(
+          `https://example.test/api/admin/ai-connections/${connectionId}`,
+        ),
+        { params: Promise.resolve({ connectionId }) },
+      )
+      expect(response.status).toBe(500)
+      const body = await response.json()
+      expect(body).toMatchObject({
+        code: 'sql_failure',
+        correlationId: expect.any(String),
+        timestamp: expect.any(String),
+      })
+      expect(JSON.stringify(body)).not.toContain('private')
+      const occurrence = log.mock.calls
+        .map(call => call[0])
+        .find(value => typeof value === 'string' && value.startsWith('{'))
+      expect(JSON.parse(String(occurrence))).toMatchObject({
+        event: 'sql.operation.failed',
+        correlation_id: body.correlationId,
+        timestamp: body.timestamp,
+      })
+    } finally {
+      log.mockRestore()
+    }
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     routeState.createRequestContext.mockResolvedValue(routeState.context)
@@ -298,6 +355,51 @@ describe('Admin AI stable-profile and model-verification routes', () => {
         signal: expect.any(AbortSignal),
       }),
     )
+  })
+
+  it('streams a SQL reference without model-verification diagnostics or candidate content', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    routeState.service.verifyModelCandidate.mockRejectedValueOnce(
+      Object.assign(new Error('Invalid private-candidate-value'), {
+        name: 'QueryFailedError',
+        query: "SELECT 'private-candidate-value' FROM ai_connections",
+        driverError: { number: 2628 },
+      }),
+    )
+    try {
+      const response = await connectionAction(
+        mutationRequest({
+          action: 'verify_model_candidate',
+          externalModelId: 'controlled/model',
+          externalModelVersion: null,
+          reasoning: { mode: 'explicit_control', effort: 'high' },
+        }),
+        { params: Promise.resolve({ connectionId }) },
+      )
+      expect(response.status).toBe(200)
+      const message = JSON.parse((await response.text()).trim())
+      expect(message).toMatchObject({
+        type: 'failed',
+        code: 'sql_failure',
+        correlationId: 'correlation-ai-admin',
+        timestamp: expect.any(String),
+      })
+      expect(JSON.stringify(message)).not.toContain('private-candidate-value')
+      expect(log.mock.calls).toHaveLength(1)
+      expect(JSON.parse(String(log.mock.calls[0][0]))).toMatchObject({
+        event: 'sql.operation.failed',
+        correlation_id: message.correlationId,
+        error: {
+          message: 'Protected SQL operation failed',
+          sql: { number: 2628 },
+        },
+      })
+      expect(JSON.stringify(log.mock.calls)).not.toMatch(
+        /private-candidate-value|SELECT|ai_connections/,
+      )
+    } finally {
+      log.mockRestore()
+    }
   })
 
   it('aborts and settles verification when the response stream is cancelled', async () => {

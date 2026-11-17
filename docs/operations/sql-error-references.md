@@ -12,6 +12,12 @@ for that reference near the displayed time. Locate `sql.operation.failed`:
 its `correlation_id`, `code` and `timestamp` match the returned error. A code
 such as `sql_failure` identifies a category, not a unique occurrence.
 
+AI import generation and model verification can report the reference inside
+a failed stream event after the response starts. Import generation and repair
+can also retain an HTTP 503 response. Use the SQL failure code and event
+outcome when assessing these results; status alone does not identify the
+cause or confirm completed work.
+
 For a systemd-managed application, select the application unit and time window
 with `journalctl`, then search the captured output for the exact reference.
 For container deployments, use the existing restricted container log view.

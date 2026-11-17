@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSuggestion } from '@/lib/dal/improvement-suggestions'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
@@ -102,7 +102,10 @@ export const PUT = secureMutationRoute({
       }
       logSanitizedError('Failed to update improvement suggestion', error)
       return NextResponse.json(
-        { error: 'Failed to update improvement suggestion' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'improvement-suggestions/[id]',
+        }) ?? { error: 'Failed to update improvement suggestion' },
         { status: 500 },
       )
     }
@@ -134,7 +137,10 @@ export const DELETE = secureMutationRoute({
       }
       logSanitizedError('Failed to delete improvement suggestion', error)
       return NextResponse.json(
-        { error: 'Failed to delete improvement suggestion' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'improvement-suggestions/[id]',
+        }) ?? { error: 'Failed to delete improvement suggestion' },
         { status: 500 },
       )
     }

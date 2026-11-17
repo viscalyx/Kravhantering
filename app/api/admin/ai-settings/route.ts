@@ -13,13 +13,13 @@ import {
 } from '@/lib/ai/generation-availability'
 import { clearAiSafetyRuleSetCache } from '@/lib/dal/ai-safety-rules'
 import {
-  formatAiSettingsLoadError,
   getAdminAiSettings,
   patchAiGenerationSettings,
   updateAiGenerationSettings,
 } from '@/lib/dal/ai-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -114,12 +114,12 @@ async function getHandler(request: Request) {
       const { body, status } = toHttpErrorPayload(error)
       return NextResponse.json(body, { status })
     }
-    console.error(
-      'Failed to load admin AI settings',
-      formatAiSettingsLoadError(error),
-    )
+    logSanitizedError('Failed to load admin AI settings', error)
     return NextResponse.json(
-      { error: 'Failed to load AI settings.' },
+      reportSqlFailure(error, {
+        source: 'rest',
+        operation: 'admin/ai-settings',
+      }) ?? { error: 'Failed to load AI settings.' },
       { status: 500 },
     )
   }
@@ -163,12 +163,12 @@ export const PUT = secureMutationRoute({
         return NextResponse.json(body, { status })
       }
 
-      console.error(
-        'Failed to save admin AI settings',
-        formatAiSettingsLoadError(error),
-      )
+      logSanitizedError('Failed to save admin AI settings', error)
       return NextResponse.json(
-        { error: 'Failed to save AI settings.' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'admin/ai-settings',
+        }) ?? { error: 'Failed to save AI settings.' },
         { status: 500 },
       )
     }
@@ -201,12 +201,12 @@ export const PATCH = secureMutationRoute({
         return NextResponse.json(body, { status })
       }
 
-      console.error(
-        'Failed to update admin AI settings',
-        formatAiSettingsLoadError(error),
-      )
+      logSanitizedError('Failed to update admin AI settings', error)
       return NextResponse.json(
-        { error: 'Failed to save AI settings.' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'admin/ai-settings',
+        }) ?? { error: 'Failed to save AI settings.' },
         { status: 500 },
       )
     }

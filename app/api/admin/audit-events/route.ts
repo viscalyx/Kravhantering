@@ -10,7 +10,7 @@ import { isValidClientIp } from '@/lib/auth/client-ip'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { runBoundedCsvOutput } from '@/lib/generated-output/csv-runner'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import { parseSearchParams } from '@/lib/http/validation'
 import { createRequestContext } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
@@ -137,7 +137,10 @@ async function getHandler(request: NextRequest) {
     }
     logSanitizedError('Failed to list action log events', error)
     return NextResponse.json(
-      { error: 'Failed to list action log events' },
+      reportSqlFailure(error, {
+        source: 'rest',
+        operation: 'admin/audit-events',
+      }) ?? { error: 'Failed to list action log events' },
       { status: 500 },
     )
   }

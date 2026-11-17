@@ -4,7 +4,7 @@ import {
   createSpecificationLocalRequirement,
   getSpecificationById,
 } from '@/lib/dal/requirements-specifications'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
@@ -74,7 +74,10 @@ export const POST = secureMutationRoute({
         error,
       )
       return NextResponse.json(
-        { error: 'Failed to create specification-local requirement' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'requirements-specifications/[id]/local-requirements',
+        }) ?? { error: 'Failed to create specification-local requirement' },
         { status: 500 },
       )
     }

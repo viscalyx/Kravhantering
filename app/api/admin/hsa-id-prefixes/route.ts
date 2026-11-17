@@ -3,13 +3,13 @@ import { z } from 'zod'
 import { withPrivilegedMutationAudit } from '@/lib/admin/privileged-audit'
 import { isHsaIdPrefix } from '@/lib/auth/hsa-id'
 import {
-  formatUiSettingsLoadError,
   HsaIdPrefixSettingsError,
   listHsaIdPrefixesForAdmin,
   updateHsaIdPrefixes,
 } from '@/lib/dal/ui-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -67,12 +67,12 @@ async function getHandler(request: Request) {
       const { body, status } = toHttpErrorPayload(error)
       return NextResponse.json(body, { status })
     }
-    console.error(
-      'Failed to load admin HSA-id prefixes',
-      formatUiSettingsLoadError(error),
-    )
+    logSanitizedError('Failed to load admin HSA-id prefixes', error)
     return NextResponse.json(
-      { error: 'Failed to load HSA-id prefixes.' },
+      reportSqlFailure(error, {
+        source: 'rest',
+        operation: 'admin/hsa-id-prefixes',
+      }) ?? { error: 'Failed to load HSA-id prefixes.' },
       { status: 500 },
     )
   }
@@ -110,12 +110,12 @@ export const PUT = secureMutationRoute({
           { status },
         )
       }
-      console.error(
-        'Failed to save HSA-id prefixes',
-        formatUiSettingsLoadError(error),
-      )
+      logSanitizedError('Failed to save HSA-id prefixes', error)
       return NextResponse.json(
-        { error: 'Failed to save HSA-id prefixes.' },
+        reportSqlFailure(error, {
+          source: 'rest',
+          operation: 'admin/hsa-id-prefixes',
+        }) ?? { error: 'Failed to save HSA-id prefixes.' },
         { status: 500 },
       )
     }

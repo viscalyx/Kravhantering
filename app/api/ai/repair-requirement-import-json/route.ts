@@ -18,6 +18,7 @@ import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   AI_PROVIDER_UNAVAILABLE_MESSAGE,
   logSanitizedError,
+  reportSqlFailure,
 } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
@@ -90,10 +91,11 @@ function aiRepairRequestBytesExceededResponse(): NextResponse {
 
 function unavailable(
   context: Parameters<typeof applyResponseCorrelationHeaders>[1],
+  cause?: unknown,
 ) {
   return applyResponseCorrelationHeaders(
     Response.json(
-      {
+      reportSqlFailure(cause, { ...context, source: 'rest' }) ?? {
         code: 'ai_provider_unavailable',
         error: AI_PROVIDER_UNAVAILABLE_MESSAGE,
       },
@@ -163,7 +165,7 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
         error,
       )
       recordTerminal('failure', 503)
-      return unavailable(context)
+      return unavailable(context, error)
     }
 
     const inputGuardResponse = await guardAiInput({
@@ -175,7 +177,7 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
       onSafetyFilterFailure: error => {
         logSanitizedError('AI requirement import repair safety failed', error)
         recordTerminal('failure', 503)
-        return unavailable(context)
+        return unavailable(context, error)
       },
       operation: AI_REPAIR_REQUIREMENT_IMPORT_OPERATION,
       parts: [
@@ -207,7 +209,7 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
         error,
       )
       recordTerminal('failure', 503)
-      return unavailable(context)
+      return unavailable(context, error)
     }
 
     let runtime: AiAuthoringRuntime
@@ -216,7 +218,7 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
     } catch (error) {
       logSanitizedError('AI authoring runtime unavailable', error)
       recordTerminal('failure', 503)
-      return unavailable(context)
+      return unavailable(context, error)
     }
     const run = runtime.run({
       context: {
@@ -255,6 +257,7 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
       type: 'repair_invalid_import_json',
     })
 
+    let runFailure: unknown
     try {
       for await (const event of run) {
         if (event.type === 'completed') {
@@ -351,6 +354,7 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
         }
       }
     } catch (error) {
+      runFailure = error
       const profileError = aiRunProfileError(error, body.locale)
       if (profileError) {
         recordTerminal('failure', 503)
@@ -370,6 +374,6 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
           new Response(null, { status: 499 }),
           context,
         )
-      : unavailable(context)
+      : unavailable(context, runFailure)
   },
 })
