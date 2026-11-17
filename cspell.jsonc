@@ -4,6 +4,7 @@
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
     "skärmläsarkontrollen",
+    "zstd",
     "EABORT",
     "EREQUEST",
     "ESOCKET",

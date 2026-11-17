@@ -355,6 +355,12 @@ If a local MCP token lacks this claim, reset the IdP to import the current
 realm JSON. The application does not derive a replacement identity from
 `client_id` or `azp`; MCP tokens must carry a real-format `employeeHsaId`.
 
+The development realm issues MCP tokens with a four-minute lifespan, below
+the application's five-minute maximum. This leaves room for Keycloak to
+calculate issuance and expiry at different times. After updating the realm,
+use `npm run idp:reset` to import it; this resets local IdP data. Acquire a
+fresh token before each local MCP scan.
+
 ### No refresh tokens
 
 Browser sessions intentionally do **not** carry a refresh token. When

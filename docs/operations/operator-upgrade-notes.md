@@ -13,6 +13,21 @@ changes.
 
 ## Unreleased
 
+### SQL Server CU11 image and recovery monitoring
+
+The bundled database uses SQL Server 2025 CU11, build 17.0.5065.9. Before
+rollout, verify that the deployment host can load the new image. Its OCI layers
+use zstd compression. For disconnected sites, test archive import and verify
+the image identity before the maintenance window. Back up the database and
+retain the tested recovery set. After replacement, verify the engine build,
+database readiness, and application reads and writes before opening traffic.
+
+If the installed source uses CU10, review external monitoring that queries
+active database requests during recovery. Avoid these queries during recovery
+or apply the mitigation in the
+[CU10 known issues](https://support.microsoft.com/en-gb/servicing/sql/sql-server-2025/cumulative-update/kb5125471-cu10).
+Confirm that databases complete recovery before normal monitoring resumes.
+
 ### Scheduled cleanup evidence
 
 Update cleanup monitoring to retain deletion-count status and reporting outcomes.
