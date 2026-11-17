@@ -4,6 +4,10 @@ import type {
 } from './requirement-import-validation-sessions'
 
 export type TransientCleanupOutcome = 'failure' | 'success'
+export type TransientCleanupDeletionCountStatus =
+  | 'complete'
+  | 'incomplete'
+  | 'uncertain'
 export type TransientCleanupTargetOutcome =
   | TransientCleanupOutcome
   | 'not_applicable'
@@ -17,6 +21,7 @@ export interface TransientCleanupTarget {
 
 export interface TransientCleanupLogEvent {
   deletedRows: number
+  deletionCountStatus: TransientCleanupDeletionCountStatus
   durationMs: number
   event:
     | 'transient_cleanup.run.completed'
@@ -29,10 +34,12 @@ export interface TransientCleanupLogEvent {
   operation: 'transient_state_cleanup'
   outcome: TransientCleanupTargetOutcome
   remainingExpiredRowCount: number | null
+  reportingOutcome?: TransientCleanupOutcome
 }
 
 export interface TransientCleanupTargetResult {
   deletedRows: number
+  deletionCountStatus: TransientCleanupDeletionCountStatus
   durationMs: number
   failureCode?: 'target_execution_failed'
   initialExpiredRowCount: number | null
@@ -45,8 +52,10 @@ export interface TransientCleanupTargetResult {
 
 export interface TransientCleanupRunResult {
   deletedRows: number
+  deletionCountStatus: TransientCleanupDeletionCountStatus
   durationMs: number
   outcome: TransientCleanupOutcome
+  reportingOutcome: TransientCleanupOutcome
   targets: TransientCleanupTargetResult[]
 }
 
@@ -60,11 +69,13 @@ export interface TransientCleanupRunOptions {
 function recordSafely(
   record: TransientCleanupRunOptions['record'],
   event: TransientCleanupLogEvent,
-): void {
+): boolean {
   try {
     record?.(event)
+    return true
   } catch {
     // Cleanup must not fail because its telemetry destination is unavailable.
+    return false
   }
 }
 
@@ -104,6 +115,7 @@ export async function runTransientStateCleanup(
     Number.MAX_SAFE_INTEGER,
   )
   const results: TransientCleanupTargetResult[] = []
+  let reportingOutcome: TransientCleanupOutcome = 'success'
 
   for (const target of targets) {
     const targetStartedAt = Date.now()
@@ -112,6 +124,8 @@ export async function runTransientStateCleanup(
     let current: ExpiredTransientStateBacklog | null = null
     let outcome: TransientCleanupTargetOutcome = 'success'
     let failureCode: 'target_execution_failed' | undefined
+    let deletionCountStatus: TransientCleanupDeletionCountStatus = 'complete'
+    let purgePending = false
 
     try {
       if (target.isApplicable && !(await target.isApplicable())) {
@@ -128,7 +142,9 @@ export async function runTransientStateCleanup(
             estimatedExpiredRowCount - backlogTarget,
           )
           attemptedPurge = true
+          purgePending = true
           const batch = await target.purgeBatch(limit)
+          purgePending = false
           const boundedDeletedRows = boundedInteger(batch.deletedRows, 0, limit)
           deletedRows += boundedDeletedRows
           remainingWork -= boundedDeletedRows
@@ -140,11 +156,17 @@ export async function runTransientStateCleanup(
     } catch {
       outcome = 'failure'
       failureCode = 'target_execution_failed'
+      deletionCountStatus = purgePending
+        ? 'uncertain'
+        : initial === null
+          ? 'incomplete'
+          : 'complete'
       current = await inspectAfterFailure(target)
     }
 
     const targetResult: TransientCleanupTargetResult = {
       deletedRows,
+      deletionCountStatus,
       durationMs: Date.now() - targetStartedAt,
       ...(failureCode ? { failureCode } : {}),
       initialExpiredRowCount: initial?.expiredRowCount ?? null,
@@ -155,8 +177,9 @@ export async function runTransientStateCleanup(
       remainingExpiredRowCount: current?.expiredRowCount ?? null,
     }
     results.push(targetResult)
-    recordSafely(options.record, {
+    const recorded = recordSafely(options.record, {
       deletedRows,
+      deletionCountStatus,
       durationMs: targetResult.durationMs,
       event: 'transient_cleanup.target.completed',
       expiredRowCount: initial?.expiredRowCount ?? null,
@@ -168,6 +191,7 @@ export async function runTransientStateCleanup(
       outcome,
       remainingExpiredRowCount: current?.expiredRowCount ?? null,
     })
+    if (!recorded) reportingOutcome = 'failure'
   }
 
   const outcome = results.some(result => result.outcome === 'failure')
@@ -175,12 +199,21 @@ export async function runTransientStateCleanup(
     : 'success'
   const result: TransientCleanupRunResult = {
     deletedRows: results.reduce((sum, target) => sum + target.deletedRows, 0),
+    deletionCountStatus: results.some(
+      target => target.deletionCountStatus === 'uncertain',
+    )
+      ? 'uncertain'
+      : results.some(target => target.deletionCountStatus === 'incomplete')
+        ? 'incomplete'
+        : 'complete',
     durationMs: Date.now() - startedAt,
     outcome,
+    reportingOutcome,
     targets: results,
   }
-  recordSafely(options.record, {
+  const recorded = recordSafely(options.record, {
     deletedRows: result.deletedRows,
+    deletionCountStatus: result.deletionCountStatus,
     durationMs: result.durationMs,
     event: 'transient_cleanup.run.completed',
     expiredRowCount: null,
@@ -189,7 +222,9 @@ export async function runTransientStateCleanup(
     oldestExpiredAgeMs: null,
     operation: 'transient_state_cleanup',
     outcome,
+    reportingOutcome,
     remainingExpiredRowCount: null,
   })
+  if (!recorded) result.reportingOutcome = 'failure'
   return result
 }

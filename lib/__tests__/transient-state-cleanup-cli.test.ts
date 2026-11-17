@@ -491,14 +491,14 @@ describe('transient cleanup command', () => {
     })
   })
 
-  it('fails safely when connection cleanup fails after a successful run', async () => {
+  it('retains deletion evidence when connection cleanup fails after a successful run', async () => {
     const output: string[] = []
     const exitCode = await runTransientCleanupCommand([], {
       connect: vi.fn().mockResolvedValue({
         destroy: vi.fn().mockRejectedValue(new Error('database secret')),
         executor: { query: vi.fn() },
       }),
-      createTargets: () => [],
+      createTargets: () => [target(3)],
       env: {},
       write: line => output.push(line),
     })
@@ -507,10 +507,36 @@ describe('transient cleanup command', () => {
     expect(output.map(line => JSON.parse(line))).toContainEqual(
       expect.objectContaining({
         failure_code: 'runner_execution_failed',
+        deleted_rows: 3,
+        deletion_count_status: 'complete',
         outcome: 'failure',
       }),
     )
     expect(output.join('\n')).not.toContain('database secret')
+  })
+
+  it('continues cleanup after a reporting failure and reports incomplete delivery', async () => {
+    const output: string[] = []
+    let writes = 0
+    const exitCode = await runTransientCleanupCommand([], {
+      connect: async () => ({
+        destroy: async () => {},
+        executor: { query: vi.fn() },
+      }),
+      createTargets: () => [target(2), target(1)],
+      env: {},
+      write: line => {
+        if (++writes === 1) throw new Error('reporting unavailable')
+        output.push(line)
+      },
+    })
+    expect(exitCode).toBe(1)
+    expect(JSON.parse(output.at(-1) ?? '{}')).toMatchObject({
+      deleted_rows: 3,
+      deletion_count_status: 'complete',
+      outcome: 'success',
+      reporting_outcome: 'failure',
+    })
   })
 
   it('writes through the platform console by default', async () => {

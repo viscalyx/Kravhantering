@@ -174,7 +174,21 @@ journalctl --user -u kravhantering-host-cleanup.service \
 
 Each target emits `kind`, `outcome`, `expired_row_count`,
 `expired_stored_bytes`, `oldest_expired_age_ms`, `deleted_rows`,
-`remaining_expired_row_count` and `duration_ms`. An absent target reports
+`deletion_count_status`, `remaining_expired_row_count` and `duration_ms`.
+`deleted_rows` retains the target's acknowledged batch counts. Interpret
+`deletion_count_status` as follows:
+
+- `complete`: every attempted batch returned its count. This does not mean
+  that all expired data is removed. Forensic cleanup retains its existing
+  count of evidence deletions or completed capture work.
+- `incomplete`: a target could not be inspected or verified. The run total
+  covers only the targets that could execute.
+- `uncertain`: a batch failed before its result was received. Earlier
+  acknowledged counts remain available, but the failed batch can have committed
+  additional work. Do not derive an exact deletion total from backlog changes;
+  other workers and new expirations can also change the backlog.
+
+An absent target reports
 `not_applicable` with zero deletions and null backlog values. All of its tables
 must be absent; partial schemas, views in place of tables, hidden metadata,
 missing columns, permission errors and connection errors remain failures.
@@ -185,6 +199,13 @@ contract or runner failure emits `runner_execution_failed`. Events do not
 contain stored tokens, hashes, destinations, payloads, validation or execution
 results, forensic evidence, identities or raw database errors. The schema
 verification command adds only a schema head and aggregate outcomes.
+
+The run event also reports `reporting_outcome`. A reporting failure preserves
+the known execution result and counts, continues independent targets, and
+returns a nonzero command status. A failed reporting destination can lose events,
+including the final run event. Use the service exit status as well as its logs.
+A connection-close or later command failure retains acknowledged counts in the
+failure event; a nonzero exit status does not establish rollback.
 
 Shared model verification attempts expire after 15 minutes. Cleanup skips
 rows locked by an admitted save transaction, even after expiry. Their backlog
@@ -267,6 +288,13 @@ Retry uses the same verified service and work limits. Completed batches remain
 committed, and subsequent runs continue from the remaining backlog. Overlapping
 hosts and manual retry remain idempotent and concurrency-safe. Do not repair
 this condition with unbounded SQL deletion.
+
+For an uncertain batch result, let the next verified scheduled run inspect the
+remaining expired data and apply the target's normal cleanup rules. This is
+safe target-specific recovery; it does not reconstruct an exact total for the
+earlier run. If final backlog inspection fails, the remaining count is null
+while acknowledged deletion counts remain available. Correct any persistent
+inspection or reporting fault and confirm a later successful service result.
 
 ## Disconnected Hosts
 

@@ -74,6 +74,7 @@ describe('transient state cleanup runner', () => {
     expect(result).toMatchObject({ outcome: 'success' })
     expect(result.targets[0]).toMatchObject({
       deletedRows: 220,
+      deletionCountStatus: 'complete',
       initialExpiredRowCount: 250,
       outcome: 'success',
       remainingExpiredRowCount: 30,
@@ -142,12 +143,54 @@ describe('transient state cleanup runner', () => {
 
     expect(first.targets[0]).toMatchObject({
       deletedRows: 2,
+      deletionCountStatus: 'uncertain',
       outcome: 'failure',
     })
     expect(second.targets[0]).toMatchObject({
       deletedRows: 1,
+      deletionCountStatus: 'complete',
       outcome: 'success',
       remainingExpiredRowCount: 0,
+    })
+  })
+
+  it('retains acknowledged counts after a lost batch response and continues other targets', async () => {
+    const target = createBacklogTarget(5)
+    const purge = target.purgeBatch
+    let batches = 0
+    target.purgeBatch = async limit => {
+      const result = await purge(limit)
+      if (++batches === 2) throw new Error('response lost after commit')
+      return result
+    }
+    const independent = createBacklogTarget(1)
+    const first = await runTransientStateCleanup([target, independent], {
+      backlogTarget: 0,
+      batchSize: 2,
+      workLimit: 10,
+    })
+    expect(first).toMatchObject({
+      deletedRows: 3,
+      deletionCountStatus: 'uncertain',
+      outcome: 'failure',
+      targets: [
+        {
+          deletedRows: 2,
+          deletionCountStatus: 'uncertain',
+          remainingExpiredRowCount: 1,
+        },
+        { deletedRows: 1, deletionCountStatus: 'complete', outcome: 'success' },
+      ],
+    })
+    const next = await runTransientStateCleanup([target], {
+      backlogTarget: 0,
+      batchSize: 2,
+      workLimit: 10,
+    })
+    expect(next).toMatchObject({
+      deletedRows: 1,
+      deletionCountStatus: 'complete',
+      targets: [{ remainingExpiredRowCount: 0 }],
     })
   })
 
@@ -199,10 +242,52 @@ describe('transient state cleanup runner', () => {
       workLimit: Number.NaN,
     })
 
-    expect(result).toMatchObject({ outcome: 'failure' })
+    expect(result).toMatchObject({
+      outcome: 'failure',
+      deletionCountStatus: 'incomplete',
+      reportingOutcome: 'failure',
+    })
     expect(result.targets[0]).toMatchObject({
       initialExpiredRowCount: null,
       remainingExpiredRowCount: null,
+    })
+  })
+
+  it('retains complete acknowledged counts when final backlog inspection fails', async () => {
+    const target = createBacklogTarget(2)
+    const initialInspect = target.inspect
+    let inspections = 0
+    target.inspect = async () => {
+      if (++inspections > 1) throw new Error('inspection unavailable')
+      return initialInspect()
+    }
+    const result = await runTransientStateCleanup([target], {
+      backlogTarget: 0,
+      batchSize: 2,
+      workLimit: 10,
+    })
+    expect(result).toMatchObject({
+      outcome: 'failure',
+      deletedRows: 2,
+      deletionCountStatus: 'complete',
+      targets: [{ remainingExpiredRowCount: null }],
+    })
+  })
+
+  it('reports delivery failure even when only the final run event cannot be delivered', async () => {
+    const result = await runTransientStateCleanup([createBacklogTarget(2)], {
+      backlogTarget: 0,
+      batchSize: 2,
+      workLimit: 10,
+      record: event => {
+        if (event.kind === 'all') throw new Error('report unavailable')
+      },
+    })
+    expect(result).toMatchObject({
+      outcome: 'success',
+      deletedRows: 2,
+      deletionCountStatus: 'complete',
+      reportingOutcome: 'failure',
     })
   })
 })

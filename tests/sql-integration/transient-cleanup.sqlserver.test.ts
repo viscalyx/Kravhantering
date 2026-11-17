@@ -265,6 +265,78 @@ describe('transient cleanup against SQL Server', () => {
     expect(remaining).toEqual([{ submittedPayloadJson: '{"active":true}' }])
   })
 
+  it.each(['before_delete', 'after_delete'] as const)(
+    'retains committed batches and isolates a later %s failure until the next run',
+    async failurePoint => {
+      await insertSessions(appDb())
+      await appDb().query(`
+        DECLARE @now datetime2(3) = SYSUTCDATETIME();
+        INSERT INTO requirement_import_validation_rate_buckets (
+          principal_fingerprint, window_started_at, successful_creations,
+          expires_at, created_at, updated_at
+        ) VALUES (REPLICATE(N'a', 64), DATEADD(minute, -20, @now), 3,
+          DATEADD(minute, -10, @now), DATEADD(minute, -20, @now), @now)
+      `)
+      const targets = createTransientCleanupTargets(appDb())
+      const sessions = targets.find(
+        target => target.kind === 'requirement_import_validation_sessions',
+      )
+      const rates = targets.find(
+        target => target.kind === 'requirement_import_validation_rate_buckets',
+      )
+      if (!sessions || !rates) throw new Error('missing cleanup fixture target')
+      let batches = 0
+      const failingSessions = {
+        ...sessions,
+        async purgeBatch(limit: number) {
+          batches += 1
+          if (batches === 2 && failurePoint === 'before_delete')
+            throw new Error('batch unavailable')
+          const result = await sessions.purgeBatch(limit)
+          if (batches === 2) throw new Error('response lost after deletion')
+          return result
+        },
+      }
+      const first = await runTransientStateCleanup([failingSessions, rates], {
+        batchSize: 1,
+        workLimit: 10,
+        backlogTarget: 0,
+      })
+      expect(first).toMatchObject({
+        deletedRows: 2,
+        deletionCountStatus: 'uncertain',
+        outcome: 'failure',
+        targets: [
+          {
+            deletedRows: 1,
+            deletionCountStatus: 'uncertain',
+            remainingExpiredRowCount: failurePoint === 'before_delete' ? 2 : 1,
+          },
+          { deletedRows: 1, outcome: 'success', remainingExpiredRowCount: 0 },
+        ],
+      })
+      const second = await runTransientStateCleanup([sessions, rates], {
+        batchSize: 1,
+        workLimit: 10,
+        backlogTarget: 0,
+      })
+      expect(second).toMatchObject({
+        deletedRows: failurePoint === 'before_delete' ? 2 : 1,
+        deletionCountStatus: 'complete',
+        outcome: 'success',
+        targets: [
+          { remainingExpiredRowCount: 0 },
+          { remainingExpiredRowCount: 0 },
+        ],
+      })
+      expect(
+        await appDb().query(
+          'SELECT submitted_payload_json AS payload FROM requirement_import_validation_sessions',
+        ),
+      ).toEqual([{ payload: '{"active":true}' }])
+    },
+  )
+
   it('purges expired creation-rate buckets while preserving active windows', async () => {
     await appDb().query(`
       DECLARE @now datetime2(3) = SYSUTCDATETIME();
