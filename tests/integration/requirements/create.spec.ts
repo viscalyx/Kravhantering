@@ -55,29 +55,42 @@ test.describe('Requirement creation', () => {
     test(`LIFE-01D: new requirement preserves input on declined ${departure} and leaves on confirmation`, async ({
       page,
     }) => {
-      await page.goto('/sv/requirements')
-      await page.getByRole('link', { name: 'Nytt krav', exact: true }).click()
-      await page.locator('#description').fill('Min osparade kravtext')
-      await page.locator('#acceptanceCriteria').fill('Mitt acceptanskriterium')
-      await page.locator('#areaId').selectOption({ index: 1 })
-      const area = await page.locator('#areaId').inputValue()
-      await page
-        .getByRole('checkbox', { name: 'Verifierbar', exact: true })
-        .check()
-      await page.locator('#verificationMethod').fill('Kontrollera resultatet')
-      await page
-        .getByRole('button', { name: 'Välj kravpaket', exact: true })
-        .click()
       const picker = page.getByRole('dialog', {
         name: 'Välj kravpaket',
         exact: true,
       })
-      const option = picker.getByRole('checkbox').first()
-      const packageName = await option.getAttribute('aria-label')
-      if (!packageName) throw new Error('The package option needs a name')
-      await option.check()
-      await picker.getByRole('button', { name: 'Välj', exact: true }).click()
-      await expect(picker).toBeHidden()
+      const { area, packageName } =
+        await test.step('prepare the form', async () => {
+          await page.goto('/sv/requirements')
+          await page
+            .getByRole('link', { name: 'Nytt krav', exact: true })
+            .click()
+          await page.locator('#description').fill('Min osparade kravtext')
+          await page
+            .locator('#acceptanceCriteria')
+            .fill('Mitt acceptanskriterium')
+          await page.locator('#areaId').selectOption({ index: 1 })
+          const area = await page.locator('#areaId').inputValue()
+          await page
+            .getByRole('checkbox', { name: 'Verifierbar', exact: true })
+            .check()
+          await page
+            .locator('#verificationMethod')
+            .fill('Kontrollera resultatet')
+          await page
+            .getByRole('button', { name: 'Välj kravpaket', exact: true })
+            .click()
+          const option = picker.getByRole('checkbox').first()
+          const packageName = await option.getAttribute('aria-label')
+          if (!packageName) throw new Error('The package option needs a name')
+          await option.check()
+          await picker
+            .getByRole('button', { name: 'Välj', exact: true })
+            .click()
+          await expect(picker).toBeHidden()
+
+          return { area, packageName }
+        })
 
       const leave = async () => {
         if (departure === 'Back')
@@ -95,57 +108,65 @@ test.describe('Requirement creation', () => {
             .click()
       }
 
-      await leave()
       const confirmation = page.getByRole('alertdialog')
-      await expect(confirmation).toContainText('Du har osparade ändringar')
-      await confirmation
-        .getByRole('button', { name: 'Avbryt', exact: true })
-        .click()
-      await expect(confirmation).toBeHidden()
-      await expect(page).toHaveURL(/\/sv\/requirements\/new$/)
-      await expect(page.locator('#description')).toHaveValue(
-        'Min osparade kravtext',
-      )
-      await expect(page.locator('#acceptanceCriteria')).toHaveValue(
-        'Mitt acceptanskriterium',
-      )
-      await expect(page.locator('#areaId')).toHaveValue(area)
-      await expect(
-        page.getByRole('checkbox', { name: 'Verifierbar', exact: true }),
-      ).toBeChecked()
-      await expect(page.locator('#verificationMethod')).toHaveValue(
-        'Kontrollera resultatet',
-      )
-      await page
-        .getByRole('button', { name: 'Välj kravpaket', exact: true })
-        .click()
-      await expect(
-        picker.getByRole('checkbox', { name: packageName, exact: true }),
-      ).toBeChecked()
-      await picker.getByRole('button', { name: 'Avbryt', exact: true }).click()
-      await expect(picker).toBeHidden()
-
-      await leave()
-      await confirmation
-        .getByRole('button', { name: 'Bekräfta', exact: true })
-        .click()
-      const destination =
-        departure === 'link'
-          ? /\/sv\/specifications$/
-          : departure === 'language'
-            ? /\/en\/requirements\/new$/
-            : /\/sv\/requirements$/
-      await expect(page).toHaveURL(destination)
-      await expect(confirmation).toBeHidden()
-      if (departure === 'language') {
-        await page.locator('#description').fill('Unsaved requirement text')
-        await page.getByRole('button', { name: 'Switch language' }).click()
-        await expect(confirmation).toContainText('You have unsaved changes')
+      await test.step('decline departure', async () => {
+        await leave()
+        await expect(confirmation).toContainText('Du har osparade ändringar')
         await confirmation
-          .getByRole('button', { name: 'Confirm', exact: true })
+          .getByRole('button', { name: 'Avbryt', exact: true })
           .click()
+        await expect(confirmation).toBeHidden()
+      })
+      await test.step('check retained values', async () => {
         await expect(page).toHaveURL(/\/sv\/requirements\/new$/)
-      }
+        await expect(page.locator('#description')).toHaveValue(
+          'Min osparade kravtext',
+        )
+        await expect(page.locator('#acceptanceCriteria')).toHaveValue(
+          'Mitt acceptanskriterium',
+        )
+        await expect(page.locator('#areaId')).toHaveValue(area)
+        await expect(
+          page.getByRole('checkbox', { name: 'Verifierbar', exact: true }),
+        ).toBeChecked()
+        await expect(page.locator('#verificationMethod')).toHaveValue(
+          'Kontrollera resultatet',
+        )
+        await page
+          .getByRole('button', { name: 'Välj kravpaket', exact: true })
+          .click()
+        await expect(
+          picker.getByRole('checkbox', { name: packageName, exact: true }),
+        ).toBeChecked()
+        await picker
+          .getByRole('button', { name: 'Avbryt', exact: true })
+          .click()
+        await expect(picker).toBeHidden()
+      })
+
+      await test.step('confirm departure', async () => {
+        await leave()
+        await confirmation
+          .getByRole('button', { name: 'Bekräfta', exact: true })
+          .click()
+        const destination =
+          departure === 'link'
+            ? /\/sv\/specifications$/
+            : departure === 'language'
+              ? /\/en\/requirements\/new$/
+              : /\/sv\/requirements$/
+        await expect(page).toHaveURL(destination)
+        await expect(confirmation).toBeHidden()
+        if (departure === 'language') {
+          await page.locator('#description').fill('Unsaved requirement text')
+          await page.getByRole('button', { name: 'Switch language' }).click()
+          await expect(confirmation).toContainText('You have unsaved changes')
+          await confirmation
+            .getByRole('button', { name: 'Confirm', exact: true })
+            .click()
+          await expect(page).toHaveURL(/\/sv\/requirements\/new$/)
+        }
+      })
     })
   }
 
@@ -153,123 +174,258 @@ test.describe('Requirement creation', () => {
     page,
   }) => {
     for (const restore of [false, true]) {
-      await page.goto('/sv/requirements')
-      await page.getByRole('link', { name: 'Nytt krav', exact: true }).click()
-      if (restore) {
-        await page.locator('#acceptanceCriteria').fill('Tillfälligt kriterium')
-        await page.locator('#acceptanceCriteria').fill('   ')
-      }
-      await expect(
-        page.getByRole('button', { name: 'Spara', exact: true }),
-      ).toBeDisabled()
-      await page.getByRole('button', { name: 'Avbryt', exact: true }).click()
-      await expect(page).toHaveURL(/\/sv\/requirements$/)
-      await expect(page.getByRole('alertdialog')).toBeHidden()
+      await test.step('prepare a clean or restored form', async () => {
+        await page.goto('/sv/requirements')
+        await page.getByRole('link', { name: 'Nytt krav', exact: true }).click()
+        if (restore) {
+          await page
+            .locator('#acceptanceCriteria')
+            .fill('Tillfälligt kriterium')
+          await page.locator('#acceptanceCriteria').fill('   ')
+        }
+        await expect(
+          page.getByRole('button', { name: 'Spara', exact: true }),
+        ).toBeDisabled()
+      })
+      await test.step('leave without confirmation', async () => {
+        await page.getByRole('button', { name: 'Avbryt', exact: true }).click()
+        await expect(page).toHaveURL(/\/sv\/requirements$/)
+        await expect(page.getByRole('alertdialog')).toBeHidden()
+      })
     }
   })
 
   test('LIFE-01F: reload and tab close protect a new requirement until departure is accepted', async ({
     page,
   }) => {
-    await page.goto('/sv/requirements/new')
-    await page.locator('#acceptanceCriteria').fill('Mitt acceptanskriterium')
-    const pendingDialog = page.waitForEvent('dialog')
-    const reload = page.reload().catch(() => null)
-    const dialog = await pendingDialog
-    expect(dialog.type()).toBe('beforeunload')
-    await dialog.dismiss()
-    await reload
-    await expect(page.locator('#acceptanceCriteria')).toHaveValue(
-      'Mitt acceptanskriterium',
-    )
-
-    const acceptedDialog = page.waitForEvent('dialog')
-    const acceptedReload = page.reload()
-    await (await acceptedDialog).accept()
-    await acceptedReload
-    await expect(page.locator('#acceptanceCriteria')).toHaveValue('')
-
-    await page.locator('#description').fill('Kravtext innan fliken stängs')
-    const closeDialog = page.waitForEvent('dialog')
-    await page.close({ runBeforeUnload: true })
-    const closeConfirmation = await closeDialog
-    expect(closeConfirmation.type()).toBe('beforeunload')
-    await closeConfirmation.dismiss()
-    await expect(page.locator('#description')).toHaveValue(
-      'Kravtext innan fliken stängs',
-    )
-    const finalDialog = page.waitForEvent('dialog')
-    const closed = page.waitForEvent('close')
-    await page.close({ runBeforeUnload: true })
-    await (await finalDialog).accept()
-    await closed
+    await test.step('prepare unsaved input', async () => {
+      await page.goto('/sv/requirements/new')
+      await page.locator('#acceptanceCriteria').fill('Mitt acceptanskriterium')
+    })
+    await test.step('decline reload and retain input', async () => {
+      const pendingDialog = page.waitForEvent('dialog')
+      const reload = page.reload().catch(() => null)
+      const dialog = await pendingDialog
+      expect(dialog.type()).toBe('beforeunload')
+      await dialog.dismiss()
+      await reload
+      await expect(page.locator('#acceptanceCriteria')).toHaveValue(
+        'Mitt acceptanskriterium',
+      )
+    })
+    await test.step('confirm reload', async () => {
+      const acceptedDialog = page.waitForEvent('dialog')
+      const acceptedReload = page.reload()
+      await (await acceptedDialog).accept()
+      await acceptedReload
+      await expect(page.locator('#acceptanceCriteria')).toHaveValue('')
+    })
+    await test.step('decline tab close and retain input', async () => {
+      await page.locator('#description').fill('Kravtext innan fliken stängs')
+      const closeDialog = page.waitForEvent('dialog')
+      await page.close({ runBeforeUnload: true })
+      const closeConfirmation = await closeDialog
+      expect(closeConfirmation.type()).toBe('beforeunload')
+      await closeConfirmation.dismiss()
+      await expect(page.locator('#description')).toHaveValue(
+        'Kravtext innan fliken stängs',
+      )
+    })
+    await test.step('confirm tab close', async () => {
+      const finalDialog = page.waitForEvent('dialog')
+      const closed = page.waitForEvent('close')
+      await page.close({ runBeforeUnload: true })
+      await (await finalDialog).accept()
+      await closed
+    })
   })
 
   test('LIFE-01G: validation and failed creation preserve input and protection until successful save', async ({
     page,
   }) => {
-    await page.goto('/sv/requirements/new')
-    await page.locator('#description').fill('Kravtext som ska bevaras')
-    await page.getByRole('button', { name: 'Spara', exact: true }).click()
-    await expect(page.locator('#areaId')).toBeFocused()
-    await page.getByRole('button', { name: 'Avbryt', exact: true }).click()
     const confirmation = page.getByRole('alertdialog')
-    await confirmation
-      .getByRole('button', { name: 'Avbryt', exact: true })
-      .click()
-    await expect(confirmation).toBeHidden()
-    await page.locator('#areaId').selectOption({ index: 1 })
-    await page.route('**/api/requirements', route =>
-      route.request().method() === 'POST'
-        ? route.fulfill({ status: 500, json: { error: 'Save unavailable' } })
-        : route.continue(),
-    )
-    await page.getByRole('button', { name: 'Spara', exact: true }).click()
-    await expect(
-      page.getByRole('alert').filter({ hasText: 'Save unavailable' }),
-    ).toBeVisible()
-    await page.getByRole('button', { name: 'Byt språk' }).click()
-    await confirmation
-      .getByRole('button', { name: 'Avbryt', exact: true })
-      .click()
-    await expect(confirmation).toBeHidden()
-    await expect(page.locator('#description')).toHaveValue(
-      'Kravtext som ska bevaras',
-    )
-    await page.unroute('**/api/requirements')
-    await page.getByRole('button', { name: 'Spara', exact: true }).click()
-    await expect(page).toHaveURL(/\/sv\/requirements\?selected=/)
-    await expect(confirmation).toBeHidden()
-    await expect(
-      page.locator('[data-expanded-detail-cell="true"]').first(),
-    ).toContainText('Kravtext som ska bevaras')
+    await test.step('retain input after validation fails', async () => {
+      await page.goto('/sv/requirements/new')
+      await page.locator('#description').fill('Kravtext som ska bevaras')
+      await page.getByRole('button', { name: 'Spara', exact: true }).click()
+      await expect(page.locator('#areaId')).toBeFocused()
+      await page.getByRole('button', { name: 'Avbryt', exact: true }).click()
+      await confirmation
+        .getByRole('button', { name: 'Avbryt', exact: true })
+        .click()
+      await expect(confirmation).toBeHidden()
+    })
+    await test.step('retain input and protection after saving fails', async () => {
+      await page.locator('#areaId').selectOption({ index: 1 })
+      await page.route('**/api/requirements', route =>
+        route.request().method() === 'POST'
+          ? route.fulfill({ status: 500, json: { error: 'Save unavailable' } })
+          : route.continue(),
+      )
+      await page.getByRole('button', { name: 'Spara', exact: true }).click()
+      await expect(
+        page.getByRole('alert').filter({ hasText: 'Save unavailable' }),
+      ).toBeVisible()
+      await page.getByRole('button', { name: 'Byt språk' }).click()
+      await confirmation
+        .getByRole('button', { name: 'Avbryt', exact: true })
+        .click()
+      await expect(confirmation).toBeHidden()
+      await expect(page.locator('#description')).toHaveValue(
+        'Kravtext som ska bevaras',
+      )
+    })
+    await test.step('save successfully without a discard prompt', async () => {
+      await page.unroute('**/api/requirements')
+      await page.getByRole('button', { name: 'Spara', exact: true }).click()
+      await expect(page).toHaveURL(/\/sv\/requirements\?selected=/)
+      await expect(confirmation).toBeHidden()
+      await expect(
+        page.locator('[data-expanded-detail-cell="true"]').first(),
+      ).toContainText('Kravtext som ska bevaras')
+    })
   })
 
   test('LIFE-01H: a new form at the first history entry keeps input and protection after Cancel', async ({
     page,
     context,
   }) => {
-    await page.goto('/sv/requirements/new')
-    const session = await context.newCDPSession(page)
-    await session.send('Page.resetNavigationHistory')
-    await session.detach()
-    await page
-      .getByRole('checkbox', { name: 'Verifierbar', exact: true })
-      .check()
-    await page.evaluate(() => window.history.back())
-    await page.getByRole('button', { name: 'Avbryt', exact: true }).click()
     const confirmation = page.getByRole('alertdialog')
-    await confirmation
-      .getByRole('button', { name: 'Bekräfta', exact: true })
-      .click()
-    await expect(confirmation).toBeHidden()
-    await expect(page).toHaveURL(/\/sv\/requirements\/new$/)
-    await expect(
-      page.getByRole('checkbox', { name: 'Verifierbar', exact: true }),
-    ).toBeChecked()
-    expect(await page.evaluate(() => window.history.length)).toBe(1)
-    await page.getByRole('button', { name: 'Byt språk' }).click()
-    await expect(confirmation).toBeVisible()
+    await test.step('prepare the first history entry', async () => {
+      await page.goto('/sv/requirements/new')
+      const session = await context.newCDPSession(page)
+      await session.send('Page.resetNavigationHistory')
+      await session.detach()
+      await page
+        .getByRole('checkbox', { name: 'Verifierbar', exact: true })
+        .check()
+    })
+    await test.step('confirm Cancel without a back destination', async () => {
+      await page.evaluate(() => window.history.back())
+      await page.getByRole('button', { name: 'Avbryt', exact: true }).click()
+      await confirmation
+        .getByRole('button', { name: 'Bekräfta', exact: true })
+        .click()
+      await expect(confirmation).toBeHidden()
+      await expect(page).toHaveURL(/\/sv\/requirements\/new$/)
+      await expect(
+        page.getByRole('checkbox', { name: 'Verifierbar', exact: true }),
+      ).toBeChecked()
+      expect(await page.evaluate(() => window.history.length)).toBe(1)
+    })
+    await test.step('check later departure remains guarded', async () => {
+      await page.getByRole('button', { name: 'Byt språk' }).click()
+      await expect(confirmation).toBeVisible()
+    })
+  })
+
+  test('LIFE-01I: confirmed Cancel returns to a cross-origin predecessor', async ({
+    page,
+    baseURL,
+  }) => {
+    const previousUrl = 'https://previous.example.test/'
+    const unexpectedDialogs: string[] = []
+    page.on('dialog', async dialog => {
+      unexpectedDialogs.push(dialog.type())
+      await dialog.dismiss()
+    })
+    await test.step('open the form from another origin and enter text', async () => {
+      await page.route(previousUrl, route =>
+        route.fulfill({
+          contentType: 'text/html',
+          body: `<a href="${new URL('/sv/requirements/new', baseURL)}">Open requirement form</a>`,
+        }),
+      )
+      await page.goto(previousUrl)
+      await page.getByRole('link', { name: 'Open requirement form' }).click()
+      await page
+        .locator('#description')
+        .fill('Kravtext från en annan webbplats')
+      expect(await page.evaluate(() => window.navigation.canGoBack)).toBe(false)
+      expect(await page.evaluate(() => window.history.length)).toBeGreaterThan(
+        1,
+      )
+    })
+    const confirmation = page.getByRole('alertdialog')
+    await test.step('decline Cancel and retain the input', async () => {
+      await page.getByRole('button', { name: 'Avbryt', exact: true }).click()
+      await confirmation
+        .getByRole('button', { name: 'Avbryt', exact: true })
+        .click()
+      await expect(confirmation).toBeHidden()
+      await expect(page.locator('#description')).toHaveValue(
+        'Kravtext från en annan webbplats',
+      )
+    })
+    await test.step('confirm Cancel and return without a second prompt', async () => {
+      await page.getByRole('button', { name: 'Avbryt', exact: true }).click()
+      await confirmation
+        .getByRole('button', { name: 'Bekräfta', exact: true })
+        .click()
+      await expect(page).toHaveURL(previousUrl)
+      await expect(
+        page.getByRole('link', { name: 'Open requirement form' }),
+      ).toBeVisible()
+      expect(unexpectedDialogs).toEqual([])
+    })
+  })
+
+  test('LIFE-01J: fragment-only Cancel keeps later navigation and reload guarded', async ({
+    page,
+  }) => {
+    const confirmation = page.getByRole('alertdialog')
+    await test.step('prepare unsaved input and a fragment history entry', async () => {
+      await page.goto('/sv/requirements/new#description')
+      await page.locator('#description').fill('Kravtext som ska skyddas')
+      await page.evaluate(() => {
+        window.location.hash = 'acceptanceCriteria'
+      })
+      await expect(page).toHaveURL(/#acceptanceCriteria$/)
+    })
+    await test.step('confirm Cancel to the earlier fragment', async () => {
+      await page.getByRole('button', { name: 'Avbryt', exact: true }).click()
+      await confirmation
+        .getByRole('button', { name: 'Bekräfta', exact: true })
+        .click()
+      await expect(confirmation).toBeHidden()
+      await expect(page).toHaveURL(/\/requirements\/new#description$/)
+      await expect(page.locator('#description')).toHaveValue(
+        'Kravtext som ska skyddas',
+      )
+    })
+    const leave = () =>
+      page
+        .getByRole('navigation', { name: 'Huvudnavigation' })
+        .getByRole('link', { name: 'Kravunderlag', exact: true })
+        .click()
+    await test.step('decline later navigation and retain the input', async () => {
+      await leave()
+      await confirmation
+        .getByRole('button', { name: 'Avbryt', exact: true })
+        .click()
+      await expect(confirmation).toBeHidden()
+      await expect(page.locator('#description')).toHaveValue(
+        'Kravtext som ska skyddas',
+      )
+    })
+    await test.step('decline reload and retain the input', async () => {
+      const pendingDialog = page.waitForEvent('dialog')
+      const reload = page.reload().catch(() => null)
+      const dialog = await pendingDialog
+      expect(dialog.type()).toBe('beforeunload')
+      await dialog.dismiss()
+      await reload
+      await expect(page.locator('#description')).toHaveValue(
+        'Kravtext som ska skyddas',
+      )
+    })
+    await test.step('confirm later departure', async () => {
+      await leave()
+      await confirmation
+        .getByRole('button', { name: 'Bekräfta', exact: true })
+        .click()
+      await expect(page).toHaveURL(/\/sv\/specifications$/)
+    })
   })
 
   for (const viewport of [{ ...DESKTOP_VIEWPORT, label: 'desktop' }]) {

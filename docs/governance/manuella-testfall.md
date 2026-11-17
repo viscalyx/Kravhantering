@@ -1522,6 +1522,49 @@ och bekräfta kasseringen. Försök sedan byta språk.
 **Förväntat resultat:** Formuläret och markeringen finns kvar efter Bakåt
 och Avbryt. Språkbyte kräver fortfarande en kassering.
 
+### LIFE-01I: avbryt till en sida med annat ursprung
+
+**Syfte:** Kontrollera att Avbryt kan återgå till en annan webbplats.
+
+**Användare:** Administratör.
+
+**Förutsättningar:** En inloggad session och en sida på ett annat ursprung
+med en länk till `/sv/requirements/new`. Länken öppnas i samma flik.
+
+**Integrationstest:** [requirements/create.spec.ts](../../tests/integration/requirements/create.spec.ts),
+”LIFE-01I: confirmed Cancel returns to a cross-origin predecessor”.
+
+**Steg:** Följ länken och skriv kravtext. Välj `Avbryt` och neka kasseringen.
+Kontrollera texten. Välj `Avbryt` igen och bekräfta kasseringen.
+
+**Förväntat resultat:** Nekad kassering bevarar texten. Bekräftad kassering
+återgår till den föregående webbplatsen utan en andra bekräftelse.
+
+### LIFE-01J: behåll skyddet efter återgång till ett tidigare fragment
+
+**Syfte:** Kontrollera att en fragmentändring inte släpper formulärets skydd.
+
+**Användare:** Administratör.
+
+**Förutsättningar:** En inloggad session.
+
+**Integrationstest:** [requirements/create.spec.ts](../../tests/integration/requirements/create.spec.ts),
+”LIFE-01J: fragment-only Cancel keeps later navigation and reload guarded”.
+
+**Steg:**
+
+1. Öppna `/sv/requirements/new#description` och skriv kravtext.
+2. Ändra endast adressens fragment till `#acceptanceCriteria` utan omladdning.
+3. Välj `Avbryt` och bekräfta kasseringen.
+4. Följ länken `Kravunderlag` och neka kasseringen. Kontrollera texten.
+5. Försök ladda om och neka webbläsarens bekräftelse. Kontrollera texten.
+6. Följ `Kravunderlag` igen och bekräfta kasseringen.
+
+**Förväntat resultat:** Avbryt återgår till `#description` och behåller
+formuläret med texten. Senare navigering och omladdning kräver fortfarande
+bekräftelse. Nekad kassering bevarar texten; bekräftad navigering når
+kravunderlagslistan.
+
 ### LIFE-01A: referensdata återhämtas i kravbibliotekets kravformulär
 
 Detta testfall är manuellt endast enligt undantaget för issue `#510`. Det har

@@ -75,10 +75,13 @@ export function useUnsavedRequirementEdit(dirty: boolean) {
       })
     }
     const traverseHistory = async (event: NavigateEvent) => {
+      if (event.hashChange) {
+        navigationAllowed.current = false
+        return
+      }
       if (
         navigationAllowed.current ||
         event.navigationType !== 'traverse' ||
-        event.hashChange ||
         !event.cancelable
       )
         return
@@ -120,7 +123,9 @@ export function useUnsavedRequirementEdit(dirty: boolean) {
   }, [])
   const navigateBack = useCallback(
     (back: () => void) => {
-      if (dirty && !window.navigation.canGoBack) return
+      // Navigation API entries exclude cross-origin predecessors.
+      if (dirty && !window.navigation.canGoBack && window.history.length <= 1)
+        return
       navigationAllowed.current = true
       back()
     },

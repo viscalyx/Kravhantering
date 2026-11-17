@@ -88,6 +88,10 @@ including unbroken text. Forms and dialogs retain their own width limits.
   keeps the live form and its values. Confirming reaches the chosen
   destination without a second prompt. With no previous history entry,
   Back and Cancel keep the form and its protection.
+- Confirmed Cancel can return to a page from another origin even when the
+  Navigation API does not expose that predecessor. A fragment-only navigation
+  keeps the dirty form open and restores protection for subsequent navigation
+  and reload.
 - Reload and tab close use the browser's native unload confirmation where
   supported. Declining keeps the input; accepting departure discards it.
   Browser termination does not guarantee a prompt or recovery.

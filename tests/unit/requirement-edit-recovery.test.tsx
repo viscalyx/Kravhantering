@@ -162,6 +162,7 @@ async function compare(user: ReturnType<typeof userEvent.setup>) {
 describe('Requirement edit recovery', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(window.history, 'length', 'get').mockReturnValue(1)
     vi.stubGlobal('fetch', fetchMock)
     navigation = Object.assign(new EventTarget(), {
       canGoBack: true,
@@ -248,6 +249,7 @@ describe('Requirement edit recovery', () => {
   afterEach(() => {
     cleanup()
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   it('retains independent text and criterion changes and saves with the compared revision', async () => {
@@ -973,6 +975,59 @@ describe('Requirement edit recovery', () => {
     fireEvent(window, unload)
     expect(unload.defaultPrevented).toBe(true)
   })
+
+  it('allows confirmed Cancel when the previous history entry is outside the current origin', async () => {
+    navigation.canGoBack = false
+    vi.spyOn(window.history, 'length', 'get').mockReturnValue(2)
+    const user = await openEditor()
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Confirm',
+      }),
+    )
+    expect(back).toHaveBeenCalledOnce()
+    const unload = new Event('beforeunload', { cancelable: true })
+    fireEvent(window, unload)
+    expect(unload.defaultPrevented).toBe(false)
+  })
+
+  it.each(['push', 'traverse'])(
+    'guards later departure after confirmed Cancel only changes the fragment via %s',
+    async navigationType => {
+      const user = await openEditor()
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+      await user.click(
+        within(await screen.findByRole('alertdialog')).getByRole('button', {
+          name: 'Confirm',
+        }),
+      )
+      expect(back).toHaveBeenCalledOnce()
+      const fragment = Object.assign(
+        new Event('navigate', { cancelable: true }),
+        {
+          navigationType,
+          hashChange: true,
+        },
+      )
+      act(() => navigation.dispatchEvent(fragment))
+      expect(fragment.defaultPrevented).toBe(false)
+      const unload = new Event('beforeunload', { cancelable: true })
+      fireEvent(window, unload)
+      expect(unload.defaultPrevented).toBe(true)
+      await user.click(
+        screen.getByRole('link', { name: 'Requirements library' }),
+      )
+      await user.click(
+        within(await screen.findByRole('alertdialog')).getByRole('button', {
+          name: 'Cancel',
+        }),
+      )
+      expect(
+        screen.getByRole('textbox', { name: /^Requirement text/ }),
+      ).toHaveValue('Local text')
+    },
+  )
 
   it.each([
     { navigationType: 'push', hashChange: false, cancelable: true },
