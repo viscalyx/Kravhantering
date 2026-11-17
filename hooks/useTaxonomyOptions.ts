@@ -6,6 +6,7 @@ import {
   useAsyncResource,
 } from '@/hooks/useAsyncResource'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { readResponseMessage } from '@/lib/http/response-message'
 
 export interface TaxonomyOption {
   id: number
@@ -63,6 +64,7 @@ export type ReferenceDataCatalog =
 export interface ReferenceDataReadiness {
   canSave: boolean
   emptyRequiredCatalogs: ReferenceDataCatalog[]
+  errorMessages?: string[]
   failedCatalogs: ReferenceDataCatalog[]
   loadingCatalogs: ReferenceDataCatalog[]
   refreshFailedCatalogs: ReferenceDataCatalog[]
@@ -121,7 +123,7 @@ async function readCatalog<T>(
   property: string,
 ): Promise<T[]> {
   if (!response.ok) {
-    throw new Error('Reference data request failed')
+    throw new Error((await readResponseMessage(response)) ?? property)
   }
   const body = (await response.json()) as Record<string, unknown>
   const value = body[property]
@@ -173,7 +175,17 @@ export function createReferenceDataReadiness(
         resource.data.length === 0),
   )
 
+  const errorMessages = [
+    ...new Set(
+      resources.flatMap(({ catalog, resource }) => {
+        const message = resource.error ?? resource.refreshError
+        return message && message !== catalog ? [message] : []
+      }),
+    ),
+  ]
+
   return {
+    ...(errorMessages.length ? { errorMessages } : {}),
     canSave:
       emptyRequiredCatalogs.length === 0 &&
       resources.every(({ resource }) => resource.data !== undefined),
@@ -193,7 +205,11 @@ export function createReferenceDataReadiness(
 export function mergeReferenceDataReadiness(
   ...states: ReferenceDataReadiness[]
 ): ReferenceDataReadiness {
+  const errorMessages = [
+    ...new Set(states.flatMap(state => state.errorMessages ?? [])),
+  ]
   return {
+    ...(errorMessages.length ? { errorMessages } : {}),
     canSave: states.every(state => state.canSave),
     emptyRequiredCatalogs: states.flatMap(state => state.emptyRequiredCatalogs),
     failedCatalogs: states.flatMap(state => state.failedCatalogs),
@@ -226,7 +242,8 @@ export function useTaxonomyOptions(
         await apiFetch('/api/requirement-areas', { signal }),
         'areas',
       ),
-    getErrorMessage: () => 'areas',
+    getErrorMessage: error =>
+      error instanceof Error ? error.message : 'areas',
     key: 'requirement-form:areas',
   })
   const categoriesResource = useAsyncResource<TaxonomyOption[]>({
@@ -235,7 +252,8 @@ export function useTaxonomyOptions(
         await apiFetch('/api/requirement-categories', { signal }),
         'categories',
       ),
-    getErrorMessage: () => 'categories',
+    getErrorMessage: error =>
+      error instanceof Error ? error.message : 'categories',
     key: 'requirement-form:categories',
   })
   const typesResource = useAsyncResource<TaxonomyOption[]>({
@@ -244,7 +262,8 @@ export function useTaxonomyOptions(
         await apiFetch('/api/requirement-types', { signal }),
         'types',
       ),
-    getErrorMessage: () => 'types',
+    getErrorMessage: error =>
+      error instanceof Error ? error.message : 'types',
     key: 'requirement-form:types',
   })
   const requirementPackagesResource = useAsyncResource<
@@ -262,7 +281,8 @@ export function useTaxonomyOptions(
         ),
         'requirementPackages',
       ),
-    getErrorMessage: () => 'requirementPackages',
+    getErrorMessage: error =>
+      error instanceof Error ? error.message : 'requirementPackages',
     key: `requirement-form:requirement-packages:${requirementPackageIdsKey}`,
   })
   const normReferencesResource = useAsyncResource<NormReferenceOption[]>({
@@ -274,7 +294,8 @@ export function useTaxonomyOptions(
         ),
         'normReferences',
       ),
-    getErrorMessage: () => 'normReferences',
+    getErrorMessage: error =>
+      error instanceof Error ? error.message : 'normReferences',
     key: `requirement-form:norm-references:${normReferenceIdsKey}`,
   })
   const priorityLevelsResource = useAsyncResource<PriorityLevelOption[]>({
@@ -283,7 +304,8 @@ export function useTaxonomyOptions(
         await apiFetch('/api/priority-levels', { signal }),
         'priorityLevels',
       ),
-    getErrorMessage: () => 'priorityLevels',
+    getErrorMessage: error =>
+      error instanceof Error ? error.message : 'priorityLevels',
     key: 'requirement-form:priority-levels',
   })
   const qualityCharacteristicsResource = useAsyncResource<
@@ -299,7 +321,8 @@ export function useTaxonomyOptions(
         'qualityCharacteristics',
       )
     },
-    getErrorMessage: () => 'qualityCharacteristics',
+    getErrorMessage: error =>
+      error instanceof Error ? error.message : 'qualityCharacteristics',
     key: `requirement-form:quality-characteristics:${normalizedTypeId || 'none'}`,
   })
 

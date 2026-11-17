@@ -1948,6 +1948,17 @@ godkänts. Upprepa för ett bibliotekskrav och ett kravunderlagslokalt krav.
 som valbara alternativ. `Avviken` kan inte tilldelas före ett godkänt avsteg
 men kan tilldelas efter godkännandet för båda typerna av krav.
 
+**Felkontroll:** Låt ett isolerat SQL-fel inträffa vid direkt byte av
+användningsstatus i raden. Kontrollera att resultatet visar krav-ID,
+säker feltext, referens, `sql_failure` och UTC-tidpunkt. Resultatet är okänt
+och kräver kontroll av sparat tillstånd; upprepat byte före kontrollen
+skickar ingen ny ändring.
+
+**Integrationstest:**
+[requirement-detail.spec.ts](../../tests/integration/specifications/requirement-detail.spec.ts),
+testfallet “SPEC-08/SPEC-09: inline status SQL failures preserve references
+until saved-state inspection”.
+
 ### SPEC-09: hantera behovsreferenser
 
 **Steg:** Lägg till, redigera och ta bort behovsreferens. Expandera en
@@ -1955,7 +1966,14 @@ behovsreferens som används av krav på fler än en resultatsida.
 
 **Förväntat resultat:** Referenser sparas och tas bort enligt användarens val.
 Den expanderade användningslistan visar alla kopplade krav, även krav från
-senare resultatsidor.
+senare resultatsidor. Upprepa felkontrollen i SPEC-08 för direkt
+tilldelning av en behovsreferens i kravraden; krav-ID och SQL-referens ska
+visas utan automatisk upprepning.
+
+**Integrationstest:**
+[requirement-detail.spec.ts](../../tests/integration/specifications/requirement-detail.spec.ts),
+testfallet “SPEC-08/SPEC-09: inline needs-reference SQL failures preserve
+references until saved-state inspection”.
 
 ### SPEC-10: generera upphandlingsrapport och Anbuds-CSV
 
@@ -3765,7 +3783,13 @@ testfallet “ADMIN-34: SQL failures show safe references without repeating
 mutations”, samt
 [data-export.spec.ts](../../tests/integration/privacy/data-export.spec.ts),
 testfallet “ADMIN-34: privacy SQL failures retain safe references without
-repeating execution”. Webbläsartesterna simulerar felsvaret; fokuserade SQL-tester
+repeating execution”,
+[create.spec.ts](../../tests/integration/requirements/create.spec.ts),
+testfallet “ADMIN-34: required catalog SQL failures keep safe references and
+form edits”, samt
+[library.spec.ts](../../tests/integration/requirements/library.spec.ts),
+testfallet “ADMIN-34: report download SQL failures retain safe references
+without automatic retry”. Webbläsartesterna simulerar felsvaret; fokuserade SQL-tester
 verifierar kopplingen mellan referens och driftlogg med riktig SQL Server.
 
 **Steg:**
@@ -3784,7 +3808,13 @@ verifierar kopplingen mellan referens och driftlogg med riktig SQL Server.
 7. Öppna Dataskydd, förhandsgranska en isolerad målperson och bekräfta
    radering under ett kontrollerat SQL-fel. Kontrollera referens, kod och
    tidpunkt samt att raderingen inte skickas igen automatiskt.
-8. Återställ felvillkoret och läs in sparat tillstånd före nästa ändring.
+8. Öppna ett nytt kravformulär med ett SQL-fel vid inläsning av en
+   obligatorisk katalog. Kontrollera katalogbenämning och SQL-referens,
+   att `Spara` är blockerat och att texten bevaras när katalogen läses om.
+9. Begär en PDF-rapport under ett SQL-fel. Kontrollera samma säkra
+   feluppgifter i nedladdningsdialogen och att inget nytt försök görs
+   automatiskt. Stäng felrutan.
+10. Återställ felvillkoret och läs in sparat tillstånd före nästa ändring.
 
 **Förväntat resultat:**
 

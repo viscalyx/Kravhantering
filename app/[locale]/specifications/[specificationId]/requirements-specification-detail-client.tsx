@@ -965,7 +965,11 @@ export default function KravunderlagDetailClient({
       ? editorState.bulkAction.error
       : null
   const bulkOutcome =
-    editorState.bulkAction.phase === 'complete' ? editorState.bulkAction : null
+    editorState.bulkAction.phase === 'complete'
+      ? editorState.bulkAction
+      : editorState.bulkAction.phase === 'idle'
+        ? editorState.inlineSaveOutcome
+        : null
 
   const reconcileRequirementPackageFilters = useCallback(
     (selectedIds: ReadonlySet<number>) => {

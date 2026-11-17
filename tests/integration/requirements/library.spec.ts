@@ -1079,6 +1079,36 @@ test.describe('Requirements library', () => {
     expect(result).toEqual([])
   })
 
+  test('ADMIN-34: report download SQL failures retain safe references without automatic retry', async ({
+    page,
+  }) => {
+    let attempts = 0
+    await page.route('**/sv/requirements/reports/pdf/list?*', route => {
+      attempts++
+      return route.fulfill({
+        status: 500,
+        json: {
+          code: 'sql_failure',
+          correlationId: 'pdf-browser-reference',
+          timestamp: '2026-11-17T12:00:00.000Z',
+          error: 'Internal SQL detail',
+        },
+      })
+    })
+    await page.goto('/sv/requirements')
+    await page.getByRole('button', { name: 'Rapporter' }).click()
+    await page.getByRole('menuitem', { name: 'Kravlista', exact: true }).click()
+    const dialog = page.getByRole('alertdialog', {
+      name: 'Nedladdningen misslyckades',
+    })
+    await expect(dialog).toContainText('pdf-browser-reference')
+    await expect(dialog).toContainText('sql_failure')
+    await expect(dialog).toContainText('2026-11-17T12:00:00.000Z')
+    await expect(dialog).not.toContainText('Internal SQL detail')
+    expect(attempts).toBe(1)
+    await dialog.getByRole('button', { name: 'Stäng', exact: true }).click()
+  })
+
   test('REQ-10: complete list PDF download uses the server filename and restores report focus', async ({
     page,
   }, testInfo) => {

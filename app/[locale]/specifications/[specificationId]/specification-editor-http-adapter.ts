@@ -158,7 +158,7 @@ export function createHttpSpecificationEditorAdapter({
           method: 'PATCH',
         },
       )
-      await assertOk(response, loadItemsFailedMessage)
+      await assertSaveAccepted(response, loadItemsFailedMessage)
     },
   }
 }

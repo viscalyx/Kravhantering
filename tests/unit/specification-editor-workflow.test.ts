@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createSpecificationEditorWorkflow,
   InvalidSpecificationEditorCursorError,
+  SpecificationEditorSaveError,
   type SpecificationEditorWorkflowQuery,
 } from '@/app/[locale]/specifications/[specificationId]/specification-editor-workflow'
 import { DetailResourceCache } from '@/lib/requirements/detail-prefetch'
@@ -663,6 +664,58 @@ describe('specification editor workflow', () => {
     })
   })
 
+  it.each(['needs-reference', 'status'] as const)(
+    'retains inline %s SQL failures and requires inspection before repeating uncertain work',
+    async field => {
+      const first = item(1, 'lib:1', 'FIRST')
+      const adapter = new InMemorySpecificationEditorAdapter({ items: [first] })
+      const update = vi
+        .spyOn(adapter, 'updateItem')
+        .mockRejectedValueOnce(
+          new SpecificationEditorSaveError(
+            'Safe SQL reference inline-reference sql_failure 2026-11-17T12:00:00.000Z',
+            'uncertain',
+          ),
+        )
+      const workflow = createSpecificationEditorWorkflow({
+        adapter,
+        initialItems: page([first]),
+        initialPackageCatalog: emptyPackageCatalog(),
+        query: defaultQuery,
+      })
+      const save = () =>
+        field === 'needs-reference'
+          ? workflow.actions.assignItemNeedsReference('lib:1', 81, 'Next')
+          : workflow.actions.changeItemStatus('lib:1', {
+              id: 2,
+              nameEn: 'In progress',
+              nameSv: 'Pågående',
+              color: '#000000',
+              descriptionEn: '',
+              descriptionSv: '',
+              sortOrder: 2,
+            })
+      expect(await save()).toBe(false)
+      expect(workflow.getState().inlineSaveOutcome).toMatchObject({
+        uncertainUniqueIds: ['FIRST'],
+        failedUniqueIds: [],
+        succeededUniqueIds: [],
+        saveErrors: [
+          {
+            uniqueId: 'FIRST',
+            message: expect.stringContaining('inline-reference'),
+          },
+        ],
+      })
+      expect(workflow.getState().inspectionRequiredUniqueIds).toEqual(['FIRST'])
+      expect(await save()).toBe(false)
+      expect(update).toHaveBeenCalledTimes(1)
+      expect(await workflow.actions.inspectSavedState()).toBe(true)
+      expect(await save()).toBe(true)
+      expect(update).toHaveBeenCalledTimes(2)
+    },
+  )
+
   it('keeps a committed single-item update when its refresh fails', async () => {
     const first = item(1, 'lib:1', 'FIRST')
     const adapter = new InMemorySpecificationEditorAdapter({
@@ -692,6 +745,12 @@ describe('specification editor workflow', () => {
         }),
       ],
       itemsError: 'Refresh failed',
+      inlineSaveOutcome: {
+        succeededUniqueIds: ['FIRST'],
+        uncertainUniqueIds: [],
+        refreshFailed: true,
+        refreshError: 'Refresh failed',
+      },
     })
   })
 

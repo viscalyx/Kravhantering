@@ -60,6 +60,23 @@ describe('ReferenceDataStatus', () => {
     )
   })
 
+  it('retains the safe failure reference alongside catalog guidance', () => {
+    render(
+      <ReferenceDataStatus
+        id="reference-data-status"
+        readiness={readiness({
+          canSave: false,
+          failedCatalogs: ['categories'],
+          errorMessages: ['Safe SQL reference catalog-reference sql_failure'],
+        })}
+      />,
+    )
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent('referenceData.catalogs.categories')
+    expect(alert).toHaveTextContent('catalog-reference')
+    expect(screen.getByRole('button', { name: 'common.retry' })).toBeEnabled()
+  })
+
   it('uses an alert with translated catalog names for a load failure', () => {
     render(
       <ReferenceDataStatus

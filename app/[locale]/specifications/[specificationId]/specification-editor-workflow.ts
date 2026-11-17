@@ -151,6 +151,7 @@ export interface SpecificationEditorBulkOutcome {
 export interface SpecificationEditorWorkflowState {
   announcement: 'pagination-restarted' | null
   bulkAction: SpecificationEditorBulkActionState
+  inlineSaveOutcome: SpecificationEditorBulkOutcome | null
   inspectionRequiredUniqueIds: string[]
   items: SpecificationListItem[]
   itemsContinuationError: 'continuation' | 'recovery' | null
@@ -263,6 +264,7 @@ export function createSpecificationEditorWorkflow({
   )
   let state: SpecificationEditorWorkflowInternalState = {
     inspectionRequiredUniqueIds: [],
+    inlineSaveOutcome: null,
     announcement: null,
     bulkAction: { phase: 'idle' },
     items: [...initialItems.items],
@@ -703,7 +705,8 @@ export function createSpecificationEditorWorkflow({
   ): Promise<boolean> => {
     const originalItem =
       state.items.find(item => item.itemRef === itemRef) ?? null
-    if (!originalItem) return false
+    if (!originalItem || uncertainItemResults.has(itemRef)) return false
+    publish({ inlineSaveOutcome: null, bulkAction: { phase: 'idle' } })
     replaceItem(itemRef, {
       ...originalItem,
       needsReference,
@@ -715,15 +718,16 @@ export function createSpecificationEditorWorkflow({
         { needsReferenceId },
         currentQuery.agreementId,
       )
-    } catch {
+    } catch (error) {
       replaceItem(itemRef, originalItem)
+      reportInlineSaveResult(originalItem, saveFailureOutcome(error), error)
       return false
     }
     try {
       await refreshItemSurfaces(true)
-    } catch {
-      // The mutation committed. Preserve its optimistic value while the
-      // workflow's refresh surfaces expose their own failure state.
+    } catch (error) {
+      // Keep the confirmed save distinct from a later failed read.
+      reportInlineSaveResult(originalItem, 'succeeded', error)
     }
     return true
   }
@@ -738,6 +742,8 @@ export function createSpecificationEditorWorkflow({
       await loadFirstPage(currentQuery)
       return false
     }
+    if (uncertainItemResults.has(itemRef)) return false
+    publish({ inlineSaveOutcome: null, bulkAction: { phase: 'idle' } })
     replaceItem(itemRef, {
       ...originalItem,
       specificationItemStatusColor: status.color ?? null,
@@ -754,15 +760,16 @@ export function createSpecificationEditorWorkflow({
         },
         currentQuery.agreementId,
       )
-    } catch {
+    } catch (error) {
       replaceItem(itemRef, originalItem)
+      reportInlineSaveResult(originalItem, saveFailureOutcome(error), error)
       return false
     }
     try {
       await refreshItemSurfaces(false)
-    } catch {
-      // The mutation committed. Preserve its optimistic value while the
-      // workflow's refresh surfaces expose their own failure state.
+    } catch (error) {
+      // Keep the confirmed save distinct from a later failed read.
+      reportInlineSaveResult(originalItem, 'succeeded', error)
     }
     return true
   }
@@ -842,6 +849,30 @@ export function createSpecificationEditorWorkflow({
       error.outcome !== 'uncertain'
       ? 'failed'
       : 'uncertain'
+  }
+
+  function reportInlineSaveResult(
+    item: SpecificationListItem,
+    outcome: SaveOutcome,
+    error: unknown,
+  ): void {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    if (outcome === 'uncertain' && item.itemRef) {
+      uncertainItemResults.set(item.itemRef, { item, outcome, error: message })
+    }
+    publish({
+      inlineSaveOutcome: {
+        succeededCount: outcome === 'succeeded' ? 1 : 0,
+        succeededUniqueIds: outcome === 'succeeded' ? [item.uniqueId] : [],
+        failedUniqueIds: outcome === 'failed' ? [item.uniqueId] : [],
+        uncertainUniqueIds: outcome === 'uncertain' ? [item.uniqueId] : [],
+        refreshFailed: outcome === 'succeeded',
+        ...(outcome === 'succeeded'
+          ? { refreshError: message }
+          : { saveErrors: [{ uniqueId: item.uniqueId, message }] }),
+      },
+      inspectionRequiredUniqueIds: getUncertainUniqueIds(),
+    })
   }
 
   async function finishBulkAction(

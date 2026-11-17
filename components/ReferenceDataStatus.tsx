@@ -95,6 +95,11 @@ export default function ReferenceDataStatus({
             <p className="mt-1">
               {t('failedCatalogs', { catalogs: failedCatalogNames })}
             </p>
+            {readiness.errorMessages?.map(message => (
+              <p className="mt-1" key={message}>
+                {message}
+              </p>
+            ))}
             <button
               className="mt-3 inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg border border-amber-400 bg-white px-3 py-2 text-sm font-semibold text-amber-900 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-600 dark:bg-secondary-900 dark:text-amber-100 dark:hover:bg-amber-950"
               disabled={retrying}

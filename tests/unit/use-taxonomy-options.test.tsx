@@ -105,6 +105,39 @@ function callsFor(path: string): number {
 }
 
 describe('useTaxonomyOptions', () => {
+  it('keeps SQL references through required catalog loading and clears them after a successful retry', async () => {
+    setupSuccessfulFetches()
+    const successful = fetchMock.getMockImplementation()
+    if (!successful) throw new Error('Missing successful catalog fixture')
+    let fail = true
+    fetchMock.mockImplementation((input: RequestInfo | URL) =>
+      input.toString().startsWith('/api/requirement-types') && fail
+        ? Promise.resolve(
+            response(
+              {
+                code: 'sql_failure',
+                correlationId: 'catalog-reference',
+                timestamp: '2026-11-17T12:00:00.000Z',
+              },
+              false,
+            ),
+          )
+        : successful(input),
+    )
+    const { result } = renderHook(() => useTaxonomyOptions(''))
+    await waitFor(() =>
+      expect(result.current.readiness.failedCatalogs).toEqual(['types']),
+    )
+    expect(result.current.readiness.errorMessages?.join(' ')).toContain(
+      'catalog-reference',
+    )
+    expect(result.current.readiness.canSave).toBe(false)
+    fail = false
+    await act(async () => result.current.readiness.retryFailed())
+    expect(result.current.readiness.errorMessages).toBeUndefined()
+    expect(result.current.readiness.canSave).toBe(true)
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
   })

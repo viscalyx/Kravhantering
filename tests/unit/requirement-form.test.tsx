@@ -186,7 +186,15 @@ describe('RequirementForm', () => {
         categoryAttempts += 1
         return Promise.resolve(
           categoryAttempts === 1
-            ? errJson({}, 503, 'Unavailable')
+            ? errJson(
+                {
+                  code: 'sql_failure',
+                  correlationId: 'form-catalog-reference',
+                  timestamp: '2026-11-17T12:00:00.000Z',
+                },
+                503,
+                'Unavailable',
+              )
             : okJson({ categories: sampleCategories }),
         )
       }
@@ -203,6 +211,8 @@ describe('RequirementForm', () => {
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('referenceData.loadFailed')
+    expect(alert).toHaveTextContent('form-catalog-reference')
+    expect(alert).toHaveTextContent('sql_failure')
     const save = screen.getByRole('button', { name: /common\.save/i })
     expect(save).toBeDisabled()
     expect(save).toHaveAttribute('aria-describedby')

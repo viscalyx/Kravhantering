@@ -15,12 +15,21 @@ export function getResponseMessage(
   }
 
   if (body && typeof body === 'object') {
-    const failure = body as {
-      code?: unknown
-      correlationId?: unknown
-      timestamp?: unknown
-    }
-    if (failure.code === 'sql_failure') {
+    const record = body as { code?: unknown; sqlFailure?: unknown }
+    const failure = (
+      record.code === 'sql_failure' ? record : record.sqlFailure
+    ) as
+      | {
+          code?: unknown
+          correlationId?: unknown
+          timestamp?: unknown
+        }
+      | undefined
+    if (
+      failure &&
+      typeof failure === 'object' &&
+      failure.code === 'sql_failure'
+    ) {
       const reference =
         failure.correlationId ?? response?.headers?.get?.('x-correlation-id')
       if (

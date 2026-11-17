@@ -2,6 +2,42 @@ import { expect, test } from '@playwright/test'
 import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
+test('ADMIN-34: required catalog SQL failures keep safe references and form edits', async ({
+  page,
+}) => {
+  let fail = true
+  let attempts = 0
+  await page.route('**/api/requirement-types', route => {
+    attempts++
+    return fail
+      ? route.fulfill({
+          status: 500,
+          json: {
+            code: 'sql_failure',
+            correlationId: 'catalog-browser-reference',
+            timestamp: '2026-11-17T12:00:00.000Z',
+          },
+        })
+      : route.continue()
+  })
+  await page.goto('/sv/requirements/new')
+  await page.locator('#description').fill('Keep these reviewed edits')
+  const error = page
+    .getByRole('alert')
+    .filter({ hasText: 'catalog-browser-reference' })
+  await expect(error).toContainText('sql_failure')
+  await expect(error).toContainText('2026-11-17T12:00:00.000Z')
+  await expect(page.locator('button[type="submit"]')).toBeDisabled()
+  expect(attempts).toBe(1)
+  fail = false
+  await error.getByRole('button', { name: 'Försök igen', exact: true }).click()
+  await expect(error).toHaveCount(0)
+  await expect(page.locator('#description')).toHaveValue(
+    'Keep these reviewed edits',
+  )
+  expect(attempts).toBe(2)
+})
+
 test.describe('Requirement creation', () => {
   for (const viewport of [{ ...DESKTOP_VIEWPORT, label: 'desktop' }]) {
     test(`LIFE-01: form submit opens the saved requirement and records its action history (${viewport.label})`, async ({

@@ -186,6 +186,31 @@ function ConcurrentDownloadProbe() {
 }
 
 describe('useGeneratedOutputDownload', () => {
+  it.each(['pdf', 'csv', 'json'] as const)(
+    'keeps SQL references in the %s download error dialog without an automatic retry',
+    async output => {
+      vi.useRealTimers()
+      fetchMock.mockResolvedValueOnce(
+        Response.json(
+          {
+            code: 'sql_failure',
+            correlationId: 'download-sql-reference',
+            timestamp: '2026-11-17T12:00:00.000Z',
+            error: 'Internal SQL detail',
+          },
+          { status: 500 },
+        ),
+      )
+      render(<DownloadProbe output={output} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Download' }))
+      const reference = await screen.findByText(/download-sql-reference/)
+      expect(reference).toHaveTextContent('sql_failure')
+      expect(reference).toHaveTextContent('2026-11-17T12:00:00.000Z')
+      expect(reference).not.toHaveTextContent('Internal SQL detail')
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    },
+  )
+
   beforeEach(() => {
     vi.useFakeTimers()
     fetchMock.mockReset()

@@ -42,6 +42,33 @@ describe('readResponseMessage', () => {
     expect(result).not.toContain('SELECT')
   })
 
+  it('retains the SQL reference nested in an operation-specific service-unavailable response', async () => {
+    const body = {
+      code: 'service_unavailable',
+      error: 'Service unavailable',
+      retryAfterSeconds: 5,
+      sqlFailure: {
+        code: 'sql_failure',
+        correlationId: 'quota-reference',
+        timestamp: '2026-11-17T12:00:00.000Z',
+        error: 'Internal database text',
+      },
+    }
+    expect(getResponseMessage(body, 'en')).toContain('quota-reference')
+    expect(
+      await readResponseMessage(
+        Response.json(body, { status: 503, headers: { 'Retry-After': '5' } }),
+        'en',
+      ),
+    ).toContain('quota-reference')
+    expect(
+      getResponseMessage(
+        { ...body, sqlFailure: { code: 'sql_failure' } },
+        'en',
+      ),
+    ).toBe('Service unavailable')
+  })
+
   it('reads trimmed API error and message fields from JSON responses', async () => {
     await expect(
       readResponseMessage(
