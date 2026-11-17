@@ -102,7 +102,7 @@ await writeFile(
   JSON.stringify(evidence, null, 2),
 )
 const card = async capture =>
-  `<figure><figcaption>${capture.variant === 'today' ? 'TODAY' : 'DESIRED'} — keyboard focus on Save</figcaption><img src="data:image/png;base64,${(await readFile(`${output}/${capture.file}`)).toString('base64')}"></figure>`
+  `<figure><figcaption>${capture.variant === 'today' ? 'TODAY' : 'DESIRED'} — keyboard focus on Save</figcaption><img alt="Application buttons with keyboard focus on Save; compare the focus outline with the adjacent Today or Desired image." src="data:image/png;base64,${(await readFile(`${output}/${capture.file}`)).toString('base64')}"></figure>`
 const panels = []
 for (const theme of ['light', 'dark']) {
   for (const forcedColors of ['none', 'active']) {
