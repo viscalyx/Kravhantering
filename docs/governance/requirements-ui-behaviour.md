@@ -78,6 +78,37 @@ including unbroken text. Forms and dialogs retain their own width limits.
   inside the form. The separate priority-scale button still opens the full
   priority-scale modal.
 
+## Unsaved Requirements Library Input
+
+- Both new and existing requirement forms protect changes to the normalized
+  payload, including text, classification, verification and associations.
+  Untouched forms and values restored to their baseline can be left freely.
+- Following a navigation link, switching language, using browser Back or
+  pressing Cancel asks for the existing discard confirmation. Declining
+  keeps the live form and its values. Confirming reaches the chosen
+  destination without a second prompt. With no previous history entry,
+  Back and Cancel keep the form and its protection.
+- Reload and tab close use the browser's native unload confirmation where
+  supported. Declining keeps the input; accepting departure discards it.
+  Browser termination does not guarantee a prompt or recovery.
+- Successful saves release protection before navigating to the selected save
+  destination. Validation errors and failed saves keep input and protection.
+- Unsaved input exists only in the mounted form. This behavior does not save a
+  Draft requirement version or persist content in browser storage.
+
+### Other Form Departure Gaps
+
+The following code paths need separate navigation-protection work. These are
+code inspection findings, not browser-verified behavior:
+
+- `SpecificationLocalRequirementForm` confirms dirty cancellation in
+  `handleCancel`, but does not register page navigation or unload protection.
+  Following global navigation or reloading can therefore bypass the explicit
+  cancellation decision while composing a unique requirement.
+- `useCrudAdminResource` confirms dirty closure through `closeForm`, used by
+  `CrudAdminPanel`, but does not register page navigation or unload protection.
+  Administration forms using this hook need the same departure review.
+
 ## Requirement Form Reference Data
 
 - Requirements Library and unique-requirement forms open immediately while

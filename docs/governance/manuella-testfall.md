@@ -1408,6 +1408,120 @@ med kravets unika ID.
 ”LIFE-01: form submit opens the saved requirement and records its action
 history (desktop)”.
 
+### LIFE-01D: skydda osparad inmatning när ett nytt krav lämnas
+
+**Syfte:** Kontrollera att navigering kräver ett uttryckligt beslut och att
+nekad kassering bevarar inmatningen.
+
+**Användare:** Administratör.
+
+**Förutsättningar:** Ett kravområde och ett aktivt kravpaket finns.
+
+**Integrationstest:** [requirements/create.spec.ts](../../tests/integration/requirements/create.spec.ts),
+”LIFE-01D: new requirement preserves input on declined link and leaves on
+confirmation”, ”LIFE-01D: new requirement preserves input on declined language
+and leaves on confirmation”, ”LIFE-01D: new requirement preserves input on
+declined Back and leaves on confirmation” samt ”LIFE-01D: new requirement
+preserves input on declined Cancel and leaves on confirmation”.
+
+**Steg:**
+
+1. Öppna kravbiblioteket och sedan formuläret för ett nytt krav.
+2. Fyll kravtext och acceptanskriterium, välj kravområde och kravpaket,
+   markera verifierbart och fyll verifieringsmetod.
+3. Följ länken `Kravunderlag` och välj `Avbryt` i bekräftelsen.
+4. Kontrollera samtliga värden och öppna paketväljaren för att kontrollera
+   markeringen. Avbryt väljaren, följ länken igen och bekräfta kasseringen.
+5. Upprepa från kravbiblioteket med språkbyte, webbläsarens Bakåt och
+   formulärets `Avbryt`. Vid språkbyte, skriv även ny text i det engelska
+   formuläret och bekräfta ett språkbyte tillbaka till svenska.
+
+**Förväntat resultat:** Nekad kassering behåller formuläret, alla texter och
+val. Bekräftad kassering når kravunderlagslistan, den andra språkversionens
+nya formulär respektive kravbiblioteket utan en andra bekräftelse. Dialogen
+använder svenska respektive engelska enligt formulärets språk.
+
+### LIFE-01E: lämna ett oförändrat eller återställt nytt formulär
+
+**Syfte:** Undvika onödiga varningar när det inte finns ändrad inmatning.
+
+**Användare:** Administratör.
+
+**Förutsättningar:** Kravbiblioteket är öppet.
+
+**Integrationstest:** [requirements/create.spec.ts](../../tests/integration/requirements/create.spec.ts),
+”LIFE-01E: clean and restored new forms leave without confirmation”.
+
+**Steg:** Öppna ett nytt krav och välj `Avbryt` utan att ändra något.
+Öppna formuläret igen, skriv ett acceptanskriterium och ersätt texten med
+enbart blanksteg. Välj `Avbryt` igen.
+
+**Förväntat resultat:** `Spara` är inaktiverad i båda fallen. Båda
+avbrotten når kravbiblioteket utan en bekräftelsedialog.
+
+### LIFE-01F: skydda inmatning vid omladdning och stängning av flik
+
+**Syfte:** Kontrollera webbläsarens skydd vid dokumentbyte.
+
+**Användare:** Administratör.
+
+**Förutsättningar:** Chromium med stöd för omladdningsbekräftelse.
+
+**Integrationstest:** [requirements/create.spec.ts](../../tests/integration/requirements/create.spec.ts),
+”LIFE-01F: reload and tab close protect a new requirement until departure is
+accepted”.
+
+**Steg:** Öppna ett nytt krav och skriv ett acceptanskriterium. Ladda om och
+neka först, ladda sedan om och acceptera. Skriv kravtext, stäng fliken och
+neka först, stäng sedan fliken och acceptera.
+
+**Förväntat resultat:** Webbläsarens egen dialog visas. Nekad omladdning
+eller stängning bevarar inmatningen. Accepterad omladdning visar ett tomt
+formulär; accepterad stängning stänger fliken. Ingen återställning efter
+webbläsaravslut utlovas.
+
+### LIFE-01G: bevara inmatning och skydd efter valideringsfel och sparfel
+
+**Syfte:** Kontrollera att endast ett lyckat sparande släpper skyddet.
+
+**Användare:** Administratör.
+
+**Förutsättningar:** Ett kravområde finns. Utvecklarverktyg kan ersätta
+svaret för `POST /api/requirements` med HTTP 500 och JSON
+`{"error":"Save unavailable"}` utan att ändra andra anrop.
+
+**Integrationstest:** [requirements/create.spec.ts](../../tests/integration/requirements/create.spec.ts),
+”LIFE-01G: validation and failed creation preserve input and protection until
+successful save”.
+
+**Steg:** Skriv kravtext utan kravområde och försök spara. Välj `Avbryt` och
+neka kasseringen. Välj kravområde, aktivera felsvaret och spara igen. Försök
+byta språk och neka kasseringen. Ta bort felsvaret och spara.
+
+**Förväntat resultat:** Första försöket fokuserar det obligatoriska
+kravområdet. Sparfelet visas utan att rensa texten. Avbryt och språkbyte
+kräver kassering. Det lyckade sparandet når kravbiblioteket med den sparade
+texten i inline-detalj utan kassering eller omladdningsvarning.
+
+### LIFE-01H: behåll skyddet utan föregående historikpost
+
+**Syfte:** Kontrollera att ett avbrott utan destination inte släpper skyddet.
+
+**Användare:** Administratör.
+
+**Förutsättningar:** Öppna `/sv/requirements/new` direkt i en ny flik i en
+inloggad session, så att webbläsarens Bakåt inte har någon destination.
+
+**Integrationstest:** [requirements/create.spec.ts](../../tests/integration/requirements/create.spec.ts),
+”LIFE-01H: a new form at the first history entry keeps input and protection
+after Cancel”.
+
+**Steg:** Markera verifierbart. Försök gå Bakåt. Välj formulärets `Avbryt`
+och bekräfta kasseringen. Försök sedan byta språk.
+
+**Förväntat resultat:** Formuläret och markeringen finns kvar efter Bakåt
+och Avbryt. Språkbyte kräver fortfarande en kassering.
+
 ### LIFE-01A: referensdata återhämtas i kravbibliotekets kravformulär
 
 Detta testfall är manuellt endast enligt undantaget för issue `#510`. Det har
