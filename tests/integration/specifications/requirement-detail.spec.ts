@@ -1463,7 +1463,15 @@ test.describe('Requirements specification deterministic manual cases', () => {
           if (scenario.mode === 'mixed' && ref === 'lib:910002')
             return route.fulfill({ status: 409, json: { error: 'Rejected' } })
           if (scenario.mode === 'mixed' && ref === 'lib:910003')
-            return route.abort('failed')
+            return route.fulfill({
+              status: 500,
+              json: {
+                code: 'sql_failure',
+                correlationId: 'bulk-save-reference',
+                timestamp: '2026-11-17T12:00:00.000Z',
+                error: 'Safe server fallback',
+              },
+            })
           return route.fulfill({ status: 201, json: { ok: true, id: 900001 } })
         },
       )
@@ -1564,6 +1572,10 @@ test.describe('Requirements specification deterministic manual cases', () => {
         if (scenario.mode === 'mixed') {
           await expect(results).toContainText('Inte sparade: PWT-BULK-2.')
           await expect(results).toContainText('Okänt resultat: PWT-BULK-3.')
+          await expect(results).toContainText('PWT-BULK-3:')
+          await expect(results).toContainText('bulk-save-reference')
+          await expect(results).toContainText('sql_failure')
+          await expect(results).toContainText('2026-11-17T12:00:00.000Z')
           await expect(
             panel.getByRole('checkbox', { name: 'Markera PWT-BULK-2' }),
           ).toBeChecked()

@@ -79,6 +79,37 @@ describe('ColumnsPanel', () => {
     expect(screen.getByRole('button', { name: 'common.save' })).toBeEnabled()
   })
 
+  it('retains SQL references for load and save failures', async () => {
+    const failure = {
+      code: 'sql_failure',
+      correlationId: 'columns-reference',
+      timestamp: '2026-11-17T12:00:00.000Z',
+    }
+    fetchMock
+      .mockResolvedValueOnce(Response.json(failure, { status: 500 }))
+      .mockResolvedValueOnce(
+        jsonResponse({ columns: normalizeRequirementListColumnDefaults(null) }),
+      )
+      .mockResolvedValueOnce(Response.json(failure, { status: 500 }))
+    renderAdminPanel(<ColumnsPanel />)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'columns-reference',
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.panelLoadError.retry' }),
+    )
+    const checkboxes = await screen.findAllByRole('checkbox')
+    fireEvent.click(
+      checkboxes.find(input => !input.hasAttribute('disabled')) as HTMLElement,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'columns-reference',
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent('sql_failure')
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
   it('shows save failures from both HTTP rejection and network failure', async () => {
     const defaults = normalizeRequirementListColumnDefaults(null)
     fetchMock

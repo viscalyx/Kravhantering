@@ -1,10 +1,13 @@
 import en from '@/messages/en.json'
 import sv from '@/messages/sv.json'
 
-function getResponseMessage(
+export function getResponseMessage(
   body: unknown,
-  locale: 'sv' | 'en',
-  response: Response,
+  locale: 'sv' | 'en' = typeof document !== 'undefined' &&
+  document.documentElement.lang === 'sv'
+    ? 'sv'
+    : 'en',
+  response?: Response,
 ): string | null {
   if (typeof body === 'string') {
     const trimmed = body.trim()
@@ -19,7 +22,7 @@ function getResponseMessage(
     }
     if (failure.code === 'sql_failure') {
       const reference =
-        failure.correlationId ?? response.headers?.get?.('x-correlation-id')
+        failure.correlationId ?? response?.headers?.get?.('x-correlation-id')
       if (
         typeof reference === 'string' &&
         /^[A-Za-z0-9._:@/-]{1,128}$/.test(reference) &&

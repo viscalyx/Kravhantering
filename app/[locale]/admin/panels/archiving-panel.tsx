@@ -14,7 +14,10 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import { downloadBlob } from '@/lib/browser-download'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
-import { readResponseMessage } from '@/lib/http/response-message'
+import {
+  getResponseMessage,
+  readResponseMessage,
+} from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import { createUtf8BomBlob } from '@/lib/text-export'
 
@@ -163,7 +166,11 @@ export default function ArchivingPanel() {
       const response = await apiFetch('/api/admin/ai-forensic-captures')
       if (!response.ok) {
         setForensicStatus('error')
-        setForensicMessage(ta('archiving.forensic.loadError'))
+        const body = await response.json().catch(() => null)
+        setForensicMessage(
+          (body?.code === 'sql_failure' ? getResponseMessage(body) : null) ??
+            ta('archiving.forensic.loadError'),
+        )
         return false
       }
       const body = (await response.json()) as {

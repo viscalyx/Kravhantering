@@ -24,7 +24,8 @@ export default function FinancialStatusPanel({
   const t = useTranslations('admin.aiConnections.financial')
   const locale = useLocale()
   const { confirm } = useConfirmModal()
-  const { status, busy, failed, load, mutate } = useFinancialStatus()
+  const { status, busy, failed, errorMessage, load, mutate } =
+    useFinancialStatus()
   const [open, setOpen] = useState(false)
 
   async function remove(
@@ -104,7 +105,7 @@ export default function FinancialStatusPanel({
             {failed ? (
               <p className="flex gap-2 text-sm" role="alert">
                 <CircleAlert aria-hidden="true" className="h-4 w-4" />
-                {t('requestFailed')}
+                {errorMessage ?? t('requestFailed')}
               </p>
             ) : null}
             <div aria-busy={busy} className="space-y-3" role="status">

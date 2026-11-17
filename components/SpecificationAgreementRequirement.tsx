@@ -20,6 +20,7 @@ import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { readResponseMessage } from '@/lib/http/response-message'
 import type { RequirementRow } from '@/lib/requirements/list-view'
 import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 import {
@@ -86,10 +87,14 @@ export default function SpecificationAgreementRequirement({
         `/api/requirements-specifications/${specificationId}/agreement?${query}`,
         { signal },
       )
-      if (!response.ok) throw new Error(t('historyFailed'))
+      if (!response.ok)
+        throw new Error(
+          (await readResponseMessage(response)) ?? t('historyFailed'),
+        )
       return response.json() as Promise<AgreementRequirementHistory>
     },
-    getErrorMessage: () => t('historyFailed'),
+    getErrorMessage: error =>
+      error instanceof Error ? error.message : t('historyFailed'),
   })
   const reloadHistory = historyResource.reload
   useEffect(() => {

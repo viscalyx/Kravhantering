@@ -17,39 +17,50 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
   } = context
 
   describe('adding, importing, and creating requirement applications', () => {
-    it('keeps the add dialog open and shows inline errors when adding requirements fails', async () => {
-      context.addRequirementsResponse = {
-        body: {},
-        ok: false,
-      }
+    it.each([false, true])(
+      'keeps the add dialog open with safe failure details (SQL: %s)',
+      async sqlFailure => {
+        context.addRequirementsResponse = {
+          body: sqlFailure
+            ? {
+                code: 'sql_failure',
+                correlationId: 'add-reference',
+                timestamp: '2026-11-17T12:00:00.000Z',
+              }
+            : {},
+          ok: false,
+        }
 
-      renderRequirementsSpecificationDetailClient()
+        renderRequirementsSpecificationDetailClient()
 
-      await waitFor(() => {
-        expect(
-          screen.getByRole('heading', {
-            level: 1,
-            name: 'Authorization and IAM',
+        await waitFor(() => {
+          expect(
+            screen.getByRole('heading', {
+              level: 1,
+              name: 'Authorization and IAM',
+            }),
+          ).toBeInTheDocument()
+        })
+
+        fireEvent.click(context.requirementRowCheckbox('available', 'IAM0202'))
+        fireEvent.click(
+          screen.getByRole('button', {
+            name: 'specification.addSelectedToSpecification',
           }),
-        ).toBeInTheDocument()
-      })
+        )
 
-      fireEvent.click(context.requirementRowCheckbox('available', 'IAM0202'))
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: 'specification.addSelectedToSpecification',
-        }),
-      )
+        const dialog = await screen.findByRole('dialog')
 
-      const dialog = await screen.findByRole('dialog')
+        fireEvent.click(
+          screen.getByRole('button', { name: 'specification.confirmAdd' }),
+        )
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'specification.confirmAdd' }),
-      )
-
-      expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
-      expect(dialog).toBeInTheDocument()
-    })
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+          sqlFailure ? 'add-reference' : 'common.error',
+        )
+        expect(dialog).toBeInTheDocument()
+      },
+    )
 
     it('adds selected requirements with an existing needs reference', async () => {
       renderRequirementsSpecificationDetailClient({

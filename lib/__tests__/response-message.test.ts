@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { readResponseMessage } from '@/lib/http/response-message'
+import {
+  getResponseMessage,
+  readResponseMessage,
+} from '@/lib/http/response-message'
 
 describe('readResponseMessage', () => {
   it.each(['sv', 'en'] as const)(
@@ -23,6 +26,22 @@ describe('readResponseMessage', () => {
       expect(result).not.toMatch(/SELECT|secret/)
     },
   )
+  it('formats an already parsed stream or JSON SQL failure using the same contract', () => {
+    const result = getResponseMessage(
+      {
+        code: 'sql_failure',
+        correlationId: 'stream-reference',
+        timestamp: '2026-11-17T12:00:00.000Z',
+        message: 'SELECT private FROM secret',
+      },
+      'sv',
+    )
+    expect(result).toContain('stream-reference')
+    expect(result).toContain('sql_failure')
+    expect(result).toContain('Kontrollera sparat tillstånd')
+    expect(result).not.toContain('SELECT')
+  })
+
   it('reads trimmed API error and message fields from JSON responses', async () => {
     await expect(
       readResponseMessage(

@@ -429,10 +429,10 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
     if (repairAttempts === 1) {
       await route.fulfill({
         body: JSON.stringify({
-          code: 'ai_provider_unavailable',
-          error:
-            'Det gick inte att nå AI-leverantören. Försök igen. Kontakta en administratör om problemet kvarstår.',
-          technicalCode: 'upstream_request_failed',
+          code: 'sql_failure',
+          correlationId: 'repair-sql-reference',
+          timestamp: '2026-11-17T12:00:00.000Z',
+          error: 'Safe database failure',
         }),
         contentType: 'application/json',
         status: 503,
@@ -570,10 +570,13 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
     await repairButton.click()
     await expect(
       dialog.getByRole('alert').filter({
-        hasText:
-          'Reparationen misslyckades: Det gick inte att nå AI-leverantören.',
+        hasText: 'repair-sql-reference',
       }),
-    ).toContainText('Teknisk felkod: upstream_request_failed.')
+    ).toContainText('sql_failure')
+    await expect(dialog.getByRole('alert')).toContainText(
+      '2026-11-17T12:00:00.000Z',
+    )
+    expect(repairAttempts).toBe(1)
     await expect(repairButton).toBeFocused()
   })
 

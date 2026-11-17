@@ -178,11 +178,12 @@ async function assertSaveAccepted(
       throw new SpecificationEditorSaveError(conflictMessage, 'conflict')
     }
   }
+  const message = (await readResponseMessage(response)) ?? fallbackMessage
   if ([400, 401, 403, 404, 409, 413, 422, 429].includes(response.status)) {
-    throw new SpecificationEditorSaveError(fallbackMessage, 'failed')
+    throw new SpecificationEditorSaveError(message, 'failed')
   }
   // Server and connection failures do not prove that the transaction rolled back.
-  throw new Error(fallbackMessage)
+  throw new SpecificationEditorSaveError(message, 'uncertain')
 }
 
 async function loadItemsPage(

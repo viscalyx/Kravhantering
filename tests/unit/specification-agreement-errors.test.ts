@@ -58,6 +58,20 @@ describe('agreement mutation error messages', () => {
     })
   })
 
+  it('preserves the SQL reference in agreement mutations without exposing server text', () => {
+    const message = agreementErrorMessage(
+      {
+        code: 'sql_failure',
+        correlationId: 'agreement-sql-reference',
+        timestamp: '2026-11-17T12:00:00.000Z',
+      },
+      translate,
+    )
+    expect(message).toContain('agreement-sql-reference')
+    expect(message).toContain('sql_failure')
+    expect(message).toContain('2026-11-17T12:00:00.000Z')
+  })
+
   it('uses translated fallback text for an empty response', () => {
     expect(agreementErrorMessage({}, translate, 'retryFailed')).toBe(
       'agreement.retryFailed',

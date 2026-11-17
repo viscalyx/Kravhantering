@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { useEffect, useId, useRef, useState } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { readResponseMessage } from '@/lib/http/response-message'
 import { fadeMotion } from '@/lib/reduced-motion'
 
 interface RequirementAreaInfoProps {
@@ -50,7 +51,12 @@ export default function RequirementAreaInfo({
         const response = await apiFetch(`/api/requirement-areas/${areaId}`, {
           signal: controller.signal,
         })
-        if (!response.ok) throw new Error('Area read failed')
+        if (!response.ok) {
+          const message = await readResponseMessage(response)
+          if (!controller.signal.aborted)
+            setContent({ description: message ?? '', failed: true })
+          return
+        }
         const data = await response.json()
         if (!controller.signal.aborted)
           setContent({
@@ -171,7 +177,7 @@ export default function RequirementAreaInfo({
               {content === null
                 ? t('areaInfoLoading')
                 : content.failed
-                  ? t('areaInfoError')
+                  ? content.description || t('areaInfoError')
                   : content.description || t('areaDescriptionEmpty')}
             </p>
             <dl className="mt-3 border-t border-secondary-200 pt-3 dark:border-secondary-700">

@@ -1711,10 +1711,7 @@ export default function KravunderlagDetailClient({
         },
       )
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as {
-          error?: string
-        }
-        setAddModalError(data.error ?? tc('error'))
+        setAddModalError((await readResponseMessage(res)) ?? tc('error'))
         return
       }
       for (const requirementId of pendingAddIds) {
@@ -1785,10 +1782,7 @@ export default function KravunderlagDetailClient({
       )
 
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as {
-          error?: string
-        } | null
-        throw new Error(body?.error ?? tc('error'))
+        throw new Error((await readResponseMessage(response)) ?? tc('error'))
       }
 
       setCreateLocalRequirementFormDirty(false)
@@ -4324,7 +4318,8 @@ export default function KravunderlagDetailClient({
                   context: 'requirements specification detail',
                   name: 'bulk save results',
                   priority: 305,
-                  value: 'confirmed failed and uncertain saves',
+                  value:
+                    'confirmed failed and uncertain saves with error references',
                 })}
               >
                 {(bulkOutcome ||
@@ -4358,8 +4353,19 @@ export default function KravunderlagDetailClient({
                         })}
                       </p>
                     )}
+                    {bulkOutcome?.saveErrors && (
+                      <ul>
+                        {bulkOutcome.saveErrors.map(({ uniqueId, message }) => (
+                          <li key={uniqueId}>
+                            {uniqueId}: {message}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                     {bulkOutcome?.refreshFailed && (
-                      <p>{t('bulkSaveRefreshFailed')}</p>
+                      <p>
+                        {t('bulkSaveRefreshFailed')} {bulkOutcome.refreshError}
+                      </p>
                     )}
                     {(bulkOutcome?.refreshFailed ||
                       editorState.inspectionRequiredUniqueIds.length > 0) && (

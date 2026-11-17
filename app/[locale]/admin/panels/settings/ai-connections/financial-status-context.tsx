@@ -14,9 +14,11 @@ import {
   retainAiFinancialSnapshots,
 } from '@/lib/ai/financial-contracts'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { getResponseMessage } from '@/lib/http/response-message'
 
 interface FinancialStatusState {
   busy: boolean
+  errorMessage: string | null
   failed: boolean
   load(): Promise<void>
   mutate(action: string, values: Record<string, string>): Promise<void>
@@ -34,6 +36,7 @@ export function FinancialStatusProvider({
   const [status, setStatus] = useState<AiConnectionFinancialStatus | null>(null)
   const [busy, setBusy] = useState(true)
   const [failed, setFailed] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const requestRef = useRef<AbortController | null>(null)
   const path = `/api/admin/ai-connections/${connectionId}/actions`
   const refresh = useCallback(
@@ -44,7 +47,12 @@ export function FinancialStatusProvider({
         body: JSON.stringify({ action: 'fetch_financial_status' }),
         headers: { 'Content-Type': 'application/json' },
       })
-      if (!response.ok) throw new Error('financial_status_unavailable')
+      if (!response.ok) {
+        const body = await response.json().catch(() => null)
+        if (body?.code === 'sql_failure')
+          setErrorMessage(getResponseMessage(body))
+        throw new Error('financial_status_unavailable')
+      }
       const current: AiConnectionFinancialStatus = await response.json()
       if (!signal.aborted)
         setStatus(previous => retainAiFinancialSnapshots(previous, current))
@@ -58,6 +66,7 @@ export function FinancialStatusProvider({
     requestRef.current = controller
     setBusy(true)
     setFailed(false)
+    setErrorMessage(null)
     try {
       await refresh(controller.signal)
     } catch {
@@ -84,6 +93,7 @@ export function FinancialStatusProvider({
     requestRef.current = controller
     setBusy(true)
     setFailed(false)
+    setErrorMessage(null)
     let committed = false
     try {
       const response = await apiFetch(path, {
@@ -92,7 +102,12 @@ export function FinancialStatusProvider({
         body: JSON.stringify({ action, ...values }),
         headers: { 'Content-Type': 'application/json' },
       })
-      if (!response.ok) throw new Error('management_action_failed')
+      if (!response.ok) {
+        const body = await response.json().catch(() => null)
+        if (body?.code === 'sql_failure')
+          setErrorMessage(getResponseMessage(body))
+        throw new Error('management_action_failed')
+      }
       if (controller.signal.aborted) return
       committed = true
       if (action !== 'write_management_credential') setStatus(null)
@@ -108,7 +123,9 @@ export function FinancialStatusProvider({
   }
 
   return (
-    <FinancialStatusContext value={{ status, busy, failed, load, mutate }}>
+    <FinancialStatusContext
+      value={{ status, busy, failed, errorMessage, load, mutate }}
+    >
       {children}
     </FinancialStatusContext>
   )

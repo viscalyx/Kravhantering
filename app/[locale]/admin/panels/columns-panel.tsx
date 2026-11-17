@@ -7,6 +7,7 @@ import DirtyStateButton from '@/components/DirtyStateButton'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { readResponseMessage } from '@/lib/http/response-message'
 import {
   getOrderedRequirementListColumns,
   getRequirementColumnDefinition,
@@ -43,6 +44,7 @@ export default function ColumnsPanel() {
   >([])
   const [columnDefaultsBaseline, setColumnDefaultsBaseline] = useState('')
   const [columnSaveState, setColumnSaveState] = useState<SaveState>('idle')
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [loadState, setLoadState] = useState<LoadState>('loading')
   const [loadAttempt, setLoadAttempt] = useState(0)
   const columnSaveTokenRef = useRef(0)
@@ -51,12 +53,16 @@ export default function ColumnsPanel() {
     const controller = new AbortController()
     let active = true
     setLoadState('loading')
+    setErrorMessage(null)
 
     apiFetch('/api/admin/requirement-columns', {
       signal: controller.signal,
     })
       .then(async response => {
-        if (!response.ok) throw new Error('Column defaults request failed')
+        if (!response.ok) {
+          setErrorMessage(await readResponseMessage(response))
+          throw new Error('Column defaults request failed')
+        }
         return (await response.json()) as {
           columns?: RequirementListColumnDefault[]
         }
@@ -144,6 +150,7 @@ export default function ColumnsPanel() {
     const requestToken = columnSaveTokenRef.current + 1
     columnSaveTokenRef.current = requestToken
     setColumnSaveState('saving')
+    setErrorMessage(null)
 
     try {
       const response = await apiFetch('/api/admin/requirement-columns', {
@@ -154,6 +161,7 @@ export default function ColumnsPanel() {
 
       if (requestToken !== columnSaveTokenRef.current) return
       if (!response.ok) {
+        setErrorMessage(await readResponseMessage(response))
         setColumnSaveState('error')
         return
       }
@@ -210,7 +218,7 @@ export default function ColumnsPanel() {
                 className="text-sm font-medium text-red-700 dark:text-red-400"
                 role="alert"
               >
-                {ta('columnsSaveError')}
+                {errorMessage ?? ta('columnsSaveError')}
               </span>
             ) : null}
             <button
@@ -250,7 +258,7 @@ export default function ColumnsPanel() {
       {loadState === 'error' ? (
         <div className="py-8" role="alert">
           <p className="text-sm font-medium text-red-700 dark:text-red-400">
-            {ta('columnsLoadError')}
+            {errorMessage ?? ta('columnsLoadError')}
           </p>
           <button
             className="mt-4 inline-flex min-h-11 items-center rounded-full border border-secondary-300 px-4 py-2 text-sm font-medium hover:bg-secondary-100 dark:border-secondary-700 dark:hover:bg-secondary-800"

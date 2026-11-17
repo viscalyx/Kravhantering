@@ -26,7 +26,10 @@ import type {
 import type { AiReasoningConfiguration } from '@/lib/ai/reasoning'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
-import { readResponseMessage } from '@/lib/http/response-message'
+import {
+  getResponseMessage,
+  readResponseMessage,
+} from '@/lib/http/response-message'
 import {
   DialogActions,
   Field,
@@ -248,7 +251,14 @@ export function ModelForm({
           method: 'POST',
         },
       )
-      if (!response.ok) throw new Error('discard_failed')
+      if (!response.ok) {
+        const body = await response.json().catch(() => null)
+        setError(
+          (body?.code === 'sql_failure' ? getResponseMessage(body) : null) ??
+            t('mutationError'),
+        )
+        return
+      }
       setVerification(null)
       onCancel()
     } catch {
@@ -336,9 +346,16 @@ export function ModelForm({
         },
       )
       if (!response.ok || !response.body) {
-        throw new Error(
-          (await readResponseMessage(response)) ?? t('mutationError'),
-        )
+        const body = await response
+          .clone()
+          .json()
+          .catch(() => null)
+        if (body?.code === 'sql_failure') {
+          setPhase('failed')
+          setError(getResponseMessage(body) ?? t('mutationError'))
+          return
+        }
+        throw new Error(t('mutationError'))
       }
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
@@ -356,6 +373,9 @@ export function ModelForm({
         for (const line of lines) {
           if (!line) continue
           const message = JSON.parse(line) as {
+            code?: string
+            correlationId?: string
+            timestamp?: string
             error?: string
             progress?: AiAdminVerificationProgress
             result?: AiAdminCandidateVerificationAttemptResult
@@ -369,6 +389,11 @@ export function ModelForm({
           }
           if (message.result) {
             result = message.result
+          }
+          if (message.code === 'sql_failure') {
+            setPhase('failed')
+            setError(getResponseMessage(message) ?? t('mutationError'))
+            return
           }
           if (message.error) throw new Error(message.error)
         }
@@ -436,6 +461,15 @@ export function ModelForm({
       )
       if (!response.ok) {
         const body: unknown = await response.json().catch(() => null)
+        if (
+          typeof body === 'object' &&
+          body !== null &&
+          'code' in body &&
+          body.code === 'sql_failure'
+        ) {
+          setError(getResponseMessage(body) ?? t('pending.saveUncertain'))
+          return
+        }
         const blocker =
           typeof body === 'object' &&
           body !== null &&

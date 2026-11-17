@@ -1229,6 +1229,61 @@ describe('Admin AI model and stable-profile forms', () => {
     )
   })
 
+  it.each(['verify-http', 'verify-stream', 'save', 'discard'] as const)(
+    'retains safe SQL references for %s while protecting verification content',
+    async operation => {
+      const failure = {
+        code: 'sql_failure',
+        correlationId: 'verification-reference',
+        timestamp: '2026-11-17T12:00:00.000Z',
+        error: 'secret verification content',
+      }
+      fetchMock.mockResolvedValueOnce(
+        operation === 'verify-stream'
+          ? new Response(
+              `${JSON.stringify({ type: 'failed', ...failure })}\n`,
+              { status: 200 },
+            )
+          : Response.json(failure, { status: 500 }),
+      )
+      render(
+        <ModelForm
+          connection={connection()}
+          model={null}
+          onCancel={vi.fn()}
+          onComplete={vi.fn()}
+          {...(operation === 'save' || operation === 'discard'
+            ? { pending: sharedVerification() }
+            : {})}
+        />,
+      )
+      const user = userEvent.setup()
+      if (operation.startsWith('verify')) {
+        await user.type(
+          screen.getByLabelText(
+            /^admin\.aiConnections\.fields\.externalModelId\.label/,
+          ),
+          'controlled/model',
+        )
+      }
+      await user.click(
+        screen.getByRole('button', {
+          name:
+            operation === 'discard'
+              ? 'admin.aiConnections.pending.discard'
+              : operation === 'save'
+                ? 'admin.aiConnections.modelVerification.saveRevision'
+                : 'admin.aiConnections.modelVerification.verify',
+        }),
+      )
+      const alert = await screen.findByRole('alert')
+      expect(alert).toHaveTextContent('verification-reference')
+      expect(alert).toHaveTextContent('sql_failure')
+      expect(alert).not.toHaveTextContent('secret verification content')
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    },
+  )
+
   it('shows transport and streamed verification failures without enabling save', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response('verification rejected', { status: 503 }),

@@ -2142,6 +2142,48 @@ describe('AiRequirementGenerator', () => {
     )
   })
 
+  it('displays SQL references from a generation stream without repeating generation', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url === '/api/ai/authoring-profiles')
+        return authoringProfilesResponse()
+      if (url === '/api/ai/generate-requirement-import')
+        return {
+          ok: true,
+          body: new ReadableStream({
+            start(controller) {
+              controller.enqueue(
+                new TextEncoder().encode(
+                  `event: error\ndata: ${JSON.stringify({
+                    code: 'sql_failure',
+                    correlationId: 'generation-reference',
+                    timestamp: '2026-11-17T12:00:00.000Z',
+                    message: 'SELECT private FROM secret',
+                  })}\n\n`,
+                ),
+              )
+              controller.close()
+            },
+          }),
+        }
+      return { json: async () => ({}), ok: true }
+    })
+    await renderOpenGenerator()
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Encrypt logs')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('generation-reference')
+    expect(alert).toHaveTextContent('sql_failure')
+    expect(alert).toHaveTextContent('2026-11-17T12:00:00.000Z')
+    expect(alert).not.toHaveTextContent('SELECT')
+    expect(
+      mockFetch.mock.calls.filter(
+        ([url]) => url === '/api/ai/generate-requirement-import',
+      ),
+    ).toHaveLength(1)
+  })
+
   it('shows a safe technical code with the actionable provider error', async () => {
     mockFetch.mockImplementation(async (url: string) => {
       if (url === '/api/ai/authoring-profiles') {
@@ -2334,7 +2376,11 @@ describe('AiRequirementGenerator', () => {
         repairAttempt += 1
         if (repairAttempt === 1) {
           return {
-            json: async () => ({ error: 'Repair service unavailable.' }),
+            json: async () => ({
+              code: 'sql_failure',
+              correlationId: 'repair-reference',
+              timestamp: '2026-11-17T12:00:00.000Z',
+            }),
             ok: false,
           }
         }
@@ -2386,7 +2432,7 @@ describe('AiRequirementGenerator', () => {
     })
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Repair failed: Repair service unavailable.',
+      'repair-reference',
     )
     expect(screen.getByRole('button', { name: 'repair' })).toHaveFocus()
 

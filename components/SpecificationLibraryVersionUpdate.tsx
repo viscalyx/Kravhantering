@@ -8,6 +8,7 @@ import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { readResponseMessage } from '@/lib/http/response-message'
 import type { createSpecificationAgreementWorkflow } from '@/lib/specifications/agreements'
 
 type Comparison = Awaited<
@@ -59,7 +60,10 @@ export default function SpecificationLibraryVersionUpdate({
       const response = await apiFetch(
         `/api/requirements-specifications/${specificationId}/agreement?${query}`,
       )
-      if (!response.ok) throw new Error(t('compareFailed'))
+      if (!response.ok)
+        throw new Error(
+          (await readResponseMessage(response)) ?? t('compareFailed'),
+        )
       setComparison((await response.json()) as Comparison)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('compareFailed'))
@@ -89,8 +93,11 @@ export default function SpecificationLibraryVersionUpdate({
           }),
         },
       )
+      if (!response.ok)
+        throw new Error(
+          (await readResponseMessage(response)) ?? t('adoptFailed'),
+        )
       const result = (await response.json()) as { itemRef?: string }
-      if (!response.ok) throw new Error(t('adoptFailed'))
       await onChange(result.itemRef)
       setOpen(false)
     } catch (cause) {

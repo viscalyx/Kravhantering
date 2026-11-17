@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import ListWorkspace from '@/components/ListWorkspace'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { getResponseMessage } from '@/lib/http/response-message'
 
 const REQUIREMENT_CATEGORIES_HELP: HelpContent = {
   sections: [
@@ -36,6 +37,7 @@ export default function RequirementCategoriesClient() {
   const [categories, setCategories] = useState<RequirementCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const getName = useCallback(
     (category: RequirementCategory) =>
@@ -51,10 +53,15 @@ export default function RequirementCategoriesClient() {
   const fetchCategories = useCallback(async () => {
     setLoading(true)
     setHasError(false)
+    setErrorMessage(null)
 
     try {
       const response = await fetch('/api/requirement-categories')
       if (!response.ok) {
+        const body = await response.json().catch(() => null)
+        setErrorMessage(
+          body?.code === 'sql_failure' ? getResponseMessage(body) : null,
+        )
         setHasError(true)
         setCategories([])
         return
@@ -108,7 +115,7 @@ export default function RequirementCategoriesClient() {
             className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-300"
             role="alert"
           >
-            {t('loadError')}
+            {errorMessage ?? t('loadError')}
           </div>
         ) : null}
 

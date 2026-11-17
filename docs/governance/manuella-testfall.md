@@ -1011,7 +1011,8 @@ en bifogad bild.
 Starta en generering som får ett terminalt leverantörsfel. Starta en ny
 generering som får flera valideringsfel för ett saknat toppnivåfält, samma fält
 på otillåten plats och ett värde med fel datatyp. Välj `Reparera JSON`, låt
-första reparationen misslyckas och låt nästa lyckas. Bifoga därefter två
+första reparationen misslyckas med ett kontrollerat SQL-fel och låt nästa
+lyckas. Bifoga därefter två
 bilder med samma bildinnehåll men olika filnamn och filtyp och försök generera
 igen.
 Avbryt slutligen en pågående generering genom att stänga dialogen.
@@ -1023,7 +1024,8 @@ När en bifogad bild tas bort rensas bildfelet. Vid det första terminala felet
 visas en begriplig orsak, till exempel att leverantörens svarsformat inte kunde
 behandlas, tillsammans med en innehållsfri teknisk felkod. Fokus flyttas till
 rubriken `Genereringen misslyckades`, medan fel vid ett nytt försök och
-reparation behåller fokus på åtgärdsknappen. Råresultat,
+reparation behåller fokus på åtgärdsknappen. SQL-felet visar säker text,
+referens, `sql_failure` och UTC-tidpunkt utan automatisk upprepning. Råresultat,
 valideringsfel, behov och bifogade bilder ligger kvar tills användaren
 ändrar dem. Råresultatet visas först efter att hela svaret har passerat
 utdatafiltret; inga ofullständiga strömningsdelar visas. Reparationen får det
@@ -2618,7 +2620,7 @@ testfallet “SPEC-37: rejects needs-reference conflicts until renewed review”
 
 **Förutsättningar:** Tre inkluderade krav utan avsteg i ett redigerbart
 kravunderlag. Använd webbläsarens nätverksverktyg eller en testproxy för att
-avvisa den andra avstegsbegäran med 409, tappa svaret för den tredje och
+avvisa den andra avstegsbegäran med 409, svara med ett SQL-fel för den tredje och
 blockera efterföljande läsning av kravlistan. Playwright simulerar dessa fel.
 
 **Integrationstest:**
@@ -2636,6 +2638,8 @@ testfallet “SPEC-38: retains mixed deviation results when refresh fails”.
 **Förväntat resultat:**
 
 - Resultatet identifierar sparat, inte sparat och okänt resultat med krav-ID.
+- SQL-felets säkra meddelande, referens, kod och UTC-tidpunkt finns kvar vid
+  det osäkra kravets ID även när listans uppdatering misslyckas.
 - Endast det avvisade kravet är fortfarande markerat. Sparade avsteg upprepas
   inte när tillståndet läses in.
 - Texten skiljer ett misslyckat sparande från en misslyckad uppdatering av
@@ -3758,7 +3762,10 @@ sparning av en programinställning. Använd inte produktionsmiljön.
 **Integrationstest:**
 [ai-settings.spec.ts](../../tests/integration/admin/ai-settings.spec.ts),
 testfallet “ADMIN-34: SQL failures show safe references without repeating
-mutations”. Webbläsartestet simulerar felsvaret; fokuserade SQL-tester
+mutations”, samt
+[data-export.spec.ts](../../tests/integration/privacy/data-export.spec.ts),
+testfallet “ADMIN-34: privacy SQL failures retain safe references without
+repeating execution”. Webbläsartesterna simulerar felsvaret; fokuserade SQL-tester
 verifierar kopplingen mellan referens och driftlogg med riktig SQL Server.
 
 **Steg:**
@@ -3770,7 +3777,14 @@ verifierar kopplingen mellan referens och driftlogg med riktig SQL Server.
 5. Aktivera ett kontrollerat SQL-fel även vid inläsning och ladda om sidan.
    Kontrollera referens, kod och tidpunkt i Importer, Exporter och Rapporter.
    Varje felruta ska erbjuda **Försök igen**.
-6. Återställ felvillkoret och läs in sparat tillstånd före nästa ändring.
+6. Öppna Kolumner under ett kontrollerat SQL-fel vid inläsning. Kontrollera
+   referensen och välj **Försök igen** efter att läsfelet har släppts. Ändra
+   en kolumns synlighet, spara under ett SQL-fel och kontrollera samma
+   säkra feluppgifter samt att bara ett sparförsök skickas.
+7. Öppna Dataskydd, förhandsgranska en isolerad målperson och bekräfta
+   radering under ett kontrollerat SQL-fel. Kontrollera referens, kod och
+   tidpunkt samt att raderingen inte skickas igen automatiskt.
+8. Återställ felvillkoret och läs in sparat tillstånd före nästa ändring.
 
 **Förväntat resultat:**
 

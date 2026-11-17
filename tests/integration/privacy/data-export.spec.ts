@@ -493,6 +493,64 @@ test('PRIV-06: anonymize and skip actions execute separately from one preview', 
   })
 })
 
+test('ADMIN-34: privacy SQL failures retain safe references without repeating execution', async ({
+  page,
+}) => {
+  let attempts = 0
+  await page.route('**/api/privacy/erasure-preview', route =>
+    route.fulfill({
+      json: privacyPreview(
+        'SE5560000001-kalle.one',
+        [
+          {
+            allowedActions: ['anonymize', 'skip'],
+            count: 1,
+            currentDisplayValue: 'Kalle Svensson',
+            fieldKey: 'createdBy',
+            key: 'requirement_versions.created_by',
+            objectKey: 'requirementVersions',
+            recommendedAction: 'anonymize',
+            warningKey: 'historySwitch',
+          },
+        ],
+        'sql-failure-preview',
+      ),
+    }),
+  )
+  await page.route('**/api/privacy/erasure-requests', route => {
+    attempts++
+    return route.fulfill({
+      status: 500,
+      json: {
+        code: 'sql_failure',
+        correlationId: 'privacy-execution-reference',
+        timestamp: '2026-11-17T12:00:00.000Z',
+        error: 'Safe server fallback',
+      },
+    })
+  })
+  await page.goto('/sv/admin?tab=privacy')
+  await waitForPrivacyPanelHydration(page)
+  await page
+    .getByRole('textbox', { name: 'HSA-id att söka efter' })
+    .fill('SE5560000001-kalle.one')
+  await page.getByRole('button', { name: 'Förhandsgranska' }).click()
+  await page.getByRole('button', { name: 'Kör radering' }).click()
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Kör radering' })
+    .click()
+  const alert = page.getByLabel('Dataskydd', { exact: true }).getByRole('alert')
+  await expect(alert).toContainText('privacy-execution-reference')
+  await expect(alert).toContainText('sql_failure')
+  await expect(alert).toContainText('2026-11-17T12:00:00.000Z')
+  await expect(alert).toContainText('Kontrollera sparat tillstånd')
+  await expect(
+    page.getByRole('button', { name: 'Kör radering' }),
+  ).toBeDisabled()
+  expect(attempts).toBe(1)
+})
+
 test('PRIV-07: stale privacy preview is rejected and keeps the preview editable', async ({
   page,
 }) => {
