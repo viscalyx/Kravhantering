@@ -1338,7 +1338,8 @@ export default function RequirementSelectionQuestionsClient() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
         event.key === 'Escape' &&
-        !packageSelectorRef.current?.closest('[inert]')
+        packageSelectorRef.current &&
+        !packageSelectorRef.current.closest('[inert]')
       ) {
         event.stopPropagation()
         setPackageSelectorOpen(false)

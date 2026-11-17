@@ -34,6 +34,7 @@ vi.mock('@/components/HelpPanel', () => ({ useHelpContent: vi.fn() }))
 const fetchMock = vi.fn()
 let navigation: EventTarget & {
   canGoBack: boolean
+  entries: () => { key: string }[]
   traverseTo: ReturnType<typeof vi.fn>
 }
 const initialToken = '11111111-1111-4111-8111-111111111111'
@@ -166,6 +167,7 @@ describe('Requirement edit recovery', () => {
     vi.stubGlobal('fetch', fetchMock)
     navigation = Object.assign(new EventTarget(), {
       canGoBack: true,
+      entries: () => [{ key: 'editor' }],
       traverseTo: vi.fn(() => ({ finished: Promise.resolve() })),
     })
     vi.stubGlobal('navigation', navigation)
@@ -960,20 +962,25 @@ describe('Requirement edit recovery', () => {
     )
     expect(navigation.traverseTo).toHaveBeenCalledWith('previous-entry')
   })
-  it('does not add an unreachable back destination at the first history entry', async () => {
-    navigation.canGoBack = false
-    const user = await openEditor()
-    await user.click(screen.getByRole('button', { name: 'Cancel' }))
-    await user.click(
-      within(await screen.findByRole('alertdialog')).getByRole('button', {
-        name: 'Confirm',
-      }),
-    )
-    expect(back).not.toHaveBeenCalled()
-    const unload = new Event('beforeunload', { cancelable: true })
-    fireEvent(window, unload)
-    expect(unload.defaultPrevented).toBe(true)
-  })
+  it.each([{ keys: ['editor'] }, { keys: ['editor', 'forward-fragment'] }])(
+    'keeps protection at the first history entry with visible entries %j',
+    async ({ keys }) => {
+      navigation.canGoBack = false
+      navigation.entries = () => keys.map(key => ({ key }))
+      vi.spyOn(window.history, 'length', 'get').mockReturnValue(keys.length)
+      const user = await openEditor()
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+      await user.click(
+        within(await screen.findByRole('alertdialog')).getByRole('button', {
+          name: 'Confirm',
+        }),
+      )
+      expect(back).not.toHaveBeenCalled()
+      const unload = new Event('beforeunload', { cancelable: true })
+      fireEvent(window, unload)
+      expect(unload.defaultPrevented).toBe(true)
+    },
+  )
 
   it('allows confirmed Cancel when the previous history entry is outside the current origin', async () => {
     navigation.canGoBack = false
@@ -989,6 +996,25 @@ describe('Requirement edit recovery', () => {
     const unload = new Event('beforeunload', { cancelable: true })
     fireEvent(window, unload)
     expect(unload.defaultPrevented).toBe(false)
+  })
+
+  it('restores unload protection if Back finds no predecessor in opaque history', async () => {
+    navigation.canGoBack = false
+    vi.spyOn(window.history, 'length', 'get').mockReturnValue(2)
+    const deadline = new AbortController()
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(deadline.signal)
+    const user = await openEditor()
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Confirm',
+      }),
+    )
+    expect(back).toHaveBeenCalledOnce()
+    deadline.abort()
+    const unload = new Event('beforeunload', { cancelable: true })
+    fireEvent(window, unload)
+    expect(unload.defaultPrevented).toBe(true)
   })
 
   it.each(['push', 'traverse'])(

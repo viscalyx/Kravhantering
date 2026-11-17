@@ -11,10 +11,12 @@ import {
 export function useUnsavedRequirementEdit(dirty: boolean) {
   const confirmDiscard = useDiscardChangesConfirmation()
   const navigationAllowed = useRef(false)
+  const confirmedBack = useRef<AbortSignal | null>(null)
   const confirming = useRef(false)
 
   useEffect(() => {
     navigationAllowed.current = false
+    confirmedBack.current = null
     if (!dirty) return
 
     const currentHref = window.location.href
@@ -36,6 +38,7 @@ export function useUnsavedRequirementEdit(dirty: boolean) {
     }
     const beforeUnload = (event: BeforeUnloadEvent) => {
       if (navigationAllowed.current) return
+      if (confirmedBack.current && !confirmedBack.current.aborted) return
       event.preventDefault()
       event.returnValue = ''
     }
@@ -75,8 +78,17 @@ export function useUnsavedRequirementEdit(dirty: boolean) {
       })
     }
     const traverseHistory = async (event: NavigateEvent) => {
+      const backPending = confirmedBack.current
+      confirmedBack.current = null
       if (event.hashChange) {
         navigationAllowed.current = false
+        return
+      }
+      if (
+        event.navigationType === 'traverse' &&
+        backPending &&
+        !backPending.aborted
+      ) {
         return
       }
       if (
@@ -123,10 +135,18 @@ export function useUnsavedRequirementEdit(dirty: boolean) {
   }, [])
   const navigateBack = useCallback(
     (back: () => void) => {
-      // Navigation API entries exclude cross-origin predecessors.
-      if (dirty && !window.navigation.canGoBack && window.history.length <= 1)
-        return
-      navigationAllowed.current = true
+      if (dirty) {
+        const navigation = window.navigation
+        // At index zero, all visible entries after the current one are forward.
+        if (
+          !navigation.canGoBack &&
+          window.history.length <= navigation.entries().length
+        )
+          return
+        // Cross-origin history is opaque. Allow the imminent traversal/unload
+        // without releasing link or app guards if history.back() does nothing.
+        confirmedBack.current = AbortSignal.timeout(1000)
+      }
       back()
     },
     [dirty],

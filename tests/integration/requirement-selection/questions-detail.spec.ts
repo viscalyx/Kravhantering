@@ -93,6 +93,24 @@ test.describe('Requirement selection question detail preview', () => {
         dialog.getByRole('button', { name: 'Arkivera' }),
       ).toHaveCount(0)
     })
+
+    await test.step('Escape reaches the editor after the package selector unmounts', async () => {
+      const packages = dialog.getByRole('button', {
+        name: 'Kravpaket',
+        exact: true,
+      })
+      await packages.click()
+      const noSelection = dialog.getByRole('checkbox', {
+        name: 'Utan kravurval',
+      })
+      await noSelection.press('Space')
+      await expect(packages).toBeDisabled()
+      await expect(
+        dialog.getByRole('textbox', { name: /Kravpaket$/u }),
+      ).toHaveCount(0)
+      await noSelection.press('Escape')
+      await expect(page.getByRole('alertdialog')).toBeVisible()
+    })
   })
 
   test('REQ-14d: keeps answer-editor removal controls at least 24 CSS pixels', async ({

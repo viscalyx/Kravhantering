@@ -314,6 +314,21 @@ test.describe('Requirement creation', () => {
       expect(await page.evaluate(() => window.history.length)).toBe(1)
     })
     await test.step('check later departure remains guarded', async () => {
+      await page.evaluate(() => {
+        window.location.hash = 'description'
+      })
+      await expect(page).toHaveURL(/#description$/)
+      await page.goBack()
+      await expect(page).toHaveURL(/\/sv\/requirements\/new$/)
+      expect(await page.evaluate(() => window.navigation.canGoBack)).toBe(false)
+      expect(await page.evaluate(() => window.navigation.canGoForward)).toBe(
+        true,
+      )
+      await page.getByRole('button', { name: 'Avbryt', exact: true }).click()
+      await confirmation
+        .getByRole('button', { name: 'Bekräfta', exact: true })
+        .click()
+      await expect(confirmation).toBeHidden()
       await page.getByRole('button', { name: 'Byt språk' }).click()
       await expect(confirmation).toBeVisible()
     })
@@ -338,9 +353,13 @@ test.describe('Requirement creation', () => {
       )
       await page.goto(previousUrl)
       await page.getByRole('link', { name: 'Open requirement form' }).click()
+      await expect(page.locator('#areaId')).toBeEnabled()
       await page
         .locator('#description')
         .fill('Kravtext från en annan webbplats')
+      await expect(
+        page.getByRole('button', { name: 'Spara', exact: true }),
+      ).toBeEnabled()
       expect(await page.evaluate(() => window.navigation.canGoBack)).toBe(false)
       expect(await page.evaluate(() => window.history.length)).toBeGreaterThan(
         1,

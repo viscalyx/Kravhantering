@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { registerModal } from '@/lib/modal-focus'
 
 interface UseModalFocusOptions {
@@ -26,9 +26,12 @@ export function useModalFocus(
   options: UseModalFocusOptions,
 ): UseModalFocusReturn {
   const latest = useRef(options)
-  latest.current = options
   const registration = useRef<ReturnType<typeof registerModal> | null>(null)
   const { open, modalRef } = options
+
+  useLayoutEffect(() => {
+    latest.current = options
+  }, [options])
 
   // A loading/error branch can replace the DOM node without changing `open`.
   useEffect(() => {

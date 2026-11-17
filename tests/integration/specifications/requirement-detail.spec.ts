@@ -3059,7 +3059,6 @@ test.describe('Requirements specification deterministic manual cases', () => {
         name: 'Kravpaket',
       })
       await expect(pendingPackageBand).toHaveCount(1)
-      await expect(pendingPackageBand).not.toContainText('Läser in kravpaket…')
       await expect(pendingPackageBand).toContainText('Läser in kravpaket…')
       releaseCatalogRefresh?.()
       await expect(addDialog).toBeHidden()

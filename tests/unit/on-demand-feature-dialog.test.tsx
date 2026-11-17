@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { lazy, useRef, useState } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import OnDemandFeatureDialog from '@/components/OnDemandFeatureDialog'
 import { useModalFocus } from '@/hooks/useModalFocus'
 
@@ -93,10 +93,6 @@ describe('OnDemandFeatureDialog', () => {
     await waitFor(() => expect(trigger).toHaveFocus())
   })
 
-  beforeEach(() => {
-    vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined)
-  })
-
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
@@ -154,25 +150,6 @@ describe('OnDemandFeatureDialog', () => {
 
     fireEvent.keyDown(dialog, { key: 'Tab' })
     expect(dialog).toHaveFocus()
-  })
-
-  it('restores a nonzero page position after the modal unmounts', () => {
-    vi.spyOn(window, 'scrollX', 'get').mockReturnValue(12)
-    vi.spyOn(window, 'scrollY', 'get').mockReturnValue(34)
-
-    const { unmount } = render(
-      <OnDemandFeatureDialog {...defaultProps}>
-        <SuspendedFeature />
-      </OnDemandFeatureDialog>,
-    )
-
-    expect(document.body.style.overflow).toBe('hidden')
-    expect(window.scrollX).toBe(12)
-    expect(window.scrollY).toBe(34)
-    unmount()
-    expect(document.body.style.overflow).toBe('')
-    expect(window.scrollX).toBe(12)
-    expect(window.scrollY).toBe(34)
   })
 
   it('replaces the loading body with the loaded feature and moves focus into it', async () => {

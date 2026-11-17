@@ -57,9 +57,12 @@ function usable(element: HTMLElement): boolean {
   return true
 }
 
-function tabbable(element: HTMLElement): HTMLElement[] {
-  return Array.from(element.querySelectorAll<HTMLElement>(candidates)).filter(
-    candidate => candidate.tabIndex >= 0 && usable(candidate),
+function isTabStop(element: HTMLElement): boolean {
+  return (
+    element.tabIndex >= 0 &&
+    // :indeterminate on a radio means its group has no checked member.
+    !element.matches('input[type="radio"]:not(:checked, :indeterminate)') &&
+    usable(element)
   )
 }
 
@@ -79,7 +82,11 @@ function focusModal(modal: Modal): void {
     if (!heading.hasAttribute('tabindex')) heading.tabIndex = -1
     if (focus(heading)) return
   }
-  if (tabbable(modal.element).some(focus)) return
+  for (const candidate of modal.element.querySelectorAll<HTMLElement>(
+    candidates,
+  )) {
+    if (isTabStop(candidate) && focus(candidate)) return
+  }
   if (!modal.element.hasAttribute('tabindex')) modal.element.tabIndex = -1
   focus(modal.element)
 }
@@ -167,14 +174,23 @@ function handleKeyDown(modal: Modal, event: ModalKeyEvent): void {
     event.stopPropagation()
     if (!modal.options().closeDisabled) modal.options().onClose()
   } else if (event.key === 'Tab') {
-    const elements = tabbable(modal.element)
-    const index = elements.indexOf(document.activeElement as HTMLElement)
+    const elements = Array.from(
+      modal.element.querySelectorAll<HTMLElement>(candidates),
+    )
+    const active = document.activeElement
+    const edge = event.shiftKey
+      ? elements.find(isTabStop)
+      : elements.findLast(isTabStop)
     if (
-      index === -1 ||
-      (event.shiftKey ? index === 0 : index === elements.length - 1)
+      active === edge ||
+      !(active instanceof HTMLElement) ||
+      !elements.includes(active) ||
+      !isTabStop(active)
     ) {
       event.preventDefault()
-      const target = event.shiftKey ? elements.at(-1) : elements[0]
+      const target = event.shiftKey
+        ? elements.findLast(isTabStop)
+        : elements.find(isTabStop)
       if (!focus(target)) focusModal(modal)
     }
     // Prevent a React parent dialog from handling a portal child's Tab.

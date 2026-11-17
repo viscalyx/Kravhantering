@@ -1208,6 +1208,7 @@ export default function RequirementsImportDialog({
   const modalRef = useRef<HTMLDivElement>(null)
   const pickerModalRef = useRef<HTMLDivElement>(null)
   const { handleKeyDown } = useModalFocus({
+    closeDisabled: loading,
     modalRef,
     open,
     onClose: () => void closeDialog(),
@@ -1519,6 +1520,7 @@ export default function RequirementsImportDialog({
   }
 
   const closeDialog = async () => {
+    if (loading) return
     const hasRemainingImportEdits =
       rows.length > 0 || (!hadSuccessfulImport && rawJson.trim())
     if (hasRemainingImportEdits) {
@@ -2189,6 +2191,7 @@ export default function RequirementsImportDialog({
             <button
               aria-label={text.close}
               className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg hover:bg-secondary-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 dark:hover:bg-secondary-900"
+              disabled={loading}
               onClick={() => void closeDialog()}
               type="button"
             >

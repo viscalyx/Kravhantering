@@ -1,6 +1,13 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { StrictMode, useRef, useState } from 'react'
+import {
+  type ReactNode,
+  StrictMode,
+  Suspense,
+  startTransition,
+  useRef,
+  useState,
+} from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useModalFocus } from '@/hooks/useModalFocus'
 
@@ -137,7 +144,7 @@ function ExplicitReturnFocusModal() {
   )
 }
 
-function EmptyModal() {
+function FocusTestDialog({ children }: { children?: ReactNode }) {
   const modalRef = useRef<HTMLDivElement>(null)
   const { handleKeyDown } = useModalFocus({
     modalRef,
@@ -146,11 +153,13 @@ function EmptyModal() {
   })
   return (
     <div
-      aria-label="Empty"
+      aria-label="Focus test"
       onKeyDown={handleKeyDown}
       ref={modalRef}
       role="dialog"
-    />
+    >
+      {children}
+    </div>
   )
 }
 
@@ -175,10 +184,10 @@ describe('useModalFocus', () => {
     const { container } = render(
       <>
         <button type="button">Background</button>
-        <EmptyModal />
+        <FocusTestDialog />
       </>,
     )
-    const dialog = screen.getByRole('dialog', { name: 'Empty' })
+    const dialog = screen.getByRole('dialog', { name: 'Focus test' })
     expect(dialog).toHaveFocus()
     await user.tab()
     expect(dialog).toHaveFocus()
@@ -190,17 +199,22 @@ describe('useModalFocus', () => {
 
   it('restores interaction after Strict Mode effect replay and close', async () => {
     const user = userEvent.setup()
-    const { container } = render(
+    render(<button type="button">Launch dialog</button>)
+    const trigger = screen.getByRole('button', { name: 'Launch dialog' })
+    trigger.focus()
+    render(
       <StrictMode>
-        <TestModal />
+        <TestModal open />
       </StrictMode>,
     )
-    const trigger = screen.getByRole('button', { name: 'Open' })
-    await user.click(trigger)
+    trigger.focus()
     expect(screen.getByTestId('first')).toHaveFocus()
+    await user.tab({ shift: true })
+    expect(screen.getByTestId('last')).toHaveFocus()
     await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).toBeNull()
     expect(trigger).toHaveFocus()
-    expect(container.querySelector('[inert]')).toBeNull()
+    expect(trigger.closest('[inert]')).toBeNull()
     expect(document.body.style.overflow).toBe('')
   })
 
@@ -257,6 +271,31 @@ describe('useModalFocus', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
+  it('keeps committed Escape options while a transition is suspended', async () => {
+    const onClose = vi.fn()
+    const suspend = vi.fn(() => {
+      throw new Promise(() => {})
+    })
+    function Dialog({ pending }: { pending: boolean }) {
+      const modalRef = useRef<HTMLDivElement>(null)
+      useModalFocus({ modalRef, open: true, onClose, closeDisabled: pending })
+      if (pending) suspend()
+      return <div ref={modalRef} role="dialog" />
+    }
+    const view = (pending: boolean) => (
+      <Suspense>
+        <Dialog pending={pending} />
+      </Suspense>
+    )
+    const { rerender } = render(view(false))
+    await act(async () => {
+      startTransition(() => rerender(view(true)))
+    })
+    expect(suspend).toHaveBeenCalled()
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
   it('traps Tab at the last element back to the first', () => {
     render(<TestModal open />)
 
@@ -280,6 +319,36 @@ describe('useModalFocus', () => {
     })
 
     expect(screen.getByTestId('last')).toHaveFocus()
+  })
+
+  it('wraps at the checked radio and keeps unchecked groups with a different form owner reachable', () => {
+    render(
+      <FocusTestDialog>
+        <form>
+          <input aria-label="Before" name="choice" type="radio" />
+          <input
+            aria-label="Selected"
+            defaultChecked
+            name="choice"
+            type="radio"
+          />
+          <input aria-label="After" name="choice" type="radio" />
+        </form>
+        <form>
+          <input aria-label="Unselected group" name="choice" type="radio" />
+        </form>
+      </FocusTestDialog>,
+    )
+    const selected = screen.getByRole('radio', { name: 'Selected' })
+    const other = screen.getByRole('radio', { name: 'Unselected group' })
+    expect(selected).toHaveFocus()
+    fireEvent.keyDown(selected, { key: 'Tab', shiftKey: true })
+    expect(other).toHaveFocus()
+    fireEvent.keyDown(other, { key: 'Tab' })
+    expect(selected).toHaveFocus()
+    other.setAttribute('disabled', '')
+    expect(fireEvent.keyDown(selected, { key: 'Tab' })).toBe(false)
+    expect(selected).toHaveFocus()
   })
 
   it('does not trap Tab for middle elements', () => {

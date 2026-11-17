@@ -968,13 +968,15 @@ när den ändras med tangentbord.
 **Steg:** Öppna en seedad kravurvalsfråga, redigera ett svar och öppna ett
 krav från svarets kravurvalsförhandsvisning. Öppna paketväljaren, fokusera
 dess sökfält och stäng den med Escape. Öppna områdesinformationen med
-Enter, tabba till panelen och stäng den med Escape.
+Enter, tabba till panelen och stäng den med Escape. Öppna paketväljaren igen
+och markera `Utan kravurval` med tangentbordet. Tryck Escape.
 
 **Förväntat resultat:** Kravet visas skrivskyddat med `Kravtext` och utan
 arkiverings- eller livscykelåtgärder. Områdesinformationen kan läsas med
 tangentbord; Escape återför fokus till infoikonen och lämnar svarsredigeraren
 öppen. Escape i paketväljaren stänger bara väljaren och återför fokus till
-dess öppningsknapp.
+dess öppningsknapp. När valet `Utan kravurval` döljer väljaren öppnar Escape
+bekräftelsen för att kassera ändringarna i svaret.
 
 ### REQ-14d: borttagningsknappar i kravurvalsvar är användbara
 
@@ -1166,8 +1168,10 @@ har ändrats.
 
 ### REQ-17: importera krav till kravbiblioteket
 
-**Steg:** Logga in som `olle.areaowner`, öppna `/sv/requirements`, välj
-importknappen i den flytande åtgärdsytan. Använd Tab och Skift+Tab för att
+**Steg:** Logga in som `olle.areaowner`, öppna `/sv/requirements` och scrolla
+ned i kravlistan. Öppna importen i den flytande åtgärdsytan, stäng den och
+kontrollera att samma del av kravlistan visas. Öppna importen igen.
+Använd Tab och Skift+Tab för att
 nå kravområde, filval, textinmatning och stödytan `Låt en extern AI ta fram
 krav`. Kontrollera stegguidens tre steg. Öppna den infällda sektionen `Egen
 prompt eller validering` och ladda ner schema och importinstruktion. Välj även
@@ -1177,8 +1181,9 @@ via filvalet och kontrollera att innehållet visas i textfältet. Klistra in
 kravtext börjar med `=`,
 föreslagen normreferens, behovsreferensfält som ska ignoreras och ett först
 otillåtet destinationsfält. Välj kravområde, korrigera JSON, förhandsgranska,
-expandera raden, granska den föreslagna normreferensen, importera vald rad och
-ladda ner CSV-kvitto.
+expandera raden, granska den föreslagna normreferensen och importera vald rad.
+Prova Escape medan importen pågår och kontrollera att `Stäng` är inaktiverad
+tills svaret kommer. Ladda sedan ner CSV-kvittot.
 
 **Förväntat resultat:** Inmatning och stödmaterial går att nå med tangentbord
 och har synlig fokusmarkering. Stegguiden visar `Hämta två filer`, `Fråga
@@ -1570,7 +1575,9 @@ inloggad session, så att webbläsarens Bakåt inte har någon destination.
 after Cancel”.
 
 **Steg:** Markera verifierbart. Försök gå Bakåt. Välj formulärets `Avbryt`
-och bekräfta kasseringen. Försök sedan byta språk.
+och bekräfta kasseringen. Lägg till `#description` sist i adressen och tryck
+Retur. Gå Bakåt till formulärets adress utan fragment. Välj `Avbryt` igen
+och bekräfta. Försök sedan byta språk.
 
 **Förväntat resultat:** Formuläret och markeringen finns kvar efter Bakåt
 och Avbryt. Språkbyte kräver fortfarande en kassering.
