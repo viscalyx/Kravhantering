@@ -7,7 +7,7 @@ import { consumeHsaVerificationQuota } from '@/lib/dal/hsa-verification-quota'
 import { canManageAreaCoAuthors } from '@/lib/dal/requirement-areas'
 import { canManageSpecificationAssignments } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import { logSanitizedError } from '@/lib/http/safe-errors'
+import { logSanitizedError, reportSqlFailure } from '@/lib/http/safe-errors'
 import {
   customMutationPolicy,
   secureMutationRoute,
@@ -262,6 +262,10 @@ export const POST = secureMutationRoute({
         return throttledResponse(quota.retryAfterSeconds)
       }
     } catch (error) {
+      const sqlFailure = reportSqlFailure(error, {
+        ...context,
+        operation: 'requirements.hsa_verification',
+      })
       logSanitizedError('Failed to enforce HSA verification quota', error)
       recordSecurityOutcome('quota_unavailable')
       recordCapacityEvent({
@@ -273,12 +277,15 @@ export const POST = secureMutationRoute({
         source: 'rest',
         statusCode: 503,
       })
-      return NextResponse.json(QUOTA_UNAVAILABLE_ERROR, {
-        headers: {
-          'Retry-After': String(QUOTA_UNAVAILABLE_RETRY_AFTER_SECONDS),
+      return NextResponse.json(
+        { ...QUOTA_UNAVAILABLE_ERROR, ...(sqlFailure ? { sqlFailure } : {}) },
+        {
+          headers: {
+            'Retry-After': String(QUOTA_UNAVAILABLE_RETRY_AFTER_SECONDS),
+          },
+          status: 503,
         },
-        status: 503,
-      })
+      )
     }
 
     const recordOutcome = async (

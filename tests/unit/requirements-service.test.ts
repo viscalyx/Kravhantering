@@ -1,4 +1,6 @@
+import { QueryFailedError } from 'typeorm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { reportSqlFailure } from '@/lib/http/safe-errors'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import {
   conflictError,
@@ -984,6 +986,56 @@ describe('createRequirementsService', () => {
       }),
     ])
     expect(JSON.stringify(emittedSecurityEvents())).not.toContain('supersecret')
+  })
+
+  it('retains a denied-action SQL audit cause through the MCP service boundary while blocking work', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const sqlError = new QueryFailedError(
+      'INSERT INTO action_audit_events VALUES (@0)',
+      [],
+      new Error('Required audit failed password=private'),
+    )
+    mocks.auditQuery.mockRejectedValueOnce(sqlError)
+    const authorization = {
+      assertAuthorized: vi
+        .fn()
+        .mockRejectedValueOnce(forbiddenError('Blocked by policy')),
+    }
+    const service = createRequirementsService({} as never, {
+      authorization,
+      logger,
+    })
+    const mcpContext = {
+      ...makeContext(),
+      source: 'mcp' as const,
+      toolName: 'requirements_query_catalog',
+    }
+    try {
+      const error = await service
+        .queryCatalog(mcpContext, {
+          catalog: 'requirements',
+          operation: 'list',
+        })
+        .then(
+          () => undefined,
+          error => error,
+        )
+      expect(error).toMatchObject({
+        code: 'internal',
+        status: 500,
+        cause: sqlError,
+      })
+      const reference = reportSqlFailure(error, mcpContext)
+      expect(reference).toMatchObject({
+        code: 'sql_failure',
+        correlationId: mcpContext.correlationId,
+        timestamp: expect.any(String),
+      })
+      expect(mocks.listRequirements).not.toHaveBeenCalled()
+      expect(JSON.stringify(reference)).not.toMatch(/private|INSERT/)
+    } finally {
+      log.mockRestore()
+    }
   })
 
   it('queries areas catalog', async () => {

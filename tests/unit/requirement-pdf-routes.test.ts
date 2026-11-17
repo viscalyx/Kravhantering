@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { QueryFailedError } from 'typeorm'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
 
@@ -235,6 +236,46 @@ function reportIds(count: number): string[] {
 }
 
 describe('requirement PDF routes', () => {
+  it('retains the safe SQL failure envelope from synchronous report collection', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    routeState.collectRequirementForReport.mockRejectedValueOnce(
+      new QueryFailedError(
+        'SELECT id FROM requirements',
+        [],
+        Object.assign(new Error('Connection failure password=private'), {
+          number: 1205,
+        }),
+      ),
+    )
+    try {
+      const { GET } = await import(
+        '@/app/[locale]/requirements/reports/pdf/review/[id]/route'
+      )
+      const response = await GET(
+        new NextRequest(
+          'http://localhost/en/requirements/reports/pdf/review/REQ-1',
+        ),
+        { params: Promise.resolve({ id: 'REQ-1', locale: 'en' }) },
+      )
+      expect(response.status).toBe(500)
+      expect(response.headers.get('Cache-Control')).toBe('no-store')
+      const body = await response.json()
+      expect(body).toMatchObject({
+        code: 'sql_failure',
+        error: expect.stringContaining('Check saved state'),
+        correlationId: expect.any(String),
+        timestamp: expect.any(String),
+      })
+      expect(JSON.stringify(body)).not.toMatch(/private|SELECT/)
+      expect(JSON.parse(String(log.mock.calls[0][0]))).toMatchObject({
+        correlation_id: body.correlationId,
+        timestamp: body.timestamp,
+      })
+    } finally {
+      log.mockRestore()
+    }
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     routeState.acquireGeneratedOutputSpool.mockResolvedValue({

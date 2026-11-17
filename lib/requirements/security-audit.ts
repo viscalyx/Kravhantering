@@ -505,7 +505,7 @@ async function recordDeniedActionAuditEventRequired(
       reason,
       requiredRoles,
     })
-    throw internalError()
+    throw internalError(undefined, undefined, { cause: auditError })
   }
 }
 

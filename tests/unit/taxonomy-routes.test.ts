@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { QueryFailedError } from 'typeorm'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   HsaVerificationQuotaDecision,
@@ -1074,6 +1075,49 @@ describe('requirement responsibility person verify route', () => {
       }),
     )
     consoleError.mockRestore()
+  })
+
+  it('retains the quota retry contract and adds a SQL reference without starting identity lookup', async () => {
+    authState.context.actor.roles = ['Admin']
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    hsaVerificationQuotaState.consumeHsaVerificationQuota.mockRejectedValueOnce(
+      new QueryFailedError(
+        'SELECT id FROM hsa_verification_quota_buckets',
+        [],
+        new Error('quota failed password=private'),
+      ),
+    )
+    try {
+      const response = await postRequirementResponsibilityPersonVerify(
+        jsonReq('POST', {
+          hsaId: 'SE5560000001-sensitive1',
+          mode: 'refresh',
+          purpose: 'requirement_area_owner',
+        }),
+      )
+      expect(response.status).toBe(503)
+      expect(response.headers.get('Retry-After')).toBe('5')
+      const body = await response.json()
+      expect(body).toMatchObject({
+        code: 'service_unavailable',
+        error: 'Service unavailable.',
+        retryAfterSeconds: 5,
+        sqlFailure: {
+          code: 'sql_failure',
+          correlationId: expect.any(String),
+          timestamp: expect.any(String),
+          error: expect.stringContaining('Check saved state'),
+        },
+      })
+      expect(hsaLookupState.lookupHsaPersonStrict).not.toHaveBeenCalled()
+      expect(JSON.parse(String(log.mock.calls[0][0]))).toMatchObject({
+        correlation_id: body.sqlFailure.correlationId,
+        timestamp: body.sqlFailure.timestamp,
+      })
+      expect(JSON.stringify(body)).not.toMatch(/private|SELECT|sensitive1/)
+    } finally {
+      log.mockRestore()
+    }
   })
 
   it.each([
