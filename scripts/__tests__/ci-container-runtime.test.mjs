@@ -616,15 +616,27 @@ describe('CI container runtime', () => {
   })
 
   it.each([
-    ['Build and Smoke Test Container Stack', '20260810.271', '20260811.271.1'],
+    [
+      'Build and Smoke Test Container Stack',
+      '20260810.271',
+      '20260811.271.1',
+      'ubuntu-24.04',
+    ],
+    [
+      'Build and Smoke Test Container Stack',
+      '20261103.629',
+      '20261111.196.1',
+      'ubuntu-26.04',
+    ],
     [
       'Production App authenticated topology / Build and Smoke Test Container Stack',
       '20260707',
       '20260708',
+      'ubuntu-24.04',
     ],
   ])(
     'extracts secret-safe runner metadata from completed job %s',
-    (jobName, provisionerVersion, imageVersion) => {
+    (jobName, provisionerVersion, imageVersion, imageName) => {
       const fixture = createToolchainFixture()
       const evidenceDirectory = path.join(fixture.root, 'runner-evidence')
       const ghPath = path.join(fixture.root, 'usr', 'bin', 'gh')
@@ -649,7 +661,7 @@ describe('CI container runtime', () => {
           "  printf '%s\\n' 'Commit: 0123456789abcdef0123456789abcdef01234567'",
           "  printf '%s\\n' 'Build Date: 2026-08-10T10:11:12Z'",
           "  printf '%s\\n' 'Runner Image'",
-          "  printf '%s\\n' 'Image: ubuntu-24.04'",
+          `  printf '%s\\n' 'Image: ${imageName}'`,
           `  printf '%s\\n' 'Version: ${imageVersion}'`,
           "  printf '%s\\n' 'UNRELATED_SECRET=2.0.999.1'",
           'fi',
@@ -673,7 +685,7 @@ describe('CI container runtime', () => {
       )
       expect(metadata).toContain('Hosted Compute Agent')
       expect(metadata).toContain(`Version: ${provisionerVersion}`)
-      expect(metadata).toContain('Image: ubuntu-24.04')
+      expect(metadata).toContain(`Image: ${imageName}`)
       expect(metadata).toContain(`Version: ${imageVersion}`)
       expect(metadata).not.toContain('UNRELATED_SECRET')
     },

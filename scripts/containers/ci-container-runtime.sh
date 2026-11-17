@@ -403,7 +403,7 @@ collect_github_runner_metadata() {
       section == "provisioner" && /^Commit: [a-f0-9]{40}$/ { print; next }
       section == "provisioner" && /^Build Date: [0-9TZ:.+-]+$/ { print; next }
       section == "provisioner" && /^Azure Region: [-A-Za-z0-9 ]+$/ { print; next }
-      section == "image" && /^Image: ubuntu-24\.04$/ { print; next }
+      section == "image" && /^Image: ubuntu-[0-9]{2}\.[0-9]{2}$/ { print; next }
       section == "image" && /^Version: 20[0-9][0-9][0-9][0-9][0-9][0-9](\.[0-9]+)*$/ { print; next }
       section == "image" && /^Included Software: https:\/\/github\.com\/actions\/runner-images\/[-A-Za-z0-9._~:/?#%]+$/ { print; next }
       section == "image" && /^Image Release: https:\/\/github\.com\/actions\/runner-images\/[-A-Za-z0-9._~:/?#%]+$/ { print; next }
@@ -428,7 +428,7 @@ collect_github_runner_metadata() {
     section == "provisioner" && /^Hosted Compute Agent$/ { hosted = 1 }
     section == "provisioner" && /^2\.0\.[0-9]+(\.[0-9]+)?$/ { legacy = 1 }
     section == "provisioner" && /^Version: / { provisioner_version = 1 }
-    section == "image" && /^Image: ubuntu-24\.04$/ { image = 1 }
+    section == "image" && /^Image: ubuntu-[0-9]{2}\.[0-9]{2}$/ { image = 1 }
     END { exit !(image && (legacy || (hosted && provisioner_version))) }
   ' "$output"; then
     metadata_unavailable 'GitHub runner metadata was incomplete.'
