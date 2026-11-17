@@ -39,8 +39,8 @@ const ROUTES = [
 
 export const REQUIREMENT_WORKFLOW_GZIP_MAX_BYTES = {
   'requirements-library': {
-    // 2026-11-16 SQL failure message baseline: 420,696 gzip bytes plus 5% headroom.
-    entry: 441_731,
+    // 2026-07-14 production baseline: 280,092 gzip bytes plus 5% headroom.
+    entry: 294_097,
     // 2026-09-29 production baseline: 292,752 gzip bytes plus 5% headroom.
     // The AI request prompt module bundles messages/{sv,en}.json, so new
     // message texts grow this chunk.
@@ -49,8 +49,8 @@ export const REQUIREMENT_WORKFLOW_GZIP_MAX_BYTES = {
     'import-review': 144_347,
   },
   'requirements-specification-detail': {
-    // 2026-11-16 SQL failure message baseline: 485,860 gzip bytes plus 5% headroom.
-    entry: 510_153,
+    // 2026-11-12 dependency update baseline: 352,656 gzip bytes plus 5% headroom.
+    entry: 370_289,
     // 2026-09-29 production baseline: 293,461 gzip bytes plus 5% headroom.
     'ai-authoring': 308_134,
     // 2026-09-27 production baseline: 135,639 gzip bytes plus 5% headroom.

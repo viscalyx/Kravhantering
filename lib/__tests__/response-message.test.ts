@@ -23,6 +23,11 @@ describe('readResponseMessage', () => {
       expect(result).toContain(
         locale === 'sv' ? 'Kontrollera sparat tillstånd' : 'Check saved state',
       )
+      expect(result).toBe(
+        locale === 'sv'
+          ? 'Databasåtgärden kunde inte bekräftas. Kontrollera sparat tillstånd innan du upprepar åtgärden. Referens: sql-test-reference. Kod: sql_failure. Tidpunkt: 2026-11-16T12:00:00.000Z.'
+          : 'The database operation could not be confirmed. Check saved state before repeating the operation. Reference: sql-test-reference. Code: sql_failure. Timestamp: 2026-11-16T12:00:00.000Z.',
+      )
       expect(result).not.toMatch(/SELECT|secret/)
     },
   )

@@ -1,5 +1,5 @@
-import en from '@/messages/en.json'
-import sv from '@/messages/sv.json'
+import en from '@/messages/sql-failures.en.json'
+import sv from '@/messages/sql-failures.sv.json'
 
 export function getResponseMessage(
   body: unknown,
@@ -38,7 +38,7 @@ export function getResponseMessage(
         typeof failure.timestamp === 'string' &&
         /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(failure.timestamp)
       ) {
-        return (locale === 'sv' ? sv.common.sqlFailure : en.common.sqlFailure)
+        return (locale === 'sv' ? sv.sqlFailure : en.sqlFailure)
           .replace('{reference}', reference)
           .replace('{timestamp}', failure.timestamp)
       }

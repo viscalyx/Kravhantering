@@ -64,20 +64,20 @@ export const ADMIN_WORKSPACES = [
 ]
 
 export const ADMIN_WORKSPACE_GZIP_MAX_BYTES = {
-  // 2026-11-16 SQL failure message baseline: 146,545 gzip bytes plus 5% headroom.
-  accessReview: 153_873,
+  // 2026-09-07 compact quota-message baseline: 14,733 gzip bytes plus 5% headroom.
+  accessReview: 15_470,
   // 2026-09-07 compact quota-message baseline: 11,207 gzip bytes plus 5% headroom.
   actionAuditLog: 11_768,
-  // 2026-11-16 SQL failure message baseline: 141,595 gzip bytes plus 5% headroom.
-  archiving: 148_675,
+  // 2026-09-07 compact quota-message baseline: 9,612 gzip bytes plus 5% headroom.
+  archiving: 10_093,
   // 2026-09-07 compact quota-message baseline: 10,394 gzip bytes plus 5% headroom.
   columns: 10_914,
-  // 2026-11-16 SQL failure message baseline: 142,132 gzip bytes plus 5% headroom.
-  identity: 149_239,
+  // 2026-09-07 compact quota-message baseline: 10,239 gzip bytes plus 5% headroom.
+  identity: 10_751,
   // 2026-09-07 compact quota-message baseline: 13,546 gzip bytes plus 5% headroom.
   privacy: 14_224,
-  // 2026-11-16 SQL failure message baseline: 150,008 gzip bytes plus 5% headroom.
-  settings: 157_509,
+  // 2026-09-07 actor settings and quota-message baseline: 18,269 gzip bytes plus 5% headroom.
+  settings: 19_183,
   // 2026-07-20 isolated-route baseline: 4,879 gzip bytes plus 5% headroom.
   statusesAndWorkflows: 5_123,
   // 2026-07-20 isolated-route baseline: 5,256 gzip bytes plus 5% headroom.

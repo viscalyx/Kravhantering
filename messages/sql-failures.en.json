@@ -1,0 +1,3 @@
+{
+  "sqlFailure": "The database operation could not be confirmed. Check saved state before repeating the operation. Reference: {reference}. Code: sql_failure. Timestamp: {timestamp}."
+}
