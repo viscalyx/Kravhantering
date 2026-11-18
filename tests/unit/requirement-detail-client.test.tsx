@@ -1195,24 +1195,43 @@ describe('RequirementDetailClient', () => {
     },
   )
 
-  it.each([
-    [403, 'denied'],
-    [404, 'missing'],
-    [401, 'expired'],
-  ] as const)(
-    'renders specific feedback for HTTP %s without protected content',
-    async (status, state) => {
+  it.each(
+    (
+      [
+        [403, 'denied'],
+        [404, 'missing'],
+        [401, 'expired'],
+        [500, 'error'],
+      ] as const
+    ).flatMap(([status, state]) =>
+      [false, true].map(specificationContext => ({
+        status,
+        state,
+        specificationContext,
+      })),
+    ),
+  )(
+    'renders an alert for HTTP $status without protected content (specification context: $specificationContext)',
+    async ({ status, state, specificationContext }) => {
       vi.spyOn(console, 'error').mockImplementation(() => {})
       vi.stubGlobal(
         'fetch',
         vi.fn(async () => Response.json({}, { status })),
       )
-      renderSubject({ inline: true })
-      expect(
-        await screen.findByText(`requirement.detailRecovery.${state}`),
-      ).toBeInTheDocument()
+      renderSubject({
+        inline: true,
+        ...(specificationContext
+          ? { specificationId: 1, specificationItemId: 31 }
+          : {}),
+      })
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        `requirement.detailRecovery.${state}`,
+      )
       expect(
         screen.queryByRole('link', { name: 'Edit' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'Request deviation' }),
       ).not.toBeInTheDocument()
     },
   )
@@ -1244,9 +1263,9 @@ describe('RequirementDetailClient', () => {
         />
       </ConfirmModalProvider>,
     )
-    expect(
-      await screen.findByText('requirement.detailRecovery.error'),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'requirement.detailRecovery.error',
+    )
     expect(screen.queryByText('Description 1')).not.toBeInTheDocument()
   })
 
@@ -1264,9 +1283,9 @@ describe('RequirementDetailClient', () => {
         : normalFetch(url, init),
     )
     renderSubject({ inline: true })
-    expect(
-      await screen.findByText('requirement.detailRecovery.statusesError'),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'requirement.detailRecovery.statusesError',
+    )
     expect(screen.getByText('Description 1')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled()
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
@@ -1287,6 +1306,66 @@ describe('RequirementDetailClient', () => {
     expect(screen.getByRole('button', { name: 'Delete' })).toBeEnabled()
   })
 
+  it.each([403, 500])(
+    'keeps specification actions available while workflow statuses load and fail with HTTP %s',
+    async status => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const onRemoveFromSpecification = vi.fn()
+      const fetchMock = setupFetch({
+        initialRequirement: makeRequirement([makeVersion(1)]),
+      })
+      const normalFetch = fetchMock.getMockImplementation()
+      if (!normalFetch) throw new Error('Missing request fixture')
+      const pendingStatuses = Promise.withResolvers<Response>()
+      fetchMock.mockImplementation(async (url, init) =>
+        String(url) === '/api/requirement-statuses'
+          ? pendingStatuses.promise
+          : normalFetch(url, init),
+      )
+      renderSubject({
+        inline: true,
+        onRemoveFromSpecification,
+        specificationId: 1,
+        specificationItemId: 31,
+        specificationPermissions: {
+          canEditContent: true,
+          canReviewDecisions: false,
+        },
+      })
+
+      const requestDeviation = await screen.findByRole('button', {
+        name: 'Request deviation',
+      })
+      const remove = screen.getByRole('button', {
+        name: 'Remove from specification',
+      })
+      expect(requestDeviation).toBeEnabled()
+      expect(remove).toBeEnabled()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('requirement.detailRecovery.actionsUnavailable'),
+      ).not.toBeInTheDocument()
+
+      await act(async () => {
+        pendingStatuses.resolve(Response.json({}, { status }))
+      })
+
+      expect(requestDeviation).toBeEnabled()
+      expect(remove).toBeEnabled()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'requirement.detailRecovery.retry',
+        }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('requirement.detailRecovery.actionsUnavailable'),
+      ).not.toBeInTheDocument()
+      await userEvent.click(remove)
+      expect(onRemoveFromSpecification).toHaveBeenCalledWith(remove)
+    },
+  )
+
   it('marks a failed refresh stale, blocks actions, and removes the snapshot after denial', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const fetchMock = setupFetch({
@@ -1305,18 +1384,18 @@ describe('RequirementDetailClient', () => {
     await userEvent.click(
       await screen.findByRole('button', { name: 'Send to review' }),
     )
-    expect(
-      await screen.findByText('requirement.detailRecovery.stale'),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'requirement.detailRecovery.stale',
+    )
     expect(screen.getByText('Description 1')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled()
     detailStatus = 403
     await userEvent.click(
       screen.getByRole('button', { name: 'requirement.detailRecovery.retry' }),
     )
-    expect(
-      await screen.findByText('requirement.detailRecovery.denied'),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'requirement.detailRecovery.denied',
+    )
     expect(screen.queryByText('Description 1')).not.toBeInTheDocument()
   })
 
@@ -1333,9 +1412,9 @@ describe('RequirementDetailClient', () => {
 
     renderSubject({ onClose })
 
-    expect(
-      await screen.findByText('requirement.detailRecovery.error'),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'requirement.detailRecovery.error',
+    )
     expect(
       screen.getByRole('button', { name: 'requirement.detailRecovery.retry' }),
     ).toBeEnabled()
@@ -1361,9 +1440,9 @@ describe('RequirementDetailClient', () => {
 
     renderSubject({ onClose: vi.fn() })
 
-    expect(
-      await screen.findByText('requirement.detailRecovery.error'),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'requirement.detailRecovery.error',
+    )
     expect(
       screen.getByRole('button', { name: 'requirement.detailRecovery.retry' }),
     ).toBeEnabled()

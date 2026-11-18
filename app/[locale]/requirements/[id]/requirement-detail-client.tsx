@@ -440,7 +440,9 @@ export default function RequirementDetailClient({
   const currentStatusIconName = selectedVersion?.statusIconName ?? null
   const detailReady = detailState === 'success' && !loading
   const actionsReady =
-    detailReady && statusesState === 'success' && !statusesLoading
+    detailReady &&
+    (isSpecificationItemContext ||
+      (statusesState === 'success' && !statusesLoading))
   const canAddToSpecification =
     currentStatusId === STATUS_PUBLISHED && isViewingDisplayVersion
   const areaOwnerName = formatActorDisplayNameForLocale(
@@ -1168,7 +1170,8 @@ export default function RequirementDetailClient({
                 )}
 
               <div className="flex shrink-0 flex-col gap-2">
-                {detailReady &&
+                {!isSpecificationItemContext &&
+                  detailReady &&
                   statusesState !== 'success' &&
                   statusesState !== 'loading' && (
                     <DetailRecovery

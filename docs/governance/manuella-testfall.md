@@ -2189,6 +2189,22 @@ verifieringsmetod, före metadata. Områdesinformationen visar beskrivning och
 
 ### SPEC-06: lägg till, markera och ta bort krav i kravunderlagsdetalj
 
+**Syfte:** Kontrollera urval, markering och borttagning samt att underlagets
+åtgärder inte kräver kravbibliotekets arbetsflödesstatusar.
+
+**Användare:** Kravunderlagsansvarig med rätt att redigera underlaget.
+
+**Förutsättningar:** Ett redigerbart kravunderlag med bibliotekskrav utan
+godkänt avsteg. Använd webbläsarens nätverksverktyg eller en lokal proxy för
+att ersätta eventuella svar från `/api/requirement-statuses` med HTTP 500.
+Låt själva kravdetaljen hämtas normalt.
+
+**Integrationstest:**
+[requirement-detail.spec.ts](../../tests/integration/specifications/requirement-detail.spec.ts),
+testfallet
+”SPEC-06: adds, selects, and removes a requirement in the specification detail
+UI”.
+
 **Steg:** Lägg till ett krav och kontrollera att det syns. Kontrollera att
 underlagets kravlista har individuella markeringsrutor men ingen Markera alla.
 Kontrollera att båda kravlistorna använder det kompakta kravpaketsbandet och
@@ -2222,8 +2238,14 @@ Developer Mode-markörer.
 Markera ett bibliotekskrav, kontrollera markeringssammanfattningen och öppna
 borttagningsdialogen. Kontrollera att dialogen visar berört krav-ID och att
 avbrytning bevarar markeringen. Expandera bibliotekskravet och kontrollera att
-Ta bort från underlaget är tillgänglig i detaljvyn. Bekräfta sedan
-borttagningen via åtgärden för markerade krav.
+**Ta bort krav** är tillgänglig i detaljvyn.
+Upprepa öppningen av detaljvyn med svarsåsidosättningen aktiv.
+Kontrollera att **Begär ett avsteg** och **Ta bort krav** går att använda och
+att ingen varning eller återförsöksknapp för arbetsflödesstatusar visas i
+detaljvyn.
+Öppna **Ta bort krav**, kontrollera krav-ID:t i bekräftelsen och välj
+**Avbryt**. Återställ nätverksverktyget och bekräfta sedan borttagningen via
+åtgärden för markerade krav.
 
 **Förväntat resultat:** Endast redigerare kan markera enskilda krav. Markeringen
 bevaras tills användaren avmarkerar eller åtgärden lyckas. Bekräftelsen skiljer
@@ -2236,6 +2258,8 @@ beräknas över hela underlaget från kravens aktuella medlemskap och påverkas
 inte av paginering eller övriga filter. Katalogfel visas inte som en tom
 katalog eller med inaktuella paketkontroller, och övrig listfunktion fortsätter
 fungera.
+Underlagets åtgärder fungerar även när kravbibliotekets arbetsflödesstatusar
+inte kan läsas. Avbruten borttagning bevarar kopplingen och markeringen.
 
 ### SPEC-07: skapa, redigera och lyft unikt krav i kravunderlag
 
