@@ -513,6 +513,18 @@
     "referenceLabel": "Felreferens"
   },
   "requirement": {
+    "detailRecovery": {
+      "error": "Kravet kunde inte läsas in. Försök igen.",
+      "missing": "Kravet kunde inte hittas.",
+      "denied": "Du har inte behörighet att läsa detta krav.",
+      "expired": "Din session har gått ut. Logga in igen för att fortsätta.",
+      "stale": "Kravet kunde inte uppdateras. Uppgifterna som visas kan vara inaktuella. Försök igen innan du gör ändringar.",
+      "statusesError": "Arbetsflödets åtgärder kunde inte läsas in. Försök igen för att kontrollera tillgängliga åtgärder.",
+      "statusesDenied": "Du har inte behörighet till arbetsflödets åtgärder. Försök igen när din behörighet har uppdaterats.",
+      "actionsUnavailable": "Åtgärder är inte tillgängliga förrän kravet och arbetsflödets uppgifter har lästs in.",
+      "retry": "Försök igen",
+      "retrying": "Försöker igen…"
+    },
     "title": "Kravbibliotek",
     "loadRequirementsFailed": "Informationen i kravbiblioteket är inte tillgänglig.",
     "refreshingRequirements": "Kravlistan uppdateras. Befintliga resultat är fortfarande tillgängliga.",

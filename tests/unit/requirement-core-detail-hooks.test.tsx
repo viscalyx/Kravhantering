@@ -133,7 +133,10 @@ describe('requirement detail core hooks', () => {
     expect(result.current.statuses).toHaveLength(1)
 
     await act(async () => result.current.refreshRequirement())
-    expect(fetchMock).toHaveBeenCalledWith('/api/requirements/42')
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/requirements/42',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
 
     rerender({ requirementId: 43 })
     await waitFor(() => expect(result.current.requirement?.id).toBe(43))
@@ -145,6 +148,8 @@ describe('requirement detail core hooks', () => {
     const secondRequest = deferred<Response>()
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const url = String(input)
+      if (url === '/api/requirement-statuses')
+        return Promise.resolve(jsonResponse({}))
       if (url === '/api/requirements/41') return firstRequest.promise
       if (url === '/api/requirements/42') return secondRequest.promise
       throw new Error(`Unhandled fetch ${url}`)
@@ -157,12 +162,18 @@ describe('requirement detail core hooks', () => {
       { initialProps: { requirementId: 41 } },
     )
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith('/api/requirements/41'),
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements/41',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      ),
     )
 
     rerender({ requirementId: 42 })
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith('/api/requirements/42'),
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements/42',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      ),
     )
     secondRequest.resolve(
       jsonResponse({ id: 42, uniqueId: 'REQ-42', versions: [] }),
@@ -176,7 +187,7 @@ describe('requirement detail core hooks', () => {
     expect(result.current.requirement?.id).toBe(42)
   })
 
-  it('preserves loaded requirement data when a cache request is aborted', async () => {
+  it('marks preserved requirement data stale when the active cache request is aborted', async () => {
     const pendingRefresh = deferred<RequirementDetailResponse>()
     const requirement = {
       id: 43,
@@ -195,11 +206,13 @@ describe('requirement detail core hooks', () => {
       resource: 'library-requirement' as const,
       surface: 'requirements-library' as const,
     }
-    const consoleError = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined)
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse({})),
+    )
 
-    const { result } = renderHook(() =>
+    const { result, unmount } = renderHook(() =>
       useRequirementDetailData({
         detailCache,
         detailContext,
@@ -217,10 +230,12 @@ describe('requirement detail core hooks', () => {
     await act(async () => refreshPromise)
 
     expect(result.current.requirement?.uniqueId).toBe('REQ-43')
-    expect(consoleError).not.toHaveBeenCalled()
+    expect(result.current.detailState).toBe('error')
+    unmount()
+    detailCache.dispose()
   })
 
-  it('re-enters loading after a failed refresh clears loaded detail', async () => {
+  it('retains stale detail while retrying a failed refresh', async () => {
     const nextRequest = deferred<Response>()
     const fetchMock = vi
       .fn()
@@ -231,7 +246,12 @@ describe('requirement detail core hooks', () => {
         jsonResponse({}, { ok: false, status: 503, statusText: '' }),
       )
       .mockReturnValueOnce(nextRequest.promise)
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        url === '/api/requirement-statuses' ? jsonResponse({}) : fetchMock(),
+      ),
+    )
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
     const { result } = renderHook(() =>
@@ -240,7 +260,8 @@ describe('requirement detail core hooks', () => {
     await waitFor(() => expect(result.current.requirement?.id).toBe(46))
 
     await act(async () => result.current.refreshRequirement())
-    expect(result.current.requirement).toBeNull()
+    expect(result.current.requirement?.id).toBe(46)
+    expect(result.current.detailState).toBe('error')
 
     let reload!: Promise<void>
     act(() => {
@@ -256,7 +277,7 @@ describe('requirement detail core hooks', () => {
     expect(result.current.requirement?.id).toBe(46)
   })
 
-  it('clears detail and transition state on response and transport failures', async () => {
+  it('distinguishes detail and workflow failures from empty successful responses', async () => {
     const consoleError = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
@@ -297,7 +318,10 @@ describe('requirement detail core hooks', () => {
     expect(result.current.statuses).toEqual([])
     expect(result.current.transitions).toEqual([])
 
-    await act(async () => result.current.refreshRequirement())
+    await waitFor(() => expect(result.current.statusesState).toBe('error'))
+    await act(async () => result.current.refreshStatuses())
+    expect(result.current.requirement?.id).toBe(43)
+    expect(result.current.statusesState).toBe('error')
     expect(consoleError).toHaveBeenCalled()
   })
 
@@ -308,7 +332,8 @@ describe('requirement detail core hooks', () => {
         .fn()
         .mockResolvedValueOnce(
           jsonResponse({ id: 44, uniqueId: 'REQ-44', versions: [] }),
-        ),
+        )
+        .mockResolvedValueOnce(jsonResponse({})),
     )
 
     const { result } = renderHook(() =>

@@ -1458,6 +1458,114 @@ fokus över tröskeln startar exakt en huvudförfrågan som klicket återanvänd
 Direktklick öppnar detaljen utan att vänta på förhämtning och utan dubbla
 samtidiga anrop.
 
+### REQ-22: kravdetalj återhämtas utan att urval eller fokus tappas
+
+**Syfte:** Skilja läsfel från saknade krav och återhämta vald detalj.
+
+**Användare:** Administratör (`ada.admin`).
+
+**Förutsättningar:** Kravet `INT0001` finns. Använd webbläsarens
+nätverksverktyg för att blockera detaljförfrågan
+`/api/requirements/<id>` och därefter ersätta dess svar med HTTP 500.
+Lämna listförfrågan och övriga resurser tillgängliga.
+
+**Integrationstest:**
+[detail-recovery.spec.ts](../../tests/integration/requirements/detail-recovery.spec.ts),
+”REQ-22: detail retry preserves selection and keyboard focus (sv, inline)”,
+”REQ-22: detail retry preserves selection and keyboard focus (en, inline)”,
+”REQ-22: detail retry preserves selection and keyboard focus (sv, standalone)”
+och ”REQ-22: detail retry preserves selection and keyboard focus (en, standalone)”.
+
+**Steg:**
+
+1. Öppna `/sv/requirements?selected=INT0001` med blockeringen aktiv.
+2. Kontrollera felinformationen. Byt blockeringen till HTTP 500 och aktivera
+   `Försök igen` med tangentbordet.
+3. Kontrollera att fokus ligger kvar på `Försök igen`. Ta bort felsimuleringen
+   och aktivera knappen igen.
+4. Upprepa på `/sv/requirements/INT0001` och med språkprefixet `/en/`.
+
+**Förväntat resultat:** Ett översatt läsfel visas med en återförsöksknapp.
+Felet beskrivs inte som ett saknat krav. Efter upprepat fel kan samma knapp
+aktiveras med tangentbordet. Efter lyckat försök visas kravets detalj och
+åtgärder. Detaljytan och listans valda krav ligger kvar.
+
+### REQ-23: saknat krav skiljs från nekad åtkomst
+
+**Syfte:** Visa rätt orsak utan skyddade uppgifter eller ändringsåtgärder.
+
+**Användare:** Administratör (`ada.admin`).
+
+**Förutsättningar:** Ersätt detaljförfrågans svar med HTTP 403 respektive 404
+via webbläsarens nätverksverktyg. Lämna listförfrågan tillgänglig.
+
+**Integrationstest:**
+[detail-recovery.spec.ts](../../tests/integration/requirements/detail-recovery.spec.ts),
+”REQ-23: HTTP 403 shows specific feedback without requirement actions” och
+”REQ-23: HTTP 404 shows specific feedback without requirement actions”.
+
+**Steg:**
+
+1. Öppna `/sv/requirements?selected=INT0001` med HTTP 403 för detaljen.
+2. Kontrollera behörighetsmeddelandet och att arkivering inte kan startas.
+3. Ladda om med HTTP 404 och kontrollera meddelandet för saknat krav.
+4. Ta bort felsimuleringen.
+
+**Förväntat resultat:** Endast HTTP 404 beskrivs som ett saknat krav.
+HTTP 403 beskrivs som nekad åtkomst. Ingen skyddad kravdetalj eller
+arkiveringsåtgärd visas i dessa tillstånd.
+
+### REQ-24: arbetsflödets läsfel kan återhämtas separat
+
+**Syfte:** Skilja olästa arbetsflödesåtgärder från ett lyckat tomt resultat.
+
+**Användare:** Administratör (`ada.admin`).
+
+**Förutsättningar:** Ersätt svaret från `/api/requirement-statuses` med
+HTTP 500. Lämna kravets detaljförfrågan tillgänglig.
+
+**Integrationstest:**
+[detail-recovery.spec.ts](../../tests/integration/requirements/detail-recovery.spec.ts),
+”REQ-24: workflow retry restores actions without reselecting the requirement”.
+
+**Steg:**
+
+1. Öppna `/sv/requirements?selected=INT0002`.
+2. Kontrollera att kravdetaljen är läsbar och att arbetsflödets läsfel visas.
+3. Kontrollera att `Arkivera` är inaktiverad med en förklaring.
+4. Ta bort felsimuleringen och välj `Försök igen` vid åtgärderna.
+
+**Förväntat resultat:** Detaljen och valet ligger kvar. Återförsöket läser
+arbetsflödets uppgifter utan att kravets status behöver ändras. Varningen
+försvinner och tillåtna åtgärder blir tillgängliga igen.
+
+### REQ-25: inaktuell kravdetalj spärrar åtgärder tills åtkomst bekräftas
+
+**Syfte:** Behålla läsbara uppgifter vid tillfälligt uppdateringsfel och
+rensa dem vid ett senare behörighetsavslag.
+
+**Användare:** Administratör (`ada.admin`).
+
+**Förutsättningar:** Öppna ett publicerat krav. Använd svarsåsidosättning i
+nätverksverktygen: arkiveringsbegäran ska få ett simulerat lyckat svar utan
+att nå servern. Efterföljande detaljförfrågan ska få HTTP 500.
+
+**Integrationstest:**
+[detail-recovery.spec.ts](../../tests/integration/requirements/detail-recovery.spec.ts),
+”REQ-25: refresh failure marks a snapshot stale and denial removes it”.
+
+**Steg:**
+
+1. Öppna `/sv/requirements?selected=INT0002` och invänta åtgärderna.
+2. Aktivera felsimuleringen, välj `Arkivera` och bekräfta.
+3. Kontrollera inaktualitetsvarningen och att åtgärderna är inaktiverade.
+4. Ändra detaljsvaret till HTTP 403 och välj `Försök igen`.
+5. Ta bort felsimuleringen.
+
+**Förväntat resultat:** Efter HTTP 500 finns kravets tidigare uppgifter kvar
+med en tydlig varning. Efter HTTP 403 ersätts detaljen med ett
+behörighetsmeddelande; tidigare uppgifter och arkiveringsåtgärden tas bort.
+
 ## Skapa krav och livscykel
 
 ### LIFE-01: skapa krav från UI

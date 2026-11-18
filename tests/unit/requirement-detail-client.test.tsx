@@ -1168,7 +1168,159 @@ describe('RequirementDetailClient', () => {
     expect(screen.getByText('Ordering')).toBeInTheDocument()
   })
 
-  it('renders the empty modal state when the requirement request fails', async () => {
+  it.each([true, false])(
+    'keeps retry focus after repeated failure and recovers in place (inline=%s)',
+    async inline => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => Response.json({}, { status: 500 })),
+      )
+      const onClose = vi.fn()
+      renderSubject({ inline, onClose, defaultVersion: 1 })
+      const retry = await screen.findByRole('button', {
+        name: 'requirement.detailRecovery.retry',
+      })
+      expect(retry).toHaveAttribute('data-developer-mode-value', 'retry detail')
+      await userEvent.click(retry)
+      await waitFor(() =>
+        expect(retry).toHaveAttribute('aria-disabled', 'false'),
+      )
+      expect(retry).toHaveFocus()
+      setupFetch({ initialRequirement: makeRequirement([makeVersion(1)]) })
+      await userEvent.click(retry)
+      expect(await screen.findByText('Description 1')).toBeInTheDocument()
+      expect(onClose).not.toHaveBeenCalled()
+      expect(routerPush).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    [403, 'denied'],
+    [404, 'missing'],
+    [401, 'expired'],
+  ] as const)(
+    'renders specific feedback for HTTP %s without protected content',
+    async (status, state) => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => Response.json({}, { status })),
+      )
+      renderSubject({ inline: true })
+      expect(
+        await screen.findByText(`requirement.detailRecovery.${state}`),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('link', { name: 'Edit' }),
+      ).not.toBeInTheDocument()
+    },
+  )
+
+  it('does not retain a snapshot when supplied specification permissions change', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    setupFetch({ initialRequirement: makeRequirement([makeVersion(1)]) })
+    const { rerender } = renderSubject({
+      inline: true,
+      specificationPermissions: {
+        canEditContent: true,
+        canReviewDecisions: true,
+      },
+    })
+    expect(await screen.findByText('Description 1')).toBeInTheDocument()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json({}, { status: 500 })),
+    )
+    rerender(
+      <ConfirmModalProvider>
+        <RequirementDetailClient
+          inline
+          requirementId={123}
+          specificationPermissions={{
+            canEditContent: false,
+            canReviewDecisions: false,
+          }}
+        />
+      </ConfirmModalProvider>,
+    )
+    expect(
+      await screen.findByText('requirement.detailRecovery.error'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Description 1')).not.toBeInTheDocument()
+  })
+
+  it('recovers workflow actions locally while preserving readable detail', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const fetchMock = setupFetch({
+      initialRequirement: makeRequirement([makeVersion(1)]),
+    })
+    const normalFetch = fetchMock.getMockImplementation()
+    if (!normalFetch) throw new Error('Missing request fixture')
+    let failure = true
+    fetchMock.mockImplementation(async (url, init) =>
+      String(url) === '/api/requirement-statuses' && failure
+        ? Response.json({}, { status: 500 })
+        : normalFetch(url, init),
+    )
+    renderSubject({ inline: true })
+    expect(
+      await screen.findByText('requirement.detailRecovery.statusesError'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Description 1')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled()
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    const retry = screen.getByRole('button', {
+      name: 'requirement.detailRecovery.retry',
+    })
+    expect(retry).toHaveAttribute('data-developer-mode-value', 'retry statuses')
+    failure = false
+    await userEvent.click(retry)
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Send to review' }),
+      ).toBeEnabled(),
+    )
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeEnabled()
+  })
+
+  it('marks a failed refresh stale, blocks actions, and removes the snapshot after denial', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const fetchMock = setupFetch({
+      initialRequirement: makeRequirement([makeVersion(1)]),
+    })
+    const normalFetch = fetchMock.getMockImplementation()
+    if (!normalFetch) throw new Error('Missing request fixture')
+    let detailStatus = 200
+    fetchMock.mockImplementation(async (url, init) => {
+      if (String(url) === '/api/requirement-transitions/123') detailStatus = 500
+      if (String(url) === '/api/requirements/123' && detailStatus !== 200)
+        return Response.json({}, { status: detailStatus })
+      return normalFetch(url, init)
+    })
+    renderSubject({ inline: true })
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Send to review' }),
+    )
+    expect(
+      await screen.findByText('requirement.detailRecovery.stale'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Description 1')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled()
+    detailStatus = 403
+    await userEvent.click(
+      screen.getByRole('button', { name: 'requirement.detailRecovery.retry' }),
+    )
+    expect(
+      await screen.findByText('requirement.detailRecovery.denied'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Description 1')).not.toBeInTheDocument()
+  })
+
+  it('renders recoverable modal feedback when the requirement request fails', async () => {
     const onClose = vi.fn()
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
@@ -1181,7 +1333,12 @@ describe('RequirementDetailClient', () => {
 
     renderSubject({ onClose })
 
-    expect(await screen.findByText('No results')).toBeInTheDocument()
+    expect(
+      await screen.findByText('requirement.detailRecovery.error'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'requirement.detailRecovery.retry' }),
+    ).toBeEnabled()
 
     fireEvent.click(screen.getByRole('dialog'))
     expect(onClose).toHaveBeenCalledOnce()
@@ -1190,7 +1347,7 @@ describe('RequirementDetailClient', () => {
     consoleErrorSpy.mockRestore()
   })
 
-  it('renders the empty modal state when the requirement request rejects', async () => {
+  it('renders recoverable modal feedback when the requirement request rejects', async () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
@@ -1204,7 +1361,12 @@ describe('RequirementDetailClient', () => {
 
     renderSubject({ onClose: vi.fn() })
 
-    expect(await screen.findByText('No results')).toBeInTheDocument()
+    expect(
+      await screen.findByText('requirement.detailRecovery.error'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'requirement.detailRecovery.retry' }),
+    ).toBeEnabled()
     expect(consoleErrorSpy).toHaveBeenCalled()
 
     consoleErrorSpy.mockRestore()

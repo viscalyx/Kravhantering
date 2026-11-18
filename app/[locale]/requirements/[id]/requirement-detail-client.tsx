@@ -37,6 +37,7 @@ import type {
   RequirementDetailResponse,
 } from '@/lib/requirements/types'
 import AddToSpecificationDialog from './_detail/AddToSpecificationDialog'
+import DetailRecovery from './_detail/DetailRecovery'
 import ImprovementSuggestionsSection from './_detail/ImprovementSuggestionsSection'
 import { getLocalizedName } from './_detail/localized-name'
 import RequirementActionRail from './_detail/RequirementActionRail'
@@ -137,12 +138,23 @@ export default function RequirementDetailClient({
   const workflowStepperRestoreFrameRef = useRef<number | null>(null)
 
   const {
+    detailState,
     loading,
     refreshRequirement,
+    refreshStatuses,
+    statusesState,
+    statusesLoading,
     requirement: req,
     statuses,
     transitions,
   } = useRequirementDetailData({
+    accessContext: JSON.stringify([
+      currentActorName,
+      specificationId,
+      specificationItemId,
+      specificationPermissions?.canEditContent,
+      specificationPermissions?.canReviewDecisions,
+    ]),
     detailCache,
     detailContext: detailPrefetchContext,
     requirementId,
@@ -311,7 +323,7 @@ export default function RequirementDetailClient({
     [inline, locale, requirementId],
   )
 
-  if (loading) {
+  if (detailState === 'loading') {
     const loadingContent = (
       <p className="text-secondary-600 dark:text-secondary-400 py-12 text-center">
         {tc('loading')}
@@ -354,9 +366,14 @@ export default function RequirementDetailClient({
 
   if (!req) {
     const emptyContent = (
-      <p className="text-secondary-600 dark:text-secondary-400 py-12 text-center">
-        {tc('noResults')}
-      </p>
+      <DetailRecovery
+        message={t(
+          `detailRecovery.${detailState === 'success' ? 'error' : detailState}`,
+        )}
+        onRetry={detailState === 'expired' ? undefined : refreshRequirement}
+        pending={loading}
+        resource="detail"
+      />
     )
     if (inline) {
       return emptyContent
@@ -421,6 +438,9 @@ export default function RequirementDetailClient({
       : selectedVersion?.statusNameEn) ?? ''
   const currentStatusColor = selectedVersion?.statusColor ?? null
   const currentStatusIconName = selectedVersion?.statusIconName ?? null
+  const detailReady = detailState === 'success' && !loading
+  const actionsReady =
+    detailReady && statusesState === 'success' && !statusesLoading
   const canAddToSpecification =
     currentStatusId === STATUS_PUBLISHED && isViewingDisplayVersion
   const areaOwnerName = formatActorDisplayNameForLocale(
@@ -933,6 +953,14 @@ export default function RequirementDetailClient({
       <div
         className={onClose && !inline ? '' : inline ? '' : 'container-custom'}
       >
+        {detailState === 'error' && (
+          <DetailRecovery
+            message={t('detailRecovery.stale')}
+            onRetry={refreshRequirement}
+            pending={loading}
+            resource="detail"
+          />
+        )}
         {!inline && (
           <div className="flex items-center gap-3 mb-6">
             <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
@@ -1139,68 +1167,102 @@ export default function RequirementDetailClient({
                   />
                 )}
 
-              {isSpecificationItemContext &&
-              specificationItemId != null &&
-              specificationId ? (
-                <SpecificationDeviationRail
-                  canManageDeviationDrafts={
-                    specificationPermissions?.canEditContent === true
-                  }
-                  canReviewDeviationDecisions={
-                    specificationPermissions?.canReviewDecisions === true
-                  }
-                  detailContext={detailContext}
-                  locale={locale}
-                  onRemoveFromSpecification={onRemoveFromSpecification}
-                  priorityLevel={priorityLevelForDeviation}
-                  removeFromSpecificationDisabled={
-                    removeFromSpecificationDisabled
-                  }
-                  requirementId={requirementId}
-                  specificationId={specificationId}
-                  specificationItemId={specificationItemId}
-                  workflow={deviationWorkflow}
-                />
-              ) : (
-                <RequirementActionRail
-                  allowedTransitionStatusIds={
-                    permissions.allowedTransitionStatusIds
-                  }
-                  canAddToSpecification={canAddToSpecification}
-                  canArchive={permissions.canArchive}
-                  canDeleteDraft={permissions.canDeleteDraft}
-                  canEdit={permissions.canEdit}
-                  canRestore={permissions.canRestore}
-                  currentStatusId={currentStatusId}
-                  detailContext={detailContext}
-                  displayVersionNumber={displayVersion?.versionNumber}
-                  hasPendingWork={hasPendingWork}
-                  hasPendingWorkAbovePublished={hasPendingWorkAbovePublished}
-                  isArchiving={isArchiving}
-                  isLatestVersionArchived={isLatestVersionArchived}
-                  isTransitioning={isTransitioning}
-                  isViewingHistory={isViewingHistory}
-                  isViewingLatest={isViewingLatest}
-                  latestStatusForActions={latestStatusForActions}
-                  latestVersionNumber={latest?.versionNumber}
-                  locale={locale}
-                  onApproveArchiving={handleApproveArchiving}
-                  onArchive={handleArchive}
-                  onCancelArchiving={handleCancelArchiving}
-                  onDeleteDraft={handleDeleteDraft}
-                  onOpenAddToSpecification={addToSpecificationDialog.openDialog}
-                  onRestore={handleRestore}
-                  onTransition={handleTransition}
-                  onVersionSelect={handleVersionSelect}
-                  requirementId={requirementId}
-                  requirementUniqueId={req.uniqueId}
-                  selectedVersionNumber={selectedVersionNumber}
-                  selectedVersionNumberForRestore={
-                    selectedVersion?.versionNumber
-                  }
-                  transitions={transitions}
-                />
-              )}
+              <div className="flex shrink-0 flex-col gap-2">
+                {detailReady &&
+                  statusesState !== 'success' &&
+                  statusesState !== 'loading' && (
+                    <DetailRecovery
+                      message={t(
+                        statusesState === 'denied'
+                          ? 'detailRecovery.statusesDenied'
+                          : 'detailRecovery.statusesError',
+                      )}
+                      onRetry={refreshStatuses}
+                      pending={statusesLoading}
+                      resource="statuses"
+                    />
+                  )}
+                {!actionsReady && (
+                  <p
+                    className="max-w-xs text-sm text-secondary-600 dark:text-secondary-400"
+                    role="status"
+                  >
+                    {t('detailRecovery.actionsUnavailable')}
+                  </p>
+                )}
+                <fieldset
+                  className="min-w-0 disabled:opacity-60"
+                  disabled={!actionsReady}
+                >
+                  {isSpecificationItemContext &&
+                  specificationItemId != null &&
+                  specificationId ? (
+                    <SpecificationDeviationRail
+                      canManageDeviationDrafts={
+                        specificationPermissions?.canEditContent === true
+                      }
+                      canReviewDeviationDecisions={
+                        specificationPermissions?.canReviewDecisions === true
+                      }
+                      detailContext={detailContext}
+                      locale={locale}
+                      onRemoveFromSpecification={onRemoveFromSpecification}
+                      priorityLevel={priorityLevelForDeviation}
+                      removeFromSpecificationDisabled={
+                        removeFromSpecificationDisabled
+                      }
+                      requirementId={requirementId}
+                      specificationId={specificationId}
+                      specificationItemId={specificationItemId}
+                      workflow={deviationWorkflow}
+                    />
+                  ) : (
+                    <RequirementActionRail
+                      allowedTransitionStatusIds={
+                        permissions.allowedTransitionStatusIds
+                      }
+                      canAddToSpecification={canAddToSpecification}
+                      canArchive={permissions.canArchive}
+                      canDeleteDraft={permissions.canDeleteDraft}
+                      canEdit={permissions.canEdit}
+                      canRestore={permissions.canRestore}
+                      currentStatusId={currentStatusId}
+                      detailContext={detailContext}
+                      displayVersionNumber={displayVersion?.versionNumber}
+                      hasPendingWork={hasPendingWork}
+                      hasPendingWorkAbovePublished={
+                        hasPendingWorkAbovePublished
+                      }
+                      isArchiving={isArchiving}
+                      isLatestVersionArchived={isLatestVersionArchived}
+                      isTransitioning={isTransitioning}
+                      isViewingHistory={isViewingHistory}
+                      isViewingLatest={isViewingLatest}
+                      latestStatusForActions={latestStatusForActions}
+                      latestVersionNumber={latest?.versionNumber}
+                      locale={locale}
+                      onApproveArchiving={handleApproveArchiving}
+                      onArchive={handleArchive}
+                      onCancelArchiving={handleCancelArchiving}
+                      onDeleteDraft={handleDeleteDraft}
+                      onOpenAddToSpecification={
+                        addToSpecificationDialog.openDialog
+                      }
+                      onRestore={handleRestore}
+                      onTransition={handleTransition}
+                      onVersionSelect={handleVersionSelect}
+                      requirementId={requirementId}
+                      requirementUniqueId={req.uniqueId}
+                      selectedVersionNumber={selectedVersionNumber}
+                      selectedVersionNumberForRestore={
+                        selectedVersion?.versionNumber
+                      }
+                      transitions={transitions}
+                      unavailable={!actionsReady}
+                    />
+                  )}
+                </fieldset>
+              </div>
             </div>
 
             <VersionHistory
@@ -1213,11 +1275,13 @@ export default function RequirementDetailClient({
               versions={req.versions}
             />
 
-            <ImprovementSuggestionsSection
-              currentActorName={currentActorName}
-              detailContext={detailContext}
-              workflow={suggestionWorkflow}
-            />
+            {detailReady && (
+              <ImprovementSuggestionsSection
+                currentActorName={currentActorName}
+                detailContext={detailContext}
+                workflow={suggestionWorkflow}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -1228,10 +1292,12 @@ export default function RequirementDetailClient({
     return (
       <>
         {content}
-        <AddToSpecificationDialog
-          dialog={addToSpecificationDialog}
-          onDocumentKeyDown={handleModalDocumentKeyDown}
-        />
+        {detailReady && (
+          <AddToSpecificationDialog
+            dialog={addToSpecificationDialog}
+            onDocumentKeyDown={handleModalDocumentKeyDown}
+          />
+        )}
       </>
     )
   }
@@ -1271,10 +1337,12 @@ export default function RequirementDetailClient({
             {content}
           </div>
         </div>
-        <AddToSpecificationDialog
-          dialog={addToSpecificationDialog}
-          onDocumentKeyDown={handleModalDocumentKeyDown}
-        />
+        {detailReady && (
+          <AddToSpecificationDialog
+            dialog={addToSpecificationDialog}
+            onDocumentKeyDown={handleModalDocumentKeyDown}
+          />
+        )}
       </>
     )
   }
@@ -1282,10 +1350,12 @@ export default function RequirementDetailClient({
   return (
     <>
       {content}
-      <AddToSpecificationDialog
-        dialog={addToSpecificationDialog}
-        onDocumentKeyDown={handleModalDocumentKeyDown}
-      />
+      {detailReady && (
+        <AddToSpecificationDialog
+          dialog={addToSpecificationDialog}
+          onDocumentKeyDown={handleModalDocumentKeyDown}
+        />
+      )}
     </>
   )
 }
