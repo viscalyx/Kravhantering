@@ -311,6 +311,7 @@ function ConfirmModalInner({
                 {showCancel && (
                   <button
                     className="btn-secondary text-sm py-2! px-4!"
+                    {...devMarker({ name: 'dialog action', value: 'cancel' })}
                     onClick={() => onClose(false)}
                     ref={cancelBtnRef}
                     type="button"
@@ -325,6 +326,7 @@ function ConfirmModalInner({
                       : 'btn-primary text-sm py-2! px-4!'
                   }
                   onClick={() => onClose(true)}
+                  {...devMarker({ name: 'dialog action', value: 'confirm' })}
                   ref={confirmBtnRef}
                   type="button"
                 >

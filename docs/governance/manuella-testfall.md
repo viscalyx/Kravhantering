@@ -122,6 +122,58 @@ växling av navigation, ändring av fönstret och rullning.
 
 ## Tillgänglighet
 
+### A11Y-02: tangentbordsfokus syns i båda teman och kontrastlägen
+
+**Syfte:** Fokus ska gå att skilja från kantlinjer och markerade val även
+när operativsystemet styr färgerna.
+
+**Användare:** `ada.admin` och `rita.reviewer`.
+
+**Förutsättningar:** En stödd Windows-webbläsare med kontrastteman, samt
+ett eget tillfälligt krav i status Utkast. Använd inte ett gemensamt krav
+för borttagning. Kör först utan kontrasttema, därefter med ett ljust och
+ett mörkt kontrasttema. Upprepa i applikationens ljusa och mörka tema.
+
+**Integrationstest:**
+[keyboard-focus.spec.ts](../../tests/integration/navigation/keyboard-focus.spec.ts),
+scenariot `A11Y-02: keyboard focus remains visible across navigation and dialogs`
+med suffix för applikationstema (`light`, `dark`) och palett (`normal`,
+`forced-light`, `forced-dark`). Automatiseringen emulerar kontrastläget;
+den ersätter inte kontrollen med operativsystemets egna kontrastteman.
+
+**Steg:**
+
+1. Öppna `/sv/requirements/new`. Använd Tab och Skift+Tab till aktiva och
+   inaktiva navigationslänkar, först i hopfälld och sedan i expanderad
+   navigation. Aktivera expansionsknappen med Enter.
+2. Öppna **Välj kravpaket** med tangentbordet och välj **Nytt kravpaket**.
+   Fyll i namn och syfte så att **Spara** blir tillgänglig, utan att spara.
+3. Gå till **Spara**, **Stäng** och **Avbryt** med Tab och Skift+Tab.
+   Fortsätt förbi dialogens sista respektive första kontroll.
+4. Aktivera **Avbryt** och gå mellan bekräftelsens **Avbryt** och
+   **Bekräfta**. Tryck Escape. Öppna bekräftelsen igen och bekräfta att
+   utkastet till kravpaket ska kastas. Stäng väljaren med Escape.
+5. Öppna det egna tillfälliga kravet och gå till **Ta bort** med Tab.
+   Flytta kravet till Granskning. Logga in som `rita.reviewer`, öppna
+   kravets granskningsversion och aktivera **← Utkast**. Gå mellan
+   bekräftelsens **Bekräfta** och **Avbryt** med Tab och Skift+Tab.
+   Tryck Escape och kontrollera att fokus återgår till **← Utkast**.
+6. Återför det tillfälliga kravet till Utkast. Logga in som `ada.admin`
+   och radera det som återställning.
+7. Anteckna commit, operativsystem, webbläsare och version, kontrasttemats
+   namn, applikationstema, kontroller och godkänt eller underkänt resultat.
+
+**Förväntat resultat:**
+
+- Varje fokuserad kontroll har en tydlig, sammanhängande fokusmarkering
+  även när kontrasttemat tar bort skuggor. Markeringen följer fokus och
+  går att skilja från aktiv navigationslänk och andra markerade val.
+- Fokus stannar i den öppna dialogen vid Tab och Skift+Tab. Escape från
+  bekräftelsen återför fokus till formulärets **Avbryt**. Bekräftat avslut
+  återför fokus till **Nytt kravpaket**, och stängd väljare återför fokus
+  till **Välj kravpaket**.
+- Inget kravpaket sparas och det tillfälliga kravet kan raderas.
+
 ### A11Y-01: enhetliga hjälpkontroller är åtkomliga
 
 **Steg:** Öppna ett formulär med en hjälpknapp, till exempel ett nytt krav, och

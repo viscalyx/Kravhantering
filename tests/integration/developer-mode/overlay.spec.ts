@@ -150,9 +150,10 @@ for (const viewport of viewports) {
       await page.keyboard.press('Control+Alt+Shift+H')
 
       await expect(page.getByTestId('developer-mode-badge')).toBeVisible()
-      await stickyHeader.hover()
+      // Hover the header padding, outside the nested sort/filter controls.
+      await stickyHeader.hover({ position: { x: 8, y: 4 } })
       const chip = page.locator('[data-developer-mode-overlay-chip="true"]')
-      await expect(chip).toBeVisible()
+      await expect(chip).toContainText('column header: requirement id')
 
       await chip.click()
 

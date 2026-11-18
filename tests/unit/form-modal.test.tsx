@@ -175,7 +175,10 @@ describe('FormModal', () => {
       'data-developer-mode-value',
       'answer form',
     )
-    fireEvent.click(screen.getByRole('button', { name: 'close' }))
+    const close = screen.getByRole('button', { name: 'close' })
+    expect(close).toHaveAttribute('data-developer-mode-name', 'dialog action')
+    expect(close).toHaveAttribute('data-developer-mode-value', 'close')
+    fireEvent.click(close)
 
     expect(onClose).toHaveBeenCalledOnce()
   })
