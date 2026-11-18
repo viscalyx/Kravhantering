@@ -3,6 +3,7 @@
     "appName": "Kravhantering",
     "appDescription": "En webbapplikation för kravhantering som stödjer företagets kravmodell och kravprocess",
     "loading": "Laddar...",
+    "tableScrollHint": "Använd vänster och höger piltangent för att rulla mellan kolumnerna.",
     "loadingRequirements": "Hämtar krav…",
     "requirementListRefreshed": "Kravlistan ändrades och lästes in på nytt från början.",
     "save": "Spara",

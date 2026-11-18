@@ -3919,6 +3919,13 @@ describe('RequirementsTable', () => {
       'data-developer-mode-name',
       'table space',
     )
+    expect(scrollContainer).toBe(
+      screen.getByRole('region', { name: 'tableCaption' }),
+    )
+    expect(scrollContainer).toHaveAttribute(
+      'data-developer-mode-value',
+      'keyboard scroll region',
+    )
     expect(columnsPill).toHaveAttribute(
       'data-developer-mode-name',
       'floating pill',

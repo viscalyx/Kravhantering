@@ -49,6 +49,7 @@ import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePur
 import RequirementsPackageFilter from '@/components/RequirementsPackageFilter'
 import RequirementsPanelHeader from '@/components/RequirementsPanelHeader'
 import StatusBadge from '@/components/StatusBadge'
+import TableScrollRegion from '@/components/TableScrollRegion'
 import { Link, useRouter } from '@/i18n/routing'
 import { getReadableTextColors, isStrictHexColor } from '@/lib/color-contrast'
 import {
@@ -1668,7 +1669,8 @@ export default function RequirementsTable({
     ]),
   ) as Record<RequirementColumnId, number>
   const tableRootRef = useRef<HTMLDivElement>(null)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLElement>(null)
+  const tableCaptionId = useId()
   const stickyHeaderContentRef = useRef<HTMLDivElement>(null)
   const tableContentRef = useRef<HTMLDivElement>(null)
   const tableRef = useRef<HTMLTableElement>(null)
@@ -3555,15 +3557,17 @@ export default function RequirementsTable({
         </div>
       </div>
       {statusRow}
-      <div
-        className="relative overflow-x-auto"
+      <TableScrollRegion
+        aria-labelledby={tableCaptionId}
+        className="relative"
         {...devMarker({
           context: 'requirements table',
           name: 'table space',
+          value: 'keyboard scroll region',
           priority: 330,
         })}
         data-requirements-scroll-container="true"
-        ref={scrollContainerRef}
+        scrollRef={scrollContainerRef}
       >
         <div
           aria-hidden="true"
@@ -3597,7 +3601,9 @@ export default function RequirementsTable({
             data-requirements-data-table="true"
             ref={tableRef}
           >
-            <caption className="sr-only">{t('tableCaption')}</caption>
+            <caption className="sr-only" id={tableCaptionId}>
+              {t('tableCaption')}
+            </caption>
             <colgroup>
               {selectable && <col style={{ width: '36px' }} />}
               {columnDefinitions.map(column => (
@@ -3753,7 +3759,7 @@ export default function RequirementsTable({
             </tbody>
           </table>
         </div>
-      </div>
+      </TableScrollRegion>
       {hasMore && (
         <div
           aria-hidden="true"

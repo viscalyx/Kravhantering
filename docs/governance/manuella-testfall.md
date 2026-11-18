@@ -41,6 +41,7 @@ hämtning i flera sidor verifierar inte ensamma rapportens fullständiga innehå
 - [Allmän förberedelse](#allmän-förberedelse)
 - [Navigering](#navigering)
 - [Tillgänglighet](#tillgänglighet)
+  - [Tangentbordsrullning i tabeller](#a11y-05-rulla-kravtabellen-med-tangentbord)
 - [Autentisering och behörighet](#autentisering-och-behörighet)
   - [AUTH-01 till AUTH-13](#auth-01-logga-in-via-keycloak)
   - [AUTHZ-00 till AUTHZ-11](#authz-00-fas-0-testdata-och-identiteter)
@@ -243,6 +244,78 @@ dialogen är öppen. Escape stänger bara den översta dialogen när stängning
 Efter stängning återfår föregående dialog fokus och funktion; efter sista
 stängningen återfår sidan fokus och rullning. Inmatning bevaras när kassering
 nekas. Den manuella skärmläsarkontrollen redovisas separat från Playwright.
+
+### A11Y-05: rulla kravtabellen med tangentbord
+
+**Syfte:** Läsa alla kolumner utan pekdon och behålla normal fokusordning.
+
+**Användare:** `ada.admin`.
+
+**Förutsättningar:** Kravbiblioteket innehåller seedade krav. Använd ett smalt
+webbläsarfönster så att alla kolumner inte ryms. Upprepa med webbläsarens zoom
+höjd till 400 procent, på svenska och engelska samt med ljust och mörkt tema.
+Anteckna commit, webbläsarversion, zoom, skärmläsare och resultat. Markera
+kombinationer som inte kan prövas som ej verifierade.
+
+**Integrationstest:**
+[table-keyboard-scroll.spec.ts](../../tests/integration/requirements/table-keyboard-scroll.spec.ts),
+testfallet “A11Y-05: scrolls requirements with the keyboard and updates access
+when columns change”. Automatiseringen täcker smalt fönster, namn och
+tangentbordsrullning. Verklig webbläsarzoom och skärmläsaruppläsning prövas
+manuellt.
+
+**Steg:**
+
+1. Öppna kravbiblioteket och använd Tab tills kravtabellens rullningsområde
+   får fokus. Kontrollera att skärmläsaren anger områdets namn och dess
+   instruktion för piltangenterna.
+2. Använd höger piltangent tills den sista kolumnen går att läsa. Använd
+   vänster piltangent för att återgå till den första kolumnen.
+3. Lämna området med Tab respektive Skift+Tab. Kontrollera att tabellens egna
+   kontroller fortfarande går att använda.
+4. Återställ zoom och bredda fönstret. Dölj valbara kolumner tills tabellen
+   ryms. Kontrollera att området inte lägger till ett extra tabbstopp.
+5. Visa versionskolumnen och bredda kravtextkolumnen med dess storlekskontroll.
+   När tabellen inte längre ryms ska området åter kunna nås med Tab.
+
+**Förväntat resultat:** Området har namnet “Lista över krav” respektive
+“Requirements list”. Alla kolumner kan läsas med piltangenterna utan att fokus
+fastnar. Tabbstoppet följer behovet av vågrät rullning. Krav-ID och kravtext
+finns kvar och rubrikerna följer kolumnerna vid rullning.
+
+### A11Y-03: rulla administrationstabeller med tangentbord
+
+**Syfte:** Läsa administrationstabeller med tangentbord utan extra tabbstopp
+när innehållet ryms.
+
+**Användare:** `ada.admin`.
+
+**Förutsättningar:** Samma webbläsar-, språk-, tema-, zoom- och
+skärmläsarkombinationer som i A11Y-05.
+
+**Integrationstest:**
+[table-keyboard-scroll.spec.ts](../../tests/integration/admin/table-keyboard-scroll.spec.ts),
+testfallen “A11Y-03: scrolls requirement-statuses with the keyboard and skips
+the region when it fits” och “A11Y-03: scrolls requirement-areas
+with the keyboard and skips the region when it fits”. Verklig webbläsarzoom
+och skärmläsaruppläsning prövas manuellt.
+
+**Steg:**
+
+1. Öppna administration av kravversionsstatusar i ett smalt fönster.
+2. Använd Tab för att nå tabellens rullningsområde. Kontrollera att dess namn
+   motsvarar sidans rubrik även med skärmläsare.
+3. Rulla till sista kolumnen med höger piltangent och tillbaka med vänster
+   piltangent. Lämna området med Tab respektive Skift+Tab.
+4. Bredda fönstret tills tabellen ryms. Flytta fokus bakåt från tabellens
+   första åtgärd med Skift+Tab och tillbaka med Tab. Området ska inte lägga
+   till ett extra tabbstopp. Minska fönstret och kontrollera att området åter
+   kan nås med Tab.
+5. Upprepa för kravområden och vid förhöjd webbläsarzoom.
+
+**Förväntat resultat:** Varje område har sin egen lokaliserade resursrubrik
+som namn. Piltangenterna visar samtliga kolumner när rullning behövs. Fokus
+kan lämna området och radåtgärderna fungerar som vanligt.
 
 ## Autentisering och behörighet
 

@@ -33,7 +33,7 @@ interface ResizeRefs {
   headerCellRefs: RefObject<
     Partial<Record<RequirementColumnId, HTMLTableCellElement | null>>
   >
-  scrollContainerRef: RefObject<HTMLDivElement | null>
+  scrollContainerRef: RefObject<HTMLElement | null>
   stickyHeaderColRefs: RefObject<
     Partial<Record<RequirementColumnId, HTMLTableColElement | null>>
   >
