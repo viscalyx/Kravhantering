@@ -111,26 +111,64 @@ Behörighetsmatrisen finns i [behörigheter.md](./behörigheter.md).
 
 ### NAV-01: global sidonavigering kan öppnas och stängas
 
+**Syfte:** Kontrollera global navigation och tangentbordsvägen direkt till
+sidans huvudinnehåll.
+
+**Användare:** `ada.admin`.
+
+**Förutsättningar:** Inloggad session med färdigladdad sida och utan öppen
+dialog. Upprepa tangentbordsstegen på svenska och engelska, med ljust och
+mörkt tema, i både skrivbords- och mobilvy.
+
 **Integrationstest:**
 [global-navigation.spec.ts](../../tests/integration/navigation/global-navigation.spec.ts),
-testfallet “NAV-01: global side navigation and mobile drawer open and close”.
+testfallen “NAV-01: skip link moves keyboard focus into the current page”
+och “NAV-01: global side navigation and mobile drawer open and close”.
+Det första testfallet körs för varje kombination av språk, tema och vy.
 
-**Steg:** Logga in som `ada.admin`, öppna `/sv/requirements`, expandera och
-fäll ihop den globala sidonavigeringen. Växla mellan kravbibliotek,
-kravunderlag, förvaltningsflikar, referensdata, administrationslistor,
-inställningar och identitet. Använd listans åtgärder efter navigationsväxling
-och rullning. Öppna Hjälp med Enter, gå runt med Tab och Skift+Tab och stäng
-med Escape. Öppna och stäng därefter sidolådan och kontrollera samma
-tangentbordsnavigering.
+**Steg:**
 
-**Förväntat resultat:** Sidonavigeringen och sidolådan öppnas och stängs med
-respektive kontroll. Kravbibliotekets liståtgärder kan användas även efter
-växling av navigation, ändring av fönstret och rullning. Fokus stannar i den
-öppna dialogen och återgår till Hjälp efter Escape. Bakgrunden kan inte nås
-med tangentbord eller skärmläsare medan hjälpen eller sidolådan är öppen.
+1. Öppna `/sv/requirements` eller `/en/requirements` i en ny flik. Vänta tills
+   listans kontroller är tillgängliga och tryck Tab utan att först klicka på
+   sidan.
+1. Kontrollera att länken **Hoppa till huvudinnehållet** respektive
+   **Skip to main content** får fokus och blir synlig. Tryck Enter och sedan
+   Tab.
+1. Klicka på texten **Inget kravpaketsfilter aktivt** respektive
+   **No requirements package filter active**. Paketväljaren visas. Tryck Tab
+   och kontrollera att dess första paket får fokus. Stäng med Escape.
+1. Gå till **Kravunderlag** via navigationen utan att ladda om hela sidan.
+   Använd Skift+Tab för att nå genvägslänken igen. Tryck Enter och sedan Tab.
+1. Expandera och fäll ihop sidonavigeringen. Växla mellan kravbibliotek,
+   kravunderlag, förvaltningsflikar, referensdata, administrationslistor,
+   inställningar och identitet. Använd listans åtgärder efter
+   navigationsväxling och rullning.
+1. Öppna Hjälp med Enter, gå runt med Tab och Skift+Tab och stäng med Escape.
+1. Öppna sidolådan i mobilvy. Från **Stäng meny**, tryck Skift+Tab och sedan
+   Tab. Stäng med Escape och kontrollera att **Öppna meny** får fokus.
+1. Tryck Skift+Tab för att nå genvägslänken, sedan Tab och Enter för att
+   öppna menyn igen. Stäng med **Stäng meny**.
+1. Öppna mobilmenyn och bredda fönstret till skrivbordsläge med menyn öppen.
 
-Öppna mobilmenyn och bredda sedan fönstret till skrivbordsläge utan att
-stänga menyn först. Menyn stängs och sidans kontroller och rullning fungerar.
+**Förväntat resultat:**
+
+- Första Tab visar genvägslänken före navigationen. Länken och dess
+  fokusmarkering är läsbara i båda teman och vyerna.
+- Enter flyttar fokus till huvudinnehållet. Nästa Tab går till en kontroll
+  i sidans innehåll, även efter byte till kravunderlag. Huvudinnehållets
+  fokusmål blir inget extra stopp vid vanlig tabbnavigering.
+- Efter ett klick i innehållet fortsätter Tab från den platsen utan att
+  börja om vid innehållets första kontroll.
+- Fokus stannar i hjälpdialogen och återgår till Hjälp efter Escape.
+  Bakgrunden kan inte nås med tangentbord eller skärmläsare medan hjälpen
+  eller sidolådan är öppen.
+- Fokus stannar i sidolådan när den är öppen. Escape och stängningsknappen
+  återför fokus till öppningsknappen. Genvägslänken kan nås igen efteråt.
+- Sidonavigeringen öppnas och stängs med respektive kontroll.
+  Kravbibliotekets liståtgärder kan användas även efter växling av navigation,
+  ändring av fönstret och rullning.
+- Vid byte till skrivbordsläge stängs mobilmenyn och sidans kontroller och
+  rullning fungerar.
 
 ## Tillgänglighet
 
@@ -4241,9 +4279,18 @@ inspektionsanropet men återges inte i svaret.
 
 ### DEVTOOLS-03: rapportkontroller i kravunderlag är annoterade
 
-**Steg:** Öppna rapportkontroller i kravunderlag med Developer Mode.
+**Integrationstest:**
+[overlay.spec.ts](../../tests/integration/developer-mode/overlay.spec.ts),
+testfallet “DEVTOOLS-03: exposes specification report controls in developer
+mode”.
 
-**Förväntat resultat:** Relevanta kontroller visar kopierbara referenser.
+**Steg:** Öppna `/sv/specifications/8` som `ada.admin` och vänta tills
+listans åtgärder kan användas. Öppna **Fler åtgärder** vid **Krav i
+underlaget**. Aktivera Developer Mode och hovra över **Kravbilaga för
+upphandling**.
+
+**Förväntat resultat:** Rapportkontrollen visar en kopierbar referens med
+etiketten `table action: report`.
 
 ### RES-01: engelsk Admin-felåterhämtning
 

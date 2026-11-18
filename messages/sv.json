@@ -1,5 +1,6 @@
 {
   "common": {
+    "skipToMainContent": "Hoppa till huvudinnehållet",
     "appName": "Kravhantering",
     "appDescription": "En webbapplikation för kravhantering som stödjer företagets kravmodell och kravprocess",
     "loading": "Laddar...",
