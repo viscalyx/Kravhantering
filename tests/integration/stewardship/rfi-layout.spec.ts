@@ -167,7 +167,10 @@ for (const [width, height] of [
             name: 'Redigera RFI-fråga',
           })
           await expect(dialog).toHaveCount(1)
-          await expect(disclosure).toHaveAttribute('aria-expanded', 'false')
+          await expect(first.locator('button[aria-expanded]')).toHaveAttribute(
+            'aria-expanded',
+            'false',
+          )
           await dialog
             .getByRole('button', { name: 'Stäng', exact: true })
             .click()

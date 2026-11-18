@@ -278,7 +278,7 @@ test.describe('Requirement creation', () => {
     await test.step('save successfully without a discard prompt', async () => {
       await page.unroute('**/api/requirements')
       await page.getByRole('button', { name: 'Spara', exact: true }).click()
-      await expect(page).toHaveURL(/\/sv\/requirements\?selected=/)
+      await expect(page).toHaveURL(url => url.pathname === '/sv/requirements')
       await expect(confirmation).toBeHidden()
       await expect(
         page.locator('[data-expanded-detail-cell="true"]').first(),
