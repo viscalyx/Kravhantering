@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
-import { expectModalKeyboardContainment } from '@/tests/support/modal-keyboard'
+import { expectModalKeyboardIsolation } from '@/tests/support/modal-keyboard'
 
 const marker = (name: string) => `[data-developer-mode-name="${name}"]`
 
@@ -15,8 +15,11 @@ test('LIFE-01B/A11Y-02: association drafts, fixed groups and nested creation per
   await page.goto('/sv/requirements/new')
   await test.step('cancel a draft and restore focus', async () => {
     const trigger = page.getByRole('button', { name: 'Välj kravpaket' })
-    await trigger.click()
+    await expect(trigger).toBeEnabled()
+    await trigger.focus()
+    await trigger.press('Enter')
     const picker = page.getByRole('dialog')
+    await expectModalKeyboardIsolation(page, picker)
     const first = picker.getByRole('checkbox').first()
     await expect(
       picker.getByText('0 markerade i dialogen', { exact: true }),
@@ -42,11 +45,13 @@ test('LIFE-01B/A11Y-02: association drafts, fixed groups and nested creation per
   try {
     for (const kind of ['packages', 'norms'] as const) {
       await test.step(`create ${kind} above the picker and retain it after cancelling the draft`, async () => {
-        if (kind === 'norms')
+        const picker = page.getByRole('dialog')
+        if (kind === 'norms') {
           await page
             .getByRole('button', { name: 'Välj normreferenser' })
-            .click()
-        const picker = page.getByRole('dialog')
+            .press('Enter')
+          await expectModalKeyboardIsolation(page, picker)
+        }
         const search = picker.getByRole('searchbox')
         await search.fill('unmatched search')
         const createLabel =
@@ -76,12 +81,13 @@ test('LIFE-01B/A11Y-02: association drafts, fixed groups and nested creation per
         await cancel.click()
         const confirmation = page.getByRole('alertdialog')
         await expect(confirmation).toBeVisible()
+        await expect(page.getByRole('dialog')).toHaveCount(0)
         await expect(confirmation).toHaveCSS('opacity', '1')
         await expect(
           confirmation.getByRole('button', { name: 'Avbryt', exact: true }),
         ).toBeFocused()
         await expect(child).toBeHidden()
-        await expectModalKeyboardContainment(page, confirmation)
+        await expectModalKeyboardIsolation(page, confirmation)
         const anchorBox = await anchorElement.boundingBox()
         const confirmationBox = await confirmation.boundingBox()
         expect(anchorBox).not.toBeNull()
@@ -138,7 +144,7 @@ test('LIFE-01B/A11Y-02: association drafts, fixed groups and nested creation per
           ).toBeDisabled()
           await page.keyboard.press('Escape')
           await expect(child).toHaveAccessibleName(createLabel)
-          await expectModalKeyboardContainment(page, child)
+          await expectModalKeyboardIsolation(page, child)
         } finally {
           releaseSave()
         }

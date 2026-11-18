@@ -110,15 +110,23 @@ Behörighetsmatrisen finns i [behörigheter.md](./behörigheter.md).
 
 ### NAV-01: global sidonavigering kan öppnas och stängas
 
+**Integrationstest:**
+[global-navigation.spec.ts](../../tests/integration/navigation/global-navigation.spec.ts),
+testfallet “NAV-01: global side navigation and mobile drawer open and close”.
+
 **Steg:** Logga in som `ada.admin`, öppna `/sv/requirements`, expandera och
 fäll ihop den globala sidonavigeringen. Växla mellan kravbibliotek,
 kravunderlag, förvaltningsflikar, referensdata, administrationslistor,
 inställningar och identitet. Använd listans åtgärder efter navigationsväxling
-och rullning. Öppna och stäng därefter sidolådan.
+och rullning. Öppna Hjälp med Enter, gå runt med Tab och Skift+Tab och stäng
+med Escape. Öppna och stäng därefter sidolådan och kontrollera samma
+tangentbordsnavigering.
 
 **Förväntat resultat:** Sidonavigeringen och sidolådan öppnas och stängs med
 respektive kontroll. Kravbibliotekets liståtgärder kan användas även efter
-växling av navigation, ändring av fönstret och rullning.
+växling av navigation, ändring av fönstret och rullning. Fokus stannar i den
+öppna dialogen och återgår till Hjälp efter Escape. Bakgrunden kan inte nås
+med tangentbord eller skärmläsare medan hjälpen eller sidolådan är öppen.
 
 Öppna mobilmenyn och bredda sedan fönstret till skrivbordsläge utan att
 stänga menyn först. Menyn stängs och sidans kontroller och rullning fungerar.
@@ -916,11 +924,19 @@ med piltangenter och stäng med Escape.
 
 ### REQ-14a: kravpaket i kravbiblioteksförvaltning
 
+**Integrationstest:**
+[list.spec.ts](../../tests/integration/requirement-packages/list.spec.ts),
+testfallet “REQ-14a: filters and inspects requirement packages with HSA-id
+responsibility controls”.
+
 **Steg:** Öppna `Kravbiblioteksförvaltning` och fliken `Kravpaket`. Filtrera
 på paketnamn, syfte och avgränsning och rensa sökningen. Öppna dialogen
 `Nytt kravpaket` och kontrollera ansvarssammanfattningen. Öppna radåtgärden
 `Hantera medförfattare`, öppna kopplade krav från redigeringsformuläret och
-starta byte av kravpaketsansvarig med HSA-id. Kontrollera även att listans
+starta byte av kravpaketsansvarig med HSA-id. Öppna bytesdialogen med Enter.
+Kontrollera omedelbart fokus i dialogen och gå runt med Tab och Skift+Tab.
+Stäng med Escape och kontrollera att fokus återgår till bytesknappen.
+Öppna igen och fortsätt. Kontrollera även att listans
 skrivskyddade medförfattarkolumn visar namn utan HSA-id eller e-postadress. Gör
 uppslaget mot en testperson markerad med skyddade personuppgifter.
 Stäng därefter av HSA-topologin och öppna dialogen för byte av
@@ -1666,7 +1682,14 @@ dialogen för utgången session och skickar sedan användaren till inloggningen.
 
 ### LIFE-01B: välj och skapa kravpaket och normreferenser i kravformuläret
 
-**Steg:** Öppna ett nytt krav. Använd `Välj` vid Kravpaket och Normreferenser.
+**Integrationstest:**
+[form-associations.spec.ts](../../tests/integration/requirements/form-associations.spec.ts),
+testfallet “LIFE-01B/A11Y-02: association drafts, fixed groups and nested creation
+persist through requirement save”.
+
+**Steg:** Öppna ett nytt krav. Öppna `Välj` vid Kravpaket och Normreferenser
+med Enter. Kontrollera att fokus flyttas in direkt och stannar i väljaren
+med Tab och Skift+Tab.
 Markera objekt, sök och avbryt. Öppna igen och kontrollera att det tidigare
 urvalet gäller. Tillämpa med `Välj` och öppna igen. Avmarkera en tidigare vald
 rad; raden ska stanna i `Redan valda` tills dialogen stängs.
@@ -1675,8 +1698,12 @@ Kontrollera räknarens text med noll, ett och två markerade objekt.
 Skapa ett nytt paket med namn och syfte samt en normreferens med obligatoriska
 fält från respektive väljdialog. Kontrollera ansvarssammanfattningen för
 paketet. Avbryt först den översta dialogen och kontrollera fokus och sökning.
-Skriv ett namn, välj Avbryt och neka kasseringen. Kontrollera att namnet finns
-kvar i dialogen.
+Skriv ett namn och välj Avbryt. Gå runt i bekräftelsen med Tab och Skift+Tab.
+Kontrollera med skärmläsare att sidans innehåll och underliggande dialoger
+inte går att nå. Neka kasseringen med Escape och kontrollera att namnet finns
+kvar och att fokus återgår till Avbryt i skapandedialogen. Under en långsam
+sparning ska Tab stanna i dialogen även när kontroller är inaktiverade och
+Escape får inte avbryta sparningen.
 Spara därefter ett nytt objekt medan sökningen döljer det. Läs notisen, rensa
 sökningen och kontrollera att objektet är markerat sist i `Redan valda`.
 Avbryt väljdialogen, öppna igen och välj det nya objektet. Spara kravet med
@@ -2566,7 +2593,9 @@ när det valda avtalet har ett föregående avtal, även vid visning av äldre a
 **Integrationstest:**
 [agreements.spec.ts](../../tests/integration/specifications/agreements.spec.ts),
 testfallet “SPEC-22/SPEC-23/SPEC-28/A11Y-02: edit the complete agreement in the
-requirement list and retain historical content and output”.
+requirement list and retain historical content and output”. Dialogens
+fokus verifieras även av “SPEC-23/SPEC-24/SPEC-26: show compact future and
+cancelled changes while viewing an earlier agreement”.
 
 **Steg:** Skapa ett nytt avtal från det aktuella avtalet. Redigera ett
 bibliotekskrav med **Redigera krav**. Kontrollera meddelandet om lokal identitet
@@ -2580,7 +2609,11 @@ och använd **Uppdatera från kravbiblioteket** i åtgärdskolumnen till höger.
 Där finns även **Ångra ändring** när ändringen kan ångras. Kontrollera att
 åtgärdernas fullständiga namn är läsbara även när texten radbryts, på både
 svenska och engelska samt i mobilvy. Öppna **Jämför med föregående avtal** för
-detaljerade skillnader. Fäll ut **Historik** och kontrollera korta ändringsposter,
+detaljerade skillnader. Öppna jämförelsen med Enter, kontrollera omedelbart
+fokus på rubriken och gå runt med Tab och Skift+Tab. Bakgrunden ska inte gå
+att nå med tangentbord eller skärmläsare. Stäng med Escape och kontrollera
+att fokus återgår till jämförelseknappen även om historiken fortfarande
+hämtas. Fäll ut **Historik** och kontrollera korta ändringsposter,
 avtalsreferens, avtalsdatum, status och vilket avtal ändringen jämförs med.
 Välj ett äldre avtal och kontrollera att även senare ändringar visas, med
 **Visar avtal** som markering för det visade avtalet. Prova ett oförändrat krav

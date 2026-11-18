@@ -2116,7 +2116,6 @@ describe('RequirementsImportDialog', () => {
 
     const packageFirst = screen.getByLabelText('Package IDs 1')
     fireEvent.change(packageFirst, { target: { value: '-1' } })
-    fireEvent.keyDown(packageFirst, { key: 'Escape' })
     fireEvent.keyDown(packageFirst, { key: 'Enter' })
     fireEvent.change(packageFirst, { target: { value: '123' } })
     fireEvent.keyDown(packageFirst, { key: 'Enter' })

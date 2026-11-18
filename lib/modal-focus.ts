@@ -177,6 +177,12 @@ function handleKeyDown(modal: Modal, event: ModalKeyEvent): void {
     const elements = Array.from(
       modal.element.querySelectorAll<HTMLElement>(candidates),
     )
+    // Positive tabindex values precede the natural tab order.
+    if (elements.some(element => element.tabIndex > 0)) {
+      elements.sort(
+        (a, b) => (a.tabIndex || Infinity) - (b.tabIndex || Infinity),
+      )
+    }
     const active = document.activeElement
     const edge = event.shiftKey
       ? elements.find(isTabStop)
@@ -328,4 +334,9 @@ export function registerModal(
       }
     },
   }
+}
+
+/** Keep non-modal controls inside their invoking modal's boundary. */
+export function modalPortalTarget(anchor: HTMLElement | null): HTMLElement {
+  return anchor?.closest<HTMLElement>('[aria-modal="true"]') ?? document.body
 }

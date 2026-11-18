@@ -351,6 +351,20 @@ describe('useModalFocus', () => {
     expect(selected).toHaveFocus()
   })
 
+  it('wraps at the boundaries of the browser tab order with positive tabindex values', async () => {
+    const user = userEvent.setup()
+    render(<TestModal open />)
+    const first = screen.getByRole('button', { name: 'Middle' })
+    const last = screen.getByRole('textbox')
+    first.tabIndex = 1
+    screen.getByRole('button', { name: 'Last' }).tabIndex = 2
+    last.focus()
+    await user.tab()
+    expect(first).toHaveFocus()
+    await user.tab({ shift: true })
+    expect(last).toHaveFocus()
+  })
+
   it('does not trap Tab for middle elements', () => {
     render(<TestModal open />)
 
