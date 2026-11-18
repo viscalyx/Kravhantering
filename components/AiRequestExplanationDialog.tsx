@@ -219,6 +219,7 @@ export default function AiRequestExplanationDialog({
       <motion.div
         {...fadeMotion(shouldReduceMotion)}
         className="fixed inset-0 z-80 flex items-center justify-center bg-secondary-950/60 p-4"
+        data-modal-layer=""
       >
         <motion.div
           {...dialogPanelMotion(shouldReduceMotion)}

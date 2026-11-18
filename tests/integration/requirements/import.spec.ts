@@ -50,6 +50,7 @@ test.describe('Requirements import', () => {
     const artifactDownloads: string[] = []
     const previewRequests: unknown[] = []
     const executeRequests: unknown[] = []
+    const executeResponse = Promise.withResolvers<void>()
 
     await page.route('**/api/requirements/import/schema?*', async route => {
       artifactDownloads.push('schema')
@@ -119,6 +120,7 @@ test.describe('Requirements import', () => {
     })
     await page.route('**/api/requirements/import/execute', async route => {
       executeRequests.push(route.request().postDataJSON())
+      await executeResponse.promise
       await fulfillJson(route, {
         createdRows: [
           {
@@ -162,13 +164,23 @@ test.describe('Requirements import', () => {
       await expect(exportButton).toBeVisible()
       await expect(columnsButton).toBeVisible()
 
+      await expect(page.getByRole('row').nth(1)).toBeVisible()
+      const position = () =>
+        page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }))
+      await page.evaluate(() =>
+        window.scrollBy({ top: window.innerHeight / 2, behavior: 'instant' }),
+      )
+      const beforeOpen = await position()
+      expect(beforeOpen.y).toBeGreaterThan(0)
       await importButton.click()
       await expect(dialog).toHaveCount(1)
       await expect(dialog.locator(':focus')).toHaveCount(1)
+      expect(await position()).toEqual(beforeOpen)
 
       await dialog.getByRole('button', { name: 'Stäng' }).click()
       await expect(dialog).toHaveCount(0)
       await expect(importButton).toBeFocused()
+      expect(await position()).toEqual(beforeOpen)
 
       await importButton.click()
       await expect(dialog).toHaveCount(1)
@@ -352,6 +364,14 @@ test.describe('Requirements import', () => {
       await page.getByRole('button', { name: 'Importera valda' }).click()
 
       await expect.poll(() => executeRequests.length).toBe(1)
+      const close = page
+        .getByRole('dialog', { name: selectedAreaDialogName })
+        .getByRole('button', { name: 'Stäng' })
+      await expect(close).toBeDisabled()
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('alertdialog')).toHaveCount(0)
+      await expect(close).toBeVisible()
+      executeResponse.resolve()
       if (selectedAreaId == null) {
         throw new Error('No requirement area id was captured before import.')
       }

@@ -1723,6 +1723,9 @@ describe('RequirementSelectionQuestionsClient', () => {
         'Choose packages or search for Requirement IDs to preview requirements in the selection.',
       ),
     ).toBeInTheDocument()
+    expect(packageSelector).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.keyDown(noRequirementSelection, { key: 'Escape' })
+    await waitFor(() => expect(confirmState.confirm).toHaveBeenCalled())
   })
 
   it('filters expanded answer requirements by the union of selected source pills', async () => {

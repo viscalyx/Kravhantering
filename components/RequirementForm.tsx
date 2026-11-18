@@ -318,9 +318,7 @@ export default function RequirementForm({
 
   const currentSignature = createRequirementPayloadSignature(form, mode)
   const formDirty = baselineSignature !== currentSignature
-  const { allowNavigation, navigateBack } = useUnsavedRequirementEdit(
-    mode === 'edit' && formDirty,
-  )
+  const { allowNavigation, navigateBack } = useUnsavedRequirementEdit(formDirty)
   const associationSelectionsValid =
     form.normReferenceIds.length <= ARRAY_INPUT_MAX_ITEMS &&
     form.requirementPackageIds.length <= ARRAY_INPUT_MAX_ITEMS

@@ -1171,6 +1171,16 @@ export default function RfiQuestionsClient() {
     </form>
   )
 
+  const errorAlert = error ? (
+    <p
+      className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+      role="alert"
+      {...devMarker({ name: 'error message', value: 'RFI question error' })}
+    >
+      {error}
+    </p>
+  ) : null
+
   return (
     <main className="section-padding">
       <ListWorkspace context="rfiQuestions" reserveActions>
@@ -1200,6 +1210,7 @@ export default function RfiQuestionsClient() {
           title={form.id == null ? copy.newQuestion : copy.editQuestion}
           titleId="rfi-question-form-title"
         >
+          {errorAlert}
           {questionFormContent}
         </FormModal>
         <FormModal
@@ -1211,6 +1222,7 @@ export default function RfiQuestionsClient() {
           title={copy.handleSuggestions}
           titleId="rfi-question-suggestions-title"
         >
+          {errorAlert}
           {suggestionTarget ? (
             <div className="space-y-5">
               <div className="rounded-xl border border-secondary-200 bg-secondary-50 px-4 py-3 text-sm text-secondary-700 dark:border-secondary-800 dark:bg-secondary-950/70 dark:text-secondary-200">
@@ -1292,14 +1304,7 @@ export default function RfiQuestionsClient() {
           </p>
         </div>
 
-        {error ? (
-          <p
-            className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
-            role="alert"
-          >
-            {error}
-          </p>
-        ) : null}
+        {!showQuestionForm && suggestionTarget == null ? errorAlert : null}
 
         <div
           className="mb-5 grid grid-cols-1 gap-3 rounded-2xl border bg-white/80 p-4 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60 md:grid-cols-3 min-[68.75rem]:grid-cols-[minmax(0,1fr)_220px_180px_180px]"

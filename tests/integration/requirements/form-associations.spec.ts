@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test'
 import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
+import { expectModalKeyboardContainment } from '@/tests/support/modal-keyboard'
 
 const marker = (name: string) => `[data-developer-mode-name="${name}"]`
 
-test('LIFE-01B: association drafts, fixed groups and nested creation persist through requirement save', async ({
+test('LIFE-01B/A11Y-02: association drafts, fixed groups and nested creation persist through requirement save', async ({
   page,
   request,
 }) => {
@@ -70,11 +71,18 @@ test('LIFE-01B: association drafts, fixed groups and nested creation persist thr
           name: 'Avbryt',
           exact: true,
         })
+        const anchorElement = await cancel.elementHandle()
+        if (!anchorElement) throw new Error('Expected cancel anchor')
         await cancel.click()
         const confirmation = page.getByRole('alertdialog')
         await expect(confirmation).toBeVisible()
         await expect(confirmation).toHaveCSS('opacity', '1')
-        const anchorBox = await cancel.boundingBox()
+        await expect(
+          confirmation.getByRole('button', { name: 'Avbryt', exact: true }),
+        ).toBeFocused()
+        await expect(child).toBeHidden()
+        await expectModalKeyboardContainment(page, confirmation)
+        const anchorBox = await anchorElement.boundingBox()
         const confirmationBox = await confirmation.boundingBox()
         expect(anchorBox).not.toBeNull()
         expect(confirmationBox).not.toBeNull()
@@ -88,9 +96,8 @@ test('LIFE-01B: association drafts, fixed groups and nested creation persist thr
             ),
           ).toBeLessThanOrEqual(9)
         }
-        await confirmation
-          .getByRole('button', { name: 'Avbryt', exact: true })
-          .click()
+        await page.keyboard.press('Escape')
+        await expect(cancel).toBeFocused()
         await expect(
           child.locator(`[id="association-create-${kind}-name"]`),
         ).toHaveValue(kind === 'packages' ? packageName : normName)
@@ -114,8 +121,29 @@ test('LIFE-01B: association drafts, fixed groups and nested creation persist thr
             r.url().endsWith(`/api/${endpoint}`) &&
             r.request().method() === 'POST',
         )
-        await child.getByRole('button', { name: 'Spara', exact: true }).click()
+        let releaseSave: () => void = () => {}
+        const saveGate = new Promise<void>(resolve => {
+          releaseSave = resolve
+        })
+        const saveRoute = `**/api/${endpoint}`
+        await page.route(saveRoute, async route => {
+          if (route.request().method() === 'POST') await saveGate
+          await route.continue()
+        })
+        try {
+          const save = child.getByRole('button', { name: 'Spara', exact: true })
+          await save.click()
+          await expect(
+            child.getByRole('button', { name: /^Sparar/ }),
+          ).toBeDisabled()
+          await page.keyboard.press('Escape')
+          await expect(child).toHaveAccessibleName(createLabel)
+          await expectModalKeyboardContainment(page, child)
+        } finally {
+          releaseSave()
+        }
         const response = await responsePromise
+        await page.unroute(saveRoute)
         await expectApiResponseOk(response, `create ${kind}`)
         const created = await response.json()
         createdIds.push({ kind: endpoint, id: created.id })

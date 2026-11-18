@@ -195,6 +195,7 @@ export default function IconPicker({
             {open && (
               <motion.div
                 className="fixed inset-0 z-50"
+                data-modal-layer=""
                 key="icon-picker-backdrop"
                 {...fadeMotion(shouldReduceMotion)}
               >

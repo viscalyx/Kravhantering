@@ -519,8 +519,7 @@ describe('AiRequirementGenerator', () => {
     expect(screen.queryByText('generateTitle')).not.toBeInTheDocument()
   })
 
-  it('keeps page scrolling available while embedded', async () => {
-    const previousOverflow = document.body.style.overflow
+  it('isolates the page while the embedded modal is active', async () => {
     render(
       <AiRequirementGenerator
         areas={testAreas}
@@ -534,7 +533,7 @@ describe('AiRequirementGenerator', () => {
     expect(
       await screen.findByRole('dialog', { name: 'generateTitle' }),
     ).toBeVisible()
-    expect(document.body.style.overflow).toBe(previousOverflow)
+    expect(document.body.style.overflow).toBe('hidden')
   })
 
   it('locks and restores page scrolling while the modal is open', async () => {

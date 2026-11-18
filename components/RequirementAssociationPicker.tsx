@@ -2,7 +2,7 @@
 
 import { CircleAlert, Info, Pencil, Plus, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { type RefObject, useLayoutEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import FieldHelpButton from '@/components/FieldHelpButton'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
@@ -33,31 +33,6 @@ const buttonClassName =
 const cellClassName =
   'border-b border-secondary-200 px-2 py-3 text-left align-top wrap-anywhere dark:border-secondary-700'
 
-/** Keep a containing dialog visible while only its nested dialog accepts input. */
-function useInertDialog(
-  active: boolean,
-  contentRef: RefObject<HTMLElement | null>,
-) {
-  useLayoutEffect(() => {
-    if (!active) return
-    const dialog = contentRef.current?.closest<HTMLElement>('[role="dialog"]')
-    if (!dialog) return
-    const wasInert = dialog.inert
-    const hidden = dialog.getAttribute('aria-hidden')
-    const modal = dialog.getAttribute('aria-modal')
-    dialog.inert = true
-    dialog.setAttribute('aria-hidden', 'true')
-    dialog.setAttribute('aria-modal', 'false')
-    return () => {
-      dialog.inert = wasInert
-      if (hidden === null) dialog.removeAttribute('aria-hidden')
-      else dialog.setAttribute('aria-hidden', hidden)
-      if (modal === null) dialog.removeAttribute('aria-modal')
-      else dialog.setAttribute('aria-modal', modal)
-    }
-  }, [active, contentRef])
-}
-
 export default function RequirementAssociationPicker({
   onCreated,
   disabled,
@@ -83,8 +58,6 @@ export default function RequirementAssociationPicker({
   const [query, setQuery] = useState('')
   const triggerRef = useRef<HTMLButtonElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
-  useInertDialog(creating, pickerRef)
-  useInertDialog(open, triggerRef)
   const title = tr(isPackage ? 'requirementPackage' : 'normReferences')
   const rows = items.map(item => ({
     ...item,

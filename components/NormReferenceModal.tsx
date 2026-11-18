@@ -3,11 +3,12 @@
 import { motion, useReducedMotion } from 'framer-motion'
 import { X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FormActionRow from '@/components/FormActionRow'
 import NormReferenceFormFields from '@/components/NormReferenceFormFields'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 
 export interface NormReferenceFormData {
@@ -47,7 +48,6 @@ export default function NormReferenceModal({
   const tc = useTranslations('common')
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
-  const previouslyFocused = useRef<Element | null>(null)
   const shouldReduceMotion = useReducedMotion()
   const confirmDiscardChanges = useDiscardChangesConfirmation()
 
@@ -60,49 +60,13 @@ export default function NormReferenceModal({
     [confirmDiscardChanges, normRefFormDirty, normRefSubmitting, onCancel],
   )
 
-  useEffect(() => {
-    previouslyFocused.current = document.activeElement
-    closeButtonRef.current?.focus()
-
-    return () => {
-      if (previouslyFocused.current instanceof HTMLElement) {
-        previouslyFocused.current.focus()
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-
-    const focusableSelector =
-      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
-
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !normRefSubmitting) {
-        void requestCancel()
-        return
-      }
-      if (event.key !== 'Tab') return
-      const focusable = Array.from(
-        dialog.querySelectorAll<HTMLElement>(focusableSelector),
-      )
-      if (focusable.length === 0) return
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (event.shiftKey) {
-        if (document.activeElement === first) {
-          event.preventDefault()
-          last.focus()
-        }
-      } else if (document.activeElement === last) {
-        event.preventDefault()
-        first.focus()
-      }
-    }
-    dialog.addEventListener('keydown', onKey)
-    return () => dialog.removeEventListener('keydown', onKey)
-  }, [normRefSubmitting, requestCancel])
+  const { handleKeyDown } = useModalFocus({
+    modalRef: dialogRef,
+    initialFocusRef: closeButtonRef,
+    closeDisabled: normRefSubmitting,
+    open: true,
+    onClose: () => void requestCancel(),
+  })
 
   const hasRequiredNormReferenceFields =
     normRefForm.name.trim() !== '' &&
@@ -111,7 +75,10 @@ export default function NormReferenceModal({
     normRefForm.issuer.trim() !== ''
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      data-modal-layer=""
+    >
       <motion.div
         aria-hidden="true"
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -122,6 +89,7 @@ export default function NormReferenceModal({
         aria-labelledby={`${idPrefix}-title`}
         aria-modal="true"
         className="relative z-10 max-h-[90vh] w-full max-w-4xl space-y-4 overflow-y-auto rounded-2xl border bg-white p-6 shadow-xl dark:bg-secondary-900"
+        onKeyDown={handleKeyDown}
         ref={dialogRef}
         role="dialog"
         {...dialogPanelMotion(shouldReduceMotion, { duration: 0.22 })}

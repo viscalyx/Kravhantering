@@ -142,6 +142,7 @@ export default function SuggestionResolutionModal({
       {open && (
         <motion.div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          data-modal-layer=""
           key="suggestion-resolution-backdrop"
           {...fadeMotion(shouldReduceMotion)}
         >

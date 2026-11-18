@@ -153,6 +153,7 @@ export default function DeviationDecisionModal({
       {open && (
         <motion.div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          data-modal-layer=""
           key="deviation-decision-backdrop"
           {...fadeMotion(shouldReduceMotion)}
         >

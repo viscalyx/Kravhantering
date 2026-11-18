@@ -2567,28 +2567,42 @@ export default function KravunderlagDetailClient({
   const localName = (obj: { nameSv: string; nameEn: string } | null) =>
     obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null
 
+  const addModalRef = useRef<HTMLDivElement>(null)
+  const localModalRef = useRef<HTMLDivElement>(null)
+  const needsModalRef = useRef<HTMLDivElement>(null)
+  const { handleKeyDown: handleAddKeyDown } = useModalFocus({
+    modalRef: addModalRef,
+    open: showAddModal,
+    closeDisabled: addModalLoading,
+    onClose: closeAddModal,
+  })
+  const { handleKeyDown: handleLocalKeyDown } = useModalFocus({
+    modalRef: localModalRef,
+    open: showCreateLocalRequirementModal,
+    onClose: () => void closeCreateLocalRequirementModal(),
+  })
+  const { handleKeyDown: handleNeedsKeyDown } = useModalFocus({
+    modalRef: needsModalRef,
+    open: !!needsReferenceForm,
+    closeDisabled: needsReferenceSaving,
+    onClose: () => void closeNeedsReferenceForm(),
+  })
+
   // Add modal portal (issue 5)
   const addModal =
     showAddModal && typeof window !== 'undefined'
       ? createPortal(
           <div
+            aria-label={t('addingCount', { count: pendingAddIds.length })}
             aria-modal="true"
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            onKeyDown={e => {
-              if (e.key === 'Escape') {
-                closeAddModal()
-              }
-            }}
+            onKeyDown={handleAddKeyDown}
+            ref={addModalRef}
             role="dialog"
           >
             <div
               className="w-full max-w-md rounded-2xl bg-white dark:bg-secondary-900 shadow-2xl p-6 space-y-4"
-              onKeyDown={e => {
-                e.stopPropagation()
-                if (e.key === 'Escape') {
-                  closeAddModal()
-                }
-              }}
+              onKeyDown={handleAddKeyDown}
               role="document"
             >
               <div className="flex items-center justify-between">
@@ -2742,12 +2756,8 @@ export default function KravunderlagDetailClient({
             aria-labelledby="create-local-requirement-title"
             aria-modal="true"
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            onKeyDown={e => {
-              if (e.key === 'Escape') {
-                e.stopPropagation()
-                void closeCreateLocalRequirementModal()
-              }
-            }}
+            onKeyDown={handleLocalKeyDown}
+            ref={localModalRef}
             role="dialog"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -2804,11 +2814,8 @@ export default function KravunderlagDetailClient({
                 aria-modal="true"
                 className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
                 key="needs-reference-form-backdrop"
-                onKeyDown={event => {
-                  if (event.key === 'Escape' && !needsReferenceSaving) {
-                    void closeNeedsReferenceForm()
-                  }
-                }}
+                onKeyDown={handleNeedsKeyDown}
+                ref={needsModalRef}
                 role="dialog"
                 {...fadeMotion(shouldReduceMotion)}
               >

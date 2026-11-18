@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { ReactNode, RefObject } from 'react'
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -49,31 +49,6 @@ export default function FormModal({
     open,
   })
 
-  useEffect(() => {
-    if (!open || typeof document === 'undefined') {
-      return
-    }
-
-    const html = document.documentElement
-    const { body } = document
-    const previousBodyOverflow = body.style.overflow
-    const previousHtmlOverflow = html.style.overflow
-    const previousBodyOverscrollBehavior = body.style.overscrollBehavior
-    const previousHtmlOverscrollBehavior = html.style.overscrollBehavior
-
-    body.style.overflow = 'hidden'
-    html.style.overflow = 'hidden'
-    body.style.overscrollBehavior = 'contain'
-    html.style.overscrollBehavior = 'contain'
-
-    return () => {
-      body.style.overflow = previousBodyOverflow
-      html.style.overflow = previousHtmlOverflow
-      body.style.overscrollBehavior = previousBodyOverscrollBehavior
-      html.style.overscrollBehavior = previousHtmlOverscrollBehavior
-    }
-  }, [open])
-
   if (typeof document === 'undefined') {
     return null
   }
@@ -89,6 +64,7 @@ export default function FormModal({
       {open ? (
         <motion.div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          data-modal-layer=""
           key={`${titleId}-backdrop`}
           {...fadeMotion(shouldReduceMotion)}
         >

@@ -38,6 +38,7 @@ import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePur
 import RequirementsImportRepairPrompt from '@/components/RequirementsImportRepairPrompt'
 import RequirementsImportSupportPanel from '@/components/RequirementsImportSupportPanel'
 import StatusBadge from '@/components/StatusBadge'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import { downloadBlob } from '@/lib/browser-download'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { escapeCsvField } from '@/lib/export-csv'
@@ -1204,46 +1205,19 @@ export default function RequirementsImportDialog({
     text.error,
   ])
 
-  useEffect(() => {
-    if (
-      !open ||
-      embedded ||
-      typeof document === 'undefined' ||
-      typeof window === 'undefined'
-    ) {
-      return
-    }
-    const body = document.body
-    const html = document.documentElement
-    const scrollX = window.scrollX
-    const scrollY = window.scrollY
-    const previousBodyOverflow = body.style.overflow
-    const previousBodyPosition = body.style.position
-    const previousBodyTop = body.style.top
-    const previousBodyLeft = body.style.left
-    const previousBodyRight = body.style.right
-    const previousBodyWidth = body.style.width
-    const previousHtmlOverflow = html.style.overflow
-
-    body.style.overflow = 'hidden'
-    body.style.position = 'fixed'
-    body.style.top = `-${scrollY}px`
-    body.style.left = `-${scrollX}px`
-    body.style.right = '0'
-    body.style.width = '100%'
-    html.style.overflow = 'hidden'
-
-    return () => {
-      body.style.overflow = previousBodyOverflow
-      body.style.position = previousBodyPosition
-      body.style.top = previousBodyTop
-      body.style.left = previousBodyLeft
-      body.style.right = previousBodyRight
-      body.style.width = previousBodyWidth
-      html.style.overflow = previousHtmlOverflow
-      window.scrollTo(scrollX, scrollY)
-    }
-  }, [embedded, open])
+  const modalRef = useRef<HTMLDivElement>(null)
+  const pickerModalRef = useRef<HTMLDivElement>(null)
+  const { handleKeyDown } = useModalFocus({
+    closeDisabled: loading,
+    modalRef,
+    open,
+    onClose: () => void closeDialog(),
+  })
+  const { handleKeyDown: handlePickerKeyDown } = useModalFocus({
+    modalRef: pickerModalRef,
+    open: open && !!associationPicker,
+    onClose: () => closeAssociationPicker(),
+  })
 
   if (!open || typeof document === 'undefined') return null
 
@@ -1546,6 +1520,7 @@ export default function RequirementsImportDialog({
   }
 
   const closeDialog = async () => {
+    if (loading) return
     const hasRemainingImportEdits =
       rows.length > 0 || (!hadSuccessfulImport && rawJson.trim())
     if (hasRemainingImportEdits) {
@@ -2185,8 +2160,10 @@ export default function RequirementsImportDialog({
             ? 'contents'
             : 'fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm'
         }
+        data-modal-layer={embedded ? undefined : ''}
         {...backdropDialogProps}
       >
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: dialog semantics are on this panel when embedded and its parent otherwise */}
         <div
           className={`flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-secondary-950 ${
             hasLoadedReview || isPreparingInitialImport
@@ -2195,6 +2172,8 @@ export default function RequirementsImportDialog({
                 ? 'max-w-[60rem]'
                 : 'max-w-xl'
           }`}
+          onKeyDown={handleKeyDown}
+          ref={modalRef}
           {...panelDialogProps}
         >
           <div className="flex items-start justify-between gap-3 border-b border-secondary-200 px-5 py-4 dark:border-secondary-800">
@@ -2212,6 +2191,7 @@ export default function RequirementsImportDialog({
             <button
               aria-label={text.close}
               className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg hover:bg-secondary-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 dark:hover:bg-secondary-900"
+              disabled={loading}
               onClick={() => void closeDialog()}
               type="button"
             >
@@ -3828,6 +3808,9 @@ export default function RequirementsImportDialog({
           aria-labelledby="requirements-import-association-picker-title"
           aria-modal="true"
           className="fixed inset-0 z-60 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm"
+          data-modal-layer=""
+          onKeyDown={handlePickerKeyDown}
+          ref={pickerModalRef}
           role="dialog"
         >
           <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-secondary-950">

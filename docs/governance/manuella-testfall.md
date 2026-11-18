@@ -120,6 +120,9 @@ och rullning. Öppna och stäng därefter sidolådan.
 respektive kontroll. Kravbibliotekets liståtgärder kan användas även efter
 växling av navigation, ändring av fönstret och rullning.
 
+Öppna mobilmenyn och bredda sedan fönstret till skrivbordsläge utan att
+stänga menyn först. Menyn stängs och sidans kontroller och rullning fungerar.
+
 ## Tillgänglighet
 
 ### A11Y-01: enhetliga hjälpkontroller är åtkomliga
@@ -132,6 +135,54 @@ förbättringsförslagsmodal.
 **Förväntat resultat:** Hjälpknappen har ett begripligt tillgänglighetsnamn,
 synlig tangentbordsfokus och växlar hjälppanelen. När panelen är öppen är den
 kopplad till knappen för hjälpmedel.
+
+### A11Y-02: fokus och bakgrund i staplade dialoger
+
+**Syfte:** Kontrollera tangentbordsfokus, bakgrundsskydd och återgång när
+flera dialoger öppnas ovanpå varandra.
+
+**Användare:** `ada.admin` för kravpaket och kravformulär;
+`petra.specresp` för avtal.
+
+**Förutsättningar:** Kravpaketet Mobil användning och ett kravunderlag med
+avtal och en senare arbetskopia med jämförbart kravinnehåll.
+
+**Integrationstest:**
+[list.spec.ts](../../tests/integration/requirement-packages/list.spec.ts),
+testfallet “REQ-14a/A11Y-02: keeps local responsibility data visible when
+external lookup is unavailable”;
+[agreements.spec.ts](../../tests/integration/specifications/agreements.spec.ts),
+testfallet “SPEC-22/SPEC-23/SPEC-28/A11Y-02: edit the complete agreement in the
+requirement list and retain historical content and output”;
+[form-associations.spec.ts](../../tests/integration/requirements/form-associations.spec.ts),
+testfallet “LIFE-01B/A11Y-02: association drafts, fixed groups and nested
+creation persist through requirement save”.
+
+**Steg:**
+
+1. Öppna kravpaketets redigering. Nå **Byt kravpaketsansvarig** med
+   tangentbordet och tryck Enter. Kontrollera fokus direkt efter öppning.
+2. Använd Tab och Shift+Tab runt hela dialogen. Tryck Escape och kontrollera
+   att fokus återgår till öppningsknappen i redigeringen.
+3. Öppna kravunderlagets arbetskopia, visa ett krav och öppna jämförelsen
+   med föregående avtal med Enter. Upprepa fokus- och stängningskontrollen.
+4. Öppna ett nytt krav och välj kravpaket. Öppna **Nytt kravpaket**, skriv
+   ett namn och välj **Avbryt**. Kontrollera att bekräftelsens säkra val har
+   fokus och att Tab och Shift+Tab stannar i bekräftelsen. Tryck Escape.
+5. Fyll obligatoriska fält och spara. Medan sparandet pågår, prova Tab,
+   Shift+Tab och Escape. Upprepa för en ny normreferens.
+6. Upprepa navigeringen med skärmläsare, exempelvis NVDA med Firefox.
+   Läs rubriker och kontroller i den översta dialogen. Försök läsa och
+   aktivera bakgrundens kontroller. Anteckna webbläsarens och skärmläsarens
+   versioner samt resultat; automatiska DOM-kontroller ersätter inte detta.
+
+**Förväntat resultat:** Fokus går direkt till dialogens rubrik eller avsedda
+kontroll. Bakgrunden kan varken nås, läsas eller aktiveras medan den översta
+dialogen är öppen. Escape stänger bara den översta dialogen när stängning
+är tillåten. Under sparande stannar fokus i dialogen och Escape stänger inte.
+Efter stängning återfår föregående dialog fokus och funktion; efter sista
+stängningen återfår sidan fokus och rullning. Inmatning bevaras när kassering
+nekas. Den manuella skärmläsarkontrollen redovisas separat från Playwright.
 
 ## Autentisering och behörighet
 
@@ -915,13 +966,17 @@ när den ändras med tangentbord.
 ### REQ-14c: kravurvalsförhandsvisning visar skrivskyddat krav
 
 **Steg:** Öppna en seedad kravurvalsfråga, redigera ett svar och öppna ett
-krav från svarets kravurvalsförhandsvisning. Öppna områdesinformationen med
-Enter, tabba till panelen och stäng den med Escape.
+krav från svarets kravurvalsförhandsvisning. Öppna paketväljaren, fokusera
+dess sökfält och stäng den med Escape. Öppna områdesinformationen med
+Enter, tabba till panelen och stäng den med Escape. Öppna paketväljaren igen
+och markera `Utan kravurval` med tangentbordet. Tryck Escape.
 
 **Förväntat resultat:** Kravet visas skrivskyddat med `Kravtext` och utan
 arkiverings- eller livscykelåtgärder. Områdesinformationen kan läsas med
 tangentbord; Escape återför fokus till infoikonen och lämnar svarsredigeraren
-öppen.
+öppen. Escape i paketväljaren stänger bara väljaren och återför fokus till
+dess öppningsknapp. När valet `Utan kravurval` döljer väljaren öppnar Escape
+bekräftelsen för att kassera ändringarna i svaret.
 
 ### REQ-14d: borttagningsknappar i kravurvalsvar är användbara
 
@@ -1113,8 +1168,10 @@ har ändrats.
 
 ### REQ-17: importera krav till kravbiblioteket
 
-**Steg:** Logga in som `olle.areaowner`, öppna `/sv/requirements`, välj
-importknappen i den flytande åtgärdsytan. Använd Tab och Skift+Tab för att
+**Steg:** Logga in som `olle.areaowner`, öppna `/sv/requirements` och scrolla
+ned i kravlistan. Öppna importen i den flytande åtgärdsytan, stäng den och
+kontrollera att samma del av kravlistan visas. Öppna importen igen.
+Använd Tab och Skift+Tab för att
 nå kravområde, filval, textinmatning och stödytan `Låt en extern AI ta fram
 krav`. Kontrollera stegguidens tre steg. Öppna den infällda sektionen `Egen
 prompt eller validering` och ladda ner schema och importinstruktion. Välj även
@@ -1124,8 +1181,9 @@ via filvalet och kontrollera att innehållet visas i textfältet. Klistra in
 kravtext börjar med `=`,
 föreslagen normreferens, behovsreferensfält som ska ignoreras och ett först
 otillåtet destinationsfält. Välj kravområde, korrigera JSON, förhandsgranska,
-expandera raden, granska den föreslagna normreferensen, importera vald rad och
-ladda ner CSV-kvitto.
+expandera raden, granska den föreslagna normreferensen och importera vald rad.
+Prova Escape medan importen pågår och kontrollera att `Stäng` är inaktiverad
+tills svaret kommer. Ladda sedan ner CSV-kvittot.
 
 **Förväntat resultat:** Inmatning och stödmaterial går att nå med tangentbord
 och har synlig fokusmarkering. Stegguiden visar `Hämta två filer`, `Fråga
@@ -1407,6 +1465,165 @@ med kravets unika ID.
 **Integrationstest:** [requirements/create.spec.ts](../../tests/integration/requirements/create.spec.ts),
 ”LIFE-01: form submit opens the saved requirement and records its action
 history (desktop)”.
+
+### LIFE-01D: skydda osparad inmatning när ett nytt krav lämnas
+
+**Syfte:** Kontrollera att navigering kräver ett uttryckligt beslut och att
+nekad kassering bevarar inmatningen.
+
+**Användare:** Administratör.
+
+**Förutsättningar:** Ett kravområde och ett aktivt kravpaket finns.
+
+**Integrationstest:** [requirements/create.spec.ts](../../tests/integration/requirements/create.spec.ts),
+”LIFE-01D: new requirement preserves input on declined link and leaves on
+confirmation”, ”LIFE-01D: new requirement preserves input on declined language
+and leaves on confirmation”, ”LIFE-01D: new requirement preserves input on
+declined Back and leaves on confirmation” samt ”LIFE-01D: new requirement
+preserves input on declined Cancel and leaves on confirmation”.
+
+**Steg:**
+
+1. Öppna kravbiblioteket och sedan formuläret för ett nytt krav.
+2. Fyll kravtext och acceptanskriterium, välj kravområde och kravpaket,
+   markera verifierbart och fyll verifieringsmetod.
+3. Följ länken `Kravunderlag` och välj `Avbryt` i bekräftelsen.
+4. Kontrollera samtliga värden och öppna paketväljaren för att kontrollera
+   markeringen. Avbryt väljaren, följ länken igen och bekräfta kasseringen.
+5. Upprepa från kravbiblioteket med språkbyte, webbläsarens Bakåt och
+   formulärets `Avbryt`. Vid språkbyte, skriv även ny text i det engelska
+   formuläret och bekräfta ett språkbyte tillbaka till svenska.
+
+**Förväntat resultat:** Nekad kassering behåller formuläret, alla texter och
+val. Bekräftad kassering når kravunderlagslistan, den andra språkversionens
+nya formulär respektive kravbiblioteket utan en andra bekräftelse. Dialogen
+använder svenska respektive engelska enligt formulärets språk.
+
+### LIFE-01E: lämna ett oförändrat eller återställt nytt formulär
+
+**Syfte:** Undvika onödiga varningar när det inte finns ändrad inmatning.
+
+**Användare:** Administratör.
+
+**Förutsättningar:** Kravbiblioteket är öppet.
+
+**Integrationstest:** [requirements/create.spec.ts](../../tests/integration/requirements/create.spec.ts),
+”LIFE-01E: clean and restored new forms leave without confirmation”.
+
+**Steg:** Öppna ett nytt krav och välj `Avbryt` utan att ändra något.
+Öppna formuläret igen, skriv ett acceptanskriterium och ersätt texten med
+enbart blanksteg. Välj `Avbryt` igen.
+
+**Förväntat resultat:** `Spara` är inaktiverad i båda fallen. Båda
+avbrotten når kravbiblioteket utan en bekräftelsedialog.
+
+### LIFE-01F: skydda inmatning vid omladdning och stängning av flik
+
+**Syfte:** Kontrollera webbläsarens skydd vid dokumentbyte.
+
+**Användare:** Administratör.
+
+**Förutsättningar:** Chromium med stöd för omladdningsbekräftelse.
+
+**Integrationstest:** [requirements/create.spec.ts](../../tests/integration/requirements/create.spec.ts),
+”LIFE-01F: reload and tab close protect a new requirement until departure is
+accepted”.
+
+**Steg:** Öppna ett nytt krav och skriv ett acceptanskriterium. Ladda om och
+neka först, ladda sedan om och acceptera. Skriv kravtext, stäng fliken och
+neka först, stäng sedan fliken och acceptera.
+
+**Förväntat resultat:** Webbläsarens egen dialog visas. Nekad omladdning
+eller stängning bevarar inmatningen. Accepterad omladdning visar ett tomt
+formulär; accepterad stängning stänger fliken. Ingen återställning efter
+webbläsaravslut utlovas.
+
+### LIFE-01G: bevara inmatning och skydd efter valideringsfel och sparfel
+
+**Syfte:** Kontrollera att endast ett lyckat sparande släpper skyddet.
+
+**Användare:** Administratör.
+
+**Förutsättningar:** Ett kravområde finns. Utvecklarverktyg kan ersätta
+svaret för `POST /api/requirements` med HTTP 500 och JSON
+`{"error":"Save unavailable"}` utan att ändra andra anrop.
+
+**Integrationstest:** [requirements/create.spec.ts](../../tests/integration/requirements/create.spec.ts),
+”LIFE-01G: validation and failed creation preserve input and protection until
+successful save”.
+
+**Steg:** Skriv kravtext utan kravområde och försök spara. Välj `Avbryt` och
+neka kasseringen. Välj kravområde, aktivera felsvaret och spara igen. Försök
+byta språk och neka kasseringen. Ta bort felsvaret och spara.
+
+**Förväntat resultat:** Första försöket fokuserar det obligatoriska
+kravområdet. Sparfelet visas utan att rensa texten. Avbryt och språkbyte
+kräver kassering. Det lyckade sparandet når kravbiblioteket med den sparade
+texten i inline-detalj utan kassering eller omladdningsvarning.
+
+### LIFE-01H: behåll skyddet utan föregående historikpost
+
+**Syfte:** Kontrollera att ett avbrott utan destination inte släpper skyddet.
+
+**Användare:** Administratör.
+
+**Förutsättningar:** Öppna `/sv/requirements/new` direkt i en ny flik i en
+inloggad session, så att webbläsarens Bakåt inte har någon destination.
+
+**Integrationstest:** [requirements/create.spec.ts](../../tests/integration/requirements/create.spec.ts),
+”LIFE-01H: a new form at the first history entry keeps input and protection
+after Cancel”.
+
+**Steg:** Markera verifierbart. Försök gå Bakåt. Välj formulärets `Avbryt`
+och bekräfta kasseringen. Lägg till `#description` sist i adressen och tryck
+Retur. Gå Bakåt till formulärets adress utan fragment. Välj `Avbryt` igen
+och bekräfta. Försök sedan byta språk.
+
+**Förväntat resultat:** Formuläret och markeringen finns kvar efter Bakåt
+och Avbryt. Språkbyte kräver fortfarande en kassering.
+
+### LIFE-01I: avbryt till en sida med annat ursprung
+
+**Syfte:** Kontrollera att Avbryt kan återgå till en annan webbplats.
+
+**Användare:** Administratör.
+
+**Förutsättningar:** En inloggad session och en sida på ett annat ursprung
+med en länk till `/sv/requirements/new`. Länken öppnas i samma flik.
+
+**Integrationstest:** [requirements/create.spec.ts](../../tests/integration/requirements/create.spec.ts),
+”LIFE-01I: confirmed Cancel returns to a cross-origin predecessor”.
+
+**Steg:** Följ länken och skriv kravtext. Välj `Avbryt` och neka kasseringen.
+Kontrollera texten. Välj `Avbryt` igen och bekräfta kasseringen.
+
+**Förväntat resultat:** Nekad kassering bevarar texten. Bekräftad kassering
+återgår till den föregående webbplatsen utan en andra bekräftelse.
+
+### LIFE-01J: behåll skyddet efter återgång till ett tidigare fragment
+
+**Syfte:** Kontrollera att en fragmentändring inte släpper formulärets skydd.
+
+**Användare:** Administratör.
+
+**Förutsättningar:** En inloggad session.
+
+**Integrationstest:** [requirements/create.spec.ts](../../tests/integration/requirements/create.spec.ts),
+”LIFE-01J: fragment-only Cancel keeps later navigation and reload guarded”.
+
+**Steg:**
+
+1. Öppna `/sv/requirements/new#description` och skriv kravtext.
+2. Ändra endast adressens fragment till `#acceptanceCriteria` utan omladdning.
+3. Välj `Avbryt` och bekräfta kasseringen.
+4. Följ länken `Kravunderlag` och neka kasseringen. Kontrollera texten.
+5. Försök ladda om och neka webbläsarens bekräftelse. Kontrollera texten.
+6. Följ `Kravunderlag` igen och bekräfta kasseringen.
+
+**Förväntat resultat:** Avbryt återgår till `#description` och behåller
+formuläret med texten. Senare navigering och omladdning kräver fortfarande
+bekräftelse. Nekad kassering bevarar texten; bekräftad navigering når
+kravunderlagslistan.
 
 ### LIFE-01A: referensdata återhämtas i kravbibliotekets kravformulär
 
@@ -2167,15 +2384,19 @@ förslaget.
 **Steg:** Öppna Kravbiblioteksförvaltning och fliken `RFI-frågor`. Kontrollera
 seedade RFI-frågeförslag på rubriker för kravområde och RFI-frågerader. Klicka
 på ett obehandlat förslag. Kontrollera att ett nytt förslag bara kan skickas
-till granskning. Begär granskning och markera därefter förslaget som hanterat
-med beslutsmotivering. Upprepa flödet för ett områdesförslag.
+till granskning. Begär granskning och försök markera förslaget som hanterat
+utan beslutsmotivering. Kontrollera felmeddelandet i den öppna dialogen.
+Fyll därefter i beslutsmotivering och markera förslaget som hanterat.
+Upprepa flödet för ett områdesförslag.
 
 **Förväntat resultat:** Obehandlade förslag visas på den nivå de gäller:
 kravområdesrubrik för områdesförslag och RFI-frågerad för frågespecifika
 förslag. Antalet obehandlade förslag visas. När alla förslag på nivån är
 behandlade visas ingen räknare för obehandlade förslag. Modalen visar `Nya`,
 `I granskning` och `Behandlade`, inklusive kravunderlagskälla och skapande
-person. Ett förslag kan inte beslutas före granskning och kan bara beslutas en
+person. Saknad beslutsmotivering visas som ett tillgängligt felmeddelande
+inne i dialogen, där tangentbordsfokus stannar. Ett förslag kan inte beslutas
+före granskning och kan bara beslutas en
 gång.
 
 ### SPEC-16d: läs och använd RFI-frågornas sammanfattningar
@@ -2344,7 +2565,7 @@ när det valda avtalet har ett föregående avtal, även vid visning av äldre a
 
 **Integrationstest:**
 [agreements.spec.ts](../../tests/integration/specifications/agreements.spec.ts),
-testfallet “SPEC-22/SPEC-23/SPEC-28: edit the complete agreement in the
+testfallet “SPEC-22/SPEC-23/SPEC-28/A11Y-02: edit the complete agreement in the
 requirement list and retain historical content and output”.
 
 **Steg:** Skapa ett nytt avtal från det aktuella avtalet. Redigera ett
