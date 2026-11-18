@@ -15,7 +15,8 @@ import {
   ROLE_STORAGE_STATE,
   withPlaywrightSqlServerDataSource,
 } from '@/tests/support/authorization-test-helpers'
-import { expectModalKeyboardContainment } from '@/tests/support/modal-keyboard'
+import { deferRoute } from '@/tests/support/deferred-route'
+import { expectModalKeyboardIsolation } from '@/tests/support/modal-keyboard'
 
 test.use({ storageState: ROLE_STORAGE_STATE.specificationResponsible })
 
@@ -309,20 +310,34 @@ test('SPEC-23/SPEC-24/SPEC-26: show compact future and cancelled changes while v
     await expect(
       disclosure.getByText('Changed for agreement B', { exact: true }),
     ).toHaveCount(0)
-    await page
-      .getByRole('button', { name: 'Jämför med föregående avtal', exact: true })
-      .click()
-    const comparison = page.getByRole('dialog', {
+    const compareTrigger = page.getByRole('button', {
       name: 'Jämför med föregående avtal',
       exact: true,
     })
-    await expect(comparison).toContainText('Original agreed service')
-    await expect(comparison).toContainText('Changed for agreement B')
-    await comparison
-      .getByRole('button', { name: 'Stäng', exact: true })
-      .last()
-      .click()
-    await expect(comparison).toBeHidden()
+    const refresh = await deferRoute(
+      page,
+      `**/api/requirements-specifications/${data.id}/agreement?*historyItemRef=*`,
+      route => route.continue(),
+    )
+    try {
+      await compareTrigger.focus()
+      await compareTrigger.press('Enter')
+      await refresh.requestStarted
+      const comparison = page.getByRole('dialog', {
+        name: 'Jämför med föregående avtal',
+        exact: true,
+      })
+      await expect(comparison).toContainText('Original agreed service')
+      await expect(comparison).toContainText('Changed for agreement B')
+      await expectModalKeyboardIsolation(page, comparison)
+      await page.keyboard.press('Escape')
+      await expect(comparison).toBeHidden()
+      await expect(compareTrigger).toBeFocused()
+      await expect(compareTrigger).toBeDisabled()
+      refresh.fulfill()
+    } finally {
+      await refresh.cleanup()
+    }
     await page
       .getByRole('button', { name: 'Fäll in sidhuvud', exact: true })
       .click()
@@ -635,7 +650,7 @@ test('SPEC-22/SPEC-23/SPEC-28/A11Y-02: edit the complete agreement in the requir
       }),
     ).toBeFocused()
     await expect(compare).toBeHidden()
-    await expectModalKeyboardContainment(page, comparison)
+    await expectModalKeyboardIsolation(page, comparison)
     await expect(comparison).toContainText('Original agreed service')
     await page.keyboard.press('Escape')
     await expect(comparison).toBeHidden()

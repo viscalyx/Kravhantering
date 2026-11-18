@@ -1,5 +1,5 @@
 import { expect, type Locator, test } from '@playwright/test'
-import { expectModalKeyboardContainment } from '@/tests/support/modal-keyboard'
+import { expectModalKeyboardIsolation } from '@/tests/support/modal-keyboard'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 const viewports = [{ ...DESKTOP_VIEWPORT, name: 'desktop' }]
@@ -280,13 +280,20 @@ for (const viewport of viewports) {
         await expect(dialog).toBeVisible()
 
         const currentLeadHsaId = await leadInput.inputValue()
-        await dialog
-          .getByRole('button', { name: 'Byt kravpaketsansvarig' })
-          .click()
+        const changeTrigger = dialog.getByRole('button', {
+          name: 'Byt kravpaketsansvarig',
+        })
+        await changeTrigger.focus()
+        await changeTrigger.press('Enter')
 
         const changeDialog = page.getByRole('dialog', {
           name: 'Byt kravpaketsansvarig',
         })
+        await expect(changeDialog).toBeVisible()
+        await expectModalKeyboardIsolation(page, changeDialog)
+        await page.keyboard.press('Escape')
+        await expect(changeTrigger).toBeFocused()
+        await changeTrigger.press('Enter')
         await expect(changeDialog).toBeVisible()
         await expect(
           changeDialog.getByRole('textbox', {
@@ -410,7 +417,7 @@ for (const viewport of viewports) {
           changeDialog.getByRole('heading', { name: 'Byt kravpaketsansvarig' }),
         ).toBeFocused()
         await expect(editDialog).toBeHidden()
-        await expectModalKeyboardContainment(page, changeDialog)
+        await expectModalKeyboardIsolation(page, changeDialog)
         await page.keyboard.press('Escape')
         await expect(trigger).toBeFocused()
         await page.keyboard.press('Enter')

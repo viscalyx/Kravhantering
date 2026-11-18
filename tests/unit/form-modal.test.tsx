@@ -1,6 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useRef, useState } from 'react'
+import { StrictMode, useRef, useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   ConfirmModalProvider,
@@ -14,6 +20,44 @@ vi.mock('next-intl', () => ({
 }))
 
 let restoreViewportScrolling: (() => void) | undefined
+
+function StackedForms() {
+  const [open, setOpen] = useState(false)
+  const [child, setChild] = useState(false)
+  const { confirm } = useConfirmModal()
+  return (
+    <>
+      <button onClick={() => setOpen(true)} type="button">
+        Open form
+      </button>
+      <FormModal
+        onClose={() => setOpen(false)}
+        open={open}
+        title="Parent"
+        titleId="parent-title"
+      >
+        <button onClick={() => setChild(true)} type="button">
+          Open child
+        </button>
+        <FormModal
+          onClose={() => setChild(false)}
+          open={child}
+          title="Child"
+          titleId="child-title"
+        >
+          <button
+            onClick={() =>
+              void confirm({ message: 'Discard?', variant: 'danger' })
+            }
+            type="button"
+          >
+            Discard
+          </button>
+        </FormModal>
+      </FormModal>
+    </>
+  )
+}
 
 function NestedModalHarness() {
   const [open, setOpen] = useState(false)
@@ -253,6 +297,132 @@ describe('FormModal', () => {
       expect(screen.getByRole('heading', { name: 'Compare' })).toHaveFocus(),
     )
     expect(container).toHaveAttribute('inert')
+  })
+
+  it('recovers focus when the active control is hidden with CSS', async () => {
+    function Form({ hidden }: { hidden: boolean }) {
+      const input = useRef<HTMLInputElement>(null)
+      return (
+        <FormModal
+          initialFocusRef={input}
+          onClose={vi.fn()}
+          open
+          title="Edit"
+          titleId="edit-title"
+        >
+          <input
+            aria-label="Name"
+            ref={input}
+            style={{ display: hidden ? 'none' : 'block' }}
+          />
+        </FormModal>
+      )
+    }
+    const { rerender } = render(<Form hidden={false} />)
+    expect(screen.getByRole('textbox')).toHaveFocus()
+    rerender(<Form hidden />)
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Edit' })).toHaveFocus(),
+    )
+  })
+
+  it('keeps a surviving child active when its parent closes first', () => {
+    function Forms({ parent, child }: { parent: boolean; child: boolean }) {
+      return (
+        <>
+          <button type="button">Page trigger</button>
+          <FormModal
+            onClose={vi.fn()}
+            open={parent}
+            title="Parent"
+            titleId="parent-title"
+          >
+            <button type="button">Child trigger</button>
+          </FormModal>
+          <FormModal
+            onClose={vi.fn()}
+            open={child}
+            title="Child"
+            titleId="child-title"
+          >
+            <button type="button">Child action</button>
+          </FormModal>
+        </>
+      )
+    }
+    const { rerender } = render(<Forms child={false} parent={false} />)
+    const trigger = screen.getByRole('button', { name: 'Page trigger' })
+    trigger.focus()
+    rerender(<Forms child={false} parent />)
+    screen.getByRole('button', { name: 'Child trigger' }).focus()
+    rerender(<Forms child parent />)
+    const childHeading = screen.getByRole('heading', { name: 'Child' })
+    rerender(<Forms child parent={false} />)
+    expect(childHeading).toHaveFocus()
+    expect(document.body.style.overflow).toBe('hidden')
+    rerender(<Forms child={false} parent={false} />)
+    expect(trigger).toHaveFocus()
+    expect(document.body.style.overflow).toBe('')
+  })
+
+  it('isolates nested forms and confirmations and restores each keyboard trigger', async () => {
+    const user = userEvent.setup()
+    render(
+      <StrictMode>
+        <ConfirmModalProvider>
+          <StackedForms />
+        </ConfirmModalProvider>
+      </StrictMode>,
+    )
+    const trigger = screen.getByRole('button', { name: 'Open form' })
+    await user.click(trigger)
+    expect(trigger.closest('[inert]')).not.toBeNull()
+    const parent = screen.getByRole('dialog', { name: 'Parent' })
+    const childTrigger = within(parent).getByRole('button', {
+      name: 'Open child',
+    })
+    await user.click(childTrigger)
+    expect(parent.closest('[inert]')).not.toBeNull()
+    const child = screen.getByRole('dialog', { name: 'Child' })
+    const discard = within(child).getByRole('button', { name: 'Discard' })
+    await user.click(discard)
+    const confirmation = screen.getByRole('alertdialog')
+    expect(child.closest('[inert]')).not.toBeNull()
+    expect(
+      within(confirmation).getByRole('button', { name: 'cancel' }),
+    ).toHaveFocus()
+    await user.tab({ shift: true })
+    expect(
+      within(confirmation).getByRole('button', { name: 'confirm' }),
+    ).toHaveFocus()
+    await user.keyboard('{Escape}')
+    expect(discard).toHaveFocus()
+    expect(child.closest('[inert]')).toBeNull()
+    expect(parent.closest('[inert]')).not.toBeNull()
+    await user.keyboard('{Escape}')
+    expect(childTrigger).toHaveFocus()
+    await user.keyboard('{Escape}')
+    expect(trigger).toHaveFocus()
+    expect(trigger.closest('[inert]')).toBeNull()
+  })
+
+  it('preserves existing isolation and isolates background portals added while open', async () => {
+    const background = document.createElement('div')
+    background.setAttribute('inert', 'inert')
+    document.body.append(background)
+    const { unmount } = render(
+      <FormModal onClose={vi.fn()} open title="Edit" titleId="edit-title">
+        Content
+      </FormModal>,
+    )
+    const latePortal = document.createElement('button')
+    document.body.append(latePortal)
+    await waitFor(() => expect(latePortal).toHaveAttribute('inert'))
+    unmount()
+    expect(background).toHaveAttribute('inert', 'inert')
+    expect(latePortal).not.toHaveAttribute('inert')
+    background.remove()
+    latePortal.remove()
   })
 
   afterEach(() => {

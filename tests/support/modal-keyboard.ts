@@ -1,18 +1,24 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 
-/** Exercise both directions from the initial reading position. */
-export async function expectModalKeyboardContainment(
+/** Check the active modal through keyboard navigation and browser semantics. */
+export async function expectModalKeyboardIsolation(
   page: Page,
   dialog: Locator,
 ) {
+  await expect(dialog).toBeVisible()
+  const expectFocusInside = () =>
+    expect
+      .poll(() =>
+        dialog.evaluate(element => element.contains(document.activeElement)),
+      )
+      .toBe(true)
+  await expectFocusInside()
+  await expect(page.getByRole('main')).toHaveCount(0)
+  await expect(dialog).toHaveAttribute('aria-modal', 'true')
   for (const key of ['Tab', 'Shift+Tab']) {
-    for (let step = 0; step < 12; step += 1) {
+    for (let index = 0; index < 16; index++) {
       await page.keyboard.press(key)
-      await expect
-        .poll(() =>
-          dialog.evaluate(element => element.contains(document.activeElement)),
-        )
-        .toBe(true)
+      await expectFocusInside()
     }
   }
 }

@@ -8,6 +8,7 @@ import {
 } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import FormModal from '@/components/FormModal'
 import RequirementsTable from '@/components/RequirementsTable'
 import { GLOBAL_NAVIGATION_LAYOUT_EVENT } from '@/lib/navigation-layout-events'
 import {
@@ -2097,6 +2098,46 @@ describe('RequirementsTable', () => {
 
     fireEvent.keyDown(document, { key: 'ArrowDown' })
     expect(exportItem).toHaveFocus()
+  })
+
+  it('keeps floating menu actions reachable inside a modal table', async () => {
+    const onAction = vi.fn()
+    const closeForm = vi.fn()
+    render(
+      <FormModal
+        onClose={closeForm}
+        open
+        title="Requirements"
+        titleId="table-title"
+      >
+        <RequirementsTable
+          floatingActions={[
+            {
+              ariaLabel: 'manage',
+              icon: <span aria-hidden="true">M</span>,
+              id: 'manage',
+              menuItems: [{ id: 'export', label: 'Export', onClick: onAction }],
+            },
+          ]}
+          locale="sv"
+          rows={[makeRow()]}
+        />
+      </FormModal>,
+    )
+    const trigger = screen.getByRole('button', { name: 'manage' })
+    fireEvent.click(trigger)
+    const item = await within(screen.getByRole('dialog')).findByRole(
+      'menuitem',
+      { name: 'Export' },
+    )
+    await waitFor(() => expect(item).toHaveFocus())
+    fireEvent.keyDown(item, { key: 'Escape' })
+    expect(trigger).toHaveFocus()
+    expect(closeForm).not.toHaveBeenCalled()
+    expect(screen.queryByRole('menu')).toBeNull()
+    fireEvent.click(trigger)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Export' }))
+    expect(onAction).toHaveBeenCalledWith(trigger)
   })
 
   it('supports keyboard navigation in floating action menus', async () => {

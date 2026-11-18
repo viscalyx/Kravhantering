@@ -616,9 +616,11 @@ describe('selected agreement requirement author workflow', () => {
     await user.click(await screen.findByText('agreement.requirementHistory'))
     expect(screen.getByText(/agreement.historyChanges.changed/)).toBeVisible()
     expect(screen.getByText('agreement.viewingAgreementBadge')).toBeVisible()
-    await user.click(
-      screen.getByRole('button', { name: 'agreement.comparePrevious' }),
-    )
+    const compare = screen.getByRole('button', {
+      name: 'agreement.comparePrevious',
+    })
+    historyFetch.mockReturnValueOnce(new Promise(() => {}))
+    await user.click(compare)
     const dialog = screen.getByRole('dialog', {
       name: 'agreement.comparePrevious',
     })
@@ -626,6 +628,13 @@ describe('selected agreement requirement author workflow', () => {
       within(dialog).getByText('Earlier acceptance criteria'),
     ).toBeVisible()
     expect(within(dialog).getByText('Library original')).toBeVisible()
+    await user.keyboard('{Escape}')
+    expect(compare).toHaveFocus()
+    expect(compare).toHaveAttribute('aria-disabled', 'true')
+    const requestCount = historyFetch.mock.calls.length
+    await user.keyboard('{Enter}')
+    expect(historyFetch).toHaveBeenCalledTimes(requestCount)
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('edits a pending case in the selected agreement and shows save errors inside its dialog', async () => {

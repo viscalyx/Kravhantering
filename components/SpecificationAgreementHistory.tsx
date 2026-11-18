@@ -180,9 +180,10 @@ export default function SpecificationAgreementHistory({
         actionTarget &&
         createPortal(
           <button
-            className="btn-secondary w-full px-3 text-center"
-            disabled={busy}
+            aria-disabled={busy}
+            className="btn-secondary w-full px-3 text-center aria-disabled:opacity-50"
             onClick={() => {
+              if (busy) return
               setComparing(true)
               void resource.reload()
             }}
@@ -193,6 +194,7 @@ export default function SpecificationAgreementHistory({
               priority: 350,
             })}
             ref={trigger}
+            title={busy ? t('working') : undefined}
             type="button"
           >
             <GitCompareArrows
@@ -203,7 +205,7 @@ export default function SpecificationAgreementHistory({
           </button>,
           actionTarget,
         )}
-      {busy && !history && <p role="status">{t('working')}</p>}
+      {busy && !comparing && <p role="status">{t('working')}</p>}
       {error && !comparing && (
         <div className="space-y-2 text-sm" role="alert">
           <p>{error}</p>
