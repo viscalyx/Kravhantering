@@ -3,6 +3,9 @@
   "language": "en,sv",
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
+    "reselecting",
+    "svarsåsidosättning",
+    "inaktualitetsvarningen",
     "zstd",
     "EABORT",
     "EREQUEST",
