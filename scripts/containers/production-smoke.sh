@@ -1649,6 +1649,29 @@ assert_service_property() {
     fail "$service $property expected $expected (observed: $observed)"
 }
 
+configure_cleanup_login() {
+  local password
+  password="Smoke1!$(openssl rand -hex 32)"
+  printf '%s\n' "CREATE LOGIN [kravhantering_cleanup] WITH PASSWORD = '$password';" GO |
+    as_service podman exec -i kravhantering-sqlserver sh -c \
+      '/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -b' >/dev/null
+  sudo install -o root -g "$SERVICE_USER" -m 0640 /dev/null "$CONFIG_ROOT/cleanup.env"
+  {
+    sudo awk '/^DB_(ENCRYPT|HOST|NAME|PORT|TRUST_SERVER_CERTIFICATE)=/' "$CONFIG_ROOT/app.env"
+    printf '%s\n' 'DB_USER=kravhantering_cleanup' "DB_PASSWORD=$password"
+  } | sudo tee "$CONFIG_ROOT/cleanup.env" >/dev/null
+}
+
+grant_cleanup_permissions() {
+  local database="$1" grants
+  [[ "$database" =~ ^[a-zA-Z0-9_]+$ ]] || fail 'invalid cleanup database name'
+  grants="$(cat "$INSTALL_ROOT/current/sqlserver/cleanup-permissions.sql")" || return
+  sqlserver_query kravhantering-sqlserver "USE [$database];
+    IF DATABASE_PRINCIPAL_ID(N'kravhantering_cleanup') IS NULL
+      CREATE USER [kravhantering_cleanup] FOR LOGIN [kravhantering_cleanup] WITH DEFAULT_SCHEMA = [dbo];
+    $grants" >/dev/null
+}
+
 cleanup_fixture_sql() {
   local database="$1" fixture="$2"
   [[ "$database" =~ ^cleanup_compat_[a-z0-9_]+$ ]] || fail 'invalid compatibility database'
@@ -1822,14 +1845,12 @@ up() {
   fi
   local cleanup_database
   cleanup_database="$(sudo sed -n 's/^DB_NAME=//p' "$CONFIG_ROOT/app.env")"
-  [[ "$cleanup_database" =~ ^[a-zA-Z0-9_]+$ ]] || fail 'invalid cleanup database name'
-  sqlserver_query kravhantering-sqlserver "USE [$cleanup_database]; GRANT VIEW DEFINITION TO [kravhantering_runtime];" >/dev/null
+  configure_cleanup_login
+  grant_cleanup_permissions "$cleanup_database"
   # Validate the exact cleanup image before installing its independent host service.
-  sudo awk '/^(DB_[A-Z_]+|DATABASE_URL|TRANSIENT_CLEANUP_[A-Z_]+)=/' "$CONFIG_ROOT/app.env" |
-    sudo tee "$CONFIG_ROOT/cleanup.env" >/dev/null
   printf 'TRANSIENT_CLEANUP_IMAGE_REF=%s\n' "$DB_JOB_IMAGE_REF" | sudo tee "$CONFIG_ROOT/cleanup-release.env" >/dev/null
-  sudo chown root:"$SERVICE_USER" "$CONFIG_ROOT/cleanup.env" "$CONFIG_ROOT/cleanup-release.env"
-  sudo chmod 0640 "$CONFIG_ROOT/cleanup.env" "$CONFIG_ROOT/cleanup-release.env"
+  sudo chown root:"$SERVICE_USER" "$CONFIG_ROOT/cleanup-release.env"
+  sudo chmod 0640 "$CONFIG_ROOT/cleanup-release.env"
   local cleanup_evidence="$SERVICE_HOME/cleanup-schema-evidence.json"
   local cleanup_image_id target_command target_env="$SERVICE_HOME/cleanup-target.env"
   cleanup_image_id="$(jq -er '.services[] | select(.name == "db-job") | .imageId' "$INSTALL_ROOT/current/container-stack.lock.json")"
@@ -1842,6 +1863,7 @@ up() {
   sudo awk '{ if ($0 ~ /^DB_NAME=/) print "DB_NAME=cleanup_compat_target"; else print }' \
       "$CONFIG_ROOT/cleanup.env" | as_service tee "$target_env" >/dev/null
   as_service chmod 0600 "$target_env"
+  grant_cleanup_permissions cleanup_compat_target
   cleanup_fixture_sql cleanup_compat_target seed
   as_service "$INSTALL_ROOT/current/bin/kravhantering-cleanup-evidence.sh" \
       "$INSTALL_ROOT/current" "$CONFIG_ROOT/cleanup-release.env" \
@@ -1873,6 +1895,7 @@ up() {
   sudo awk -v database="$source_database" '{ if ($0 ~ /^DB_NAME=/) print "DB_NAME=" database; else print }' \
     "$CONFIG_ROOT/cleanup.env" | as_service tee "$source_env" >/dev/null
   as_service chmod 0600 "$source_env"
+  grant_cleanup_permissions "$source_database"
   cleanup_fixture_sql "$source_database" seed
   as_service "$INSTALL_ROOT/current/bin/kravhantering-cleanup-evidence.sh" \
     "$INSTALL_ROOT/current" "$CONFIG_ROOT/cleanup-release.env" \
@@ -1924,7 +1947,7 @@ up() {
   database_job migrate >"$EVIDENCE_DIR/migration-after-reinstall.json"
   database_job migration-status \
     >"$EVIDENCE_DIR/migration-status-after-reinstall.json"
-  sqlserver_query kravhantering-sqlserver "USE [$cleanup_database]; GRANT VIEW DEFINITION TO [kravhantering_runtime];" >/dev/null
+  grant_cleanup_permissions "$cleanup_database"
   as_service "$SERVICE_HOME/.local/share/kravhantering/cleanup/current/manager.sh" resume
   rotate_sqlserver_certificate
   wait_for_url https://kravhantering.test/api/ready \
@@ -2033,6 +2056,9 @@ redact_configured_secrets() {
 collect_redacted_journal() {
   {
     as_service cat "$CONFIG_ROOT/keycloak.env" "$CONFIG_ROOT/sqlserver.env"
+    if as_service test -f "$CONFIG_ROOT/cleanup.env"; then
+      as_service cat "$CONFIG_ROOT/cleanup.env"
+    fi
     printf '\0'
     as_service journalctl --user -u 'kravhantering-*' --since=-30min \
       --all --no-pager 2>&1
@@ -2042,7 +2068,10 @@ collect_redacted_journal() {
 verify_secret_safe_journal() {
   local env_file key line value
   collect_redacted_journal
-  for env_file in "$CONFIG_ROOT/keycloak.env" "$CONFIG_ROOT/sqlserver.env"; do
+  for env_file in "$CONFIG_ROOT/keycloak.env" "$CONFIG_ROOT/sqlserver.env" "$CONFIG_ROOT/cleanup.env"; do
+    if [[ "$env_file" == "$CONFIG_ROOT/cleanup.env" ]] && ! as_service test -f "$env_file"; then
+      continue
+    fi
     while IFS= read -r line || [[ -n "$line" ]]; do
       [[ "$line" == *=* ]] || continue
       key="${line%%=*}"

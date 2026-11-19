@@ -2,6 +2,7 @@ import { defineConfig } from '@playwright/test'
 import { DESKTOP_VIEWPORT } from './tests/helpers/desktop-viewport'
 import integrationManifest from './tests/integration-chunks.manifest.json'
 import integrationServerEnv from './tests/integration-server-env.json'
+import { closeIntegrationApiConnections } from './tests/support/playwright-api-connections'
 
 const desktopChromium = {
   browserName: 'chromium' as const,
@@ -46,6 +47,7 @@ function deriveOrigin(input: string): string {
   }
 }
 const originHeader = deriveOrigin(baseUrl)
+closeIntegrationApiConnections(originHeader)
 
 export default defineConfig({
   testDir: './tests/integration',

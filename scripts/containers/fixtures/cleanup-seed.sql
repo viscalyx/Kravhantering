@@ -4,8 +4,6 @@ SET ANSI_NULLS ON;
 SET XACT_ABORT ON;
 IF DB_NAME() NOT LIKE N'cleanup[_]compat[_]%' THROW 51000, 'isolated cleanup database required', 1;
 BEGIN TRANSACTION;
--- Match the documented host-cleanup metadata prerequisite without elevating the runtime identity.
-GRANT VIEW DEFINITION TO [kravhantering_runtime];
 IF OBJECT_ID(N'dbo.ai_run_coordination_entries', N'U') IS NOT NULL
 EXEC(N'DECLARE @connection uniqueidentifier=NEWID(), @model uniqueidentifier=NEWID(), @revision uniqueidentifier=NEWID(), @profile uniqueidentifier=NEWID();
 INSERT INTO [ai_connections] (

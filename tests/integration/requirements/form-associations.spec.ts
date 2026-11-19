@@ -201,6 +201,7 @@ test('LIFE-01B/A11Y-02: association drafts, fixed groups and nested creation per
     }
     await test.step('save associations and edit with both destinations', async () => {
       const area = await request.get('/api/requirement-areas')
+      await expectApiResponseOk(area, 'load requirement areas for the test')
       const areas = await area.json()
       await page.locator('#areaId').selectOption(String(areas.areas[0].id))
       await page.locator('#description').fill(`PWT-1349 requirement ${suffix}`)

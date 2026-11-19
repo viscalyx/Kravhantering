@@ -323,6 +323,7 @@ export default function AiConnectionsPanel() {
   >({})
   const [pendingModelAction, setPendingModelAction] =
     useState<PendingModelAction | null>(null)
+  const [modelFormSession, setModelFormSession] = useState(0)
   const modelCloseHandler = useRef<(() => void) | null>(null)
   const registerModelClose = useCallback((handler: (() => void) | null) => {
     modelCloseHandler.current = handler
@@ -345,6 +346,9 @@ export default function AiConnectionsPanel() {
 
   function openDialog(nextDialog: Exclude<DialogState, null>) {
     clearError()
+    if (nextDialog.kind === 'model') {
+      setModelFormSession(session => session + 1)
+    }
     setDialog(nextDialog)
   }
 
@@ -1522,6 +1526,7 @@ export default function AiConnectionsPanel() {
         titleId="ai-model-dialog-title"
       >
         {dialog?.kind === 'model' ? (
+          // The modal can retain its children while the exit animation runs.
           <ModelForm
             catalog={availableCatalogItems(
               dialog.connection,
@@ -1534,6 +1539,7 @@ export default function AiConnectionsPanel() {
               'idle'
             }
             connection={dialog.connection}
+            key={modelFormSession}
             model={dialog.model}
             onCancel={() => {
               resetDialog()

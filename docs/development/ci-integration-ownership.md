@@ -71,6 +71,11 @@ Owned chunk runs obtain fresh role sessions before every chunk so long runs do
 not reuse an expiring login. External-server runs refresh sessions only when
 `PLAYWRIGHT_FORCE_AUTH_SETUP=1` is explicitly selected.
 
+The dev and pruned configurations close connections from Playwright's Node
+API clients to the application origin after each response. This prevents
+idle connection reuse across browser steps. Use these configurations for
+focused runs to exercise the same behavior as CI.
+
 The [scheduled isolated-chunk workflow](../../.github/workflows/integration-isolation-weekly.yml)
 uses the same browser-functional manifest
 with a fresh runner and seed per chunk. It complements the shared-database PR
