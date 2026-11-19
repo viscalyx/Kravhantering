@@ -65,6 +65,7 @@ interface RequirementActionRailProps {
   selectedVersionNumber: number | null
   selectedVersionNumberForRestore?: number
   transitions: TransitionTarget[]
+  unavailable?: boolean
 }
 
 function getTransitionActionDeveloperModeValue(
@@ -85,6 +86,7 @@ function getTransitionActionDeveloperModeValue(
 }
 
 export default function RequirementActionRail({
+  unavailable = false,
   allowedTransitionStatusIds,
   canAddToSpecification,
   canArchive,
@@ -419,7 +421,12 @@ export default function RequirementActionRail({
                 </button>
               ) : (
                 <Link
+                  aria-disabled={unavailable || undefined}
                   className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
+                  onClick={event => {
+                    if (unavailable) event.preventDefault()
+                  }}
+                  tabIndex={unavailable ? -1 : undefined}
                   {...devMarker({
                     context: detailContext,
                     name: 'detail action',

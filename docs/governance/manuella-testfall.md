@@ -1458,6 +1458,114 @@ fokus över tröskeln startar exakt en huvudförfrågan som klicket återanvänd
 Direktklick öppnar detaljen utan att vänta på förhämtning och utan dubbla
 samtidiga anrop.
 
+### REQ-22: kravdetalj återhämtas utan att urval eller fokus tappas
+
+**Syfte:** Skilja läsfel från saknade krav och återhämta vald detalj.
+
+**Användare:** Administratör (`ada.admin`).
+
+**Förutsättningar:** Kravet `INT0001` finns. Använd webbläsarens
+nätverksverktyg för att blockera detaljförfrågan
+`/api/requirements/<id>` och därefter ersätta dess svar med HTTP 500.
+Lämna listförfrågan och övriga resurser tillgängliga.
+
+**Integrationstest:**
+[detail-recovery.spec.ts](../../tests/integration/requirements/detail-recovery.spec.ts),
+”REQ-22: detail retry preserves selection and keyboard focus (sv, inline)”,
+”REQ-22: detail retry preserves selection and keyboard focus (en, inline)”,
+”REQ-22: detail retry preserves selection and keyboard focus (sv, standalone)”
+och ”REQ-22: detail retry preserves selection and keyboard focus (en, standalone)”.
+
+**Steg:**
+
+1. Öppna `/sv/requirements?selected=INT0001` med blockeringen aktiv.
+2. Kontrollera felinformationen. Byt blockeringen till HTTP 500 och aktivera
+   `Försök igen` med tangentbordet.
+3. Kontrollera att fokus ligger kvar på `Försök igen`. Ta bort felsimuleringen
+   och aktivera knappen igen.
+4. Upprepa på `/sv/requirements/INT0001` och med språkprefixet `/en/`.
+
+**Förväntat resultat:** Ett översatt läsfel visas med en återförsöksknapp.
+Felet beskrivs inte som ett saknat krav. Efter upprepat fel kan samma knapp
+aktiveras med tangentbordet. Efter lyckat försök visas kravets detalj och
+åtgärder. Detaljytan och listans valda krav ligger kvar.
+
+### REQ-23: saknat krav skiljs från nekad åtkomst
+
+**Syfte:** Visa rätt orsak utan skyddade uppgifter eller ändringsåtgärder.
+
+**Användare:** Administratör (`ada.admin`).
+
+**Förutsättningar:** Ersätt detaljförfrågans svar med HTTP 403 respektive 404
+via webbläsarens nätverksverktyg. Lämna listförfrågan tillgänglig.
+
+**Integrationstest:**
+[detail-recovery.spec.ts](../../tests/integration/requirements/detail-recovery.spec.ts),
+”REQ-23: HTTP 403 shows specific feedback without requirement actions” och
+”REQ-23: HTTP 404 shows specific feedback without requirement actions”.
+
+**Steg:**
+
+1. Öppna `/sv/requirements?selected=INT0001` med HTTP 403 för detaljen.
+2. Kontrollera behörighetsmeddelandet och att arkivering inte kan startas.
+3. Ladda om med HTTP 404 och kontrollera meddelandet för saknat krav.
+4. Ta bort felsimuleringen.
+
+**Förväntat resultat:** Endast HTTP 404 beskrivs som ett saknat krav.
+HTTP 403 beskrivs som nekad åtkomst. Ingen skyddad kravdetalj eller
+arkiveringsåtgärd visas i dessa tillstånd.
+
+### REQ-24: arbetsflödets läsfel kan återhämtas separat
+
+**Syfte:** Skilja olästa arbetsflödesåtgärder från ett lyckat tomt resultat.
+
+**Användare:** Administratör (`ada.admin`).
+
+**Förutsättningar:** Ersätt svaret från `/api/requirement-statuses` med
+HTTP 500. Lämna kravets detaljförfrågan tillgänglig.
+
+**Integrationstest:**
+[detail-recovery.spec.ts](../../tests/integration/requirements/detail-recovery.spec.ts),
+”REQ-24: workflow retry restores actions without reselecting the requirement”.
+
+**Steg:**
+
+1. Öppna `/sv/requirements?selected=INT0002`.
+2. Kontrollera att kravdetaljen är läsbar och att arbetsflödets läsfel visas.
+3. Kontrollera att `Arkivera` är inaktiverad med en förklaring.
+4. Ta bort felsimuleringen och välj `Försök igen` vid åtgärderna.
+
+**Förväntat resultat:** Detaljen och valet ligger kvar. Återförsöket läser
+arbetsflödets uppgifter utan att kravets status behöver ändras. Varningen
+försvinner och tillåtna åtgärder blir tillgängliga igen.
+
+### REQ-25: inaktuell kravdetalj spärrar åtgärder tills åtkomst bekräftas
+
+**Syfte:** Behålla läsbara uppgifter vid tillfälligt uppdateringsfel och
+rensa dem vid ett senare behörighetsavslag.
+
+**Användare:** Administratör (`ada.admin`).
+
+**Förutsättningar:** Öppna ett publicerat krav. Använd svarsåsidosättning i
+nätverksverktygen: arkiveringsbegäran ska få ett simulerat lyckat svar utan
+att nå servern. Efterföljande detaljförfrågan ska få HTTP 500.
+
+**Integrationstest:**
+[detail-recovery.spec.ts](../../tests/integration/requirements/detail-recovery.spec.ts),
+”REQ-25: refresh failure marks a snapshot stale and denial removes it”.
+
+**Steg:**
+
+1. Öppna `/sv/requirements?selected=INT0002` och invänta åtgärderna.
+2. Aktivera felsimuleringen, välj `Arkivera` och bekräfta.
+3. Kontrollera inaktualitetsvarningen och att åtgärderna är inaktiverade.
+4. Ändra detaljsvaret till HTTP 403 och välj `Försök igen`.
+5. Ta bort felsimuleringen.
+
+**Förväntat resultat:** Efter HTTP 500 finns kravets tidigare uppgifter kvar
+med en tydlig varning. Efter HTTP 403 ersätts detaljen med ett
+behörighetsmeddelande; tidigare uppgifter och arkiveringsåtgärden tas bort.
+
 ## Skapa krav och livscykel
 
 ### LIFE-01: skapa krav från UI
@@ -2081,6 +2189,22 @@ verifieringsmetod, före metadata. Områdesinformationen visar beskrivning och
 
 ### SPEC-06: lägg till, markera och ta bort krav i kravunderlagsdetalj
 
+**Syfte:** Kontrollera urval, markering och borttagning samt att underlagets
+åtgärder inte kräver kravbibliotekets arbetsflödesstatusar.
+
+**Användare:** Kravunderlagsansvarig med rätt att redigera underlaget.
+
+**Förutsättningar:** Ett redigerbart kravunderlag med bibliotekskrav utan
+godkänt avsteg. Använd webbläsarens nätverksverktyg eller en lokal proxy för
+att ersätta eventuella svar från `/api/requirement-statuses` med HTTP 500.
+Låt själva kravdetaljen hämtas normalt.
+
+**Integrationstest:**
+[requirement-detail.spec.ts](../../tests/integration/specifications/requirement-detail.spec.ts),
+testfallet
+”SPEC-06: adds, selects, and removes a requirement in the specification detail
+UI”.
+
 **Steg:** Lägg till ett krav och kontrollera att det syns. Kontrollera att
 underlagets kravlista har individuella markeringsrutor men ingen Markera alla.
 Kontrollera att båda kravlistorna använder det kompakta kravpaketsbandet och
@@ -2114,8 +2238,14 @@ Developer Mode-markörer.
 Markera ett bibliotekskrav, kontrollera markeringssammanfattningen och öppna
 borttagningsdialogen. Kontrollera att dialogen visar berört krav-ID och att
 avbrytning bevarar markeringen. Expandera bibliotekskravet och kontrollera att
-Ta bort från underlaget är tillgänglig i detaljvyn. Bekräfta sedan
-borttagningen via åtgärden för markerade krav.
+**Ta bort krav** är tillgänglig i detaljvyn.
+Upprepa öppningen av detaljvyn med svarsåsidosättningen aktiv.
+Kontrollera att **Begär ett avsteg** och **Ta bort krav** går att använda och
+att ingen varning eller återförsöksknapp för arbetsflödesstatusar visas i
+detaljvyn.
+Öppna **Ta bort krav**, kontrollera krav-ID:t i bekräftelsen och välj
+**Avbryt**. Återställ nätverksverktyget och bekräfta sedan borttagningen via
+åtgärden för markerade krav.
 
 **Förväntat resultat:** Endast redigerare kan markera enskilda krav. Markeringen
 bevaras tills användaren avmarkerar eller åtgärden lyckas. Bekräftelsen skiljer
@@ -2128,6 +2258,8 @@ beräknas över hela underlaget från kravens aktuella medlemskap och påverkas
 inte av paginering eller övriga filter. Katalogfel visas inte som en tom
 katalog eller med inaktuella paketkontroller, och övrig listfunktion fortsätter
 fungera.
+Underlagets åtgärder fungerar även när kravbibliotekets arbetsflödesstatusar
+inte kan läsas. Avbruten borttagning bevarar kopplingen och markeringen.
 
 ### SPEC-07: skapa, redigera och lyft unikt krav i kravunderlag
 
@@ -3670,11 +3802,34 @@ Simulera ett förlorat sparsvar i den isolerade testmiljön. Gränssnittet ska
 förklara att sparandet kan ha lyckats och att modellistan måste laddas om och
 kontrolleras före nytt försök. Samma vägledning gäller när återförsöket får
 konflikt för ett otillgängligt försök.
-Ett känt utgånget eller konfigurationsändrat resultat ska kräva ny verifiering.
-Simulera ett sådant avvisat sparande och kontrollera att sparknappen
-inaktiveras. Stäng formuläret, återställ testsvaren till en giltig verifiering
-och öppna den igen direkt. Kontrollera att sparknappen är aktiv och att
-felmeddelandet har försvunnit.
+Stäng formuläret och kontrollera den omladdade modellistan. Om revisionen har
+sparats är den ursprungliga verifieringen förbrukad: välj `Lägg till modell`,
+ange ett nytt unikt modellnamn, verifiera och stäng med `Avbryt` utan att spara.
+Använd den nya väntande verifieringen för avvisningarna nedan. Om revisionen
+inte har sparats finns den ursprungliga kandidaten kvar under
+`Väntande verifieringar` och kan återanvändas så länge den är giltig.
+
+Avvisat sparande och återöppning nedan körs endast automatiserat: det finns
+ingen manuell kontroll för att styra och återställa testsvaren. Se
+[ai-settings.spec.ts](../../tests/integration/admin/ai-settings.spec.ts),
+scenarierna ”ADMIN-20 (sv): shared verification review, editing, discard and
+uncertain save recovery” och ”ADMIN-20 (en): shared verification review,
+editing, discard and uncertain save recovery”.
+
+1. Låt testets svar för anslutningen innehålla en slutförd, giltig väntande
+   verifiering med framtida giltighetstid. Öppna kandidaten och kontrollera
+   att `Spara modellrevision` är aktiv.
+2. Låt testet besvara nästa `save_model_revision` med HTTP-status `409` och
+   `details.blocker` satt till `attempt_expired` eller `attempt_mismatch`,
+   utan att ändra kandidatens giltighetstid eller fält i formuläret. Klicka
+   på sparknappen och kontrollera att felet kräver ny verifiering och att
+   sparknappen inaktiveras. Vänta inte på vanlig utgång av giltighetstiden;
+   den inaktiverar knappen redan före sparförsöket.
+3. Stäng formuläret. Återställ testsvaren för anslutningen till samma giltiga
+   väntande verifiering innan formuläret öppnas igen. Öppna kandidaten direkt
+   och kontrollera att sparknappen är aktiv och att felmeddelandet är borta.
+   Upprepa för den andra avvisningsorsaken.
+
 En avvisning för dubblettmodell eller ofullständig verifiering ska visa det
 vanliga åtgärdsfelet, utan att påstå att sparandet kan ha lyckats. Bekräfta
 sedan uttrycklig kassering och kontrollera att kandidaten försvinner för alla

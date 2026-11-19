@@ -4,6 +4,10 @@
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
     "skärmläsarkontrollen",
+    "reselecting",
+    "svarsåsidosättning",
+    "svarsåsidosättningen",
+    "inaktualitetsvarningen",
     "zstd",
     "EABORT",
     "EREQUEST",

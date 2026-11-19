@@ -513,6 +513,18 @@
     "referenceLabel": "Error reference"
   },
   "requirement": {
+    "detailRecovery": {
+      "error": "The requirement could not be loaded. Try again.",
+      "missing": "This requirement could not be found.",
+      "denied": "You do not have access to this requirement.",
+      "expired": "Your session has expired. Sign in again to continue.",
+      "stale": "The requirement could not be refreshed. The details shown may be outdated. Retry before making changes.",
+      "statusesError": "Workflow actions could not be loaded. Try again to check the available actions.",
+      "statusesDenied": "You do not have access to workflow actions. Retry after your access has been updated.",
+      "actionsUnavailable": "Actions are unavailable until the requirement and workflow data have loaded successfully.",
+      "retry": "Retry",
+      "retrying": "Retrying…"
+    },
     "title": "Requirements Library",
     "loadRequirementsFailed": "Requirements Library data is unavailable.",
     "refreshingRequirements": "Refreshing the requirements list. Existing results remain available.",

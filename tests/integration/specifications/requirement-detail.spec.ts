@@ -3181,23 +3181,32 @@ test.describe('Requirements specification deterministic manual cases', () => {
       await expect(selectedRequirement).toBeChecked()
       expect(removeRequests).toEqual([])
 
+      await page.route('**/api/requirement-statuses', route =>
+        route.fulfill({ status: 500, json: {} }),
+      )
       await specificationItemsPanel
         .getByRole('button', { name: /^PWT-SPEC-EDIT-SOURCE\b/u })
         .click()
       const requestDeviationAction = specificationItemsPanel.getByRole(
         'button',
-        {
-          name: 'Begär ett avsteg',
-        },
+        { name: 'Begär ett avsteg' },
       )
       const removeFromSpecificationAction = specificationItemsPanel.getByRole(
         'button',
-        {
-          name: 'Ta bort krav',
-        },
+        { name: 'Ta bort krav' },
       )
-      await expect(requestDeviationAction).toHaveCount(1)
-      await expect(removeFromSpecificationAction).toHaveCount(1)
+      await expect(requestDeviationAction).toBeEnabled()
+      await expect(removeFromSpecificationAction).toBeEnabled()
+      await expect(specificationItemsPanel.getByRole('alert')).toHaveCount(0)
+      await expect(
+        specificationItemsPanel.getByRole('button', { name: 'Försök igen' }),
+      ).toHaveCount(0)
+      await removeFromSpecificationAction.click()
+      const detailRemoveDialog = page.getByRole('alertdialog')
+      await expect(detailRemoveDialog).toContainText('PWT-SPEC-EDIT-SOURCE')
+      await detailRemoveDialog.getByRole('button', { name: 'Avbryt' }).click()
+      await expect(detailRemoveDialog).toHaveCount(0)
+      expect(removeRequests).toEqual([])
     })
 
     await test.step('confirm removal and refresh the left package catalog', async () => {
