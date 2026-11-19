@@ -133,7 +133,7 @@ stänga menyn först. Menyn stängs och sidans kontroller och rullning fungerar.
 
 ## Tillgänglighet
 
-### A11Y-02: tangentbordsfokus syns i båda teman och kontrastlägen
+### A11Y-04: tangentbordsfokus syns i båda teman och kontrastlägen
 
 **Syfte:** Fokus ska gå att skilja från kantlinjer och markerade val även
 när operativsystemet styr färgerna.
@@ -147,7 +147,7 @@ ett mörkt kontrasttema. Upprepa i applikationens ljusa och mörka tema.
 
 **Integrationstest:**
 [keyboard-focus.spec.ts](../../tests/integration/navigation/keyboard-focus.spec.ts),
-scenariot `A11Y-02: keyboard focus remains visible across navigation and dialogs`
+scenariot `A11Y-04: keyboard focus remains visible across navigation and dialogs`
 med suffix för applikationstema (`light`, `dark`) och palett (`normal`,
 `forced-light`, `forced-dark`). Automatiseringen emulerar kontrastläget;
 den ersätter inte kontrollen med operativsystemets egna kontrastteman.

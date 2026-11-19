@@ -7,7 +7,7 @@
     "areasPerChunk": 1,
     "targetSpecs": 10
   },
-  "discoveredSpecCount": 61,
+  "discoveredSpecCount": 62,
   "suites": {
     "dev": {
       "chunks": [
@@ -104,7 +104,7 @@
         "tests/integration/platform/error-boundary-smoke.spec.ts",
         "tests/integration/platform/smoke.spec.ts"
       ],
-      "includedSpecCount": 53
+      "includedSpecCount": 54
     },
     "prodlike": {
       "chunks": [

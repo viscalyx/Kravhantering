@@ -8,7 +8,7 @@ import { expectPaintedFocus, tabTo } from '@/tests/support/keyboard-focus'
 
 for (const theme of ['light', 'dark'] as const) {
   for (const palette of ['normal', 'forced-light', 'forced-dark'] as const) {
-    test(`A11Y-02: keyboard focus remains visible across navigation and dialogs (${theme}, ${palette})`, async ({
+    test(`A11Y-04: keyboard focus remains visible across navigation and dialogs (${theme}, ${palette})`, async ({
       page,
       request,
     }, testInfo) => {

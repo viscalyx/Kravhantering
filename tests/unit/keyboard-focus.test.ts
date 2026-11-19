@@ -3,18 +3,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { expectPaintedFocus } from '@/tests/support/keyboard-focus'
 
 vi.mock('@playwright/test', () => ({
-  expect: vi.fn(() => ({
+  expect: vi.fn((actual: unknown, message?: string) => ({
     toBeFocused: vi.fn(),
     toHaveCSS: vi.fn(),
     toBe: vi.fn(),
-    toBeGreaterThanOrEqual: vi.fn(),
+    toBeGreaterThanOrEqual: (minimum: number) =>
+      expect(actual, message).toBeGreaterThanOrEqual(minimum),
   })),
 }))
 
 const screenshotWidth = 100
 const screenshotHeight = 80
 
-function screenshotFixture(x: number, y: number) {
+function screenshotFixture(x: number, y: number, rightOutlineGray = 255) {
   const box = { x, y, width: 20, height: 20 }
   type ScreenshotData = { data: string; box: typeof box }
   vi.stubGlobal(
@@ -34,11 +35,15 @@ function screenshotFixture(x: number, y: number) {
     ) {
       return { data: [0, 0, 0, 0] }
     }
+    if (pixelX === Math.floor(x + 24) && pixelY === Math.floor(y + 10)) {
+      return {
+        data: [rightOutlineGray, rightOutlineGray, rightOutlineGray, 255],
+      }
+    }
     const onOutline =
       (pixelX === Math.floor(x + 10) &&
         [Math.floor(y - 4), Math.floor(y + 24)].includes(pixelY)) ||
-      (pixelY === Math.floor(y + 10) &&
-        [Math.floor(x - 4), Math.floor(x + 24)].includes(pixelX))
+      (pixelY === Math.floor(y + 10) && pixelX === Math.floor(x - 4))
     return { data: onOutline ? [255, 255, 255, 255] : [0, 0, 0, 255] }
   })
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
@@ -109,6 +114,12 @@ describe('painted focus screenshot bounds', () => {
       }
     },
   )
+
+  it('rejects an in-bounds right outline below 3:1 contrast', async () => {
+    const { check } = screenshotFixture(30, 30, 88)
+
+    await expect(check()).rejects.toThrow('focus right: adjacent contrast')
+  })
 
   it('records contrast when all sample pixels are inside the screenshot', async () => {
     const { check, attach } = screenshotFixture(7, 52)
