@@ -119,7 +119,7 @@ function PanelHarness({
           />
         </label>
       )}
-      title="Admin title"
+      title={<span>Admin title</span>}
       {...modalProps}
     />
   )
@@ -143,6 +143,32 @@ describe('CrudAdminPanel', () => {
       screen.getByRole('button', { name: 'common.create' }),
     ).toBeInTheDocument()
     expect(screen.getByText('One')).toBeInTheDocument()
+  })
+
+  it('names the scroll region from the rendered resource heading', () => {
+    render(<PanelHarness />)
+
+    const region = screen.getByRole('region', { name: 'Admin title' })
+    expect(region).toContainElement(screen.getByRole('table'))
+    expect(region).toHaveAttribute('tabindex', '-1')
+    expect(region).toHaveAttribute(
+      'data-developer-mode-name',
+      'table scroll region',
+    )
+  })
+
+  it('mounts the named scroll region after loading and retains it for empty data', () => {
+    const { rerender } = render(<PanelHarness loading />)
+    expect(screen.getByText('common.loading')).toBeInTheDocument()
+
+    rerender(<PanelHarness />)
+    const region = screen.getByRole('region', { name: 'Admin title' })
+    expect(region).toContainElement(screen.getByText('One'))
+
+    rerender(<PanelHarness empty />)
+    expect(
+      screen.getByRole('region', { name: 'Admin title' }),
+    ).toContainElement(screen.getByText('common.emptyState'))
   })
 
   it('does not render create controls when canCreate is false', () => {

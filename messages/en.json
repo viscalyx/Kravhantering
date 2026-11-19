@@ -3,6 +3,7 @@
     "appName": "Requirements Management",
     "appDescription": "A web application for requirements management that supports the company's requirements model and process",
     "loading": "Loading...",
+    "tableScrollHint": "Use the Left and Right arrow keys to scroll through the columns.",
     "loadingRequirements": "Fetching requirements…",
     "requirementListRefreshed": "The requirements list changed and was refreshed from the beginning.",
     "save": "Save",

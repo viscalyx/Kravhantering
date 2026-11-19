@@ -7,7 +7,7 @@
     "areasPerChunk": 1,
     "targetSpecs": 10
   },
-  "discoveredSpecCount": 62,
+  "discoveredSpecCount": 64,
   "suites": {
     "dev": {
       "chunks": [
@@ -19,7 +19,7 @@
         {
           "id": "dev-admin",
           "paths": ["tests/integration/admin"],
-          "specCount": 11
+          "specCount": 12
         },
         {
           "id": "dev-archiving",
@@ -59,7 +59,7 @@
         {
           "id": "dev-requirements",
           "paths": ["tests/integration/requirements"],
-          "specCount": 14
+          "specCount": 15
         },
         {
           "id": "dev-specifications-agreements",
@@ -104,7 +104,7 @@
         "tests/integration/platform/error-boundary-smoke.spec.ts",
         "tests/integration/platform/smoke.spec.ts"
       ],
-      "includedSpecCount": 54
+      "includedSpecCount": 56
     },
     "prodlike": {
       "chunks": [
@@ -134,6 +134,7 @@
         "tests/integration/admin/permissions.spec.ts",
         "tests/integration/admin/requirement-types-recovery.spec.ts",
         "tests/integration/admin/statuses.spec.ts",
+        "tests/integration/admin/table-keyboard-scroll.spec.ts",
         "tests/integration/archiving/lifecycle.spec.ts",
         "tests/integration/authorization/01-no-global-roles-no-assignments.spec.ts",
         "tests/integration/authorization/02-requirement-area-owner.spec.ts",
@@ -170,6 +171,7 @@
         "tests/integration/requirements/list-recovery.spec.ts",
         "tests/integration/requirements/table-column-picker.spec.ts",
         "tests/integration/requirements/table-hydration.spec.ts",
+        "tests/integration/requirements/table-keyboard-scroll.spec.ts",
         "tests/integration/requirements/table-resize.spec.ts",
         "tests/integration/specifications/agreements.spec.ts",
         "tests/integration/specifications/header-layout.spec.ts",

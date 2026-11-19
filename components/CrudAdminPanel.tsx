@@ -3,12 +3,13 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import type { ReactNode } from 'react'
+import { type ReactNode, useId } from 'react'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
 import ListWorkspace from '@/components/ListWorkspace'
 import { modalResizableTextareaClassName } from '@/components/modal-textarea-class'
+import TableScrollRegion from '@/components/TableScrollRegion'
 import type { CrudAdminResourceController } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
@@ -86,6 +87,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
   title,
 }: CrudAdminPanelProps<TItem, TForm>) {
   const common = useTranslations('common')
+  const titleId = useId()
   const shouldReduceMotion = useReducedMotion()
   const visibleError = controller.deleteError ?? controller.loadError
   const formMode: CrudAdminFormMode =
@@ -171,7 +173,10 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
     <div className="section-padding">
       <ListWorkspace context={devContext}>
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
+          <h1
+            className="text-2xl font-bold text-secondary-900 dark:text-secondary-100"
+            id={titleId}
+          >
             {title}
           </h1>
           {canCreate && (
@@ -248,7 +253,15 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
               priority: 340,
             })}
           >
-            <div className="w-full overflow-x-auto">
+            <TableScrollRegion
+              aria-labelledby={titleId}
+              className="w-full"
+              {...devMarker({
+                context: devContext,
+                name: 'table scroll region',
+                priority: 335,
+              })}
+            >
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
@@ -379,7 +392,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
                   )}
                 </tbody>
               </table>
-            </div>
+            </TableScrollRegion>
           </div>
         )}
         {children}
