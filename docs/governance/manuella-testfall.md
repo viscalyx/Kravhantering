@@ -3802,11 +3802,34 @@ Simulera ett förlorat sparsvar i den isolerade testmiljön. Gränssnittet ska
 förklara att sparandet kan ha lyckats och att modellistan måste laddas om och
 kontrolleras före nytt försök. Samma vägledning gäller när återförsöket får
 konflikt för ett otillgängligt försök.
-Ett känt utgånget eller konfigurationsändrat resultat ska kräva ny verifiering.
-Simulera ett sådant avvisat sparande och kontrollera att sparknappen
-inaktiveras. Stäng formuläret, återställ testsvaren till en giltig verifiering
-och öppna den igen direkt. Kontrollera att sparknappen är aktiv och att
-felmeddelandet har försvunnit.
+Stäng formuläret och kontrollera den omladdade modellistan. Om revisionen har
+sparats är den ursprungliga verifieringen förbrukad: välj `Lägg till modell`,
+ange ett nytt unikt modellnamn, verifiera och stäng med `Avbryt` utan att spara.
+Använd den nya väntande verifieringen för avvisningarna nedan. Om revisionen
+inte har sparats finns den ursprungliga kandidaten kvar under
+`Väntande verifieringar` och kan återanvändas så länge den är giltig.
+
+Avvisat sparande och återöppning nedan körs endast automatiserat: det finns
+ingen manuell kontroll för att styra och återställa testsvaren. Se
+[ai-settings.spec.ts](../../tests/integration/admin/ai-settings.spec.ts),
+scenarierna ”ADMIN-20 (sv): shared verification review, editing, discard and
+uncertain save recovery” och ”ADMIN-20 (en): shared verification review,
+editing, discard and uncertain save recovery”.
+
+1. Låt testets svar för anslutningen innehålla en slutförd, giltig väntande
+   verifiering med framtida giltighetstid. Öppna kandidaten och kontrollera
+   att `Spara modellrevision` är aktiv.
+2. Låt testet besvara nästa `save_model_revision` med HTTP-status `409` och
+   `details.blocker` satt till `attempt_expired` eller `attempt_mismatch`,
+   utan att ändra kandidatens giltighetstid eller fält i formuläret. Klicka
+   på sparknappen och kontrollera att felet kräver ny verifiering och att
+   sparknappen inaktiveras. Vänta inte på vanlig utgång av giltighetstiden;
+   den inaktiverar knappen redan före sparförsöket.
+3. Stäng formuläret. Återställ testsvaren för anslutningen till samma giltiga
+   väntande verifiering innan formuläret öppnas igen. Öppna kandidaten direkt
+   och kontrollera att sparknappen är aktiv och att felmeddelandet är borta.
+   Upprepa för den andra avvisningsorsaken.
+
 En avvisning för dubblettmodell eller ofullständig verifiering ska visa det
 vanliga åtgärdsfelet, utan att påstå att sparandet kan ha lyckats. Bekräfta
 sedan uttrycklig kassering och kontrollera att kandidaten försvinner för alla
