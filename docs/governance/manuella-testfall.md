@@ -3665,16 +3665,20 @@ sker.
 **Kompletterande överlämning och felåterhämtning (svenska och engelska):**
 Öppna en väntande verifiering, ändra namn och en teknisk parameter och stäng
 formuläret. Öppna samma verifiering direkt igen. Kontrollera att originalets
-inskickade fält och verifieringsresultat visas och att föregående felmeddelande
-har försvunnit.
+inskickade fält och verifieringsresultat visas.
 Simulera ett förlorat sparsvar i den isolerade testmiljön. Gränssnittet ska
 förklara att sparandet kan ha lyckats och att modellistan måste laddas om och
 kontrolleras före nytt försök. Samma vägledning gäller när återförsöket får
-konflikt för ett otillgängligt försök. Bekräfta sedan uttrycklig kassering och
-kontrollera att kandidaten försvinner för alla administratörer. Ett känt
-utgånget eller konfigurationsändrat resultat ska i stället kräva ny verifiering.
+konflikt för ett otillgängligt försök.
+Ett känt utgånget eller konfigurationsändrat resultat ska kräva ny verifiering.
+Simulera ett sådant avvisat sparande och kontrollera att sparknappen
+inaktiveras. Stäng formuläret, återställ testsvaren till en giltig verifiering
+och öppna den igen direkt. Kontrollera att sparknappen är aktiv och att
+felmeddelandet har försvunnit.
 En avvisning för dubblettmodell eller ofullständig verifiering ska visa det
-vanliga åtgärdsfelet, utan att påstå att sparandet kan ha lyckats.
+vanliga åtgärdsfelet, utan att påstå att sparandet kan ha lyckats. Bekräfta
+sedan uttrycklig kassering och kontrollera att kandidaten försvinner för alla
+administratörer.
 
 ### ADMIN-21: Misslyckad AI-åtgärd visar åtgärd och serverfel i viewporten
 

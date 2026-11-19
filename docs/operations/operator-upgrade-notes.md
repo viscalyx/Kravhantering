@@ -18,9 +18,11 @@ changes.
 Before rollout, pause scheduled cleanup and prepare its dedicated database
 identity. Update the cleanup connection to use that identity. Remove the
 cleanup metadata grant from the application's runtime role if it was applied.
-After migration or restore, check the cleanup identity and apply its grants
-before resuming the service. Verify application readiness and a successful
-scheduled cleanup run. Follow [Transient state cleanup](transient-state-cleanup.md).
+After migration or restore, check the cleanup identity and apply its grants.
+Revoke the old database-wide cleanup metadata grant if a restore returns it
+to the application's runtime role. Verify application readiness before you
+resume cleanup. Then verify a successful scheduled cleanup run. Follow
+[Transient state cleanup](transient-state-cleanup.md).
 
 ### SQL Server CU11 image and recovery monitoring
 

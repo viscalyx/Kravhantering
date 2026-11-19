@@ -122,7 +122,8 @@ dedicated login to the database user `kravhantering_cleanup` with default schema
 memberships. Run `sqlserver/cleanup-permissions.sql` from the authenticated
 deployment bundle in the selected database. The script grants metadata
 visibility to verify cleanup tables and prove absence on older schemas. It
-grants data access only to the cleanup targets present in the database.
+grants read access to the migration history for the schema check and data
+access to the cleanup targets present in the database.
 
 During an upgrade from shared credentials, pause cleanup, prepare the
 dedicated user, and update the cleanup environment. Remove the previous grant
@@ -132,10 +133,12 @@ to the application's runtime role if it was applied:
 REVOKE VIEW DEFINITION FROM [kravhantering_runtime];
 ```
 
-Restart the application and verify readiness. Resume cleanup and confirm its
-first scheduled run succeeds. When restoring a rollback database, check the
-dedicated user's login mapping and rerun the grant script before resuming the
-retained cleanup service.
+After a restore, check the dedicated user's login mapping and rerun the grant
+script. Check whether the restored database returned the old database-scope
+`VIEW DEFINITION` grant to the application role. If so, run the same
+`REVOKE` statement before restarting the application and resuming cleanup.
+Verify application readiness and confirm the first scheduled cleanup run
+succeeds.
 
 ## Installation and Explicit Image Update
 
@@ -259,8 +262,10 @@ or restore procedure. Application removal and activation leave the cleanup
 selection intact. If an explicit compatible cleanup update is required, keep
 traffic blocked while performing it.
 
-After checking the cleanup login mapping and applying its grants to the
-restored or migrated database, run these commands before operational handoff:
+Check the cleanup login mapping and apply its grants in the restored or
+migrated database. Revoke the old database-scope metadata grant if the restore
+returns it to the application role. Verify application readiness. Then run
+these commands before operational handoff:
 
 ```bash
 "$MANAGER" resume

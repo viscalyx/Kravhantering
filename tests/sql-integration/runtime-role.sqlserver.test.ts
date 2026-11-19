@@ -10,8 +10,7 @@ import {
 import { createSpecificationLocalRequirement } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { createSpecificationAgreementWorkflow } from '@/lib/specifications/agreements'
-import { createTransientCleanupTargets } from '@/lib/transient-cleanup/registry'
-import { runTransientStateCleanup } from '@/lib/transient-cleanup/runner'
+import { runTransientCleanupCommand } from '@/lib/transient-cleanup/cli'
 import { cleanupSchemaFingerprint } from '@/lib/transient-cleanup/schema'
 import { createAppDataSource } from '@/lib/typeorm/data-source'
 import { verifyRuntimeSqlConnection } from '@/lib/typeorm/runtime-verification'
@@ -225,19 +224,38 @@ describe('least-privilege SQL Server runtime role', () => {
       try {
         await cleanup.query("EXECUTE AS USER = N'kravhantering_cleanup'")
         try {
-          await expect(cleanupSchemaFingerprint(cleanup)).resolves.toBe(
-            expectedFingerprint,
-          )
           await expect(
             cleanup.query('SELECT TOP (0) id FROM dbo.requirements'),
           ).rejects.toThrow(/permission was denied/i)
           await expect(
-            runTransientStateCleanup(createTransientCleanupTargets(cleanup), {
-              backlogTarget: 0,
-              batchSize: 10,
-              workLimit: 100,
+            cleanup.query('UPDATE dbo.migrations SET name = name WHERE 1 = 0'),
+          ).rejects.toThrow(/permission was denied/i)
+          const write = vi.fn()
+          await expect(
+            runTransientCleanupCommand(['--compatibility-evidence'], {
+              connect: async () => ({
+                executor: cleanup,
+                destroy: async () => {},
+              }),
+              env: {},
+              write,
             }),
-          ).resolves.toMatchObject({ outcome: 'success', deletedRows: 1 })
+          ).resolves.toBe(0)
+          const evidence = write.mock.calls.map(([line]) => JSON.parse(line))
+          expect(evidence).toContainEqual(
+            expect.objectContaining({
+              event: 'transient_cleanup.schema.verified',
+              schemaFingerprint: expectedFingerprint,
+              schemaVersion: expect.any(String),
+            }),
+          )
+          expect(evidence).toContainEqual(
+            expect.objectContaining({
+              event: 'transient_cleanup.run.completed',
+              deleted_rows: 1,
+              outcome: 'success',
+            }),
+          )
         } finally {
           await cleanup.query('REVERT')
         }

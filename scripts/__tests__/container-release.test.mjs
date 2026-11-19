@@ -1727,7 +1727,6 @@ describe('trusted container release helpers', () => {
   it('ships idempotent least-privilege SQL runtime-role provisioning without broad app roles', () => {
     const template = readWorkspaceFile(
       'containers/production/sqlserver/dba-provision.sql.template',
-      'containers/production/sqlserver/cleanup-permissions.sql',
     )
     const dockerfile = readWorkspaceFile('containers/app/Dockerfile')
 

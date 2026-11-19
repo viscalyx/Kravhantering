@@ -1030,6 +1030,9 @@ test.describe('Admin settings', () => {
           await page
             .getByRole('button', { name: copy.open, exact: true })
             .click()
+          await expect(
+            dialog.getByRole('button', { name: copy.save }),
+          ).toBeEnabled()
           await expect(dialog.getByRole('alert')).toHaveCount(0)
           await dialog.getByRole('button', { name: copy.save }).click()
           await expect(dialog.getByRole('alert')).toHaveText(expectedError)
@@ -1043,6 +1046,9 @@ test.describe('Admin settings', () => {
       }
       await test.step('known save rejections', async () => {
         await page.getByRole('button', { name: copy.open, exact: true }).click()
+        await expect(
+          dialog.getByRole('button', { name: copy.save }),
+        ).toBeEnabled()
         await expect(dialog.getByRole('alert')).toHaveCount(0)
         for (const rejection of [
           'duplicate model',

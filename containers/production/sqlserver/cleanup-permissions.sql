@@ -17,6 +17,7 @@ IF NOT EXISTS (
 BEGIN TRANSACTION;
 
 GRANT VIEW DEFINITION TO [kravhantering_cleanup];
+GRANT SELECT ON OBJECT::dbo.migrations TO [kravhantering_cleanup];
 
 -- A rollback schema can predate individual cleanup targets.
 IF OBJECT_ID(N'dbo.ai_model_verification_attempts', N'U') IS NOT NULL
