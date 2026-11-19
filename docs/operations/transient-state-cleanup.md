@@ -97,21 +97,16 @@ The same prerequisites apply to `app-node-tls`, `app-node-http` and
 
 - Run the retained manager as the rootless `kravhantering` service account with
   lingering enabled and the normal cgroup and journal limits in force.
-- Prepare `/etc/kravhantering/cleanup.env` from the released template. Set only
-  the runtime database connection and cleanup bounds. Use the application
-  runtime database identity; do not use the migration identity or copy OIDC,
-  MCP or other application secrets into this file.
+- Prepare `/etc/kravhantering/cleanup.env` from the released template. Set the
+  dedicated cleanup database connection and cleanup bounds. Supply the cleanup
+  credentials through the site's normal secret management process. If the file
+  sets `DATABASE_URL`, use the dedicated login in that URL because it takes
+  precedence over the individual connection settings. Keep the application,
+  migration, OIDC and MCP credentials in their own configuration.
 - Keep SQL encryption enabled and certificate verification enabled. Both
   app-node topologies use the existing app egress network and the trusted SQL
   endpoint. Single-node uses the existing database and egress networks, the
   internal SQL hostname and the mounted `/etc/kravhantering/tls/ca.crt`.
-- The database identity needs the current runtime manifest's `SELECT`, `DELETE`
-  and forensic-update permissions. It also needs database `VIEW DEFINITION`
-  to verify the released schema definitions and prove absent targets. Without
-  that visibility, cleanup fails safely instead of treating an invisible
-  object as absent. Arrange this reviewed metadata grant during source-schema
-  permission preparation; do not elevate the cleanup connection to a database
-  owner.
 - Prepare `/etc/kravhantering/cleanup-release.env` from its released template.
   Select `TRANSIENT_CLEANUP_IMAGE_REF` independently of the application's
   `DB_JOB_IMAGE_REF`. It must resolve to the cleanup release's locked database
@@ -121,13 +116,26 @@ The same prerequisites apply to `app-node-tls`, `app-node-http` and
   `0640`. Retain the cleanup image locally, including during application image
   pruning and disconnected recovery.
 
-An administrator must apply the metadata grant in the application database after
-migration or restore and before `resume`. Runtime permission reconciliation may
-remove role grants during migrations; reapply this prerequisite explicitly:
+Before resuming cleanup after migration or restore, the DBA must map a
+dedicated login to the database user `kravhantering_cleanup` with default schema
+`dbo`. Use a login with no administrative privileges or database role
+memberships. Run `sqlserver/cleanup-permissions.sql` from the authenticated
+deployment bundle in the selected database. The script grants metadata
+visibility to verify cleanup tables and prove absence on older schemas. It
+grants data access only to the cleanup targets present in the database.
+
+During an upgrade from shared credentials, pause cleanup, prepare the
+dedicated user, and update the cleanup environment. Remove the previous grant
+to the application's runtime role if it was applied:
 
 ```sql
-GRANT VIEW DEFINITION TO [kravhantering_runtime];
+REVOKE VIEW DEFINITION FROM [kravhantering_runtime];
 ```
+
+Restart the application and verify readiness. Resume cleanup and confirm its
+first scheduled run succeeds. When restoring a rollback database, check the
+dedicated user's login mapping and rerun the grant script before resuming the
+retained cleanup service.
 
 ## Installation and Explicit Image Update
 
@@ -251,7 +259,8 @@ or restore procedure. Application removal and activation leave the cleanup
 selection intact. If an explicit compatible cleanup update is required, keep
 traffic blocked while performing it.
 
-Before normal traffic and operational handoff, run:
+After checking the cleanup login mapping and applying its grants to the
+restored or migrated database, run these commands before operational handoff:
 
 ```bash
 "$MANAGER" resume

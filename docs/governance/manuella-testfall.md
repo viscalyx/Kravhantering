@@ -3664,7 +3664,9 @@ sker.
 
 **Kompletterande överlämning och felåterhämtning (svenska och engelska):**
 Öppna en väntande verifiering, ändra namn och en teknisk parameter och stäng
-formuläret. Originalets inskickade fält ska återställas vid återöppning.
+formuläret. Öppna samma verifiering direkt igen. Kontrollera att originalets
+inskickade fält och verifieringsresultat visas och att föregående felmeddelande
+har försvunnit.
 Simulera ett förlorat sparsvar i den isolerade testmiljön. Gränssnittet ska
 förklara att sparandet kan ha lyckats och att modellistan måste laddas om och
 kontrolleras före nytt försök. Samma vägledning gäller när återförsöket får

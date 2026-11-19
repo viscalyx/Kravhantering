@@ -190,8 +190,10 @@ describe('production smoke startup readiness', () => {
                 fi
               }
               sudo() { printf 'fixture_database\n'; }
-              sqlserver_query() {
-                [[ "$SMOKE_SCOPE" == core ]] && return 0
+              sqlserver_query() { :; }
+              configure_cleanup_login() { printf 'cleanup-login-configured\n' >&2; }
+              grant_cleanup_permissions() {
+                [[ "$1" == fixture_database ]]
                 printf 'cleanup-verification-started\n' >&2
                 exit 0
               }
@@ -219,7 +221,7 @@ describe('production smoke startup readiness', () => {
           ready
             ? scope === 'core'
               ? 'containment-inspected\n'
-              : 'cleanup-verification-started\n'
+              : 'cleanup-login-configured\ncleanup-verification-started\n'
             : '',
         )
       } finally {

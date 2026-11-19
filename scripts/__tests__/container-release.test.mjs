@@ -1727,6 +1727,7 @@ describe('trusted container release helpers', () => {
   it('ships idempotent least-privilege SQL runtime-role provisioning without broad app roles', () => {
     const template = readWorkspaceFile(
       'containers/production/sqlserver/dba-provision.sql.template',
+      'containers/production/sqlserver/cleanup-permissions.sql',
     )
     const dockerfile = readWorkspaceFile('containers/app/Dockerfile')
 
@@ -2213,6 +2214,7 @@ describe('trusted container release helpers', () => {
         expect(result.files).toContain('bin/kravhantering-images.sh')
         expect(result.files).toContain('bin/kravhantering-quadlet.sh')
         expect(result.files).toContain('sqlserver/mssql.conf')
+        expect(result.files).toContain('sqlserver/cleanup-permissions.sql')
         expect(result.files).toContain(
           'keycloak/realm-kravhantering-production.template.json',
         )

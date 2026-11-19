@@ -13,6 +13,15 @@ changes.
 
 ## Unreleased
 
+### Dedicated SQL identity for scheduled cleanup
+
+Before rollout, pause scheduled cleanup and prepare its dedicated database
+identity. Update the cleanup connection to use that identity. Remove the
+cleanup metadata grant from the application's runtime role if it was applied.
+After migration or restore, check the cleanup identity and apply its grants
+before resuming the service. Verify application readiness and a successful
+scheduled cleanup run. Follow [Transient state cleanup](transient-state-cleanup.md).
+
 ### SQL Server CU11 image and recovery monitoring
 
 The bundled database uses SQL Server 2025 CU11, build 17.0.5065.9. Before
