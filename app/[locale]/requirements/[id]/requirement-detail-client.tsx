@@ -1174,16 +1174,18 @@ export default function RequirementDetailClient({
                   detailReady &&
                   statusesState !== 'success' &&
                   statusesState !== 'loading' && (
-                    <DetailRecovery
-                      message={t(
-                        statusesState === 'denied'
-                          ? 'detailRecovery.statusesDenied'
-                          : 'detailRecovery.statusesError',
-                      )}
-                      onRetry={refreshStatuses}
-                      pending={statusesLoading}
-                      resource="statuses"
-                    />
+                    <div className="sm:max-w-xs">
+                      <DetailRecovery
+                        message={t(
+                          statusesState === 'denied'
+                            ? 'detailRecovery.statusesDenied'
+                            : 'detailRecovery.statusesError',
+                        )}
+                        onRetry={refreshStatuses}
+                        pending={statusesLoading}
+                        resource="statuses"
+                      />
+                    </div>
                   )}
                 {!actionsReady && (
                   <p

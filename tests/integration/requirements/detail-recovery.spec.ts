@@ -121,6 +121,59 @@ test('REQ-24: workflow retry restores actions without reselecting the requiremen
   })
 })
 
+for (const locale of ['sv', 'en'] as const) {
+  for (const surface of ['inline', 'standalone'] as const) {
+    test(`REQ-24: workflow recovery keeps detail and actions within available width (${locale}, ${surface})`, async ({
+      page,
+    }) => {
+      await page.route('**/api/requirement-statuses', route =>
+        route.fulfill({ status: 500, json: {} }),
+      )
+      await page.goto(
+        surface === 'inline'
+          ? `/${locale}/requirements?selected=INT0002`
+          : `/${locale}/requirements/INT0002`,
+      )
+      const alert = page.getByRole('alert').filter({
+        hasText:
+          locale === 'sv'
+            ? 'Arbetsflödets åtgärder kunde inte läsas in.'
+            : 'Workflow actions could not be loaded.',
+      })
+      await expect(alert).toBeVisible()
+      const card = page
+        .getByRole('heading', {
+          name: locale === 'sv' ? 'Kravtext' : 'Requirement text',
+          exact: true,
+        })
+        .locator('../../..')
+      const row = card.locator('..')
+      const actions = row.locator('fieldset')
+      for (const width of surface === 'inline'
+        ? [640, 768, DESKTOP_VIEWPORT.width]
+        : [375, 640, 768, DESKTOP_VIEWPORT.width]) {
+        await test.step(`read recovery at ${width}px`, async () => {
+          await page.setViewportSize({ ...DESKTOP_VIEWPORT, width })
+          await expect(alert).toBeVisible()
+          for (const region of [row, card, actions, alert]) {
+            await expect
+              .poll(() =>
+                region.evaluate(el => el.scrollWidth <= el.clientWidth),
+              )
+              .toBe(true)
+          }
+          await expect(
+            actions.getByRole('button', {
+              name: locale === 'sv' ? 'Arkivera' : 'Archive',
+              exact: true,
+            }),
+          ).toBeDisabled()
+        })
+      }
+    })
+  }
+}
+
 test('REQ-25: refresh failure marks a snapshot stale and denial removes it', async ({
   page,
 }) => {
