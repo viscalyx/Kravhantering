@@ -175,6 +175,30 @@ describe('RequirementForm', () => {
     expect(saveButton).toBeDisabled()
   })
 
+  it('protects changed creation input from unload until it returns to the baseline', async () => {
+    render(<RequirementForm mode="create" />)
+    const description = await screen.findByRole('textbox', {
+      name: /requirement\.description/,
+    })
+    const unloadIsBlocked = () => {
+      const event = new Event('beforeunload', { cancelable: true })
+      fireEvent(window, event)
+      return event.defaultPrevented
+    }
+
+    expect(unloadIsBlocked()).toBe(false)
+    fireEvent.change(description, { target: { value: 'Unsaved input' } })
+    expect(unloadIsBlocked()).toBe(true)
+    expect(description).toHaveValue('Unsaved input')
+    fireEvent.change(description, { target: { value: '   ' } })
+    expect(unloadIsBlocked()).toBe(false)
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: /requirement\.area/ }),
+      ).toBeEnabled(),
+    )
+  })
+
   it('preserves edits, blocks programmatic submit, and retries only failed reference data', async () => {
     const successfulFetch = fetchMock.getMockImplementation() as (
       url: string,

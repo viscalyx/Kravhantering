@@ -3,12 +3,13 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import type { KeyboardEvent } from 'react'
+import { type KeyboardEvent, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import FieldHelpButton from '@/components/FieldHelpButton'
 import FormActionRow from '@/components/FormActionRow'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 import type { UseAddToSpecificationDialogResult } from './use-add-to-specification-dialog'
 
@@ -26,6 +27,13 @@ export default function AddToSpecificationDialog({
   const { state } = dialog
   const titleId = 'add-to-specification-dialog-title'
   const shouldReduceMotion = useReducedMotion()
+  const modalRef = useRef<HTMLDivElement>(null)
+  const { handleKeyDown } = useModalFocus({
+    modalRef,
+    open: state.isOpen,
+    onClose: dialog.closeDialog,
+    closeDisabled: state.addToSpecificationStatus === 'loading',
+  })
 
   const helpButton = (field: string, label: string) => (
     <FieldHelpButton
@@ -54,18 +62,18 @@ export default function AddToSpecificationDialog({
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
           onClick={dialog.closeDialog}
-          onKeyDown={event => {
-            if (event.key === 'Escape') {
-              dialog.closeDialog()
-            }
-          }}
+          onKeyDown={handleKeyDown}
+          ref={modalRef}
           role="dialog"
           {...fadeMotion(shouldReduceMotion, { duration: 0.16 })}
         >
           <motion.div
             className="max-h-[calc(100vh-2rem)] w-full max-w-md space-y-4 overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-secondary-900"
             onClick={event => event.stopPropagation()}
-            onKeyDown={onDocumentKeyDown}
+            onKeyDown={event => {
+              handleKeyDown(event)
+              onDocumentKeyDown(event)
+            }}
             role="document"
             {...dialogPanelMotion(shouldReduceMotion, {
               duration: 0.16,

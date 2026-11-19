@@ -613,6 +613,16 @@ export default function SpecificationRfiListPanel({
     </div>
   )
 
+  const errorAlert = error ? (
+    <p
+      className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300"
+      role="alert"
+      {...devMarker({ name: 'error message', value: 'RFI list error' })}
+    >
+      {error}
+    </p>
+  ) : null
+
   return (
     <div className="space-y-4 p-4">
       {header ? (
@@ -624,14 +634,9 @@ export default function SpecificationRfiListPanel({
       ) : (
         toolbar
       )}
-      {error ? (
-        <p
-          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300"
-          role="alert"
-        >
-          {error}
-        </p>
-      ) : null}
+      {createSuggestionTarget == null && viewSuggestionsTarget == null
+        ? errorAlert
+        : null}
 
       {statusMessage ? (
         <p
@@ -650,6 +655,7 @@ export default function SpecificationRfiListPanel({
         title={t('createSuggestion')}
         titleId="rfi-suggestion-create-title"
       >
+        {errorAlert}
         <form
           className="space-y-4"
           onSubmit={event => {
@@ -709,6 +715,7 @@ export default function SpecificationRfiListPanel({
         title={t('existingSuggestionsTitle')}
         titleId="rfi-suggestions-view-title"
       >
+        {errorAlert}
         <div className="space-y-4">
           <p className="rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-sm text-secondary-700 dark:border-secondary-800 dark:bg-secondary-950/40 dark:text-secondary-200">
             {viewTargetContext}

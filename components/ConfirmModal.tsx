@@ -243,6 +243,7 @@ function ConfirmModalInner({
       {modal && (
         <motion.div
           className="fixed inset-0 z-50 flex items-start justify-center"
+          data-modal-layer=""
           key="confirm-backdrop"
           {...fadeMotion(shouldReduceMotion)}
         >

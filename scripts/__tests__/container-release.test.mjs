@@ -2213,6 +2213,7 @@ describe('trusted container release helpers', () => {
         expect(result.files).toContain('bin/kravhantering-images.sh')
         expect(result.files).toContain('bin/kravhantering-quadlet.sh')
         expect(result.files).toContain('sqlserver/mssql.conf')
+        expect(result.files).toContain('sqlserver/cleanup-permissions.sql')
         expect(result.files).toContain(
           'keycloak/realm-kravhantering-production.template.json',
         )

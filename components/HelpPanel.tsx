@@ -13,6 +13,7 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import {
   drawerPanelMotion,
   fadeMotion,
@@ -63,15 +64,6 @@ interface HelpRegistration {
   content: HelpContent
   owner: HelpRegistrationOwner
 }
-
-const FOCUSABLE_SELECTOR = [
-  'a[href]',
-  'button:not([disabled])',
-  'input:not([disabled])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(', ')
 
 /* ---------- Context ---------- */
 
@@ -287,176 +279,16 @@ function HelpPanelInner({
 }) {
   const t = useTranslations('help')
   const tc = useTranslations('common')
-  const containerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const scrollRegionRef = useRef<HTMLDivElement>(null)
   const shouldReduceMotion = useReducedMotion()
   const [showScrollIndicator, setShowScrollIndicator] = useState(false)
-  const previousFocusedElementRef = useRef<HTMLElement | null>(null)
-
-  const getFocusableElements = useCallback(() => {
-    if (!panelRef.current) {
-      return []
-    }
-
-    return Array.from(
-      panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-    ).filter(element => {
-      if (element.tabIndex < 0) {
-        return false
-      }
-
-      if (element.hasAttribute('hidden')) {
-        return false
-      }
-
-      return element.getAttribute('aria-hidden') !== 'true'
-    })
-  }, [])
-
-  // Trap focus and restore it when the drawer closes.
-  useEffect(() => {
-    if (!isOpen) return
-
-    previousFocusedElementRef.current =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null
-    requestAnimationFrame(() => panelRef.current?.focus())
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        onClose()
-        return
-      }
-
-      if (event.key !== 'Tab') {
-        return
-      }
-
-      const focusableElements = getFocusableElements()
-      if (focusableElements.length === 0) {
-        event.preventDefault()
-        panelRef.current?.focus()
-        return
-      }
-
-      const firstElement = focusableElements[0]
-      const lastElement = focusableElements[focusableElements.length - 1]
-      const activeElement =
-        document.activeElement instanceof HTMLElement
-          ? document.activeElement
-          : null
-      const focusIsInsidePanel =
-        activeElement !== null && panelRef.current?.contains(activeElement)
-
-      if (!focusIsInsidePanel) {
-        event.preventDefault()
-        ;(event.shiftKey ? lastElement : firstElement).focus()
-        return
-      }
-
-      if (activeElement === panelRef.current) {
-        event.preventDefault()
-        ;(event.shiftKey ? lastElement : firstElement).focus()
-        return
-      }
-
-      if (event.shiftKey && activeElement === firstElement) {
-        event.preventDefault()
-        lastElement.focus()
-        return
-      }
-
-      if (!event.shiftKey && activeElement === lastElement) {
-        event.preventDefault()
-        firstElement.focus()
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-      previousFocusedElementRef.current?.focus()
-      previousFocusedElementRef.current = null
-    }
-  }, [getFocusableElements, isOpen, onClose])
-
-  // Lock background scrolling while the help drawer is open so wheel/touch
-  // scrolling stays on the drawer content instead of the dimmed page behind it.
-  useEffect(() => {
-    if (!isOpen || typeof document === 'undefined') {
-      return
-    }
-
-    const html = document.documentElement
-    const { body } = document
-    const previousBodyOverflow = body.style.overflow
-    const previousHtmlOverflow = html.style.overflow
-    const previousBodyOverscrollBehavior = body.style.overscrollBehavior
-    const previousHtmlOverscrollBehavior = html.style.overscrollBehavior
-
-    body.style.overflow = 'hidden'
-    html.style.overflow = 'hidden'
-    body.style.overscrollBehavior = 'contain'
-    html.style.overscrollBehavior = 'contain'
-
-    return () => {
-      body.style.overflow = previousBodyOverflow
-      html.style.overflow = previousHtmlOverflow
-      body.style.overscrollBehavior = previousBodyOverscrollBehavior
-      html.style.overscrollBehavior = previousHtmlOverscrollBehavior
-    }
-  }, [isOpen])
-
-  // Hide background siblings from assistive tech and interaction while modal.
-  useEffect(() => {
-    if (!isOpen) {
-      return
-    }
-
-    const container = containerRef.current
-    const parent = container?.parentElement
-
-    if (
-      !(container instanceof HTMLElement) ||
-      !(parent instanceof HTMLElement)
-    ) {
-      return
-    }
-
-    const siblings = Array.from(parent.children).filter(
-      (element): element is HTMLElement =>
-        element instanceof HTMLElement && element !== container,
-    )
-
-    const previousState = siblings.map(element => ({
-      ariaHidden: element.getAttribute('aria-hidden'),
-      hadInert: element.hasAttribute('inert'),
-      element,
-    }))
-
-    for (const { element } of previousState) {
-      element.setAttribute('aria-hidden', 'true')
-      element.setAttribute('inert', '')
-    }
-
-    return () => {
-      for (const { ariaHidden, hadInert, element } of previousState) {
-        if (ariaHidden === null) {
-          element.removeAttribute('aria-hidden')
-        } else {
-          element.setAttribute('aria-hidden', ariaHidden)
-        }
-
-        if (!hadInert) {
-          element.removeAttribute('inert')
-        }
-      }
-    }
-  }, [isOpen])
+  const { handleKeyDown } = useModalFocus({
+    modalRef: panelRef,
+    initialFocusRef: panelRef,
+    open: isOpen && !!content,
+    onClose,
+  })
 
   useEffect(() => {
     if (!isOpen) {
@@ -509,8 +341,8 @@ function HelpPanelInner({
       {isOpen && content && (
         <motion.div
           className="fixed inset-0 z-50"
+          data-modal-layer=""
           key="help-backdrop"
-          ref={containerRef}
           {...fadeMotion(shouldReduceMotion, { duration: 0.2 })}
         >
           {/* Backdrop */}
@@ -526,6 +358,7 @@ function HelpPanelInner({
             aria-label={t(content.titleKey as Parameters<typeof t>[0])}
             aria-modal="true"
             className="absolute right-0 top-0 h-full w-full max-w-sm bg-white dark:bg-secondary-900 shadow-2xl flex flex-col overflow-hidden"
+            onKeyDown={handleKeyDown}
             ref={panelRef}
             role="dialog"
             tabIndex={-1}

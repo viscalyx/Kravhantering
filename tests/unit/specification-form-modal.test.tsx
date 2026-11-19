@@ -820,6 +820,9 @@ describe('SpecificationFormModal', () => {
       onResponsibleChanged,
     })
 
+    const originalResponsible = screen.getByRole('textbox', {
+      name: /specification\.responsibleHsaId/,
+    })
     fireEvent.click(await getEnabledChangeResponsibleButton())
     const dialog = screen.getByRole('dialog', {
       name: 'specification.changeResponsibleTitle',
@@ -844,9 +847,7 @@ describe('SpecificationFormModal', () => {
       )
     })
     expect(dialog).toBeInTheDocument()
-    expect(
-      screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
-    ).toHaveValue('SE5560000001-ada1')
+    expect(originalResponsible).toHaveValue('SE5560000001-ada1')
     expect(onResponsibleChanged).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
   })

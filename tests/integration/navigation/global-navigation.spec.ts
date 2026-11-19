@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { expectModalKeyboardIsolation } from '@/tests/support/modal-keyboard'
 
 test.describe('Global navigation', () => {
   test('NAV-01: global side navigation and mobile drawer open and close', async ({
@@ -33,16 +34,45 @@ test.describe('Global navigation', () => {
       ).toBeVisible()
     })
 
+    await test.step('open help with the keyboard and return to its trigger', async () => {
+      const help = desktopRail.getByRole('button', {
+        name: 'Hjälp',
+        exact: true,
+      })
+      await expect(help).toBeEnabled()
+      await help.focus()
+      await help.press('Enter')
+      await expectModalKeyboardIsolation(page, page.getByRole('dialog'))
+      await page.keyboard.press('Escape')
+      await expect(help).toBeFocused()
+    })
+
     await test.step('verify the mobile drawer opens and closes', async () => {
       await page.setViewportSize({ height: 812, width: 375 })
       const openButton = page.getByRole('button', { name: 'Öppna meny' })
-      await openButton.click()
+      await openButton.press('Enter')
       const drawer = page.getByRole('dialog', { name: 'Huvudmeny' })
       await expect(drawer).toBeVisible()
+      await expectModalKeyboardIsolation(page, drawer)
       const closeButton = drawer.getByRole('button', { name: 'Stäng meny' })
       await expect(closeButton).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(openButton).toBeFocused()
+      await openButton.click()
       await closeButton.click()
       await expect(drawer).toBeHidden()
+      await openButton.click()
+      await expect(drawer).toBeVisible()
+      await page.setViewportSize({ height: 1200, width: 1440 })
+      await expect(drawer).toBeHidden()
+      const desktopToggle = desktopRail.getByRole('button', {
+        name: 'Expandera navigation',
+      })
+      await desktopToggle.click()
+      await expect(
+        desktopRail.getByRole('button', { name: 'Fäll ihop navigation' }),
+      ).toBeVisible()
+      await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden')
     })
   })
 })

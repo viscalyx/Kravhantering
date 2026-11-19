@@ -4,8 +4,8 @@ This directory adapts the Google Chrome Modern Web Guidance skill for this
 repository. It copies `SKILL.md` from
 [GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance)
 at commit
-[`4dd968349e54ca45a05dd5c818fb035c9054b022`](https://github.com/GoogleChrome/modern-web-guidance/tree/4dd968349e54ca45a05dd5c818fb035c9054b022),
-release `1.0.0`. Its upstream skill marker is `2026_11_09-5bcc021b`.
+[`64a6d708f5a43f2cd3fde5d4d7db3905ba1bdf65`](https://github.com/GoogleChrome/modern-web-guidance/tree/64a6d708f5a43f2cd3fde5d4d7db3905ba1bdf65),
+release `1.0.1`. Its upstream skill marker is `2026_11_10-47b4c80e`.
 
 ## Local adaptations
 
@@ -33,7 +33,7 @@ revision above. Upstream identifies documentation and guide content as
 [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/).
 This adapted skill retains that attribution and identifies its modifications
 above. See the upstream
-[license declaration](https://github.com/GoogleChrome/modern-web-guidance/blob/4dd968349e54ca45a05dd5c818fb035c9054b022/README.md#-license).
+[license declaration](https://github.com/GoogleChrome/modern-web-guidance/blob/64a6d708f5a43f2cd3fde5d4d7db3905ba1bdf65/README.md#-license).
 Upstream documentation also credits Mozilla Contributors' MDN Web Docs and
 W3C, WHATWG, and IETF specifications. Package-specific third-party notices
 remain in the installed npm package.

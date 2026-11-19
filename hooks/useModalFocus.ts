@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef } from 'react'
-
-/* ---------- Types ---------- */
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { registerModal } from '@/lib/modal-focus'
 
 interface UseModalFocusOptions {
   /** When true, Escape is suppressed (e.g. during async save). */
@@ -22,97 +21,39 @@ interface UseModalFocusReturn {
   handleKeyDown: (e: React.KeyboardEvent) => void
 }
 
-/* ---------- Focusable selector ---------- */
+/** Shared ownership for custom modal surfaces, including nested portals. */
+export function useModalFocus(
+  options: UseModalFocusOptions,
+): UseModalFocusReturn {
+  const latest = useRef(options)
+  const registration = useRef<ReturnType<typeof registerModal> | null>(null)
+  const { open, modalRef } = options
 
-const FOCUSABLE =
-  'a[href]:not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), button:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"]):not([disabled])'
+  useLayoutEffect(() => {
+    latest.current = options
+  }, [options])
 
-/* ---------- Hook ---------- */
-
-/**
- * Shared focus-management hook for portal modals.
- *
- * Handles:
- * 1. **Capture** — saves `document.activeElement` on open
- * 2. **Initial focus** — moves focus to `initialFocusRef` via `requestAnimationFrame`
- * 3. **Focus trap** — cycles Tab / Shift+Tab among focusable descendants
- * 4. **Escape** — calls `onClose` (skipped when `closeDisabled`)
- * 5. **Restore** — returns focus to the captured element on close
- */
-export function useModalFocus({
-  closeDisabled,
-  modalRef,
-  initialFocusRef,
-  onClose,
-  open,
-  returnFocusRef,
-}: UseModalFocusOptions): UseModalFocusReturn {
-  const previousFocusRef = useRef<Element | null>(null)
-  const rafIdRef = useRef<number | null>(null)
-
-  /* Capture → initial focus, and restore on close */
+  // A loading/error branch can replace the DOM node without changing `open`.
   useEffect(() => {
-    const cancelScheduledFocus = () => {
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current)
-        rafIdRef.current = null
-      }
-    }
-
-    if (open) {
-      previousFocusRef.current = document.activeElement
-      cancelScheduledFocus()
-      rafIdRef.current = requestAnimationFrame(() => {
-        rafIdRef.current = null
-        initialFocusRef?.current?.focus()
-      })
-
-      // Restore focus when the modal closes or the component unmounts
-      return () => {
-        cancelScheduledFocus()
-        const returnTarget = returnFocusRef?.current ?? previousFocusRef.current
-        if (returnTarget instanceof HTMLElement) {
-          returnTarget.focus()
-          previousFocusRef.current = null
-        }
-      }
-    }
-
-    return () => {
-      cancelScheduledFocus()
-    }
-  }, [open, initialFocusRef, returnFocusRef])
-
-  /* Keyboard handler: Escape + focus trap */
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        if (!closeDisabled) {
-          onClose()
-        }
-        return
-      }
-
-      if (e.key === 'Tab' && modalRef.current) {
-        const focusable =
-          modalRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)
-        if (focusable.length === 0) return
-
-        const first = focusable[0]
-        const last = focusable[focusable.length - 1]
-
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault()
-          last.focus()
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault()
-          first.focus()
-        }
-      }
+    const element = open ? modalRef.current : null
+    if (registration.current?.element === element) return
+    const previous = registration.current?.previous
+    registration.current?.close()
+    registration.current = element
+      ? registerModal(element, () => latest.current, previous)
+      : null
+  })
+  useEffect(
+    () => () => {
+      registration.current?.close()
+      registration.current = null
     },
-    [closeDisabled, modalRef, onClose],
+    [],
   )
+
+  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
+    registration.current?.handleKeyDown(event)
+  }, [])
 
   return { handleKeyDown }
 }

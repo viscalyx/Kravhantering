@@ -108,11 +108,15 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
       .fill(updatedPurposeAndScope)
     await dialog.getByRole('button', { name: 'Spara' }).click()
     await expect(dialog).toBeHidden()
-    await expect(page.getByText(updatedPurposeAndScope)).toBeVisible()
+    await expect(
+      page.getByRole('cell', { exact: true, name: updatedPurposeAndScope }),
+    ).toBeVisible()
 
     await page.reload()
     await expect(page.getByText(updatedPurposeAndScope)).toBeVisible()
     const updatedRow = page.getByRole('row', {
+      // Read the visible background while the co-author modal isolates it.
+      includeHidden: true,
       name: new RegExp(escapeRegExp(fixture.packageName)),
     })
     await updatedRow
@@ -141,9 +145,11 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
       .fill('admin1')
     await coAuthorsDialog.getByRole('button', { name: 'Hämta' }).click()
     await expect(coAuthorsDialog.getByText(temporaryCoAuthor)).toBeVisible()
-    const updatedCoAuthorCell = updatedRow.getByRole('cell').filter({
-      hasText: 'Ada Admin',
-    })
+    const updatedCoAuthorCell = updatedRow
+      .getByRole('cell', { includeHidden: true })
+      .filter({
+        hasText: 'Ada Admin',
+      })
     await expect(updatedCoAuthorCell).toHaveText('Ada Admin, Paul PkgCoAuthor')
     await expect(updatedCoAuthorCell).not.toContainText(temporaryCoAuthor)
     await expect(updatedCoAuthorCell).not.toContainText('@')

@@ -1,4 +1,5 @@
 import { expect, type Locator, test } from '@playwright/test'
+import { expectModalKeyboardIsolation } from '@/tests/support/modal-keyboard'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 const viewports = [{ ...DESKTOP_VIEWPORT, name: 'desktop' }]
@@ -279,13 +280,20 @@ for (const viewport of viewports) {
         await expect(dialog).toBeVisible()
 
         const currentLeadHsaId = await leadInput.inputValue()
-        await dialog
-          .getByRole('button', { name: 'Byt kravpaketsansvarig' })
-          .click()
+        const changeTrigger = dialog.getByRole('button', {
+          name: 'Byt kravpaketsansvarig',
+        })
+        await changeTrigger.focus()
+        await changeTrigger.press('Enter')
 
         const changeDialog = page.getByRole('dialog', {
           name: 'Byt kravpaketsansvarig',
         })
+        await expect(changeDialog).toBeVisible()
+        await expectModalKeyboardIsolation(page, changeDialog)
+        await page.keyboard.press('Escape')
+        await expect(changeTrigger).toBeFocused()
+        await changeTrigger.press('Enter')
         await expect(changeDialog).toBeVisible()
         await expect(
           changeDialog.getByRole('textbox', {
@@ -347,7 +355,7 @@ for (const viewport of viewports) {
       viewport: { height: viewport.height, width: viewport.width },
     })
 
-    test('REQ-14a: keeps local responsibility data visible when external lookup is unavailable', async ({
+    test('REQ-14a/A11Y-02: keeps local responsibility data visible when external lookup is unavailable', async ({
       page,
     }) => {
       const localReuseRequests: Record<string, unknown>[] = []
@@ -400,9 +408,19 @@ for (const viewport of viewports) {
           name: 'Redigera kravpaket',
         })
         await expect(editDialog.getByText(/Anna Johansson/)).toBeVisible()
-        await editDialog
-          .getByRole('button', { name: 'Byt kravpaketsansvarig' })
-          .click()
+        const trigger = editDialog.getByRole('button', {
+          name: 'Byt kravpaketsansvarig',
+        })
+        await trigger.focus()
+        await page.keyboard.press('Enter')
+        await expect(
+          changeDialog.getByRole('heading', { name: 'Byt kravpaketsansvarig' }),
+        ).toBeFocused()
+        await expect(editDialog).toBeHidden()
+        await expectModalKeyboardIsolation(page, changeDialog)
+        await page.keyboard.press('Escape')
+        await expect(trigger).toBeFocused()
+        await page.keyboard.press('Enter')
       })
 
       await test.step('show that direct HSA lookup is unavailable', async () => {

@@ -56,6 +56,7 @@ import {
   getRequirementColumnDeveloperModeLabel,
 } from '@/lib/developer-mode-markers'
 import { getStatusIconComponent } from '@/lib/icons/status-icon-components'
+import { modalPortalTarget } from '@/lib/modal-focus'
 import {
   type AreaOption,
   clearRequirementFiltersForHiddenColumns,
@@ -283,6 +284,28 @@ function getFloatingPillClassName(
   return `${floatingPillBaseClassName} ${floatingPillVariantClassNames[variant]}`
 }
 
+function listenForTablePopoverKeys(
+  trigger: HTMLElement | null,
+  handleKeyDown: (event: KeyboardEvent) => void,
+) {
+  const owner = modalPortalTarget(trigger)
+  if (owner === document.body) {
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }
+  function onKeyDown(event: KeyboardEvent) {
+    if (event.defaultPrevented || trigger?.closest('[inert]')) return
+    // A menu inside a dialog gets the first Escape. The next one closes the dialog.
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+    handleKeyDown(event)
+  }
+  owner.addEventListener('keydown', onKeyDown, true)
+  return () => owner.removeEventListener('keydown', onKeyDown, true)
+}
+
 export function FloatingActionPill({ action }: { action: FloatingActionItem }) {
   const variant = action.variant ?? 'default'
   const hasMenu = (action.menuItems?.length ?? 0) > 0
@@ -405,10 +428,13 @@ export function FloatingActionPill({ action }: { action: FloatingActionItem }) {
       }
     }
 
-    document.addEventListener('keydown', handleKeyDown)
+    const stopListening = listenForTablePopoverKeys(
+      triggerRef.current,
+      handleKeyDown,
+    )
     return () => {
       window.cancelAnimationFrame(frame)
-      document.removeEventListener('keydown', handleKeyDown)
+      stopListening()
     }
   }, [focusMenuItem, getFocusableMenuItems, hasMenu, menuPosition, open])
 
@@ -603,7 +629,7 @@ export function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                   </ul>
                 </div>
               </div>,
-              document.body,
+              modalPortalTarget(triggerRef.current),
             )
           : null}
       </div>
@@ -783,10 +809,10 @@ function SearchFilterPopover({
       }
     }
     document.addEventListener('mousedown', handler)
-    document.addEventListener('keydown', keyHandler)
+    const stopListening = listenForTablePopoverKeys(btnRef.current, keyHandler)
     return () => {
       document.removeEventListener('mousedown', handler)
-      document.removeEventListener('keydown', keyHandler)
+      stopListening()
     }
   }, [open])
 
@@ -888,7 +914,7 @@ function SearchFilterPopover({
               )}
             </div>
           </div>,
-          document.body,
+          modalPortalTarget(btnRef.current),
         )}
     </div>
   )
@@ -946,10 +972,10 @@ function MultiSelectFilterPopover({
       }
     }
     document.addEventListener('mousedown', handler)
-    document.addEventListener('keydown', keyHandler)
+    const stopListening = listenForTablePopoverKeys(btnRef.current, keyHandler)
     return () => {
       document.removeEventListener('mousedown', handler)
-      document.removeEventListener('keydown', keyHandler)
+      stopListening()
     }
   }, [open])
 
@@ -1035,7 +1061,7 @@ function MultiSelectFilterPopover({
               </label>
             ))}
           </div>,
-          document.body,
+          modalPortalTarget(btnRef.current),
         )}
     </div>
   )
@@ -1093,10 +1119,10 @@ function GroupedMultiSelectFilterPopover({
       }
     }
     document.addEventListener('mousedown', handler)
-    document.addEventListener('keydown', keyHandler)
+    const stopListening = listenForTablePopoverKeys(btnRef.current, keyHandler)
     return () => {
       document.removeEventListener('mousedown', handler)
-      document.removeEventListener('keydown', keyHandler)
+      stopListening()
     }
   }, [open])
 
@@ -1196,7 +1222,7 @@ function GroupedMultiSelectFilterPopover({
               )
             })}
           </div>,
-          document.body,
+          modalPortalTarget(btnRef.current),
         )}
     </div>
   )
@@ -1255,10 +1281,10 @@ function ColumnsPopover({
     }
 
     document.addEventListener('mousedown', handler)
-    document.addEventListener('keydown', keyHandler)
+    const stopListening = listenForTablePopoverKeys(btnRef.current, keyHandler)
     return () => {
       document.removeEventListener('mousedown', handler)
-      document.removeEventListener('keydown', keyHandler)
+      stopListening()
     }
   }, [open])
 
@@ -1405,7 +1431,7 @@ function ColumnsPopover({
               })}
             </div>
           </div>,
-          document.body,
+          modalPortalTarget(btnRef.current),
         )}
     </>
   )
@@ -3007,7 +3033,7 @@ export default function RequirementsTable({
               {scrollTopRailGroup}
             </div>
           </div>,
-          document.body,
+          modalPortalTarget(scrollContainerRef.current),
         )
       : null
 

@@ -6,11 +6,11 @@ import {
   type ErrorInfo,
   type ReactNode,
   Suspense,
-  useEffect,
   useId,
   useRef,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 export type OnDemandFeatureId = 'ai-authoring' | 'import-review'
@@ -28,9 +28,6 @@ interface OnDemandFeatureDialogProps {
   variant: 'ai' | 'import'
   wide?: boolean
 }
-
-const focusableSelector =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 function featureContext(featureId: OnDemandFeatureId) {
   return featureId === 'ai-authoring'
@@ -82,15 +79,20 @@ function FeatureStatePanel({
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    panelRef.current?.focus()
-  }, [])
+  const { handleKeyDown } = useModalFocus({
+    modalRef: panelRef,
+    initialFocusRef: panelRef,
+    open: true,
+    closeDisabled: state === 'loading',
+    onClose,
+  })
 
   return (
     <div
       aria-labelledby={titleId}
       aria-modal="true"
       className={panelClassName(variant, wide)}
+      onKeyDown={handleKeyDown}
       ref={panelRef}
       role="dialog"
       tabIndex={-1}
@@ -167,24 +169,6 @@ function FeatureStatePanel({
   )
 }
 
-function LoadedFeatureFocus({ children }: { children: ReactNode }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const container = containerRef.current
-    const focusTarget =
-      container?.querySelector<HTMLElement>(focusableSelector) ??
-      container?.querySelector<HTMLElement>('[role="dialog"]')
-    focusTarget?.focus()
-  }, [])
-
-  return (
-    <div className="contents" ref={containerRef}>
-      {children}
-    </div>
-  )
-}
-
 interface FeatureErrorBoundaryProps
   extends Omit<OnDemandFeatureDialogProps, 'children'> {
   children: ReactNode
@@ -246,70 +230,12 @@ export default function OnDemandFeatureDialog({
   wide = false,
 }: OnDemandFeatureDialogProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const body = document.body
-    const html = document.documentElement
-    const scrollX = window.scrollX
-    const scrollY = window.scrollY
-    const previousBodyLeft = body.style.left
-    const previousBodyOverflow = body.style.overflow
-    const previousBodyPosition = body.style.position
-    const previousBodyRight = body.style.right
-    const previousBodyTop = body.style.top
-    const previousBodyWidth = body.style.width
-    const previousHtmlOverflow = html.style.overflow
-
-    body.style.overflow = 'hidden'
-    body.style.position = 'fixed'
-    body.style.top = `-${scrollY}px`
-    body.style.left = `-${scrollX}px`
-    body.style.right = '0'
-    body.style.width = '100%'
-    html.style.overflow = 'hidden'
-
-    return () => {
-      body.style.left = previousBodyLeft
-      body.style.overflow = previousBodyOverflow
-      body.style.position = previousBodyPosition
-      body.style.right = previousBodyRight
-      body.style.top = previousBodyTop
-      body.style.width = previousBodyWidth
-      html.style.overflow = previousHtmlOverflow
-      if (scrollX !== 0 || scrollY !== 0) {
-        window.scrollTo(scrollX, scrollY)
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Tab') return
-      const focusable = Array.from(
-        container.querySelectorAll<HTMLElement>(focusableSelector),
-      ).filter(element => !element.hasAttribute('disabled'))
-      if (focusable.length === 0) {
-        event.preventDefault()
-        container.querySelector<HTMLElement>('[role="dialog"]')?.focus()
-        return
-      }
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault()
-        first.focus()
-      }
-    }
-
-    container.addEventListener('keydown', handleKeyDown)
-    return () => container.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  useModalFocus({
+    modalRef: containerRef,
+    open: true,
+    closeDisabled: true,
+    onClose: onErrorClose,
+  })
 
   if (typeof document === 'undefined') return null
 
@@ -318,6 +244,7 @@ export default function OnDemandFeatureDialog({
       className={`fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${
         variant === 'ai' ? 'bg-secondary-900/60' : 'bg-black/40'
       }`}
+      data-modal-layer=""
       ref={containerRef}
       role="presentation"
     >
@@ -348,7 +275,7 @@ export default function OnDemandFeatureDialog({
             />
           }
         >
-          <LoadedFeatureFocus>{children}</LoadedFeatureFocus>
+          {children}
         </Suspense>
       </FeatureErrorBoundary>
     </div>,

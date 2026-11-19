@@ -32,6 +32,20 @@ test.describe('Requirement selection question detail preview', () => {
     })
     const requirementId = 'SÄK0042'
 
+    await test.step('close the package selector without closing its answer editor', async () => {
+      const packages = dialog.getByRole('button', {
+        exact: true,
+        name: 'Kravpaket',
+      })
+      await packages.click()
+      await expect(packages).toHaveAttribute('aria-expanded', 'true')
+      await dialog.getByRole('textbox', { name: /Kravpaket$/u }).focus()
+      await page.keyboard.press('Escape')
+      await expect(packages).toHaveAttribute('aria-expanded', 'false')
+      await expect(packages).toBeFocused()
+      await expect(dialog).toBeVisible()
+    })
+
     await test.step('expand a requirement in the selection preview', async () => {
       const requirementButton = dialog.getByRole('button', {
         name: `Öppna kravdetaljer ${requirementId}`,
@@ -78,6 +92,24 @@ test.describe('Requirement selection question detail preview', () => {
       await expect(
         dialog.getByRole('button', { name: 'Arkivera' }),
       ).toHaveCount(0)
+    })
+
+    await test.step('Escape reaches the editor after the package selector unmounts', async () => {
+      const packages = dialog.getByRole('button', {
+        name: 'Kravpaket',
+        exact: true,
+      })
+      await packages.click()
+      const noSelection = dialog.getByRole('checkbox', {
+        name: 'Utan kravurval',
+      })
+      await noSelection.press('Space')
+      await expect(packages).toBeDisabled()
+      await expect(
+        dialog.getByRole('textbox', { name: /Kravpaket$/u }),
+      ).toHaveCount(0)
+      await noSelection.press('Escape')
+      await expect(page.getByRole('alertdialog')).toBeVisible()
     })
   })
 

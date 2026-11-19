@@ -59,7 +59,7 @@
         {
           "id": "dev-requirements",
           "paths": ["tests/integration/requirements"],
-          "specCount": 13
+          "specCount": 14
         },
         {
           "id": "dev-specifications-agreements",
@@ -160,6 +160,7 @@
         "tests/integration/requirements/ai-assisted-authoring-import-review.spec.ts",
         "tests/integration/requirements/collaboration.spec.ts",
         "tests/integration/requirements/create.spec.ts",
+        "tests/integration/requirements/detail-recovery.spec.ts",
         "tests/integration/requirements/edit-reconciliation.spec.ts",
         "tests/integration/requirements/form-associations.spec.ts",
         "tests/integration/requirements/import-ai-request-template.spec.ts",

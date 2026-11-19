@@ -1336,17 +1336,22 @@ export default function RequirementSelectionQuestionsClient() {
       setPackageSelectorOpen(false)
     }
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (
+        event.key === 'Escape' &&
+        packageSelectorRef.current &&
+        !packageSelectorRef.current.closest('[inert]')
+      ) {
+        event.stopPropagation()
         setPackageSelectorOpen(false)
         packageSelectorButtonRef.current?.focus()
       }
     }
 
     document.addEventListener('mousedown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('keydown', handleKeyDown, true)
     return () => {
       document.removeEventListener('mousedown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keydown', handleKeyDown, true)
     }
   }, [packageSelectorOpen])
 
@@ -2882,7 +2887,10 @@ export default function RequirementSelectionQuestionsClient() {
             <input
               checked={answerForm.isNoRequirementSelection}
               className="h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-              onChange={event =>
+              onChange={event => {
+                if (event.target.checked) {
+                  setPackageSelectorOpen(false)
+                }
                 setAnswerForm(previous => ({
                   ...previous,
                   isNoRequirementSelection: event.target.checked,
@@ -2891,7 +2899,7 @@ export default function RequirementSelectionQuestionsClient() {
                     ? []
                     : previous.requirements,
                 }))
-              }
+              }}
               type="checkbox"
             />
             {copy.noRequirementSelection}

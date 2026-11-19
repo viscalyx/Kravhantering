@@ -131,6 +131,8 @@ test('AUTHZ-02/AUTH-10/AUTH-11/ADMIN-13: requirement area owners can manage thei
     await expect(page.getByText(updatedDescription)).toBeVisible()
 
     const updatedRow = page.getByRole('row', {
+      // The modal isolates this visible row while co-author changes settle.
+      includeHidden: true,
       name: new RegExp(areaPrefixPattern),
     })
     await updatedRow

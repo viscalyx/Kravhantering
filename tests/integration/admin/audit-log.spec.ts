@@ -50,7 +50,10 @@ test('ADMIN-07: admin can filter action-log events and export CSV', async ({
     requirementCreateAuditRowsFromClientIp(page, '203.0.113.10').first(),
   ).toBeVisible()
 
-  const exportButton = page.getByRole('button', { name: 'Exportera CSV' })
+  const exportButton = page.getByRole('button', {
+    includeHidden: true,
+    name: 'Exportera CSV',
+  })
   let exportRequestCount = 0
   let downloadCount = 0
   page.on('request', request => {

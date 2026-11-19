@@ -78,7 +78,7 @@ describe('lazy requirement workflow dialogs', () => {
     const trigger = screen.getByRole('button', { name: 'AI trigger' })
     trigger.focus()
 
-    render(
+    const { rerender } = render(
       <LazyAiRequirementGenerator
         onClose={onClose}
         open
@@ -93,6 +93,13 @@ describe('lazy requirement workflow dialogs', () => {
     await user.click(close)
 
     expect(onClose).toHaveBeenCalledOnce()
+    rerender(
+      <LazyAiRequirementGenerator
+        onClose={onClose}
+        open={false}
+        returnFocusTarget={trigger}
+      />,
+    )
     await waitFor(() => expect(trigger).toHaveFocus())
   })
 
@@ -117,7 +124,7 @@ describe('lazy requirement workflow dialogs', () => {
     const trigger = screen.getByRole('button', { name: 'Import trigger' })
     trigger.focus()
 
-    render(
+    const { rerender } = render(
       <LazyRequirementsImportDialog
         destinationName="Example specification"
         mode="specification-local"
@@ -134,6 +141,14 @@ describe('lazy requirement workflow dialogs', () => {
     await user.click(complete)
 
     expect(onClose).toHaveBeenCalledWith(true)
+    rerender(
+      <LazyRequirementsImportDialog
+        mode="library"
+        onClose={onClose}
+        open={false}
+        returnFocusTarget={trigger}
+      />,
+    )
     await waitFor(() => expect(trigger).toHaveFocus())
   })
 

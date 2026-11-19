@@ -71,12 +71,64 @@ including unbroken text. Forms and dialogs retain their own width limits.
   Escape asks the user to confirm discarding unsaved changes with the shared
   danger confirmation dialog. Rejecting the confirmation leaves the form open
   with the entered values intact.
+- Every modal moves focus inside when opened. An available explicit target
+  takes precedence; otherwise the heading provides a reading position, followed
+  by an available control or the dialog itself. Tab and Shift+Tab stay inside,
+  including while controls are disabled or replaced during loading.
+- Only the topmost modal accepts interaction. Underlying content is inert and
+  unavailable to assistive technology. Escape closes only the active modal,
+  subject to saving and unsaved-change guards. Closing restores the invoking
+  control, a surviving parent dialog, or the page's main heading.
+- These guarantees cover forms, confirmations, help and navigation drawers,
+  requirement details, association pickers, AI/import loading and error panels,
+  and generated-output dialogs. Account details and the agreement selector are
+  intentionally non-modal popovers; the page stays available while they open.
+- Custom portal layers preserve anchored confirmations and existing animation
+  and backdrop rules. Shared ownership restores prior inert, accessibility and
+  scrolling state even when layers close out of order. Native modal top-layer
+  rendering would also require migrating the existing portalled child pickers
+  and confirmations together, so these surfaces use shared custom isolation.
 - Clicking outside a modal form does not close it. Users must use the explicit
   cancel or close controls.
 - When a priority is selected, its description and assessment criteria are
   shown as a tooltip on the priority selector instead of as a persistent block
   inside the form. The separate priority-scale button still opens the full
   priority-scale modal.
+
+## Unsaved Requirements Library Input
+
+- Both new and existing requirement forms protect changes to the normalized
+  payload, including text, classification, verification and associations.
+  Untouched forms and values restored to their baseline can be left freely.
+- Following a navigation link, switching language, using browser Back or
+  pressing Cancel asks for the existing discard confirmation. Declining
+  keeps the live form and its values. Confirming reaches the chosen
+  destination without a second prompt. With no previous history entry,
+  Back and Cancel keep the form and its protection.
+- Confirmed Cancel can return to a page from another origin even when the
+  Navigation API does not expose that predecessor. A fragment-only navigation
+  keeps the dirty form open and restores protection for subsequent navigation
+  and reload.
+- Reload and tab close use the browser's native unload confirmation where
+  supported. Declining keeps the input; accepting departure discards it.
+  Browser termination does not guarantee a prompt or recovery.
+- Successful saves release protection before navigating to the selected save
+  destination. Validation errors and failed saves keep input and protection.
+- Unsaved input exists only in the mounted form. This behavior does not save a
+  Draft requirement version or persist content in browser storage.
+
+### Other Form Departure Gaps
+
+The following code paths need separate navigation-protection work. These are
+code inspection findings, not browser-verified behavior:
+
+- `SpecificationLocalRequirementForm` confirms dirty cancellation in
+  `handleCancel`, but does not register page navigation or unload protection.
+  Following global navigation or reloading can therefore bypass the explicit
+  cancellation decision while composing a unique requirement.
+- `useCrudAdminResource` confirms dirty closure through `closeForm`, used by
+  `CrudAdminPanel`, but does not register page navigation or unload protection.
+  Administration forms using this hook need the same departure review.
 
 ## Requirement Form Reference Data
 

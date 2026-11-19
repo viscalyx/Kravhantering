@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import {
   createArea,
@@ -9,6 +10,8 @@ import {
 import { createSpecificationLocalRequirement } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { createSpecificationAgreementWorkflow } from '@/lib/specifications/agreements'
+import { runTransientCleanupCommand } from '@/lib/transient-cleanup/cli'
+import { cleanupSchemaFingerprint } from '@/lib/transient-cleanup/schema'
 import { createAppDataSource } from '@/lib/typeorm/data-source'
 import { verifyRuntimeSqlConnection } from '@/lib/typeorm/runtime-verification'
 import {
@@ -197,6 +200,79 @@ describe('least-privilege SQL Server runtime role', () => {
     ).rejects.toMatchObject({
       reason: 'sql_runtime_identity_mismatch',
     })
+  })
+
+  it('runs cleanup under a dedicated user while the web connection passes readiness', async () => {
+    const grants = await readFile(
+      'containers/production/sqlserver/cleanup-permissions.sql',
+      'utf8',
+    )
+    const expiredQuotaId = randomUUID()
+    await adminDb.query('CREATE USER [kravhantering_cleanup] WITHOUT LOGIN')
+    try {
+      await adminDb.query(grants)
+      await adminDb.query(grants)
+      await adminDb.query(
+        `INSERT INTO dbo.export_actor_quota_entries
+          (id, actor_fingerprint, created_at, expires_at)
+          VALUES (@0, N'hfp_' + REPLICATE(N'a', 22),
+            DATEADD(hour, -2, SYSUTCDATETIME()), DATEADD(hour, -1, SYSUTCDATETIME()))`,
+        [expiredQuotaId],
+      )
+      const expectedFingerprint = await cleanupSchemaFingerprint(adminDb)
+      const cleanup = adminDb.createQueryRunner()
+      try {
+        await cleanup.query("EXECUTE AS USER = N'kravhantering_cleanup'")
+        try {
+          await expect(
+            cleanup.query('SELECT TOP (0) id FROM dbo.requirements'),
+          ).rejects.toThrow(/permission was denied/i)
+          await expect(
+            cleanup.query('UPDATE dbo.migrations SET name = name WHERE 1 = 0'),
+          ).rejects.toThrow(/permission was denied/i)
+          const write = vi.fn()
+          await expect(
+            runTransientCleanupCommand(['--compatibility-evidence'], {
+              connect: async () => ({
+                executor: cleanup,
+                destroy: async () => {},
+              }),
+              env: {},
+              write,
+            }),
+          ).resolves.toBe(0)
+          const evidence = write.mock.calls.map(([line]) => JSON.parse(line))
+          expect(evidence).toContainEqual(
+            expect.objectContaining({
+              event: 'transient_cleanup.schema.verified',
+              schemaFingerprint: expectedFingerprint,
+              schemaVersion: expect.any(String),
+            }),
+          )
+          expect(evidence).toContainEqual(
+            expect.objectContaining({
+              event: 'transient_cleanup.run.completed',
+              deleted_rows: 1,
+              outcome: 'success',
+            }),
+          )
+        } finally {
+          await cleanup.query('REVERT')
+        }
+      } finally {
+        await cleanup.release()
+      }
+
+      await expect(
+        verifyRuntimeSqlConnection(runtimeDb, RUNTIME_LOGIN),
+      ).resolves.toMatchObject({ unexpectedPermissions: 0 })
+    } finally {
+      await adminDb.query('DROP USER [kravhantering_cleanup]')
+      await adminDb.query(
+        'DELETE FROM dbo.export_actor_quota_entries WHERE id = @0',
+        [expiredQuotaId],
+      )
+    }
   })
 
   it.each([

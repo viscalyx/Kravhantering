@@ -17,6 +17,7 @@ import {
   requirementsImportPayloadSchema,
 } from '@/lib/requirements/import-schema'
 import { delay } from '@/tests/helpers/common'
+import { requireTestValue } from '@/tests/helpers/require-test-value'
 import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
 import { newRoleContext } from '@/tests/support/authorization-test-helpers'
 import { deferRoute } from '@/tests/support/deferred-route'
@@ -1904,6 +1905,11 @@ test.describe('Requirements specification deterministic manual cases', () => {
         (await libraryButton.textContent()) ?? ''
       ).trim()
       expect(libraryRequirementUniqueId).not.toBe('')
+      const libraryRequirementId = requireTestValue(
+        (await libraryButton.getAttribute('aria-controls'))?.match(
+          /^requirement-row-detail-(\d+)$/u,
+        )?.[1],
+      )
 
       const readSpecificationCount = async (
         row: typeof libraryRow,
@@ -1938,7 +1944,33 @@ test.describe('Requirements specification deterministic manual cases', () => {
       await expect(
         movedLeftRow.locator('xpath=following-sibling::tr[1]'),
       ).toContainText('Kravtext')
-      const requestsBeforeRemove = libraryDetailRequests.count
+      // Ignore unrelated hover prefetches and obsolete requests cancelled by
+      // invalidation; the moved requirement must receive one fresh response.
+      const removedRequirementResponses: Response[] = []
+      const recordRemovedRequirementResponse = (response: Response) => {
+        if (
+          new URL(response.url()).pathname ===
+            `/api/requirements/${libraryRequirementId}` &&
+          response.ok()
+        ) {
+          removedRequirementResponses.push(response)
+        }
+      }
+      page.on('response', recordRemovedRequirementResponse)
+      await page.route(
+        `**/api/requirements-specifications/${specificationId}/items`,
+        async route => {
+          if (route.request().method() !== 'DELETE') {
+            await route.fallback()
+            return
+          }
+          const response = await route.fetch()
+          // Invalidation may abort an older intent prefetch. Measure requests
+          // after the mutation response reaches the application instead.
+          removedRequirementResponses.length = 0
+          await route.fulfill({ response })
+        },
+      )
 
       await movedLeftRow.getByRole('checkbox').check()
       await page.getByRole('button', { name: 'Ta bort valda (1)' }).click()
@@ -1980,11 +2012,10 @@ test.describe('Requirements specification deterministic manual cases', () => {
         await expect(movedRightRow).toBeVisible()
         const movedRightButton = movedRightRow.getByRole('button').first()
         await expect(movedRightButton).toHaveAttribute('aria-expanded', 'true')
-        await expect
-          .poll(() => libraryDetailRequests.count)
-          .toBe(requestsBeforeRemove + 1)
+        await expect.poll(() => removedRequirementResponses.length).toBe(1)
         expect(await readSpecificationCount(movedRightRow)).toBe(baselineCount)
       } finally {
+        page.off('response', recordRemovedRequirementResponse)
         packageRefresh.fulfill()
         await packageRefresh.cleanup()
       }
@@ -3022,10 +3053,15 @@ test.describe('Requirements specification deterministic manual cases', () => {
       catalogPageRequests.length = 0
       await addDialog.getByRole('button', { name: 'Lägg till' }).click()
       await catalogRefreshStarted
-      await expect(leftPackageBand).toHaveCount(1)
-      await expect(leftPackageBand).not.toContainText('Läser in kravpaket…')
-      await expect(leftPackageBand).toContainText('Läser in kravpaket…')
+      // The saving modal isolates this visible background until refresh finishes.
+      const pendingPackageBand = specificationItemsPanel.getByRole('group', {
+        includeHidden: true,
+        name: 'Kravpaket',
+      })
+      await expect(pendingPackageBand).toHaveCount(1)
+      await expect(pendingPackageBand).toContainText('Läser in kravpaket…')
       releaseCatalogRefresh?.()
+      await expect(addDialog).toBeHidden()
       await expect(leftPackageBand).not.toContainText('Läser in kravpaket…')
       await expect.poll(() => catalogPageRequests).toHaveLength(2)
       expect(new URLSearchParams(catalogPageRequests[0]).get('limit')).toBe(
@@ -3145,23 +3181,32 @@ test.describe('Requirements specification deterministic manual cases', () => {
       await expect(selectedRequirement).toBeChecked()
       expect(removeRequests).toEqual([])
 
+      await page.route('**/api/requirement-statuses', route =>
+        route.fulfill({ status: 500, json: {} }),
+      )
       await specificationItemsPanel
         .getByRole('button', { name: /^PWT-SPEC-EDIT-SOURCE\b/u })
         .click()
       const requestDeviationAction = specificationItemsPanel.getByRole(
         'button',
-        {
-          name: 'Begär ett avsteg',
-        },
+        { name: 'Begär ett avsteg' },
       )
       const removeFromSpecificationAction = specificationItemsPanel.getByRole(
         'button',
-        {
-          name: 'Ta bort krav',
-        },
+        { name: 'Ta bort krav' },
       )
-      await expect(requestDeviationAction).toHaveCount(1)
-      await expect(removeFromSpecificationAction).toHaveCount(1)
+      await expect(requestDeviationAction).toBeEnabled()
+      await expect(removeFromSpecificationAction).toBeEnabled()
+      await expect(specificationItemsPanel.getByRole('alert')).toHaveCount(0)
+      await expect(
+        specificationItemsPanel.getByRole('button', { name: 'Försök igen' }),
+      ).toHaveCount(0)
+      await removeFromSpecificationAction.click()
+      const detailRemoveDialog = page.getByRole('alertdialog')
+      await expect(detailRemoveDialog).toContainText('PWT-SPEC-EDIT-SOURCE')
+      await detailRemoveDialog.getByRole('button', { name: 'Avbryt' }).click()
+      await expect(detailRemoveDialog).toHaveCount(0)
+      expect(removeRequests).toEqual([])
     })
 
     await test.step('confirm removal and refresh the left package catalog', async () => {

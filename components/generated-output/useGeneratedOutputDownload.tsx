@@ -5,6 +5,7 @@ import { AlertCircle, Download, FileText } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import {
   type ReactNode,
+  type RefObject,
   useCallback,
   useEffect,
   useMemo,
@@ -164,18 +165,12 @@ export function useGeneratedOutputDownload(): UseGeneratedOutputDownloadResult {
   const mountedRef = useRef(true)
   const pendingRef = useRef<PendingDownload | null>(null)
 
-  const restoreFocus = useCallback(() => {
-    const target = pendingRef.current?.restoreFocusTo
-    window.requestAnimationFrame(() => {
-      if (target?.isConnected) target.focus()
-    })
-  }, [])
+  const returnFocusRef = useRef<HTMLElement | null>(null)
 
   const clearError = useCallback(() => {
     setErrorState(null)
     setRetrySeconds(0)
-    restoreFocus()
-  }, [restoreFocus])
+  }, [])
 
   const runDownload = useCallback(
     async (pending: PendingDownload) => {
@@ -184,6 +179,7 @@ export function useGeneratedOutputDownload(): UseGeneratedOutputDownloadResult {
       if (activeDownloadKeys.has(key)) return
       activeDownloadKeys.add(key)
       pendingRef.current = pending
+      returnFocusRef.current = pending.restoreFocusTo
       setAnnouncement('')
       setErrorState(null)
       setRetrySeconds(0)
@@ -208,7 +204,6 @@ export function useGeneratedOutputDownload(): UseGeneratedOutputDownloadResult {
             : responseBlob
         if (controller.signal.aborted || !mountedRef.current) {
           setPhase(null)
-          restoreFocus()
           return
         }
         const filename =
@@ -218,11 +213,9 @@ export function useGeneratedOutputDownload(): UseGeneratedOutputDownloadResult {
         downloadBlob(blob, filename)
         setPhase(null)
         setAnnouncement(t('fileReady'))
-        restoreFocus()
       } catch (caught) {
         if (controller.signal.aborted) {
           setPhase(null)
-          restoreFocus()
           return
         }
         const parsed =
@@ -245,7 +238,7 @@ export function useGeneratedOutputDownload(): UseGeneratedOutputDownloadResult {
         setDownloading(false)
       }
     },
-    [restoreFocus, t],
+    [t],
   )
 
   const download = useCallback(
@@ -316,6 +309,7 @@ export function useGeneratedOutputDownload(): UseGeneratedOutputDownloadResult {
         output={output}
         phase={phase}
         retrySeconds={retrySeconds}
+        returnFocusRef={returnFocusRef}
       />
     ),
     [
@@ -387,6 +381,7 @@ function GeneratedOutputDownloadDialog({
   output,
   phase,
   retrySeconds,
+  returnFocusRef,
 }: {
   announcement: string
   error: string | null
@@ -396,6 +391,7 @@ function GeneratedOutputDownloadDialog({
   output: GeneratedOutputKind
   phase: DownloadPhase | null
   retrySeconds: number
+  returnFocusRef: RefObject<HTMLElement | null>
 }) {
   const t = useTranslations('generatedOutput')
   const tc = useTranslations('common')
@@ -411,6 +407,7 @@ function GeneratedOutputDownloadDialog({
     modalRef: dialogRef,
     onClose: error ? onCloseError : onCancel,
     open: visible,
+    returnFocusRef,
   })
   const phaseText =
     phase === 'generating'
@@ -439,6 +436,7 @@ function GeneratedOutputDownloadDialog({
         {visible ? (
           <motion.div
             className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            data-modal-layer=""
             key={error ? 'output-error' : 'output-progress'}
             {...fadeMotion(shouldReduceMotion)}
           >

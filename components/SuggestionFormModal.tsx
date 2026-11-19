@@ -109,6 +109,7 @@ export default function SuggestionFormModal({
       {open && (
         <motion.div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          data-modal-layer=""
           key="suggestion-form-backdrop"
           {...fadeMotion(shouldReduceMotion)}
         >

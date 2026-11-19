@@ -435,7 +435,7 @@ describe('NormReferencesClient', () => {
     })
   })
 
-  it('guards dirty form before switching to create', async () => {
+  it('keeps the dirty form open when discarding changes is declined', async () => {
     confirmMock.mockResolvedValue(false)
     render(<NormReferencesClient />)
     await waitFor(() => {
@@ -454,7 +454,7 @@ describe('NormReferencesClient', () => {
     })
     fireEvent.click(
       screen.getByRole('button', {
-        name: /normReference\.newNormReference/i,
+        name: /common\.cancel/i,
       }),
     )
 

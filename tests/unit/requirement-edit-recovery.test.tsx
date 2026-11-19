@@ -34,6 +34,7 @@ vi.mock('@/components/HelpPanel', () => ({ useHelpContent: vi.fn() }))
 const fetchMock = vi.fn()
 let navigation: EventTarget & {
   canGoBack: boolean
+  entries: () => { key: string }[]
   traverseTo: ReturnType<typeof vi.fn>
 }
 const initialToken = '11111111-1111-4111-8111-111111111111'
@@ -162,9 +163,11 @@ async function compare(user: ReturnType<typeof userEvent.setup>) {
 describe('Requirement edit recovery', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(window.history, 'length', 'get').mockReturnValue(1)
     vi.stubGlobal('fetch', fetchMock)
     navigation = Object.assign(new EventTarget(), {
       canGoBack: true,
+      entries: () => [{ key: 'editor' }],
       traverseTo: vi.fn(() => ({ finished: Promise.resolve() })),
     })
     vi.stubGlobal('navigation', navigation)
@@ -248,6 +251,7 @@ describe('Requirement edit recovery', () => {
   afterEach(() => {
     cleanup()
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   it('retains independent text and criterion changes and saves with the compared revision', async () => {
@@ -307,6 +311,9 @@ describe('Requirement edit recovery', () => {
   it('blocks unresolved same-field saves and preserves all values until an explicit choice', async () => {
     const user = await openEditor()
     server = detail({ description: 'Server text', revisionToken: latestToken })
+    const form = screen
+      .getByRole('textbox', { name: /^Requirement text/ })
+      .closest('form') as HTMLFormElement
     const dialog = await compare(user)
     const row = within(dialog).getByRole('region', { name: 'Requirement text' })
     for (const text of ['Starting text', 'Local text', 'Server text'])
@@ -315,11 +322,7 @@ describe('Requirement edit recovery', () => {
       name: 'Review result in form',
     })
     expect(apply).toBeDisabled()
-    fireEvent.submit(
-      screen
-        .getByRole('textbox', { name: /^Requirement text/ })
-        .closest('form') as HTMLFormElement,
-    )
+    fireEvent.submit(form)
     expect(submitted).toHaveLength(1)
     await user.click(
       within(row).getByRole('button', { name: 'Keep latest value' }),
@@ -959,8 +962,29 @@ describe('Requirement edit recovery', () => {
     )
     expect(navigation.traverseTo).toHaveBeenCalledWith('previous-entry')
   })
-  it('does not add an unreachable back destination at the first history entry', async () => {
+  it.each([{ keys: ['editor'] }, { keys: ['editor', 'forward-fragment'] }])(
+    'keeps protection at the first history entry with visible entries %j',
+    async ({ keys }) => {
+      navigation.canGoBack = false
+      navigation.entries = () => keys.map(key => ({ key }))
+      vi.spyOn(window.history, 'length', 'get').mockReturnValue(keys.length)
+      const user = await openEditor()
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+      await user.click(
+        within(await screen.findByRole('alertdialog')).getByRole('button', {
+          name: 'Confirm',
+        }),
+      )
+      expect(back).not.toHaveBeenCalled()
+      const unload = new Event('beforeunload', { cancelable: true })
+      fireEvent(window, unload)
+      expect(unload.defaultPrevented).toBe(true)
+    },
+  )
+
+  it('allows confirmed Cancel when the previous history entry is outside the current origin', async () => {
     navigation.canGoBack = false
+    vi.spyOn(window.history, 'length', 'get').mockReturnValue(2)
     const user = await openEditor()
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     await user.click(
@@ -968,11 +992,67 @@ describe('Requirement edit recovery', () => {
         name: 'Confirm',
       }),
     )
-    expect(back).not.toHaveBeenCalled()
+    expect(back).toHaveBeenCalledOnce()
+    const unload = new Event('beforeunload', { cancelable: true })
+    fireEvent(window, unload)
+    expect(unload.defaultPrevented).toBe(false)
+  })
+
+  it('restores unload protection if Back finds no predecessor in opaque history', async () => {
+    navigation.canGoBack = false
+    vi.spyOn(window.history, 'length', 'get').mockReturnValue(2)
+    const deadline = new AbortController()
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(deadline.signal)
+    const user = await openEditor()
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Confirm',
+      }),
+    )
+    expect(back).toHaveBeenCalledOnce()
+    deadline.abort()
     const unload = new Event('beforeunload', { cancelable: true })
     fireEvent(window, unload)
     expect(unload.defaultPrevented).toBe(true)
   })
+
+  it.each(['push', 'traverse'])(
+    'guards later departure after confirmed Cancel only changes the fragment via %s',
+    async navigationType => {
+      const user = await openEditor()
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+      await user.click(
+        within(await screen.findByRole('alertdialog')).getByRole('button', {
+          name: 'Confirm',
+        }),
+      )
+      expect(back).toHaveBeenCalledOnce()
+      const fragment = Object.assign(
+        new Event('navigate', { cancelable: true }),
+        {
+          navigationType,
+          hashChange: true,
+        },
+      )
+      act(() => navigation.dispatchEvent(fragment))
+      expect(fragment.defaultPrevented).toBe(false)
+      const unload = new Event('beforeunload', { cancelable: true })
+      fireEvent(window, unload)
+      expect(unload.defaultPrevented).toBe(true)
+      await user.click(
+        screen.getByRole('link', { name: 'Requirements library' }),
+      )
+      await user.click(
+        within(await screen.findByRole('alertdialog')).getByRole('button', {
+          name: 'Cancel',
+        }),
+      )
+      expect(
+        screen.getByRole('textbox', { name: /^Requirement text/ }),
+      ).toHaveValue('Local text')
+    },
+  )
 
   it.each([
     { navigationType: 'push', hashChange: false, cancelable: true },
@@ -1034,6 +1114,7 @@ describe('Requirement edit recovery', () => {
 
   it('keeps navigation guarded when an approved traversal is superseded', async () => {
     const user = await openEditor()
+    const input = screen.getByRole('textbox', { name: /^Requirement text/ })
     navigation.traverseTo.mockImplementationOnce(() => ({
       committed: Promise.reject(new Error('Superseded')),
       finished: Promise.reject(new Error('Superseded')),
@@ -1056,8 +1137,6 @@ describe('Requirement edit recovery', () => {
       navigation.dispatchEvent(event())
     })
     expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
-    expect(
-      screen.getByRole('textbox', { name: /^Requirement text/ }),
-    ).toHaveValue('Local text')
+    expect(input).toHaveValue('Local text')
   })
 })
