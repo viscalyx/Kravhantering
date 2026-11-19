@@ -93,6 +93,7 @@ export default function FormModal({
                 </h2>
                 <button
                   aria-label={tc('close')}
+                  {...devMarker({ name: 'dialog action', value: 'close' })}
                   className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-secondary-500 transition-colors hover:bg-secondary-100 hover:text-secondary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-secondary-300 dark:hover:bg-secondary-800 dark:hover:text-secondary-50 dark:focus-visible:ring-offset-secondary-950"
                   disabled={closeDisabled}
                   onClick={close}

@@ -13,6 +13,25 @@
 /* Class-based dark mode toggle */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Keep keyboard focus above Tailwind's layered outline-none utilities,
+ * including component-specific rings. The gap separates focus from borders
+ * and selected states; an outline survives forced colors removing shadows. */
+:focus-visible {
+  outline: 2px solid var(--color-primary-700);
+  outline-offset: 3px;
+}
+
+.dark :focus-visible {
+  outline-color: var(--color-primary-300);
+}
+
+@media (forced-colors: active) {
+  :focus-visible,
+  .dark :focus-visible {
+    outline-color: CanvasText;
+  }
+}
+
 @theme {
   /* Primary color scale — Indigo (modern, WCAG AAA friendly) */
   --color-primary-50: #eef2ff;

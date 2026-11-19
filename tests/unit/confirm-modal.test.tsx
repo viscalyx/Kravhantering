@@ -185,6 +185,18 @@ describe('ConfirmModal', () => {
     expect(dialog).toHaveStyle({ left: '140px', top: '340px' })
 
     const confirmButton = screen.getByRole('button', { name: 'Confirm' })
+    expect(confirmButton).toHaveAttribute(
+      'data-developer-mode-name',
+      'dialog action',
+    )
+    expect(confirmButton).toHaveAttribute(
+      'data-developer-mode-value',
+      'confirm',
+    )
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveAttribute(
+      'data-developer-mode-value',
+      'cancel',
+    )
     await waitFor(() => expect(confirmButton).toHaveFocus())
 
     await userEvent.click(confirmButton)

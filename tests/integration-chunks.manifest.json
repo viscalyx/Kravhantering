@@ -7,7 +7,7 @@
     "areasPerChunk": 1,
     "targetSpecs": 10
   },
-  "discoveredSpecCount": 61,
+  "discoveredSpecCount": 62,
   "suites": {
     "dev": {
       "chunks": [
@@ -39,7 +39,7 @@
         {
           "id": "dev-navigation",
           "paths": ["tests/integration/navigation"],
-          "specCount": 2
+          "specCount": 3
         },
         {
           "id": "dev-privacy",
@@ -104,7 +104,7 @@
         "tests/integration/platform/error-boundary-smoke.spec.ts",
         "tests/integration/platform/smoke.spec.ts"
       ],
-      "includedSpecCount": 53
+      "includedSpecCount": 54
     },
     "prodlike": {
       "chunks": [
@@ -150,6 +150,7 @@
         "tests/integration/deviations/lifecycle.spec.ts",
         "tests/integration/mcp/seeded-scan.spec.ts",
         "tests/integration/navigation/global-navigation.spec.ts",
+        "tests/integration/navigation/keyboard-focus.spec.ts",
         "tests/integration/navigation/mobile-smoke.spec.ts",
         "tests/integration/privacy/data-export.spec.ts",
         "tests/integration/privacy/export-actor-quota.spec.ts",
