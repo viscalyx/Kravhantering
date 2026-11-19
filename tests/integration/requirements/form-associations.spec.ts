@@ -200,10 +200,7 @@ test('LIFE-01B/A11Y-02: association drafts, fixed groups and nested creation per
       })
     }
     await test.step('save associations and edit with both destinations', async () => {
-      // The browser steps can outlast this API client's idle connection.
-      const area = await request.get('/api/requirement-areas', {
-        headers: { Connection: 'close' },
-      })
+      const area = await request.get('/api/requirement-areas')
       await expectApiResponseOk(area, 'load requirement areas for the test')
       const areas = await area.json()
       await page.locator('#areaId').selectOption(String(areas.areas[0].id))
