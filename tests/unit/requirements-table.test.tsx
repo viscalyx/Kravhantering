@@ -2569,6 +2569,89 @@ describe('RequirementsTable', () => {
     vi.useRealTimers()
   })
 
+  it.each([
+    {
+      column: 'uniqueId',
+      filter: 'uniqueIdSearch',
+      isComposing: true,
+      keyCode: 13,
+    },
+    {
+      column: 'uniqueId',
+      filter: 'uniqueIdSearch',
+      isComposing: false,
+      keyCode: 229,
+    },
+    {
+      column: 'description',
+      filter: 'descriptionSearch',
+      isComposing: true,
+      keyCode: 13,
+    },
+    {
+      column: 'description',
+      filter: 'descriptionSearch',
+      isComposing: false,
+      keyCode: 229,
+    },
+  ])(
+    'preserves composition in $column (isComposing=$isComposing, keyCode=$keyCode)',
+    ({ column, filter, isComposing, keyCode }) => {
+      vi.useFakeTimers()
+      try {
+        const onFilterChange = vi.fn()
+        render(
+          <RequirementsTable
+            filterValues={DEFAULT_FILTERS}
+            locale="sv"
+            onFilterChange={onFilterChange}
+            rows={[makeRow()]}
+          />,
+        )
+        const trigger = requireTestValue(getHeaderFilterButton(column))
+        fireEvent.click(trigger)
+        const textbox = screen.getByRole('textbox', { name: column })
+        expect(textbox).toHaveFocus()
+        fireEvent.change(textbox, { target: { value: 'にほん' } })
+
+        const compositionEnter = new KeyboardEvent('keydown', {
+          bubbles: true,
+          cancelable: true,
+          isComposing,
+          key: 'Enter',
+          keyCode,
+        })
+        fireEvent(textbox, compositionEnter)
+        expect(compositionEnter.defaultPrevented).toBe(false)
+        expect(textbox).toHaveFocus()
+        expect(onFilterChange).not.toHaveBeenCalled()
+
+        fireEvent.change(textbox, { target: { value: '日本' } })
+        const ordinaryEnter = new KeyboardEvent('keydown', {
+          bubbles: true,
+          cancelable: true,
+          key: 'Enter',
+          keyCode: 13,
+        })
+        fireEvent(textbox, ordinaryEnter)
+        expect(ordinaryEnter.defaultPrevented).toBe(true)
+        expect(
+          screen.queryByRole('textbox', { name: column }),
+        ).not.toBeInTheDocument()
+        expect(trigger).toHaveFocus()
+        expect(onFilterChange).toHaveBeenCalledExactlyOnceWith({
+          ...DEFAULT_FILTERS,
+          [filter]: '日本',
+        })
+
+        act(() => vi.advanceTimersByTime(400))
+        expect(onFilterChange).toHaveBeenCalledTimes(1)
+      } finally {
+        vi.useRealTimers()
+      }
+    },
+  )
+
   it('keeps the column-search clear control at 24 CSS pixels inside its textbox', () => {
     render(
       <RequirementsTable
