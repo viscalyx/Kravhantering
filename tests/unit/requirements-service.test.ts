@@ -830,6 +830,34 @@ describe('createRequirementsService', () => {
     )
   })
 
+  it('selects published detail after history denial and propagates unexpected authorization failures', async () => {
+    mocks.getRequirementById.mockResolvedValue(
+      makeRequirementRecordWithPublishedVersion(),
+    )
+    const assertAuthorized = vi
+      .fn()
+      .mockRejectedValueOnce(forbiddenError())
+      .mockResolvedValue(undefined)
+    const service = createRequirementsService(
+      { query: mocks.auditQuery } as never,
+      { authorization: { assertAuthorized }, logger },
+    )
+    const query = { id: 1, view: 'accessible' as const }
+    const published = await service.getRequirement(makeContext(), query)
+    expect(published.versions).toBeUndefined()
+    expect(
+      published.requirement.versions.map(version => version.versionNumber),
+    ).toEqual([1])
+    const history = await service.getRequirement(makeContext(), query)
+    expect(history.versions).toHaveLength(2)
+    assertAuthorized.mockRejectedValueOnce(
+      new Error('authorization datastore unavailable'),
+    )
+    await expect(service.getRequirement(makeContext(), query)).rejects.toThrow(
+      'authorization datastore unavailable',
+    )
+  })
+
   it('returns an explicit non-published version only when requested', async () => {
     mocks.getRequirementById.mockResolvedValueOnce(
       makeRequirementRecordWithPublishedVersion(),

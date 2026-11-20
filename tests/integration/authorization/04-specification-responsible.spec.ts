@@ -27,10 +27,10 @@ test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
   fixture = await createAuthorizationFixture(testInfo)
 })
 
-test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assignments', async ({
+test('NAV-02/AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assignments', async ({
   page,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTHZ-04', 'AUTH-10', 'AUTH-11')
+  referenceManualCases(testInfo, 'AUTHZ-04', 'AUTH-10', 'AUTH-11', 'NAV-02')
   const specificationResponsible = await newRoleContext(
     testInfo,
     'specificationResponsible',
@@ -220,6 +220,69 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
       403,
       'specification responsible privacy preview',
     )
+    await test.step('transferring the only assignment removes the specification code from the title', async () => {
+      // Use a disposable specification so the role-matrix fixture keeps its assignments.
+      const created = await specificationResponsible.post(
+        '/api/requirements-specifications',
+        {
+          data: {
+            name: 'Title after responsibility transfer',
+            specificationCode: `TRANSFER-${Date.now()}`,
+            specificationLifecycleStatusId: 1,
+          },
+        },
+      )
+      await expectOk(
+        created,
+        'create specification for responsibility transfer',
+      )
+      const record = (await created.json()) as {
+        id: number
+        specificationCode: string
+      }
+      const admin = await newRoleContext(testInfo, 'admin')
+      try {
+        await page.goto(`/sv/specifications/${record.id}`)
+        await expect(page).toHaveTitle(
+          `${record.specificationCode} – Kravunderlag | Kravhantering`,
+        )
+        await page
+          .getByRole('button', { name: 'Redigera kravunderlag', exact: true })
+          .click()
+        await page
+          .getByRole('button', {
+            name: 'Byt kravunderlagsansvarig',
+            exact: true,
+          })
+          .click()
+        const change = page.getByRole('dialog', {
+          name: 'Byt kravunderlagsansvarig',
+        })
+        await change
+          .getByRole('textbox', { name: 'Nya kravunderlagsansvarigs HSA-id' })
+          .fill('admin1')
+        await change.getByRole('button', { name: 'Hämta', exact: true }).click()
+        await change
+          .getByRole('button', {
+            name: 'Byt kravunderlagsansvarig',
+            exact: true,
+          })
+          .click()
+        await expect(page).toHaveTitle('Kravunderlag | Kravhantering')
+        await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+          'Du har inte åtkomst till detta kravunderlag',
+        )
+      } finally {
+        try {
+          await expectOk(
+            await admin.delete(`/api/requirements-specifications/${record.id}`),
+            'delete transfer fixture',
+          )
+        } finally {
+          await admin.dispose()
+        }
+      }
+    })
   } finally {
     try {
       const verificationEvidence = await Promise.all(

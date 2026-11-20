@@ -140,6 +140,11 @@
     }
   },
   "nav": {
+    "recordTitles": {
+      "requirement": "{uniqueId} – Krav",
+      "requirementVersion": "{uniqueId}, version {version} – Krav",
+      "specification": "{specificationCode} – Kravunderlag"
+    },
     "catalog": "Kravbibliotek",
     "stewardship": "Kravbiblioteksförvaltning",
     "areas": "Kravområden",

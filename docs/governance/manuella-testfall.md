@@ -40,6 +40,7 @@ hämtning i flera sidor verifierar inte ensamma rapportens fullständiga innehå
 - [Konfigurerade användare](#konfigurerade-användare)
 - [Allmän förberedelse](#allmän-förberedelse)
 - [Navigering](#navigering)
+  - [Fliktitlar för enskilda poster](#nav-02-fliktitlar-för-enskilda-poster)
 - [Tillgänglighet](#tillgänglighet)
   - [Tangentbordsrullning i tabeller](#a11y-05-rulla-kravtabellen-med-tangentbord)
   - [Minskad rörelse vid rullning](#a11y-06-rulla-till-innehåll-med-minskad-rörelse)
@@ -171,6 +172,59 @@ Det första testfallet körs för varje kombination av språk, tema och vy.
   ändring av fönstret och rullning.
 - Vid byte till skrivbordsläge stängs mobilmenyn och sidans kontroller och
   rullning fungerar.
+
+### NAV-02: fliktitlar för enskilda poster
+
+**Syfte:** Skilj öppna krav, kravversioner och kravunderlag åt med hjälp av
+webbläsarens fliktitel.
+
+**Användare:** `ada.admin`, `noah.noroles` och `petra.specresp`.
+
+**Förutsättningar:** Använd seedade poster. Upprepa med språkprefixen
+`/sv` och `/en`.
+
+**Integrationstest:**
+[global-navigation.spec.ts](../../tests/integration/navigation/global-navigation.spec.ts),
+testfallet “NAV-02: tabs identify records and selected versions”, samt
+[01-no-global-roles-no-assignments.spec.ts](../../tests/integration/authorization/01-no-global-roles-no-assignments.spec.ts),
+testfallet “NAV-02/AUTHZ-01: unavailable records have generic tab titles”.
+
+Vid borttagning av utkast och byte av ansvarig täcks titlarna även av
+“NAV-02/AUTHZ-01: version controls enforce current publication status”
+i samma fil och
+“NAV-02/AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can
+manage assignments” i
+[04-specification-responsible.spec.ts](../../tests/integration/authorization/04-specification-responsible.spec.ts).
+
+**Steg:**
+
+1. Logga in som `ada.admin`. Öppna `/sv/krav/ANV0001` och
+   `/sv/krav/ANV0002` i varsin flik. Kontrollera titlarna efter omdirigering.
+1. Öppna `/sv/requirements/INT0001/1` i två flikar. Välj version 2 i
+   versionshistoriken i den ena. Jämför titlarna och ladda om fliken.
+1. Öppna `/sv/specifications/AUTHZ-SPEC-2026` och
+   `/sv/specifications/DRIFT-FORV-BAS`. Jämför titlarna efter omdirigering
+   till de numeriska adresserna.
+1. Logga in som `noah.noroles`. Öppna publicerad version 1 av `INT0001`,
+   sedan utkastet på `/sv/requirements/INT0001/2`, version 99 samt
+   `/sv/requirements/INT0001/1?versionId=2`. Öppna även kravet `ANV0001`,
+   kravunderlaget `AUTHZ-SPEC-2026` och en obefintlig post av vardera slaget.
+1. Som `ada.admin`, öppna versionslänken till ett tillfälligt utkast som
+   har en tidigare publicerad version. Välj **Ta bort** och bekräfta.
+1. Som `petra.specresp`, skapa ett tillfälligt kravunderlag. Öppna detaljen
+   och byt kravunderlagsansvarig till `ada.admin` via redigeringsformuläret.
+   Kontrollera titeln och låt Ada ta bort testunderlaget efteråt.
+
+**Förväntat resultat:**
+
+- För läsbara poster börjar titeln med Krav-ID eller Kravunderlagskod.
+  Versionslänkarna visar rätt versionsnummer även efter flikbyte och
+  omladdning. Titeln avslutas en gång med `| Kravhantering` på svenska och
+  `| Requirements Management` på engelska.
+- För saknade, nekade eller omatchade poster visas bara områdets titel
+  och applikationsnamnet. På svenska är områdestitlarna **Kravbibliotek**
+  och **Kravunderlag**, på engelska **Requirements Library** och
+  **Requirements specifications**.
 
 ## Tillgänglighet
 
@@ -2395,12 +2449,14 @@ kontrollera att
 Spara är inaktiverad innan ändring. Ändra text, klicka X och avbryt
 förkastandet. Kontrollera ansvarig persons HSA-id-fält och att klick utanför
 dialogen inte stänger formuläret. Prova samma textgränser som i SPEC-02.
+Ändra kravunderlagskoden på ett tillfälligt kravunderlag och spara.
 
 **Förväntat resultat:** Spara aktiveras först efter metadataändringen. X visar
 bekräftelse innan formulär med osparade ändringar förkastas. HSA-id för
 ansvarig person visas i formuläret och dialogen ligger kvar vid klick utanför.
 Sidhuvudet börjar hopfällt med livscykelstatus och avtal. Utfällt visas även
 beskrivning och samtliga metadata. Textgränserna gäller även redigering.
+Fliktiteln visar den sparade koden direkt.
 
 ### SPEC-04: ta bort kravunderlag med bekräftelse
 

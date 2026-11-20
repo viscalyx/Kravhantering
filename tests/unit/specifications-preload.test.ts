@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   getSpecificationItems: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
   getSpecificationByCode: vi.fn(),
+  getSpecificationCodeById: vi.fn(),
   getSpecificationForbiddenSummaryById: vi.fn(),
   getSpecificationById: vi.fn(),
   listAreas: vi.fn(),
@@ -50,6 +51,7 @@ vi.mock('@/lib/dal/requirements-specifications', async importOriginal => {
   return {
     ...actual,
     getSpecificationByCode: mocks.getSpecificationByCode,
+    getSpecificationCodeById: mocks.getSpecificationCodeById,
     getSpecificationForbiddenSummaryById:
       mocks.getSpecificationForbiddenSummaryById,
     getSpecificationById: mocks.getSpecificationById,
@@ -108,6 +110,7 @@ vi.mock('@/lib/requirements/specification-requirement-packages', () => ({
 }))
 
 import {
+  loadAuthorizedSpecificationCode,
   loadRequirementsSpecificationDetailInitialData,
   loadRequirementsSpecificationsInitialData,
   resolveRequirementsSpecificationRouteParam,
@@ -252,6 +255,28 @@ describe('specifications preload', () => {
     await expect(
       resolveRequirementsSpecificationRouteParam('MISSING'),
     ).resolves.toBeNull()
+  })
+
+  it('reads the title code only after the specification read policy grants access', async () => {
+    const assertAuthorized = vi
+      .fn()
+      .mockRejectedValueOnce(forbiddenError())
+      .mockResolvedValue(undefined)
+    mocks.createRequirementsRuntime.mockReturnValue({
+      authorization: { assertAuthorized },
+    })
+    mocks.getSpecificationCodeById
+      .mockResolvedValueOnce('SPEC-42')
+      .mockResolvedValueOnce(null)
+    await expect(loadAuthorizedSpecificationCode('SPEC-42')).resolves.toBeNull()
+    await expect(loadAuthorizedSpecificationCode('42')).resolves.toBeNull()
+    expect(mocks.getSpecificationCodeById).not.toHaveBeenCalled()
+    await expect(loadAuthorizedSpecificationCode('42')).resolves.toBe('SPEC-42')
+    await expect(loadAuthorizedSpecificationCode('123')).resolves.toBeNull()
+    expect(assertAuthorized).toHaveBeenCalledWith(
+      { kind: 'get_specification_items', specificationId: 42 },
+      expect.anything(),
+    )
   })
 
   it('preloads the complete observable specification workspace', async () => {

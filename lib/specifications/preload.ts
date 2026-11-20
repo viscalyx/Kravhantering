@@ -10,6 +10,7 @@ import { listRequirementPackages } from '@/lib/dal/requirement-packages'
 import {
   getSpecificationByCode,
   getSpecificationById,
+  getSpecificationCodeById,
   getSpecificationForbiddenSummaryById,
   listSpecificationCoAuthorHsaIds,
   listSpecificationNeedsReferences,
@@ -439,6 +440,30 @@ export async function loadRequirementsSpecificationDetailInitialData({
     specificationLifecycleStatuses: specificationLifecycleStatuses.value,
     specificationGovernanceObjectTypes:
       specificationGovernanceObjectTypes.value,
+  }
+}
+
+export async function loadAuthorizedSpecificationCode(
+  routeParam: string,
+): Promise<string | null> {
+  const id = positiveIntegerStringSchema.safeParse(routeParam)
+  if (!id.success || routeParam !== String(id.data)) return null
+  const context = await createServerComponentRequestContext({
+    path: `/specifications/${id.data}`,
+  })
+  try {
+    const db = await getRequestSqlServerDataSource()
+    const { authorization } = createRequirementsRuntime(db)
+    await authorization.assertAuthorized(
+      { kind: 'get_specification_items', specificationId: id.data },
+      context,
+    )
+    return await getSpecificationCodeById(db, id.data)
+  } catch (error) {
+    if (!isRequirementsServiceError(error) || error.status >= 500) {
+      logSanitizedError('Failed to resolve specification title', error)
+    }
+    return null
   }
 }
 

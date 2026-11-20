@@ -39,6 +39,7 @@ import {
   type AuthorizationService,
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
+import { canAuthorize } from '@/lib/requirements/can-authorize'
 import {
   conflictError,
   isRequirementsServiceError,
@@ -630,6 +631,20 @@ export function createRequirementWorkflow({
       const responseFormat = input.responseFormat ?? 'markdown'
       const locale = input.locale ?? 'en'
 
+      let view = input.view
+      if (view === 'accessible') {
+        const canViewHistory = await canAuthorize(
+          authorization,
+          {
+            kind: 'get_requirement',
+            id: input.id,
+            uniqueId: input.uniqueId,
+            view: 'history',
+          },
+          context,
+        )
+        view = canViewHistory ? 'history' : 'detail'
+      }
       await authorize(
         authorization,
         {
@@ -639,12 +654,13 @@ export function createRequirementWorkflow({
           versionNumber: input.versionNumber,
           // Check parent visibility before loading content. Version visibility
           // is checked against the selected record below.
-          view: input.view === 'version' ? 'detail' : input.view,
+          view: view === 'version' ? 'detail' : view,
         },
         context,
         db,
       )
 
+      view ??= 'detail'
       return withLogging(
         logger,
         context,
@@ -653,7 +669,7 @@ export function createRequirementWorkflow({
           requirement_id: input.id,
           requirement_unique_id: input.uniqueId,
           version_number: input.versionNumber,
-          view: input.view,
+          view,
         },
         async () => {
           const requirement = await resolveRequirement(db, input)
@@ -665,7 +681,6 @@ export function createRequirementWorkflow({
           }
 
           const detail = formatRequirementDetail(requirement)
-          const view = input.view ?? 'detail'
           const latestPublishedVersion = getLatestPublishedVersion(detail)
 
           if (view === 'version' && input.versionNumber == null) {

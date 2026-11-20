@@ -49,6 +49,7 @@ import { useSpecificationItemContext } from './_detail/use-specification-item-co
 import { useSuggestionWorkflow } from './_detail/use-suggestion-workflow'
 import { useVersionPillConnector } from './_detail/use-version-pill-connector'
 import {
+  findRequestedVersion,
   getDisplayVersionNumber,
   getRequirementVersionState,
 } from './_detail/version-state'
@@ -316,11 +317,12 @@ export default function RequirementDetailClient({
     (versionNumber: number) => {
       setSelectedVersionNumber(versionNumber)
       if (!inline) {
-        const url = `/${locale}/requirements/${requirementId}/${versionNumber}`
-        window.history.replaceState(null, '', url)
+        router.replace(`/requirements/${requirementId}/${versionNumber}`, {
+          scroll: false,
+        })
       }
     },
-    [inline, locale, requirementId],
+    [inline, requirementId, router],
   )
 
   if (detailState === 'loading') {
@@ -802,6 +804,7 @@ export default function RequirementDetailClient({
         else router.push('/requirements')
         await onChange?.()
       } else {
+        if (!inline && defaultVersion != null) router.refresh()
         await Promise.all([refreshRequirement(), onChange?.()])
       }
     }
@@ -897,11 +900,7 @@ export default function RequirementDetailClient({
 
   if (
     expectedVersionId != null &&
-    !req.versions.some(
-      version =>
-        version.id === expectedVersionId &&
-        version.versionNumber === defaultVersion,
-    )
+    !findRequestedVersion(req.versions, defaultVersion, expectedVersionId)
   ) {
     return (
       <p

@@ -5,17 +5,32 @@ import { routing } from '@/i18n/routing'
 import { getSession, isSignedIn } from '@/lib/auth/session'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import {
+  loadAuthorizedSpecificationCode,
   loadRequirementsSpecificationDetailInitialData,
   resolveRequirementsSpecificationRouteParam,
 } from '@/lib/specifications/preload'
 import RequirementsSpecificationDetailClient from './requirements-specification-detail-client'
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('nav')
-  return { title: t('specifications') }
-}
-
 type Params = Promise<{ locale: string; specificationId: string }>
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Params
+}): Promise<Metadata> {
+  const { locale, specificationId } = await params
+  const t = await getTranslations({
+    locale: resolveLocale(locale),
+    namespace: 'nav',
+  })
+  const specificationCode =
+    await loadAuthorizedSpecificationCode(specificationId)
+  return {
+    title: specificationCode
+      ? t('recordTitles.specification', { specificationCode })
+      : t('specifications'),
+  }
+}
 
 function resolveLocale(requestedLocale: string): 'sv' | 'en' {
   return routing.locales.includes(requestedLocale as 'sv' | 'en')

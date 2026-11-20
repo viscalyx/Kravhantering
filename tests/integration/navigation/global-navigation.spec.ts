@@ -379,3 +379,66 @@ for (const path of [
     })
   })
 }
+
+for (const locale of ['sv', 'en'] as const) {
+  test.describe(`Browser titles in ${locale}`, () => {
+    const app = locale === 'sv' ? 'Kravhantering' : 'Requirements Management'
+    const requirement = locale === 'sv' ? 'Krav' : 'Requirement'
+    const specification =
+      locale === 'sv' ? 'Kravunderlag' : 'Requirements specification'
+    test('NAV-02: tabs identify records and selected versions', async ({
+      context,
+      page,
+    }) => {
+      const secondTab = await context.newPage()
+      await test.step('compare requirements after their canonical redirects', async () => {
+        for (const [tab, id] of [
+          [page, 'ANV0001'],
+          [secondTab, 'ANV0002'],
+        ] as const) {
+          await tab.goto(`/${locale}/krav/${id}`)
+          await expect(tab).toHaveURL(
+            new RegExp(`/${locale}/requirements/${id}$`),
+          )
+          await expect(tab).toHaveTitle(`${id} – ${requirement} | ${app}`)
+          await expect(
+            tab.getByRole('heading', { name: id, exact: true }),
+          ).toHaveText(id)
+        }
+      })
+
+      await test.step('switch versions in the page and reload the selected version', async () => {
+        await page.goto(`/${locale}/requirements/INT0001/1`)
+        await expect(page).toHaveTitle(
+          `INT0001, version 1 – ${requirement} | ${app}`,
+        )
+        await secondTab.goto(`/${locale}/requirements/INT0001/1`)
+        await secondTab.getByRole('button', { name: /^v2 / }).click()
+        await expect(secondTab).toHaveURL(
+          new RegExp(`/${locale}/requirements/INT0001/2$`),
+        )
+        await expect(secondTab).toHaveTitle(
+          `INT0001, version 2 – ${requirement} | ${app}`,
+        )
+        await secondTab.reload()
+        await expect(secondTab).toHaveTitle(
+          `INT0001, version 2 – ${requirement} | ${app}`,
+        )
+        await page.bringToFront()
+        await expect(page).toHaveTitle(
+          `INT0001, version 1 – ${requirement} | ${app}`,
+        )
+      })
+      await test.step('compare specifications at their canonical numeric URLs', async () => {
+        for (const [tab, code] of [
+          [page, 'AUTHZ-SPEC-2026'],
+          [secondTab, 'DRIFT-FORV-BAS'],
+        ] as const) {
+          await tab.goto(`/${locale}/specifications/${code}`)
+          await expect(tab).toHaveURL(/\/specifications\/\d+$/)
+          await expect(tab).toHaveTitle(`${code} – ${specification} | ${app}`)
+        }
+      })
+    })
+  })
+}

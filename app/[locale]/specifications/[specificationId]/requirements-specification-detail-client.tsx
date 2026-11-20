@@ -78,7 +78,7 @@ import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { useRequirementDetailPrefetchIntent } from '@/hooks/useRequirementDetailPrefetchIntent'
-import { Link } from '@/i18n/routing'
+import { Link, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -539,6 +539,7 @@ export default function KravunderlagDetailClient({
   const t = useTranslations('specification')
   const tc = useTranslations('common')
   const td = useTranslations('deviation')
+  const router = useRouter()
   const locale = useLocale()
   const { confirm } = useConfirmModal()
   const confirmDiscardChanges = useDiscardChangesConfirmation()
@@ -4636,6 +4637,7 @@ export default function KravunderlagDetailClient({
         mode="edit"
         onClose={() => setShowEditSpecificationForm(false)}
         onResponsibleChanged={updatedSpec => {
+          router.refresh()
           setSpec(current =>
             current
               ? {
@@ -4646,8 +4648,9 @@ export default function KravunderlagDetailClient({
               : current,
           )
         }}
-        onSaved={async () => {
+        onSaved={async ({ newSpecificationCode }) => {
           setShowEditSpecificationForm(false)
+          if (newSpecificationCode !== spec.specificationCode) router.refresh()
           await fetchSpecificationMeta()
         }}
         open={showEditSpecificationForm}

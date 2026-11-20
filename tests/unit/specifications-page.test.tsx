@@ -16,7 +16,10 @@ vi.mock('@/lib/auth/session', () => ({
 }))
 
 vi.mock('next-intl/server', () => ({
-  getTranslations: vi.fn(async () => (key: string) => key),
+  getTranslations: vi.fn(
+    async () => (key: string, values?: { specificationCode: string }) =>
+      values ? `${key} ${values.specificationCode}` : key,
+  ),
 }))
 
 vi.mock('next/navigation', () => ({
@@ -57,6 +60,7 @@ vi.mock(
 )
 
 vi.mock('@/lib/specifications/preload', () => ({
+  loadAuthorizedSpecificationCode: vi.fn(async () => 'SPEC-123'),
   loadRequirementsSpecificationDetailInitialData: vi.fn(async () => ({
     specificationItems: {
       items: [{ id: 1 }],
@@ -104,8 +108,12 @@ describe('specifications pages', () => {
       '@/lib/specifications/preload'
     )
 
-    await expect(generateMetadata()).resolves.toEqual({
-      title: 'specifications',
+    await expect(
+      generateMetadata({
+        params: Promise.resolve({ locale: 'sv', specificationId: '8' }),
+      }),
+    ).resolves.toEqual({
+      title: 'recordTitles.specification SPEC-123',
     })
     const element = await RequirementsSpecificationDetailPage({
       params: Promise.resolve({ locale: 'unsupported', specificationId: '8' }),
@@ -122,6 +130,25 @@ describe('specifications pages', () => {
         specificationId: 8,
       },
     )
+  })
+
+  it('uses the generic title when the specification code is unavailable', async () => {
+    const { generateMetadata } = await import(
+      '@/app/[locale]/specifications/[specificationId]/page'
+    )
+    const { loadAuthorizedSpecificationCode } = await import(
+      '@/lib/specifications/preload'
+    )
+    vi.mocked(loadAuthorizedSpecificationCode)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+    for (const specificationId of ['MISSING', '8']) {
+      await expect(
+        generateMetadata({
+          params: Promise.resolve({ locale: 'en', specificationId }),
+        }),
+      ).resolves.toEqual({ title: 'specifications' })
+    }
   })
 
   it('RequirementsSpecificationDetailPage redirects non-canonical numeric ids', async () => {

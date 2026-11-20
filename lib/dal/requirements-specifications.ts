@@ -932,6 +932,17 @@ export async function getSpecificationById(db: SqlServerDatabase, id: number) {
   return mapSpecificationRow(rows[0])
 }
 
+export async function getSpecificationCodeById(
+  db: SqlServerDatabase,
+  id: number,
+): Promise<string | null> {
+  const rows: Array<{ specificationCode: string }> = await db.query(
+    'SELECT specification_code AS specificationCode FROM requirements_specifications WHERE id = @0',
+    [id],
+  )
+  return rows[0]?.specificationCode ?? null
+}
+
 export async function findSpecificationIdentity(
   db: SqlExecutor,
   specificationId: number,

@@ -1,22 +1,26 @@
 import type { Metadata } from 'next'
-import { getTranslations } from 'next-intl/server'
 import { getSession, isSignedIn } from '@/lib/auth/session'
 import RequirementDetailClient from '../requirement-detail-client'
+import { requirementMetadata } from '../requirement-metadata'
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('nav')
-  return { title: t('catalog') }
+type PageProps = {
+  params: Promise<{ id: string; locale: string; version: string }>
+  searchParams: Promise<{ versionId?: string }>
 }
 
-type Params = Promise<{ id: string; version: string }>
+export async function generateMetadata({
+  params,
+  searchParams,
+}: PageProps): Promise<Metadata> {
+  const { id, locale, version } = await params
+  const { versionId } = await searchParams
+  return requirementMetadata({ id, locale, version, versionId })
+}
 
 export default async function RequirementVersionPage({
   params,
   searchParams,
-}: {
-  params: Params
-  searchParams: Promise<{ versionId?: string }>
-}) {
+}: PageProps) {
   const { id, version } = await params
   const versionNumber = Number(version)
   const { versionId } = await searchParams
