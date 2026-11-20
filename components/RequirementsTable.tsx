@@ -58,6 +58,7 @@ import {
 } from '@/lib/developer-mode-markers'
 import { getStatusIconComponent } from '@/lib/icons/status-icon-components'
 import { modalPortalTarget } from '@/lib/modal-focus'
+import { getScrollBehavior } from '@/lib/reduced-motion'
 import {
   type AreaOption,
   clearRequirementFiltersForHiddenColumns,
@@ -1812,17 +1813,8 @@ export default function RequirementsTable({
   )
 
   const scrollTableToTop = useCallback(() => {
-    if (!tableRootRef.current) {
-      return
-    }
-
-    const prefersReducedMotion =
-      typeof window !== 'undefined' &&
-      (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ??
-        false)
-
-    tableRootRef.current.scrollIntoView({
-      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    tableRootRef.current?.scrollIntoView?.({
+      behavior: getScrollBehavior(),
       block: 'start',
     })
   }, [])

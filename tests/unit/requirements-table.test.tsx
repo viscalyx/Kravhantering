@@ -1947,7 +1947,7 @@ describe('RequirementsTable', () => {
     fireEvent.click(scrollTopTrigger)
 
     expect(scrollIntoView).toHaveBeenCalledWith({
-      behavior: 'auto',
+      behavior: 'instant',
       block: 'start',
     })
   })

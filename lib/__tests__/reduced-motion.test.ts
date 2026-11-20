@@ -1,13 +1,36 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   collapsiblePanelMotion,
   dialogPanelMotion,
   drawerPanelMotion,
   fadeMotion,
+  getScrollBehavior,
   offsetPanelMotion,
   repeatingScrollCueMotion,
   scrollCueMotion,
 } from '@/lib/reduced-motion'
+
+describe('getScrollBehavior', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('uses the current preference for each scroll', () => {
+    const matchMedia = vi.fn().mockReturnValue({ matches: false })
+    vi.stubGlobal('matchMedia', matchMedia)
+
+    expect(getScrollBehavior()).toBe('smooth')
+
+    matchMedia.mockReturnValue({ matches: true })
+    expect(getScrollBehavior()).toBe('instant')
+  })
+
+  it('defaults to instant scrolling when the browser preference is unavailable', () => {
+    vi.stubGlobal('matchMedia', undefined)
+    expect(getScrollBehavior()).toBe('instant')
+
+    vi.stubGlobal('window', undefined)
+    expect(getScrollBehavior()).toBe('instant')
+  })
+})
 
 describe('reduced-motion helpers', () => {
   it('keeps standard fade transitions when motion is allowed', () => {
