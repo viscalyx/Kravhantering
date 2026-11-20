@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
+import { cache } from 'react'
 import { routing } from '@/i18n/routing'
 import { getSession, isSignedIn } from '@/lib/auth/session'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
@@ -10,12 +11,41 @@ import {
 } from '@/lib/specifications/preload'
 import RequirementsSpecificationDetailClient from './requirements-specification-detail-client'
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('nav')
+type Params = Promise<{ locale: string; specificationId: string }>
+
+const resolveSpecification = cache(resolveRequirementsSpecificationRouteParam)
+const loadDetail = cache((locale: 'sv' | 'en', specificationId: number) =>
+  loadRequirementsSpecificationDetailInitialData({ locale, specificationId }),
+)
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Params
+}): Promise<Metadata> {
+  const { locale: requestedLocale, specificationId } = await params
+  const locale = resolveLocale(requestedLocale)
+  const t = await getTranslations({ locale, namespace: 'nav' })
+  const resolved = await resolveSpecification(specificationId)
+  if (
+    resolved &&
+    specificationId === String(resolved.id) &&
+    !resolved.fromCode
+  ) {
+    const { authorizedSpecificationCode } = await loadDetail(
+      locale,
+      resolved.id,
+    )
+    if (authorizedSpecificationCode) {
+      return {
+        title: t('specificationTitle', {
+          specificationCode: authorizedSpecificationCode,
+        }),
+      }
+    }
+  }
   return { title: t('specifications') }
 }
-
-type Params = Promise<{ locale: string; specificationId: string }>
 
 function resolveLocale(requestedLocale: string): 'sv' | 'en' {
   return routing.locales.includes(requestedLocale as 'sv' | 'en')
@@ -31,8 +61,7 @@ export default async function RequirementsSpecificationDetailPage({
   const { locale: requestedLocale, specificationId: specificationIdParam } =
     await params
   const locale = resolveLocale(requestedLocale)
-  const resolvedSpecification =
-    await resolveRequirementsSpecificationRouteParam(specificationIdParam)
+  const resolvedSpecification = await resolveSpecification(specificationIdParam)
   if (!resolvedSpecification) {
     notFound()
   }
@@ -42,10 +71,7 @@ export default async function RequirementsSpecificationDetailPage({
   ) {
     redirect(`/${locale}/specifications/${resolvedSpecification.id}`)
   }
-  const initialData = await loadRequirementsSpecificationDetailInitialData({
-    locale,
-    specificationId: resolvedSpecification.id,
-  })
+  const initialData = await loadDetail(locale, resolvedSpecification.id)
   if (initialData.notFound) {
     notFound()
   }

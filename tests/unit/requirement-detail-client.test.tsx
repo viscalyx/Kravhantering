@@ -23,6 +23,7 @@ import type {
 } from '@/lib/requirements/types'
 
 const routerPush = vi.fn()
+const routerReplace = vi.fn()
 const pdfDownloadState = vi.hoisted(() => ({
   clearError: vi.fn(),
   download: vi.fn(),
@@ -159,7 +160,7 @@ vi.mock('@/i18n/routing', () => ({
       {children}
     </a>
   ),
-  useRouter: () => ({ push: routerPush }),
+  useRouter: () => ({ push: routerPush, replace: routerReplace }),
 }))
 
 vi.mock('@/components/StatusStepper', () => ({
@@ -956,7 +957,9 @@ describe('RequirementDetailClient', () => {
     expect(screen.getByText('Older English requirement')).toBeInTheDocument()
     expect(screen.getByText('55')).toBeInTheDocument()
     expect(screen.getByText('NORM-9')).toBeInTheDocument()
-    expect(window.location.pathname).toBe('/en/requirements/123/1')
+    expect(routerReplace).toHaveBeenCalledWith('/requirements/123/1', {
+      scroll: false,
+    })
   })
 
   it('renders the specification count in the detail view', async () => {

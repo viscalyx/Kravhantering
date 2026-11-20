@@ -5,7 +5,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const pageMocks = vi.hoisted(() => ({
   editClient: vi.fn(() => null),
   form: vi.fn(() => null),
+  getRequirement: vi.fn(),
+  assertAuthorized: vi.fn(),
   requirementDetailClient: vi.fn(() => null),
+}))
+
+vi.mock('@/lib/db', () => ({ getRequestSqlServerDataSource: vi.fn() }))
+vi.mock('@/lib/requirements/server-component-context', () => ({
+  createServerComponentRequestContext: vi.fn(async () => ({})),
+}))
+vi.mock('@/lib/requirements/server', () => ({
+  createRequirementsRuntime: () => ({
+    authorization: { assertAuthorized: pageMocks.assertAuthorized },
+    service: { getRequirement: pageMocks.getRequirement },
+  }),
 }))
 
 vi.mock('@/lib/auth/session', () => ({
@@ -18,7 +31,10 @@ vi.mock('next-intl', () => ({
 }))
 
 vi.mock('next-intl/server', () => ({
-  getTranslations: vi.fn(async () => (key: string) => key),
+  getTranslations: vi.fn(
+    async () => (key: string, values?: object) =>
+      values ? [key, ...Object.values(values)].join(' ') : key,
+  ),
 }))
 
 vi.mock('@/components/HelpPanel', () => ({
@@ -51,23 +67,87 @@ import NewRequirementClient from '@/app/[locale]/requirements/new/new-requiremen
 import NewRequirementPage, {
   generateMetadata as generateNewMetadata,
 } from '@/app/[locale]/requirements/new/page'
+import { forbiddenError, notFoundError } from '@/lib/requirements/errors'
 
 describe('requirements core pages', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('provides localized titles for create, edit, detail, and version pages', async () => {
+  it('provides localized titles for create and edit pages', async () => {
     await expect(generateNewMetadata()).resolves.toEqual({
       title: 'newRequirement',
     })
     await expect(generateEditMetadata()).resolves.toEqual({
       title: 'editRequirement',
     })
-    await expect(generateDetailMetadata()).resolves.toEqual({
-      title: 'catalog',
+  })
+
+  it('uses the business ID from the authorized requirement for a numeric route', async () => {
+    pageMocks.getRequirement.mockResolvedValueOnce({
+      requirement: { uniqueId: 'ANV0001', versions: [] },
     })
-    await expect(generateVersionMetadata()).resolves.toEqual({
-      title: 'catalog',
-    })
+    await expect(
+      generateDetailMetadata({
+        params: Promise.resolve({ id: '7' }),
+      }),
+    ).resolves.toEqual({ title: 'requirementTitle ANV0001' })
+  })
+
+  it.each([forbiddenError(), notFoundError('Missing')])(
+    'uses the generic title when the service rejects the requirement',
+    async error => {
+      pageMocks.getRequirement.mockRejectedValueOnce(error)
+      await expect(
+        generateDetailMetadata({ params: Promise.resolve({ id: 'SECRET' }) }),
+      ).resolves.toEqual({ title: 'catalog' })
+    },
+  )
+
+  it.each([
+    ['1', '21', 'requirementVersionTitle INT0001 1'],
+    ['2', undefined, 'requirementVersionTitle INT0001 2'],
+    ['2', '21', 'catalog'],
+    ['3', undefined, 'catalog'],
+    ['latest', undefined, 'catalog'],
+  ] as const)(
+    'matches visible version %s and version identity %s',
+    async (version, versionId, title) => {
+      pageMocks.getRequirement.mockResolvedValueOnce({
+        requirement: {
+          uniqueId: 'INT0001',
+          versions: [
+            { versionNumber: 1, id: 21 },
+            { versionNumber: 2, id: 42 },
+          ],
+        },
+      })
+      await expect(
+        generateVersionMetadata({
+          params: Promise.resolve({ id: '1', version }),
+          searchParams: Promise.resolve({ versionId }),
+        }),
+      ).resolves.toEqual({ title })
+    },
+  )
+
+  it('uses only the published detail when history access is denied', async () => {
+    pageMocks.assertAuthorized.mockRejectedValueOnce(forbiddenError())
+    pageMocks.getRequirement.mockImplementationOnce(
+      async (_context, query) => ({
+        requirement: {
+          uniqueId: 'INT0001',
+          versions:
+            query.view === 'detail'
+              ? [{ id: 1, versionNumber: 1 }]
+              : [{ id: 2, versionNumber: 2 }],
+        },
+      }),
+    )
+    await expect(
+      generateVersionMetadata({
+        params: Promise.resolve({ id: '1', version: '2' }),
+        searchParams: Promise.resolve({}),
+      }),
+    ).resolves.toEqual({ title: 'catalog' })
   })
 
   it('passes route identifiers to detail and edit clients', async () => {

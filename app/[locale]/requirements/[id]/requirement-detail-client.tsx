@@ -316,11 +316,12 @@ export default function RequirementDetailClient({
     (versionNumber: number) => {
       setSelectedVersionNumber(versionNumber)
       if (!inline) {
-        const url = `/${locale}/requirements/${requirementId}/${versionNumber}`
-        window.history.replaceState(null, '', url)
+        router.replace(`/requirements/${requirementId}/${versionNumber}`, {
+          scroll: false,
+        })
       }
     },
-    [inline, locale, requirementId],
+    [inline, requirementId, router],
   )
 
   if (detailState === 'loading') {

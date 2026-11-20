@@ -363,6 +363,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
     ),
   ])
 
+  let authorizedSpecificationCode: string | undefined
   let availableRequirements: CaptureResult<
     RequirementsSpecificationDetailInitialData['availableRequirements']
   >
@@ -370,6 +371,8 @@ export async function loadRequirementsSpecificationDetailInitialData({
     availableRequirements = {
       value: await availableRequirementsPromise,
     }
+    // The service checks specification read access before returning this page.
+    authorizedSpecificationCode = spec.specificationCode
   } catch (error) {
     if (
       isRequirementsServiceError(error) &&
@@ -408,6 +411,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
   }
 
   return {
+    authorizedSpecificationCode,
     aiGenerationAvailability: aiGenerationAvailability.value,
     areas: areas.value,
     availableNeedsRefs: needsRefs.value,

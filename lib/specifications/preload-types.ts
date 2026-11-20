@@ -99,6 +99,7 @@ export interface AvailableRequirementsData {
 export interface RequirementsSpecificationDetailInitialData {
   aiGenerationAvailability: AiRequirementGenerationAvailability
   areas: AreaOption[]
+  authorizedSpecificationCode?: string
   availableNeedsRefs: SpecificationNeedsReference[]
   availableRequirements: AvailableRequirementsData
   errors: SpecificationPreloadError[]

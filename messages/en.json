@@ -140,6 +140,9 @@
     }
   },
   "nav": {
+    "requirementTitle": "{uniqueId} – Requirement",
+    "requirementVersionTitle": "{uniqueId}, version {version} – Requirement",
+    "specificationTitle": "{specificationCode} – Requirements specification",
     "catalog": "Requirements Library",
     "stewardship": "Requirements Library Stewardship",
     "areas": "Requirement areas",

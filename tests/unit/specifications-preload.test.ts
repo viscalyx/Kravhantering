@@ -258,6 +258,7 @@ describe('specifications preload', () => {
     mocks.getSpecificationById.mockResolvedValueOnce({
       id: 42,
       name: 'Specification',
+      specificationCode: 'SPEC-42',
       responsibleHsaId: 'SE5560000001-owner',
     })
 
@@ -266,6 +267,7 @@ describe('specifications preload', () => {
       specificationId: 42,
     })
 
+    expect(data.authorizedSpecificationCode).toBe('SPEC-42')
     expect(data.errors).toEqual([])
     expect(data.spec).toMatchObject({
       id: 42,
@@ -356,6 +358,7 @@ describe('specifications preload', () => {
       specificationId: 42,
     })
 
+    expect(data.authorizedSpecificationCode).toBeUndefined()
     expect(data.forbidden).toEqual({
       responsible: { displayName: 'Owner' },
       specification: { name: 'Specification', specificationCode: 'SPEC-42' },

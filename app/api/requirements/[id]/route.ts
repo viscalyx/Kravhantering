@@ -13,12 +13,10 @@ import {
   refOrPositiveIntegerSegmentSchema,
   uniquePositiveIntegerArraySchema,
 } from '@/lib/http/validation'
-import type {
-  AuthorizationService,
-  RequestContext,
-  RequirementsAction,
-} from '@/lib/requirements/auth'
-import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import {
+  canAuthorize,
+  readRequirementDetail,
+} from '@/lib/requirements/read-detail'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { toHttpErrorPayload } from '@/lib/requirements/service'
 import {
@@ -69,40 +67,6 @@ const requirementEditSchema = z
   })
   .strict()
 
-function isAuthorizationDenied(error: unknown): boolean {
-  if (isRequirementsServiceError(error)) {
-    return error.code === 'forbidden' || error.code === 'unauthorized'
-  }
-  if (!(error instanceof Error)) return false
-  const denial = error as {
-    code?: unknown
-    name?: unknown
-    status?: unknown
-  }
-  return (
-    denial.status === 401 ||
-    denial.status === 403 ||
-    denial.code === 'unauthorized' ||
-    denial.code === 'forbidden' ||
-    denial.name === 'AuthorizationError' ||
-    denial.name === 'NotAuthorized'
-  )
-}
-
-async function canAuthorize(
-  authorization: AuthorizationService,
-  action: RequirementsAction,
-  context: RequestContext,
-): Promise<boolean> {
-  try {
-    await authorization.assertAuthorized(action, context)
-    return true
-  } catch (error) {
-    if (isAuthorizationDenied(error)) return false
-    throw error
-  }
-}
-
 export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
@@ -118,20 +82,11 @@ export async function GET(
     const { authorization, context, db, service } =
       await createRequirementsRestRuntime(_request)
     const ref = parseRequirementRef(id)
-    const canViewHistory = await canAuthorize(
-      authorization,
-      {
-        ...ref,
-        kind: 'get_requirement',
-        view: 'history',
-      },
+    const { canViewHistory, requirement: req } = await readRequirementDetail(
+      { authorization, service },
       context,
+      ref,
     )
-    const result = await service.getRequirement(context, {
-      ...ref,
-      view: canViewHistory ? 'history' : 'detail',
-    })
-    const req = result.requirement
     const canonicalRef = { id: req.id, uniqueId: req.uniqueId }
     const latestStatusId = req.versions[0]?.status ?? null
     const transitionTargets =
