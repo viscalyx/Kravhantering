@@ -4637,6 +4637,7 @@ export default function KravunderlagDetailClient({
         mode="edit"
         onClose={() => setShowEditSpecificationForm(false)}
         onResponsibleChanged={updatedSpec => {
+          router.refresh()
           setSpec(current =>
             current
               ? {
