@@ -16,6 +16,98 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+describe('workflow actions after a detail refresh', () => {
+  const draft = { id: 1 }
+  const review = { id: 2 }
+  const published = { id: 3 }
+  const catalog = {
+    statuses: [draft, review, published],
+    transitions: [
+      { fromStatus: draft, toStatus: review },
+      { fromStatus: review, toStatus: draft },
+      { fromStatus: review, toStatus: published },
+    ],
+  }
+
+  function loadDraftWithPendingCatalog() {
+    const draftCatalog = deferred<Response>()
+    const nextCatalog = deferred<Response>()
+    const readCatalog = vi
+      .fn()
+      .mockReturnValueOnce(draftCatalog.promise)
+      .mockReturnValue(nextCatalog.promise)
+    let versions = [{ status: draft.id }]
+    vi.stubGlobal('fetch', (url: string) =>
+      url === '/api/requirement-statuses'
+        ? readCatalog()
+        : Promise.resolve(Response.json({ ...detail, versions })),
+    )
+    return {
+      ...renderHook(() =>
+        useRequirementDetailData({ requirementId: detail.id }),
+      ),
+      draftCatalog,
+      nextCatalog,
+      readCatalog,
+      changeVersions(next: typeof versions) {
+        versions = next
+      },
+    }
+  }
+
+  it.each(['success', 502, 401, 'network error'])(
+    'keeps Review actions after a superseded Draft catalog completes with %s',
+    async outcome => {
+      const { result, draftCatalog, readCatalog, nextCatalog, changeVersions } =
+        loadDraftWithPendingCatalog()
+      await waitFor(() => expect(readCatalog).toHaveBeenCalledTimes(1))
+      changeVersions([{ status: review.id }])
+      await act(() => result.current.refreshRequirement())
+      expect(result.current.requirement?.versions[0]?.status).toBe(review.id)
+      expect(result.current.statusesLoading).toBe(true)
+      expect(result.current.transitions).toEqual([])
+
+      await act(async () => nextCatalog.resolve(Response.json(catalog)))
+      expect(result.current.transitions).toEqual([draft, published])
+      await act(async () => {
+        if (outcome === 'network error')
+          draftCatalog.reject(new TypeError('Offline'))
+        else if (typeof outcome === 'number')
+          draftCatalog.resolve(new Response(null, { status: outcome }))
+        else draftCatalog.resolve(Response.json(catalog))
+      })
+      expect(result.current.requirement?.versions[0]?.status).toBe(review.id)
+      expect(result.current.statusesState).toBe('success')
+      expect(result.current.statuses).toEqual(catalog.statuses)
+      expect(result.current.transitions).toEqual([draft, published])
+    },
+  )
+
+  it('keeps actions empty when the refreshed detail has no current version', async () => {
+    const { result, draftCatalog, readCatalog, nextCatalog, changeVersions } =
+      loadDraftWithPendingCatalog()
+    await waitFor(() => expect(readCatalog).toHaveBeenCalledTimes(1))
+    changeVersions([])
+    await act(() => result.current.refreshRequirement())
+    await act(async () => nextCatalog.resolve(Response.json(catalog)))
+    await act(async () => draftCatalog.resolve(Response.json(catalog)))
+    expect(result.current.requirement?.versions).toEqual([])
+    expect(result.current.transitions).toEqual([])
+  })
+
+  it('ignores a catalog failure delivered after unmount', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { result, draftCatalog, readCatalog, unmount } =
+      loadDraftWithPendingCatalog()
+    await waitFor(() => expect(readCatalog).toHaveBeenCalledTimes(1))
+    const pending = result.current.refreshStatuses()
+    unmount()
+    draftCatalog.reject(new TypeError('Offline'))
+    await pending
+    expect(error).not.toHaveBeenCalled()
+  })
+})
+
 describe.each(['direct', 'cached'])('%s requirement detail recovery', mode => {
   it.each([
     [500, 'error'],

@@ -178,9 +178,9 @@ acceptance of unexpired legacy sessions; do not treat renaming as revocation.
   or expired session. For a valid session it returns `authenticated: true`,
   `sub`, `hsaId`, `givenName`, `familyName`, `name`, `email?`, `roles`, and
   `expiresAt`. It never returns the raw ID token or raw access token.
-- `lib/http/api-fetch.ts` emits a browser auth-required event when same-origin
-  API calls return `401`, so unexpected invalid-session responses use the same
-  sign-in flow instead of leaving the user on a stale page.
+- When a same-origin API request returns `401`, `lib/http/api-fetch.ts`
+  checks whether the caller has aborted the request. Only an active request
+  triggers the browser auth-required event that starts the sign-in flow.
 - `POST /api/auth/logout` is the real logout operation. It:
   checks same-origin and `X-Requested-With`, records `auth.logout`,
   destroys the session cookie, discovers the IdP end-session URL when

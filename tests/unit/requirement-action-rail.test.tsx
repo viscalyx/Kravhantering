@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { compile } from '@tailwindcss/node'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ComponentProps, ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import RequirementActionRail from '@/app/[locale]/requirements/[id]/_detail/RequirementActionRail'
+import { useRequirementDetailData } from '@/app/[locale]/requirements/[id]/_detail/use-requirement-detail-data'
 
 vi.mock('next-intl', () => ({
   useTranslations: (namespace: string) => (key: string) =>
@@ -29,7 +30,7 @@ vi.mock('@/i18n/routing', () => ({
 
 type RequirementActionRailProps = ComponentProps<typeof RequirementActionRail>
 
-function renderRequirementActionRail(
+function requirementActionRail(
   props: Partial<RequirementActionRailProps> = {},
 ) {
   const defaultProps: RequirementActionRailProps = {
@@ -67,10 +68,100 @@ function renderRequirementActionRail(
     transitions: [],
   }
 
-  return render(<RequirementActionRail {...defaultProps} {...props} />)
+  return <RequirementActionRail {...defaultProps} {...props} />
+}
+
+function renderRequirementActionRail(
+  props: Partial<RequirementActionRailProps> = {},
+) {
+  return render(requirementActionRail(props))
 }
 
 describe('RequirementActionRail', () => {
+  it('keeps only permitted Review actions when a superseded Draft catalog arrives', async () => {
+    const draft = { id: 1, nameSv: 'Utkast', nameEn: 'Draft' }
+    const review = { id: 2, nameSv: 'Granskning', nameEn: 'Review' }
+    const published = { id: 3, nameSv: 'Publicerad', nameEn: 'Published' }
+    const catalog = {
+      transitions: [
+        { fromStatus: draft, toStatus: review },
+        { fromStatus: review, toStatus: draft },
+        { fromStatus: review, toStatus: published },
+      ],
+    }
+    const oldCatalog = Promise.withResolvers<Response>()
+    const readCatalog = vi
+      .fn()
+      .mockReturnValueOnce(oldCatalog.promise)
+      .mockResolvedValueOnce(Response.json(catalog))
+    const readDetail = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json({
+          versions: [{ status: draft.id }],
+          permissions: { allowedTransitionStatusIds: [2] },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          versions: [{ status: review.id }],
+          permissions: { allowedTransitionStatusIds: [1] },
+        }),
+      )
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(url =>
+        String(url) === '/api/requirement-statuses'
+          ? readCatalog()
+          : readDetail(),
+      )
+
+    function DetailActions() {
+      const { requirement, refreshRequirement, transitions } =
+        useRequirementDetailData({ requirementId: 123 })
+      if (!requirement) return null
+      const status = requirement.versions[0].status
+      return (
+        <>
+          <button onClick={refreshRequirement} type="button">
+            Refresh requirement
+          </button>
+          {requirementActionRail({
+            allowedTransitionStatusIds:
+              requirement.permissions.allowedTransitionStatusIds,
+            currentStatusId: status,
+            latestStatusForActions: status,
+            transitions,
+          })}
+        </>
+      )
+    }
+
+    try {
+      render(<DetailActions />)
+      await waitFor(() => expect(readCatalog).toHaveBeenCalledTimes(1))
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Refresh requirement' }),
+      )
+      const returnToDraft = { name: 'requirement.transitionToUtkast' }
+      expect(await screen.findByRole('button', returnToDraft)).toBeEnabled()
+      await act(async () => oldCatalog.resolve(Response.json(catalog)))
+      expect(screen.getByRole('button', returnToDraft)).toBeEnabled()
+      expect(
+        screen.queryByRole('button', {
+          name: 'requirement.transitionToPublicerad',
+        }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'requirement.transitionToGranskning',
+        }),
+      ).not.toBeInTheDocument()
+    } finally {
+      fetch.mockRestore()
+    }
+  })
+
   it('defines the shared destructive button variant with accessibility tokens', () => {
     const globalsCss = readFileSync(
       join(process.cwd(), 'app/globals.css'),
