@@ -1,5 +1,147 @@
 import { expect, test } from '@playwright/test'
+import { DESKTOP_VIEWPORT } from '@/tests/helpers/desktop-viewport'
 import { expectModalKeyboardIsolation } from '@/tests/support/modal-keyboard'
+
+for (const locale of ['sv', 'en'] as const) {
+  for (const layout of ['desktop', 'mobile'] as const) {
+    for (const theme of ['light', 'dark'] as const) {
+      test.describe(`Skip navigation: ${locale}, ${layout}, ${theme}`, () => {
+        test.use({
+          colorScheme: theme,
+          viewport:
+            layout === 'desktop'
+              ? DESKTOP_VIEWPORT
+              : { width: 375, height: 812 },
+        })
+
+        test('NAV-01: skip link moves keyboard focus into the current page', async ({
+          page,
+        }, testInfo) => {
+          await page.goto(`/${locale}/requirements`)
+          await expect(
+            page.getByRole('button', {
+              name:
+                locale === 'sv'
+                  ? 'Filtrera efter Krav-ID'
+                  : 'Filter by Requirement ID',
+            }),
+          ).toBeEnabled()
+          await expect(page.locator('html')).toHaveClass(new RegExp(theme))
+          const skipLink = page.getByRole('link', {
+            name:
+              locale === 'sv'
+                ? 'Hoppa till huvudinnehållet'
+                : 'Skip to main content',
+          })
+          const main = page.locator('main#main-content')
+
+          await test.step('reveal an unobscured link on the first Tab', async () => {
+            await expect(skipLink).toHaveCSS('clip-path', 'inset(50%)')
+            await page.keyboard.press('Tab')
+            await expect(skipLink).toBeFocused()
+            await expect(skipLink).toBeInViewport({ ratio: 1 })
+            await expect(skipLink).toHaveCSS('outline-style', 'solid')
+            await expect(skipLink).toHaveCSS('outline-width', '2px')
+            await expect
+              .poll(() =>
+                skipLink.evaluate(element => {
+                  const rect = element.getBoundingClientRect()
+                  return (
+                    rect.width >= 24 &&
+                    rect.height >= 24 &&
+                    [
+                      [rect.left + 8, rect.top + 8],
+                      [rect.right - 8, rect.bottom - 8],
+                    ].every(([x, y]) =>
+                      element.contains(document.elementFromPoint(x, y)),
+                    )
+                  )
+                }),
+              )
+              .toBe(true)
+            await expect(skipLink).toHaveAttribute(
+              'data-developer-mode-value',
+              'skip to main content',
+            )
+            await expect(main).toHaveAttribute(
+              'data-developer-mode-name',
+              'main content',
+            )
+            await page.screenshot({
+              path: testInfo.outputPath('skip-link.png'),
+            })
+          })
+
+          await test.step('move actual focus into content without adding a Tab stop', async () => {
+            await expect(main).toHaveCount(1)
+            await page.keyboard.press('Enter')
+            await expect(main).toBeFocused()
+            await expect(main).toHaveAttribute('tabindex', '-1')
+            await page.keyboard.press('Tab')
+            await expect(main.locator(':focus')).toHaveCount(1)
+          })
+
+          await test.step('preserve the Tab starting point after clicking content', async () => {
+            await main
+              .getByText(
+                locale === 'sv'
+                  ? 'Inget kravpaketsfilter aktivt'
+                  : 'No requirements package filter active',
+                { exact: true },
+              )
+              .click()
+            const firstPackage = page
+              .locator(
+                '[data-developer-mode-name="requirements package chooser"]',
+              )
+              .getByRole('button')
+              .first()
+            await expect(firstPackage).toBeEnabled()
+            await page.keyboard.press('Tab')
+            await expect(firstPackage).toBeFocused()
+            await page.keyboard.press('Escape')
+          })
+
+          await test.step('keep the shortcut usable after client navigation', async () => {
+            if (layout === 'mobile') {
+              await page
+                .getByRole('button', {
+                  name: locale === 'sv' ? 'Öppna meny' : 'Open menu',
+                })
+                .click()
+            }
+            await page
+              .getByRole('link', {
+                name:
+                  locale === 'sv'
+                    ? 'Kravunderlag'
+                    : 'Requirements specifications',
+                exact: true,
+              })
+              .click()
+            await expect(page).toHaveURL(`/${locale}/specifications`)
+            await expect(main.getByRole('button').first()).toBeEnabled()
+            // Return through the browser's keyboard sequence, without assigning focus.
+            for (let stops = 0; stops < 40; stops += 1) {
+              await page.keyboard.press('Shift+Tab')
+              if (
+                await skipLink.evaluate(
+                  element => element === document.activeElement,
+                )
+              )
+                break
+            }
+            await expect(skipLink).toBeFocused()
+            await page.keyboard.press('Enter')
+            await expect(main).toBeFocused()
+            await page.keyboard.press('Tab')
+            await expect(main.locator(':focus')).toHaveCount(1)
+          })
+        })
+      })
+    }
+  }
+}
 
 test.describe('Global navigation', () => {
   test('NAV-01: global side navigation and mobile drawer open and close', async ({
@@ -56,11 +198,25 @@ test.describe('Global navigation', () => {
       await expectModalKeyboardIsolation(page, drawer)
       const closeButton = drawer.getByRole('button', { name: 'Stäng meny' })
       await expect(closeButton).toBeVisible()
+      await expect(closeButton).toBeFocused()
+      await page.keyboard.press('Shift+Tab')
+      await expect(drawer.locator(':focus')).toHaveCount(1)
+      await page.keyboard.press('Tab')
+      await expect(closeButton).toBeFocused()
       await page.keyboard.press('Escape')
+      await expect(drawer).toBeHidden()
       await expect(openButton).toBeFocused()
-      await openButton.click()
+      await page.keyboard.press('Shift+Tab')
+      await expect(
+        page.getByRole('link', { name: 'Hoppa till huvudinnehållet' }),
+      ).toBeFocused()
+      await page.keyboard.press('Tab')
+      await expect(openButton).toBeFocused()
+      await page.keyboard.press('Enter')
+      await expect(closeButton).toBeFocused()
       await closeButton.click()
       await expect(drawer).toBeHidden()
+      await expect(openButton).toBeFocused()
       await openButton.click()
       await expect(drawer).toBeVisible()
       await page.setViewportSize({ height: 1200, width: 1440 })

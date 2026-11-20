@@ -113,29 +113,24 @@ for (const viewport of viewports) {
         '[data-specification-detail-list-panel="items"]',
       )
       await expect(itemPanel).toBeVisible()
-      await itemPanel.locator('tbody tr', { hasText: 'BEH0002' }).click()
-
-      const expandedDetail = itemPanel
-        .locator('[data-expanded-detail-cell="true"]')
-        .first()
-      await expect(expandedDetail).toBeVisible()
-
-      const specificationReportButton = expandedDetail
-        .locator(
-          '[data-developer-mode-name="report button"][data-developer-mode-value="specification reports"]',
-        )
-        .first()
-      await expect(specificationReportButton).toBeVisible({ timeout: 30_000 })
-      await specificationReportButton.scrollIntoViewIfNeeded()
-
-      await specificationReportButton.focus()
+      // The controls render on the server before their handlers hydrate.
+      // This action appears once the client has loaded the agreement context.
+      await expect(
+        itemPanel.getByRole('button', { name: 'Nytt unikt krav' }),
+      ).toBeEnabled()
+      await itemPanel.getByRole('button', { name: 'Fler åtgärder' }).click()
+      const specificationReport = page.getByRole('menuitem', {
+        name: 'Kravbilaga för upphandling',
+      })
+      await expect(specificationReport).toBeEnabled()
+      await specificationReport.focus()
       await page.keyboard.press('Control+Alt+Shift+H')
       await expect(page.getByTestId('developer-mode-badge')).toBeVisible()
 
-      await specificationReportButton.hover()
+      await specificationReport.hover()
       const chip = page.locator('[data-developer-mode-overlay-chip="true"]')
       await expect(chip).toBeVisible()
-      await expect(chip).toContainText('report button: specification reports')
+      await expect(chip).toContainText('table action: report')
     })
 
     test('DEVTOOLS-01: copies a reference from an annotated table header', async ({

@@ -162,6 +162,21 @@ describe('application shell', () => {
     expect(screen.getByRole('navigation')).toBeInTheDocument()
     expect(screen.getByText('localized content')).toBeInTheDocument()
     expect(screen.getByRole('contentinfo')).toBeInTheDocument()
+
+    const skipLink = screen.getByRole('link', {
+      name: 'skipToMainContent',
+    })
+    const main = screen.getByRole('main')
+    expect(skipLink).toHaveAttribute('href', `#${main.id}`)
+    expect(main).not.toHaveAttribute('tabindex')
+    expect(
+      skipLink.compareDocumentPosition(screen.getByRole('navigation')),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(skipLink).toHaveAttribute(
+      'data-developer-mode-value',
+      'skip to main content',
+    )
+    expect(main).toHaveAttribute('data-developer-mode-name', 'main content')
   })
 
   it('rejects an unsupported localized shell route', async () => {

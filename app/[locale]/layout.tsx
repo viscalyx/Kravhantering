@@ -13,8 +13,10 @@ import Footer from '@/components/Footer'
 import { HelpProvider } from '@/components/HelpPanel'
 import LocaleStorageSync from '@/components/LocaleStorageSync'
 import Navigation from '@/components/Navigation'
+import SkipToMainContent from '@/components/SkipToMainContent'
 import { routing } from '@/i18n/routing'
 import { readBuildMetadata } from '@/lib/build-metadata'
+import { devMarker } from '@/lib/developer-mode-markers'
 import '@/app/globals.css'
 
 type Params = Promise<{ locale: string }>
@@ -84,9 +86,16 @@ export default async function LocaleLayout({
             <LocaleStorageSync />
             <AuthExpiryGuard />
             <div className="min-h-screen">
+              <SkipToMainContent />
               <Navigation buildMetadata={buildMetadata} />
               <div className="flex min-h-screen flex-col transition-[padding-left] duration-200 md:pl-(--global-nav-width)">
-                <main className="flex-1">{children}</main>
+                <main
+                  className="flex-1"
+                  id="main-content"
+                  {...devMarker({ name: 'main content' })}
+                >
+                  {children}
+                </main>
                 <Footer />
               </div>
             </div>
