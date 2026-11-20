@@ -142,6 +142,12 @@ test('ADMIN-33: protects built-in lifecycle statuses while allowing bilingual re
         nameEn: `${custom.nameEn} edited`,
         nameSv: `${custom.nameSv} ändrad`,
       })
+      await expect(
+        customRow.getByRole('button', {
+          name: `Edit ${custom.nameEn} edited`,
+          exact: true,
+        }),
+      ).toHaveCount(1)
       const deleteButton = customRow.getByRole('button', {
         name: `Delete ${custom.nameEn} edited`,
         exact: true,

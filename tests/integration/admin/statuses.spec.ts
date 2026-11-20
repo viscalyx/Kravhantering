@@ -222,6 +222,18 @@ test.describe('Admin statuses and workflows', () => {
       }
     })
 
+    await test.step('Read the English edit action for each requirement status', async () => {
+      await page.goto('/en/requirement-statuses')
+      for (const status of requirementStatuses) {
+        await expect(
+          page.getByRole('button', {
+            name: `Edit ${status.nameEn}`,
+            exact: true,
+          }),
+        ).toHaveCount(1)
+      }
+    })
+
     await test.step('preview every canonical usage status color', async () => {
       for (const status of usageStatuses) {
         const expectedColor = CANONICAL_USAGE_STATUS_COLORS.get(status.id)

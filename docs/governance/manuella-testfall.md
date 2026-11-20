@@ -3673,7 +3673,10 @@ och spara därefter ändringen.
 **Förväntat resultat:** Spara aktiveras först efter ändringen. Formulär med
 osparade ändringar kräver bekräftelse innan det stängs. Ändringen visas efter
 omladdning. Varje hjälpknapp visar rätt fältspecifik och lokaliserad
-vägledning. Varje kanonisk statusfärg visar det lokaliserade namnet i det
+vägledning. Kontrollera även redigeringsknapparnas namn på svenska och
+engelska. Varje knapp har namnet Redigera eller Edit följt av
+kravversionsstatusens namn på valt språk. Varje kanonisk statusfärg visar det
+lokaliserade namnet i det
 gemensamma märket och minst kontrast 4,5:1 med resultatet `Uppfyller AA` i
 båda temana. För en ogiltig lagrad färg visas en varning och inga accentstilar
 används innan värdet har korrigerats. `Spara` är inaktiverad så länge

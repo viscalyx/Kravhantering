@@ -100,7 +100,7 @@ async function verifyPersonIn(dialog: HTMLElement) {
 }
 
 async function openAreaEditDialog() {
-  fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+  fireEvent.click(screen.getAllByRole('button', { name: 'common.editItem' })[0])
   return screen.findByRole('dialog', { name: 'area.editArea' })
 }
 
@@ -162,16 +162,16 @@ describe('RequirementAreasClient', () => {
     expect(within(nameCell).queryByRole('link')).toBeNull()
     expect(within(nameCell).queryByRole('button')).toBeNull()
     const editAction = screen.getAllByRole('button', {
-      name: /common\.edit/i,
+      name: 'common.editItem',
     })[0]
     const deleteAction = screen.getAllByRole('button', {
-      name: /common\.delete/i,
+      name: 'common.deleteItem',
     })[0]
     const manageCoAuthorsAction = screen.getAllByRole('button', {
       name: /area\.manageCoAuthors/i,
     })[0]
-    expect(editAction).not.toHaveTextContent('common.edit')
-    expect(deleteAction).not.toHaveTextContent('common.delete')
+    expect(editAction).toHaveTextContent(/^$/)
+    expect(deleteAction).toHaveTextContent(/^$/)
     expect(manageCoAuthorsAction).not.toHaveTextContent('area.manageCoAuthors')
     expect(editAction.querySelector('svg')).toBeInTheDocument()
     expect(deleteAction.querySelector('svg')).toBeInTheDocument()

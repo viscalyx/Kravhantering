@@ -148,7 +148,7 @@ describe('LifecycleStatusesClient', () => {
     render(<LifecycleStatusesClient />)
     await waitForItemsLoaded()
     const editButtons = screen.getAllByRole('button', {
-      name: /common\.edit/i,
+      name: 'common.editItem',
     })
     await user.click(editButtons[0])
     expect(
@@ -185,7 +185,7 @@ describe('LifecycleStatusesClient', () => {
     fetchMock.mockResolvedValueOnce(okJson({ statuses: [] }))
 
     const deleteButtons = screen.getAllByRole('button', {
-      name: /common\.delete/i,
+      name: 'common.deleteItem',
     })
     expect(deleteButtons[0]).not.toBeDisabled()
     fireEvent.click(deleteButtons[0])
@@ -209,9 +209,11 @@ describe('LifecycleStatusesClient', () => {
       )
       render(<LifecycleStatusesClient />)
       await screen.findByText('Renamed')
-      expect(screen.getByRole('button', { name: /common.edit/ })).toBeEnabled()
       expect(
-        screen.queryByRole('button', { name: /common.delete/ }),
+        screen.getByRole('button', { name: 'common.editItem' }),
+      ).toBeEnabled()
+      expect(
+        screen.queryByRole('button', { name: 'common.deleteItem' }),
       ).not.toBeInTheDocument()
       expect(
         screen.getByText('lifecycleStatusMgmt.protectedDeletion'),
