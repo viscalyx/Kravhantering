@@ -81,7 +81,9 @@ describe('RequirementStatusesClient observable branch behavior', () => {
   it('edits every field and submits the visible values', async () => {
     render(<RequirementStatusesClient />)
     await screen.findByText('Draft')
-    fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[0])
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'common.editItem' })[0],
+    )
 
     fireEvent.change(document.getElementById('status-name-sv') as HTMLElement, {
       target: { value: 'Nytt' },
@@ -123,7 +125,9 @@ describe('RequirementStatusesClient observable branch behavior', () => {
   it('presents response and thrown submit failures without exposing internals', async () => {
     render(<RequirementStatusesClient />)
     await screen.findByText('Draft')
-    fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[0])
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'common.editItem' })[0],
+    )
     fireEvent.change(document.getElementById('status-name-en') as HTMLElement, {
       target: { value: 'Changed' },
     })
@@ -145,7 +149,9 @@ describe('RequirementStatusesClient observable branch behavior', () => {
     state.locale = 'sv'
     render(<RequirementStatusesClient />)
     await screen.findByText('Granskning')
-    fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[1])
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'common.editItem' })[1],
+    )
 
     expect(screen.getByLabelText('statusMgmt.colorHex')).toHaveValue('')
     expect(document.getElementById('status-name-sv')).toHaveValue('Granskning')

@@ -54,6 +54,7 @@ hämtning i flera sidor verifierar inte ensamma rapportens fullständiga innehå
 - [Kravunderlag](#kravunderlag)
 - [Avsteg](#avsteg)
 - [Admincenter](#admincenter)
+  - [Knappnamn i taxonomitabeller](#admin-35-knappnamn-i-taxonomitabeller)
   - [Skyddade livscykelstatusar och egna statusar](#admin-33-skyddade-livscykelstatusar-och-egna-statusar)
 - [Dataskydd och personuppgifter](#dataskydd-och-personuppgifter)
 - [Utvecklar- och robusthetsytor](#utvecklar--och-robusthetsytor)
@@ -3570,6 +3571,32 @@ En obeslutad förnyelse förlänger inte tillåtelsen. Fryst historik behålls.
 
 ## Admincenter
 
+### ADMIN-35: Knappnamn i taxonomitabeller
+
+**Syfte:** Identifiera vilken post en knapp påverkar när knapparna läses
+utanför tabellens radkontext.
+
+**Användare:** `ada.admin` (Admin).
+
+**Förutsättningar:** Styrningsobjektstyperna Förvaltningsobjekt och Projekt
+samt genomförandeformerna Upphandling och Utveckling finns med engelska namn.
+
+**Integrationstest:**
+[taxonomy-row-actions.spec.ts](../../tests/integration/admin/taxonomy-row-actions.spec.ts),
+testfallet “ADMIN-35: taxonomy action names identify the displayed item in
+both languages”.
+
+**Steg:**
+
+1. Öppna `/sv/specifications/governance-object-types`. Läs namnen på
+   radknapparna i skärmläsarens knapplista.
+2. Upprepa på `/sv/specifications/implementation-types`.
+3. Växla till engelska och kontrollera samma poster på båda sidorna.
+
+**Förväntat resultat:** Varje knappnamn består av åtgärden och postens
+visade namn. För Projekt hörs exempelvis ”Redigera Projekt” och ”Ta bort
+Projekt” på svenska samt ”Edit Project” och ”Delete Project” på engelska.
+
 ### ADMIN-33: Skyddade livscykelstatusar och egna statusar
 
 **Syfte:** Verifiera skydd mot radering, namnändring på båda språken och
@@ -3599,8 +3626,9 @@ bilingual renaming and custom CRUD”.
    Försök radera ID 1 igen. Växla till engelska och kontrollera det sparade
    engelska namnet och den översatta förklaringen.
 4. Skapa en egen status med unika svenska och engelska namn. Redigera båda
-   namnen, spara och kontrollera dem i API-listan. Radera statusen och
-   bekräfta i dialogen. Läs listan igen.
+   namnen, spara och kontrollera dem i API-listan. Kontrollera radknapparnas
+   namn efter namnändringen. Välj radering och avbryt i dialogen. Kontrollera
+   att statusen finns kvar. Radera den igen och bekräfta. Läs listan igen.
 
 **Förväntat resultat:**
 
@@ -3608,7 +3636,7 @@ bilingual renaming and custom CRUD”.
   `protected_specification_lifecycle_status` med förklaring på valt språk.
   Listan förblir oförändrad efter nekade raderingar.
 - Namnändringen sparas på båda språken med samma ID. Skyddet gäller även
-  efter namnändringen.
+  efter namnändringen. Radknapparna använder det nya namnet på valt språk.
 - Den egna statusen kan skapas, läsas, redigeras och raderas. Den försvinner
   från både sidan och API-listan efter bekräftad radering.
 
@@ -3653,9 +3681,12 @@ färgformatet är ogiltigt och aktiveras när värdet har korrigerats.
 
 ### ADMIN-03: webbläsarens bakåtknapp återställer taxonomiflik
 
-**Steg:** Öppna en Admin-flik, navigera vidare och använd bakåtknappen.
+**Steg:** Öppna taxonomifliken på `/en/admin` och gå till kravområdena.
+Kontrollera namnen på en rads redigerings- och raderingsknappar med
+skärmläsarens knapplista. Använd bakåtknappen.
 
-**Förväntat resultat:** Rätt flik och URL återställs.
+**Förväntat resultat:** Knapparna heter ”Edit” respektive ”Delete” följt av
+kravområdets lagrade namn. Bakåtknappen återställer taxonomifliken och dess URL.
 
 ### ADMIN-04B: paneler laddas först när fliken väljs
 

@@ -61,7 +61,7 @@ test('ADMIN-33: protects built-in lifecycle statuses while allowing bilingual re
         builtInRow.getByText(sv.lifecycleStatusMgmt.protectedDeletion),
       ).toHaveText(sv.lifecycleStatusMgmt.protectedDeletion)
       await expect(
-        builtInRow.getByRole('button', { name: sv.common.delete, exact: true }),
+        builtInRow.getByRole('button', { name: /^Ta bort\b/ }),
       ).toHaveCount(0)
       await expect(
         builtInRow.locator(
@@ -69,7 +69,10 @@ test('ADMIN-33: protects built-in lifecycle statuses while allowing bilingual re
         ),
       ).toHaveCount(1)
       await builtInRow
-        .getByRole('button', { name: sv.common.edit, exact: true })
+        .getByRole('button', {
+          name: `Redigera ${builtIn.nameSv}`,
+          exact: true,
+        })
         .click()
       await page.locator('#ls-name-sv').fill(renamed.nameSv)
       await page.locator('#ls-name-en').fill(renamed.nameEn)
@@ -77,7 +80,10 @@ test('ADMIN-33: protects built-in lifecycle statuses while allowing bilingual re
         .getByRole('button', { name: sv.common.save, exact: true })
         .click()
       await expect(
-        page.getByRole('row').filter({ hasText: renamed.nameSv }),
+        page.getByRole('button', {
+          name: `Redigera ${renamed.nameSv}`,
+          exact: true,
+        }),
       ).toHaveCount(1)
       expect((await readStatuses()).find(status => status.id === 1)).toEqual({
         id: 1,
@@ -90,10 +96,16 @@ test('ADMIN-33: protects built-in lifecycle statuses while allowing bilingual re
         .getByRole('row')
         .filter({ hasText: renamed.nameEn })
       await expect(
+        renamedRow.getByRole('button', {
+          name: `Edit ${renamed.nameEn}`,
+          exact: true,
+        }),
+      ).toHaveCount(1)
+      await expect(
         renamedRow.getByText(en.lifecycleStatusMgmt.protectedDeletion),
       ).toHaveCount(1)
       await expect(
-        renamedRow.getByRole('button', { name: en.common.delete, exact: true }),
+        renamedRow.getByRole('button', { name: /^Delete\b/ }),
       ).toHaveCount(0)
     })
     await test.step('Create, edit and delete a custom status', async () => {
@@ -112,7 +124,7 @@ test('ADMIN-33: protects built-in lifecycle statuses while allowing bilingual re
       )?.id
       expect(customId).toBeGreaterThan(4)
       await customRow
-        .getByRole('button', { name: en.common.edit, exact: true })
+        .getByRole('button', { name: `Edit ${custom.nameEn}`, exact: true })
         .click()
       await page.locator('#ls-name-en').fill(`${custom.nameEn} edited`)
       await page.locator('#ls-name-sv').fill(`${custom.nameSv} ändrad`)
@@ -130,9 +142,17 @@ test('ADMIN-33: protects built-in lifecycle statuses while allowing bilingual re
         nameEn: `${custom.nameEn} edited`,
         nameSv: `${custom.nameSv} ändrad`,
       })
-      await customRow
-        .getByRole('button', { name: en.common.delete, exact: true })
+      const deleteButton = customRow.getByRole('button', {
+        name: `Delete ${custom.nameEn} edited`,
+        exact: true,
+      })
+      await deleteButton.click()
+      await page
+        .getByRole('alertdialog')
+        .getByRole('button', { name: en.common.cancel, exact: true })
         .click()
+      await expect(customRow).toHaveCount(1)
+      await deleteButton.click()
       await page
         .getByRole('alertdialog')
         .getByRole('button', { name: en.common.confirm, exact: true })

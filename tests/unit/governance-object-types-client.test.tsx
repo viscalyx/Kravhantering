@@ -125,7 +125,9 @@ describe('GovernanceObjectTypesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Architecture')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[0])
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'common.editItem' })[0],
+    )
 
     expect(
       screen.getByRole('textbox', {
@@ -156,7 +158,7 @@ describe('GovernanceObjectTypesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Architecture')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: 'common.delete' }))
+    fireEvent.click(screen.getByRole('button', { name: 'common.deleteItem' }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(3)

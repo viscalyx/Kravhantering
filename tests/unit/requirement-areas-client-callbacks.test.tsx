@@ -90,7 +90,9 @@ describe('RequirementAreasClient observable callback behavior', () => {
   it('maps a nullable area into the edit dialog and submits edited values', async () => {
     render(<RequirementAreasClient />)
     await screen.findByText('Nullable area')
-    fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[1])
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'common.editItem' })[1],
+    )
 
     const dialog = await screen.findByRole('dialog', { name: 'area.editArea' })
     const description = within(dialog).getByRole('textbox', {
@@ -124,7 +126,9 @@ describe('RequirementAreasClient observable callback behavior', () => {
   it('opens and closes the owner and co-author dialogs from visible actions', async () => {
     render(<RequirementAreasClient />)
     await screen.findByText('Integration')
-    fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[0])
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'common.editItem' })[0],
+    )
     const editDialog = await screen.findByRole('dialog', {
       name: 'area.editArea',
     })

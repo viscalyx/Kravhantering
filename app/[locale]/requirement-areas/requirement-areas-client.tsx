@@ -59,6 +59,8 @@ interface Area {
   prefix: string
 }
 
+const getAreaName = (area: Area) => area.name
+
 interface AreaForm {
   description: string
   name: string
@@ -191,7 +193,7 @@ export default function RequirementAreasClient() {
     {
       header: t('name'),
       key: 'name',
-      render: area => area.name,
+      render: getAreaName,
     },
     {
       className:
@@ -256,6 +258,7 @@ export default function RequirementAreasClient() {
       }
       formTitle={mode => (mode === 'create' ? t('newArea') : t('editArea'))}
       formTitleId="requirement-area-form-title"
+      getItemName={getAreaName}
       renderFormFields={({
         disabled,
         editId,

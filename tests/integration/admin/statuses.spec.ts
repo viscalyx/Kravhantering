@@ -132,7 +132,9 @@ async function openRequirementStatusForm(
   await page.goto('/sv/requirement-statuses')
 
   const row = page.getByRole('row', { name: status.nameSv })
-  await row.getByRole('button', { name: 'Redigera' }).click()
+  await row
+    .getByRole('button', { name: `Redigera ${status.nameSv}`, exact: true })
+    .click()
 
   return page.locator('form').filter({
     has: page.getByRole('heading', { name: 'Redigera' }),
@@ -272,7 +274,9 @@ test.describe('Admin statuses and workflows', () => {
       'data-accent-color',
       /.+/,
     )
-    await requirementRow.getByRole('button', { name: 'Redigera' }).click()
+    await requirementRow
+      .getByRole('button', { name: 'Redigera Utkast', exact: true })
+      .click()
     const requirementForm = page.locator('form').filter({
       has: page.getByRole('heading', { name: 'Redigera' }),
     })

@@ -7,7 +7,7 @@
     "areasPerChunk": 1,
     "targetSpecs": 10
   },
-  "discoveredSpecCount": 64,
+  "discoveredSpecCount": 65,
   "suites": {
     "dev": {
       "chunks": [
@@ -19,7 +19,7 @@
         {
           "id": "dev-admin",
           "paths": ["tests/integration/admin"],
-          "specCount": 12
+          "specCount": 13
         },
         {
           "id": "dev-archiving",
@@ -104,7 +104,7 @@
         "tests/integration/platform/error-boundary-smoke.spec.ts",
         "tests/integration/platform/smoke.spec.ts"
       ],
-      "includedSpecCount": 56
+      "includedSpecCount": 57
     },
     "prodlike": {
       "chunks": [
@@ -135,6 +135,7 @@
         "tests/integration/admin/requirement-types-recovery.spec.ts",
         "tests/integration/admin/statuses.spec.ts",
         "tests/integration/admin/table-keyboard-scroll.spec.ts",
+        "tests/integration/admin/taxonomy-row-actions.spec.ts",
         "tests/integration/archiving/lifecycle.spec.ts",
         "tests/integration/authorization/01-no-global-roles-no-assignments.spec.ts",
         "tests/integration/authorization/02-requirement-area-owner.spec.ts",

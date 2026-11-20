@@ -106,6 +106,7 @@ export default function LifecycleStatusesClient() {
       controller={controller}
       devContext="specification lifecycle statuses"
       emptyStateMessage={t('emptyState')}
+      getItemName={getName}
       renderFormFields={({ disabled, form, inputClassName, setForm }) => (
         <>
           <div>
