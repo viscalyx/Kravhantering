@@ -189,6 +189,12 @@ testfallet “NAV-02: tabs identify records and selected versions”, samt
 [01-no-global-roles-no-assignments.spec.ts](../../tests/integration/authorization/01-no-global-roles-no-assignments.spec.ts),
 testfallet “NAV-02/AUTHZ-01: unavailable records have generic tab titles”.
 
+Vid borttagning av utkast och byte av ansvarig täcks titlarna även av
+“AUTHZ-01: version controls enforce current publication status” i samma fil
+och “AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage
+assignments” i
+[04-specification-responsible.spec.ts](../../tests/integration/authorization/04-specification-responsible.spec.ts).
+
 **Steg:**
 
 1. Logga in som `ada.admin`. Öppna `/sv/krav/ANV0001` och
@@ -202,6 +208,11 @@ testfallet “NAV-02/AUTHZ-01: unavailable records have generic tab titles”.
    sedan utkastet på `/sv/requirements/INT0001/2`, version 99 samt
    `/sv/requirements/INT0001/1?versionId=2`. Öppna även kravet `ANV0001`,
    kravunderlaget `AUTHZ-SPEC-2026` och en obefintlig post av vardera slaget.
+1. Som `ada.admin`, öppna versionslänken till ett tillfälligt utkast som
+   har en tidigare publicerad version. Välj **Ta bort** och bekräfta.
+1. Som `petra.specresp`, skapa ett tillfälligt kravunderlag. Öppna detaljen
+   och byt kravunderlagsansvarig till `ada.admin` via redigeringsformuläret.
+   Kontrollera titeln och låt Ada ta bort testunderlaget efteråt.
 
 **Förväntat resultat:**
 

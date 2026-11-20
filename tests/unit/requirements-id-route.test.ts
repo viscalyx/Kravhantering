@@ -100,6 +100,7 @@ describe('requirements/[id] route', () => {
 
     it('returns requirement with owner HSA-id as owner name', async () => {
       mockGetRequirement.mockResolvedValue({
+        versions: [{ status: 3 }],
         requirement: {
           id: 1,
           uniqueId: 'REQ-001',
@@ -112,8 +113,12 @@ describe('requirements/[id] route', () => {
       const res = await GET(req, makeParams('1'))
       const json = (await res.json()) as {
         area: { ownerName: string }
-        permissions: { allowedTransitionStatusIds: number[] }
+        permissions: {
+          allowedTransitionStatusIds: number[]
+          canViewHistory: boolean
+        }
       }
+      expect(json.permissions.canViewHistory).toBe(true)
       expect(json.area.ownerName).toBe('SE5560000001-annaj')
       expect(json.permissions.allowedTransitionStatusIds).toEqual(
         expect.arrayContaining([2, 3, 4]),

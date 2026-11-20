@@ -281,6 +281,7 @@ test.describe('AUTHZ-01/AUTH-10/AUTH-11: forbidden requirement specification sur
 
 test('AUTHZ-01: version controls enforce current publication status', async ({
   browser,
+  page,
 }, testInfo) => {
   referenceManualCases(testInfo, 'AUTHZ-01')
   const admin = await newRoleContext(testInfo, 'admin')
@@ -435,6 +436,34 @@ test('AUTHZ-01: version controls enforce current publication status', async ({
         await expect(reader).toHaveURL(new RegExp(`/${requirement.id}/2$`))
       })
     }
+    await test.step('deleting the displayed draft restores the generic version title', async () => {
+      const latest = await admin.get(path)
+      await expectOk(latest, 'read current published version')
+      const current = (await latest.json()) as RequirementDetailResponse
+      const published = current.versions[0]
+      await expectOk(
+        await admin.put(path, {
+          data: {
+            baseRevisionToken: published.revisionToken,
+            baseVersionId: published.id,
+            areaId: fixture.areaId,
+            description: 'Draft for title verification',
+            verifiable: false,
+          },
+        }),
+        'create a disposable draft',
+      )
+      await page.goto(`/sv/requirements/${requirement.id}/3`)
+      await expect(page).toHaveTitle(
+        `${current.uniqueId}, version 3 – Krav | Kravhantering`,
+      )
+      await page.getByRole('button', { name: 'Ta bort', exact: true }).click()
+      await page
+        .getByRole('alertdialog')
+        .getByRole('button', { name: 'Bekräfta' })
+        .click()
+      await expect(page).toHaveTitle('Kravbibliotek | Kravhantering')
+    })
   } finally {
     await Promise.all([
       admin.dispose(),

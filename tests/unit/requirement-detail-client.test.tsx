@@ -674,6 +674,7 @@ describe('RequirementDetailClient', () => {
   beforeEach(() => {
     localeState.value = 'sv'
     routerPush.mockReset()
+    routerReplace.mockReset()
     routerRefresh.mockReset()
     pdfDownloadState.clearError.mockReset()
     pdfDownloadState.download.mockReset()
