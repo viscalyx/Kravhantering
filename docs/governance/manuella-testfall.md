@@ -47,6 +47,7 @@ hämtning i flera sidor verifierar inte ensamma rapportens fullständiga innehå
   - [AUTH-01 till AUTH-13](#auth-01-logga-in-via-keycloak)
   - [AUTHZ-00 till AUTHZ-11](#authz-00-fas-0-testdata-och-identiteter)
 - [Kravbibliotek](#kravbibliotek)
+  - [Bekräfta tecken i textfilter](#req-03a-bekräfta-tecken-i-textfilter)
 - [Skapa krav och livscykel](#skapa-krav-och-livscykel)
 - [Samarbete i kravdetalj](#samarbete-i-kravdetalj)
 - [Kravunderlag](#kravunderlag)
@@ -1005,6 +1006,37 @@ Filterknappens verktygstips täcker inte paket i den öppna väljaren, även nä
 fokus flyttas tillbaka till filterknappen med Skift+Tabb före ett musklick.
 Det arkiverade kravet kan hittas via sin historiska kravpaketskoppling när
 arkiverad status väljs uttryckligen.
+
+### REQ-03a: bekräfta tecken i textfilter
+
+**Syfte:** Kontrollera att textfiltren behåller fokus när Enter bekräftar
+ett teckenförslag från en inmatningsmetod.
+
+**Användare:** `ada.admin`.
+
+**Förutsättningar:** Aktivera en japansk, kinesisk eller koreansk
+inmatningsmetod i operativsystemet.
+
+**Steg:**
+
+1. Öppna `/sv/requirements` och välj `Filtrera efter Krav-ID`.
+2. Skriv så att inmatningsmetoden visar teckenförslag. Skriv till exempel
+   `nihon` med japansk inmatning och tryck på blanksteg för att välja `日本`.
+3. Tryck på Enter för att bekräfta förslaget. Kontrollera att filterrutan
+   fortfarande är öppen och att textfältet har fokus och visar den färdiga
+   texten.
+4. Tryck på Enter igen. Kontrollera att filterrutan stängs, att fokus
+   återgår till filterknappen och att den färdiga texten visas som aktivt
+   filter.
+5. Ta bort filtret och upprepa för `Filtrera efter Kravtext`.
+
+**Förväntat resultat:** Första Enter bekräftar teckenförslaget i båda
+textfälten. Nästa Enter stänger rutan och tillämpar den färdiga texten.
+Anteckna webbläsare, operativsystem, inmatningsmetod och resultat.
+
+**Integrationstest:**
+[library.spec.ts](../../tests/integration/requirements/library.spec.ts),
+testfallet “REQ-03a: text filters keep focus while confirming composed text”.
 
 ### REQ-04: sortera på sorterbar kolumn
 

@@ -887,13 +887,19 @@ function SearchFilterPopover({
                   commit(e.target.value)
                 }}
                 onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    clearPendingCommit()
-                    onChange(local || undefined)
-                    setOpen(false)
-                    btnRef.current?.focus()
-                  }
+                  if (e.key !== 'Enter') return
+                  // IME confirmation can still report key code 229 after compositionend.
+                  if (
+                    e.nativeEvent.isComposing ||
+                    e.nativeEvent.keyCode === 229
+                  )
+                    return
+
+                  e.preventDefault()
+                  clearPendingCommit()
+                  onChange(local || undefined)
+                  setOpen(false)
+                  btnRef.current?.focus()
                 }}
                 placeholder={`${label}...`}
                 ref={inputRef}

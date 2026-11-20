@@ -707,6 +707,55 @@ test.describe('Requirements library', () => {
     })
   })
 
+  test('REQ-03a: text filters keep focus while confirming composed text', async ({
+    page,
+  }) => {
+    await page.goto('/sv/requirements')
+
+    for (const label of ['Krav-ID', 'Kravtext']) {
+      await test.step(`confirm composed text in ${label}`, async () => {
+        const trigger = page.getByRole('button', {
+          name: `Filtrera efter ${label}`,
+        })
+        await trigger.click()
+        await page.mouse.move(0, 0)
+        const textbox = page.getByRole('textbox', { exact: true, name: label })
+        await expect(textbox).toBeFocused()
+
+        // Exercise both native event shapes in the browser. The manual case
+        // checks candidate conversion with an operating-system input method.
+        for (const { value, ...composition } of [
+          { isComposing: true, keyCode: 13, value: 'にほん' },
+          { isComposing: false, keyCode: 229, value: '日本' },
+        ]) {
+          await textbox.fill(value)
+          const wasNotCanceled = await textbox.evaluate(
+            (input, init) =>
+              input.dispatchEvent(
+                new KeyboardEvent('keydown', {
+                  ...init,
+                  bubbles: true,
+                  cancelable: true,
+                  key: 'Enter',
+                }),
+              ),
+            composition,
+          )
+          expect(wasNotCanceled).toBe(true)
+          await expect(textbox).toBeFocused()
+          await expect(textbox).toHaveValue(value)
+        }
+
+        await page.keyboard.press('Enter')
+        await expect(textbox).toHaveCount(0)
+        await expect(trigger).toBeFocused()
+        const removeFilter = page.getByRole('button', { name: 'Ta bort 日本' })
+        await expect(removeFilter).toHaveCount(1)
+        await removeFilter.press('Enter')
+      })
+    }
+  })
+
   test('REQ-03: column-search clear control keeps a 24 CSS-pixel target at responsive widths', async ({
     page,
   }) => {
