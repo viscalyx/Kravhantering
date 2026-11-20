@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { forbiddenError } from '@/lib/requirements/errors'
 
 const mockGetRequirement = vi.fn()
 const mockManageRequirement = vi.fn()
@@ -137,13 +136,7 @@ describe('requirements/[id] route', () => {
       expect(json.area).toBeNull()
     })
 
-    it('uses published detail view when history permission is denied', async () => {
-      mockAuthorization.assertAuthorized.mockImplementation(action => {
-        if (action.kind === 'get_requirement' && action.view === 'history') {
-          return Promise.reject(forbiddenError('history denied'))
-        }
-        return Promise.resolve()
-      })
+    it('reports that history is unavailable for published-only detail', async () => {
       mockGetRequirement.mockResolvedValue({
         requirement: {
           id: 1,
@@ -162,13 +155,13 @@ describe('requirements/[id] route', () => {
       expect(res.status).toBe(200)
       expect(mockGetRequirement).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ id: 1, view: 'detail' }),
+        expect.objectContaining({ id: 1, view: 'accessible' }),
       )
       expect(json.permissions.canViewHistory).toBe(false)
     })
 
     it('surfaces unexpected authorization failures instead of downgrading permissions', async () => {
-      mockAuthorization.assertAuthorized.mockRejectedValueOnce(
+      mockGetRequirement.mockRejectedValueOnce(
         new Error('authorization datastore unavailable'),
       )
 
@@ -176,7 +169,7 @@ describe('requirements/[id] route', () => {
       const res = await GET(req, makeParams('1'))
 
       expect(res.status).toBe(500)
-      expect(mockGetRequirement).not.toHaveBeenCalled()
+      expect(mockGetTransitionsFrom).not.toHaveBeenCalled()
     })
 
     it('returns error payload on failure', async () => {

@@ -3,7 +3,7 @@ import { getSession, isSignedIn } from '@/lib/auth/session'
 import RequirementDetailClient from './requirement-detail-client'
 import { requirementMetadata } from './requirement-metadata'
 
-type Params = Promise<{ id: string }>
+type Params = Promise<{ id: string; locale: string }>
 
 export async function generateMetadata({
   params,

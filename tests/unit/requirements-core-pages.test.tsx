@@ -6,7 +6,6 @@ const pageMocks = vi.hoisted(() => ({
   editClient: vi.fn(() => null),
   form: vi.fn(() => null),
   getRequirement: vi.fn(),
-  assertAuthorized: vi.fn(),
   requirementDetailClient: vi.fn(() => null),
 }))
 
@@ -16,7 +15,6 @@ vi.mock('@/lib/requirements/server-component-context', () => ({
 }))
 vi.mock('@/lib/requirements/server', () => ({
   createRequirementsRuntime: () => ({
-    authorization: { assertAuthorized: pageMocks.assertAuthorized },
     service: { getRequirement: pageMocks.getRequirement },
   }),
 }))
@@ -87,9 +85,9 @@ describe('requirements core pages', () => {
     })
     await expect(
       generateDetailMetadata({
-        params: Promise.resolve({ id: '7' }),
+        params: Promise.resolve({ locale: 'en', id: '7' }),
       }),
-    ).resolves.toEqual({ title: 'requirementTitle ANV0001' })
+    ).resolves.toEqual({ title: 'recordTitles.requirement ANV0001' })
   })
 
   it.each([forbiddenError(), notFoundError('Missing')])(
@@ -97,14 +95,16 @@ describe('requirements core pages', () => {
     async error => {
       pageMocks.getRequirement.mockRejectedValueOnce(error)
       await expect(
-        generateDetailMetadata({ params: Promise.resolve({ id: 'SECRET' }) }),
+        generateDetailMetadata({
+          params: Promise.resolve({ locale: 'en', id: 'SECRET' }),
+        }),
       ).resolves.toEqual({ title: 'catalog' })
     },
   )
 
   it.each([
-    ['1', '21', 'requirementVersionTitle INT0001 1'],
-    ['2', undefined, 'requirementVersionTitle INT0001 2'],
+    ['1', '21', 'recordTitles.requirementVersion INT0001 1'],
+    ['2', undefined, 'recordTitles.requirementVersion INT0001 2'],
     ['2', '21', 'catalog'],
     ['3', undefined, 'catalog'],
     ['latest', undefined, 'catalog'],
@@ -122,7 +122,7 @@ describe('requirements core pages', () => {
       })
       await expect(
         generateVersionMetadata({
-          params: Promise.resolve({ id: '1', version }),
+          params: Promise.resolve({ locale: 'en', id: '1', version }),
           searchParams: Promise.resolve({ versionId }),
         }),
       ).resolves.toEqual({ title })
@@ -130,21 +130,15 @@ describe('requirements core pages', () => {
   )
 
   it('uses only the published detail when history access is denied', async () => {
-    pageMocks.assertAuthorized.mockRejectedValueOnce(forbiddenError())
-    pageMocks.getRequirement.mockImplementationOnce(
-      async (_context, query) => ({
-        requirement: {
-          uniqueId: 'INT0001',
-          versions:
-            query.view === 'detail'
-              ? [{ id: 1, versionNumber: 1 }]
-              : [{ id: 2, versionNumber: 2 }],
-        },
-      }),
-    )
+    pageMocks.getRequirement.mockResolvedValueOnce({
+      requirement: {
+        uniqueId: 'INT0001',
+        versions: [{ id: 1, versionNumber: 1 }],
+      },
+    })
     await expect(
       generateVersionMetadata({
-        params: Promise.resolve({ id: '1', version: '2' }),
+        params: Promise.resolve({ locale: 'en', id: '1', version: '2' }),
         searchParams: Promise.resolve({}),
       }),
     ).resolves.toEqual({ title: 'catalog' })
@@ -152,7 +146,7 @@ describe('requirements core pages', () => {
 
   it('passes route identifiers to detail and edit clients', async () => {
     const detail = (await RequirementDetailPage({
-      params: Promise.resolve({ id: 'REQ-42' }),
+      params: Promise.resolve({ locale: 'en', id: 'REQ-42' }),
     })) as ReactElement<{ currentActorName: string; requirementId: string }>
     const edit = (await EditRequirementPage({
       params: Promise.resolve({ id: '42' }),
@@ -165,11 +159,11 @@ describe('requirements core pages', () => {
 
   it('passes valid versions and ignores malformed versions', async () => {
     const version = (await RequirementVersionPage({
-      params: Promise.resolve({ id: '42', version: '3' }),
+      params: Promise.resolve({ locale: 'en', id: '42', version: '3' }),
       searchParams: Promise.resolve({}),
     })) as ReactElement<{ defaultVersion?: number; requirementId: string }>
     const malformed = (await RequirementVersionPage({
-      params: Promise.resolve({ id: '42', version: 'latest' }),
+      params: Promise.resolve({ locale: 'en', id: '42', version: 'latest' }),
       searchParams: Promise.resolve({}),
     })) as ReactElement<{ defaultVersion?: number; requirementId: string }>
 
@@ -191,7 +185,7 @@ describe('requirements core pages', () => {
     const { isSignedIn } = await import('@/lib/auth/session')
     vi.mocked(isSignedIn).mockReturnValueOnce(false)
     const detail = (await RequirementDetailPage({
-      params: Promise.resolve({ id: '42' }),
+      params: Promise.resolve({ locale: 'en', id: '42' }),
     })) as ReactElement<{ currentActorName: string | null }>
     expect(detail.props.currentActorName).toBeNull()
   })

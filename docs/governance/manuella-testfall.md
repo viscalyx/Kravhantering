@@ -185,8 +185,9 @@ webbläsarens fliktitel.
 
 **Integrationstest:**
 [global-navigation.spec.ts](../../tests/integration/navigation/global-navigation.spec.ts),
-testfallen “NAV-02: tabs identify records and selected versions” och
-“NAV-02: unavailable records have generic tab titles”.
+testfallet “NAV-02: tabs identify records and selected versions”, samt
+[01-no-global-roles-no-assignments.spec.ts](../../tests/integration/authorization/01-no-global-roles-no-assignments.spec.ts),
+testfallet “NAV-02/AUTHZ-01: unavailable records have generic tab titles”.
 
 **Steg:**
 
@@ -2436,12 +2437,14 @@ kontrollera att
 Spara är inaktiverad innan ändring. Ändra text, klicka X och avbryt
 förkastandet. Kontrollera ansvarig persons HSA-id-fält och att klick utanför
 dialogen inte stänger formuläret. Prova samma textgränser som i SPEC-02.
+Ändra kravunderlagskoden på ett tillfälligt kravunderlag och spara.
 
 **Förväntat resultat:** Spara aktiveras först efter metadataändringen. X visar
 bekräftelse innan formulär med osparade ändringar förkastas. HSA-id för
 ansvarig person visas i formuläret och dialogen ligger kvar vid klick utanför.
 Sidhuvudet börjar hopfällt med livscykelstatus och avtal. Utfällt visas även
 beskrivning och samtliga metadata. Textgränserna gäller även redigering.
+Fliktiteln visar den sparade koden direkt.
 
 ### SPEC-04: ta bort kravunderlag med bekräftelse
 

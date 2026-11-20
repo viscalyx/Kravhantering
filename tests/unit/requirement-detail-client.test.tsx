@@ -24,6 +24,7 @@ import type {
 
 const routerPush = vi.fn()
 const routerReplace = vi.fn()
+const routerRefresh = vi.fn()
 const pdfDownloadState = vi.hoisted(() => ({
   clearError: vi.fn(),
   download: vi.fn(),
@@ -160,7 +161,11 @@ vi.mock('@/i18n/routing', () => ({
       {children}
     </a>
   ),
-  useRouter: () => ({ push: routerPush, replace: routerReplace }),
+  useRouter: () => ({
+    push: routerPush,
+    replace: routerReplace,
+    refresh: routerRefresh,
+  }),
 }))
 
 vi.mock('@/components/StatusStepper', () => ({
@@ -669,6 +674,7 @@ describe('RequirementDetailClient', () => {
   beforeEach(() => {
     localeState.value = 'sv'
     routerPush.mockReset()
+    routerRefresh.mockReset()
     pdfDownloadState.clearError.mockReset()
     pdfDownloadState.download.mockReset()
     pdfDownloadState.download.mockResolvedValue(undefined)
@@ -2265,6 +2271,7 @@ describe('RequirementDetailClient', () => {
       ),
     )
     await waitFor(() => expect(onChange).toHaveBeenCalledTimes(2))
+    expect(routerRefresh).toHaveBeenCalledOnce()
     expect(events.filter(event => event.type === 'invalidated')).toHaveLength(1)
   })
 

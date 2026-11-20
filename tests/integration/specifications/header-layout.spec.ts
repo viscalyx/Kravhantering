@@ -33,9 +33,8 @@ for (const locale of ['sv', 'en'] as const) {
         const name = dialog.locator('#spec-name')
         const purpose = dialog.locator('#spec-business-ref')
         await name.fill(' ')
-        await dialog
-          .locator('#spec-specification-code')
-          .fill(`LIMIT-${Date.now()}`)
+        const code = `LIMIT-${Date.now()}`
+        await dialog.locator('#spec-specification-code').fill(code)
         await dialog.locator('#spec-lifecycle-status').selectOption('1')
         await dialog
           .getByRole('button', { name: common.save, exact: true })
@@ -84,6 +83,12 @@ for (const locale of ['sv', 'en'] as const) {
           await page
             .getByRole('button', { name: t.editSpecification, exact: true })
             .click()
+        } else {
+          const label =
+            locale === 'sv' ? 'Kravunderlag' : 'Requirements specification'
+          await expect(page).toHaveTitle(
+            `${code} – ${label} | ${common.appName}`,
+          )
         }
       }
       const patch = await request.patch(

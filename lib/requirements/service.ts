@@ -180,7 +180,7 @@ export interface GetRequirementInput extends RequirementRefInput {
   locale?: ResponseLocale
   responseFormat?: ResponseFormat
   versionNumber?: number
-  view?: 'detail' | 'history' | 'version'
+  view?: 'accessible' | 'detail' | 'history' | 'version'
 }
 
 export interface ManageRequirementInput extends RequirementRefInput {

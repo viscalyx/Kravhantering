@@ -4,8 +4,6 @@ import type {
   RequirementsAction,
 } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
-import type { RequirementsRuntime } from '@/lib/requirements/server'
-import type { RequirementRefInput } from '@/lib/requirements/service'
 
 function isAuthorizationDenied(error: unknown): boolean {
   if (isRequirementsServiceError(error)) {
@@ -39,24 +37,4 @@ export async function canAuthorize(
     if (isAuthorizationDenied(error)) return false
     throw error
   }
-}
-
-export async function readRequirementDetail(
-  {
-    authorization,
-    service,
-  }: Pick<RequirementsRuntime, 'authorization' | 'service'>,
-  context: RequestContext,
-  ref: RequirementRefInput,
-) {
-  const canViewHistory = await canAuthorize(
-    authorization,
-    { ...ref, kind: 'get_requirement', view: 'history' },
-    context,
-  )
-  const { requirement } = await service.getRequirement(context, {
-    ...ref,
-    view: canViewHistory ? 'history' : 'detail',
-  })
-  return { canViewHistory, requirement }
 }

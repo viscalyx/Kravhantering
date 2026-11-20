@@ -5,20 +5,23 @@ import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import { requirementRefSchema } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
-import { readRequirementDetail } from '@/lib/requirements/read-detail'
 import { createRequirementsRuntime } from '@/lib/requirements/server'
 import { createServerComponentRequestContext } from '@/lib/requirements/server-component-context'
 
+import { findRequestedVersion } from './_detail/version-state'
+
 export async function requirementMetadata({
   id,
+  locale,
   version,
   versionId,
 }: {
   id: string
+  locale: string
   version?: string
   versionId?: string
 }): Promise<Metadata> {
-  const t = await getTranslations('nav')
+  const t = await getTranslations({ locale, namespace: 'nav' })
   const fallback = { title: t('catalog') }
   const parsed = requirementRefSchema.safeParse(id)
   if (!parsed.success) return fallback
@@ -30,24 +33,21 @@ export async function requirementMetadata({
     const runtime = createRequirementsRuntime(
       await getRequestSqlServerDataSource(),
     )
-    const { requirement } = await readRequirementDetail(
-      runtime,
-      context,
-      parseRequirementRef(parsed.data),
-    )
+    const { requirement } = await runtime.service.getRequirement(context, {
+      ...parseRequirementRef(parsed.data),
+      view: 'accessible',
+    })
     const { uniqueId } = requirement
     if (version === undefined)
-      return { title: t('requirementTitle', { uniqueId }) }
-    const selected = requirement.versions.find(
-      v => v.versionNumber === Number(version),
+      return { title: t('recordTitles.requirement', { uniqueId }) }
+    const selected = findRequestedVersion(
+      requirement.versions,
+      Number(version),
+      versionId == null ? undefined : Number(versionId),
     )
-    if (
-      !selected ||
-      (versionId !== undefined && selected.id !== Number(versionId))
-    )
-      return fallback
+    if (!selected) return fallback
     return {
-      title: t('requirementVersionTitle', {
+      title: t('recordTitles.requirementVersion', {
         uniqueId,
         version: selected.versionNumber,
       }),

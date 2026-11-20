@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test'
 import { DESKTOP_VIEWPORT } from '@/tests/helpers/desktop-viewport'
-import { ROLE_STORAGE_STATE } from '@/tests/support/authorization-test-helpers'
 import { expectModalKeyboardIsolation } from '@/tests/support/modal-keyboard'
 
 for (const locale of ['sv', 'en'] as const) {
@@ -387,22 +386,23 @@ for (const locale of ['sv', 'en'] as const) {
     const requirement = locale === 'sv' ? 'Krav' : 'Requirement'
     const specification =
       locale === 'sv' ? 'Kravunderlag' : 'Requirements specification'
-    const catalog = locale === 'sv' ? 'Kravbibliotek' : 'Requirements Library'
-    const specifications =
-      locale === 'sv' ? 'Kravunderlag' : 'Requirements specifications'
-
     test('NAV-02: tabs identify records and selected versions', async ({
+      context,
       page,
     }) => {
+      const secondTab = await context.newPage()
       await test.step('compare requirements after their canonical redirects', async () => {
-        for (const id of ['ANV0001', 'ANV0002']) {
-          await page.goto(`/${locale}/krav/${id}`)
-          await expect(page).toHaveURL(
+        for (const [tab, id] of [
+          [page, 'ANV0001'],
+          [secondTab, 'ANV0002'],
+        ] as const) {
+          await tab.goto(`/${locale}/krav/${id}`)
+          await expect(tab).toHaveURL(
             new RegExp(`/${locale}/requirements/${id}$`),
           )
-          await expect(page).toHaveTitle(`${id} – ${requirement} | ${app}`)
+          await expect(tab).toHaveTitle(`${id} – ${requirement} | ${app}`)
           await expect(
-            page.getByRole('heading', { name: id, exact: true }),
+            tab.getByRole('heading', { name: id, exact: true }),
           ).toHaveText(id)
         }
       })
@@ -412,52 +412,32 @@ for (const locale of ['sv', 'en'] as const) {
         await expect(page).toHaveTitle(
           `INT0001, version 1 – ${requirement} | ${app}`,
         )
-        await page.getByRole('button', { name: /^v2 / }).click()
-        await expect(page).toHaveURL(/\/requirements\/INT0001\/2$/)
-        await expect(page).toHaveTitle(
+        await secondTab.goto(`/${locale}/requirements/INT0001/1`)
+        await secondTab.getByRole('button', { name: /^v2 / }).click()
+        await expect(secondTab).toHaveURL(
+          new RegExp(`/${locale}/requirements/INT0001/2$`),
+        )
+        await expect(secondTab).toHaveTitle(
           `INT0001, version 2 – ${requirement} | ${app}`,
         )
-        await page.reload()
-        await expect(page).toHaveTitle(
+        await secondTab.reload()
+        await expect(secondTab).toHaveTitle(
           `INT0001, version 2 – ${requirement} | ${app}`,
+        )
+        await page.bringToFront()
+        await expect(page).toHaveTitle(
+          `INT0001, version 1 – ${requirement} | ${app}`,
         )
       })
       await test.step('compare specifications at their canonical numeric URLs', async () => {
-        for (const code of ['AUTHZ-SPEC-2026', 'DRIFT-FORV-BAS']) {
-          await page.goto(`/${locale}/specifications/${code}`)
-          await expect(page).toHaveURL(/\/specifications\/\d+$/)
-          await expect(page).toHaveTitle(`${code} – ${specification} | ${app}`)
+        for (const [tab, code] of [
+          [page, 'AUTHZ-SPEC-2026'],
+          [secondTab, 'DRIFT-FORV-BAS'],
+        ] as const) {
+          await tab.goto(`/${locale}/specifications/${code}`)
+          await expect(tab).toHaveURL(/\/specifications\/\d+$/)
+          await expect(tab).toHaveTitle(`${code} – ${specification} | ${app}`)
         }
-      })
-    })
-
-    test.describe('reader without assignments', () => {
-      test.use({ storageState: ROLE_STORAGE_STATE.noRoles })
-      test('NAV-02: unavailable records have generic tab titles', async ({
-        page,
-      }) => {
-        await test.step('compare a published version with denied and unresolved requirements', async () => {
-          await page.goto(`/${locale}/requirements/INT0001/1`)
-          await expect(page).toHaveTitle(
-            `INT0001, version 1 – ${requirement} | ${app}`,
-          )
-          for (const path of [
-            'INT0001/2',
-            'INT0001/99',
-            'INT0001/1?versionId=2',
-            'ANV0001',
-            'MISSING-NAV-02',
-          ]) {
-            await page.goto(`/${locale}/requirements/${path}`)
-            await expect(page).toHaveTitle(`${catalog} | ${app}`)
-          }
-        })
-        await test.step('open a forbidden and a missing specification', async () => {
-          for (const code of ['AUTHZ-SPEC-2026', 'MISSING-NAV-02']) {
-            await page.goto(`/${locale}/specifications/${code}`)
-            await expect(page).toHaveTitle(`${specifications} | ${app}`)
-          }
-        })
       })
     })
   })

@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
-import { cache } from 'react'
 import { routing } from '@/i18n/routing'
 import { getSession, isSignedIn } from '@/lib/auth/session'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import {
+  loadAuthorizedSpecificationCode,
   loadRequirementsSpecificationDetailInitialData,
   resolveRequirementsSpecificationRouteParam,
 } from '@/lib/specifications/preload'
@@ -13,38 +13,23 @@ import RequirementsSpecificationDetailClient from './requirements-specification-
 
 type Params = Promise<{ locale: string; specificationId: string }>
 
-const resolveSpecification = cache(resolveRequirementsSpecificationRouteParam)
-const loadDetail = cache((locale: 'sv' | 'en', specificationId: number) =>
-  loadRequirementsSpecificationDetailInitialData({ locale, specificationId }),
-)
-
 export async function generateMetadata({
   params,
 }: {
   params: Params
 }): Promise<Metadata> {
-  const { locale: requestedLocale, specificationId } = await params
-  const locale = resolveLocale(requestedLocale)
-  const t = await getTranslations({ locale, namespace: 'nav' })
-  const resolved = await resolveSpecification(specificationId)
-  if (
-    resolved &&
-    specificationId === String(resolved.id) &&
-    !resolved.fromCode
-  ) {
-    const { authorizedSpecificationCode } = await loadDetail(
-      locale,
-      resolved.id,
-    )
-    if (authorizedSpecificationCode) {
-      return {
-        title: t('specificationTitle', {
-          specificationCode: authorizedSpecificationCode,
-        }),
-      }
-    }
+  const { locale, specificationId } = await params
+  const t = await getTranslations({
+    locale: resolveLocale(locale),
+    namespace: 'nav',
+  })
+  const specificationCode =
+    await loadAuthorizedSpecificationCode(specificationId)
+  return {
+    title: specificationCode
+      ? t('recordTitles.specification', { specificationCode })
+      : t('specifications'),
   }
-  return { title: t('specifications') }
 }
 
 function resolveLocale(requestedLocale: string): 'sv' | 'en' {
@@ -61,7 +46,8 @@ export default async function RequirementsSpecificationDetailPage({
   const { locale: requestedLocale, specificationId: specificationIdParam } =
     await params
   const locale = resolveLocale(requestedLocale)
-  const resolvedSpecification = await resolveSpecification(specificationIdParam)
+  const resolvedSpecification =
+    await resolveRequirementsSpecificationRouteParam(specificationIdParam)
   if (!resolvedSpecification) {
     notFound()
   }
@@ -71,7 +57,10 @@ export default async function RequirementsSpecificationDetailPage({
   ) {
     redirect(`/${locale}/specifications/${resolvedSpecification.id}`)
   }
-  const initialData = await loadDetail(locale, resolvedSpecification.id)
+  const initialData = await loadRequirementsSpecificationDetailInitialData({
+    locale,
+    specificationId: resolvedSpecification.id,
+  })
   if (initialData.notFound) {
     notFound()
   }

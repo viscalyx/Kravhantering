@@ -4,7 +4,7 @@ import RequirementDetailClient from '../requirement-detail-client'
 import { requirementMetadata } from '../requirement-metadata'
 
 type PageProps = {
-  params: Promise<{ id: string; version: string }>
+  params: Promise<{ id: string; locale: string; version: string }>
   searchParams: Promise<{ versionId?: string }>
 }
 
@@ -12,9 +12,9 @@ export async function generateMetadata({
   params,
   searchParams,
 }: PageProps): Promise<Metadata> {
-  const { id, version } = await params
+  const { id, locale, version } = await params
   const { versionId } = await searchParams
-  return requirementMetadata({ id, version, versionId })
+  return requirementMetadata({ id, locale, version, versionId })
 }
 
 export default async function RequirementVersionPage({

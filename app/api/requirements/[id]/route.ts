@@ -13,10 +13,7 @@ import {
   refOrPositiveIntegerSegmentSchema,
   uniquePositiveIntegerArraySchema,
 } from '@/lib/http/validation'
-import {
-  canAuthorize,
-  readRequirementDetail,
-} from '@/lib/requirements/read-detail'
+import { canAuthorize } from '@/lib/requirements/can-authorize'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { toHttpErrorPayload } from '@/lib/requirements/service'
 import {
@@ -82,11 +79,11 @@ export async function GET(
     const { authorization, context, db, service } =
       await createRequirementsRestRuntime(_request)
     const ref = parseRequirementRef(id)
-    const { canViewHistory, requirement: req } = await readRequirementDetail(
-      { authorization, service },
+    const { requirement: req, versions } = await service.getRequirement(
       context,
-      ref,
+      { ...ref, view: 'accessible' },
     )
+    const canViewHistory = versions !== undefined
     const canonicalRef = { id: req.id, uniqueId: req.uniqueId }
     const latestStatusId = req.versions[0]?.status ?? null
     const transitionTargets =

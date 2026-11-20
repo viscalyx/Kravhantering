@@ -60,8 +60,8 @@ vi.mock(
 )
 
 vi.mock('@/lib/specifications/preload', () => ({
+  loadAuthorizedSpecificationCode: vi.fn(async () => 'SPEC-123'),
   loadRequirementsSpecificationDetailInitialData: vi.fn(async () => ({
-    authorizedSpecificationCode: 'SPEC-123',
     specificationItems: {
       items: [{ id: 1 }],
       pagination: { count: 1, hasMore: false, limit: 50, nextCursor: null },
@@ -113,7 +113,7 @@ describe('specifications pages', () => {
         params: Promise.resolve({ locale: 'sv', specificationId: '8' }),
       }),
     ).resolves.toEqual({
-      title: 'specificationTitle SPEC-123',
+      title: 'recordTitles.specification SPEC-123',
     })
     const element = await RequirementsSpecificationDetailPage({
       params: Promise.resolve({ locale: 'unsupported', specificationId: '8' }),
@@ -132,20 +132,16 @@ describe('specifications pages', () => {
     )
   })
 
-  it('uses the generic title for an unresolved route or forbidden summary', async () => {
+  it('uses the generic title when the specification code is unavailable', async () => {
     const { generateMetadata } = await import(
       '@/app/[locale]/specifications/[specificationId]/page'
     )
-    const { loadRequirementsSpecificationDetailInitialData } = await import(
+    const { loadAuthorizedSpecificationCode } = await import(
       '@/lib/specifications/preload'
     )
-    vi.mocked(
-      loadRequirementsSpecificationDetailInitialData,
-    ).mockResolvedValueOnce({
-      forbidden: {
-        specification: { name: 'Protected', specificationCode: 'SECRET' },
-      },
-    } as never)
+    vi.mocked(loadAuthorizedSpecificationCode)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
     for (const specificationId of ['MISSING', '8']) {
       await expect(
         generateMetadata({

@@ -15,6 +15,18 @@ interface GetDisplayVersionNumberOptions {
   requirement: RequirementDetailResponse | null
 }
 
+export function findRequestedVersion(
+  versions: readonly RequirementVersionDetail[],
+  versionNumber: number | undefined,
+  expectedVersionId?: number,
+): RequirementVersionDetail | undefined {
+  return versions.find(
+    version =>
+      version.versionNumber === versionNumber &&
+      (expectedVersionId === undefined || version.id === expectedVersionId),
+  )
+}
+
 export function getDisplayVersionNumber({
   defaultVersion,
   inline,
@@ -23,9 +35,7 @@ export function getDisplayVersionNumber({
   if (!requirement) return null
 
   if (defaultVersion != null) {
-    const match = requirement.versions.find(
-      version => version.versionNumber === defaultVersion,
-    )
+    const match = findRequestedVersion(requirement.versions, defaultVersion)
     if (match) return match.versionNumber
   }
 
