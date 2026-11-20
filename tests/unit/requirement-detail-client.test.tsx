@@ -1269,6 +1269,59 @@ describe('RequirementDetailClient', () => {
     expect(screen.queryByText('Description 1')).not.toBeInTheDocument()
   })
 
+  it('shows only permitted Review actions when an older Draft catalog arrives', async () => {
+    const draft = makeRequirement([makeVersion(1)])
+    const oldCatalog = Promise.withResolvers<Response>()
+    const draftFetch = setupFetch({ initialRequirement: draft })
+    const read = draftFetch.getMockImplementation()
+    if (!read) throw new Error('Missing request fixture')
+    draftFetch.mockImplementation((url, init) =>
+      String(url) === '/api/requirement-statuses'
+        ? oldCatalog.promise
+        : read(url, init),
+    )
+    const { rerender } = renderSubject({ inline: true, requirementId: draft.id })
+    await waitFor(() =>
+      expect(draftFetch).toHaveBeenCalledWith(
+        '/api/requirement-statuses',
+        expect.anything(),
+      ),
+    )
+
+    const review = makeRequirement(
+      [
+        makeVersion(1, {
+          status: 2,
+          statusNameSv: 'Granskning',
+          statusNameEn: 'Review',
+        }),
+      ],
+      {
+        permissions: { ...draft.permissions, allowedTransitionStatusIds: [1] },
+      },
+    )
+    setupFetch({ initialRequirement: review })
+    rerender(
+      <ConfirmModalProvider>
+        <RequirementDetailClient inline requirementId={review.uniqueId} />
+      </ConfirmModalProvider>,
+    )
+    const returnToDraft = await screen.findByRole('button', {
+      name: 'Send back to draft',
+    })
+    expect(returnToDraft).toBeEnabled()
+    await act(async () => oldCatalog.resolve(response(statusesPayload)))
+    expect(
+      screen.getByRole('button', { name: 'Send back to draft' }),
+    ).toBeEnabled()
+    expect(
+      screen.queryByRole('button', { name: 'Publish' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Send to review' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('recovers workflow actions locally while preserving readable detail', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const fetchMock = setupFetch({

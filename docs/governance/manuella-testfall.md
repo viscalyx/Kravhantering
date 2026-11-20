@@ -2071,11 +2071,29 @@ fältfel visas och inget krav skapas.
 
 ### LIFE-03: skicka utkast till granskning
 
-**Steg:** Öppna ett utkast och välj åtgärden för att skicka till granskning.
-Försök därefter redigera kravversionen.
+**Syfte:** Kontrollera åtgärderna medan kravversionen går från utkast till
+granskning.
 
-**Förväntat resultat:** Status ändras till granskning och redigering är inte
-tillgänglig förrän kravversionen återförs till utkast.
+**Användare:** Administratören `ada.admin`, som saknar rollen granskare.
+
+**Förutsättningar:** Skapa ett tillfälligt krav i utkast. Använd ett
+nätverksverktyg som kan pausa och släppa en enskild förfrågan.
+
+**Integrationstest:**
+[lifecycle.spec.ts](../../tests/integration/requirements/lifecycle.spec.ts),
+”LIFE-03: draft requirement can be sent to review from the UI”.
+
+**Steg:**
+
+1. Öppna utkastet i kravbiblioteket och invänta knappen `Granskning ↗`.
+2. Pausa nästa förfrågan till `/api/requirement-statuses` och välj
+   `Granskning ↗`. Kontrollera åtgärderna medan svaret väntar.
+3. Släpp förfrågan och kontrollera aktuellt steg och tillgängliga åtgärder.
+
+**Förväntat resultat:** Medan svaret väntar är `Dela` inaktiverad och
+`Granskning ↗` saknas. När svaret kommer är `Granskning` aktuellt steg och
+`Dela` går att använda igen. Varken `Granskning ↗`, `Publicera ↗` eller
+`Redigera` visas för administratören.
 
 ### LIFE-04: återför granskningskrav till utkast
 
