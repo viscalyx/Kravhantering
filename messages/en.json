@@ -3337,7 +3337,7 @@
       },
       "manage": {
         "heading": "Managing",
-        "body": "Choose Edit followed by the object type name to rename it. Choose Delete followed by its name to remove an object type that is unused in specifications."
+        "body": "Choose the pencil button labeled Edit followed by the object type name to rename it. Choose the trash button labeled Delete followed by its name to remove an object type that is unused in specifications."
       }
     },
     "implementationTypes": {
@@ -3348,7 +3348,7 @@
       },
       "manage": {
         "heading": "Managing",
-        "body": "Choose Edit followed by the type name to rename it. Choose Delete followed by its name to remove a type that is unused in specifications."
+        "body": "Choose the pencil button labeled Edit followed by the type name to rename it. Choose the trash button labeled Delete followed by its name to remove a type that is unused in specifications."
       }
     },
     "lifecycleStatuses": {
@@ -3359,7 +3359,7 @@
       },
       "manage": {
         "heading": "Managing",
-        "body": "Choose Edit followed by the status name to change the Swedish and English names. Built-in statuses cannot be deleted, even when unused. Create custom statuses as needed. Choose Delete followed by the status name to remove a custom status that is unused in specifications."
+        "body": "Choose the pencil button labeled Edit followed by the status name to change the Swedish and English names. Built-in statuses cannot be deleted, even when unused. Create custom statuses as needed. Choose the trash button labeled Delete followed by the status name to remove a custom status that is unused in specifications."
       }
     },
     "admin": {
@@ -3536,7 +3536,7 @@
       },
       "manage": {
         "heading": "Managing",
-        "body": "Create a new requirement area using the New button. Choose Edit followed by the area name to update the prefix, name, description, or owner. Use Manage co-authors when the action is available; the list refreshes after a successful assignment change. Choose Delete followed by the area name to remove an area with no assigned requirements."
+        "body": "Create a new requirement area using the New button. Choose the pencil button labeled Edit followed by the area name to update the prefix, name, description, or owner. Use Manage co-authors when the action is available; the list refreshes after a successful assignment change. Choose the trash button labeled Delete followed by the area name to remove an area with no assigned requirements."
       }
     },
     "requirementCategories": {
@@ -3618,7 +3618,7 @@
       },
       "manage": {
         "heading": "Managing",
-        "body": "Choose Edit followed by the status name to change its order or color. System requirement version statuses are marked and cannot be removed."
+        "body": "Choose the pencil button labeled Edit followed by the status name to change its order or color. System requirement version statuses are marked and cannot be removed."
       }
     },
     "qualityCharacteristics": {

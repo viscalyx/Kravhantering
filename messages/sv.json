@@ -3337,7 +3337,7 @@
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Välj Redigera följt av styrningsobjektstypens namn för att byta namn. Välj Ta bort följt av namnet för att ta bort en typ som inte används i något kravunderlag."
+        "body": "Välj knappen med pennan för Redigera följt av styrningsobjektstypens namn för att byta namn. Välj knappen med papperskorgen för Ta bort följt av namnet för att ta bort en typ som inte används i något kravunderlag."
       }
     },
     "implementationTypes": {
@@ -3348,7 +3348,7 @@
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Välj Redigera följt av genomförandeformens namn för att byta namn. Välj Ta bort följt av namnet för att ta bort en form som inte används i något kravunderlag."
+        "body": "Välj knappen med pennan för Redigera följt av genomförandeformens namn för att byta namn. Välj knappen med papperskorgen för Ta bort följt av namnet för att ta bort en form som inte används i något kravunderlag."
       }
     },
     "lifecycleStatuses": {
@@ -3359,7 +3359,7 @@
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Välj Redigera följt av statusens namn för att ändra de svenska och engelska namnen. Inbyggda statusar kan inte tas bort, även om de inte används. Skapa egna statusar vid behov. Välj Ta bort följt av statusens namn för att ta bort en egen status som inte används i något kravunderlag."
+        "body": "Välj knappen med pennan för Redigera följt av statusens namn för att ändra de svenska och engelska namnen. Inbyggda statusar kan inte tas bort, även om de inte används. Skapa egna statusar vid behov. Välj knappen med papperskorgen för Ta bort följt av statusens namn för att ta bort en egen status som inte används i något kravunderlag."
       }
     },
     "admin": {
@@ -3536,7 +3536,7 @@
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Skapa ett nytt kravområde med Nytt-knappen. Välj Redigera följt av kravområdets namn för att uppdatera prefix, namn, beskrivning eller ägare. Använd Hantera medförfattare när åtgärden är tillgänglig; listan läses om efter en lyckad ändring. Välj Ta bort följt av kravområdets namn för att ta bort ett område utan kopplade krav."
+        "body": "Skapa ett nytt kravområde med Nytt-knappen. Välj knappen med pennan för Redigera följt av kravområdets namn för att uppdatera prefix, namn, beskrivning eller ägare. Använd Hantera medförfattare när åtgärden är tillgänglig; listan läses om efter en lyckad ändring. Välj knappen med papperskorgen för Ta bort följt av kravområdets namn för att ta bort ett område utan kopplade krav."
       }
     },
     "requirementCategories": {
@@ -3618,7 +3618,7 @@
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Välj Redigera följt av statusens namn för att ändra dess ordning eller färg. Systemstyrda kravversionsstatusar är markerade och kan inte tas bort."
+        "body": "Välj knappen med pennan för Redigera följt av statusens namn för att ändra dess ordning eller färg. Systemstyrda kravversionsstatusar är markerade och kan inte tas bort."
       }
     },
     "qualityCharacteristics": {
