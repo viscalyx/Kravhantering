@@ -178,7 +178,7 @@ Det första testfallet körs för varje kombination av språk, tema och vy.
 **Syfte:** Skilj öppna krav, kravversioner och kravunderlag åt med hjälp av
 webbläsarens fliktitel.
 
-**Användare:** `ada.admin` och `noah.noroles`.
+**Användare:** `ada.admin`, `noah.noroles` och `petra.specresp`.
 
 **Förutsättningar:** Använd seedade poster. Upprepa med språkprefixen
 `/sv` och `/en`.
@@ -190,9 +190,10 @@ testfallet “NAV-02: tabs identify records and selected versions”, samt
 testfallet “NAV-02/AUTHZ-01: unavailable records have generic tab titles”.
 
 Vid borttagning av utkast och byte av ansvarig täcks titlarna även av
-“AUTHZ-01: version controls enforce current publication status” i samma fil
-och “AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage
-assignments” i
+“NAV-02/AUTHZ-01: version controls enforce current publication status”
+i samma fil och
+“NAV-02/AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can
+manage assignments” i
 [04-specification-responsible.spec.ts](../../tests/integration/authorization/04-specification-responsible.spec.ts).
 
 **Steg:**

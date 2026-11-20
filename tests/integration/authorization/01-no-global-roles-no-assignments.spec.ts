@@ -279,11 +279,11 @@ test.describe('AUTHZ-01/AUTH-10/AUTH-11: forbidden requirement specification sur
   })
 })
 
-test('AUTHZ-01: version controls enforce current publication status', async ({
+test('NAV-02/AUTHZ-01: version controls enforce current publication status', async ({
   browser,
   page,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTHZ-01')
+  referenceManualCases(testInfo, 'AUTHZ-01', 'NAV-02')
   const admin = await newRoleContext(testInfo, 'admin')
   const reviewer = await newRoleContext(testInfo, 'reviewer')
   const owner = await newRoleContext(testInfo, 'areaOwner')

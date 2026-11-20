@@ -27,10 +27,10 @@ test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
   fixture = await createAuthorizationFixture(testInfo)
 })
 
-test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assignments', async ({
+test('NAV-02/AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assignments', async ({
   page,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTHZ-04', 'AUTH-10', 'AUTH-11')
+  referenceManualCases(testInfo, 'AUTHZ-04', 'AUTH-10', 'AUTH-11', 'NAV-02')
   const specificationResponsible = await newRoleContext(
     testInfo,
     'specificationResponsible',
