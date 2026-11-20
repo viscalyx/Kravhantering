@@ -413,34 +413,38 @@ test.describe('Requirement lifecycle manual cases', () => {
       name: 'Granskning ↗',
     })
     await expect(sendToReview).toBeEnabled()
-    const catalog = Promise.withResolvers<void>()
-    await page.route('**/api/requirement-statuses', async route => {
-      await catalog.promise
-      await route.continue()
+    await test.step('hide Draft actions while the Review catalog is pending', async () => {
+      const catalog = Promise.withResolvers<void>()
+      await page.route('**/api/requirement-statuses', async route => {
+        await catalog.promise
+        await route.continue()
+      })
+      try {
+        const reviewCatalog = page.waitForRequest('**/api/requirement-statuses')
+        await sendToReview.click()
+        await reviewCatalog
+        await expect(
+          detailPane.getByRole('button', { name: 'Dela', exact: true }),
+        ).toBeDisabled()
+        await expect(sendToReview).toHaveCount(0)
+      } finally {
+        catalog.resolve()
+      }
     })
-    try {
-      const reviewCatalog = page.waitForRequest('**/api/requirement-statuses')
-      await sendToReview.click()
-      await reviewCatalog
+    await test.step('show the Review actions available to an admin without reviewer permission', async () => {
+      await expectLatestStatus(request, requirement.uniqueId, STATUS_REVIEW)
+      await assertActiveStepperStep(detailPane, 'Granskning')
       await expect(
         detailPane.getByRole('button', { name: 'Dela', exact: true }),
-      ).toBeDisabled()
+      ).toBeEnabled()
       await expect(sendToReview).toHaveCount(0)
-    } finally {
-      catalog.resolve()
-    }
-    await expectLatestStatus(request, requirement.uniqueId, STATUS_REVIEW)
-    await assertActiveStepperStep(detailPane, 'Granskning')
-    await expect(
-      detailPane.getByRole('button', { name: 'Dela', exact: true }),
-    ).toBeEnabled()
-    await expect(sendToReview).toHaveCount(0)
-    await expect(
-      detailPane.getByRole('button', { name: 'Publicera ↗' }),
-    ).toHaveCount(0)
-    await expect(
-      detailPane.getByRole('link', { name: 'Redigera' }),
-    ).toHaveCount(0)
+      await expect(
+        detailPane.getByRole('button', { name: 'Publicera ↗' }),
+      ).toHaveCount(0)
+      await expect(
+        detailPane.getByRole('link', { name: 'Redigera' }),
+      ).toHaveCount(0)
+    })
   })
 
   test('LIFE-04/AUTHZ-09: requirement in review can be returned to draft from the UI by a Reviewer', async ({

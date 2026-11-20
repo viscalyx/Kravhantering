@@ -195,6 +195,30 @@ describe('apiFetch', () => {
     }
   })
 
+  it('uses the effective Request signal before reporting a late 401', async () => {
+    const controller = new AbortController()
+    const input = new Request(new URL('/api/items', window.location.href), {
+      signal: controller.signal,
+    })
+    const pending = Promise.withResolvers<Response>()
+    fetchMock.mockReturnValueOnce(pending.promise)
+    const listener = vi.fn()
+    window.addEventListener(AUTH_REAUTH_REQUIRED_EVENT, listener)
+    try {
+      const obsolete = apiFetch(input)
+      controller.abort()
+      pending.resolve(new Response(null, { status: 401 }))
+      expect((await obsolete).status).toBe(401)
+      expect(listener).not.toHaveBeenCalled()
+
+      fetchMock.mockResolvedValueOnce(new Response(null, { status: 401 }))
+      await apiFetch(input, { signal: new AbortController().signal })
+      expect(listener).toHaveBeenCalledOnce()
+    } finally {
+      window.removeEventListener(AUTH_REAUTH_REQUIRED_EVENT, listener)
+    }
+  })
+
   it('does not dispatch a reauth event for cross-origin 401 responses', async () => {
     const events: CustomEvent[] = []
     const listener = (event: Event) => events.push(event as CustomEvent)

@@ -55,7 +55,7 @@ describe('workflow actions after a detail refresh', () => {
     }
   }
 
-  it.each(['success', 'HTTP 502', 'network error'])(
+  it.each(['success', 502, 401, 'network error'])(
     'keeps Review actions after a superseded Draft catalog completes with %s',
     async outcome => {
       const { result, draftCatalog, readCatalog, nextCatalog, changeVersions } =
@@ -72,10 +72,11 @@ describe('workflow actions after a detail refresh', () => {
       await act(async () => {
         if (outcome === 'network error')
           draftCatalog.reject(new TypeError('Offline'))
-        else if (outcome === 'HTTP 502')
-          draftCatalog.resolve(new Response(null, { status: 502 }))
+        else if (typeof outcome === 'number')
+          draftCatalog.resolve(new Response(null, { status: outcome }))
         else draftCatalog.resolve(Response.json(catalog))
       })
+      expect(result.current.requirement?.versions[0]?.status).toBe(review.id)
       expect(result.current.statusesState).toBe('success')
       expect(result.current.statuses).toEqual(catalog.statuses)
       expect(result.current.transitions).toEqual([draft, published])

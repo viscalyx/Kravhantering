@@ -42,12 +42,19 @@ function isSameOriginApiRequest(input: RequestInfo | URL): boolean {
   }
 }
 
-async function reportUnauthorizedResponse(
+async function fetchApiResponse(
   input: RequestInfo | URL,
-  response: Response,
+  init?: RequestInit,
 ): Promise<Response> {
+  const response =
+    init === undefined ? await fetch(input) : await fetch(input, init)
   if (response.status === 401 && isSameOriginApiRequest(input)) {
-    dispatchAuthReauthRequired('api_unauthorized')
+    const signal =
+      init?.signal === undefined && input instanceof Request
+        ? input.signal
+        : init?.signal
+    // A response can settle after its caller has moved to a new session.
+    if (!signal?.aborted) dispatchAuthReauthRequired('api_unauthorized')
   }
   if (
     (response.status === 429 || response.status === 503) &&
@@ -68,25 +75,14 @@ export async function apiFetch(
   ).toUpperCase()
 
   if (SAFE_METHODS.has(method)) {
-    if (init === undefined) {
-      return reportUnauthorizedResponse(input, await fetch(input))
+    if (input instanceof Request && init !== undefined) {
+      const options =
+        init.headers === undefined
+          ? init
+          : { ...init, headers: buildHeaders(input, init) }
+      return fetchApiResponse(new Request(input, options))
     }
-
-    if (input instanceof Request) {
-      if (init.headers === undefined) {
-        return reportUnauthorizedResponse(
-          input,
-          await fetch(new Request(input, init)),
-        )
-      }
-      const headers = buildHeaders(input, init)
-      return reportUnauthorizedResponse(
-        input,
-        await fetch(new Request(input, { ...init, headers })),
-      )
-    }
-
-    return reportUnauthorizedResponse(input, await fetch(input, init))
+    return fetchApiResponse(input, init)
   }
 
   const headers = buildHeaders(input, init)
@@ -95,8 +91,5 @@ export async function apiFetch(
     headers.set('X-Requested-With', 'XMLHttpRequest')
   }
 
-  return reportUnauthorizedResponse(
-    input,
-    await fetch(input, { ...(init ?? {}), headers }),
-  )
+  return fetchApiResponse(input, { ...init, headers })
 }
