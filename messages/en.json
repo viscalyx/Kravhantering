@@ -3359,7 +3359,7 @@
       },
       "manage": {
         "heading": "Managing",
-        "body": "Choose Edit followed by the status name to change the Swedish and English names. Built-in statuses cannot be deleted, even when unused. Create custom statuses as needed; only custom statuses not linked to a specification can be deleted."
+        "body": "Choose Edit followed by the status name to change the Swedish and English names. Built-in statuses cannot be deleted, even when unused. Create custom statuses as needed. Choose Delete followed by the status name to remove a custom status that is unused in specifications."
       }
     },
     "admin": {
@@ -3536,7 +3536,7 @@
       },
       "manage": {
         "heading": "Managing",
-        "body": "Create a new requirement area using the New button. Choose Edit followed by the area name to update the prefix, name, description, or owner. Use Manage co-authors when the action is available; the list refreshes after a successful assignment change. Deleting a requirement area is only possible if no requirements are assigned to it."
+        "body": "Create a new requirement area using the New button. Choose Edit followed by the area name to update the prefix, name, description, or owner. Use Manage co-authors when the action is available; the list refreshes after a successful assignment change. Choose Delete followed by the area name to remove an area with no assigned requirements."
       }
     },
     "requirementCategories": {

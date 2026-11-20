@@ -3359,7 +3359,7 @@
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Välj Redigera följt av statusens namn för att ändra de svenska och engelska namnen. Inbyggda statusar kan inte tas bort, även om de inte används. Skapa egna statusar vid behov; endast egna statusar som inte är kopplade till ett kravunderlag kan tas bort."
+        "body": "Välj Redigera följt av statusens namn för att ändra de svenska och engelska namnen. Inbyggda statusar kan inte tas bort, även om de inte används. Skapa egna statusar vid behov. Välj Ta bort följt av statusens namn för att ta bort en egen status som inte används i något kravunderlag."
       }
     },
     "admin": {
@@ -3536,7 +3536,7 @@
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Skapa ett nytt kravområde med Nytt-knappen. Välj Redigera följt av kravområdets namn för att uppdatera prefix, namn, beskrivning eller ägare. Använd Hantera medförfattare när åtgärden är tillgänglig; listan läses om efter en lyckad ändring. Det går bara att ta bort ett kravområde om inga krav är kopplade till det."
+        "body": "Skapa ett nytt kravområde med Nytt-knappen. Välj Redigera följt av kravområdets namn för att uppdatera prefix, namn, beskrivning eller ägare. Använd Hantera medförfattare när åtgärden är tillgänglig; listan läses om efter en lyckad ändring. Välj Ta bort följt av kravområdets namn för att ta bort ett område utan kopplade krav."
       }
     },
     "requirementCategories": {
