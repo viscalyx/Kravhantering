@@ -148,6 +148,8 @@ const MANUAL_CASE_LINKS = {
     'docs/governance/manuella-testfall.md#admin-13-kravomradesansvar-visas-i-listan',
   'LIFE-11':
     'docs/governance/manuella-testfall.md#life-11-detaljrapporter-finns-per-status',
+  'NAV-02':
+    'docs/governance/manuella-testfall.md#nav-02-fliktitlar-för-enskilda-poster',
   'REQ-10':
     'docs/governance/manuella-testfall.md#req-10-skapa-pdf-fran-kravlistan',
   'REQ-10a':
