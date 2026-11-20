@@ -302,9 +302,19 @@ describe('SpecificationRequirementSelectionPanel', () => {
     expect(screen.getByText('hiddenHistoricalVisibility')).toBeInTheDocument()
     expect(screen.getByText('missingRequirementSelection')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'PRI-KUF001' }))
+    const matchMedia = vi.fn().mockReturnValue({ matches: false })
+    vi.stubGlobal('matchMedia', matchMedia)
+    const followUpButton = screen.getByRole('button', { name: 'PRI-KUF001' })
+    fireEvent.click(followUpButton)
     expect(scrollIntoView).toHaveBeenCalledWith({
       behavior: 'smooth',
+      block: 'center',
+    })
+
+    matchMedia.mockReturnValue({ matches: true })
+    fireEvent.click(followUpButton)
+    expect(scrollIntoView).toHaveBeenLastCalledWith({
+      behavior: 'instant',
       block: 'center',
     })
 

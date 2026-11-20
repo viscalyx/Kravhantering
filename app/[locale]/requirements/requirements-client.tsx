@@ -34,6 +34,7 @@ import {
 } from '@/lib/ai/generation-availability'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { getScrollBehavior } from '@/lib/reduced-motion'
 import {
   createLibraryRequirementDetailCache,
   type DetailPrefetchIntentTarget,
@@ -860,7 +861,7 @@ export default function RequirementsClient({
     const el = document.getElementById(`requirement-row-detail-${id}`)
     if (el) {
       scrollToIdRef.current = null
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.scrollIntoView?.({ behavior: getScrollBehavior(), block: 'center' })
     }
   }, [pinnedRow, resourceState, rows])
 

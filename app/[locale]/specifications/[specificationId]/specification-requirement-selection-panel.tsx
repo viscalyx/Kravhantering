@@ -7,6 +7,7 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import { getScrollBehavior } from '@/lib/reduced-motion'
 
 interface SelectionAnswer {
   alreadyAddedRequirementCount?: number
@@ -609,8 +610,8 @@ export default function SpecificationRequirementSelectionPanel({
                                   .getElementById(
                                     `selection-question-${followUpQuestion.id}`,
                                   )
-                                  ?.scrollIntoView({
-                                    behavior: 'smooth',
+                                  ?.scrollIntoView?.({
+                                    behavior: getScrollBehavior(),
                                     block: 'center',
                                   })
                               }}

@@ -42,6 +42,7 @@ hämtning i flera sidor verifierar inte ensamma rapportens fullständiga innehå
 - [Navigering](#navigering)
 - [Tillgänglighet](#tillgänglighet)
   - [Tangentbordsrullning i tabeller](#a11y-05-rulla-kravtabellen-med-tangentbord)
+  - [Minskad rörelse vid rullning](#a11y-06-rulla-till-innehåll-med-minskad-rörelse)
 - [Autentisering och behörighet](#autentisering-och-behörighet)
   - [AUTH-01 till AUTH-13](#auth-01-logga-in-via-keycloak)
   - [AUTHZ-00 till AUTHZ-11](#authz-00-fas-0-testdata-och-identiteter)
@@ -320,6 +321,34 @@ manuellt.
 “Requirements list”. Alla kolumner kan läsas med piltangenterna utan att fokus
 fastnar. Tabbstoppet följer behovet av vågrät rullning. Krav-ID och kravtext
 finns kvar och rubrikerna följer kolumnerna vid rullning.
+
+### A11Y-06: rulla till innehåll med minskad rörelse
+
+**Användare:** `ada.admin`.
+
+**Förutsättningar:** Använd seedade data och en webbläsare med stöd för
+systemets inställning för minskad rörelse.
+
+**Integrationstest:**
+[library.spec.ts](../../tests/integration/requirements/library.spec.ts),
+”A11Y-06: linked requirements and return to top respect reduced motion”,
+och [panel-layout.spec.ts](../../tests/integration/specifications/panel-layout.spec.ts),
+”A11Y-06: follow-up question links respect a live reduced-motion change”.
+
+**Steg:**
+
+1. Stäng av minskad rörelse. Öppna `/sv/requirements?selected=INT0001`
+   och kontrollera att kravdetaljen visas. Välj **Till toppen**.
+1. Aktivera minskad rörelse. Öppna samma länk och välj **Till toppen** igen.
+1. Stäng av minskad rörelse. I kravunderlag 8 öppnar du **Kravbibliotek** och
+   väljer fliken **Kravurvalsfrågor**. Välj länken `DRF-KUF003` vid `DRF-KUF001`.
+1. Rulla tillbaka till länken. Aktivera minskad rörelse och välj länken igen
+   utan att ladda om sidan.
+
+**Förväntat resultat:** Kravdetaljen, tabellens början och den underordnade
+kravurvalsfrågan nås direkt med minskad rörelse. När minskad rörelse är
+avstängd rullar sidan eller panelen mjukt till samma mål. Valda svar och
+frågornas synlighet påverkas inte. Återställ systeminställningen efter testet.
 
 ### A11Y-03: rulla administrationstabeller med tangentbord
 

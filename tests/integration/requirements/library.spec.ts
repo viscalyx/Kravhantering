@@ -3,6 +3,10 @@ import { delay, escapeRegExp } from '@/tests/helpers/common'
 import { referenceManualCases } from '@/tests/support/authorization-test-helpers'
 import { deferRoute } from '@/tests/support/deferred-route'
 import { countDetailRequests } from '@/tests/support/detail-request-counter'
+import {
+  expectVerticalScroll,
+  recordVerticalScroll,
+} from '@/tests/support/scroll-recording'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 // cSpell:ignore requestfailed
@@ -157,6 +161,48 @@ test.describe('Requirements library', () => {
       await expect(detailPane).toContainText('Kravtext')
       await expect(detailPane).toContainText('Kravområde')
     })
+  })
+
+  test('A11Y-06: linked requirements and return to top respect reduced motion', async ({
+    page,
+  }) => {
+    await page.addInitScript(recordVerticalScroll)
+
+    const navigate = (preference: 'no-preference' | 'reduce') =>
+      test.step(preference, async () => {
+        const behavior = preference === 'reduce' ? 'instant' : 'smooth'
+        await page.emulateMedia({ reducedMotion: preference })
+        const detail = await openRequirementDetail(page)
+        await expect(page.locator('html')).toHaveCSS(
+          'scroll-behavior',
+          preference === 'reduce' ? 'auto' : 'smooth',
+        )
+        await expectVerticalScroll(page, behavior)
+        await expect(detail).toBeInViewport()
+        await expect(detail).toContainText('Kravtext')
+        const detailTop = await detail.evaluate(
+          element => element.getBoundingClientRect().top,
+        )
+
+        const documentTop = await page.evaluate(() => {
+          const target = window.scrollY - 400
+          window.scrollTo({ top: target })
+          return target
+        })
+        await expectVerticalScroll(page, behavior)
+        expect(await page.evaluate(() => window.scrollY)).toBe(documentTop)
+
+        await page.getByRole('button', { name: 'Till toppen' }).click()
+        await expectVerticalScroll(page, behavior)
+        const tableTop = await page.evaluate(() => window.scrollY)
+        expect(tableTop).toBeLessThan(500)
+        return { detailTop, tableTop }
+      })
+
+    const smooth = await navigate('no-preference')
+    const reduced = await navigate('reduce')
+    expect(reduced.detailTop).toBeCloseTo(smooth.detailTop, 0)
+    expect(reduced.tableTop).toBe(smooth.tableTop)
   })
 
   test('REQ-21: intent prefetch is cancelled, reused, and never duplicated', async ({

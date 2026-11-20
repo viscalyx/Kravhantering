@@ -2,6 +2,10 @@ import { expect, type Page, test } from '@playwright/test'
 import { DESKTOP_VIEWPORT } from '@/tests/helpers/desktop-viewport'
 import { requireTestValue } from '@/tests/helpers/require-test-value'
 import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
+import {
+  expectVerticalScroll,
+  recordVerticalScroll,
+} from '@/tests/support/scroll-recording'
 
 const storageKey = 'specification-panel-layout-v1'
 
@@ -1065,6 +1069,71 @@ test('SPEC-31: invalid saved layout falls back to the content default', async ({
     await expect(page.getByRole('button', { name: /^Fäll ihop / })).toHaveCount(
       2,
     )
+  })
+})
+
+test('A11Y-06: follow-up question links respect a live reduced-motion change', async ({
+  page,
+}) => {
+  const questions = page.getByRole('tabpanel', { name: 'Kravurvalsfrågor' })
+  const followUp = questions.getByRole('button', {
+    name: 'DRF-KUF003',
+    exact: true,
+  })
+  const cards = questions.locator('[id^="selection-question-"]')
+  const destination = cards.filter({
+    has: page.getByText('DRF-KUF003 · Drift', { exact: true }),
+  })
+  const readQuestionState = () =>
+    cards.evaluateAll(elements =>
+      elements.map(card => ({
+        id: card.id,
+        answers: Array.from(
+          card.querySelectorAll('input'),
+          input => input.checked,
+        ),
+      })),
+    )
+
+  const sourceScrollTop =
+    await test.step('Open the questions and bring the follow-up button into view', async () => {
+      await page.emulateMedia({ reducedMotion: 'no-preference' })
+      await openSpecification(page)
+      await page
+        .getByRole('button', { name: 'Öppna Kravbibliotek', exact: true })
+        .click()
+      await page
+        .getByRole('tab', { name: 'Kravurvalsfrågor', exact: true })
+        .click()
+      await followUp.scrollIntoViewIfNeeded()
+      await page.evaluate(recordVerticalScroll, '#right-panel-questions')
+      return questions.evaluate(element => element.scrollTop)
+    })
+  const initialQuestionState = await readQuestionState()
+
+  const destinationScrollTop =
+    await test.step('Follow the link with motion allowed', async () => {
+      await followUp.click()
+      await expectVerticalScroll(page, 'smooth')
+      await expect(destination).toBeInViewport()
+      return questions.evaluate(element => element.scrollTop)
+    })
+
+  await test.step('Return to the link and enable reduced motion without reloading', async () => {
+    await questions.evaluate((element, top) => {
+      element.scrollTo({ behavior: 'instant', top })
+      // Smooth CSS on the panel must not animate the next jump.
+      element.style.scrollBehavior = 'smooth'
+    }, sourceScrollTop)
+    await expectVerticalScroll(page, 'instant')
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await followUp.click()
+    await expectVerticalScroll(page, 'instant')
+    await expect(destination).toBeInViewport()
+    expect(await questions.evaluate(element => element.scrollTop)).toBe(
+      destinationScrollTop,
+    )
+    expect(await readQuestionState()).toEqual(initialQuestionState)
   })
 })
 

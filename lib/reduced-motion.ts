@@ -27,6 +27,16 @@ export const shouldReduceMotion = (
   reducedMotionPreference: boolean | null,
 ): boolean => reducedMotionPreference === true
 
+export const getScrollBehavior = (): ScrollBehavior => {
+  const preference =
+    typeof window === 'undefined'
+      ? undefined
+      : window.matchMedia?.('(prefers-reduced-motion: reduce)')
+
+  // `auto` can still animate when the scroll container uses smooth CSS scrolling.
+  return preference?.matches === false ? 'smooth' : 'instant'
+}
+
 export const fadeMotion = (
   reducedMotionPreference: boolean | null,
   { duration = 0.15 }: DurationOptions = {},
