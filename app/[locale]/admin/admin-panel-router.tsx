@@ -5,9 +5,7 @@ import type { ActionAuditLogInitialState } from '@/components/admin/ActionAuditL
 import type { AdminTab } from './admin-tabs'
 
 const AccessReviewPanel = lazy(() => import('./panels/access-review-panel'))
-const ActionAuditLogPanel = lazy(
-  () => import('./panels/action-audit-log-panel'),
-)
+const ActionAuditLogPanel = lazy(() => import('./action-audit-log-client'))
 const SettingsPanel = lazy(() => import('./panels/settings-panel'))
 const ArchivingPanel = lazy(() => import('./panels/archiving-panel'))
 const ColumnsPanel = lazy(() => import('./panels/columns-panel'))

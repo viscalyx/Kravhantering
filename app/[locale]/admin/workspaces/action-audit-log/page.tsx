@@ -1,6 +1,6 @@
 import type { ActionAuditLogSearchParams } from '@/lib/audit/action-audit-query'
 import AdminWorkspacePage from '../../admin-workspace-page'
-import ActionAuditLogPanel from '../../panels/action-audit-log-panel'
+import ActionAuditLogWorkspacePanel from './workspace-panel'
 
 type PageParams = Promise<{ locale: string }>
 type SearchParams = Promise<ActionAuditLogSearchParams>
@@ -18,7 +18,7 @@ export default function AdminActionAuditLogWorkspacePage({
       searchParams={searchParams}
       tab="actionAuditLog"
     >
-      <ActionAuditLogPanel />
+      <ActionAuditLogWorkspacePanel params={params} />
     </AdminWorkspacePage>
   )
 }

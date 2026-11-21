@@ -46,11 +46,14 @@ function positiveInteger(value: string | undefined): number | undefined {
   return Number(value)
 }
 
-function date(value: string | undefined): Date | undefined {
+export function parseActionAuditDate(
+  input: string | undefined,
+): Date | undefined {
+  const value = input?.trim()
   if (!value) return undefined
   const parsed = new Date(
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/u.test(value)
-      ? `${value}Z`
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/iu.test(value)
+      ? `${value.replace(/t| /u, 'T')}Z`
       : value,
   )
   return Number.isNaN(parsed.getTime()) ? undefined : parsed
@@ -81,12 +84,12 @@ export function actionAuditLogFiltersFromSearchParams(
     actorHsaId: firstSearchParamValue(query.actor_hsa_id),
     clientIp: clientIp(firstSearchParamValue(query.client_ip)),
     decision: decision(firstSearchParamValue(query.decision)),
-    from: date(firstSearchParamValue(query.from)),
+    from: parseActionAuditDate(firstSearchParamValue(query.from)),
     page: positiveInteger(firstSearchParamValue(query.page)),
     pageSize: positiveInteger(firstSearchParamValue(query.pageSize)),
     targetId: firstSearchParamValue(query.target_id),
     targetKind: firstSearchParamValue(query.target_kind),
-    to: date(firstSearchParamValue(query.to)),
+    to: parseActionAuditDate(firstSearchParamValue(query.to)),
   }
 }
 

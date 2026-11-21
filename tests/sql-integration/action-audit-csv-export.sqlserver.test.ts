@@ -1,10 +1,55 @@
 import { describe, expect, it } from 'vitest'
-import { traverseActionAuditEventsForCsv } from '@/lib/audit/action-audit'
+import {
+  listActionAuditEvents,
+  traverseActionAuditEventsForCsv,
+} from '@/lib/audit/action-audit'
+import { actionAuditLogFiltersFromSearchParams } from '@/lib/audit/action-audit-query'
 import type { SqlServerDatabase } from '@/lib/db'
 import { useSqlIntegrationDatabase } from './helpers/sql-test-database'
 
 describe('Action-log CSV export traversal', () => {
   const appDb = useSqlIntegrationDatabase()
+
+  it.each([
+    ['2026-01-15T09:00', '2026-01-15T09:01', '2026-01-15T10:00:00+01:00'],
+    [
+      '2026-07-15T08:00:00.001',
+      '2026-07-15T08:01:00.001',
+      '2026-07-15T10:00:00.001+02:00',
+    ],
+  ])(
+    'includes both UTC bounds starting at %s in the list and complete export',
+    async (from, to, stockholmTime) => {
+      const db = appDb()
+      await db.query(
+        `INSERT INTO action_audit_events (occurred_at, actor_kind, action, target_kind, target_id, decision)
+       SELECT DATEADD(millisecond, delta, CAST(@0 AS datetime2(3))), N'system', N'test.interval', N'Requirement', targetId, N'allowed'
+       FROM (VALUES (-1, 'before'), (0, 'start'), (60000, 'end'), (60001, 'after')) AS events(delta, targetId)`,
+        [new Date(stockholmTime).toISOString()],
+      )
+      const filters = actionAuditLogFiltersFromSearchParams({
+        from,
+        to,
+        pageSize: '1',
+        action: 'test.interval',
+      })
+      const first = await listActionAuditEvents(db, filters)
+      const second = await listActionAuditEvents(db, { ...filters, page: 2 })
+      expect(first.pagination.total).toBe(2)
+      expect(first.events.map(event => event.targetId)).toEqual(['end'])
+      expect(second.events.map(event => event.targetId)).toEqual(['start'])
+
+      const exported: string[] = []
+      await traverseActionAuditEventsForCsv(db, filters, {
+        maxItems: 10,
+        signal: new AbortController().signal,
+        writeRow: async row => {
+          exported.push(row.split(';')[7])
+        },
+      })
+      expect(exported).toEqual(['end', 'start'])
+    },
+  )
 
   it('keeps filtered multi-page equal-time order inside the identity anchor', async () => {
     await appDb().query(
@@ -33,7 +78,7 @@ describe('Action-log CSV export traversal', () => {
        SELECT
          DATEADD(
            millisecond,
-           value,
+           value + 1,
            CONVERT(datetime2(3), '2026-07-25T10:00:00.000')
          ),
          N'SE5560000001-export1',

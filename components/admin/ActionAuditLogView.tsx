@@ -1,3 +1,5 @@
+import { useId } from 'react'
+import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import type { ActionAuditEventListResult } from '@/lib/audit/action-audit'
 import {
   type ActionAuditLogSearchParams,
@@ -5,7 +7,9 @@ import {
   actionAuditLogHref,
   actionAuditLogPageSize,
   firstSearchParamValue,
+  parseActionAuditDate,
 } from '@/lib/audit/action-audit-query'
+import { devMarker } from '@/lib/developer-mode-markers'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import ActionAuditLogExportButton from './ActionAuditLogExportButton'
 
@@ -37,8 +41,47 @@ export type ActionAuditLogLabels = {
   target: string
   targetId: string
   targetKind: string
+  timeRangeExample: string
+  timeRangeHelp: string
   title: string
   to: string
+}
+
+export function actionAuditLogLabels(
+  t: (
+    key: keyof ActionAuditLogLabels,
+    values?: Parameters<ActionAuditLogLabels['pagination']>[0],
+  ) => string,
+): ActionAuditLogLabels {
+  return {
+    action: t('action'),
+    actor: t('actor'),
+    actorHsaId: t('actorHsaId'),
+    allDecisions: t('allDecisions'),
+    allowed: t('allowed'),
+    clear: t('clear'),
+    clientIp: t('clientIp'),
+    decision: t('decision'),
+    denied: t('denied'),
+    description: t('description'),
+    empty: t('empty'),
+    exportCsv: t('exportCsv'),
+    eyebrow: t('eyebrow'),
+    filter: t('filter'),
+    from: t('from'),
+    next: t('next'),
+    occurredAt: t('occurredAt'),
+    pagination: values => t('pagination', values),
+    previous: t('previous'),
+    requestId: t('requestId'),
+    target: t('target'),
+    targetId: t('targetId'),
+    targetKind: t('targetKind'),
+    timeRangeExample: t('timeRangeExample'),
+    timeRangeHelp: t('timeRangeHelp'),
+    title: t('title'),
+    to: t('to'),
+  }
 }
 
 export type ActionAuditLogInitialState = {
@@ -75,6 +118,8 @@ export default function ActionAuditLogView({
   showEyebrow = true,
   titleElement = 'h1',
 }: ActionAuditLogViewProps) {
+  const timeRangeId = useId()
+  const timeHelpId = `${timeRangeId}-hint`
   const Heading = titleElement
   const pageSize = actionAuditLogPageSize(query)
   const headingClass =
@@ -225,24 +270,41 @@ export default function ActionAuditLogView({
               <option value="denied">{labels.denied}</option>
             </select>
           </label>
-          <label className="space-y-1 text-sm font-medium text-secondary-700 dark:text-secondary-200">
-            <span>{labels.from}</span>
-            <input
-              className="w-full rounded-xl border border-secondary-300 bg-white px-3 py-2 text-sm dark:border-secondary-700 dark:bg-secondary-950"
-              defaultValue={firstSearchParamValue(query.from) ?? ''}
-              name="from"
-              type="datetime-local"
-            />
-          </label>
-          <label className="space-y-1 text-sm font-medium text-secondary-700 dark:text-secondary-200">
-            <span>{labels.to}</span>
-            <input
-              className="w-full rounded-xl border border-secondary-300 bg-white px-3 py-2 text-sm dark:border-secondary-700 dark:bg-secondary-950"
-              defaultValue={firstSearchParamValue(query.to) ?? ''}
-              name="to"
-              type="datetime-local"
-            />
-          </label>
+          <div className="grid gap-2 md:col-span-2 md:grid-cols-2">
+            <p
+              className="text-sm text-secondary-600 md:col-span-2 dark:text-secondary-300"
+              id={timeHelpId}
+              {...devMarker({ context: 'action log', name: 'UTC filter help' })}
+            >
+              {labels.timeRangeHelp}
+            </p>
+            {(['from', 'to'] as const).map(bound => (
+              <div key={bound}>
+                <FieldLabelWithHelp
+                  help={labels.timeRangeExample}
+                  htmlFor={`${timeRangeId}-${bound}`}
+                  label={labels[bound]}
+                />
+                <input
+                  aria-describedby={timeHelpId}
+                  className="w-full rounded-xl border border-secondary-300 bg-white px-3 py-2 text-sm dark:border-secondary-700 dark:bg-secondary-950"
+                  defaultValue={
+                    parseActionAuditDate(firstSearchParamValue(query[bound]))
+                      ?.toISOString()
+                      .slice(0, -1) ?? ''
+                  }
+                  id={`${timeRangeId}-${bound}`}
+                  name={bound}
+                  step="any"
+                  type="datetime-local"
+                  {...devMarker({
+                    context: 'action log',
+                    name: `UTC ${bound} filter`,
+                  })}
+                />
+              </div>
+            ))}
+          </div>
           <input name="pageSize" type="hidden" value={String(pageSize)} />
           <div className="flex items-end gap-2">
             <button className="btn-primary" type="submit">
