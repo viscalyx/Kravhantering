@@ -40,6 +40,7 @@ interface CrudAdminPanelProps<TItem extends { id: CrudId }, TForm> {
   formSubmitDisabled?: boolean
   formTitle?: (mode: CrudAdminFormMode) => string
   formTitleId?: string
+  getItemName: (item: TItem) => string
   notice?: ReactNode
   renderFormFields: (props: {
     disabled: boolean
@@ -81,6 +82,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
   formSubmitDisabled = false,
   formTitle,
   formTitleId,
+  getItemName,
   notice,
   renderFormFields,
   renderRowActions,
@@ -311,6 +313,9 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
                     </tr>
                   ) : (
                     controller.items.map(item => {
+                      const name = getItemName(item)
+                      const editLabel = common('editItem', { name })
+                      const deleteLabel = common('deleteItem', { name })
                       const isDeleting = controller.deletingIds.has(item.id)
                       const rowActionDisabled =
                         controller.submitting || isDeleting
@@ -336,7 +341,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
                                 rowActionButtonClassName,
                               })}
                               <button
-                                aria-label={common('edit')}
+                                aria-label={editLabel}
                                 className={`${rowActionButtonClassName} text-primary-700 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-950/30`}
                                 {...devMarker({
                                   context: devContext,
@@ -345,7 +350,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
                                 })}
                                 disabled={rowActionDisabled}
                                 onClick={() => controller.openEdit(item)}
-                                title={common('edit')}
+                                title={editLabel}
                                 type="button"
                               >
                                 <Pencil
@@ -356,7 +361,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
                               </button>
                               {canDelete(item) && (
                                 <button
-                                  aria-label={common('delete')}
+                                  aria-label={deleteLabel}
                                   className={`${rowActionButtonClassName} text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30`}
                                   {...devMarker({
                                     context: devContext,
@@ -372,8 +377,8 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
                                   }}
                                   title={
                                     isDeleting
-                                      ? common('deleting')
-                                      : common('delete')
+                                      ? common('deletingItem', { name })
+                                      : deleteLabel
                                   }
                                   type="button"
                                 >

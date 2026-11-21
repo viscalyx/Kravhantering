@@ -92,9 +92,11 @@ describe('RequirementStatusesClient', () => {
     })
     expect(screen.queryByText('Custom')).toBeNull()
     expect(screen.queryByRole('button', { name: /common\.create/i })).toBeNull()
-    expect(screen.queryByRole('button', { name: /common\.delete/i })).toBeNull()
     expect(
-      screen.getByRole('button', { name: /common\.edit/i }),
+      screen.queryByRole('button', { name: 'common.deleteItem' }),
+    ).toBeNull()
+    expect(
+      screen.getByRole('button', { name: 'common.editItem' }),
     ).toBeInTheDocument()
   })
 
@@ -112,7 +114,7 @@ describe('RequirementStatusesClient', () => {
       expect(screen.getByText('Draft')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'common.editItem' }))
 
     expect(
       (
@@ -127,7 +129,7 @@ describe('RequirementStatusesClient', () => {
     render(<RequirementStatusesClient />)
     await screen.findByText('Draft')
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'common.editItem' }))
 
     const preview = screen.getByRole('status', {
       name: 'statusMgmt.themePreview',
@@ -161,7 +163,7 @@ describe('RequirementStatusesClient', () => {
   it('keeps Save disabled until the edited color has an exact hex format', async () => {
     render(<RequirementStatusesClient />)
     await screen.findByText('Draft')
-    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'common.editItem' }))
 
     const colorInput = screen.getByLabelText('statusMgmt.colorHex')
     const saveButton = screen.getByRole('button', { name: /common\.save/i })
@@ -184,7 +186,7 @@ describe('RequirementStatusesClient', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'statusMgmt.invalidStoredColors',
     )
-    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'common.editItem' }))
     expect(screen.getByLabelText('statusMgmt.colorHex')).toHaveValue(
       'invalid-color',
     )
@@ -205,7 +207,7 @@ describe('RequirementStatusesClient', () => {
       expect(screen.getByText('Draft')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'common.editItem' }))
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
 
     expect(

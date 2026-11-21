@@ -75,7 +75,7 @@ export default function GovernanceObjectTypesClient() {
       className: 'py-3 px-4 font-medium',
       header: t('name'),
       key: 'name',
-      render: item => getName(item),
+      render: getName,
     },
   ]
 
@@ -85,6 +85,7 @@ export default function GovernanceObjectTypesClient() {
       controller={controller}
       devContext="governance object types"
       emptyStateMessage={t('emptyState')}
+      getItemName={getName}
       renderFormFields={({ disabled, form, inputClassName, setForm }) => (
         <>
           <div>

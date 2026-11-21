@@ -112,6 +112,7 @@ test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors cannot delegate area
     )
     const areaPayload = (await areaResponse.json()) as {
       area?: {
+        name: string
         permissions?: {
           canAuthor?: boolean
           canManageAssignments?: boolean
@@ -134,7 +135,12 @@ test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors cannot delegate area
     await expect(
       areaRow.getByRole('button', { name: 'Hantera medförfattare' }),
     ).toHaveCount(0)
-    await areaRow.getByRole('button', { name: 'Redigera' }).click()
+    await areaRow
+      .getByRole('button', {
+        name: `Redigera ${areaPayload.area?.name}`,
+        exact: true,
+      })
+      .click()
     const editForm = page.locator('form').filter({ hasText: 'Kravområde' })
     await expect(editForm).toBeVisible()
     await expect(

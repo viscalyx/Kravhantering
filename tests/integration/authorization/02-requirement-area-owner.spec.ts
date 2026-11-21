@@ -113,7 +113,12 @@ test('AUTHZ-02/AUTH-10/AUTH-11/ADMIN-13: requirement area owners can manage thei
       await page.setViewportSize(DESKTOP_VIEWPORT)
     })
 
-    await row.getByRole('button', { name: 'Redigera' }).click()
+    await row
+      .getByRole('button', {
+        name: `Redigera ${await areaNameCell.innerText()}`,
+        exact: true,
+      })
+      .click()
 
     const form = page.locator('form').filter({ hasText: 'Kravområdesägare' })
     await expect(form).toBeVisible()

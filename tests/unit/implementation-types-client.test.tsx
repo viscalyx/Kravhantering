@@ -134,7 +134,7 @@ describe('ImplementationTypesClient', () => {
       expect(screen.getByText('Type en')).toBeInTheDocument()
     })
     const editButtons = screen.getAllByRole('button', {
-      name: /common\.edit/i,
+      name: 'common.editItem',
     })
     fireEvent.click(editButtons[0])
     expect(
@@ -171,7 +171,7 @@ describe('ImplementationTypesClient', () => {
     fetchMock.mockResolvedValueOnce(okJson({ types: [] }))
 
     const deleteButtons = screen.getAllByRole('button', {
-      name: /common\.delete/i,
+      name: 'common.deleteItem',
     })
     fireEvent.click(deleteButtons[0])
 
@@ -263,7 +263,7 @@ describe('ImplementationTypesClient', () => {
     fetchMock.mockResolvedValueOnce(errJson({ error: 'Cannot delete' }))
 
     const deleteButtons = screen.getAllByRole('button', {
-      name: /common\.delete/i,
+      name: 'common.deleteItem',
     })
     fireEvent.click(deleteButtons[0])
 

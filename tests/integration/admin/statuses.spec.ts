@@ -132,7 +132,9 @@ async function openRequirementStatusForm(
   await page.goto('/sv/requirement-statuses')
 
   const row = page.getByRole('row', { name: status.nameSv })
-  await row.getByRole('button', { name: 'Redigera' }).click()
+  await row
+    .getByRole('button', { name: `Redigera ${status.nameSv}`, exact: true })
+    .click()
 
   return page.locator('form').filter({
     has: page.getByRole('heading', { name: 'Redigera' }),
@@ -220,6 +222,18 @@ test.describe('Admin statuses and workflows', () => {
       }
     })
 
+    await test.step('Read the English edit action for each requirement status', async () => {
+      await page.goto('/en/requirement-statuses')
+      for (const status of requirementStatuses) {
+        await expect(
+          page.getByRole('button', {
+            name: `Edit ${status.nameEn}`,
+            exact: true,
+          }),
+        ).toHaveCount(1)
+      }
+    })
+
     await test.step('preview every canonical usage status color', async () => {
       for (const status of usageStatuses) {
         const expectedColor = CANONICAL_USAGE_STATUS_COLORS.get(status.id)
@@ -272,7 +286,9 @@ test.describe('Admin statuses and workflows', () => {
       'data-accent-color',
       /.+/,
     )
-    await requirementRow.getByRole('button', { name: 'Redigera' }).click()
+    await requirementRow
+      .getByRole('button', { name: 'Redigera Utkast', exact: true })
+      .click()
     const requirementForm = page.locator('form').filter({
       has: page.getByRole('heading', { name: 'Redigera' }),
     })

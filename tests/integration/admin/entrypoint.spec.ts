@@ -856,15 +856,20 @@ for (const { name, viewport } of viewportVariants) {
           page.getByRole('heading', { level: 1, name: 'Requirement areas' }),
         ).toBeVisible()
 
-        const areasTable = page.getByRole('table')
-        await expectIconOnlyAction(
-          areasTable.getByRole('button', { name: 'Edit' }).first(),
-          'Edit',
-        )
-        await expectIconOnlyAction(
-          areasTable.getByRole('button', { name: 'Delete' }).first(),
-          'Delete',
-        )
+        const areaRow = page
+          .getByRole('row')
+          .filter({ has: page.getByRole('cell') })
+          .first()
+        const areaName = await areaRow.getByRole('cell').nth(1).innerText()
+        for (const action of ['Edit', 'Delete']) {
+          const name = `${action} ${areaName}`
+          const button = areaRow.getByRole('button', { name, exact: true })
+          await expectIconOnlyAction(button, name)
+          await expect(button).toHaveAttribute(
+            'data-developer-mode-value',
+            action.toLowerCase(),
+          )
+        }
 
         await page.goBack()
         await expect(page).toHaveURL('/en/admin?tab=taxonomy')
