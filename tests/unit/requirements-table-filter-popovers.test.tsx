@@ -12,7 +12,12 @@ describe('requirement table filter popovers', () => {
   it('opens search inside its modal and gives the first Escape to the filter', () => {
     const onDialogKey = vi.fn()
     const { rerender } = render(
-      <div aria-modal="true" onKeyDown={onDialogKey} role="dialog">
+      <div
+        aria-modal="true"
+        onKeyDown={onDialogKey}
+        role="dialog"
+        tabIndex={-1}
+      >
         <SearchFilterPopover
           activeValue=""
           developerModeValue="requirement id"
@@ -30,7 +35,11 @@ describe('requirement table filter popovers', () => {
     expect(search).not.toBeInTheDocument()
     expect(trigger).toHaveFocus()
     expect(onDialogKey).not.toHaveBeenCalled()
-    fireEvent.keyDown(trigger, { key: 'Escape' })
+    const dialog = screen.getByRole('dialog')
+    dialog.focus()
+    fireEvent.mouseDown(dialog)
+    expect(dialog).toHaveFocus()
+    fireEvent.keyDown(dialog, { key: 'Escape' })
     expect(onDialogKey).toHaveBeenCalledOnce()
 
     fireEvent.click(trigger)
