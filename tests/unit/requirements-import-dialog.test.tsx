@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -2489,7 +2490,9 @@ describe('RequirementsImportDialog', () => {
       'JSON togs ut ur kodblocket i svaret. Texten i fältet är oförändrad.',
     )
     expect(rawJson).toHaveValue(response)
-    expect(rawJson).toHaveAccessibleDescription(notice.textContent ?? '')
+    expect(rawJson).toHaveAccessibleDescription(
+      `Högst 8 MiB text i UTF-8. ${notice.textContent}`,
+    )
     expect(screen.getByRole('status')).toBe(notice.closest('p'))
     expect(notice.closest('p')).toHaveAttribute(
       'data-developer-mode-value',
@@ -2870,7 +2873,7 @@ describe('RequirementsImportDialog', () => {
     ).toBeDisabled()
   })
 
-  it('invalidates previous JSON when a replacement file exceeds the size limit', async () => {
+  it('preserves valid JSON and enables preview after an oversized file drop', async () => {
     mockReferenceDataFetch()
     render(
       <RequirementsImportDialog
@@ -2903,46 +2906,125 @@ describe('RequirementsImportDialog', () => {
       },
     )
 
-    await waitFor(() => expect(rawJson).toHaveValue(''))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/8 MiB/)
+    expect(rawJson).toHaveValue(validImportPayload())
     expect(text).not.toHaveBeenCalled()
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Kravimportens innehåll får inte överstiga 8 MiB',
-    )
     expect(
       screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-    ).toBeDisabled()
+    ).toBeEnabled()
   })
 
-  it('invalidates previous JSON when replacement textarea input is oversized', async () => {
+  it('retains incomplete JSON after oversized input and accepts the next edit', async () => {
     mockReferenceDataFetch()
     render(
       <RequirementsImportDialog
-        areas={[{ id: 7, name: 'Clinical systems', permissions: {} }]}
-        mode="library"
+        mode="specification-local"
         onClose={vi.fn()}
         open
+        specificationId={8}
       />,
     )
     const rawJson = screen.getByLabelText(/Import-JSON/)
-    fireEvent.change(rawJson, { target: { value: validImportPayload() } })
-    await waitFor(() => expect(rawJson).toHaveValue(validImportPayload()))
-    const encode = vi.spyOn(TextEncoder.prototype, 'encode').mockReturnValue({
-      byteLength: REQUIREMENT_IMPORT_CONTENT_MAX_BYTES + 1,
-    } as Uint8Array<ArrayBuffer>)
-
-    try {
-      fireEvent.change(rawJson, { target: { value: 'oversized' } })
-    } finally {
-      encode.mockRestore()
-    }
-
-    expect(rawJson).toHaveValue('')
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Kravimportens innehåll får inte överstiga 8 MiB',
+    const hint = screen.getByText('Högst 8 MiB text i UTF-8.')
+    expect(hint).toHaveAttribute(
+      'data-developer-mode-value',
+      'import JSON size limit',
     )
+    expect(rawJson).toHaveAccessibleDescription('Högst 8 MiB text i UTF-8.')
+    const draft = '{"requirements": ['
+    fireEvent.change(rawJson, { target: { value: draft } })
+    fireEvent.change(rawJson, {
+      target: {
+        value: 'å'.repeat(REQUIREMENT_IMPORT_CONTENT_MAX_BYTES / 2) + 'a',
+      },
+    })
+
+    expect(rawJson).toHaveValue(draft)
+    expect(screen.getByRole('alert')).toHaveTextContent(/8 MiB/)
+    // Replacing the whole draft with exactly 8 MiB is a native, accepted paste.
+    if (!(rawJson instanceof HTMLTextAreaElement))
+      throw new Error('Expected the import editor')
+    rawJson.select()
     expect(
-      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-    ).toBeDisabled()
+      fireEvent.paste(rawJson, {
+        clipboardData: {
+          getData: () => 'å'.repeat(REQUIREMENT_IMPORT_CONTENT_MAX_BYTES / 2),
+        },
+      }),
+    ).toBe(true)
+    const preview = screen.getByRole('button', { name: 'Förhandsgranska krav' })
+    expect(preview).toBeDisabled()
+    fireEvent.change(rawJson, { target: { value: validImportPayload() } })
+    expect(screen.queryByRole('alert')).toBeNull()
+    await waitFor(() => expect(preview).toBeEnabled())
+  })
+
+  it('keeps the current text through read and size failures and accepts a later file', async () => {
+    mockReferenceDataFetch()
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+    const input = document.querySelector<HTMLInputElement>('input[type=file]')
+    if (!input) throw new Error('Expected JSON file input')
+    const editor = screen.getByLabelText(/Import-JSON/)
+    const edited = `  ${validImportPayload()}`
+    fireEvent.change(editor, { target: { value: edited } })
+    fireEvent.change(input, { target: { files: [] } })
+    expect(editor).toHaveValue(edited)
+    expect(screen.queryByRole('alert')).toBeNull()
+
+    const chooseFile = (text: () => Promise<string>) =>
+      fireEvent.change(input, { target: { files: [{ size: 1, text }] } })
+    chooseFile(async () => {
+      throw new Error('File is unavailable')
+    })
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      svMessages.requirementsImportJson.fileReadFailed,
+    )
+    expect(editor).toHaveValue(edited)
+    chooseFile(async () =>
+      'å'.repeat(REQUIREMENT_IMPORT_CONTENT_MAX_BYTES / 2 + 1),
+    )
+    await screen.findByText(/Innehållet överstiger 8 MiB/)
+    expect(editor).toHaveValue(edited)
+    const preview = screen.getByRole('button', { name: 'Förhandsgranska krav' })
+    expect(preview).toBeEnabled()
+    chooseFile(async () => validImportPayload())
+    await waitFor(() => expect(editor).toHaveValue(validImportPayload()))
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(preview).toBeEnabled()
+  })
+
+  it('keeps a newer edit when a pending file read finishes', async () => {
+    mockReferenceDataFetch()
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+    const editor = screen.getByLabelText(/Import-JSON/)
+    const preview = screen.getByRole('button', { name: 'Förhandsgranska krav' })
+    fireEvent.change(editor, { target: { value: validImportPayload() } })
+    await waitFor(() => expect(preview).toBeEnabled())
+    const read = createDeferred<string>()
+    fireEvent.drop(screen.getByRole('button', { name: /Släpp en JSON-fil/ }), {
+      dataTransfer: { files: [{ size: 10, text: () => read.promise }] },
+    })
+    expect(preview).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent('Läser filen')
+    const edit = ` ${validImportPayload()}`
+    fireEvent.change(editor, { target: { value: edit } })
+    expect(preview).toBeEnabled()
+    await act(async () => read.resolve('older file'))
+    expect(editor).toHaveValue(edit)
   })
 
   it('downloads specification artifacts and reports a failed schema request', async () => {

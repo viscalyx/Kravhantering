@@ -4078,7 +4078,25 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await expect(dialog).toBeVisible()
     await expect(dialog.getByLabel('Import-JSON')).toHaveValue('')
 
-    await dialog.getByLabel('Import-JSON').fill(JSON.stringify(importPayload))
+    await test.step('keep edited local requirements when file selection exceeds the limit', async () => {
+      const editor = dialog.getByLabel('Import-JSON')
+      const edited = JSON.stringify(importPayload, null, 2)
+      await editor.fill(edited)
+      const upload = dialog.getByRole('button', { name: /Släpp en JSON-fil/ })
+      await upload.focus()
+      const choosing = page.waitForEvent('filechooser')
+      await upload.press('Enter')
+      await (await choosing).setFiles({
+        name: 'oversized.json',
+        mimeType: 'application/json',
+        buffer: Buffer.alloc(8 * 1024 * 1024 + 1),
+      })
+      await expect(dialog.getByRole('alert')).toContainText(
+        'Innehållet överstiger 8 MiB',
+      )
+      await expect(upload).toBeFocused()
+      await expect(editor).toHaveValue(edited)
+    })
     await dialog.getByRole('button', { name: 'Förhandsgranska krav' }).click()
 
     await expect(page.getByLabel(/Import-JSON/)).toHaveCount(0)

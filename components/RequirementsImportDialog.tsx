@@ -19,6 +19,7 @@ import {
 import { useLocale, useTranslations } from 'next-intl'
 import {
   type ChangeEvent,
+  type ClipboardEvent,
   type DragEvent,
   useCallback,
   useEffect,
@@ -45,7 +46,10 @@ import { escapeCsvField } from '@/lib/export-csv'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { resolveAiRequestFileDestination } from '@/lib/requirements/ai-request-files'
-import type { RequirementImportBudget } from '@/lib/requirements/import-budget'
+import {
+  REQUIREMENT_IMPORT_CONTENT_MAX_BYTES,
+  type RequirementImportBudget,
+} from '@/lib/requirements/import-budget'
 import {
   RequirementImportCandidateError,
   serializeRequirementImportCandidates,
@@ -71,6 +75,8 @@ import {
   type ImportRequirementsPayload,
 } from '@/lib/requirements/import-schema'
 import { createUtf8BomBlob } from '@/lib/text-export'
+
+const importSizeMiB = REQUIREMENT_IMPORT_CONTENT_MAX_BYTES / (1024 * 1024)
 
 type ImportMode = 'library' | 'specification-local'
 type ReviewTab = 'needsReferenceProposals' | 'proposals' | 'requirements'
@@ -752,6 +758,13 @@ export default function RequirementsImportDialog({
   const { confirm } = useConfirmModal()
   const titleId = useId()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const editorRevision = useRef(0)
+  const [readingFile, setReadingFile] = useState(false)
+  const cancelPendingRead = useCallback(() => {
+    editorRevision.current++
+    setReadingFile(false)
+  }, [])
+  const [rejectedAttempt, setRejectedAttempt] = useState(0)
   const [rawJson, setRawJson] = useState('')
   const [importBudget, setImportBudget] =
     useState<RequirementImportBudget | null>(null)
@@ -909,9 +922,13 @@ export default function RequirementsImportDialog({
     specificationId,
   )
   const canLoadPreview =
-    !loading && parsedImportPayload !== null && hasRequiredImportTarget
+    !readingFile &&
+    !loading &&
+    parsedImportPayload !== null &&
+    hasRequiredImportTarget
   const startImportDisabledReason = useMemo(() => {
     if (loading || canLoadPreview) return null
+    if (readingFile) return importJsonText('readingFile')
     const jsonReason =
       importPayloadValidation.reason === 'import-budget-loading'
         ? text.importBudgetLoading
@@ -946,6 +963,7 @@ export default function RequirementsImportDialog({
     importJsonText,
     importPayloadValidation.reason,
     loading,
+    readingFile,
     text,
   ])
   const selectedCount = rows.filter(row => row.selected).length
@@ -1125,6 +1143,7 @@ export default function RequirementsImportDialog({
 
     let cancelled = false
     async function loadInitialImport() {
+      cancelPendingRead()
       setRawJson(JSON.stringify(initial.payload, null, 2))
       setLoading(true)
       setErrorMessage(null)
@@ -1195,6 +1214,7 @@ export default function RequirementsImportDialog({
       cancelled = true
     }
   }, [
+    cancelPendingRead,
     initialImport,
     importBudgetStatus,
     locale,
@@ -1536,6 +1556,7 @@ export default function RequirementsImportDialog({
       })
       if (!ok) return
     }
+    cancelPendingRead()
     setRawJson('')
     setSelectedAreaId('')
     setRows([])
@@ -1821,24 +1842,63 @@ export default function RequirementsImportDialog({
     )
   }
 
-  const readImportFile = async (file: File | undefined) => {
-    if (!file) return
+  const rejectInput = (message: string) => {
+    // Remount the alert so repeated attempts with the same error are announced.
+    setRejectedAttempt(attempt => attempt + 1)
+    setErrorMessage(message)
+  }
+
+  const acceptTextSize = (value: string) => {
     try {
-      setRawJson(await readRequirementImportFile(file))
-      setErrorMessage(null)
+      assertRequirementImportTextSize(value)
+      return true
     } catch (error) {
-      setRawJson('')
-      setErrorMessage(
-        error instanceof RequirementImportClientBudgetError
-          ? text.contentTooLarge
-          : text.error,
+      if (!(error instanceof RequirementImportClientBudgetError)) throw error
+      rejectInput(
+        importJsonText('replacementTooLarge', { size: importSizeMiB }),
       )
+      return false
     }
   }
 
-  const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
-    await readImportFile(event.target.files?.[0])
-    event.target.value = ''
+  const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const { value, selectionStart, selectionEnd } = event.currentTarget
+    const pasted = event.clipboardData
+      .getData('text/plain')
+      .replace(/\r\n?/g, '\n')
+    const next =
+      value.slice(0, selectionStart) + pasted + value.slice(selectionEnd)
+    if (!acceptTextSize(next)) {
+      cancelPendingRead()
+      event.preventDefault()
+    }
+  }
+
+  const readImportFile = async (file: File | undefined) => {
+    if (!file) return
+    const revision = ++editorRevision.current
+    setReadingFile(true)
+    try {
+      const value = await readRequirementImportFile(file)
+      if (revision !== editorRevision.current) return
+      setRawJson(value)
+      setErrorMessage(null)
+    } catch (error) {
+      if (revision !== editorRevision.current) return
+      rejectInput(
+        error instanceof RequirementImportClientBudgetError
+          ? importJsonText('replacementTooLarge', { size: importSizeMiB })
+          : importJsonText('fileReadFailed'),
+      )
+    } finally {
+      if (revision === editorRevision.current) setReadingFile(false)
+    }
+  }
+
+  const handleFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
+    void readImportFile(file)
   }
 
   const handleJsonDrop = async (event: DragEvent<HTMLButtonElement>) => {
@@ -2281,7 +2341,7 @@ export default function RequirementsImportDialog({
                       <input
                         accept=".json,application/json"
                         className="hidden"
-                        onChange={event => void handleFile(event)}
+                        onChange={handleFile}
                         ref={fileInputRef}
                         type="file"
                       />
@@ -2311,28 +2371,35 @@ export default function RequirementsImportDialog({
                       <FileInput aria-hidden="true" className="h-5 w-5" />
                       <span>{text.dropJsonFile}</span>
                     </button>
+                    <p
+                      className="mb-1 text-sm text-secondary-700 dark:text-secondary-300"
+                      id={`${titleId}-json-limit`}
+                      {...devMarker({
+                        context: 'requirements import',
+                        name: 'field hint',
+                        priority: 340,
+                        value: 'import JSON size limit',
+                      })}
+                    >
+                      {importJsonText('sizeHint', { size: importSizeMiB })}
+                    </p>
                     <textarea
                       aria-describedby={
                         importPayloadValidation.extractedFromCodeBlock
-                          ? `${titleId}-json-extracted`
-                          : undefined
+                          ? `${titleId}-json-limit ${titleId}-json-extracted`
+                          : `${titleId}-json-limit`
                       }
                       className={`${inputClass} min-h-52 resize-y font-mono text-xs`}
                       id="import-json"
                       onChange={event => {
-                        try {
-                          assertRequirementImportTextSize(event.target.value)
-                          setRawJson(event.target.value)
+                        cancelPendingRead()
+                        const value = event.currentTarget.value
+                        if (acceptTextSize(value)) {
+                          setRawJson(value)
                           setErrorMessage(null)
-                        } catch (error) {
-                          setRawJson('')
-                          setErrorMessage(
-                            error instanceof RequirementImportClientBudgetError
-                              ? text.contentTooLarge
-                              : text.error,
-                          )
                         }
                       }}
+                      onPaste={handlePaste}
                       placeholder={text.rawJsonPlaceholder}
                       value={rawJson}
                     />
@@ -2427,6 +2494,7 @@ export default function RequirementsImportDialog({
                   </button>
                   <ImportOutcomeFeedback
                     errorMessage={errorMessage}
+                    key={rejectedAttempt}
                     noticeMessage={noticeMessage}
                     successLabel={text.success}
                   />

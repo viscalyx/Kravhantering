@@ -4227,6 +4227,10 @@
     "searchHelp": "Search by name, reference ID or package purpose. Selections are kept when you filter the list."
   },
   "requirementsImportJson": {
+    "readingFile": "Reading the file…",
+    "sizeHint": "Maximum size is {size} MiB of UTF-8 text.",
+    "replacementTooLarge": "This input exceeds {size} MiB. Your text was kept. Paste less text or choose a smaller file.",
+    "fileReadFailed": "The file could not be read. Your text was kept. Choose the file again or paste its contents.",
     "codeBlockExtracted": "The JSON was taken from the code block in the response. The text in the field is unchanged.",
     "noJson": "The response contains no JSON. Read the AI assistant's response. The need or the reference data file may be missing.",
     "truncated": "The response is probably truncated. Ask for fewer requirements per request.",

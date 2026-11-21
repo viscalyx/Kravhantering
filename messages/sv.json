@@ -4227,6 +4227,10 @@
     "searchHelp": "Sök på namn, referens-ID eller paketets syfte. Markeringar behålls när du filtrerar listan."
   },
   "requirementsImportJson": {
+    "readingFile": "Läser filen…",
+    "sizeHint": "Högst {size} MiB text i UTF-8.",
+    "replacementTooLarge": "Innehållet överstiger {size} MiB. Din text finns kvar. Klistra in mindre text eller välj en mindre fil.",
+    "fileReadFailed": "Filen kunde inte läsas. Din text finns kvar. Välj filen igen eller klistra in innehållet.",
     "codeBlockExtracted": "JSON togs ut ur kodblocket i svaret. Texten i fältet är oförändrad.",
     "noJson": "Svaret innehåller ingen JSON. Läs AI-assistentens svar. Behovet eller referensdatafilen kan saknas.",
     "truncated": "Svaret är troligen avkortat. Be om färre krav per förfrågan.",

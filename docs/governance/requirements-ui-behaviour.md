@@ -219,8 +219,12 @@ an explicit in-modal error.
   kravområde is selected. When the action is disabled, a short warning above
   the button explains the current blocker, such as missing kravområde, missing
   JSON, parse errors, wrong `schemaVersion`, or schema validation errors.
-  Selected files larger than 8 MiB are rejected before their contents are read,
-  and pasted content is measured as UTF-8 before parsing. The schema endpoint
+  Files larger than 8 MiB are rejected before reading. Preview waits while a
+  replacement file is read. The editor checks the UTF-8 size of the resulting
+  text, including the text outside a pasted selection. An oversized edit or an
+  unreadable or oversized file leaves the current draft in place, even if it
+  is incomplete. A rejected paste also preserves the selection. The schema
+  endpoint
   supplies the current administrator-controlled row, proposal, nested-item,
   and JSON-depth limits used by the browser.
 - Before the review is loaded, the dialog shows only the JSON setup panel. After
