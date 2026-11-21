@@ -30,6 +30,7 @@ describe('LanguageSwitcher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.localStorage.clear()
+    window.history.replaceState(null, '', '/en/requirements')
   })
 
   it('renders switch button', () => {
@@ -54,5 +55,35 @@ describe('LanguageSwitcher', () => {
     fireEvent.click(btn)
     expect(mockReplace).toHaveBeenCalledWith('/requirements', { locale: 'sv' })
     expect(window.localStorage.getItem('locale')).toBe('sv')
+  })
+
+  it.each([
+    '?tag=one&tag=two&empty=',
+    '#section',
+    '?text=%C3%A5%26%2B%23%3D%25#section',
+  ])('preserves the current URL context %s', suffix => {
+    render(<LanguageSwitcher />)
+    window.history.replaceState(null, '', `/en/requirements${suffix}`)
+    fireEvent.click(screen.getByRole('button', { name: 'switchTo' }))
+    expect(mockReplace).toHaveBeenCalledWith(`/requirements${suffix}`, {
+      locale: 'sv',
+    })
+  })
+
+  it('switches language even if the preference cannot be stored', () => {
+    const write = vi
+      .spyOn(Storage.prototype, 'setItem')
+      .mockImplementation(() => {
+        throw new DOMException('Storage unavailable', 'SecurityError')
+      })
+    try {
+      render(<LanguageSwitcher />)
+      fireEvent.click(screen.getByRole('button', { name: 'switchTo' }))
+      expect(mockReplace).toHaveBeenCalledWith('/requirements', {
+        locale: 'sv',
+      })
+    } finally {
+      write.mockRestore()
+    }
   })
 })

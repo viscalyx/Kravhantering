@@ -34,6 +34,7 @@ import {
 } from '@/lib/ai/generation-availability'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { registerLocaleChangeQuery } from '@/lib/locale-change-href'
 import { getScrollBehavior } from '@/lib/reduced-motion'
 import {
   createLibraryRequirementDetailCache,
@@ -371,6 +372,18 @@ export default function RequirementsClient({
   // Stable ref so the onChange callback always sees the latest selectedId.
   // Can temporarily hold a uniqueId string when resolving from URL params.
   const selectedIdRef = useRef<number | string | null>(null)
+  // The library consumes its deep link after hydration. Supply it again when
+  // the same page opens in another language.
+  useEffect(
+    () =>
+      registerLocaleChangeQuery('/requirements', params => {
+        const selected = selectedIdRef.current
+        if (selected != null && !params.getAll('selected').some(Boolean)) {
+          params.append('selected', String(selected))
+        }
+      }),
+    [],
+  )
   const latestRowsRequestIdRef = useRef(0)
   const rowsAbortRef = useRef<AbortController | null>(null)
   const rowsRetryRef = useRef<HTMLButtonElement>(null)
@@ -785,7 +798,7 @@ export default function RequirementsClient({
   // the selected requirement and pin it — even if it's filtered out by the
   // default Published-only status filter.
   useEffect(() => {
-    const sel = searchParams.get('selected')
+    const sel = searchParams.getAll('selected').find(Boolean)
     if (!sel) return
 
     const controller = new AbortController()
@@ -839,7 +852,11 @@ export default function RequirementsClient({
       // Clean up the params after hydration so selected-row pinning cannot be
       // cancelled before the row is available in the table.
       const url = new URL(window.location.href)
-      url.searchParams.delete('selected')
+      url.search = new URLSearchParams(
+        [...url.searchParams].filter(
+          ([key, value]) => key !== 'selected' || value === '',
+        ),
+      ).toString()
       window.history.replaceState({}, '', url.toString())
     }
 
