@@ -208,6 +208,7 @@ test.describe('Requirements library', () => {
   test('REQ-21: intent prefetch is cancelled, reused, and never duplicated', async ({
     page,
   }) => {
+    await page.clock.install()
     const detailRequests = await countDetailRequests(
       page,
       /\/api\/requirements\/\d+$/u,
@@ -222,13 +223,17 @@ test.describe('Requirements library', () => {
 
     await test.step('cancel short hover and reuse the held pointer prefetch', async () => {
       const pointer = await visiblePointerPoint(rowButton)
+      // Drive the 150 ms intent timer independently of mouse command latency.
+      await page.clock.pauseAt(Date.now() + 1_000)
       await page.mouse.move(pointer.x, pointer.y)
+      await page.clock.runFor(75)
       await page.mouse.move(0, 0)
-      await delay(200)
+      await page.clock.runFor(200)
       expect(detailRequests.count).toBe(0)
 
       const heldRequest = detailRequests.holdNext()
       await page.mouse.move(pointer.x, pointer.y)
+      await page.clock.runFor(200)
       await heldRequest.started
       await page.mouse.click(pointer.x, pointer.y)
       expect(detailRequests.count).toBe(1)
@@ -664,8 +669,18 @@ test.describe('Requirements library', () => {
       // Clearing the chip can leave the pointer over the package-filter band.
       await page.mouse.move(0, 0)
       await collapsePackageFilter(page)
-      await page.getByRole('button', { name: 'Filtrera efter Status' }).click()
-      await page.getByRole('button', { name: 'Rensa' }).click()
+      const statusTrigger = page.getByRole('button', {
+        name: 'Filtrera efter Status',
+      })
+      await expect(statusTrigger).toHaveAttribute('aria-expanded', 'false')
+      await statusTrigger.click()
+      await expect(statusTrigger).toHaveAttribute('aria-expanded', 'true')
+      await page.getByRole('button', { name: 'Rensa' }).press('Enter')
+      const firstStatus = page
+        .locator('label')
+        .filter({ has: page.getByRole('checkbox', { name: 'Arkiverad' }) })
+      const statusPanel = firstStatus.locator('..')
+      await expect(statusPanel.getByRole('checkbox').first()).toBeFocused()
       const archivedStatusRequest = page.waitForRequest(request => {
         const url = new URL(request.url())
         return (
@@ -791,8 +806,9 @@ test.describe('Requirements library', () => {
         expect(clearButtonBox?.height ?? 0).toBeGreaterThanOrEqual(24)
         expect(clearButtonBox?.width ?? 0).toBeGreaterThanOrEqual(24)
 
-        await clearButton.click()
+        await clearButton.press('Enter')
         await expect(textbox).toHaveValue('')
+        await expect(textbox).toBeFocused()
       })
 
       const band = page.getByRole('group', {

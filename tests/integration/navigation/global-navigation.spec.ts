@@ -386,7 +386,7 @@ for (const locale of ['sv', 'en'] as const) {
     const requirement = locale === 'sv' ? 'Krav' : 'Requirement'
     const specification =
       locale === 'sv' ? 'Kravunderlag' : 'Requirements specification'
-    test('NAV-02: tabs identify records and selected versions', async ({
+    test('NAV-02: tabs identify requirements and selected versions', async ({
       context,
       page,
     }) => {
@@ -429,16 +429,25 @@ for (const locale of ['sv', 'en'] as const) {
           `INT0001, version 1 – ${requirement} | ${app}`,
         )
       })
-      await test.step('compare specifications at their canonical numeric URLs', async () => {
-        for (const [tab, code] of [
-          [page, 'AUTHZ-SPEC-2026'],
-          [secondTab, 'DRIFT-FORV-BAS'],
-        ] as const) {
-          await tab.goto(`/${locale}/specifications/${code}`)
-          await expect(tab).toHaveURL(/\/specifications\/\d+$/)
-          await expect(tab).toHaveTitle(`${code} – ${specification} | ${app}`)
-        }
-      })
+    })
+
+    test('NAV-02: tabs identify specifications after canonical redirects', async ({
+      context,
+      page,
+    }) => {
+      const secondTab = await context.newPage()
+      for (const [tab, code] of [
+        [page, 'AUTHZ-SPEC-2026'],
+        [secondTab, 'DRIFT-FORV-BAS'],
+      ] as const) {
+        // The code redirect and numeric document share this test's deadline.
+        await tab.goto(`/${locale}/specifications/${code}`, {
+          timeout: test.info().timeout,
+          waitUntil: 'commit',
+        })
+        await expect(tab).toHaveURL(/\/specifications\/\d+$/)
+        await expect(tab).toHaveTitle(`${code} – ${specification} | ${app}`)
+      }
     })
   })
 }
