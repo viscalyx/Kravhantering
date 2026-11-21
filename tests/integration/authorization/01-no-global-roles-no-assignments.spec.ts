@@ -1,4 +1,10 @@
-import { expect, type Page, type TestInfo, test } from '@playwright/test'
+import {
+  type APIRequestContext,
+  expect,
+  type Page,
+  type TestInfo,
+  test,
+} from '@playwright/test'
 import {
   STATUS_PUBLISHED,
   STATUS_REVIEW,
@@ -279,20 +285,28 @@ test.describe('AUTHZ-01/AUTH-10/AUTH-11: forbidden requirement specification sur
   })
 })
 
-test('NAV-02/AUTHZ-01: version controls enforce current publication status', async ({
-  browser,
-  page,
-}, testInfo) => {
-  referenceManualCases(testInfo, 'AUTHZ-01', 'NAV-02')
-  const admin = await newRoleContext(testInfo, 'admin')
-  const reviewer = await newRoleContext(testInfo, 'reviewer')
+const versionTest = test.extend<{ reader: Page }>({
+  reader: async ({ browser }, use, testInfo) => {
+    const reader = await browser.newPage({
+      baseURL: resolveIntegrationBaseUrl(testInfo),
+      storageState: ROLE_STORAGE_STATE.noRoles,
+      viewport: DESKTOP_VIEWPORT,
+    })
+    try {
+      await use(reader)
+    } finally {
+      await reader.close()
+    }
+  },
+})
+
+async function prepareVersionHistory(
+  admin: APIRequestContext,
+  testInfo: TestInfo,
+  phase: 'draft' | 'review' | 'published',
+) {
   const owner = await newRoleContext(testInfo, 'areaOwner')
-  const readerContext = await browser.newContext({
-    baseURL: resolveIntegrationBaseUrl(testInfo),
-    storageState: ROLE_STORAGE_STATE.noRoles,
-    viewport: DESKTOP_VIEWPORT,
-  })
-  const reader = await readerContext.newPage()
+  const reviewer = await newRoleContext(testInfo, 'reviewer')
   const publishedText = `Published version visibility ${Date.now()}`
   const draftText = `Confidential version visibility ${Date.now()}`
 
@@ -338,15 +352,34 @@ test('NAV-02/AUTHZ-01: version controls enforce current publication status', asy
       'create newer draft',
     )
 
-    for (const phase of ['draft', 'review']) {
-      if (phase === 'review') {
-        await expectOk(
-          await owner.post(transitionPath, {
-            data: { statusId: STATUS_REVIEW },
-          }),
-          'submit newer version for review',
-        )
-      }
+    if (phase !== 'draft') {
+      await expectOk(
+        await owner.post(transitionPath, { data: { statusId: STATUS_REVIEW } }),
+        'submit newer version for review',
+      )
+    }
+    if (phase === 'published') {
+      await expectOk(
+        await reviewer.post(transitionPath, {
+          data: { statusId: STATUS_PUBLISHED },
+        }),
+        'publish successor version',
+      )
+    }
+    return { requirement, path, publishedText, draftText }
+  } finally {
+    await Promise.all([owner.dispose(), reviewer.dispose()])
+  }
+}
+
+for (const phase of ['draft', 'review'] as const) {
+  versionTest(
+    `NAV-02/AUTHZ-01: version controls enforce access during ${phase}`,
+    async ({ browser, reader, request }, testInfo) => {
+      referenceManualCases(testInfo, 'AUTHZ-01', 'NAV-02')
+      const { requirement, publishedText, draftText } =
+        await prepareVersionHistory(request, testInfo, phase)
+
       await test.step(`reader sees only the published version during ${phase}`, async () => {
         await reader.goto(`/sv/requirements/${requirement.id}`)
         await reader.getByRole('button', { name: /^v1 Publicerad/ }).click()
@@ -402,14 +435,17 @@ test('NAV-02/AUTHZ-01: version controls enforce current publication status', asy
           }
         })
       }
-    }
+    },
+  )
+}
 
-    await expectOk(
-      await reviewer.post(transitionPath, {
-        data: { statusId: STATUS_PUBLISHED },
-      }),
-      'publish successor version',
-    )
+versionTest(
+  'NAV-02/AUTHZ-01: version controls follow the published successor and draft deletion',
+  async ({ page, reader, request }, testInfo) => {
+    referenceManualCases(testInfo, 'AUTHZ-01', 'NAV-02')
+    const { requirement, path, publishedText, draftText } =
+      await prepareVersionHistory(request, testInfo, 'published')
+
     await test.step('reader sees the published successor without archived content', async () => {
       await reader.goto(`/sv/requirements/${requirement.id}`)
       await reader.getByRole('button', { name: /^v2 Publicerad/ }).click()
@@ -437,12 +473,12 @@ test('NAV-02/AUTHZ-01: version controls enforce current publication status', asy
       })
     }
     await test.step('deleting the displayed draft restores the generic version title', async () => {
-      const latest = await admin.get(path)
+      const latest = await request.get(path)
       await expectOk(latest, 'read current published version')
       const current = (await latest.json()) as RequirementDetailResponse
       const published = current.versions[0]
       await expectOk(
-        await admin.put(path, {
+        await request.put(path, {
           data: {
             baseRevisionToken: published.revisionToken,
             baseVersionId: published.id,
@@ -464,15 +500,8 @@ test('NAV-02/AUTHZ-01: version controls enforce current publication status', asy
         .click()
       await expect(page).toHaveTitle('Kravbibliotek | Kravhantering')
     })
-  } finally {
-    await Promise.all([
-      admin.dispose(),
-      reviewer.dispose(),
-      owner.dispose(),
-      readerContext.close(),
-    ])
-  }
-})
+  },
+)
 
 for (const locale of ['sv', 'en'] as const) {
   test.describe(`Browser title access in ${locale}`, () => {

@@ -191,7 +191,8 @@ testfallet “NAV-02: tabs identify records and selected versions”, samt
 testfallet “NAV-02/AUTHZ-01: unavailable records have generic tab titles”.
 
 Vid borttagning av utkast och byte av ansvarig täcks titlarna även av
-“NAV-02/AUTHZ-01: version controls enforce current publication status”
+“NAV-02/AUTHZ-01: version controls follow the published successor and draft
+deletion”
 i samma fil och
 “NAV-02/AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can
 manage assignments” i
@@ -747,6 +748,11 @@ användningsstatusens länkade kravunderlagsdetaljer ger 403 och `no-store`.
 Fel föräldrakombination ger 403, medan den saknade underresursen ger 404.
 Förslaget för det publicerade kravet och dess lista kan läsas, förslaget för
 det opublicerade kravet ger 403 och samtliga förslagssvar har `no-store`.
+
+**Integrationstest för versionsåtkomst:**
+[01-no-global-roles-no-assignments.spec.ts](../../tests/integration/authorization/01-no-global-roles-no-assignments.spec.ts),
+testfallen “NAV-02/AUTHZ-01: version controls enforce access during draft” och
+“NAV-02/AUTHZ-01: version controls enforce access during review”.
 
 **Läsning av en bestämd kravversion:** Förbered med `Admin` och `Reviewer`
 ett krav med publicerad version 1 och ett nyare utkast, version 2. Läs båda
