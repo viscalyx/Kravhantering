@@ -186,7 +186,8 @@ webbläsarens fliktitel.
 
 **Integrationstest:**
 [global-navigation.spec.ts](../../tests/integration/navigation/global-navigation.spec.ts),
-testfallet “NAV-02: tabs identify records and selected versions”, samt
+testfallen “NAV-02: tabs identify requirements and selected versions” och
+“NAV-02: tabs identify specifications after canonical redirects”, samt
 [01-no-global-roles-no-assignments.spec.ts](../../tests/integration/authorization/01-no-global-roles-no-assignments.spec.ts),
 testfallet “NAV-02/AUTHZ-01: unavailable records have generic tab titles”.
 
