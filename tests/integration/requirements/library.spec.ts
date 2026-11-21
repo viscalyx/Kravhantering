@@ -1678,6 +1678,7 @@ test.describe('Requirements library', () => {
     await expect(page.locator(':focus')).toHaveText(/länk/i)
     await page.keyboard.press('Escape')
     await expect(page.getByRole('menu')).toBeHidden()
+    await expect(shareButton).toBeFocused()
 
     const reportsButton = detailPane.getByRole('button', { name: 'Rapporter' })
     await reportsButton.focus()
@@ -1687,7 +1688,163 @@ test.describe('Requirements library', () => {
     await expect(page.locator(':focus')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('menu')).toBeHidden()
+    await expect(reportsButton).toBeFocused()
   })
+
+  for (const { view, theme, pagePath, sharePath, optionName } of [
+    {
+      view: 'list view',
+      theme: 'light',
+      pagePath: null,
+      sharePath: '/sv/requirements?selected=INT0001',
+      optionName: 'Kopiera länk (listvy)',
+    },
+    {
+      view: 'detail page',
+      theme: 'dark',
+      pagePath: '/sv/requirements/INT0001/1',
+      sharePath: '/sv/requirements/INT0001/1',
+      optionName: 'Kopiera länk (detaljsida)',
+    },
+  ]) {
+    test(`REQ-13: denied clipboard access allows manual copy and retry for the ${view} link`, async ({
+      context,
+      page,
+    }) => {
+      await page.addInitScript(
+        theme => localStorage.setItem('theme', theme),
+        theme,
+      )
+      if (pagePath) {
+        await page.setViewportSize({ width: 320, height: 900 })
+        await expectRequirementDetailRoute(page, pagePath, /\/INT0001\/1$/)
+      }
+      const detail = pagePath ? page : await openRequirementDetail(page)
+
+      const origin = new URL(page.url()).origin
+      const url = `${origin}${sharePath}`
+      await context.grantPermissions(['clipboard-write'], { origin })
+      await page.evaluate(() =>
+        navigator.clipboard.writeText('Previous clipboard text'),
+      )
+      await context.clearPermissions()
+      await context.grantPermissions([], { origin })
+      const writePermission = await page.evaluate(async () => {
+        const permission = await navigator.permissions.query({
+          name: 'clipboard-write' as PermissionName,
+        })
+        return permission.state
+      })
+      expect(writePermission).toBe('denied')
+
+      const share = detail.getByRole('button', { name: 'Dela', exact: true })
+      const failure = detail.getByRole('status').filter({
+        hasText: 'Det gick inte att kopiera länken.',
+      })
+      const link = detail.getByRole('textbox', { name: 'Delningslänk' })
+      const retry = detail.getByRole('button', {
+        name: 'Försök igen',
+        exact: true,
+      })
+
+      await test.step('show the attempted link when the write is denied', async () => {
+        await expect(share).toBeEnabled()
+        await share.press('Enter')
+        await detail.getByRole('menuitem', { name: optionName }).press('Enter')
+
+        await expect(failure).toBeVisible()
+        await expect(failure).toHaveAttribute('aria-live', 'polite')
+        await expect(failure).toHaveAttribute('aria-atomic', 'true')
+        await expect(share).toBeFocused()
+        await page.keyboard.press('Tab')
+        await expect(link).toBeFocused()
+        await expect(link).toHaveValue(url)
+        await expect(link).toHaveAttribute('readonly', '')
+        await expect(link).toBeInViewport({ ratio: 1 })
+        await expect(page.locator('html')).toHaveCSS('color-scheme', theme)
+        for (const [element, marker] of [
+          [failure, 'copy failed'],
+          [link, 'share URL'],
+          [retry, 'retry copy'],
+        ] as const) {
+          await expect(element).toHaveAttribute(
+            'data-developer-mode-name',
+            'share recovery',
+          )
+          await expect(element).toHaveAttribute(
+            'data-developer-mode-value',
+            marker,
+          )
+        }
+      })
+
+      await test.step('copy manually and retry while access is denied', async () => {
+        await page.keyboard.press('ControlOrMeta+a')
+        await page.keyboard.press('ControlOrMeta+c')
+        await page.keyboard.press('Tab')
+        await expect(retry).toBeFocused()
+        const firstAnnouncement = await failure.textContent()
+        await page.keyboard.press('Enter')
+        await expect
+          .poll(() => failure.textContent())
+          .not.toBe(firstAnnouncement)
+        await expect(link).toHaveValue(url)
+        await expect(retry).toBeEnabled()
+        await expect(retry).toBeFocused()
+
+        await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
+          origin,
+        })
+        expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+          url,
+        )
+      })
+
+      await test.step('retry with access and verify the copied link', async () => {
+        await page.evaluate(() =>
+          navigator.clipboard.writeText('Previous clipboard text'),
+        )
+        await page.keyboard.press('Enter')
+        await expect(failure).toBeHidden()
+        await expect(link).toBeHidden()
+        await expect(retry).toBeHidden()
+        const copied = detail.getByRole('button', {
+          name: 'Kopierad',
+          exact: true,
+        })
+        await expect(copied).toBeFocused()
+        await expect(
+          detail.getByRole('status').filter({ hasText: /^Kopierad$/ }),
+        ).toHaveCount(1)
+        expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+          url,
+        )
+      })
+
+      if (pagePath) {
+        await test.step('show recovery for the newly selected requirement version', async () => {
+          await context.clearPermissions()
+          await context.grantPermissions([], { origin })
+          await expect(share).toBeEnabled()
+          await share.press('Enter')
+          await detail
+            .getByRole('menuitem', { name: optionName })
+            .press('Enter')
+          await expect(link).toHaveValue(url)
+
+          await detail.getByRole('button', { name: /^v2 / }).click()
+          await expect(page).toHaveURL(/\/sv\/requirements\/INT0001\/2$/)
+          await expect(link).toBeHidden()
+          await expect(share).toBeEnabled()
+          await share.press('Enter')
+          await detail
+            .getByRole('menuitem', { name: optionName })
+            .press('Enter')
+          await expect(link).toHaveValue(`${origin}/sv/requirements/INT0001/2`)
+        })
+      }
+    })
+  }
 
   test('ADMIN-11: status and priority badges show localized labels', async ({
     page,
