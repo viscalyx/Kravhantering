@@ -2891,6 +2891,7 @@ describe('RequirementsTable', () => {
     )
 
     setViewportWidth(200)
+    setViewportHeight(600)
 
     const uniqueIdFilterButton = getHeaderFilterButton('uniqueId')
     expect(uniqueIdFilterButton).toBeTruthy()
@@ -2902,7 +2903,8 @@ describe('RequirementsTable', () => {
     fireEvent.click(uniqueIdFilterButton)
 
     expect(screen.getByRole('textbox', { name: 'uniqueId' })).toBeTruthy()
-    expect(getOpenPopover()?.style.left).toBe('8px')
+    expect(getOpenPopover()).toHaveStyle({ left: '8px', top: '44px' })
+    expect(getOpenPopover()?.style.maxHeight).toBe('')
 
     fireEvent.mouseDown(document.body)
 
@@ -2915,7 +2917,12 @@ describe('RequirementsTable', () => {
     setElementRect(statusFilterButton, { bottom: 40, left: 180, right: 224 })
     fireEvent.click(statusFilterButton)
 
-    expect(getOpenPopover()?.style.left).toBe('32px')
+    expect(getOpenPopover()).toHaveStyle({
+      left: '32px',
+      top: '44px',
+      maxHeight: '544px',
+    })
+    expect(getOpenPopover()).toHaveClass('overflow-y-auto')
 
     fireEvent.mouseDown(document.body)
 
@@ -2936,7 +2943,12 @@ describe('RequirementsTable', () => {
     })
     fireEvent.click(qualityCharacteristicFilterButton)
 
-    expect(getOpenPopover()?.style.left).toBe('8px')
+    expect(getOpenPopover()).toHaveStyle({
+      left: '8px',
+      top: '44px',
+      maxHeight: '544px',
+    })
+    expect(getOpenPopover()).toHaveClass('overflow-y-auto')
   })
 
   it('renders resize handles whenever column resizing is enabled', () => {

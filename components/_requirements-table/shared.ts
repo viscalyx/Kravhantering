@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useLayoutEffect } from 'react'
+import { modalPortalTarget } from '@/lib/modal-focus'
 import {
   DEFAULT_REQUIREMENT_COLUMN_WIDTHS,
   getOrderedRequirementListColumns,
@@ -69,4 +70,43 @@ export function areFloatingActionRailPositionsEqual(
     left.top === right.top &&
     left.visible === right.visible
   )
+}
+
+export function clampPopoverLeft(anchorLeft: number, popoverWidth: number) {
+  if (typeof window === 'undefined') {
+    return anchorLeft
+  }
+
+  const viewportWidth = Math.max(
+    window.innerWidth,
+    document.documentElement.clientWidth,
+  )
+  const maxLeft = Math.max(
+    POPOVER_VIEWPORT_MARGIN,
+    viewportWidth - popoverWidth - POPOVER_VIEWPORT_MARGIN,
+  )
+
+  return Math.min(Math.max(anchorLeft, POPOVER_VIEWPORT_MARGIN), maxLeft)
+}
+
+export function listenForTablePopoverKeys(
+  trigger: HTMLElement | null,
+  handleKeyDown: (event: KeyboardEvent) => void,
+) {
+  const owner = modalPortalTarget(trigger)
+  if (owner === document.body) {
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }
+  function onKeyDown(event: KeyboardEvent) {
+    if (event.defaultPrevented || trigger?.closest('[inert]')) return
+    // A menu inside a dialog gets the first Escape. The next one closes the dialog.
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+    handleKeyDown(event)
+  }
+  owner.addEventListener('keydown', onKeyDown, true)
+  return () => owner.removeEventListener('keydown', onKeyDown, true)
 }
