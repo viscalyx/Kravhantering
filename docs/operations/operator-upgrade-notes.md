@@ -13,6 +13,14 @@ changes.
 
 ## Unreleased
 
+### Action log time filters
+
+If an integration queries the Action log on a server outside UTC, check how
+it sends the `from` and `to` bounds. JSON and CSV requests now interpret
+offset-free date-times as UTC. Clients that send local times should include
+the offset for the event date or convert the bounds to UTC to keep the same
+interval. See the [Action log guide](../security-privacy/audit-log.md).
+
 ### Dedicated SQL identity for scheduled cleanup
 
 Before rollout, pause scheduled cleanup and prepare its dedicated database
