@@ -1694,7 +1694,8 @@ bilagan eller inte rymmer mallen, uppdatera tipsen i användarguidens avsnitt
 **Steg:**
 
 1. Öppna `Importera krav`, välj ett kravområde och läs in filen. Ändra ett
-   ord i en kravtext. Kontrollera att kraven går att förhandsgranska.
+   ord i en kravtext. Kontrollera att knappen `Förhandsgranska krav` är
+   aktiverad utan att trycka på den.
 2. Markera ordet och klistra in den stora texten två gånger. Kontrollera
    skärmläsarens meddelande, fokus och markeringen efter varje försök.
 3. Kopiera ett kort ord och klistra in det över samma markering.
