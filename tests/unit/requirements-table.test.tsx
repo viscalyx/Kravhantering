@@ -2562,6 +2562,7 @@ describe('RequirementsTable', () => {
     })
 
     fireEvent.click(screen.getByText('clear-search'))
+    expect(screen.getByRole('textbox', { name: 'uniqueId' })).toHaveValue('')
     act(() => vi.advanceTimersByTime(400))
 
     expect(screen.getByTestId('search-filter-state').textContent).toBe('')
@@ -2792,7 +2793,7 @@ describe('RequirementsTable', () => {
     }
 
     setElementRect(qualityCharacteristicFilterButton, {
-      bottom: 40,
+      bottom: 590,
       left: 48,
       right: 92,
     })
@@ -2863,7 +2864,7 @@ describe('RequirementsTable', () => {
     }
   })
 
-  it('clamps filter popovers inside the viewport near the right edge', () => {
+  it('places search below its trigger and flips a selection list with too little room below', () => {
     render(
       <RequirementsTable
         filterValues={DEFAULT_FILTERS}
@@ -2891,6 +2892,7 @@ describe('RequirementsTable', () => {
     )
 
     setViewportWidth(200)
+    setViewportHeight(600)
 
     const uniqueIdFilterButton = getHeaderFilterButton('uniqueId')
     expect(uniqueIdFilterButton).toBeTruthy()
@@ -2902,7 +2904,8 @@ describe('RequirementsTable', () => {
     fireEvent.click(uniqueIdFilterButton)
 
     expect(screen.getByRole('textbox', { name: 'uniqueId' })).toBeTruthy()
-    expect(getOpenPopover()?.style.left).toBe('8px')
+    expect(getOpenPopover()).toHaveStyle({ top: '44px' })
+    expect(getOpenPopover()?.style.maxHeight).toBe('')
 
     fireEvent.mouseDown(document.body)
 
@@ -2915,7 +2918,10 @@ describe('RequirementsTable', () => {
     setElementRect(statusFilterButton, { bottom: 40, left: 180, right: 224 })
     fireEvent.click(statusFilterButton)
 
-    expect(getOpenPopover()?.style.left).toBe('32px')
+    expect(getOpenPopover()).toHaveStyle({
+      top: '44px',
+      maxHeight: '544px',
+    })
 
     fireEvent.mouseDown(document.body)
 
@@ -2930,13 +2936,15 @@ describe('RequirementsTable', () => {
     }
 
     setElementRect(qualityCharacteristicFilterButton, {
-      bottom: 40,
+      bottom: 590,
       left: 180,
       right: 224,
     })
     fireEvent.click(qualityCharacteristicFilterButton)
-
-    expect(getOpenPopover()?.style.left).toBe('8px')
+    expect(getOpenPopover()).toHaveStyle({
+      bottom: '54px',
+      maxHeight: '534px',
+    })
   })
 
   it('renders resize handles whenever column resizing is enabled', () => {

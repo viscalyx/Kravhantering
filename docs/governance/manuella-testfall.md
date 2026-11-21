@@ -187,7 +187,8 @@ webbläsarens fliktitel.
 
 **Integrationstest:**
 [global-navigation.spec.ts](../../tests/integration/navigation/global-navigation.spec.ts),
-testfallet “NAV-02: tabs identify records and selected versions”, samt
+testfallen “NAV-02: tabs identify requirements and selected versions” och
+“NAV-02: tabs identify specifications after canonical redirects”, samt
 [01-no-global-roles-no-assignments.spec.ts](../../tests/integration/authorization/01-no-global-roles-no-assignments.spec.ts),
 testfallet “NAV-02/AUTHZ-01: unavailable records have generic tab titles”.
 
@@ -1046,7 +1047,8 @@ Kravets detalj visas och metadata är läslig.
 ### REQ-03: filtrera kravbiblioteket och hantera kravpaketsfiltret
 
 **Steg:** Öppna filtret för `Krav-ID`, skriv `INT0001`, kontrollera träff och
-rensa sökfältet. Kontrollera sedan att kravpaketsbandet visar inaktivt läge.
+aktivera Rensa med Enter. Kontrollera att du kan skriva direkt i sökfältet igen.
+Kontrollera sedan att kravpaketsbandet visar inaktivt läge.
 Öppna väljaren genom att hålla pekaren över bandet och genom att aktivera
 filterknappen med pekare, Enter och blanksteg. Lägg till flera alfabetiskt
 sorterade kravpaket i följd, även medan resultatlistan uppdateras. Ta bort ett
@@ -1055,7 +1057,10 @@ fokus efter varje åtgärd, stäng med Escape, klick utanför och flytta fokus
 utanför filtret. Upprepa i engelskt språk och med kravpaketskolumnen dold.
 Kontrollera även lägena tom katalog och alla paket valda samt hjälptexter,
 verktygstips, tillgänglighetsattribut, annonseringar och Developer Mode-markörer.
-Välj slutligen status `Arkiverad` och `PWT-MANUAL källpaket`. Kontrollera att
+Öppna statusfiltret och rensa det med Enter. Kontrollera att fokus ligger på
+den första kryssrutan. Kontrollera med skärmläsare att filterknappen anger om
+filtret är öppet eller stängt. Välj sedan status `Arkiverad` och
+`PWT-MANUAL källpaket`. Kontrollera att
 det arkiverade kravet `PWT-LIFE-RESTORE` visas.
 
 **Förväntat resultat:** Krav-ID-filtret begränsar listan och rensning

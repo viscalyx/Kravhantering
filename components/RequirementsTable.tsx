@@ -11,9 +11,7 @@ import {
   Columns3,
   DiamondPlus,
   FilePenLine,
-  Filter,
   Minus,
-  Search,
   SearchCheck,
   WrapText,
   X,
@@ -34,8 +32,13 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
+import MultiSelectFilterPopover, {
+  SearchFilterPopover,
+} from '@/components/_requirements-table/FilterPopovers'
 import SpecificationItemStatusSelect from '@/components/_requirements-table/SpecificationItemStatusSelect'
 import {
+  clampPopoverLeft,
+  listenForTablePopoverKeys,
   POPOVER_VIEWPORT_MARGIN,
   type ResizeHandleSegmentKey,
   type ResizeHandleSegmentNode,
@@ -284,28 +287,6 @@ function getFloatingPillClassName(
   variant: FloatingActionPillVariant = 'default',
 ) {
   return `${floatingPillBaseClassName} ${floatingPillVariantClassNames[variant]}`
-}
-
-function listenForTablePopoverKeys(
-  trigger: HTMLElement | null,
-  handleKeyDown: (event: KeyboardEvent) => void,
-) {
-  const owner = modalPortalTarget(trigger)
-  if (owner === document.body) {
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }
-  function onKeyDown(event: KeyboardEvent) {
-    if (event.defaultPrevented || trigger?.closest('[inert]')) return
-    // A menu inside a dialog gets the first Escape. The next one closes the dialog.
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      event.stopPropagation()
-    }
-    handleKeyDown(event)
-  }
-  owner.addEventListener('keydown', onKeyDown, true)
-  return () => owner.removeEventListener('keydown', onKeyDown, true)
 }
 
 export function FloatingActionPill({ action }: { action: FloatingActionItem }) {
@@ -726,515 +707,6 @@ export function FloatingActionPill({ action }: { action: FloatingActionItem }) {
 const MAX_EXPANDED_DETAIL_RESIZE_GRIP_HEIGHT = 48
 const ROW_CLICK_INTERACTIVE_SELECTOR =
   'button, a, input, select, textarea, [contenteditable]:not([contenteditable="false"])'
-
-function clampPopoverLeft(anchorLeft: number, popoverWidth: number) {
-  if (typeof window === 'undefined') {
-    return anchorLeft
-  }
-
-  const viewportWidth = Math.max(
-    window.innerWidth,
-    document.documentElement.clientWidth,
-  )
-  const maxLeft = Math.max(
-    POPOVER_VIEWPORT_MARGIN,
-    viewportWidth - popoverWidth - POPOVER_VIEWPORT_MARGIN,
-  )
-
-  return Math.min(Math.max(anchorLeft, POPOVER_VIEWPORT_MARGIN), maxLeft)
-}
-
-/* ── Filter popover for text search columns (uniqueId, description) ── */
-
-const headerFilterButtonClassName =
-  'inline-flex min-h-7 min-w-7 shrink-0 items-center justify-center rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500'
-
-function SearchFilterPopover({
-  activeValue,
-  developerModeValue,
-  label,
-  onChange,
-}: {
-  activeValue: string
-  developerModeValue: string
-  label: string
-  onChange: (v: string | undefined) => void
-}) {
-  const tc = useTranslations('common')
-  const tt = useTranslations('requirementsTable')
-  const [open, setOpen] = useState(false)
-  const [local, setLocal] = useState(activeValue)
-  const ref = useRef<HTMLDivElement>(null)
-  const dropRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const btnRef = useRef<HTMLButtonElement>(null)
-  const [pos, setPos] = useState<{ top: number; left: number }>({
-    top: 0,
-    left: 0,
-  })
-  const isActive = !!activeValue
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const clearPendingCommit = () => {
-    if (timer.current) {
-      clearTimeout(timer.current)
-      timer.current = null
-    }
-  }
-
-  useEffect(() => {
-    if (timer.current) {
-      clearTimeout(timer.current)
-      timer.current = null
-    }
-    setLocal(activeValue)
-  }, [activeValue])
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (
-        ref.current &&
-        !ref.current.contains(target) &&
-        dropRef.current &&
-        !dropRef.current.contains(target)
-      ) {
-        setOpen(false)
-        btnRef.current?.focus()
-      }
-    }
-    const keyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false)
-        btnRef.current?.focus()
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    const stopListening = listenForTablePopoverKeys(btnRef.current, keyHandler)
-    return () => {
-      document.removeEventListener('mousedown', handler)
-      stopListening()
-    }
-  }, [open])
-
-  useEffect(() => {
-    if (open) inputRef.current?.focus()
-  }, [open])
-
-  useEffect(
-    () => () => {
-      if (timer.current) {
-        clearTimeout(timer.current)
-        timer.current = null
-      }
-    },
-    [],
-  )
-
-  const commit = (v: string) => {
-    clearPendingCommit()
-    timer.current = setTimeout(() => {
-      timer.current = null
-      onChange(v || undefined)
-    }, 400)
-  }
-
-  return (
-    <div className="relative inline-flex" ref={ref}>
-      <button
-        aria-label={tc('filterBy', { label })}
-        className={`${headerFilterButtonClassName} ${isActive ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
-        {...devMarker({
-          name: 'filter button',
-          priority: 300,
-          value: developerModeValue,
-        })}
-        onClick={e => {
-          e.stopPropagation()
-          if (!open && btnRef.current) {
-            const rect = btnRef.current.getBoundingClientRect()
-            setPos({
-              top: rect.bottom + 4,
-              left: clampPopoverLeft(rect.left, 192),
-            })
-          }
-          setOpen(v => !v)
-        }}
-        ref={btnRef}
-        title={tc('filterBy', { label })}
-        type="button"
-      >
-        <Filter aria-hidden="true" className="h-3.5 w-3.5" />
-      </button>
-      {open &&
-        createPortal(
-          <div
-            className="fixed z-50 bg-white dark:bg-secondary-800 border rounded-lg shadow-lg p-2 min-w-48"
-            ref={dropRef}
-            style={{ top: pos.top, left: pos.left }}
-          >
-            <div className="relative">
-              <Search
-                aria-hidden="true"
-                className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-secondary-400"
-              />
-              <input
-                aria-label={label}
-                className="w-full pl-7 pr-8 py-1.5 text-xs rounded-lg border bg-white dark:bg-secondary-800/50 placeholder:text-secondary-400 focus:outline-none focus:ring-1 focus:ring-primary-400/50 focus:border-primary-500 transition-all"
-                onChange={e => {
-                  setLocal(e.target.value)
-                  commit(e.target.value)
-                }}
-                onKeyDown={e => {
-                  if (e.key !== 'Enter') return
-                  // IME confirmation can still report key code 229 after compositionend.
-                  if (
-                    e.nativeEvent.isComposing ||
-                    e.nativeEvent.keyCode === 229
-                  )
-                    return
-
-                  e.preventDefault()
-                  clearPendingCommit()
-                  onChange(local || undefined)
-                  setOpen(false)
-                  btnRef.current?.focus()
-                }}
-                placeholder={`${label}...`}
-                ref={inputRef}
-                type="text"
-                value={local}
-              />
-              {local && (
-                <button
-                  aria-label={tt('clear')}
-                  className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center text-secondary-400 hover:text-secondary-600"
-                  onClick={() => {
-                    setLocal('')
-                    clearPendingCommit()
-                    onChange(undefined)
-                  }}
-                  type="button"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          </div>,
-          modalPortalTarget(btnRef.current),
-        )}
-    </div>
-  )
-}
-
-/* ── Filter popover for multi-select columns ── */
-
-function MultiSelectFilterPopover({
-  activeCount,
-  developerModeValue,
-  getLabel,
-  label,
-  onChange,
-  options,
-  value,
-}: {
-  activeCount: number
-  developerModeValue: string
-  getLabel: (opt: { id: number }) => string
-  label: string
-  onChange: (ids: number[]) => void
-  options: { id: number }[]
-  value: number[]
-}) {
-  const tc = useTranslations('common')
-  const tt = useTranslations('requirementsTable')
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const dropRef = useRef<HTMLDivElement>(null)
-  const btnRef = useRef<HTMLButtonElement>(null)
-  const [pos, setPos] = useState<{ top: number; left: number; maxH: number }>({
-    top: 0,
-    left: 0,
-    maxH: 300,
-  })
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (
-        ref.current &&
-        !ref.current.contains(target) &&
-        dropRef.current &&
-        !dropRef.current.contains(target)
-      ) {
-        setOpen(false)
-        btnRef.current?.focus()
-      }
-    }
-    const keyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false)
-        btnRef.current?.focus()
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    const stopListening = listenForTablePopoverKeys(btnRef.current, keyHandler)
-    return () => {
-      document.removeEventListener('mousedown', handler)
-      stopListening()
-    }
-  }, [open])
-
-  const openDropdown = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!open && btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect()
-      setPos({
-        top: rect.bottom + 4,
-        left: clampPopoverLeft(rect.left, 160),
-        maxH: window.innerHeight - rect.bottom - 16,
-      })
-    }
-    setOpen(v => !v)
-  }
-
-  const toggle = (id: number) => {
-    const next = value.includes(id)
-      ? value.filter(v => v !== id)
-      : [...value, id]
-    onChange(next)
-  }
-
-  return (
-    <div className="relative inline-flex" ref={ref}>
-      <button
-        aria-label={tc('filterBy', { label })}
-        className={`${headerFilterButtonClassName} ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
-        {...devMarker({
-          name: 'filter button',
-          priority: 300,
-          value: developerModeValue,
-        })}
-        onClick={openDropdown}
-        ref={btnRef}
-        title={tc('filterBy', { label })}
-        type="button"
-      >
-        <span
-          className="relative inline-flex h-3.5 w-3.5 items-center justify-center"
-          data-filter-icon-anchor="true"
-        >
-          <Filter aria-hidden="true" className="h-3.5 w-3.5" />
-          {activeCount > 0 && (
-            <span
-              className="pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-primary-500 text-[8px] font-bold leading-none text-white"
-              data-filter-count-badge="true"
-            >
-              {activeCount}
-            </span>
-          )}
-        </span>
-      </button>
-      {open &&
-        createPortal(
-          <div
-            className="fixed z-50 bg-white dark:bg-secondary-800 border rounded-lg shadow-lg py-1 min-w-40 overflow-y-auto"
-            ref={dropRef}
-            style={{ top: pos.top, left: pos.left, maxHeight: pos.maxH }}
-          >
-            {value.length > 0 && (
-              <button
-                className="min-h-11 w-full border-b px-2.5 py-1.5 pb-1.5 text-left text-xs text-secondary-500 hover:text-red-600 dark:hover:text-red-400"
-                onClick={() => onChange([])}
-                type="button"
-              >
-                <X aria-hidden="true" className="h-3 w-3 inline mr-1" />
-                {tt('clear')}
-              </button>
-            )}
-            {options.map(opt => (
-              <label
-                className="flex min-h-11 cursor-pointer items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-secondary-50 dark:hover:bg-secondary-700/50"
-                key={opt.id}
-              >
-                <input
-                  checked={value.includes(opt.id)}
-                  className="rounded border-secondary-300"
-                  onChange={() => toggle(opt.id)}
-                  type="checkbox"
-                />
-                <span className="truncate">{getLabel(opt)}</span>
-              </label>
-            ))}
-          </div>,
-          modalPortalTarget(btnRef.current),
-        )}
-    </div>
-  )
-}
-
-/* ── Grouped multi-select popover (for typeCategory with parent grouping) ── */
-
-function GroupedMultiSelectFilterPopover({
-  activeCount,
-  developerModeValue,
-  getLabel,
-  label,
-  onChange,
-  options,
-  value,
-}: {
-  activeCount: number
-  developerModeValue: string
-  getLabel: (opt: QualityCharacteristicOption) => string
-  label: string
-  onChange: (ids: number[]) => void
-  options: QualityCharacteristicOption[]
-  value: number[]
-}) {
-  const tc = useTranslations('common')
-  const tt = useTranslations('requirementsTable')
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const dropRef = useRef<HTMLDivElement>(null)
-  const btnRef = useRef<HTMLButtonElement>(null)
-  const [pos, setPos] = useState<{ top: number; left: number; maxH: number }>({
-    top: 0,
-    left: 0,
-    maxH: 300,
-  })
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (
-        ref.current &&
-        !ref.current.contains(target) &&
-        dropRef.current &&
-        !dropRef.current.contains(target)
-      ) {
-        setOpen(false)
-        btnRef.current?.focus()
-      }
-    }
-    const keyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false)
-        btnRef.current?.focus()
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    const stopListening = listenForTablePopoverKeys(btnRef.current, keyHandler)
-    return () => {
-      document.removeEventListener('mousedown', handler)
-      stopListening()
-    }
-  }, [open])
-
-  const openDropdown = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!open && btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect()
-      setPos({
-        top: rect.bottom + 4,
-        left: clampPopoverLeft(rect.left, 192),
-        maxH: window.innerHeight - rect.bottom - 16,
-      })
-    }
-    setOpen(v => !v)
-  }
-
-  const toggle = (id: number) => {
-    const next = value.includes(id)
-      ? value.filter(v => v !== id)
-      : [...value, id]
-    onChange(next)
-  }
-
-  const parents = options.filter(o => o.parentId === null)
-  const childrenOf = (parentId: number) =>
-    options.filter(o => o.parentId === parentId)
-
-  return (
-    <div className="relative inline-flex" ref={ref}>
-      <button
-        aria-label={tc('filterBy', { label })}
-        className={`${headerFilterButtonClassName} ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
-        {...devMarker({
-          name: 'filter button',
-          priority: 300,
-          value: developerModeValue,
-        })}
-        onClick={openDropdown}
-        ref={btnRef}
-        title={tc('filterBy', { label })}
-        type="button"
-      >
-        <span
-          className="relative inline-flex h-3.5 w-3.5 items-center justify-center"
-          data-filter-icon-anchor="true"
-        >
-          <Filter aria-hidden="true" className="h-3.5 w-3.5" />
-          {activeCount > 0 && (
-            <span
-              className="pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-primary-500 text-[8px] font-bold leading-none text-white"
-              data-filter-count-badge="true"
-            >
-              {activeCount}
-            </span>
-          )}
-        </span>
-      </button>
-      {open &&
-        createPortal(
-          <div
-            className="fixed z-50 bg-white dark:bg-secondary-800 border rounded-lg shadow-lg py-1 min-w-48 overflow-y-auto"
-            ref={dropRef}
-            style={{ top: pos.top, left: pos.left, maxHeight: pos.maxH }}
-          >
-            {value.length > 0 && (
-              <button
-                className="min-h-11 w-full border-b px-2.5 py-1.5 pb-1.5 text-left text-xs text-secondary-500 hover:text-red-600 dark:hover:text-red-400"
-                onClick={() => onChange([])}
-                type="button"
-              >
-                <X aria-hidden="true" className="h-3 w-3 inline mr-1" />
-                {tt('clear')}
-              </button>
-            )}
-            {parents.map(parent => {
-              const children = childrenOf(parent.id)
-              return (
-                <div key={parent.id}>
-                  <div className="px-2.5 pt-2 pb-0.5 text-[11px] font-semibold text-secondary-400 dark:text-secondary-500 uppercase tracking-wide">
-                    {getLabel(parent)}
-                  </div>
-                  {children.map(child => (
-                    <label
-                      className="flex min-h-11 cursor-pointer items-center gap-2 py-1.5 pl-5 pr-2.5 text-xs hover:bg-secondary-50 dark:hover:bg-secondary-700/50"
-                      key={child.id}
-                    >
-                      <input
-                        checked={value.includes(child.id)}
-                        className="rounded border-secondary-300"
-                        onChange={() => toggle(child.id)}
-                        type="checkbox"
-                      />
-                      <span className="truncate">{getLabel(child)}</span>
-                    </label>
-                  ))}
-                </div>
-              )
-            })}
-          </div>,
-          modalPortalTarget(btnRef.current),
-        )}
-    </div>
-  )
-}
 
 function ColumnsPopover({
   badgeLabel = null,
@@ -2141,7 +1613,6 @@ export default function RequirementsTable({
       case 'area':
         return (
           <MultiSelectFilterPopover
-            activeCount={(fv.areaIds ?? []).length}
             developerModeValue={developerModeValue}
             getLabel={option => areaLabel(option.id)}
             label={t('area')}
@@ -2155,7 +1626,6 @@ export default function RequirementsTable({
       case 'category':
         return (
           <MultiSelectFilterPopover
-            activeCount={(fv.categoryIds ?? []).length}
             developerModeValue={developerModeValue}
             getLabel={option => catLabel(option.id)}
             label={t('category')}
@@ -2169,7 +1639,6 @@ export default function RequirementsTable({
       case 'type':
         return (
           <MultiSelectFilterPopover
-            activeCount={(fv.typeIds ?? []).length}
             developerModeValue={developerModeValue}
             getLabel={option => typeLabel(option.id)}
             label={t('type')}
@@ -2182,10 +1651,10 @@ export default function RequirementsTable({
         )
       case 'qualityCharacteristic':
         return (
-          <GroupedMultiSelectFilterPopover
-            activeCount={(fv.qualityCharacteristicIds ?? []).length}
+          <MultiSelectFilterPopover
             developerModeValue={developerModeValue}
             getLabel={option => typeCatLabel(option.id)}
+            getParentId={option => option.parentId}
             label={t('qualityCharacteristic')}
             onChange={ids =>
               updateFilter({
@@ -2199,7 +1668,6 @@ export default function RequirementsTable({
       case 'priorityLevel':
         return (
           <MultiSelectFilterPopover
-            activeCount={(fv.priorityLevelIds ?? []).length}
             developerModeValue={developerModeValue}
             getLabel={option => formatPriorityLevelLabel(option.id)}
             label={t('priorityLevel')}
@@ -2215,7 +1683,6 @@ export default function RequirementsTable({
       case 'status':
         return (
           <MultiSelectFilterPopover
-            activeCount={(fv.statuses ?? []).length}
             developerModeValue={developerModeValue}
             getLabel={option => statusLabel(option.id)}
             label={getColumnLabel('status')}
@@ -2229,7 +1696,6 @@ export default function RequirementsTable({
       case 'verifiable':
         return (
           <MultiSelectFilterPopover
-            activeCount={verifiableValue.length}
             developerModeValue={developerModeValue}
             getLabel={option =>
               verifiableOptions.find(item => item.id === option.id)?.label ?? ''
@@ -2244,7 +1710,6 @@ export default function RequirementsTable({
         if (needsReferenceOptions.length === 0) return null
         return (
           <MultiSelectFilterPopover
-            activeCount={(fv.needsReferenceIds ?? []).length}
             developerModeValue={developerModeValue}
             getLabel={option => needsRefLabel(option.id)}
             label={t('needsReference')}
@@ -2261,7 +1726,6 @@ export default function RequirementsTable({
         if (specificationItemStatuses.length === 0) return null
         return (
           <MultiSelectFilterPopover
-            activeCount={(fv.specificationItemStatusIds ?? []).length}
             developerModeValue={developerModeValue}
             getLabel={option => specificationItemStatusLabel(option.id)}
             label={t('specificationItemStatus')}
