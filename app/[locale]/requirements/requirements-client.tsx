@@ -264,6 +264,12 @@ function mapRequirementDetailToRow(
   }
 }
 
+function withoutLinkedSelection(params: URLSearchParams): URLSearchParams {
+  return new URLSearchParams(
+    [...params].filter(([key, value]) => key !== 'selected' || value === ''),
+  )
+}
+
 function selectionMatchesRequirementRow(
   selection: number | string | null,
   row: Pick<RequirementRow, 'id' | 'uniqueId'>,
@@ -377,10 +383,10 @@ export default function RequirementsClient({
   useEffect(
     () =>
       registerLocaleChangeQuery('/requirements', params => {
+        const query = withoutLinkedSelection(params)
         const selected = selectedIdRef.current
-        if (selected != null && !params.getAll('selected').some(Boolean)) {
-          params.append('selected', String(selected))
-        }
+        if (selected != null) query.append('selected', String(selected))
+        return query
       }),
     [],
   )
@@ -557,7 +563,11 @@ export default function RequirementsClient({
           return false
         }
 
-        if (resolvedNumericId != null) {
+        if (
+          resolvedNumericId != null &&
+          (selectedIdRef.current === sid ||
+            selectedIdRef.current === resolvedNumericId)
+        ) {
           selectedIdRef.current = resolvedNumericId
           setSelectedId(resolvedNumericId)
           if (typeof sid === 'string') {
@@ -852,11 +862,7 @@ export default function RequirementsClient({
       // Clean up the params after hydration so selected-row pinning cannot be
       // cancelled before the row is available in the table.
       const url = new URL(window.location.href)
-      url.search = new URLSearchParams(
-        [...url.searchParams].filter(
-          ([key, value]) => key !== 'selected' || value === '',
-        ),
-      ).toString()
+      url.search = withoutLinkedSelection(url.searchParams).toString()
       window.history.replaceState({}, '', url.toString())
     }
 

@@ -396,6 +396,42 @@ test.describe('Requirements library', () => {
     })
   })
 
+  test('REQ-02: a pending deep link yields to the row selected before switching language', async ({
+    page,
+  }) => {
+    const row = page.getByRole('button', { name: /^INT0001\b/ })
+    await page.goto('/sv/requirements')
+    await expect(row).toHaveAttribute('aria-expanded', 'false')
+    const pending = await deferRoute(
+      page,
+      '**/api/requirements/INT0002',
+      route => route.continue(),
+    )
+    try {
+      await test.step('open a deep link while the current table is mounted', async () => {
+        await page.evaluate(() =>
+          window.history.pushState(
+            null,
+            '',
+            '?selected=&selected=INT0002&tag=library#notes',
+          ),
+        )
+        await pending.requestStarted
+      })
+      await test.step('select a different row and switch before the response arrives', async () => {
+        await row.click()
+        await expect(row).toHaveAttribute('aria-expanded', 'true')
+        await page.getByRole('button', { name: 'Byt språk' }).click()
+        await expect(page).toHaveURL(
+          '/en/requirements?selected=&tag=library#notes',
+        )
+        await expect(row).toHaveAttribute('aria-expanded', 'true')
+      })
+    } finally {
+      await pending.cleanup()
+    }
+  })
+
   test('REQ-03: requirement filters and the package chooser preserve keyboard focus and OR queries', async ({
     page,
   }, testInfo) => {

@@ -1043,7 +1043,9 @@ Kravets detalj visas och metadata är läslig.
 
 **Integrationstest:**
 [library.spec.ts](../../tests/integration/requirements/library.spec.ts),
-testfallet “REQ-02: language switch keeps the requirements table usable”.
+testfallen “REQ-02: language switch keeps the requirements table usable” och
+“REQ-02: a pending deep link yields to the row selected before switching
+language”.
 
 **Steg:**
 
@@ -1056,6 +1058,18 @@ testfallet “REQ-02: language switch keeps the requirements table usable”.
 **Förväntat resultat:** Vid båda språkbytena är samma krav utfällt. Tabellen
 går att filtrera och etiketterna följer språket. Båda värdena för `tag`,
 det tomma värdet för `tom` och fragmentet `#detalj` finns kvar.
+
+**Språkbyte under inläsning:** Öppna `/sv/requirements` på nytt. Fördröj
+svaret från `/api/requirements/INT0002` med en testproxy. Kör följande i
+webbläsarens konsol för att öppna en djuplänk i den inlästa listan.
+
+```js
+history.pushState(null, '', '?selected=&selected=INT0002&tag=library#notes')
+```
+
+Fäll ut `INT0001` och byt till engelska medan svaret väntar. Släpp sedan fram
+svaret. Kravet `INT0001` ska vara utfällt och adressen ska sluta med
+`/en/requirements?selected=&tag=library#notes`.
 
 ### REQ-03: filtrera kravbiblioteket och hantera kravpaketsfiltret
 
