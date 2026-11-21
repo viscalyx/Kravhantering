@@ -23,9 +23,12 @@ vi.mock('@/app/[locale]/admin/admin-workspace-page', () => ({
 vi.mock('@/app/[locale]/admin/panels/access-review-panel', () => ({
   default: () => <p>access review panel</p>,
 }))
-vi.mock('@/app/[locale]/admin/panels/action-audit-log-panel', () => ({
-  default: () => <p>action audit log panel</p>,
-}))
+vi.mock(
+  '@/app/[locale]/admin/workspaces/action-audit-log/workspace-panel',
+  () => ({
+    default: () => <p>action audit log panel</p>,
+  }),
+)
 vi.mock('@/app/[locale]/admin/panels/archiving-panel', () => ({
   default: () => <p>archiving panel</p>,
 }))
