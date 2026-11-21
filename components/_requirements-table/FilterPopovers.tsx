@@ -14,6 +14,8 @@ import { createPortal } from 'react-dom'
 import {
   clampPopoverLeft,
   listenForTablePopoverKeys,
+  POPOVER_VIEWPORT_MARGIN,
+  useClientLayoutEffect,
 } from '@/components/_requirements-table/shared'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { modalPortalTarget } from '@/lib/modal-focus'
@@ -24,10 +26,15 @@ interface FilterLabelProps {
 }
 
 const panelLayouts = {
-  text: { className: 'min-w-48 p-2', width: 192 },
-  flat: { className: 'min-w-40 py-1 overflow-y-auto', width: 160 },
-  grouped: { className: 'min-w-48 py-1 overflow-y-auto', width: 192 },
+  text: { className: 'p-2', minWidth: '12rem' },
+  flat: { className: 'py-1 overflow-y-auto', minWidth: '10rem' },
+  grouped: { className: 'py-1 overflow-y-auto', minWidth: '12rem' },
 }
+
+const viewportWidthLimit = `calc(100% - ${2 * POPOVER_VIEWPORT_MARGIN}px)`
+// A 44px option row plus the selection panel's padding and border.
+const minSelectionPanelHeight = 54
+const openFilterByOwner = new WeakMap<HTMLElement, () => void>()
 
 interface FilterPopoverProps extends FilterLabelProps {
   active: boolean
@@ -52,18 +59,51 @@ function FilterPopover({
   const wrapperRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
-  const [position, setPosition] = useState<{
-    top: number
-    left: number
-    maxHeight?: number
-  } | null>(null)
+  const [open, setOpen] = useState(false)
   const close = useCallback(() => {
-    setPosition(null)
+    setOpen(false)
     triggerRef.current?.focus()
   }, [])
 
+  useClientLayoutEffect(() => {
+    const panel = panelRef.current
+    const trigger = triggerRef.current
+    if (!open || !panel || !trigger) return
+    const positionPanel = () => {
+      const anchor = trigger.getBoundingClientRect()
+      const width = panel.getBoundingClientRect().width
+      panel.style.left = `${clampPopoverLeft(anchor.left, width)}px`
+      const below = window.innerHeight - anchor.bottom - 16
+      const above = anchor.top - 16
+      const flip =
+        variant !== 'text' && below < minSelectionPanelHeight && above > below
+      panel.style.top = flip ? 'auto' : `${anchor.bottom + 4}px`
+      panel.style.bottom = flip
+        ? `${window.innerHeight - anchor.top + 4}px`
+        : 'auto'
+      if (variant !== 'text')
+        panel.style.maxHeight = `${Math.max(0, flip ? above : below)}px`
+    }
+    positionPanel()
+    const observer =
+      typeof ResizeObserver === 'undefined'
+        ? undefined
+        : new ResizeObserver(positionPanel)
+    observer?.observe(panel)
+    window.addEventListener('resize', positionPanel)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', positionPanel)
+    }
+  }, [open, variant])
+
   useEffect(() => {
-    if (!position) return
+    if (!open) return
+    const owner = modalPortalTarget(triggerRef.current)
+    // Keyboard activation has no outside mousedown to dismiss the previous filter.
+    openFilterByOwner.get(owner)?.()
+    const dismiss = () => setOpen(false)
+    openFilterByOwner.set(owner, dismiss)
     initialFocusRef?.current?.focus()
     function onMouseDown(event: MouseEvent) {
       const target = event.target as Node
@@ -81,14 +121,17 @@ function FilterPopover({
       },
     )
     return () => {
+      if (openFilterByOwner.get(owner) === dismiss)
+        openFilterByOwner.delete(owner)
       document.removeEventListener('mousedown', onMouseDown)
       stopListening()
     }
-  }, [position, close, initialFocusRef])
+  }, [open, close, initialFocusRef])
 
   return (
     <div className="relative inline-flex" ref={wrapperRef}>
       <button
+        aria-expanded={open}
         aria-label={triggerLabel}
         className={`inline-flex min-h-7 min-w-7 shrink-0 items-center justify-center rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${active ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
         {...devMarker({
@@ -98,19 +141,7 @@ function FilterPopover({
         })}
         onClick={event => {
           event.stopPropagation()
-          if (position) {
-            setPosition(null)
-            return
-          }
-          const rect = event.currentTarget.getBoundingClientRect()
-          setPosition({
-            left: clampPopoverLeft(rect.left, layout.width),
-            top: rect.bottom + 4,
-            maxHeight:
-              variant === 'text'
-                ? undefined
-                : window.innerHeight - rect.bottom - 16,
-          })
+          setOpen(previous => !previous)
         }}
         ref={triggerRef}
         title={triggerLabel}
@@ -135,12 +166,16 @@ function FilterPopover({
           </span>
         )}
       </button>
-      {position &&
+      {open &&
         createPortal(
           <div
             className={`fixed z-50 bg-white dark:bg-secondary-800 border rounded-lg shadow-lg ${layout.className}`}
             ref={panelRef}
-            style={position}
+            style={{
+              width: 'max-content',
+              maxWidth: viewportWidthLimit,
+              minWidth: `min(${layout.minWidth}, ${viewportWidthLimit})`,
+            }}
           >
             {children(close)}
           </div>,
@@ -229,6 +264,7 @@ export function SearchFilterPopover({
                 setLocal('')
                 clearPendingCommit()
                 onChange(undefined)
+                inputRef.current?.focus()
               }}
               type="button"
             >
@@ -262,6 +298,19 @@ export default function MultiSelectFilterPopover<
   value,
 }: SelectionFilterProps<Option>) {
   const tt = useTranslations('requirementsTable')
+  const [clearedPanel, setClearedPanel] = useState<{
+    panel: HTMLElement | null
+    close: () => void
+  } | null>(null)
+  useClientLayoutEffect(() => {
+    if (!clearedPanel) return
+    const first = clearedPanel.panel?.querySelector<HTMLInputElement>(
+      'input[type="checkbox"]',
+    )
+    if (first) first.focus()
+    else clearedPanel.close()
+    setClearedPanel(null)
+  }, [clearedPanel])
   function renderOption(option: Option) {
     const checked = value.includes(option.id)
     return (
@@ -293,12 +342,18 @@ export default function MultiSelectFilterPopover<
       label={label}
       variant={getParentId ? 'grouped' : 'flat'}
     >
-      {() => (
+      {close => (
         <>
           {value.length > 0 && (
             <button
               className="min-h-11 w-full border-b px-2.5 py-1.5 pb-1.5 text-left text-xs text-secondary-500 hover:text-red-600 dark:hover:text-red-400"
-              onClick={() => onChange([])}
+              onClick={event => {
+                setClearedPanel({
+                  panel: event.currentTarget.parentElement,
+                  close,
+                })
+                onChange([])
+              }}
               type="button"
             >
               <X aria-hidden="true" className="h-3 w-3 inline mr-1" />
@@ -311,7 +366,7 @@ export default function MultiSelectFilterPopover<
                 .filter(option => getParentId(option) === null)
                 .map(parent => (
                   <div key={parent.id}>
-                    <div className="px-2.5 pt-2 pb-0.5 text-[11px] font-semibold text-secondary-400 dark:text-secondary-500 uppercase tracking-wide">
+                    <div className="wrap-anywhere whitespace-normal px-2.5 pt-2 pb-0.5 text-[11px] font-semibold text-secondary-400 dark:text-secondary-500 uppercase tracking-wide">
                       {getLabel(parent)}
                     </div>
                     {options

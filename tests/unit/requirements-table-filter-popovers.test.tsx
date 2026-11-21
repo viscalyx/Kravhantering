@@ -1,4 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import MultiSelectFilterPopover, {
   SearchFilterPopover,
@@ -27,12 +29,15 @@ describe('requirement table filter popovers', () => {
       </div>,
     )
     const trigger = screen.getByRole('button', { name: 'filterBy' })
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
     fireEvent.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
     const search = screen.getByRole('textbox', { name: 'ID' })
     expect(screen.getByRole('dialog')).toContainElement(search)
     expect(search).toHaveFocus()
     fireEvent.keyDown(search, { key: 'Escape' })
     expect(search).not.toBeInTheDocument()
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
     expect(trigger).toHaveFocus()
     expect(onDialogKey).not.toHaveBeenCalled()
     const dialog = screen.getByRole('dialog')
@@ -47,6 +52,86 @@ describe('requirement table filter popovers', () => {
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
     expect(onDialogKey).toHaveBeenCalledTimes(2)
   })
+
+  it('gives Escape to the last filter opened from the keyboard inside a dialog', async () => {
+    const user = userEvent.setup()
+    const onDialogEscape = vi.fn()
+    render(
+      <div
+        aria-modal="true"
+        onKeyDown={event => {
+          if (event.key === 'Escape') onDialogEscape()
+        }}
+        role="dialog"
+      >
+        {['ID', 'Description'].map(label => (
+          <SearchFilterPopover
+            activeValue=""
+            developerModeValue={label}
+            key={label}
+            label={label}
+            onChange={vi.fn()}
+          />
+        ))}
+      </div>,
+    )
+    const [first, second] = screen.getAllByRole<HTMLButtonElement>('button', {
+      name: 'filterBy',
+    })
+    if (!first || !second) throw new Error('Expected two filter triggers')
+    first.focus()
+    await user.keyboard('{Enter}')
+    expect(screen.getByRole('textbox', { name: 'ID' })).toHaveFocus()
+    second.focus()
+    await user.keyboard('{Enter}')
+    expect(screen.getByRole('textbox', { name: 'Description' })).toHaveFocus()
+    expect(first).toHaveAttribute('aria-expanded', 'false')
+    await user.keyboard('{Escape}')
+    expect(second).toHaveFocus()
+    expect(second).toHaveAttribute('aria-expanded', 'false')
+    expect(onDialogEscape).not.toHaveBeenCalled()
+    await user.keyboard('{Escape}')
+    expect(onDialogEscape).toHaveBeenCalledOnce()
+  })
+
+  it.each([true, false])(
+    'restores focus after clearing a controlled selection (options remain: %s)',
+    remaining => {
+      function ControlledFilter() {
+        const [value, setValue] = useState([2])
+        const options = [
+          { id: 1, parent: null },
+          { id: 2, parent: 1 },
+        ]
+        return (
+          <MultiSelectFilterPopover
+            developerModeValue="quality"
+            getLabel={o => String(o.id)}
+            getParentId={o => o.parent}
+            label="Quality"
+            onChange={setValue}
+            options={remaining || value.length ? options : options.slice(0, 1)}
+            value={value}
+          />
+        )
+      }
+      render(<ControlledFilter />)
+      const trigger = screen.getByRole('button', { name: 'filterBy' })
+      fireEvent.click(trigger)
+      const clear = screen.getByRole('button', { name: 'clear' })
+      clear.focus()
+      fireEvent.click(clear)
+      expect(clear).not.toBeInTheDocument()
+      if (remaining) {
+        const checkbox = screen.getByRole('checkbox', { name: '2' })
+        expect(checkbox).not.toBeChecked()
+        expect(checkbox).toHaveFocus()
+      } else {
+        expect(trigger).toHaveAttribute('aria-expanded', 'false')
+        expect(trigger).toHaveFocus()
+      }
+    },
+  )
 
   it.each(['flat', 'grouped'] as const)(
     'keeps the %s list open during selection and restores focus on outside dismissal',
@@ -135,7 +220,10 @@ describe('requirement table filter popovers', () => {
       act(() => vi.advanceTimersByTime(1))
       expect(onChange).toHaveBeenCalledExactlyOnceWith('AB')
       type('ABC')
-      fireEvent.click(screen.getByRole('button', { name: 'clear' }))
+      const clear = screen.getByRole('button', { name: 'clear' })
+      clear.focus()
+      fireEvent.click(clear)
+      expect(screen.getByRole('textbox', { name: 'ID' })).toHaveFocus()
       expect(onChange).toHaveBeenLastCalledWith(undefined)
       act(() => vi.advanceTimersByTime(400))
       expect(onChange).toHaveBeenCalledTimes(2)

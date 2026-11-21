@@ -2793,7 +2793,7 @@ describe('RequirementsTable', () => {
     }
 
     setElementRect(qualityCharacteristicFilterButton, {
-      bottom: 40,
+      bottom: 590,
       left: 48,
       right: 92,
     })
@@ -2903,7 +2903,16 @@ describe('RequirementsTable', () => {
     setElementRect(uniqueIdFilterButton, { bottom: 40, left: 180, right: 224 })
     fireEvent.click(uniqueIdFilterButton)
 
+    // JSDOM has no layout engine. Supply each rendered panel's border box
+    // and remeasure just as the browser does when its viewport changes.
+    function measurePanel(width: number) {
+      const panel = requireTestValue(getOpenPopover())
+      setElementRect(panel, { bottom: 80, left: 0, right: width })
+      fireEvent(window, new Event('resize'))
+    }
+
     expect(screen.getByRole('textbox', { name: 'uniqueId' })).toBeTruthy()
+    measurePanel(184)
     expect(getOpenPopover()).toHaveStyle({ left: '8px', top: '44px' })
     expect(getOpenPopover()?.style.maxHeight).toBe('')
 
@@ -2918,6 +2927,7 @@ describe('RequirementsTable', () => {
     setElementRect(statusFilterButton, { bottom: 40, left: 180, right: 224 })
     fireEvent.click(statusFilterButton)
 
+    measurePanel(160)
     expect(getOpenPopover()).toHaveStyle({
       left: '32px',
       top: '44px',
@@ -2937,16 +2947,18 @@ describe('RequirementsTable', () => {
     }
 
     setElementRect(qualityCharacteristicFilterButton, {
-      bottom: 40,
+      bottom: 590,
       left: 180,
       right: 224,
     })
     fireEvent.click(qualityCharacteristicFilterButton)
-
+    setViewportWidth(400)
+    measurePanel(250)
     expect(getOpenPopover()).toHaveStyle({
-      left: '8px',
-      top: '44px',
-      maxHeight: '544px',
+      left: '142px',
+      bottom: '54px',
+      top: 'auto',
+      maxHeight: '534px',
     })
   })
 

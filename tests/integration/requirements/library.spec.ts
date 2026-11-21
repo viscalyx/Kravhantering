@@ -664,8 +664,18 @@ test.describe('Requirements library', () => {
       // Clearing the chip can leave the pointer over the package-filter band.
       await page.mouse.move(0, 0)
       await collapsePackageFilter(page)
-      await page.getByRole('button', { name: 'Filtrera efter Status' }).click()
-      await page.getByRole('button', { name: 'Rensa' }).click()
+      const statusTrigger = page.getByRole('button', {
+        name: 'Filtrera efter Status',
+      })
+      await expect(statusTrigger).toHaveAttribute('aria-expanded', 'false')
+      await statusTrigger.click()
+      await expect(statusTrigger).toHaveAttribute('aria-expanded', 'true')
+      await page.getByRole('button', { name: 'Rensa' }).press('Enter')
+      const firstStatus = page
+        .locator('label')
+        .filter({ has: page.getByRole('checkbox', { name: 'Arkiverad' }) })
+      const statusPanel = firstStatus.locator('..')
+      await expect(statusPanel.getByRole('checkbox').first()).toBeFocused()
       const archivedStatusRequest = page.waitForRequest(request => {
         const url = new URL(request.url())
         return (
@@ -791,8 +801,9 @@ test.describe('Requirements library', () => {
         expect(clearButtonBox?.height ?? 0).toBeGreaterThanOrEqual(24)
         expect(clearButtonBox?.width ?? 0).toBeGreaterThanOrEqual(24)
 
-        await clearButton.click()
+        await clearButton.press('Enter')
         await expect(textbox).toHaveValue('')
+        await expect(textbox).toBeFocused()
       })
 
       const band = page.getByRole('group', {
