@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises'
 import { expect, type Page, test } from '@playwright/test'
 import { deferRoute } from '@/tests/support/deferred-route'
 
+test.use({ timezoneId: 'Europe/Stockholm' })
+
 function requirementCreateAuditRows(page: Page) {
   return page.getByRole('row').filter({
     has: page.getByRole('cell', {
@@ -31,11 +33,20 @@ test('ADMIN-07: admin can filter action-log events and export CSV', async ({
   await page.getByLabel('Måltyp', { exact: true }).fill('Requirement')
   await page.getByLabel('Mål-ID', { exact: true }).fill('1')
   await page.getByLabel('Klient-IP', { exact: true }).fill('203.0.113.10')
-  await page.getByLabel('Från', { exact: true }).fill('2026-04-23T09:00')
-  await page.getByLabel('Till', { exact: true }).fill('2026-04-23T10:00')
+  const from = page.getByLabel('Från (UTC)', { exact: true })
+  const to = page.getByLabel('Till (UTC)', { exact: true })
+  const help =
+    'Ange tiderna i UTC. Samma tidsintervall gäller för listan och CSV-exporten.'
+  await expect(page.getByText(help)).toBeVisible()
+  await expect(from).toHaveAccessibleDescription(help)
+  await expect(to).toHaveAccessibleDescription(help)
+  await from.fill('2026-04-23T09:00')
+  await to.fill('2026-04-23T10:00')
   await page.getByRole('button', { name: 'Filtrera' }).click()
 
   await expect(page).toHaveURL(/actor_hsa_id=SE5560000001-linneab/)
+  await expect(from).toHaveValue('2026-04-23T09:00')
+  await expect(to).toHaveValue('2026-04-23T10:00')
   await expect(page).toHaveURL(/action=requirement\.create/)
   await expect(page).toHaveURL(/target_kind=Requirement/)
   await expect(page).toHaveURL(/target_id=1/)
@@ -200,4 +211,42 @@ test('ADMIN-07: admin can use the action log inline from admin center', async ({
   expect(csv).toContain('Tillåten')
   expect(csv).toContain('requirement.create')
   expect(csv).toContain('203.0.113.10')
+})
+
+test('ADMIN-07: UTC bounds include both endpoints across list pages and CSV', async ({
+  page,
+}) => {
+  await page.goto('/en/admin?tab=actionAuditLog&pageSize=1')
+  const from = page.getByLabel('From (UTC)', { exact: true })
+  const to = page.getByLabel('To (UTC)', { exact: true })
+  const help =
+    'Enter times in UTC. The same interval applies to the list and CSV export.'
+  await expect(page.getByText(help)).toHaveAttribute(
+    'data-developer-mode-name',
+    'UTC filter help',
+  )
+  await expect(from).toHaveAccessibleDescription(help)
+  await expect(to).toHaveAccessibleDescription(help)
+  await from.fill('2026-04-23T09:12')
+  await to.fill('2026-04-23T09:13')
+  await page.getByRole('button', { name: 'Filter', exact: true }).click()
+  await expect(
+    page.getByRole('cell', { name: 'seed-audit-request-3' }),
+  ).toBeVisible()
+  await expect(from).toHaveValue('2026-04-23T09:12')
+  await expect(to).toHaveValue('2026-04-23T09:13')
+  await page.getByRole('link', { name: 'Next', exact: true }).click()
+  await expect(
+    page.getByRole('cell', { name: 'seed-audit-request-2' }),
+  ).toBeVisible()
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export CSV' }).click()
+  const download = await downloadPromise
+  const csv = await readFile((await download.path()) ?? '', 'utf8')
+  const rows = csv.trimEnd().split(/\r?\n/).slice(1)
+  expect(rows.map(row => row.split(';')[11])).toEqual([
+    'seed-audit-request-3',
+    'seed-audit-request-2',
+  ])
 })

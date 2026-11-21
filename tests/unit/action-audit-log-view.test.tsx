@@ -4,6 +4,8 @@ import ActionAuditLogView, {
   type ActionAuditLogLabels,
 } from '@/components/admin/ActionAuditLogView'
 
+vi.mock('next-intl', () => ({ useTranslations: () => () => 'Help' }))
+
 vi.mock('@/components/admin/ActionAuditLogExportButton', () => ({
   default: ({ fallbackFilename, href, label }: Record<string, string>) => (
     <a data-filename={fallbackFilename} href={href}>
@@ -27,7 +29,7 @@ const labels: ActionAuditLogLabels = {
   exportCsv: 'Export CSV',
   eyebrow: 'Accountability',
   filter: 'Filter',
-  from: 'From',
+  from: 'From (UTC)',
   next: 'Next',
   occurredAt: 'Occurred',
   pagination: ({ page, total, totalPages }) =>
@@ -38,7 +40,9 @@ const labels: ActionAuditLogLabels = {
   targetId: 'Target ID',
   targetKind: 'Target kind',
   title: 'Action log',
-  to: 'To',
+  to: 'To (UTC)',
+  timeRangeExample: 'In Stockholm, 10:00 in January is 09:00 UTC.',
+  timeRangeHelp: 'Enter both times in UTC for filtering and CSV export.',
 }
 
 function result(
@@ -112,7 +116,7 @@ describe('ActionAuditLogView', () => {
           actor_hsa_id: 'SE5560000001-admin1',
           client_ip: '203.0.113.30',
           decision: 'allowed',
-          from: '2026-05-01T10:00',
+          from: '2026-05-01T12:00+02:00',
           page: '2',
           pageSize: '1',
           target_id: '42',
@@ -166,6 +170,16 @@ describe('ActionAuditLogView', () => {
       screen.getByRole('heading', { level: 2, name: 'Action log' }),
     ).toBeVisible()
     expect(screen.queryByText('Accountability')).toBeNull()
+    expect(screen.getByLabelText(labels.from)).toHaveValue('2026-05-01T10:00')
+    expect(screen.getByLabelText(labels.to)).toHaveValue('2026-05-02T10:00')
+    const help = screen.getByText(labels.timeRangeHelp)
+    expect(help).toBeVisible()
+    expect(help).toHaveAttribute('data-developer-mode-name', 'UTC filter help')
+    for (const label of [labels.from, labels.to]) {
+      expect(screen.getByLabelText(label)).toHaveAccessibleDescription(
+        labels.timeRangeHelp,
+      )
+    }
     expect(screen.getByText('Ada Admin')).toBeVisible()
     expect(screen.getByText('service')).toBeVisible()
     expect(screen.getByText('service-client')).toBeVisible()

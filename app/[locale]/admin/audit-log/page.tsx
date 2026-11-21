@@ -61,6 +61,8 @@ function auditLogLabels(
     target: t('target'),
     targetId: t('targetId'),
     targetKind: t('targetKind'),
+    timeRangeExample: t('timeRangeExample'),
+    timeRangeHelp: t('timeRangeHelp'),
     title: t('title'),
     to: t('to'),
   }

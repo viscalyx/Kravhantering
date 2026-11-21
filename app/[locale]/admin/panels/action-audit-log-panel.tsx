@@ -47,6 +47,8 @@ export default function ActionAuditLogPanel({
     target: ta('auditLog.target'),
     targetId: ta('auditLog.targetId'),
     targetKind: ta('auditLog.targetKind'),
+    timeRangeExample: ta('auditLog.timeRangeExample'),
+    timeRangeHelp: ta('auditLog.timeRangeHelp'),
     title: ta('auditLog.title'),
     to: ta('auditLog.to'),
   }

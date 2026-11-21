@@ -6,6 +6,7 @@ import {
   listActionAuditEvents,
   traverseActionAuditEventsForCsv,
 } from '@/lib/audit/action-audit'
+import { parseActionAuditDate } from '@/lib/audit/action-audit-query'
 import { isValidClientIp } from '@/lib/auth/client-ip'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { runBoundedCsvOutput } from '@/lib/generated-output/csv-runner'
@@ -31,10 +32,10 @@ const dateTimeSchema = z.preprocess(
   z
     .string()
     .trim()
-    .refine(value => !Number.isNaN(new Date(value).getTime()), {
+    .transform(parseActionAuditDate)
+    .refine(value => value !== undefined, {
       message: 'Expected an ISO date-time string.',
     })
-    .transform(value => new Date(value))
     .optional(),
 )
 
