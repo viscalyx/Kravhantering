@@ -1424,6 +1424,65 @@ test.describe('Requirements specification deterministic manual cases', () => {
   test.setTimeout(180_000)
   test.use({ viewport: DESKTOP_VIEWPORT })
 
+  test('SPEC-42: language changes preserve each tab’s workspace', async ({
+    context,
+    page,
+  }) => {
+    const library = await context.newPage()
+    await library.goto('/sv/requirements?selected=INT0001&tab=library#detail')
+    const row = library.getByRole('button', { name: /^INT0001\b/ })
+    await expect(row).toHaveAttribute('aria-expanded', 'true')
+    await expect(library).toHaveURL('/sv/requirements?tab=library#detail')
+
+    const specPath = `/specifications/${rfiSpecificationId}`
+    const workspace = `${specPath}?areaId=${rfiAreaId}&leftTab=needs-references#workspace`
+    const navigateAndCheckWorkspace = async (
+      locale: 'sv' | 'en',
+      navigate: () => Promise<unknown>,
+    ) => {
+      await Promise.all([
+        page.waitForResponse(response => {
+          const url = new URL(response.url())
+          return (
+            response.ok() &&
+            url.pathname ===
+              `/api/requirements-specifications/${rfiSpecificationId}/items` &&
+            url.searchParams.get('areaIds') === String(rfiAreaId) &&
+            url.searchParams.get('locale') === locale
+          )
+        }),
+        navigate(),
+      ])
+      await expect(page).toHaveURL(`/${locale}${workspace}`)
+      await expect(
+        page.getByRole('tab', {
+          name: locale === 'sv' ? /Behovsreferenser/ : /Needs references/,
+        }),
+      ).toHaveAttribute('aria-selected', 'true')
+      await expect(library).toHaveURL(
+        `/${locale}/requirements?tab=library#detail`,
+      )
+      await expect(row).toHaveAttribute('aria-expanded', 'true')
+    }
+    await test.step('open the filtered Swedish specification', () =>
+      navigateAndCheckWorkspace('sv', () => page.goto(`/sv${workspace}`)))
+    await test.step('switch both workspaces to English', () =>
+      navigateAndCheckWorkspace('en', () =>
+        page.getByRole('button', { name: 'Byt språk' }).click(),
+      ))
+    await test.step('return to Swedish and inspect the area filter', async () => {
+      await navigateAndCheckWorkspace('sv', () =>
+        page.getByRole('button', { name: 'Switch language' }).click(),
+      )
+      await page.getByRole('tab', { name: 'Krav i underlaget' }).click()
+      await expect(
+        page.getByRole('button', {
+          name: 'Ta bort PWT-MANUAL Playwright manual cases',
+        }),
+      ).toHaveCount(1)
+    })
+  })
+
   for (const scenario of [
     {
       id: 'SPEC-37',

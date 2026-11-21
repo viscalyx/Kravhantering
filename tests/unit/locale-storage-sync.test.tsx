@@ -33,13 +33,17 @@ describe('LocaleStorageSync', () => {
     expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('sv')
   })
 
-  it('reroutes when another tab changes the stored locale', () => {
+  it('reroutes with the receiving tab’s context when another tab changes the locale', () => {
     render(<LocaleStorageSync />)
+    window.history.replaceState(null, '', '/sv/requirements?view=local#row')
     dispatchStorageEvent({
       key: LOCALE_STORAGE_KEY,
       newValue: 'en',
+      url: 'http://localhost/sv/specifications?view=other',
     })
-    expect(mockReplace).toHaveBeenCalledWith('/requirements', { locale: 'en' })
+    expect(mockReplace).toHaveBeenCalledWith('/requirements?view=local#row', {
+      locale: 'en',
+    })
   })
 
   it('ignores storage events for unrelated keys', () => {

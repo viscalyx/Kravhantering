@@ -48,11 +48,13 @@ hämtning i flera sidor verifierar inte ensamma rapportens fullständiga innehå
   - [AUTH-01 till AUTH-13](#auth-01-logga-in-via-keycloak)
   - [AUTHZ-00 till AUTHZ-11](#authz-00-fas-0-testdata-och-identiteter)
 - [Kravbibliotek](#kravbibliotek)
+  - [Språkbyte med öppet krav](#req-02-språkbyte-behåller-användbar-lista)
   - [Behåll text vid nekad inklistring](#req-17e-behåll-text-vid-nekad-inklistring)
   - [Bekräfta tecken i textfilter](#req-03a-bekräfta-tecken-i-textfilter)
 - [Skapa krav och livscykel](#skapa-krav-och-livscykel)
 - [Samarbete i kravdetalj](#samarbete-i-kravdetalj)
 - [Kravunderlag](#kravunderlag)
+  - [Språkbyte i två flikar](#spec-42-byt-språk-med-två-öppna-flikar)
 - [Avsteg](#avsteg)
 - [Admincenter](#admincenter)
   - [Knappnamn i taxonomitabeller](#admin-35-knappnamn-i-taxonomitabeller)
@@ -1037,12 +1039,37 @@ Kravets detalj visas och metadata är läslig.
 
 ### REQ-02: språkbyte behåller användbar lista
 
-**Syfte:** Kontrollera svensk/engelsk lokalisering.
+**Användare:** `ada.admin`.
 
-**Steg:** Växla språk från kravbiblioteket och gå tillbaka till svenska.
+**Integrationstest:**
+[library.spec.ts](../../tests/integration/requirements/library.spec.ts),
+testfallen “REQ-02: language switch keeps the requirements table usable” och
+“REQ-02: a pending deep link yields to the row selected before switching
+language”.
 
-**Förväntat resultat:** Tabellen fungerar efter språkbyte och svenska etiketter
-återkommer.
+**Steg:**
+
+1. Öppna `/sv/requirements?selected=INT0001&tag=ett&tag=två&tom=#detalj`.
+   Vänta tills kravet visas utfällt och `selected` försvinner ur adressen.
+2. Byt till engelska och kontrollera kravet och adressen.
+3. Byt tillbaka till svenska. Kontrollera kravet och adressen igen innan du
+   filtrerar listan på krav-ID `INT0001`.
+
+**Förväntat resultat:** Vid båda språkbytena är samma krav utfällt. Tabellen
+går att filtrera och etiketterna följer språket. Båda värdena för `tag`,
+det tomma värdet för `tom` och fragmentet `#detalj` finns kvar.
+
+**Språkbyte under inläsning:** Öppna `/sv/requirements` på nytt. Fördröj
+svaret från `/api/requirements/INT0002` med en testproxy. Kör följande i
+webbläsarens konsol för att öppna en djuplänk i den inlästa listan.
+
+```js
+history.pushState(null, '', '?selected=&selected=INT0002&tag=library#notes')
+```
+
+Fäll ut `INT0001` och byt till engelska medan svaret väntar. Släpp sedan fram
+svaret. Kravet `INT0001` ska vara utfällt och adressen ska sluta med
+`/en/requirements?selected=&tag=library#notes`.
 
 ### REQ-03: filtrera kravbiblioteket och hantera kravpaketsfiltret
 
@@ -2432,6 +2459,10 @@ förlorad redigeringsbehörighet skyddas på samma sätt.
 
 ### COL-11: avbruten navigering och omladdning bevarar redigeringen
 
+**Integrationstest för språkbyte:**
+[edit-reconciliation.spec.ts](../../tests/integration/requirements/edit-reconciliation.spec.ts),
+testfallet “COL-11: language changes preserve editor context after confirmation”.
+
 **Steg:** Öppna ett krav från kravdetaljen och ändra Kravtext. Klicka på
 Kravunderlag i huvudnavigationen och avbryt kasseringen. Försök byta språk
 och avbryt kasseringen. Försök sedan gå bakåt i webbläsaren och avbryt.
@@ -2445,6 +2476,14 @@ osparade texten. Bekräftad kassering tillåter navigering till den valda
 historikposten. Om redigeraren är den enda historikposten i en ny flik ska
 Bakåt och formulärets Avbryt behålla arbetet utan att skapa extra
 historikposter.
+
+Öppna även redigeringssidan för `INT0001` med `?view=review#notes` sist i
+adressen. Ändra kravtexten. Byt till engelska och avbryt kasseringen.
+Kontrollera att svenska, adressen och texten finns kvar. Byt språk igen och
+bekräfta kasseringen. Den engelska redigeringssidan visar den sparade texten
+för samma krav och adressen slutar fortfarande med `?view=review#notes`.
+Kontrollera efter varje val att värdet för `locale` i webbläsarens lokala
+lagring motsvarar sidans språk.
 
 ## Kravunderlag
 
@@ -3471,6 +3510,30 @@ testfallen “SPEC-41: inspect committed library deviation after lost bulk respo
 - Motiveringen och den sparade behovsreferensen visas efter respektive
   inläsning. Ingen ny ändring skickas av inläsningen.
 - Om inläsningen misslyckas krävs fortfarande kontroll av sparat tillstånd.
+
+### SPEC-42: byt språk med två öppna flikar
+
+**Användare:** `ada.admin` i två flikar i samma webbläsare.
+
+**Integrationstest:**
+[requirement-detail.spec.ts](../../tests/integration/specifications/requirement-detail.spec.ts),
+testfallet “SPEC-42: language changes preserve each tab’s workspace”.
+
+**Steg:**
+
+1. Öppna `/sv/requirements?selected=INT0001&tab=library#detail` i första
+   fliken. Vänta tills kravet visas utfällt och `selected` försvinner.
+2. Öppna `/sv/specifications/920007?areaId=920001&leftTab=needs-references#workspace`
+   i den andra fliken. Byt till engelska där och kontrollera båda flikarna.
+3. Byt tillbaka till svenska i kravunderlaget och upprepa kontrollerna.
+   Öppna sedan **Krav i underlaget** och läs det aktiva områdesfiltret.
+
+**Förväntat resultat:** Båda flikarna följer språkvalet. I kravbiblioteket
+är `INT0001` utfällt och `?tab=library#detail` finns kvar. Kravunderlaget
+visar fliken för behovsreferenser med samma områdesparameter och fragment.
+I webbläsarens nätverkspanel innehåller anropet för underlagets krav
+(`items`) filtret `areaIds=920001` på båda språken. Under **Krav i underlaget**
+visas områdesfiltret `PWT-MANUAL Playwright manual cases`.
 
 ## Avsteg
 
