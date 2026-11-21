@@ -46,7 +46,10 @@ import { escapeCsvField } from '@/lib/export-csv'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { resolveAiRequestFileDestination } from '@/lib/requirements/ai-request-files'
-import type { RequirementImportBudget } from '@/lib/requirements/import-budget'
+import {
+  REQUIREMENT_IMPORT_CONTENT_MAX_BYTES,
+  type RequirementImportBudget,
+} from '@/lib/requirements/import-budget'
 import {
   RequirementImportCandidateError,
   serializeRequirementImportCandidates,
@@ -72,6 +75,8 @@ import {
   type ImportRequirementsPayload,
 } from '@/lib/requirements/import-schema'
 import { createUtf8BomBlob } from '@/lib/text-export'
+
+const importSizeMiB = REQUIREMENT_IMPORT_CONTENT_MAX_BYTES / (1024 * 1024)
 
 type ImportMode = 'library' | 'specification-local'
 type ReviewTab = 'needsReferenceProposals' | 'proposals' | 'requirements'
@@ -754,6 +759,11 @@ export default function RequirementsImportDialog({
   const titleId = useId()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const editorRevision = useRef(0)
+  const [readingFile, setReadingFile] = useState(false)
+  const cancelPendingRead = useCallback(() => {
+    editorRevision.current++
+    setReadingFile(false)
+  }, [])
   const [rejectedAttempt, setRejectedAttempt] = useState(0)
   const [rawJson, setRawJson] = useState('')
   const [importBudget, setImportBudget] =
@@ -912,9 +922,13 @@ export default function RequirementsImportDialog({
     specificationId,
   )
   const canLoadPreview =
-    !loading && parsedImportPayload !== null && hasRequiredImportTarget
+    !readingFile &&
+    !loading &&
+    parsedImportPayload !== null &&
+    hasRequiredImportTarget
   const startImportDisabledReason = useMemo(() => {
     if (loading || canLoadPreview) return null
+    if (readingFile) return importJsonText('readingFile')
     const jsonReason =
       importPayloadValidation.reason === 'import-budget-loading'
         ? text.importBudgetLoading
@@ -949,6 +963,7 @@ export default function RequirementsImportDialog({
     importJsonText,
     importPayloadValidation.reason,
     loading,
+    readingFile,
     text,
   ])
   const selectedCount = rows.filter(row => row.selected).length
@@ -1128,7 +1143,7 @@ export default function RequirementsImportDialog({
 
     let cancelled = false
     async function loadInitialImport() {
-      editorRevision.current++
+      cancelPendingRead()
       setRawJson(JSON.stringify(initial.payload, null, 2))
       setLoading(true)
       setErrorMessage(null)
@@ -1199,6 +1214,7 @@ export default function RequirementsImportDialog({
       cancelled = true
     }
   }, [
+    cancelPendingRead,
     initialImport,
     importBudgetStatus,
     locale,
@@ -1540,7 +1556,7 @@ export default function RequirementsImportDialog({
       })
       if (!ok) return
     }
-    editorRevision.current++
+    cancelPendingRead()
     setRawJson('')
     setSelectedAreaId('')
     setRows([])
@@ -1838,7 +1854,9 @@ export default function RequirementsImportDialog({
       return true
     } catch (error) {
       if (!(error instanceof RequirementImportClientBudgetError)) throw error
-      rejectInput(importJsonText('replacementTooLarge'))
+      rejectInput(
+        importJsonText('replacementTooLarge', { size: importSizeMiB }),
+      )
       return false
     }
   }
@@ -1851,7 +1869,7 @@ export default function RequirementsImportDialog({
     const next =
       value.slice(0, selectionStart) + pasted + value.slice(selectionEnd)
     if (!acceptTextSize(next)) {
-      editorRevision.current++
+      cancelPendingRead()
       event.preventDefault()
     }
   }
@@ -1859,6 +1877,7 @@ export default function RequirementsImportDialog({
   const readImportFile = async (file: File | undefined) => {
     if (!file) return
     const revision = ++editorRevision.current
+    setReadingFile(true)
     try {
       const value = await readRequirementImportFile(file)
       if (revision !== editorRevision.current) return
@@ -1867,12 +1886,12 @@ export default function RequirementsImportDialog({
     } catch (error) {
       if (revision !== editorRevision.current) return
       rejectInput(
-        importJsonText(
-          error instanceof RequirementImportClientBudgetError
-            ? 'replacementTooLarge'
-            : 'fileReadFailed',
-        ),
+        error instanceof RequirementImportClientBudgetError
+          ? importJsonText('replacementTooLarge', { size: importSizeMiB })
+          : importJsonText('fileReadFailed'),
       )
+    } finally {
+      if (revision === editorRevision.current) setReadingFile(false)
     }
   }
 
@@ -1903,7 +1922,6 @@ export default function RequirementsImportDialog({
         })
         if (!ok) return
       }
-      editorRevision.current++
       setLoading(true)
       setErrorMessage(null)
       setNoticeMessage(null)
@@ -2363,7 +2381,7 @@ export default function RequirementsImportDialog({
                         value: 'import JSON size limit',
                       })}
                     >
-                      {importJsonText('sizeHint')}
+                      {importJsonText('sizeHint', { size: importSizeMiB })}
                     </p>
                     <textarea
                       aria-describedby={
@@ -2374,7 +2392,7 @@ export default function RequirementsImportDialog({
                       className={`${inputClass} min-h-52 resize-y font-mono text-xs`}
                       id="import-json"
                       onChange={event => {
-                        editorRevision.current++
+                        cancelPendingRead()
                         const value = event.currentTarget.value
                         if (acceptTextSize(value)) {
                           setRawJson(value)

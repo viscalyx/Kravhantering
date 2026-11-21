@@ -2491,7 +2491,7 @@ describe('RequirementsImportDialog', () => {
     )
     expect(rawJson).toHaveValue(response)
     expect(rawJson).toHaveAccessibleDescription(
-      `${svMessages.requirementsImportJson.sizeHint} ${notice.textContent}`,
+      `Högst 8 MiB text i UTF-8. ${notice.textContent}`,
     )
     expect(screen.getByRole('status')).toBe(notice.closest('p'))
     expect(notice.closest('p')).toHaveAttribute(
@@ -2925,14 +2925,12 @@ describe('RequirementsImportDialog', () => {
       />,
     )
     const rawJson = screen.getByLabelText(/Import-JSON/)
-    const hint = screen.getByText(svMessages.requirementsImportJson.sizeHint)
+    const hint = screen.getByText('Högst 8 MiB text i UTF-8.')
     expect(hint).toHaveAttribute(
       'data-developer-mode-value',
       'import JSON size limit',
     )
-    expect(rawJson).toHaveAccessibleDescription(
-      svMessages.requirementsImportJson.sizeHint,
-    )
+    expect(rawJson).toHaveAccessibleDescription('Högst 8 MiB text i UTF-8.')
     const draft = '{"requirements": ['
     fireEvent.change(rawJson, { target: { value: draft } })
     fireEvent.change(rawJson, {
@@ -2943,6 +2941,17 @@ describe('RequirementsImportDialog', () => {
 
     expect(rawJson).toHaveValue(draft)
     expect(screen.getByRole('alert')).toHaveTextContent(/8 MiB/)
+    // Replacing the whole draft with exactly 8 MiB is a native, accepted paste.
+    if (!(rawJson instanceof HTMLTextAreaElement))
+      throw new Error('Expected the import editor')
+    rawJson.select()
+    expect(
+      fireEvent.paste(rawJson, {
+        clipboardData: {
+          getData: () => 'å'.repeat(REQUIREMENT_IMPORT_CONTENT_MAX_BYTES / 2),
+        },
+      }),
+    ).toBe(true)
     const preview = screen.getByRole('button', { name: 'Förhandsgranska krav' })
     expect(preview).toBeDisabled()
     fireEvent.change(rawJson, { target: { value: validImportPayload() } })
@@ -2981,9 +2990,7 @@ describe('RequirementsImportDialog', () => {
     chooseFile(async () =>
       'å'.repeat(REQUIREMENT_IMPORT_CONTENT_MAX_BYTES / 2 + 1),
     )
-    await screen.findByText(
-      svMessages.requirementsImportJson.replacementTooLarge,
-    )
+    await screen.findByText(/Innehållet överstiger 8 MiB/)
     expect(editor).toHaveValue(edited)
     const preview = screen.getByRole('button', { name: 'Förhandsgranska krav' })
     expect(preview).toBeEnabled()
@@ -3003,14 +3010,21 @@ describe('RequirementsImportDialog', () => {
         specificationId={8}
       />,
     )
+    const editor = screen.getByLabelText(/Import-JSON/)
+    const preview = screen.getByRole('button', { name: 'Förhandsgranska krav' })
+    fireEvent.change(editor, { target: { value: validImportPayload() } })
+    await waitFor(() => expect(preview).toBeEnabled())
     const read = createDeferred<string>()
     fireEvent.drop(screen.getByRole('button', { name: /Släpp en JSON-fil/ }), {
       dataTransfer: { files: [{ size: 10, text: () => read.promise }] },
     })
-    const editor = screen.getByLabelText(/Import-JSON/)
-    fireEvent.change(editor, { target: { value: 'new draft' } })
+    expect(preview).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent('Läser filen')
+    const edit = ` ${validImportPayload()}`
+    fireEvent.change(editor, { target: { value: edit } })
+    expect(preview).toBeEnabled()
     await act(async () => read.resolve('older file'))
-    expect(editor).toHaveValue('new draft')
+    expect(editor).toHaveValue(edit)
   })
 
   it('downloads specification artifacts and reports a failed schema request', async () => {
