@@ -9,7 +9,7 @@ export async function deferRoute(
 ) {
   let decideRoute: (decision: DeferredRouteDecision) => void = () => undefined
   let decisionSettled = false
-  let routeTask: Promise<void> | undefined
+  const routeTasks: Promise<void>[] = []
   let signalRequestStarted: () => void = () => undefined
   const decision = new Promise<DeferredRouteDecision>(resolve => {
     decideRoute = resolve
@@ -23,26 +23,28 @@ export async function deferRoute(
     decideRoute(nextDecision)
   }
 
-  await page.route(url, route => {
+  const handleRoute = (route: Route) => {
     signalRequestStarted()
-    routeTask = (async () => {
-      const routeDecision = await decision
+    const routeTask = decision.then(async routeDecision => {
       if (routeDecision === 'fulfill') {
         await fulfill(route)
         return
       }
       await route.abort('aborted').catch(() => undefined)
-    })()
+    })
+    routeTasks.push(routeTask)
     return routeTask
-  })
+  }
+  await page.route(url, handleRoute)
 
   return {
     fulfill: () => settle('fulfill'),
     requestStarted,
     async cleanup() {
       settle('abort')
-      await routeTask
-      await page.unroute(url)
+      // Include matching requests that arrive while an earlier one is draining.
+      for (const task of routeTasks) await task
+      await page.unroute(url, handleRoute)
     },
   }
 }
