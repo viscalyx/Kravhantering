@@ -23,12 +23,18 @@ interface FilterLabelProps {
   label: string
 }
 
+const panelLayouts = {
+  text: { className: 'min-w-48 p-2', width: 192 },
+  flat: { className: 'min-w-40 py-1 overflow-y-auto', width: 160 },
+  grouped: { className: 'min-w-48 py-1 overflow-y-auto', width: 192 },
+}
+
 interface FilterPopoverProps extends FilterLabelProps {
   active: boolean
   activeCount?: number
   children: (close: () => void) => ReactNode
   initialFocusRef?: RefObject<HTMLInputElement | null>
-  variant: 'text' | 'flat' | 'grouped'
+  variant: keyof typeof panelLayouts
 }
 
 function FilterPopover({
@@ -41,6 +47,7 @@ function FilterPopover({
   variant,
 }: FilterPopoverProps) {
   const tc = useTranslations('common')
+  const layout = panelLayouts[variant]
   const triggerLabel = tc('filterBy', { label })
   const wrapperRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -97,7 +104,7 @@ function FilterPopover({
           }
           const rect = event.currentTarget.getBoundingClientRect()
           setPosition({
-            left: clampPopoverLeft(rect.left, variant === 'flat' ? 160 : 192),
+            left: clampPopoverLeft(rect.left, layout.width),
             top: rect.bottom + 4,
             maxHeight:
               variant === 'text'
@@ -131,7 +138,7 @@ function FilterPopover({
       {position &&
         createPortal(
           <div
-            className={`fixed z-50 bg-white dark:bg-secondary-800 border rounded-lg shadow-lg ${variant === 'flat' ? 'min-w-40' : 'min-w-48'} ${variant === 'text' ? 'p-2' : 'py-1 overflow-y-auto'}`}
+            className={`fixed z-50 bg-white dark:bg-secondary-800 border rounded-lg shadow-lg ${layout.className}`}
             ref={panelRef}
             style={position}
           >
@@ -225,7 +232,7 @@ export function SearchFilterPopover({
               }}
               type="button"
             >
-              <X className="h-3 w-3" />
+              <X aria-hidden="true" className="h-3 w-3" />
             </button>
           )}
         </div>
@@ -243,7 +250,9 @@ interface SelectionFilterProps<Option extends { id: number }>
   value: number[]
 }
 
-export function MultiSelectFilterPopover<Option extends { id: number }>({
+export default function MultiSelectFilterPopover<
+  Option extends { id: number },
+>({
   developerModeValue,
   getLabel,
   getParentId,

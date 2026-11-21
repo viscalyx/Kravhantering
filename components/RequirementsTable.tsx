@@ -32,8 +32,7 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  MultiSelectFilterPopover,
+import MultiSelectFilterPopover, {
   SearchFilterPopover,
 } from '@/components/_requirements-table/FilterPopovers'
 import SpecificationItemStatusSelect from '@/components/_requirements-table/SpecificationItemStatusSelect'

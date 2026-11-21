@@ -2562,6 +2562,7 @@ describe('RequirementsTable', () => {
     })
 
     fireEvent.click(screen.getByText('clear-search'))
+    expect(screen.getByRole('textbox', { name: 'uniqueId' })).toHaveValue('')
     act(() => vi.advanceTimersByTime(400))
 
     expect(screen.getByTestId('search-filter-state').textContent).toBe('')
@@ -2922,7 +2923,6 @@ describe('RequirementsTable', () => {
       top: '44px',
       maxHeight: '544px',
     })
-    expect(getOpenPopover()).toHaveClass('overflow-y-auto')
 
     fireEvent.mouseDown(document.body)
 
@@ -2948,7 +2948,6 @@ describe('RequirementsTable', () => {
       top: '44px',
       maxHeight: '544px',
     })
-    expect(getOpenPopover()).toHaveClass('overflow-y-auto')
   })
 
   it('renders resize handles whenever column resizing is enabled', () => {

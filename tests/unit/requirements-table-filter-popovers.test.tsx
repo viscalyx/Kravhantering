@@ -1,16 +1,17 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import {
-  MultiSelectFilterPopover,
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import MultiSelectFilterPopover, {
   SearchFilterPopover,
 } from '@/components/_requirements-table/FilterPopovers'
 
 vi.mock('next-intl', () => ({ useTranslations: () => (key: string) => key }))
 
 describe('requirement table filter popovers', () => {
+  beforeEach(() => vi.clearAllMocks())
+
   it('opens search inside its modal and gives the first Escape to the filter', () => {
     const onDialogKey = vi.fn()
-    render(
+    const { rerender } = render(
       <div aria-modal="true" onKeyDown={onDialogKey} role="dialog">
         <SearchFilterPopover
           activeValue=""
@@ -31,6 +32,11 @@ describe('requirement table filter popovers', () => {
     expect(onDialogKey).not.toHaveBeenCalled()
     fireEvent.keyDown(trigger, { key: 'Escape' })
     expect(onDialogKey).toHaveBeenCalledOnce()
+
+    fireEvent.click(trigger)
+    rerender(<div aria-modal="true" onKeyDown={onDialogKey} role="dialog" />)
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(onDialogKey).toHaveBeenCalledTimes(2)
   })
 
   it.each(['flat', 'grouped'] as const)(
