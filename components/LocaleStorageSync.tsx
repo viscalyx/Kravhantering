@@ -3,6 +3,7 @@
 import { useLocale } from 'next-intl'
 import { useEffect } from 'react'
 import { usePathname, useRouter } from '@/i18n/routing'
+import { getLocaleChangeHref } from '@/lib/locale-change-href'
 import {
   type AppLocale,
   isAppLocale,
@@ -37,7 +38,7 @@ export default function LocaleStorageSync() {
       if (event.key !== LOCALE_STORAGE_KEY) return
       const next = event.newValue
       if (!isAppLocale(next) || next === locale) return
-      router.replace(pathname, { locale: next })
+      router.replace(getLocaleChangeHref(pathname), { locale: next })
     }
 
     window.addEventListener('storage', onStorage)

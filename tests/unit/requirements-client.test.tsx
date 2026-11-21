@@ -9,6 +9,7 @@ import {
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsClient from '@/app/[locale]/requirements/requirements-client'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
 import type { RequirementsTableProps } from '@/components/RequirementsTable'
 import { AUTH_REAUTH_REQUIRED_EVENT } from '@/lib/auth/client-events'
 import {
@@ -30,6 +31,7 @@ const helpPanelState = vi.hoisted(() => ({
 }))
 
 const navigationState = vi.hoisted(() => ({
+  replace: vi.fn(),
   searchParams: new URLSearchParams(),
 }))
 const localeState = vi.hoisted(() => ({ value: 'sv' }))
@@ -72,6 +74,8 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('@/i18n/routing', () => ({
+  usePathname: () => '/requirements',
+  useRouter: () => ({ replace: navigationState.replace }),
   Link: ({ children, href, ...props }: Record<string, unknown>) => (
     <a href={href as string} {...props}>
       {children as React.ReactNode}
@@ -620,6 +624,7 @@ function latestFloatingActions(): FloatingAction[] {
 describe('RequirementsClient', () => {
   beforeEach(() => {
     localeState.value = 'sv'
+    navigationState.replace.mockClear()
     navigationState.searchParams = new URLSearchParams()
     fetchMock.mockReset()
     helpPanelState.useHelpContent.mockReset()
@@ -2612,9 +2617,15 @@ describe('RequirementsClient', () => {
     expect(screen.getByTestId('row-ids').textContent).not.toContain('INT0001')
   })
 
-  it('pins and expands a selected URL requirement that is outside the first page', async () => {
-    navigationState.searchParams = new URLSearchParams('selected=PWT0009')
-    window.history.replaceState({}, '', '/sv/requirements?selected=PWT0009')
+  it('pins a requirement outside the first page and carries it into a language change until collapsed', async () => {
+    navigationState.searchParams = new URLSearchParams(
+      'selected=&selected=PWT0009',
+    )
+    window.history.replaceState(
+      {},
+      '',
+      '/sv/requirements?selected=&selected=PWT0009',
+    )
 
     let selectedDetailFetchCount = 0
     fetchMock.mockImplementation((input: RequestInfo | URL) => {
@@ -2652,7 +2663,12 @@ describe('RequirementsClient', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<RequirementsClient />)
+    render(
+      <>
+        <LanguageSwitcher />
+        <RequirementsClient />
+      </>,
+    )
 
     await waitFor(() =>
       expect(screen.getByTestId('row-ids').textContent).toContain('PWT0009'),
@@ -2660,7 +2676,21 @@ describe('RequirementsClient', () => {
 
     expect(screen.getByText('detail-refresh-9')).toBeInTheDocument()
     expect(selectedDetailFetchCount).toBeGreaterThan(0)
-    await waitFor(() => expect(window.location.search).toBe(''))
+    await waitFor(() => expect(window.location.search).toBe('?selected='))
+    const switchLanguage = screen.getByRole('button', { name: 'switchTo' })
+    fireEvent.click(switchLanguage)
+    expect(navigationState.replace).toHaveBeenLastCalledWith(
+      '/requirements?selected=&selected=9',
+      { locale: 'en' },
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'row-9' }))
+    fireEvent.click(switchLanguage)
+    expect(navigationState.replace).toHaveBeenLastCalledWith(
+      '/requirements?selected=',
+      {
+        locale: 'en',
+      },
+    )
   })
 
   it('hydrates a numeric selected requirement from the URL', async () => {
@@ -2802,6 +2832,75 @@ describe('RequirementsClient', () => {
     expect(screen.getByText('detail-refresh-1')).toBeInTheDocument()
     expect(screen.queryByText('detail-refresh-9')).toBeNull()
   })
+
+  it.each(['change', 'collapse'] as const)(
+    'keeps a row %s authoritative for locale navigation while a deep link is hydrating',
+    async action => {
+      const pendingDetail =
+        createDeferredJsonResponse<ReturnType<typeof makeRequirementDetail>>()
+      let detailRequests = 0
+      fetchMock.mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.startsWith('/api/requirements?')) {
+          return Promise.resolve(
+            okJson({
+              pagination: { hasMore: false },
+              requirements: [makeRequirementRow(1), makeRequirementRow(9)],
+            }),
+          )
+        }
+        if (url === '/api/requirements/INT0009') {
+          detailRequests += 1
+          return pendingDetail.promise
+        }
+        const metadata = mockMetadataFetch(url)
+        if (metadata) return metadata
+        throw new Error(`Unhandled fetch: ${url}`)
+      })
+      vi.stubGlobal('fetch', fetchMock)
+
+      const Library = () => (
+        <>
+          <LanguageSwitcher />
+          <RequirementsClient />
+        </>
+      )
+      const { rerender } = render(<Library />)
+      const firstRow = await screen.findByRole('button', { name: 'row-1' })
+
+      const query = 'selected=&tag=a&selected=INT0009&tag=b&selected='
+      window.history.replaceState(null, '', `/sv/requirements?${query}#notes`)
+      navigationState.searchParams = new URLSearchParams(query)
+      rerender(<Library />)
+      // Both hydration and the list refresh have read the original selection.
+      await waitFor(() => expect(detailRequests).toBeGreaterThanOrEqual(2))
+
+      fireEvent.click(firstRow)
+      expect(screen.getByText('detail-refresh-1')).toBeInTheDocument()
+      if (action === 'collapse') fireEvent.click(firstRow)
+
+      const context = 'selected=&tag=a&tag=b&selected='
+      const liveQuery = action === 'change' ? `${context}&selected=1` : context
+      const switchLanguage = screen.getByRole('button', { name: 'switchTo' })
+      fireEvent.click(switchLanguage)
+      expect(navigationState.replace).toHaveBeenLastCalledWith(
+        `/requirements?${liveQuery}#notes`,
+        { locale: 'en' },
+      )
+
+      pendingDetail.resolve(makeRequirementDetail(9))
+      await waitFor(() => expect(window.location.search).toBe(`?${context}`))
+      expect(screen.queryByText('detail-refresh-9')).toBeNull()
+      expect(Boolean(screen.queryByText('detail-refresh-1'))).toBe(
+        action === 'change',
+      )
+      fireEvent.click(switchLanguage)
+      expect(navigationState.replace).toHaveBeenLastCalledWith(
+        `/requirements?${liveQuery}#notes`,
+        { locale: 'en' },
+      )
+    },
+  )
 
   it('replaces a selected stale list row with the refreshed requirement detail snapshot', async () => {
     let listFetchCount = 0

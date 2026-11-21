@@ -367,23 +367,79 @@ test.describe('Requirements library', () => {
   test('REQ-02: language switch keeps the requirements table usable', async ({
     page,
   }) => {
+    const context = 'tag=one&tag=two&empty=&text=%C3%A5%26%2B%23%3D%25#notes'
+    const row = page.getByRole('button', { name: /^INT0001\b/ })
+    await test.step('open the deep link and wait for selection hydration', async () => {
+      await page.goto(`/sv/requirements?selected=INT0001&${context}`)
+      await expect(row).toHaveAttribute('aria-expanded', 'true')
+      await expect(page).toHaveURL(`/sv/requirements?${context}`)
+    })
+    await test.step('switch to English with the same requirement open', async () => {
+      await page.getByRole('button', { name: 'Byt språk' }).click()
+      await expect(page).toHaveURL(`/en/requirements?${context}`)
+      await expect(
+        page.getByRole('table', { name: 'Requirements list' }),
+      ).toHaveCount(1)
+      await expect(row).toHaveAttribute('aria-expanded', 'true')
+    })
+    await test.step('switch back and use the localized table', async () => {
+      await page.getByRole('button', { name: 'Switch language' }).click()
+      await expect(page).toHaveURL(`/sv/requirements?${context}`)
+      await expect(
+        page.getByRole('table', { name: 'Lista över krav' }),
+      ).toHaveCount(1)
+      await expect(row).toHaveAttribute('aria-expanded', 'true')
+      await filterRequirementId(page, 'INT0001')
+      await expect(
+        page.getByRole('button', { name: 'Ta bort INT0001' }),
+      ).toHaveCount(1)
+    })
+  })
+
+  test('REQ-02: a pending deep link yields to the row selected before switching language', async ({
+    page,
+  }) => {
+    const row = page.getByRole('button', { name: /^INT0001\b/ })
     await page.goto('/sv/requirements')
-    await expect(
-      page.getByRole('table', { name: 'Lista över krav' }),
-    ).toBeVisible()
-
-    await page.getByRole('button', { name: 'Byt språk' }).click()
-    await expect(page).toHaveURL(/\/en\/requirements$/)
-    await expect(
-      page.getByRole('table', { name: 'Requirements list' }),
-    ).toBeVisible()
-    await filterRequirementId(page, 'INT0001', 'en')
-
-    await page.getByRole('button', { name: 'Switch language' }).click()
-    await expect(page).toHaveURL(/\/sv\/requirements$/)
-    await expect(
-      page.getByRole('table', { name: 'Lista över krav' }),
-    ).toBeVisible()
+    await expect(row).toHaveAttribute('aria-expanded', 'false')
+    const pending = await deferRoute(
+      page,
+      '**/api/requirements/INT0002',
+      async route => {
+        const response = await route.fetch()
+        await expect(response).toBeOK()
+        await route.fulfill({ response })
+      },
+    )
+    try {
+      await test.step('open a deep link while the current table is mounted', async () => {
+        await page.evaluate(() =>
+          window.history.pushState(
+            null,
+            '',
+            '?selected=&selected=INT0002&tag=library#notes',
+          ),
+        )
+        await pending.requestStarted
+      })
+      await test.step('select a different row and switch before the response arrives', async () => {
+        await row.click()
+        await expect(row).toHaveAttribute('aria-expanded', 'true')
+        await page.getByRole('button', { name: 'Byt språk' }).click()
+        await expect(
+          page.getByRole('button', { name: 'Switch language' }),
+        ).toBeVisible()
+        pending.fulfill()
+      })
+    } finally {
+      await pending.cleanup()
+    }
+    await test.step('keep the selected row and URL after the delayed response', async () => {
+      await expect(row).toHaveAttribute('aria-expanded', 'true')
+      await expect(page).toHaveURL(
+        '/en/requirements?selected=&tag=library#notes',
+      )
+    })
   })
 
   test('REQ-03: requirement filters and the package chooser preserve keyboard focus and OR queries', async ({

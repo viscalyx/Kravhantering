@@ -34,6 +34,7 @@ import {
 } from '@/lib/ai/generation-availability'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { registerLocaleChangeQuery } from '@/lib/locale-change-href'
 import { getScrollBehavior } from '@/lib/reduced-motion'
 import {
   createLibraryRequirementDetailCache,
@@ -95,84 +96,26 @@ const REQUIREMENTS_HELP: HelpContent = {
       bodyKey: 'requirements.properties.body',
       headingKey: 'requirements.properties.heading',
     },
-    {
-      kind: 'text',
-      bodyKey: 'requirements.properties.requirementId.body',
-      headingKey: 'requirements.properties.requirementId.heading',
+    ...[
+      'requirementId',
+      'area',
+      'description',
+      'acceptanceCriteria',
+      'category',
+      'type',
+      'qualityCharacteristic',
+      'priorityLevel',
+      'verifiable',
+      'verificationMethod',
+      'requirementPackages',
+      'normReferences',
+      'status',
+    ].map(property => ({
+      kind: 'text' as const,
+      bodyKey: `requirements.properties.${property}.body`,
+      headingKey: `requirements.properties.${property}.heading`,
       subheading: true,
-    },
-    {
-      kind: 'text',
-      bodyKey: 'requirements.properties.area.body',
-      headingKey: 'requirements.properties.area.heading',
-      subheading: true,
-    },
-    {
-      kind: 'text',
-      bodyKey: 'requirements.properties.description.body',
-      headingKey: 'requirements.properties.description.heading',
-      subheading: true,
-    },
-    {
-      kind: 'text',
-      bodyKey: 'requirements.properties.acceptanceCriteria.body',
-      headingKey: 'requirements.properties.acceptanceCriteria.heading',
-      subheading: true,
-    },
-    {
-      kind: 'text',
-      bodyKey: 'requirements.properties.category.body',
-      headingKey: 'requirements.properties.category.heading',
-      subheading: true,
-    },
-    {
-      kind: 'text',
-      bodyKey: 'requirements.properties.type.body',
-      headingKey: 'requirements.properties.type.heading',
-      subheading: true,
-    },
-    {
-      kind: 'text',
-      bodyKey: 'requirements.properties.qualityCharacteristic.body',
-      headingKey: 'requirements.properties.qualityCharacteristic.heading',
-      subheading: true,
-    },
-    {
-      kind: 'text',
-      bodyKey: 'requirements.properties.priorityLevel.body',
-      headingKey: 'requirements.properties.priorityLevel.heading',
-      subheading: true,
-    },
-    {
-      kind: 'text',
-      bodyKey: 'requirements.properties.verifiable.body',
-      headingKey: 'requirements.properties.verifiable.heading',
-      subheading: true,
-    },
-    {
-      kind: 'text',
-      bodyKey: 'requirements.properties.verificationMethod.body',
-      headingKey: 'requirements.properties.verificationMethod.heading',
-      subheading: true,
-    },
-    {
-      kind: 'text',
-      bodyKey: 'requirements.properties.requirementPackages.body',
-      headingKey: 'requirements.properties.requirementPackages.heading',
-      subheading: true,
-    },
-    {
-      kind: 'text',
-      bodyKey: 'requirements.properties.normReferences.body',
-      headingKey: 'requirements.properties.normReferences.heading',
-      subheading: true,
-    },
-    {
-      kind: 'text',
-      bodyKey: 'requirements.properties.status.body',
-      headingKey: 'requirements.properties.status.heading',
-      subheading: true,
-    },
+    })),
     {
       kind: 'text',
       bodyKey: 'requirements.filtering.body',
@@ -261,6 +204,12 @@ function mapRequirementDetailToRow(
         }
       : null,
   }
+}
+
+function withoutLinkedSelection(params: URLSearchParams): URLSearchParams {
+  return new URLSearchParams(
+    [...params].filter(([key, value]) => key !== 'selected' || value === ''),
+  )
 }
 
 function selectionMatchesRequirementRow(
@@ -371,6 +320,18 @@ export default function RequirementsClient({
   // Stable ref so the onChange callback always sees the latest selectedId.
   // Can temporarily hold a uniqueId string when resolving from URL params.
   const selectedIdRef = useRef<number | string | null>(null)
+  // The library consumes its deep link after hydration. Supply it again when
+  // the same page opens in another language.
+  useEffect(
+    () =>
+      registerLocaleChangeQuery('/requirements', params => {
+        const query = withoutLinkedSelection(params)
+        const selected = selectedIdRef.current
+        if (selected != null) query.append('selected', String(selected))
+        return query
+      }),
+    [],
+  )
   const latestRowsRequestIdRef = useRef(0)
   const rowsAbortRef = useRef<AbortController | null>(null)
   const rowsRetryRef = useRef<HTMLButtonElement>(null)
@@ -544,7 +505,11 @@ export default function RequirementsClient({
           return false
         }
 
-        if (resolvedNumericId != null) {
+        if (
+          resolvedNumericId != null &&
+          (selectedIdRef.current === sid ||
+            selectedIdRef.current === resolvedNumericId)
+        ) {
           selectedIdRef.current = resolvedNumericId
           setSelectedId(resolvedNumericId)
           if (typeof sid === 'string') {
@@ -785,7 +750,7 @@ export default function RequirementsClient({
   // the selected requirement and pin it — even if it's filtered out by the
   // default Published-only status filter.
   useEffect(() => {
-    const sel = searchParams.get('selected')
+    const sel = searchParams.getAll('selected').find(Boolean)
     if (!sel) return
 
     const controller = new AbortController()
@@ -839,7 +804,7 @@ export default function RequirementsClient({
       // Clean up the params after hydration so selected-row pinning cannot be
       // cancelled before the row is available in the table.
       const url = new URL(window.location.href)
-      url.searchParams.delete('selected')
+      url.search = withoutLinkedSelection(url.searchParams).toString()
       window.history.replaceState({}, '', url.toString())
     }
 

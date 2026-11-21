@@ -358,6 +358,9 @@ an explicit in-modal error.
   or `/<locale>/requirements/...` page path while preserving the remaining
   subpath and query string.
 - The UI continues to generate `/requirements/...` links.
+- Changing the display language preserves each tab's query parameters and
+  fragment. An expanded library requirement stays open, including after its
+  `selected` link parameter has been consumed.
 
 ## Table Structure
 

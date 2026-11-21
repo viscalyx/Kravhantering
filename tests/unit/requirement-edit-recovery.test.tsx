@@ -902,6 +902,9 @@ describe('Requirement edit recovery', () => {
   )
   it('requires a discard decision before changing language', async () => {
     const user = await openEditor()
+    const editor = '/requirements/REQ-001/edit?view=review#notes'
+    window.history.replaceState({}, '', `/en${editor}`)
+    localStorage.setItem('locale', 'en')
     await user.click(
       screen.getByRole('button', { name: messages.language.switchTo }),
     )
@@ -911,6 +914,10 @@ describe('Requirement edit recovery', () => {
       }),
     )
     expect(replace).not.toHaveBeenCalled()
+    expect(localStorage.getItem('locale')).toBe('en')
+    expect(window.location.href).toMatch(
+      /\/en\/requirements\/REQ-001\/edit\?view=review#notes$/,
+    )
     expect(
       screen.getByRole('textbox', { name: /^Requirement text/ }),
     ).toHaveValue('Local text')
@@ -922,9 +929,10 @@ describe('Requirement edit recovery', () => {
         name: 'Confirm',
       }),
     )
-    expect(replace).toHaveBeenCalledWith('/requirements/REQ-001/edit', {
+    expect(replace).toHaveBeenCalledWith(editor, {
       locale: 'sv',
     })
+    expect(localStorage.getItem('locale')).toBe('sv')
     const unload = new Event('beforeunload', { cancelable: true })
     fireEvent(window, unload)
     expect(unload.defaultPrevented).toBe(false)

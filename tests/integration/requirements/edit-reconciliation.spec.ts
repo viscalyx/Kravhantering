@@ -374,6 +374,41 @@ test.describe('Requirement edit reconciliation', () => {
     expect(await page.evaluate(() => window.history.length)).toBe(1)
   })
 
+  test('COL-11: language changes preserve editor context after confirmation', async ({
+    page,
+    request,
+  }) => {
+    const path = '/requirements/INT0001/edit?view=review#notes'
+    await openConcurrentEdit(page, request, false, async () => {
+      await page.goto(`/sv${path}`)
+    })
+    const dialog = page.getByRole('alertdialog')
+    await test.step('decline the switch and keep the draft', async () => {
+      await page.getByRole('button', { name: 'Byt språk' }).click()
+      await dialog.getByRole('button', { name: 'Avbryt', exact: true }).click()
+      await expect(page).toHaveURL(`/sv${path}`)
+      await expect
+        .poll(() => page.evaluate(() => localStorage.getItem('locale')))
+        .toBe('sv')
+      await expect(
+        page.getByRole('textbox', { name: /^Kravtext/ }),
+      ).toHaveValue('Min osparade kravtext')
+    })
+    await test.step('confirm the switch and discard the draft', async () => {
+      await page.getByRole('button', { name: 'Byt språk' }).click()
+      await dialog
+        .getByRole('button', { name: 'Bekräfta', exact: true })
+        .click()
+      await expect(page).toHaveURL(`/en${path}`)
+      await expect(
+        page.getByRole('textbox', { name: /^Requirement text/i }),
+      ).toHaveValue('Ursprunglig kravtext')
+      await expect
+        .poll(() => page.evaluate(() => localStorage.getItem('locale')))
+        .toBe('en')
+    })
+  })
+
   test('COL-11: declined navigation, browser Back and reload preserve the live editor', async ({
     page,
     request,
