@@ -12,7 +12,11 @@ describe('Action-log CSV export traversal', () => {
 
   it.each([
     ['2026-01-15T09:00', '2026-01-15T09:01', '2026-01-15T10:00:00+01:00'],
-    ['2026-07-15T08:00', '2026-07-15T08:01', '2026-07-15T10:00:00+02:00'],
+    [
+      '2026-07-15T08:00:00.001',
+      '2026-07-15T08:01:00.001',
+      '2026-07-15T10:00:00.001+02:00',
+    ],
   ])(
     'includes both UTC bounds starting at %s in the list and complete export',
     async (from, to, stockholmTime) => {
@@ -21,7 +25,7 @@ describe('Action-log CSV export traversal', () => {
         `INSERT INTO action_audit_events (occurred_at, actor_kind, action, target_kind, target_id, decision)
        SELECT DATEADD(millisecond, delta, CAST(@0 AS datetime2(3))), N'system', N'test.interval', N'Requirement', targetId, N'allowed'
        FROM (VALUES (-1, 'before'), (0, 'start'), (60000, 'end'), (60001, 'after')) AS events(delta, targetId)`,
-        [new Date(stockholmTime)],
+        [new Date(stockholmTime).toISOString()],
       )
       const filters = actionAuditLogFiltersFromSearchParams({
         from,
@@ -74,7 +78,7 @@ describe('Action-log CSV export traversal', () => {
        SELECT
          DATEADD(
            millisecond,
-           value,
+           value + 1,
            CONVERT(datetime2(3), '2026-07-25T10:00:00.000')
          ),
          N'SE5560000001-export1',

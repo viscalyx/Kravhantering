@@ -31,7 +31,6 @@ const dateTimeSchema = z.preprocess(
     typeof value === 'string' && value.trim() === '' ? undefined : value,
   z
     .string()
-    .trim()
     .transform(parseActionAuditDate)
     .refine(value => value !== undefined, {
       message: 'Expected an ISO date-time string.',

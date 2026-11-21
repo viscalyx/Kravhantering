@@ -477,11 +477,12 @@ function buildActionAuditFilterSql(
   if (filters.decision) {
     where.push(`decision = ${addParam(filters.decision)}`)
   }
+  // ISO strings retain datetime2(3) precision. The driver binds Date as datetime.
   if (filters.from) {
-    where.push(`occurred_at >= ${addParam(filters.from)}`)
+    where.push(`occurred_at >= ${addParam(filters.from.toISOString())}`)
   }
   if (filters.to) {
-    where.push(`occurred_at <= ${addParam(filters.to)}`)
+    where.push(`occurred_at <= ${addParam(filters.to.toISOString())}`)
   }
 
   return { addParam, params, where }
@@ -602,7 +603,7 @@ export async function traverseActionAuditEventsForCsv(
     where.push(`id <= ${addParam(anchorId)}`)
 
     if (cursor) {
-      const occurredAtParam = addParam(new Date(cursor.occurredAt))
+      const occurredAtParam = addParam(cursor.occurredAt)
       const idParam = addParam(cursor.id)
       where.push(
         `(occurred_at < ${occurredAtParam} OR (occurred_at = ${occurredAtParam} AND id < ${idParam}))`,

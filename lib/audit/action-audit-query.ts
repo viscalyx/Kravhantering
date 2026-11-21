@@ -47,8 +47,9 @@ function positiveInteger(value: string | undefined): number | undefined {
 }
 
 export function parseActionAuditDate(
-  value: string | undefined,
+  input: string | undefined,
 ): Date | undefined {
+  const value = input?.trim()
   if (!value) return undefined
   const parsed = new Date(
     /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/iu.test(value)

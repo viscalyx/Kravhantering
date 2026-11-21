@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import ActionAuditLogView, {
-  type ActionAuditLogLabels,
+  actionAuditLogLabels,
 } from '@/components/admin/ActionAuditLogView'
 import ListWorkspace from '@/components/ListWorkspace'
 import { routing } from '@/i18n/routing'
@@ -34,40 +34,6 @@ export async function generateMetadata({
   return { title: t('title') }
 }
 
-function auditLogLabels(
-  t: Awaited<ReturnType<typeof getTranslations>>,
-): ActionAuditLogLabels {
-  return {
-    action: t('action'),
-    actor: t('actor'),
-    actorHsaId: t('actorHsaId'),
-    allDecisions: t('allDecisions'),
-    allowed: t('allowed'),
-    clear: t('clear'),
-    clientIp: t('clientIp'),
-    decision: t('decision'),
-    denied: t('denied'),
-    description: t('description'),
-    empty: t('empty'),
-    exportCsv: t('exportCsv'),
-    eyebrow: t('eyebrow'),
-    filter: t('filter'),
-    from: t('from'),
-    next: t('next'),
-    occurredAt: t('occurredAt'),
-    pagination: values => t('pagination', values),
-    previous: t('previous'),
-    requestId: t('requestId'),
-    target: t('target'),
-    targetId: t('targetId'),
-    targetKind: t('targetKind'),
-    timeRangeExample: t('timeRangeExample'),
-    timeRangeHelp: t('timeRangeHelp'),
-    title: t('title'),
-    to: t('to'),
-  }
-}
-
 export default async function AuditLogPage({
   params,
   searchParams,
@@ -95,7 +61,7 @@ export default async function AuditLogPage({
       <ListWorkspace className="space-y-6" context="action audit log">
         <ActionAuditLogView
           basePath={`/${locale}/admin/audit-log`}
-          labels={auditLogLabels(t)}
+          labels={actionAuditLogLabels(t)}
           locale={locale}
           query={query}
           result={result}

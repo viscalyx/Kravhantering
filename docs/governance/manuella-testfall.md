@@ -3785,18 +3785,24 @@ fönster. Skapaåtgärden är åtkomlig.
 **Integrationstest:**
 [audit-log.spec.ts](../../tests/integration/admin/audit-log.spec.ts)
 med scenarierna ”ADMIN-07: admin can filter action-log events and export CSV”,
-”ADMIN-07: admin can use the action log inline from admin center” och
-”ADMIN-07: UTC bounds include both endpoints across list pages and CSV”.
+”ADMIN-07: admin can use the action log inline from admin center”,
+”ADMIN-07: UTC bounds include both endpoints across list pages and CSV”,
+”ADMIN-07: find the 10:00 Stockholm event seed-audit-winter in the list and CSV”
+och ”ADMIN-07: find the 10:00 Stockholm event seed-audit-summer in the list
+and CSV”.
 
 **Steg:**
 
 1. Öppna åtgärdsloggen på svenska direkt och på engelska via Admincenter.
    Kontrollera att båda tidsfälten anger UTC och att skärmläsaren läser upp
    hjälpen om listan och CSV-exporten vid respektive fält.
-2. Utgå från kända händelser kl. 10.00 i Stockholm i januari och juli.
-   Ange 09.00 UTC i januari och 08.00 UTC i juli. Kombinera tidsintervallet
-   med aktör, händelse, måltyp och mål-ID. Filtrera och kontrollera att de
-   angivna tiderna står kvar.
+2. Öppna hjälpen vid tidsfältet. Sök efter demohändelsen kl. 10.00 i Stockholm
+   den 15 januari 2026 genom att ange 09.00 UTC i båda fälten. Filtrera och
+   exportera. Kontrollera att tiderna står kvar och att endast
+   `seed-audit-winter` visas i både listan och filen. Upprepa för den 15 juli
+   kl. 10.00 i Stockholm med 08.00 UTC och `seed-audit-summer`.
+   Prova även att kombinera tidsintervallet med aktör, händelse, måltyp och
+   mål-ID.
 3. Öppna `/en/admin?tab=actionAuditLog&pageSize=1` med demodata. Ange
    23 april 2026 kl. 09.12–09.13 UTC och filtrera. Bläddra till nästa sida
    och exportera. Jämför händelserna vid båda gränserna med CSV-filen.

@@ -175,7 +175,12 @@ describe('ActionAuditLogView', () => {
     const help = screen.getByText(labels.timeRangeHelp)
     expect(help).toBeVisible()
     expect(help).toHaveAttribute('data-developer-mode-name', 'UTC filter help')
-    for (const label of [labels.from, labels.to]) {
+    for (const bound of ['from', 'to'] as const) {
+      const label = labels[bound]
+      expect(screen.getByLabelText(label)).toHaveAttribute(
+        'data-developer-mode-name',
+        `UTC ${bound} filter`,
+      )
       expect(screen.getByLabelText(label)).toHaveAccessibleDescription(
         labels.timeRangeHelp,
       )
