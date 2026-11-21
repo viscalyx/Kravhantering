@@ -1,5 +1,6 @@
 import { expect, type Page, type TestInfo, test } from '@playwright/test'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
+import { requireTestValue } from '../../helpers/require-test-value'
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'requirements.visibleColumns.v5'
 
@@ -378,6 +379,14 @@ for (const width of [1440, 1920]) {
           await expect(
             page.getByRole('checkbox', { name: 'Publicerad', exact: true }),
           ).toBeChecked()
+          const panel = page.locator('[data-filter-variant="flat"]')
+          const bounds = requireTestValue(await panel.boundingBox())
+          const anchor = requireTestValue(await filter.boundingBox())
+          expect(bounds.x).toBeCloseTo(
+            Math.max(8, Math.min(anchor.x, width - bounds.width - 8)),
+            0,
+          )
+          expect(bounds.x + bounds.width).toBeLessThanOrEqual(width - 8)
           await page.keyboard.press('Escape')
           const header = page
             .locator('[data-sticky-table-header-table] th')

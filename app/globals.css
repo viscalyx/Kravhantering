@@ -85,6 +85,45 @@
 }
 
 @layer components {
+  .requirement-filter-trigger {
+    @apply inline-flex shrink-0 items-center justify-center rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500;
+  }
+
+  .requirement-filter-count {
+    @apply pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-primary-500 text-[8px] font-bold leading-none text-white;
+  }
+
+  .requirement-filter-panel {
+    @apply rounded-lg border bg-white py-1 shadow-lg dark:bg-secondary-800;
+    --filter-min-width: 12rem;
+    --filter-margin: 8px;
+    left: 0;
+    width: max-content;
+    min-width: min(
+      var(--filter-min-width),
+      calc(100% - 2 * var(--filter-margin))
+    );
+    max-width: calc(100% - 2 * var(--filter-margin));
+    /* The percentage in translate resolves against the rendered panel width. */
+    translate: clamp(
+      var(--filter-margin),
+      var(--filter-anchor-left),
+      calc(100vw - 100% - var(--filter-margin))
+    );
+  }
+
+  .requirement-filter-panel[data-filter-variant="flat"] {
+    --filter-min-width: 10rem;
+  }
+
+  .requirement-filter-panel[data-filter-variant="text"] {
+    @apply p-2;
+  }
+
+  .requirement-filter-panel:not([data-filter-variant="text"]) {
+    overflow-y: auto;
+  }
+
   .btn-primary {
     @apply bg-primary-700 hover:bg-primary-800 dark:bg-primary-600 dark:hover:bg-primary-700 text-white font-medium py-2.5 px-5 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:ring-offset-2 dark:focus:ring-offset-secondary-950;
   }
