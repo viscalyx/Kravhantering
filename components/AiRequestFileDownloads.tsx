@@ -2,10 +2,9 @@
 
 import { FileJson, FileText, Loader2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useId, useState } from 'react'
-import { downloadBlob } from '@/lib/browser-download'
+import { useId } from 'react'
+import { useImportFileDownload } from '@/hooks/useImportFileDownload'
 import { devMarker } from '@/lib/developer-mode-markers'
-import { readResponseMessage } from '@/lib/http/response-message'
 import type { AppLocale } from '@/lib/locale-preference'
 import {
   type AiRequestFile,
@@ -66,28 +65,10 @@ export default function AiRequestFileDownloads({
 }: AiRequestFileDownloadsProps) {
   const t = useTranslations('requirementsImportAiRequest')
   const idPrefix = useId()
-  const [pendingFile, setPendingFile] = useState<AiRequestFile | null>(null)
-
-  const download = async (file: AiRequestFile) => {
-    if (!destination) return
-    onDownloadStart?.()
-    setPendingFile(file)
-    try {
-      const response = await fetch(aiRequestFileUrl(file, locale, destination))
-      if (!response.ok) {
-        onError((await readResponseMessage(response)) ?? t('downloadFailed'))
-        return
-      }
-      downloadBlob(
-        await response.blob(),
-        aiRequestFileName(file, locale, destination),
-      )
-    } catch {
-      onError(t('downloadFailed'))
-    } finally {
-      setPendingFile(null)
-    }
-  }
+  const { download, pendingFile } = useImportFileDownload(
+    onError,
+    onDownloadStart,
+  )
 
   return (
     <div className="flex flex-col gap-1">
@@ -102,7 +83,15 @@ export default function AiRequestFileDownloads({
               aria-describedby={fileName ? fileNameId : undefined}
               className={BUTTON_CLASS[file]}
               disabled={!destination || pendingFile !== null}
-              onClick={() => void download(file)}
+              onClick={() => {
+                if (destination && fileName) {
+                  void download(
+                    file,
+                    aiRequestFileUrl(file, locale, destination),
+                    fileName,
+                  )
+                }
+              }}
               title={
                 !destination
                   ? t('filesUnavailable')
