@@ -37,9 +37,9 @@ describe('browser requirement import content guard', () => {
   })
 
   it('measures pasted content as UTF-8 bytes', () => {
-    const exact = 'a'.repeat(REQUIREMENT_IMPORT_CONTENT_MAX_BYTES)
+    const exact = 'å'.repeat(REQUIREMENT_IMPORT_CONTENT_MAX_BYTES / 2)
     expect(() => assertRequirementImportTextSize(exact)).not.toThrow()
-    expect(() => assertRequirementImportTextSize(`${exact}å`)).toThrow(
+    expect(() => assertRequirementImportTextSize(`${exact}a`)).toThrow(
       RequirementImportClientBudgetError,
     )
   })

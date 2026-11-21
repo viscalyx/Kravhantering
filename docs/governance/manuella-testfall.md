@@ -49,6 +49,7 @@ hämtning i flera sidor verifierar inte ensamma rapportens fullständiga innehå
   - [AUTHZ-00 till AUTHZ-11](#authz-00-fas-0-testdata-och-identiteter)
 - [Kravbibliotek](#kravbibliotek)
   - [Språkbyte med öppet krav](#req-02-språkbyte-behåller-användbar-lista)
+  - [Behåll text vid nekad inklistring](#req-17e-behåll-text-vid-nekad-inklistring)
   - [Bekräfta tecken i textfilter](#req-03a-bekräfta-tecken-i-textfilter)
 - [Skapa krav och livscykel](#skapa-krav-och-livscykel)
 - [Samarbete i kravdetalj](#samarbete-i-kravdetalj)
@@ -1690,6 +1691,33 @@ som ryms och varje avvikelse i testrapporten. Om en klient inte läser hela
 bilagan eller inte rymmer mallen, uppdatera tipsen i användarguidens avsnitt
 `Låt en extern AI ta fram krav`.
 
+### REQ-17e: behåll text vid nekad inklistring
+
+**Syfte:** Fortsätt redigera importtexten efter en för stor inklistring.
+
+**Förutsättningar:** Logga in som `olle.areaowner` och öppna
+`/sv/requirements`. Förbered en giltig kravimportfil och kopiera minst
+8 MiB text till urklipp. Till exempel motsvarar 4 194 304 stycken `å` exakt
+8 MiB i UTF-8.
+
+**Integrationstest:**
+[import.spec.ts](../../tests/integration/requirements/import.spec.ts),
+“REQ-17e: keeps edited JSON and the selection after repeated oversized pastes”.
+
+**Steg:**
+
+1. Öppna `Importera krav`, välj ett kravområde och läs in filen. Ändra ett
+   ord i en kravtext. Kontrollera att knappen `Förhandsgranska krav` är
+   aktiverad utan att trycka på den.
+2. Markera ordet och klistra in den stora texten två gånger. Kontrollera
+   skärmläsarens meddelande, fokus och markeringen efter varje försök.
+3. Kopiera ett kort ord och klistra in det över samma markering.
+
+**Förväntat resultat:** Fältet beskriver gränsen 8 MiB i UTF-8. Vid varje
+avvisad inklistring meddelas storleksfelet och hur du kan rätta det. Texten,
+markeringen och fokus finns kvar. Det korta ordet ersätter bara markeringen.
+Felmeddelandet försvinner och kraven kan fortfarande förhandsgranskas.
+
 ### REQ-18: exportera kravbiblioteket till CSV
 
 **Integrationstest:**
@@ -2921,7 +2949,10 @@ utan att fokus behöver flyttas till statusbrickan.
 AI ta fram krav` och öppna båda filerna. Klistra in giltig
 `requirement-import.v4`-JSON med kravtext, föreslagen normreferens,
 `proposedNeedsReferences` med radens `needsReferenceKey` och fält för kravpaket
-som ska ignoreras för kravunderlagslokala krav. Lös behovsreferensen i fliken
+som ska ignoreras för kravunderlagslokala krav. Ändra kravtexten. Öppna
+filvalet med tangentbordet och välj en JSON-fil större än 8 MiB. Kontrollera
+att storleksfelet meddelas, att fokus är kvar på filvalet och att den
+redigerade texten finns kvar. Förhandsgranska den. Lös behovsreferensen i fliken
 `Föreslagna behovsreferenser` genom att skapa eller länka behovsreferensen.
 Testa även en rad med `verifiable: true` utan verifieringsmetod och fyll sedan i
 metoden innan import. Ladda ner valda kandidater innan import och kontrollera

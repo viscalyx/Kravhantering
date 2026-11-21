@@ -704,6 +704,81 @@ test.describe('Requirements import', () => {
     })
   })
 
+  test('REQ-17e: keeps edited JSON and the selection after repeated oversized pastes', async ({
+    context,
+    page,
+  }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    const edited = JSON.stringify(validImportPayload, null, 2)
+    const start = edited.indexOf(importedDescription)
+    const end = start + importedDescription.length
+    const dialog = page.getByRole('dialog', { name: /^Importera krav/ })
+    const editor = dialog.getByLabel('Import-JSON')
+    const preview = dialog.getByRole('button', { name: 'Förhandsgranska krav' })
+
+    await test.step('select part of the edited requirement text', async () => {
+      await page.goto('/sv/requirements')
+      await page
+        .getByRole('button', { name: 'Importera krav', exact: true })
+        .click()
+      await dialog.getByLabel('Kravområde').selectOption({ index: 1 })
+      const hint = dialog.getByText('Högst 8 MiB text i UTF-8.')
+      await expect(hint).toHaveAttribute(
+        'data-developer-mode-value',
+        'import JSON size limit',
+      )
+      await expect(editor).toHaveAccessibleDescription(
+        'Högst 8 MiB text i UTF-8.',
+      )
+
+      await editor.fill(edited)
+      await editor.evaluate(
+        (field: HTMLTextAreaElement, [from, to]) => {
+          field.setSelectionRange(from, to, 'backward')
+        },
+        [start, end],
+      )
+    })
+
+    await test.step('reject each oversized paste and announce it again', async () => {
+      // The clipboard alone fits. Replacing just the selected text exceeds the limit.
+      await page.evaluate(() =>
+        navigator.clipboard.writeText('å'.repeat(4 * 1024 * 1024)),
+      )
+
+      const alert = dialog.getByRole('alert')
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const previous = attempt === 1 ? await alert.elementHandle() : null
+        await editor.press('ControlOrMeta+v')
+        if (previous) await previous.waitForElementState('hidden')
+        await expect(alert).toHaveText(
+          'Innehållet överstiger 8 MiB. Din text finns kvar. Klistra in mindre text eller välj en mindre fil.',
+        )
+        await expect(editor).toBeFocused()
+        await expect(editor).toHaveValue(edited)
+        expect(
+          await editor.evaluate((field: HTMLTextAreaElement) => [
+            field.selectionStart,
+            field.selectionEnd,
+            field.selectionDirection,
+          ]),
+        ).toEqual([start, end, 'backward'])
+        await expect(preview).toBeEnabled()
+      }
+    })
+    await test.step('replace the selection with a smaller paste', async () => {
+      await page.evaluate(() =>
+        navigator.clipboard.writeText('Uppdaterad kravtext'),
+      )
+      await editor.press('ControlOrMeta+v')
+      await expect(editor).toHaveValue(
+        edited.replace(importedDescription, 'Uppdaterad kravtext'),
+      )
+      await expect(dialog.getByRole('alert')).toHaveCount(0)
+      await expect(preview).toBeEnabled()
+    })
+  })
+
   test('REQ-17a: downloads edited remaining candidates and reopens with changed reference data', async ({
     page,
   }) => {
