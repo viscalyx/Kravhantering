@@ -405,7 +405,11 @@ test.describe('Requirements library', () => {
     const pending = await deferRoute(
       page,
       '**/api/requirements/INT0002',
-      route => route.continue(),
+      async route => {
+        const response = await route.fetch()
+        await expect(response).toBeOK()
+        await route.fulfill({ response })
+      },
     )
     try {
       await test.step('open a deep link while the current table is mounted', async () => {
@@ -422,14 +426,20 @@ test.describe('Requirements library', () => {
         await row.click()
         await expect(row).toHaveAttribute('aria-expanded', 'true')
         await page.getByRole('button', { name: 'Byt språk' }).click()
-        await expect(page).toHaveURL(
-          '/en/requirements?selected=&tag=library#notes',
-        )
-        await expect(row).toHaveAttribute('aria-expanded', 'true')
+        await expect(
+          page.getByRole('button', { name: 'Switch language' }),
+        ).toBeVisible()
+        pending.fulfill()
       })
     } finally {
       await pending.cleanup()
     }
+    await test.step('keep the selected row and URL after the delayed response', async () => {
+      await expect(row).toHaveAttribute('aria-expanded', 'true')
+      await expect(page).toHaveURL(
+        '/en/requirements?selected=&tag=library#notes',
+      )
+    })
   })
 
   test('REQ-03: requirement filters and the package chooser preserve keyboard focus and OR queries', async ({
