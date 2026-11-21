@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { requestGuardedNavigation } from '@/lib/forms/navigation-guard'
+import { getLocaleChangeHref } from '@/lib/locale-change-href'
 import { writeStoredLocale } from '@/lib/locale-preference'
 
 interface ComponentProps {
@@ -28,7 +29,7 @@ export default function LanguageSwitcher({
       anchorEl: event.currentTarget,
       proceed: () => {
         writeStoredLocale(otherLocale)
-        router.replace(pathname, { locale: otherLocale })
+        router.replace(getLocaleChangeHref(pathname), { locale: otherLocale })
       },
     })
   }
