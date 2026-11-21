@@ -3401,6 +3401,10 @@ Durable application-level action-log event. Rows intentionally have no
 foreign keys so they survive lifecycle deletes, archiving, and privacy erasure
 of related business data.
 
+The demo seed includes two events at 10:00 Stockholm time for testing UTC
+filters. Request `seed-audit-winter` occurs at 09:00 UTC on 15 January 2026,
+and `seed-audit-summer` occurs at 08:00 UTC on 15 July 2026.
+
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | -------- | ------ | ------------- |

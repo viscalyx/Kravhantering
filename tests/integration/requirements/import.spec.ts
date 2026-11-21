@@ -501,6 +501,96 @@ test.describe('Requirements import', () => {
     }
   })
 
+  test('REQ-17f: retries failed support file downloads', async ({ page }) => {
+    await page.goto('/sv/requirements')
+    await page
+      .getByRole('button', { name: 'Importera krav', exact: true })
+      .click()
+    const dialog = page.getByRole('dialog', { name: 'Importera krav' })
+    await expect(
+      dialog.getByRole('button', { name: /Släpp en JSON-fil/ }),
+    ).toBeEnabled()
+    await dialog
+      .getByRole('button', { name: 'Egen prompt eller validering' })
+      .click()
+    const support = dialog.getByRole('complementary')
+    const alert = support.getByRole('alert')
+    for (const artifact of [
+      {
+        path: 'schema',
+        label: 'Ladda ner schema',
+        busy: 'Laddar ner schema…',
+        filename: 'kravimport.schema.json',
+        marker: 'schema',
+      },
+      {
+        path: 'instruction',
+        label: 'Ladda ner importinstruktion',
+        busy: 'Laddar ner importinstruktion…',
+        filename: 'kravimport-instruktion.md',
+        marker: 'import instruction',
+      },
+    ]) {
+      await test.step(artifact.label, async () => {
+        const finish = Promise.withResolvers<void>()
+        let attempts = 0
+        await page.route(
+          `**/api/requirements/import/${artifact.path}?*`,
+          async route => {
+            attempts++
+            if (attempts === 1) {
+              await route.abort()
+              return
+            }
+            await finish.promise
+            await route.continue()
+          },
+        )
+
+        const action = support.getByRole('button', {
+          name: artifact.label,
+          exact: true,
+        })
+        await action.click()
+        await expect(alert).toHaveText(
+          'Filen kunde inte laddas ner. Försök igen.',
+        )
+        const downloaded = page.waitForEvent('download')
+        await action.click()
+        try {
+          const busy = support.getByRole('button', { name: artifact.busy })
+          await expect(busy).toBeDisabled()
+          await expect(busy).toHaveAttribute(
+            'data-developer-mode-value',
+            `${artifact.marker} (downloading)`,
+          )
+          await expect(support.getByRole('status')).toHaveText(artifact.busy)
+          const other = support.getByRole('button', {
+            name:
+              artifact.path === 'schema'
+                ? 'Ladda ner importinstruktion'
+                : 'Ladda ner schema',
+          })
+          await expect(other).toBeDisabled()
+          // A real pointer click on a disabled control must leave the original download active.
+          await other.click({ force: true })
+          await expect(busy).toBeDisabled()
+          await expect(
+            support.getByRole('button', { name: 'AI-anropsmall' }),
+          ).toBeEnabled()
+          await expect(alert).toHaveCount(0)
+        } finally {
+          finish.resolve()
+        }
+        const download = await downloaded
+        expect(download.suggestedFilename()).toBe(artifact.filename)
+        expect(await download.failure()).toBeNull()
+        expect(attempts).toBe(2)
+        await expect(action).toBeEnabled()
+      })
+    }
+  })
+
   test('REQ-17c: reads external JSON responses, explains each problem before review, and copies a repair prompt', async ({
     context,
     page,

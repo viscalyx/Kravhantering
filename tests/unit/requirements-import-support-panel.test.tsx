@@ -32,8 +32,6 @@ function renderPanel({
 } = {}) {
   const handlers = {
     onDownloadError: vi.fn(),
-    onDownloadImportInstruction: vi.fn(),
-    onDownloadSchema: vi.fn(),
     onDownloadStart: vi.fn(),
   }
   render(
@@ -120,7 +118,7 @@ describe('RequirementsImportSupportPanel', () => {
   })
 
   it('keeps "Own prompt or validation" collapsed until it is toggled', () => {
-    const handlers = renderPanel()
+    renderPanel()
     const toggle = ownPromptToggle()
     const region = document.getElementById(
       toggle.getAttribute('aria-controls') ?? '',
@@ -148,11 +146,6 @@ describe('RequirementsImportSupportPanel', () => {
     expect(schema).toHaveAccessibleDescription(t('ownPromptHelp'))
     expect(instruction).toBeEnabled()
     expect(instruction).not.toHaveAttribute('title')
-    fireEvent.click(schema)
-    fireEvent.click(instruction)
-    expect(handlers.onDownloadSchema).toHaveBeenCalledTimes(1)
-    expect(handlers.onDownloadImportInstruction).toHaveBeenCalledTimes(1)
-
     fireEvent.click(toggle)
 
     expect(toggle).toHaveAttribute('aria-expanded', 'false')

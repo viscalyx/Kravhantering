@@ -14148,6 +14148,24 @@ function applyActionAuditSeed() {
       ),
     )
   }
+
+  for (const [id, occurredAt, requestId] of [
+    [5, '2026-01-15 09:00:00', 'seed-audit-winter'],
+    [6, '2026-07-15 08:00:00', 'seed-audit-summer'],
+  ]) {
+    ensureSeedRow(
+      table,
+      seedRowFromColumns(table, {
+        id,
+        occurred_at: occurredAt,
+        actor_kind: 'system',
+        action: 'requirement_selection_answer.cleanup',
+        target_kind: 'requirement_selection_answer',
+        decision: 'allowed',
+        request_id: requestId,
+      }),
+    )
+  }
 }
 
 function hsaForDisplayName(displayName) {

@@ -72,7 +72,8 @@ the mutation. The application does not automatically retry uncertain writes.
 
 ## Admin Access
 
-Admins can view the log at `/{locale}/admin/audit-log` or query
+Admins can open the Action log in Admin Center, visit
+`/{locale}/admin/audit-log` directly, or query
 `GET /api/admin/audit-events`.
 
 Supported filters:
@@ -83,13 +84,17 @@ Supported filters:
 - `target_id`
 - `client_ip`
 - `decision`
-- `from` / `to` (inclusive date-time bounds; use ISO timestamps with a timezone)
+- `from` / `to` (optional, inclusive date-time bounds)
 - `page` / `pageSize` for the interactive JSON list (default 50 rows, maximum 200)
 - `format=csv`
 - `locale` (`en` or `sv`) for CSV labels; omitted locale defaults to English
 
 Actor, action, target, IP, and decision filters use exact equality rather than
-substring search. Combine them with time bounds to narrow an investigation.
+substring search. Enter both time bounds in UTC. For an event at 10:00 in
+Stockholm, enter 09:00 in January or 08:00 in July. The list and CSV include
+events at either bound. Leave either field blank for an open-ended search.
+The API interprets ISO date-time values without an offset as UTC and honors
+explicit offsets such as `Z` and `+02:00`.
 
 The action-log read and CSV export do not themselves create action-log rows.
 CSV downloads use UTF-8 with BOM, localize column headers and decision values

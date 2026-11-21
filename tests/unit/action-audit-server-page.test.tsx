@@ -25,7 +25,10 @@ vi.mock('@/i18n/routing', () => ({
 }))
 vi.mock('next/navigation', () => ({ notFound: state.notFound }))
 vi.mock('next-intl/server', () => ({ getTranslations: state.getTranslations }))
-vi.mock('@/components/admin/ActionAuditLogView', () => ({
+vi.mock('@/components/admin/ActionAuditLogView', async importOriginal => ({
+  ...(await importOriginal<
+    typeof import('@/components/admin/ActionAuditLogView')
+  >()),
   default: ({
     basePath,
     labels,
