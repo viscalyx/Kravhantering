@@ -349,7 +349,6 @@ const TEXT = {
     proposedNeedsReferences: 'Proposed needs references',
     proposedNormReferences: 'Proposed norm references',
     qualityCharacteristic: 'Quality characteristic',
-    instructionFile: 'requirement-import-instruction.md',
     rawJson: 'Import JSON',
     rawJsonPlaceholder: 'Paste import JSON here.',
     remove: 'Remove from import',
@@ -360,7 +359,6 @@ const TEXT = {
     normReferencePickerTitle: 'Select norm references',
     verifiable: 'Verifiable',
     priorityLevel: 'Priority',
-    schemaFile: 'requirement-import.schema.json',
     selectedRows: 'selected',
     selectRowForImport: (rowNumber: number) =>
       `Include row #${rowNumber} in import`,
@@ -446,7 +444,6 @@ const TEXT = {
     proposedNeedsReferences: 'Föreslagna behovsreferenser',
     proposedNormReferences: 'Föreslagna normreferenser',
     qualityCharacteristic: 'Kvalitetsegenskap',
-    instructionFile: 'kravimport-instruktion.md',
     rawJson: 'Import-JSON',
     rawJsonPlaceholder: 'Klistra in import-JSON här.',
     remove: 'Ta bort från import',
@@ -457,7 +454,6 @@ const TEXT = {
     normReferencePickerTitle: 'Välj normreferenser',
     verifiable: 'Verifierbar',
     priorityLevel: 'Prioritet',
-    schemaFile: 'kravimport.schema.json',
     selectedRows: 'valda',
     selectRowForImport: (rowNumber: number) =>
       `Välj rad #${rowNumber} för import`,
@@ -1813,35 +1809,6 @@ export default function RequirementsImportDialog({
     }
   }
 
-  const downloadArtifact = async (kind: 'schema' | 'instruction') => {
-    const instructionParams = new URLSearchParams({ locale })
-    if (kind === 'instruction') {
-      // The import instruction has the same destination as the AI request
-      // files and is unavailable without it.
-      if (!aiRequestFileDestination) return
-      instructionParams.set('kind', aiRequestFileDestination.kind)
-      if (aiRequestFileDestination.kind === 'requirements_specification') {
-        instructionParams.set(
-          'specificationId',
-          String(aiRequestFileDestination.specificationId),
-        )
-      }
-    }
-    const path =
-      kind === 'schema'
-        ? `/api/requirements/import/schema?locale=${locale}`
-        : `/api/requirements/import/instruction?${instructionParams}`
-    const response = await fetch(path)
-    if (!response.ok) {
-      setErrorMessage(await readResponseMessage(response))
-      return
-    }
-    downloadBlob(
-      await response.blob(),
-      kind === 'schema' ? text.schemaFile : text.instructionFile,
-    )
-  }
-
   const rejectInput = (message: string) => {
     // Remount the alert so repeated attempts with the same error are announced.
     setRejectedAttempt(attempt => attempt + 1)
@@ -2514,10 +2481,6 @@ export default function RequirementsImportDialog({
                     locale={locale}
                     mode={mode}
                     onDownloadError={setErrorMessage}
-                    onDownloadImportInstruction={() =>
-                      void downloadArtifact('instruction')
-                    }
-                    onDownloadSchema={() => void downloadArtifact('schema')}
                     onDownloadStart={() => setErrorMessage(null)}
                   />
                 </aside>

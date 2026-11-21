@@ -333,6 +333,10 @@ an explicit in-modal error.
   instruction downloads for users who write the whole prompt themselves or
   validate in their own tool. The import instruction holds only format rules
   and reference data; the schema is the separate file format contract.
+  While either file downloads, its button names the file in progress and both
+  buttons are disabled. If a download fails, the support panel shows the server
+  message or a localized retry message. Starting another attempt clears that
+  download error.
 - The JSON field reads the text as JSON. If the text is not valid JSON but
   holds exactly one code block, the dialog reads the block and says so without
   changing the field. Several code blocks, a response without JSON, and a

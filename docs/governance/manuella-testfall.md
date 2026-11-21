@@ -50,6 +50,7 @@ hämtning i flera sidor verifierar inte ensamma rapportens fullständiga innehå
 - [Kravbibliotek](#kravbibliotek)
   - [Språkbyte med öppet krav](#req-02-språkbyte-behåller-användbar-lista)
   - [Behåll text vid nekad inklistring](#req-17e-behåll-text-vid-nekad-inklistring)
+  - [Hämta stödfiler igen](#req-17f-hämta-stödfiler-igen)
   - [Bekräfta tecken i textfilter](#req-03a-bekräfta-tecken-i-textfilter)
 - [Skapa krav och livscykel](#skapa-krav-och-livscykel)
 - [Samarbete i kravdetalj](#samarbete-i-kravdetalj)
@@ -1731,6 +1732,32 @@ bilagan eller inte rymmer mallen, uppdatera tipsen i användarguidens avsnitt
 avvisad inklistring meddelas storleksfelet och hur du kan rätta det. Texten,
 markeringen och fokus finns kvar. Det korta ordet ersätter bara markeringen.
 Felmeddelandet försvinner och kraven kan fortfarande förhandsgranskas.
+
+### REQ-17f: hämta stödfiler igen
+
+**Syfte:** Hämta schemat och importinstruktionen efter ett avbrott.
+
+**Förutsättningar:** Logga in som `olle.areaowner` och öppna
+`/sv/requirements`. Öppna nätverksfliken i webbläsarens utvecklarverktyg.
+
+**Integrationstest:**
+[import.spec.ts](../../tests/integration/requirements/import.spec.ts),
+“REQ-17f: retries failed support file downloads”.
+
+**Steg:**
+
+1. Öppna `Importera krav` och sedan `Egen prompt eller validering`.
+2. Välj offlineläge i nätverksfliken och tryck på `Ladda ner schema`.
+3. Byt till en långsam anslutning och tryck på samma knapp igen.
+   Försök hämta den andra filen medan hämtningen pågår.
+4. Vänta tills filen sparats. Upprepa steg 2 och 3 med
+   `Ladda ner importinstruktion`. Återställ nätverksinställningen.
+
+**Förväntat resultat:** Dialogen visar ett fel efter avbrottet. Vid nytt
+försök försvinner felet direkt. Knappen visar vilken fil som laddas ner och
+båda knapparna i sektionen är inaktiverade tills hämtningen är klar. Därefter går
+knapparna att använda igen. Filerna heter `kravimport.schema.json` och
+`kravimport-instruktion.md`.
 
 ### REQ-18: exportera kravbiblioteket till CSV
 

@@ -18,6 +18,7 @@ import {
   type RequirementImportBudget,
 } from '@/lib/requirements/import-budget'
 import { buildRequirementsImportJsonSchema } from '@/lib/requirements/import-schema'
+import enMessages from '@/messages/en.json'
 import svMessages from '@/messages/sv.json'
 
 const confirmMock = vi.hoisted(() => vi.fn())
@@ -1291,6 +1292,122 @@ describe('RequirementsImportDialog', () => {
 
     await waitFor(() =>
       expect(screen.getByLabelText(/Import-JSON/)).toHaveValue(payload),
+    )
+  })
+
+  describe.each([
+    ['sv', 'library', svMessages],
+    ['en', 'specification-local', enMessages],
+  ] as const)('%s %s support downloads', (locale, mode, messages) => {
+    const labels = messages.requirementsImportAiRequest
+    it.each(['schema', 'instruction'] as const)(
+      'recovers the %s after request, body and HTTP failures',
+      async kind => {
+        importLocaleState.locale = locale
+        render(
+          <RequirementsImportDialog
+            mode={mode}
+            onClose={vi.fn()}
+            open
+            specificationId={8}
+          />,
+        )
+        const support = within(screen.getByRole('complementary'))
+        fireEvent.click(
+          support.getByRole('button', { name: labels.ownPromptToggle }),
+        )
+        const schema = support.getByRole('button', {
+          name: labels.downloadSchema,
+        })
+        const instruction = support.getByRole('button', {
+          name: labels.downloadImportInstruction,
+        })
+        const button = kind === 'schema' ? schema : instruction
+        const busy =
+          kind === 'schema'
+            ? labels.downloadingSchema
+            : labels.downloadingInstruction
+        const filename =
+          kind === 'schema'
+            ? locale === 'sv'
+              ? 'kravimport.schema.json'
+              : 'requirement-import.schema.json'
+            : locale === 'sv'
+              ? 'kravimport-instruktion.md'
+              : 'requirement-import-instruction.md'
+        const fetchFile = vi.mocked(global.fetch)
+        const unreadable = new Response('partial file')
+        await unreadable.blob()
+
+        for (const [respond, expected] of [
+          [
+            () => Promise.reject(new TypeError('offline')),
+            labels.downloadFailed,
+          ],
+          [async () => unreadable, labels.downloadFailed],
+          [
+            async () =>
+              Response.json({ error: 'Service unavailable' }, { status: 503 }),
+            'Service unavailable',
+          ],
+          [
+            async () => new Response(null, { status: 503 }),
+            labels.downloadFailed,
+          ],
+          [
+            async () =>
+              new Response('{', {
+                status: 503,
+                headers: { 'Content-Type': 'application/json' },
+              }),
+            labels.downloadFailed,
+          ],
+        ] as const) {
+          fetchFile.mockImplementationOnce(respond)
+          fireEvent.click(button)
+          expect(await support.findByRole('alert')).toHaveTextContent(expected)
+          expect(downloadBlobMock).not.toHaveBeenCalled()
+          expect(schema).toBeEnabled()
+          expect(instruction).toBeEnabled()
+
+          const retry = createDeferred<Response>()
+          const body = createDeferred<Blob>()
+          fetchFile.mockReturnValueOnce(retry.promise)
+          const callsBeforeRetry = fetchFile.mock.calls.length
+          fireEvent.click(button)
+          expect(support.queryByRole('alert')).not.toBeInTheDocument()
+          expect(button).toHaveTextContent(busy)
+          expect(support.getByRole('status')).toHaveTextContent(busy)
+          expect(button).toHaveAttribute('aria-busy', 'true')
+          expect(button).toHaveAttribute(
+            'data-developer-mode-value',
+            kind === 'schema'
+              ? 'schema (downloading)'
+              : 'import instruction (downloading)',
+          )
+          expect(schema).toBeDisabled()
+          expect(instruction).toBeDisabled()
+
+          const response = new Response()
+          vi.spyOn(response, 'blob').mockReturnValue(body.promise)
+          await act(async () => retry.resolve(response))
+          expect(schema).toBeDisabled()
+          expect(instruction).toBeDisabled()
+          fireEvent.click(schema)
+          fireEvent.click(instruction)
+          expect(fetchFile.mock.calls).toHaveLength(callsBeforeRetry + 1)
+
+          const complete = new Blob(['complete file'])
+          await act(async () => body.resolve(complete))
+          expect(downloadBlobMock).toHaveBeenCalledExactlyOnceWith(
+            complete,
+            filename,
+          )
+          expect(schema).toBeEnabled()
+          expect(instruction).toBeEnabled()
+          downloadBlobMock.mockClear()
+        }
+      },
     )
   })
 
@@ -3091,6 +3208,7 @@ describe('RequirementsImportDialog', () => {
     )
     schemaFails = false
     fireEvent.click(screen.getByRole('button', { name: 'Ladda ner schema' }))
+    await waitFor(() => expect(downloadBlobMock).toHaveBeenCalledTimes(1))
     fireEvent.click(
       screen.getByRole('button', { name: 'Ladda ner importinstruktion' }),
     )
