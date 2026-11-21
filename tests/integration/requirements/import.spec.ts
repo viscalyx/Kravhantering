@@ -704,6 +704,71 @@ test.describe('Requirements import', () => {
     })
   })
 
+  test('REQ-17e: keeps edited JSON and the selection after repeated oversized pastes', async ({
+    context,
+    page,
+  }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    await page.goto('/sv/requirements')
+    await page
+      .getByRole('button', { name: 'Importera krav', exact: true })
+      .click()
+    const dialog = page.getByRole('dialog', { name: /^Importera krav/ })
+    await dialog.getByLabel('Kravområde').selectOption({ index: 1 })
+    const editor = dialog.getByLabel('Import-JSON')
+    const preview = dialog.getByRole('button', { name: 'Förhandsgranska krav' })
+    const hint = dialog.getByText('Högst 8 MiB text i UTF-8.')
+    await expect(hint).toHaveAttribute(
+      'data-developer-mode-value',
+      'import JSON size limit',
+    )
+    await expect(editor).toHaveAccessibleDescription(
+      'Högst 8 MiB text i UTF-8.',
+    )
+
+    const edited = JSON.stringify(validImportPayload, null, 2)
+    await editor.fill(edited)
+    const start = edited.indexOf(importedDescription)
+    const end = start + importedDescription.length
+    await editor.evaluate(
+      (field: HTMLTextAreaElement, [from, to]) => {
+        field.setSelectionRange(from, to, 'backward')
+      },
+      [start, end],
+    )
+    // The clipboard alone fits. Replacing just the selected text exceeds the limit.
+    await page.evaluate(() =>
+      navigator.clipboard.writeText('å'.repeat(4 * 1024 * 1024)),
+    )
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await editor.press('ControlOrMeta+v')
+      await expect(dialog.getByRole('alert')).toContainText(
+        'Innehållet överstiger 8 MiB',
+      )
+      await expect(editor).toBeFocused()
+      await expect(editor).toHaveValue(edited)
+      expect(
+        await editor.evaluate((field: HTMLTextAreaElement) => [
+          field.selectionStart,
+          field.selectionEnd,
+          field.selectionDirection,
+        ]),
+      ).toEqual([start, end, 'backward'])
+      await expect(preview).toBeEnabled()
+    }
+
+    await page.evaluate(() =>
+      navigator.clipboard.writeText('Uppdaterad kravtext'),
+    )
+    await editor.press('ControlOrMeta+v')
+    await expect(editor).toHaveValue(
+      edited.replace(importedDescription, 'Uppdaterad kravtext'),
+    )
+    await expect(dialog.getByRole('alert')).toHaveCount(0)
+    await expect(preview).toBeEnabled()
+  })
+
   test('REQ-17a: downloads edited remaining candidates and reopens with changed reference data', async ({
     page,
   }) => {

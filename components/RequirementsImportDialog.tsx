@@ -19,6 +19,7 @@ import {
 import { useLocale, useTranslations } from 'next-intl'
 import {
   type ChangeEvent,
+  type ClipboardEvent,
   type DragEvent,
   useCallback,
   useEffect,
@@ -752,6 +753,8 @@ export default function RequirementsImportDialog({
   const { confirm } = useConfirmModal()
   const titleId = useId()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const editorRevision = useRef(0)
+  const [rejectedAttempt, setRejectedAttempt] = useState(0)
   const [rawJson, setRawJson] = useState('')
   const [importBudget, setImportBudget] =
     useState<RequirementImportBudget | null>(null)
@@ -1125,6 +1128,7 @@ export default function RequirementsImportDialog({
 
     let cancelled = false
     async function loadInitialImport() {
+      editorRevision.current++
       setRawJson(JSON.stringify(initial.payload, null, 2))
       setLoading(true)
       setErrorMessage(null)
@@ -1536,6 +1540,7 @@ export default function RequirementsImportDialog({
       })
       if (!ok) return
     }
+    editorRevision.current++
     setRawJson('')
     setSelectedAreaId('')
     setRows([])
@@ -1821,24 +1826,60 @@ export default function RequirementsImportDialog({
     )
   }
 
+  const rejectInput = (message: string) => {
+    // Remount the alert so repeated attempts with the same error are announced.
+    setRejectedAttempt(attempt => attempt + 1)
+    setErrorMessage(message)
+  }
+
+  const acceptTextSize = (value: string) => {
+    try {
+      assertRequirementImportTextSize(value)
+      return true
+    } catch (error) {
+      if (!(error instanceof RequirementImportClientBudgetError)) throw error
+      rejectInput(importJsonText('replacementTooLarge'))
+      return false
+    }
+  }
+
+  const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const { value, selectionStart, selectionEnd } = event.currentTarget
+    const pasted = event.clipboardData
+      .getData('text/plain')
+      .replace(/\r\n?/g, '\n')
+    const next =
+      value.slice(0, selectionStart) + pasted + value.slice(selectionEnd)
+    if (!acceptTextSize(next)) {
+      editorRevision.current++
+      event.preventDefault()
+    }
+  }
+
   const readImportFile = async (file: File | undefined) => {
     if (!file) return
+    const revision = ++editorRevision.current
     try {
-      setRawJson(await readRequirementImportFile(file))
+      const value = await readRequirementImportFile(file)
+      if (revision !== editorRevision.current) return
+      setRawJson(value)
       setErrorMessage(null)
     } catch (error) {
-      setRawJson('')
-      setErrorMessage(
-        error instanceof RequirementImportClientBudgetError
-          ? text.contentTooLarge
-          : text.error,
+      if (revision !== editorRevision.current) return
+      rejectInput(
+        importJsonText(
+          error instanceof RequirementImportClientBudgetError
+            ? 'replacementTooLarge'
+            : 'fileReadFailed',
+        ),
       )
     }
   }
 
-  const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
-    await readImportFile(event.target.files?.[0])
-    event.target.value = ''
+  const handleFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
+    void readImportFile(file)
   }
 
   const handleJsonDrop = async (event: DragEvent<HTMLButtonElement>) => {
@@ -1862,6 +1903,7 @@ export default function RequirementsImportDialog({
         })
         if (!ok) return
       }
+      editorRevision.current++
       setLoading(true)
       setErrorMessage(null)
       setNoticeMessage(null)
@@ -2281,7 +2323,7 @@ export default function RequirementsImportDialog({
                       <input
                         accept=".json,application/json"
                         className="hidden"
-                        onChange={event => void handleFile(event)}
+                        onChange={handleFile}
                         ref={fileInputRef}
                         type="file"
                       />
@@ -2311,28 +2353,35 @@ export default function RequirementsImportDialog({
                       <FileInput aria-hidden="true" className="h-5 w-5" />
                       <span>{text.dropJsonFile}</span>
                     </button>
+                    <p
+                      className="mb-1 text-sm text-secondary-700 dark:text-secondary-300"
+                      id={`${titleId}-json-limit`}
+                      {...devMarker({
+                        context: 'requirements import',
+                        name: 'field hint',
+                        priority: 340,
+                        value: 'import JSON size limit',
+                      })}
+                    >
+                      {importJsonText('sizeHint')}
+                    </p>
                     <textarea
                       aria-describedby={
                         importPayloadValidation.extractedFromCodeBlock
-                          ? `${titleId}-json-extracted`
-                          : undefined
+                          ? `${titleId}-json-limit ${titleId}-json-extracted`
+                          : `${titleId}-json-limit`
                       }
                       className={`${inputClass} min-h-52 resize-y font-mono text-xs`}
                       id="import-json"
                       onChange={event => {
-                        try {
-                          assertRequirementImportTextSize(event.target.value)
-                          setRawJson(event.target.value)
+                        editorRevision.current++
+                        const value = event.currentTarget.value
+                        if (acceptTextSize(value)) {
+                          setRawJson(value)
                           setErrorMessage(null)
-                        } catch (error) {
-                          setRawJson('')
-                          setErrorMessage(
-                            error instanceof RequirementImportClientBudgetError
-                              ? text.contentTooLarge
-                              : text.error,
-                          )
                         }
                       }}
+                      onPaste={handlePaste}
                       placeholder={text.rawJsonPlaceholder}
                       value={rawJson}
                     />
@@ -2427,6 +2476,7 @@ export default function RequirementsImportDialog({
                   </button>
                   <ImportOutcomeFeedback
                     errorMessage={errorMessage}
+                    key={rejectedAttempt}
                     noticeMessage={noticeMessage}
                     successLabel={text.success}
                   />
