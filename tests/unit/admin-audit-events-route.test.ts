@@ -1,4 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  actionAuditLogCsvHref,
+  actionAuditLogFiltersFromSearchParams,
+} from '@/lib/audit/action-audit-query'
 
 vi.mock('@/lib/dal/application-settings', async () => ({
   getApplicationSettings: async () =>
@@ -94,6 +98,8 @@ async function responseTextWithBom(response: Response): Promise<string> {
 }
 
 describe('admin audit events route', () => {
+  afterEach(() => vi.unstubAllEnvs())
+
   beforeEach(() => {
     vi.clearAllMocks()
     routeState.createRequestContext.mockResolvedValue(context())
@@ -308,11 +314,51 @@ describe('admin audit events route', () => {
         actorHsaId: undefined,
         clientIp: undefined,
         decision: undefined,
+        from: undefined,
+        to: undefined,
         targetId: undefined,
         targetKind: undefined,
       }),
     )
   })
+
+  it.each(['UTC', 'Europe/Stockholm'])(
+    'uses the same instants for page, JSON and CSV bounds on a %s server',
+    async zone => {
+      vi.stubEnv('TZ', zone)
+      const { GET } = await import('@/app/api/admin/audit-events/route')
+      for (const [from, to, expected] of [
+        ['2026-01-15T09:00', '2026-01-15T10:00+01:00', '2026-01-15T09:00Z'],
+        ['2026-07-15T10:00+02:00', '2026-07-15T08:00', '2026-07-15T08:00Z'],
+        [
+          ' 2026-07-15 08:00:01.123 ',
+          '2026-07-15T08:00:01.123Z',
+          '2026-07-15T08:00:01.123Z',
+        ],
+      ]) {
+        const query = { from, to }
+        const bounds = { from: new Date(expected), to: new Date(expected) }
+        expect(actionAuditLogFiltersFromSearchParams(query)).toMatchObject(
+          bounds,
+        )
+        const url = new URL(actionAuditLogCsvHref(query), 'http://localhost')
+        expect((await GET(new Request(url) as never)).status).toBe(200)
+        expect(
+          routeState.traverseActionAuditEventsForCsv,
+        ).toHaveBeenLastCalledWith(
+          routeState.db,
+          expect.objectContaining(bounds),
+          expect.any(Object),
+        )
+        url.searchParams.delete('format')
+        expect((await GET(new Request(url) as never)).status).toBe(200)
+        expect(routeState.listActionAuditEvents).toHaveBeenLastCalledWith(
+          routeState.db,
+          expect.objectContaining(bounds),
+        )
+      }
+    },
+  )
 
   it('parses valid date filters and rejects invalid dates', async () => {
     const { GET } = await import('@/app/api/admin/audit-events/route')
