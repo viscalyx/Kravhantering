@@ -252,7 +252,9 @@ describe('RequirementActionRail', () => {
   it('renders the share menu with responsive dark-mode styling', async () => {
     renderRequirementActionRail()
 
-    await userEvent.click(screen.getByRole('button', { name: 'common.share' }))
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'common.share' }),
+    )
 
     const inlineShareOption = screen.getByRole('menuitem', {
       name: 'requirement.shareLinkInline',
@@ -285,7 +287,9 @@ describe('RequirementActionRail', () => {
   it('exposes share menu semantics and keyboard navigation', async () => {
     renderRequirementActionRail()
 
-    const shareTrigger = screen.getByRole('button', { name: 'common.share' })
+    const shareTrigger = await screen.findByRole('button', {
+      name: 'common.share',
+    })
     expect(shareTrigger).toHaveAttribute('aria-haspopup', 'menu')
     expect(shareTrigger).toHaveAttribute('aria-expanded', 'false')
     expect(shareTrigger).toHaveAttribute('aria-controls')
@@ -341,7 +345,9 @@ describe('RequirementActionRail', () => {
       window.history.pushState({}, '', '/sv/requirements/REQ-123?draft=true')
       renderRequirementActionRail()
 
-      const shareTrigger = screen.getByRole('button', { name: 'common.share' })
+      const shareTrigger = await screen.findByRole('button', {
+        name: 'common.share',
+      })
       await userEvent.click(shareTrigger)
       await userEvent.click(
         screen.getByRole('menuitem', {
@@ -372,7 +378,7 @@ describe('RequirementActionRail', () => {
     }
   })
 
-  it('hides lifecycle mutation controls denied by server permissions', () => {
+  it('hides lifecycle mutation controls denied by server permissions', async () => {
     renderRequirementActionRail({
       allowedTransitionStatusIds: [],
       canArchive: false,
@@ -403,9 +409,71 @@ describe('RequirementActionRail', () => {
       screen.queryByRole('button', { name: 'common.delete' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'common.share' }),
+      await screen.findByRole('button', { name: 'common.share' }),
     ).toBeInTheDocument()
   })
+
+  it.each([
+    ['Inline', '/sv/requirements?selected=REQ-123'],
+    ['Page', '/sv/requirements/REQ-123/2'],
+  ])(
+    'offers the %s share URL and retry when clipboard access is denied',
+    async (choice, path) => {
+      const user = userEvent.setup()
+      const writeText = vi
+        .spyOn(navigator.clipboard, 'writeText')
+        .mockRejectedValue(
+          new DOMException('Permission denied', 'NotAllowedError'),
+        )
+      try {
+        renderRequirementActionRail()
+
+        const share = await screen.findByRole('button', {
+          name: 'common.share',
+        })
+        await user.click(share)
+        await user.click(
+          screen.getByRole('menuitem', {
+            name: `requirement.shareLink${choice}`,
+          }),
+        )
+
+        const url = `${window.location.origin}${path}`
+        expect(writeText).toHaveBeenCalledWith(url)
+        const status = screen.getByRole('status')
+        expect(status).toBeVisible()
+        expect(status).toHaveAttribute('aria-live', 'polite')
+        expect(status).toHaveTextContent('requirement.share.copyFailed')
+        const firstAnnouncement = status.textContent
+        expect(share).toHaveFocus()
+        await user.tab()
+        const link = screen.getByRole('textbox', {
+          name: 'requirement.share.urlLabel',
+        })
+        expect(link).toHaveFocus()
+        expect(link).toHaveValue(url)
+        expect(link).toHaveAttribute('readonly')
+        await user.tab()
+        const retry = screen.getByRole('button', { name: 'common.retry' })
+        expect(retry).toHaveFocus()
+        expect(status).toHaveAttribute(
+          'data-developer-mode-value',
+          'copy failed',
+        )
+        expect(link).toHaveAttribute('data-developer-mode-value', 'share URL')
+        expect(retry).toHaveAttribute('data-developer-mode-value', 'retry copy')
+        await user.keyboard('{Enter}')
+        expect(writeText).toHaveBeenCalledTimes(2)
+        expect(writeText).toHaveBeenLastCalledWith(url)
+        expect(status).toHaveTextContent('requirement.share.copyFailed')
+        expect(status.textContent).not.toBe(firstAnnouncement)
+        expect(link).toHaveValue(url)
+        expect(retry).toHaveFocus()
+      } finally {
+        writeText.mockRestore()
+      }
+    },
+  )
 
   it('hides restore when historical restore permission is denied', () => {
     renderRequirementActionRail({
@@ -518,44 +586,97 @@ describe('RequirementActionRail', () => {
     ).toBeDisabled()
   })
 
-  it('handles page-share clipboard rejection and clears copied feedback', async () => {
-    const originalClipboard = globalThis.navigator.clipboard
-    const writeText = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('permission denied'))
-      .mockResolvedValueOnce(undefined)
+  it('recovers from an unavailable clipboard and reports only completed writes', async () => {
+    const user = userEvent.setup()
+    const clipboard = navigator.clipboard
+    const browser: { clipboard?: Clipboard } = navigator
+    const getClipboard = vi.spyOn(browser, 'clipboard', 'get')
+    const writeText = vi.spyOn(clipboard, 'writeText')
+    const pendingWrite = Promise.withResolvers<void>()
+    getClipboard.mockReturnValue(undefined)
     try {
-      Object.defineProperty(globalThis.navigator, 'clipboard', {
-        configurable: true,
-        value: { writeText },
-      })
-      renderRequirementActionRail({ selectedVersionNumber: null })
-      const share = screen.getByRole('button', { name: 'common.share' })
-      await userEvent.click(share)
-      await userEvent.click(
+      renderRequirementActionRail({ locale: 'en', selectedVersionNumber: null })
+      const share = await screen.findByRole('button', { name: 'common.share' })
+      await user.click(share)
+      await user.click(
         screen.getByRole('menuitem', { name: 'requirement.shareLinkPage' }),
       )
-      expect(share).toHaveTextContent('common.share')
 
-      await userEvent.click(share)
-      await userEvent.click(
-        screen.getByRole('menuitem', { name: 'requirement.shareLinkPage' }),
+      const url = `${window.location.origin}/en/requirements/REQ-123`
+      const link = screen.getByRole('textbox', {
+        name: 'requirement.share.urlLabel',
+      })
+      const retry = screen.getByRole('button', { name: 'common.retry' })
+      const status = screen.getByRole('status')
+      expect(link).toHaveValue(url)
+      expect(status).toHaveTextContent('requirement.share.copyFailed')
+
+      getClipboard.mockReturnValue(clipboard)
+      writeText.mockReturnValueOnce(pendingWrite.promise)
+      await user.click(retry)
+      await user.keyboard('{Enter}')
+      expect(writeText).toHaveBeenCalledExactlyOnceWith(url)
+      expect(status).toHaveTextContent('requirement.share.copyFailed')
+      expect(share).not.toHaveTextContent('common.copied')
+      expect(link).toHaveValue(url)
+
+      await act(async () => pendingWrite.resolve())
+      expect(status).toHaveTextContent('common.copied')
+      expect(share).toHaveFocus()
+      expect(link).not.toBeInTheDocument()
+
+      writeText.mockRejectedValueOnce(
+        new DOMException('Permission denied', 'NotAllowedError'),
       )
-      expect(writeText).toHaveBeenLastCalledWith(
-        expect.stringContaining('/sv/requirements/REQ-123'),
+      await user.click(share)
+      await user.click(
+        screen.getByRole('menuitem', { name: 'requirement.shareLinkInline' }),
       )
+      expect(status).toHaveTextContent('requirement.share.copyFailed')
+      expect(share).not.toHaveTextContent('common.copied')
       expect(
-        screen.getByRole('button', { name: 'common.copied' }),
-      ).toBeVisible()
+        screen.getByRole('textbox', { name: 'requirement.share.urlLabel' }),
+      ).toHaveValue(
+        `${window.location.origin}/en/requirements?selected=REQ-123`,
+      )
     } finally {
-      if (originalClipboard === undefined) {
-        Reflect.deleteProperty(globalThis.navigator, 'clipboard')
-      } else {
-        Object.defineProperty(globalThis.navigator, 'clipboard', {
-          configurable: true,
-          value: originalClipboard,
-        })
-      }
+      getClipboard.mockRestore()
+      writeText.mockRestore()
+    }
+  })
+
+  it('starts a fresh share action when the selected version changes', async () => {
+    const user = userEvent.setup()
+    const writeText = vi
+      .spyOn(navigator.clipboard, 'writeText')
+      .mockRejectedValue(
+        new DOMException('Permission denied', 'NotAllowedError'),
+      )
+    try {
+      const { rerender } = renderRequirementActionRail()
+      const share = () => screen.findByRole('button', { name: 'common.share' })
+      const copyPageLink = () =>
+        user.click(
+          screen.getByRole('menuitem', { name: 'requirement.shareLinkPage' }),
+        )
+      await user.click(await share())
+      await copyPageLink()
+      const fallback = screen.getByRole('textbox', {
+        name: 'requirement.share.urlLabel',
+      })
+      expect(fallback).toHaveValue(
+        `${window.location.origin}/sv/requirements/REQ-123/2`,
+      )
+
+      rerender(requirementActionRail({ selectedVersionNumber: 3 }))
+      expect(fallback).not.toBeInTheDocument()
+      await user.click(await share())
+      await copyPageLink()
+      expect(
+        screen.getByRole('textbox', { name: 'requirement.share.urlLabel' }),
+      ).toHaveValue(`${window.location.origin}/sv/requirements/REQ-123/3`)
+    } finally {
+      writeText.mockRestore()
     }
   })
 })
