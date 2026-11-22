@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises'
 import { expect, type Route, test } from '@playwright/test'
 import { buildRequirementsImportJsonSchema } from '@/lib/requirements/import-schema'
 import { escapeRegExp } from '@/tests/helpers/common'
+import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
+import { expectNormReferenceIdentifierHints } from '@/tests/support/norm-reference-form'
 import { DESKTOP_VIEWPORT } from '../../helpers/desktop-viewport'
 
 const importedDescription =
@@ -43,6 +45,92 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
 
 test.describe('Requirements import', () => {
   test.use({ viewport: DESKTOP_VIEWPORT })
+
+  test('REQ-17g: preserves identifiers when creating an imported norm reference', async ({
+    page,
+    request,
+  }) => {
+    const suffix = Date.now()
+    const proposedId = `PWT-IMPORT-${suffix}`
+    const identifiers = {
+      normReferenceId: `nOrM-${suffix}_a.B`,
+      reference: 'ISO/IEC 27001:2022',
+      version: 'v2.1-RC.a',
+    }
+    let createdId: number | undefined
+
+    try {
+      await test.step('open the unresolved norm reference proposal', async () => {
+        await page.goto('/sv/requirements')
+        await page.getByRole('button', { name: 'Importera krav' }).click()
+        const dialog = page.getByRole('dialog', { name: 'Importera krav' })
+        await dialog.getByLabel('Kravområde').selectOption({ index: 1 })
+        await dialog.getByLabel('Import-JSON').fill(
+          JSON.stringify({
+            ...validImportPayload,
+            proposedNormReferences: [
+              {
+                ...validImportPayload.proposedNormReferences[0],
+                name: `PWT import ${suffix}`,
+                normReferenceId: proposedId,
+                reference: proposedId,
+              },
+            ],
+          }),
+        )
+        await dialog
+          .getByRole('button', { name: 'Förhandsgranska krav' })
+          .click()
+        await page
+          .getByRole('tab', { name: /Föreslagna normreferenser 1/ })
+          .click()
+        await page.getByRole('button', { name: 'Skapa normreferens' }).click()
+      })
+
+      await test.step('save the edited identifiers and resolve the proposal', async () => {
+        const dialog = page.getByRole('dialog', {
+          name: 'Skapa ny normreferens',
+        })
+        const prefix = 'requirements-import-norm-reference'
+        await expectNormReferenceIdentifierHints(dialog, prefix)
+        await dialog.locator(`#${prefix}-id`).fill(identifiers.normReferenceId)
+        await dialog.locator(`#${prefix}-reference`).fill(identifiers.reference)
+        await dialog.locator(`#${prefix}-version`).fill(identifiers.version)
+
+        const saved = page.waitForResponse(
+          response =>
+            response.url().endsWith('/api/norm-references') &&
+            response.request().method() === 'POST',
+        )
+        await dialog.getByRole('button', { name: 'Spara', exact: true }).click()
+        const response = await saved
+        await expectApiResponseOk(response, 'save imported norm reference')
+        const created = await response.json()
+        createdId = created.id
+        await expect(dialog).toHaveCount(0)
+        const proposals = page.getByRole('tabpanel', {
+          name: /Föreslagna normreferenser 1/,
+        })
+        const resolved = proposals.getByText('Löst', { exact: true })
+        await expect(resolved).toHaveCount(1)
+        await expect(
+          proposals.getByLabel('Länka befintlig normreferens'),
+        ).toHaveValue(String(created.id))
+        const stored = await request.get(`/api/norm-references/${created.id}`)
+        await expectApiResponseOk(stored, 'read imported norm reference')
+        expect(await stored.json()).toMatchObject({
+          normReference: identifiers,
+        })
+      })
+    } finally {
+      if (createdId !== undefined) {
+        const response = await request.delete(
+          `/api/norm-references/${createdId}`,
+        )
+        await expectApiResponseOk(response, 'delete imported norm reference')
+      }
+    }
+  })
 
   test('REQ-17: imports a reviewed requirement JSON into a selected requirement area', async ({
     page,

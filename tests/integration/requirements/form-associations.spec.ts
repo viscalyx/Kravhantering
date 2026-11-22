@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { expectApiResponseOk } from '@/tests/support/api-response-assertions'
 import { expectModalKeyboardIsolation } from '@/tests/support/modal-keyboard'
+import { expectNormReferenceIdentifierHints } from '@/tests/support/norm-reference-form'
 
 const marker = (name: string) => `[data-developer-mode-name="${name}"]`
 
@@ -11,7 +12,8 @@ test('LIFE-01B/A11Y-02: association drafts, fixed groups and nested creation per
   const suffix = Date.now().toString()
   const packageName = `PWT-1349 package ${suffix}`
   const normName = `PWT-1349 norm ${suffix}`
-  const reference = `PWT1349-${suffix}`
+  const reference = `PWT 2026:${suffix}`
+  const normId = `PWT-2026-${suffix}`
   await page.goto('/sv/requirements/new')
   await test.step('cancel a draft and restore focus', async () => {
     const trigger = page.getByRole('button', { name: 'Välj kravpaket' })
@@ -113,11 +115,14 @@ test('LIFE-01B/A11Y-02: association drafts, fixed groups and nested creation per
             .fill('Requirement form association persistence test')
           await expect(child).toContainText('Kravpaketsansvarig')
         } else {
-          await child.locator('#association-create-norms-id').fill(reference)
+          await expectNormReferenceIdentifierHints(
+            child,
+            'association-create-norms',
+          )
           await child.locator('#association-create-norms-type').fill('Standard')
           await child
             .locator('#association-create-norms-reference')
-            .fill('Section 1')
+            .fill(reference)
           await child.locator('#association-create-norms-issuer').fill('PWT')
         }
         const endpoint =
@@ -153,6 +158,13 @@ test('LIFE-01B/A11Y-02: association drafts, fixed groups and nested creation per
         await expectApiResponseOk(response, `create ${kind}`)
         const created = await response.json()
         createdIds.push({ kind: endpoint, id: created.id })
+        if (kind === 'norms') {
+          expect(created).toMatchObject({
+            normReferenceId: normId,
+            reference,
+            version: null,
+          })
+        }
         await expect(
           page
             .getByRole('dialog')
@@ -162,7 +174,7 @@ test('LIFE-01B/A11Y-02: association drafts, fixed groups and nested creation per
         await expect(search).toHaveValue('unmatched search')
         await search.fill('')
         const rowName =
-          kind === 'packages' ? packageName : `${reference} ${normName}`
+          kind === 'packages' ? packageName : `${normId} ${normName}`
         const checkbox = page.getByRole('checkbox', {
           name: rowName,
           exact: true,
@@ -231,7 +243,7 @@ test('LIFE-01B/A11Y-02: association drafts, fixed groups and nested creation per
         page
           .locator(marker('association selection'))
           .filter({ hasText: 'Normreferenser' }),
-      ).toContainText(reference)
+      ).toContainText(normId)
       await expect(
         page.getByRole('button', { name: 'Detaljsida', exact: true }),
       ).toHaveAttribute('aria-pressed', 'true')
