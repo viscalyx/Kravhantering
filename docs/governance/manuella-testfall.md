@@ -1236,10 +1236,44 @@ kravbiblioteket.
 
 ### REQ-13: detaljmenyer går att använda med tangentbord
 
-**Steg:** Öppna `Dela` och `Rapporter` i kravdetaljvyn med tangentbord, navigera
-med piltangenter och stäng med Escape.
+**Integrationstest:**
+[library.spec.ts](../../tests/integration/requirements/library.spec.ts),
+testfallen “REQ-13: requirement detail share and report menus support keyboard
+use”, “REQ-13: denied clipboard access allows manual copy and retry for the
+list view link” och “REQ-13: denied clipboard access allows manual copy and
+retry for the detail page link”.
 
-**Förväntat resultat:** Fokus hålls korrekt och kopiering annonseras.
+**Förutsättningar:** Logga in som administratör med testdata för `INT0001`.
+Använd en webbläsare där du kan ändra webbplatsens behörighet för urklipp.
+Starta en skärmläsare för att kontrollera uppläsningen av meddelandena.
+
+**Steg:**
+
+1. Öppna `INT0001` i kravbiblioteket. Öppna `Dela` och `Rapporter` med
+   tangentbordet, navigera med piltangenter och stäng med Escape.
+2. Blockera webbplatsens åtkomst till urklipp. Välj `Kopiera länk (listvy)`.
+   Tryck på Tab för att nå `Delningslänk`, markera innehållet och kopiera det
+   med webbläsarens vanliga kopieringskommando. Klistra in länken i ett
+   textfält och kontrollera adressen.
+3. Gå till `Försök igen` med Tab och försök kopiera igen medan åtkomsten är
+   blockerad. Tillåt sedan åtkomst till urklipp och aktivera `Försök igen`
+   igen. Klistra in länken och kontrollera adressen.
+4. Upprepa steg 2 och 3 på `/sv/requirements/INT0001/1` med menyalternativet
+   `Kopiera länk (detaljsida)`.
+5. Blockera åtkomsten igen och försök kopiera detaljlänken för version 1.
+   Välj version 2 och försök kopiera dess detaljlänk.
+
+**Förväntat resultat:** Escape återför fokus till knappen som öppnade menyn.
+Vid nekad åtkomst visas ett felmeddelande som också läses upp av skärmläsaren.
+Fältet med länken går att nå med tangentbordet, markera och kopiera. Ett nytt
+misslyckat försök behåller både länken och knappen `Försök igen`. När
+kopieringen lyckas visas och annonseras `Kopierad`, återställningskontrollerna
+försvinner och fokus återgår till delningsknappen om det låg på knappen
+`Försök igen`. Listlänken väljer `INT0001` via
+`/sv/requirements?selected=INT0001`. Detaljlänken behåller språk, Krav-ID och
+version via `/sv/requirements/INT0001/1`. När du byter version försvinner
+återställningskontrollerna för version 1. Det nya försöket visar länken
+`/sv/requirements/INT0001/2`.
 
 ### REQ-14a: kravpaket i kravbiblioteksförvaltning
 
