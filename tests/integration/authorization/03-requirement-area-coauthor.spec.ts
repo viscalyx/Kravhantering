@@ -96,10 +96,10 @@ test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors can create requireme
   }
 })
 
-test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors cannot delegate area access', async ({
+test('AUTHZ-03/AUTH-10/AUTH-11/ADMIN-13: requirement area co-authors cannot delegate area access', async ({
   page,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTHZ-03', 'AUTH-10', 'AUTH-11')
+  referenceManualCases(testInfo, 'AUTHZ-03', 'AUTH-10', 'AUTH-11', 'ADMIN-13')
   const areaCoauthor = await newRoleContext(testInfo, 'areaCoauthor')
 
   try {

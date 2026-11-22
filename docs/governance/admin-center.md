@@ -796,9 +796,9 @@ is created in a modal with an editable HSA-id field. When an existing
 requirement area is edited, the modal contains metadata and the read-only
 current owner HSA-id. The icon button next to the owner opens the owner-change
 dialog where admins enter the replacement HSA-id and confirm with `Byt ägare`.
-Requirement area co-authors are managed separately from the list row with
-`Hantera medförfattare`, which opens a dedicated co-author dialog with the add
-field above the saved co-author table.
+To manage co-authors, choose the button that names the area, such as
+`Hantera medförfattare för Drift`. The dialog shows the add field above the
+saved co-author table.
 
 The owner is displayed:
 
