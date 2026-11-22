@@ -4010,19 +4010,42 @@ before retrying”.
 
 ### ADMIN-13: kravområdesansvar visas i listan
 
-**Steg:** Öppna kravområdeslistan och kontrollera att kravområdesägaren visas
-med namn och HSA-id på separata rader. Kontrollera att medförfattarkolumnen
-visar samtliga namn kommaseparerade utan HSA-id eller e-postadress och `—` när
-medförfattare saknas. Kontrollera även att kravområdesnamnet inte är klickbart.
-Kontrollera sedan radåtgärderna för medförfattare, redigering och borttagning.
-Öppna radåtgärden
-`Hantera medförfattare` och kontrollera att den separata dialogen kan läsa in,
-visa laddningsläge, lägga till och ta bort
-kravområdesmedförfattare i en sparad tabell. Öppna sedan ett kravområde för
-redigering och kontrollera HSA-id för kravområdesägaren.
+**Integrationstest:**
+[taxonomy-row-actions.spec.ts](../../tests/integration/admin/taxonomy-row-actions.spec.ts),
+“ADMIN-13: co-author actions identify and open the displayed requirement area
+in both languages”,
+[02-requirement-area-owner.spec.ts](../../tests/integration/authorization/02-requirement-area-owner.spec.ts),
+“AUTHZ-02/AUTH-10/AUTH-11/ADMIN-13: requirement area owners can manage their
+area and co-authors”, samt
+[03-requirement-area-coauthor.spec.ts](../../tests/integration/authorization/03-requirement-area-coauthor.spec.ts),
+“AUTHZ-03/AUTH-10/AUTH-11/ADMIN-13: requirement area co-authors cannot
+delegate area access”.
 
-**Förväntat resultat:** Åtgärderna Hantera medförfattare, Redigera och Ta bort
-är tillgängliga. Medförfattare hanteras i en separat modal, inte i
+**Steg:**
+
+1. Öppna `/sv/requirement-areas` som `ada.admin`. Kontrollera att ägarens
+   namn och HSA-id visas på separata rader och att områdesnamnet inte är
+   klickbart. Medförfattarkolumnen ska visa namnen kommaseparerade utan HSA-id
+   eller e-postadress och `—` när medförfattare saknas.
+2. Läs skärmläsarens knapplista. Hitta ”Hantera medförfattare för Drift” och
+   ”Hantera medförfattare för Säkerhet”. Håll pekaren över respektive knapp
+   och kontrollera att verktygstipset är identiskt med knappnamnet.
+3. Öppna och stäng varje dialog i tur och ordning. Kontrollera i webbläsarens
+   nätverkspanel att dialogen hämtar medförfattare för Drift (områdes-ID 9)
+   respektive Säkerhet (områdes-ID 2).
+4. Upprepa steg 2 och 3 på `/en/requirement-areas` med knappnamnen
+   ”Manage co-authors for Drift” och ”Manage co-authors for Säkerhet”.
+5. Kontrollera laddningsläget i dialogen, lägg till en medförfattare och ta
+   bort samma person. Öppna dialogen igen och kontrollera den sparade listan.
+   Kontrollera även radåtgärderna för redigering och borttagning samt ägarens
+   HSA-id i redigeringsformuläret.
+6. Logga in som `cora.coauthor`. Kontrollera att knappen för att hantera
+   medförfattare saknas på raden för ett område där Cora är medförfattare.
+
+**Förväntat resultat:** Knappnamnet och verktygstipset anger åtgärden på valt
+språk och visar kravområdets lagrade namn. Knappen öppnar det valda områdets
+dialog och visas bara för den som får hantera tilldelningar.
+Medförfattare hanteras i en separat modal, inte i
 metadataformuläret. Kravområdesägaren visas med lokaliserat namn och HSA-id i
 listan och sparas som HSA-id. Listans medförfattarkolumn visar endast
 lokaliserade namn och uppdateras efter tillägg och borttagning. Dialogen för

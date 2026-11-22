@@ -167,9 +167,15 @@ describe('RequirementAreasClient', () => {
     const deleteAction = screen.getAllByRole('button', {
       name: 'common.deleteItem',
     })[0]
-    const manageCoAuthorsAction = screen.getAllByRole('button', {
+    const manageCoAuthorsAction = within(
+      screen.getByRole('row', { name: /System integration/ }),
+    ).getByRole('button', {
       name: /area\.manageCoAuthors/i,
-    })[0]
+    })
+    expect(manageCoAuthorsAction).toHaveAttribute(
+      'data-developer-mode-value',
+      'manage co-authors for INT',
+    )
     expect(editAction).toHaveTextContent(/^$/)
     expect(deleteAction).toHaveTextContent(/^$/)
     expect(manageCoAuthorsAction).not.toHaveTextContent('area.manageCoAuthors')

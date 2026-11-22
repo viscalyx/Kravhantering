@@ -401,19 +401,21 @@ export default function RequirementAreasClient() {
           </div>
         </div>
       )}
-      renderRowActions={({ disabled, item, rowActionButtonClassName }) =>
-        item.permissions?.canManageAssignments ? (
+      renderRowActions={({ disabled, item, rowActionButtonClassName }) => {
+        if (!item.permissions?.canManageAssignments) return null
+        const label = t('manageCoAuthors', { name: getAreaName(item) })
+        return (
           <button
-            aria-label={t('manageCoAuthors')}
+            aria-label={label}
             className={`${rowActionButtonClassName} text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800/70`}
             {...devMarker({
               context: 'areas',
               name: 'table action',
-              value: 'manage co-authors',
+              value: `manage co-authors for ${item.prefix}`,
             })}
             disabled={disabled}
             onClick={() => setCoAuthorsArea(item)}
-            title={t('manageCoAuthors')}
+            title={label}
             type="button"
           >
             <UsersRound
@@ -422,8 +424,8 @@ export default function RequirementAreasClient() {
               focusable={false}
             />
           </button>
-        ) : null
-      }
+        )
+      }}
       title={tn('areas')}
     >
       {ownerChange ? (

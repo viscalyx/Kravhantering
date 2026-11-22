@@ -745,7 +745,7 @@
     "coAuthorsHelp": "Add verified people who can author requirements in this requirement area.",
     "coAuthorHsaId": "Co-author HSA-id",
     "coAuthorHsaIdHelp": "Enter the co-author HSA-id with two uppercase country-code letters, a 10-digit organization number, a hyphen, and an alphanumeric suffix.",
-    "manageCoAuthors": "Manage co-authors",
+    "manageCoAuthors": "Manage co-authors for {name}",
     "addCoAuthor": "Add co-author",
     "removeCoAuthor": "Remove co-author",
     "removeCoAuthorConfirm": "Remove {name} as co-author?",
@@ -3538,7 +3538,7 @@
       },
       "manage": {
         "heading": "Managing",
-        "body": "Create a new requirement area using the New button. Choose the pencil button labeled Edit followed by the area name to update the prefix, name, description, or owner. Use Manage co-authors when the action is available; the list refreshes after a successful assignment change. Choose the trash button labeled Delete followed by the area name to remove an area with no assigned requirements."
+        "body": "Create a new requirement area using the New button. Choose the pencil button labeled Edit followed by the area name to update the prefix, name, description, or owner. If you can manage assignments, choose the button that names the area, such as “Manage co-authors for Drift”. The list refreshes after a successful assignment change. Choose the trash button labeled Delete followed by the area name to remove an area with no assigned requirements."
       }
     },
     "requirementCategories": {
