@@ -2428,15 +2428,30 @@ describe('RequirementsImportDialog', () => {
       await screen.findByRole('tab', { name: /Föreslagna normreferenser/ }),
     )
     fireEvent.click(screen.getByRole('button', { name: 'Skapa normreferens' }))
+    const identifiers = {
+      normReferenceId: 'nOrM-42_a.B',
+      reference: 'ISO/IEC 27001:2022',
+      version: 'v2.1-RC.a',
+    }
+    for (const [name, value] of Object.entries(identifiers)) {
+      const input = screen.getByRole('textbox', {
+        name: name === 'reference' ? 'reference*' : name,
+      })
+      expect(input).toHaveAttribute('autocapitalize', 'none')
+      expect(input).toHaveAttribute('autocorrect', 'off')
+      expect(input).toHaveAttribute('spellcheck', 'false')
+      fireEvent.change(input, { target: { value } })
+    }
     fireEvent.click(screen.getByRole('button', { name: 'save' }))
 
-    await waitFor(() =>
-      expect(apiFetch).toHaveBeenCalledWith(
-        '/api/norm-references',
-        expect.objectContaining({ method: 'POST' }),
-      ),
-    )
     expect(await screen.findByText('Löst')).toBeVisible()
+    const creation = vi
+      .mocked(apiFetch)
+      .mock.calls.find(
+        ([path, options]) =>
+          path === '/api/norm-references' && options?.method === 'POST',
+      )
+    expect(JSON.parse(String(creation?.[1]?.body))).toMatchObject(identifiers)
     expect(apiFetch).toHaveBeenCalledWith(
       '/api/requirements/import/preview',
       expect.objectContaining({ method: 'POST' }),

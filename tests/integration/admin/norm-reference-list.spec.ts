@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { expectNormReferenceIdentifierHints } from '@/tests/support/norm-reference-form'
 
 const nisName = 'NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå'
 const norms = [0, 1, 14, 209].map((count, index) => ({
@@ -275,18 +276,30 @@ for (const locale of ['sv', 'en'] as const) {
 }
 
 test('ADMIN-06B: create, edit, archive, reactivate and delete the selected norm', async ({
+  context,
   page,
 }) => {
-  const normId = `PWT-NORM-${Date.now()}`
+  const normId = `nOrM-${Date.now()}_a.B`
+  const reference = 'ISO/IEC 27001:2022'
+  const version = 'v2.1-RC.a'
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   let createdId: number | undefined
   try {
     await test.step('create a temporary norm', async () => {
       await page.goto('/sv/requirements/stewardship?tab=norms')
       await page.getByRole('button', { name: 'Ny normreferens' }).click()
       const dialog = page.getByRole('dialog', { name: 'Ny normreferens' })
-      await dialog.locator('#norm-reference-id').fill(normId)
+      await expectNormReferenceIdentifierHints(dialog, 'norm-reference')
+      await dialog.locator('#norm-reference-id').pressSequentially(normId)
       await dialog.locator('#norm-reference-name').fill('PWT norm layout')
-      await dialog.locator('#norm-reference-reference').fill('PWT reference')
+      await page.evaluate(
+        text => navigator.clipboard.writeText(text),
+        reference,
+      )
+      const referenceInput = dialog.locator('#norm-reference-reference')
+      await referenceInput.press('ControlOrMeta+v')
+      await expect(referenceInput).toHaveValue(reference)
+      await dialog.locator('#norm-reference-version').pressSequentially(version)
       await dialog.locator('#norm-reference-type').fill('Standard')
       await dialog.locator('#norm-reference-issuer').fill('PWT issuer')
       const createdResponse = page.waitForResponse(
@@ -302,12 +315,36 @@ test('ADMIN-06B: create, edit, archive, reactivate and delete the selected norm'
     const row = page.getByRole('row').filter({ hasText: normId })
     await expect(row.getByRole('status')).toHaveText('Aktiv')
     await test.step('edit the selected norm', async () => {
-      await row.getByRole('button', { name: 'Redigera', exact: true }).click()
+      const edit = row.getByRole('button', { name: 'Redigera', exact: true })
+      await edit.click()
       const dialog = page.getByRole('dialog', { name: 'Redigera normreferens' })
+      await expectNormReferenceIdentifierHints(dialog, 'norm-reference')
+      await expect(dialog.locator('#norm-reference-id')).toHaveValue(normId)
+      await expect(dialog.locator('#norm-reference-reference')).toHaveValue(
+        reference,
+      )
+      await expect(dialog.locator('#norm-reference-version')).toHaveValue(
+        version,
+      )
       await dialog.locator('#norm-reference-name').fill('PWT changed norm')
+      const editedId = `${normId}-b.C`
+      const editedReference = 'ISO/IEC 27001:2022/Amd 1:2024'
+      await dialog.locator('#norm-reference-id').fill(editedId)
+      await dialog.locator('#norm-reference-reference').fill(editedReference)
+      await dialog.locator('#norm-reference-version').fill('3rd edition')
       await dialog.getByRole('button', { name: 'Spara', exact: true }).click()
       await expect(dialog).toHaveCount(0)
       await expect(row).toContainText('PWT changed norm')
+      await edit.click()
+      await expect(dialog.locator('#norm-reference-id')).toHaveValue(editedId)
+      await expect(dialog.locator('#norm-reference-reference')).toHaveValue(
+        editedReference,
+      )
+      await expect(dialog.locator('#norm-reference-version')).toHaveValue(
+        '3rd edition',
+      )
+      await dialog.press('Escape')
+      await expect(dialog).toHaveCount(0)
     })
     await test.step('cancel and confirm archiving', async () => {
       await row.getByRole('button', { name: 'Arkivera', exact: true }).focus()
