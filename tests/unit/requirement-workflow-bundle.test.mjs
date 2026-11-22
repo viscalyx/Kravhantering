@@ -55,21 +55,34 @@ function clientManifest(clientModule, routeModule, shellChunk) {
 
 function launcherSources() {
   return [
+    "lazy(() => import('./RequirementShareMenu'))",
     "lazy(() => import('@/components/AiRequirementGenerator'))",
     "lazy(() => import('@/components/RequirementsImportDialog'))",
   ]
 }
 
-function writeCompleteFixture() {
-  const root = fixtureRoot()
-  const [aiLauncher, importLauncher] = launcherSources()
+function writeLaunchers(root) {
+  const [shareMenu, aiLauncher, importLauncher] = launcherSources()
+  write(
+    root,
+    'app/[locale]/requirements/[id]/_detail/RequirementActionRail.tsx',
+    shareMenu,
+  )
   write(root, 'components/LazyAiRequirementGenerator.tsx', aiLauncher)
   write(root, 'components/LazyRequirementsImportDialog.tsx', importLauncher)
+}
+
+function writeCompleteFixture() {
+  const root = fixtureRoot()
+  writeLaunchers(root)
   write(root, '.next/static/chunks/layout.js', 'layout')
+  const shareMenuLoader =
+    'Promise.all(["static/chunks/share-menu.js"].map(i=>e.l(i))).then()'
   write(
     root,
     '.next/static/chunks/library-shell.js',
     [
+      shareMenuLoader,
       'Promise.all(["static/chunks/library-ai.js","static/chunks/shared.js"].map(i=>e.l(i))).then()',
       'Promise.all(["static/chunks/library-import.js","static/chunks/shared.js"].map(i=>e.l(i))).then()',
     ].join(';'),
@@ -78,11 +91,13 @@ function writeCompleteFixture() {
     root,
     '.next/static/chunks/specification-shell.js',
     [
+      shareMenuLoader,
       'Promise.all(["static/chunks/specification-ai.js","static/chunks/shared.js"].map(i=>e.l(i))).then()',
       'Promise.all(["static/chunks/specification-import.js","static/chunks/shared.js"].map(i=>e.l(i))).then()',
     ].join(';'),
   )
   for (const chunk of [
+    'share-menu',
     'library-ai',
     'library-import',
     'specification-ai',
@@ -128,19 +143,20 @@ describe('requirement workflow bundle contract', () => {
   it('extracts the exact ordered feature imports', () => {
     expect(
       extractLazyRequirementWorkflowFeatureIds(launcherSources().join('\n')),
-    ).toEqual(['ai-authoring', 'import-review'])
+    ).toEqual(['share-menu', 'ai-authoring', 'import-review'])
   })
 
   it('reports entry, incremental, total, and deduplicated handoff scenarios', () => {
     const root = fixtureRoot()
-    for (const chunk of ['entry', 'ai', 'import', 'shared']) {
+    for (const chunk of ['entry', 'share-menu', 'ai', 'import', 'shared']) {
       write(root, `chunks/${chunk}.js`, `${chunk} code`)
     }
 
     const route = evaluateRequirementWorkflowRoute({
       entryChunks: ['static/chunks/entry.js'],
-      importedFeatureIds: ['ai-authoring', 'import-review'],
+      importedFeatureIds: ['share-menu', 'ai-authoring', 'import-review'],
       lazyChunkGroups: [
+        ['static/chunks/share-menu.js'],
         ['static/chunks/ai.js', 'static/chunks/shared.js'],
         ['static/chunks/import.js', 'static/chunks/shared.js'],
       ],
@@ -150,10 +166,12 @@ describe('requirement workflow bundle contract', () => {
 
     expect(route.entry.name).toBe('requirements-library-entry')
     expect(route.features.map(feature => feature.incremental.name)).toEqual([
+      'requirements-library-share-menu-incremental',
       'requirements-library-ai-authoring-incremental',
       'requirements-library-import-review-incremental',
     ])
     expect(route.features.map(feature => feature.total.name)).toEqual([
+      'requirements-library-share-menu',
       'requirements-library-ai-authoring',
       'requirements-library-import-review',
     ])
@@ -168,25 +186,23 @@ describe('requirement workflow bundle contract', () => {
 
   it('fails closed for order, group count, empty groups, eager overlap, and collapsed graphs', () => {
     const root = fixtureRoot()
-    write(root, 'chunks/entry.js', 'entry')
-    write(root, 'chunks/ai.js', 'ai')
-    write(root, 'chunks/import.js', 'import')
-    write(root, 'chunks/shared.js', 'shared')
+    const shareMenuChunks = ['static/chunks/share-menu.js']
     const base = {
       entryChunks: ['static/chunks/entry.js'],
-      importedFeatureIds: ['ai-authoring', 'import-review'],
+      importedFeatureIds: ['share-menu', 'ai-authoring', 'import-review'],
       lazyChunkGroups: [
+        shareMenuChunks,
         ['static/chunks/ai.js', 'static/chunks/shared.js'],
         ['static/chunks/import.js', 'static/chunks/shared.js'],
       ],
-      routeId: 'requirements-library',
+      routeId: 'requirements-specification-detail',
       staticDirectory: root,
     }
 
     expect(() =>
       evaluateRequirementWorkflowRoute({
         ...base,
-        importedFeatureIds: ['import-review', 'ai-authoring'],
+        importedFeatureIds: ['share-menu', 'import-review', 'ai-authoring'],
       }),
     ).toThrow('must remain in this order')
     expect(() =>
@@ -198,26 +214,32 @@ describe('requirement workflow bundle contract', () => {
     ).toThrow('Found: none')
     expect(() =>
       evaluateRequirementWorkflowRoute({ ...base, lazyChunkGroups: [] }),
-    ).toThrow('Expected 2 compiled lazy requirement-workflow chunk sets')
+    ).toThrow('Expected 3 compiled lazy requirement-workflow chunk sets')
     expect(() =>
       evaluateRequirementWorkflowRoute({
         ...base,
-        lazyChunkGroups: [[], ['static/chunks/import.js']],
+        lazyChunkGroups: [
+          [],
+          ['static/chunks/ai.js'],
+          ['static/chunks/import.js'],
+        ],
       }),
-    ).toThrow('ai-authoring has no asynchronous chunks')
+    ).toThrow('share-menu has no asynchronous chunks')
     expect(() =>
       evaluateRequirementWorkflowRoute({
         ...base,
         lazyChunkGroups: [
           ['static/chunks/entry.js'],
+          ['static/chunks/ai.js'],
           ['static/chunks/import.js'],
         ],
       }),
-    ).toThrow('included in requirements-library entry chunks')
+    ).toThrow('included in requirements-specification-detail entry chunks')
     expect(() =>
       evaluateRequirementWorkflowRoute({
         ...base,
         lazyChunkGroups: [
+          shareMenuChunks,
           ['static/chunks/shared.js'],
           ['static/chunks/shared.js'],
         ],
@@ -225,7 +247,7 @@ describe('requirement workflow bundle contract', () => {
     ).toThrow('must have separate asynchronous feature chunks')
   })
 
-  it('enforces route entry and both incremental feature limits', () => {
+  it('enforces route entry and each incremental feature limit', () => {
     const report = readRequirementWorkflowBundleReport(writeCompleteFixture())
     const limits = Object.fromEntries(
       report.routes.map(route => [
@@ -248,10 +270,14 @@ describe('requirement workflow bundle contract', () => {
         ...limits,
         'requirements-library': {
           ...limits['requirements-library'],
+          'share-menu': 0,
           'import-review': 0,
         },
       }),
     ).toEqual([
+      expect.objectContaining({
+        name: 'requirements-library-share-menu-incremental',
+      }),
       expect.objectContaining({
         name: 'requirements-library-import-review-incremental',
       }),
@@ -276,21 +302,12 @@ describe('requirement workflow bundle contract', () => {
         reportOnly: true,
       }),
     ).toEqual(report)
-    expect(logSpy).toHaveBeenCalledTimes(12)
+    expect(logSpy).toHaveBeenCalledTimes(16)
   })
 
   it('explains missing and incomplete production manifests', () => {
     const root = fixtureRoot()
-    write(
-      root,
-      'components/LazyAiRequirementGenerator.tsx',
-      launcherSources()[0],
-    )
-    write(
-      root,
-      'components/LazyRequirementsImportDialog.tsx',
-      launcherSources()[1],
-    )
+    writeLaunchers(root)
     expect(() => readRequirementWorkflowBundleReport(root)).toThrow(
       'optimized production build',
     )

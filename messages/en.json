@@ -655,6 +655,11 @@
     "areaOwner": "Requirement area owner",
     "shareLinkInline": "Copy link (list view)",
     "shareLinkPage": "Copy link (detail page)",
+    "share": {
+      "copyFailed": "Could not copy the link. Try again or select and copy the link below.",
+      "copying": "Copying link…",
+      "urlLabel": "Share link"
+    },
     "afterSave": "After save, go to",
     "afterSaveInline": "List view",
     "afterSavePage": "Detail page",

@@ -655,6 +655,11 @@
     "areaOwner": "Kravområdesägare",
     "shareLinkInline": "Kopiera länk (listvy)",
     "shareLinkPage": "Kopiera länk (detaljsida)",
+    "share": {
+      "copyFailed": "Det gick inte att kopiera länken. Försök igen eller markera och kopiera länken nedan.",
+      "copying": "Kopierar länken…",
+      "urlLabel": "Delningslänk"
+    },
     "afterSave": "Gå till efter sparning",
     "afterSaveInline": "Listvy",
     "afterSavePage": "Detaljsida",
