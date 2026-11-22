@@ -3,6 +3,7 @@
 import { Archive, Edit, FolderPlus, RotateCcw, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { MouseEvent as ReactMouseEvent } from 'react'
+import { lazy, Suspense } from 'react'
 import StatusIcon from '@/components/StatusIcon'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -13,8 +14,9 @@ import {
   STATUS_REVIEW,
 } from '@/lib/requirements/status-constants.mjs'
 import RequirementReportMenu from './RequirementReportMenu'
-import RequirementShareMenu from './RequirementShareMenu'
 import type { TransitionTarget } from './types'
+
+const RequirementShareMenu = lazy(() => import('./RequirementShareMenu'))
 
 interface RequirementActionRailProps {
   allowedTransitionStatusIds: number[]
@@ -145,13 +147,15 @@ export default function RequirementActionRail({
           {tp('addToSpecification')}
         </button>
       )}
-      <RequirementShareMenu
-        detailContext={detailContext}
-        key={`${locale}/${requirementUniqueId}/${selectedVersionNumber ?? ''}`}
-        locale={locale}
-        requirementUniqueId={requirementUniqueId}
-        selectedVersionNumber={selectedVersionNumber}
-      />
+      <Suspense fallback={<div aria-hidden="true" className="min-h-11" />}>
+        <RequirementShareMenu
+          detailContext={detailContext}
+          key={`${locale}/${requirementUniqueId}/${selectedVersionNumber ?? ''}`}
+          locale={locale}
+          requirementUniqueId={requirementUniqueId}
+          selectedVersionNumber={selectedVersionNumber}
+        />
+      </Suspense>
       {isViewingHistory ? (
         <>
           {canRestore && (

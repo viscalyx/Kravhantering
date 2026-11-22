@@ -252,7 +252,9 @@ describe('RequirementActionRail', () => {
   it('renders the share menu with responsive dark-mode styling', async () => {
     renderRequirementActionRail()
 
-    await userEvent.click(screen.getByRole('button', { name: 'common.share' }))
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'common.share' }),
+    )
 
     const inlineShareOption = screen.getByRole('menuitem', {
       name: 'requirement.shareLinkInline',
@@ -285,7 +287,9 @@ describe('RequirementActionRail', () => {
   it('exposes share menu semantics and keyboard navigation', async () => {
     renderRequirementActionRail()
 
-    const shareTrigger = screen.getByRole('button', { name: 'common.share' })
+    const shareTrigger = await screen.findByRole('button', {
+      name: 'common.share',
+    })
     expect(shareTrigger).toHaveAttribute('aria-haspopup', 'menu')
     expect(shareTrigger).toHaveAttribute('aria-expanded', 'false')
     expect(shareTrigger).toHaveAttribute('aria-controls')
@@ -341,7 +345,9 @@ describe('RequirementActionRail', () => {
       window.history.pushState({}, '', '/sv/requirements/REQ-123?draft=true')
       renderRequirementActionRail()
 
-      const shareTrigger = screen.getByRole('button', { name: 'common.share' })
+      const shareTrigger = await screen.findByRole('button', {
+        name: 'common.share',
+      })
       await userEvent.click(shareTrigger)
       await userEvent.click(
         screen.getByRole('menuitem', {
@@ -372,7 +378,7 @@ describe('RequirementActionRail', () => {
     }
   })
 
-  it('hides lifecycle mutation controls denied by server permissions', () => {
+  it('hides lifecycle mutation controls denied by server permissions', async () => {
     renderRequirementActionRail({
       allowedTransitionStatusIds: [],
       canArchive: false,
@@ -403,7 +409,7 @@ describe('RequirementActionRail', () => {
       screen.queryByRole('button', { name: 'common.delete' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'common.share' }),
+      await screen.findByRole('button', { name: 'common.share' }),
     ).toBeInTheDocument()
   })
 
@@ -422,7 +428,9 @@ describe('RequirementActionRail', () => {
       try {
         renderRequirementActionRail()
 
-        const share = screen.getByRole('button', { name: 'common.share' })
+        const share = await screen.findByRole('button', {
+          name: 'common.share',
+        })
         await user.click(share)
         await user.click(
           screen.getByRole('menuitem', {
@@ -588,7 +596,7 @@ describe('RequirementActionRail', () => {
     getClipboard.mockReturnValue(undefined)
     try {
       renderRequirementActionRail({ locale: 'en', selectedVersionNumber: null })
-      const share = screen.getByRole('button', { name: 'common.share' })
+      const share = await screen.findByRole('button', { name: 'common.share' })
       await user.click(share)
       await user.click(
         screen.getByRole('menuitem', { name: 'requirement.shareLinkPage' }),
@@ -646,12 +654,12 @@ describe('RequirementActionRail', () => {
       )
     try {
       const { rerender } = renderRequirementActionRail()
-      const share = () => screen.getByRole('button', { name: 'common.share' })
+      const share = () => screen.findByRole('button', { name: 'common.share' })
       const copyPageLink = () =>
         user.click(
           screen.getByRole('menuitem', { name: 'requirement.shareLinkPage' }),
         )
-      await user.click(share())
+      await user.click(await share())
       await copyPageLink()
       const fallback = screen.getByRole('textbox', {
         name: 'requirement.share.urlLabel',
@@ -662,7 +670,7 @@ describe('RequirementActionRail', () => {
 
       rerender(requirementActionRail({ selectedVersionNumber: 3 }))
       expect(fallback).not.toBeInTheDocument()
-      await user.click(share())
+      await user.click(await share())
       await copyPageLink()
       expect(
         screen.getByRole('textbox', { name: 'requirement.share.urlLabel' }),
