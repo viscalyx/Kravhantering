@@ -1,11 +1,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import MultiSelectFilterPopover, {
   SearchFilterPopover,
 } from '@/components/_requirements-table/FilterPopovers'
-import { useModalFocus } from '@/hooks/useModalFocus'
 
 vi.mock('next-intl', () => ({ useTranslations: () => (key: string) => key }))
 
@@ -97,61 +96,6 @@ describe('requirement table filter popovers', () => {
       })
     },
   )
-
-  it('tabs out of a selection panel within its dialog and dismisses the panel first', async () => {
-    function FilterDialog() {
-      const modalRef = useRef<HTMLDivElement>(null)
-      const [open, setOpen] = useState(true)
-      const { handleKeyDown } = useModalFocus({
-        modalRef,
-        open,
-        onClose: () => setOpen(false),
-      })
-      return (
-        open && (
-          <div
-            aria-modal="true"
-            onKeyDown={handleKeyDown}
-            ref={modalRef}
-            role="dialog"
-          >
-            <MultiSelectFilterPopover
-              developerModeValue="area"
-              getLabel={option => option.name}
-              label="Area"
-              onChange={vi.fn()}
-              options={[{ id: 1, name: 'Security' }]}
-              value={[]}
-            />
-            <button type="button">Next control</button>
-          </div>
-        )
-      )
-    }
-
-    const user = userEvent.setup()
-    render(<FilterDialog />)
-    const dialog = screen.getByRole('dialog')
-    const trigger = screen.getByRole('button', { name: 'filterBy' })
-    expect(trigger).toHaveFocus()
-    await user.keyboard(' ')
-    const option = screen.getByRole('checkbox', { name: 'Security' })
-    expect(dialog).toContainElement(option)
-    expect(option).toHaveFocus()
-    await user.tab({ shift: true })
-    expect(screen.getByRole('button', { name: 'Next control' })).toHaveFocus()
-    await user.tab()
-    expect(option).toHaveFocus()
-    await user.tab()
-    expect(trigger).toHaveFocus()
-    await user.tab({ shift: true })
-    expect(option).toHaveFocus()
-    await user.keyboard('{Escape}')
-    expect(trigger).toHaveAttribute('aria-expanded', 'false')
-    expect(trigger).toHaveFocus()
-    await user.keyboard('{Escape}')
-    expect(dialog).not.toBeInTheDocument()
-  })
 
   it('opens search inside its modal and gives the first Escape to the filter', () => {
     const onDialogKey = vi.fn()

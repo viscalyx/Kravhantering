@@ -1119,15 +1119,22 @@ arkiverad status väljs uttryckligen.
    i **Krav i underlaget**. Gå bakåt med Skift+Tabb från första rutan och
    tryck på Escape. Panelen ska stängas och dess filterknapp ska få fokus.
 
-Om listan saknar valbara rutor ska panelen öppnas med fokus på Rensa om ett
-tidigare val finns kvar, annars på filterknappen. Detta gäller även när bara
-grupprubriker visas. I en dialog ska Tabb och Skift+Tabb stanna inom dialogen.
-Första Escape ska stänga filtret och återföra fokus till filterknappen.
-Nästa Escape ska stänga dialogen.
+**Dialog och tomma filter:** Öppna `filter-dialog.html` i resultatsmappen
+under `test-results/dev/` efter körning av dialogtestet nedan. Välj
+**Öppna dialog** och öppna filtret med Enter. Tabb från Svarstid ska nå
+dialogens stängningsknapp och Skift+Tabb ska gå tillbaka. Markera Svarstid
+med blanksteg. Första Escape ska stänga filtret och återföra fokus till
+filterknappen. Nästa Escape ska stänga dialogen.
+
+Öppna dialogen igen och välj **Dölj alternativ**. Öppna filtret med
+blanksteg. När bara grupprubriken återstår ska Rensa ha fokus. Tryck på
+Enter för att rensa. Öppna filtret igen. Nu ska panelen vara öppen med fokus
+kvar på filterknappen. Samma fokusordning gäller för en tom lista utan grupper.
 
 **Integrationstest för kolumnfilter:**
 [library.spec.ts](../../tests/integration/requirements/library.spec.ts),
-testfallet “REQ-03: keyboard opening focuses a filter option in the library”,
+testfallen “REQ-03: keyboard opening focuses a filter option in the library”
+och “REQ-03: a selection filter keeps keyboard navigation inside its dialog”,
 och
 [requirement-detail.spec.ts](../../tests/integration/specifications/requirement-detail.spec.ts),
 testfallet “REQ-03: keyboard opening focuses a filter option in the

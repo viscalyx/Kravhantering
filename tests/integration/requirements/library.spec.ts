@@ -1,4 +1,7 @@
+import { writeFile } from 'node:fs/promises'
+import { pathToFileURL } from 'node:url'
 import { expect, type Locator, type Page, test } from '@playwright/test'
+import { build } from 'esbuild'
 import { delay, escapeRegExp } from '@/tests/helpers/common'
 import { referenceManualCases } from '@/tests/support/authorization-test-helpers'
 import { deferRoute } from '@/tests/support/deferred-route'
@@ -815,11 +818,82 @@ test.describe('Requirements library', () => {
         await expect(
           panel.getByRole('checkbox', { checked: true }),
         ).toHaveCount(1)
+        await page.keyboard.press('Shift+Tab')
+        await expect(options.first()).toBeFocused()
+        await page.keyboard.press('Space')
+        await page.keyboard.press('Escape')
+        await trigger.press(key)
+        await expect(options.first()).toBeFocused()
+        await expect(
+          panel.getByRole('checkbox', { checked: true }),
+        ).toHaveCount(2)
         await page.keyboard.press('Escape')
         await expect(trigger).toHaveAttribute('aria-expanded', 'false')
         await expect(trigger).toBeFocused()
       })
     }
+  })
+
+  test('REQ-03: a selection filter keeps keyboard navigation inside its dialog', async ({
+    page,
+  }, testInfo) => {
+    // Both application tables live on pages. Mount the same filter and FormModal
+    // together here so this journey can also be repeated in a browser manually.
+    const html = testInfo.outputPath('filter-dialog.html')
+    await build({
+      entryPoints: ['tests/support/selection-filter-dialog.tsx'],
+      bundle: true,
+      define: { 'process.env.NODE_ENV': '"production"' },
+      minify: true,
+      outfile: testInfo.outputPath('filter-dialog.js'),
+    })
+    await writeFile(
+      html,
+      '<!doctype html><html lang="sv"><meta charset="utf-8"><title>Kolumnfilter</title><body><script src="filter-dialog.js"></script></body></html>',
+    )
+    await page.goto(pathToFileURL(html).href)
+
+    const open = page.getByRole('button', { name: 'Öppna dialog' })
+    const dialog = page.getByRole('dialog', { name: 'Kolumnfilter' })
+    const trigger = dialog.getByRole('button', {
+      name: 'Filtrera efter Kvalitetsegenskap',
+    })
+    await open.press('Enter')
+    await trigger.press('Enter')
+    const option = dialog.getByRole('checkbox', { name: 'Svarstid' })
+    await expect(option).toBeFocused()
+    await test.step('leave the panel in both directions and dismiss it before its dialog', async () => {
+      await page.keyboard.press('Shift+Tab')
+      await expect(trigger).toBeFocused()
+      await page.keyboard.press('Tab')
+      await expect(option).toBeFocused()
+      await page.keyboard.press('Tab')
+      await expect(dialog.getByRole('button', { name: 'Stäng' })).toBeFocused()
+      await page.keyboard.press('Shift+Tab')
+      await expect(option).toBeFocused()
+      await page.keyboard.press('Space')
+      await page.keyboard.press('Escape')
+      await expect(trigger).toBeFocused()
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      await page.keyboard.press('Escape')
+      await expect(open).toBeFocused()
+      await expect(dialog).toHaveCount(0)
+    })
+    await test.step('open a group-only panel before and after clearing a stale selection', async () => {
+      await open.press('Enter')
+      await dialog
+        .getByRole('button', { name: 'Dölj alternativ' })
+        .press('Enter')
+      await trigger.press('Space')
+      await expect(dialog.getByRole('button', { name: 'Rensa' })).toBeFocused()
+      await page.keyboard.press('Enter')
+      await expect(trigger).toBeFocused()
+      await trigger.press('Enter')
+      await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+      await expect(trigger).toBeFocused()
+      await page.keyboard.press('Escape')
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    })
   })
 
   test('REQ-03a: text filters keep focus while confirming composed text', async ({
