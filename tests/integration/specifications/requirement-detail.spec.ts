@@ -1424,6 +1424,29 @@ test.describe('Requirements specification deterministic manual cases', () => {
   test.setTimeout(180_000)
   test.use({ viewport: DESKTOP_VIEWPORT })
 
+  test('REQ-03: keyboard opening focuses a filter option in the specification table', async ({
+    page,
+  }) => {
+    await gotoSpecificationDetail(page)
+    const items = page.locator('[data-specification-detail-list-panel="items"]')
+    const trigger = items.getByRole('button', {
+      name: 'Filtrera efter Kravområde',
+    })
+    const panel = page.locator('[data-filter-variant="flat"]')
+    await test.step('open the filter and leave its first option with Shift+Tab', async () => {
+      await trigger.press('Space')
+      await expect(panel.getByRole('checkbox').first()).toBeFocused()
+      await page.keyboard.press('Shift+Tab')
+      await expect(panel.locator(':focus')).toHaveCount(0)
+      await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    })
+    await test.step('dismiss the open filter and return to its own table', async () => {
+      await page.keyboard.press('Escape')
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      await expect(trigger).toBeFocused()
+    })
+  })
+
   test('SPEC-42: language changes preserve each tab’s workspace', async ({
     context,
     page,
