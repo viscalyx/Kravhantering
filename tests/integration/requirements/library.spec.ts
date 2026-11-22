@@ -827,6 +827,13 @@ test.describe('Requirements library', () => {
         await expect(
           panel.getByRole('checkbox', { checked: true }),
         ).toHaveCount(2)
+        await page.keyboard.press('Shift+Tab')
+        await expect(panel.getByRole('button', { name: 'Rensa' })).toBeFocused()
+        await page.keyboard.press('Shift+Tab')
+        await expect(panel.locator(':focus')).toHaveCount(0)
+        await options.last().focus()
+        await page.keyboard.press('Tab')
+        await expect(panel.locator(':focus')).toHaveCount(0)
         await page.keyboard.press('Escape')
         await expect(trigger).toHaveAttribute('aria-expanded', 'false')
         await expect(trigger).toBeFocused()
@@ -851,49 +858,57 @@ test.describe('Requirements library', () => {
       html,
       '<!doctype html><html lang="sv"><meta charset="utf-8"><title>Kolumnfilter</title><body><script src="filter-dialog.js"></script></body></html>',
     )
-    await page.goto(pathToFileURL(html).href)
-
     const open = page.getByRole('button', { name: 'Öppna dialog' })
     const dialog = page.getByRole('dialog', { name: 'Kolumnfilter' })
     const trigger = dialog.getByRole('button', {
       name: 'Filtrera efter Kvalitetsegenskap',
     })
-    await open.press('Enter')
-    await trigger.press('Enter')
-    const option = dialog.getByRole('checkbox', { name: 'Svarstid' })
-    await expect(option).toBeFocused()
-    await test.step('leave the panel in both directions and dismiss it before its dialog', async () => {
-      await page.keyboard.press('Shift+Tab')
-      await expect(trigger).toBeFocused()
-      await page.keyboard.press('Tab')
-      await expect(option).toBeFocused()
-      await page.keyboard.press('Tab')
-      await expect(dialog.getByRole('button', { name: 'Stäng' })).toBeFocused()
-      await page.keyboard.press('Shift+Tab')
-      await expect(option).toBeFocused()
-      await page.keyboard.press('Space')
-      await page.keyboard.press('Escape')
-      await expect(trigger).toBeFocused()
-      await expect(trigger).toHaveAttribute('aria-expanded', 'false')
-      await page.keyboard.press('Escape')
-      await expect(open).toBeFocused()
-      await expect(dialog).toHaveCount(0)
-    })
-    await test.step('open a group-only panel before and after clearing a stale selection', async () => {
+    for (const grouped of [true, false]) {
+      await page.goto(pathToFileURL(html).href)
+      await page
+        .getByRole('checkbox', { name: 'Gruppera alternativ' })
+        .setChecked(grouped)
       await open.press('Enter')
-      await dialog
-        .getByRole('button', { name: 'Dölj alternativ' })
-        .press('Enter')
-      await trigger.press('Space')
-      await expect(dialog.getByRole('button', { name: 'Rensa' })).toBeFocused()
-      await page.keyboard.press('Enter')
-      await expect(trigger).toBeFocused()
       await trigger.press('Enter')
-      await expect(trigger).toHaveAttribute('aria-expanded', 'true')
-      await expect(trigger).toBeFocused()
-      await page.keyboard.press('Escape')
-      await expect(trigger).toHaveAttribute('aria-expanded', 'false')
-    })
+      const option = dialog.getByRole('checkbox', { name: 'Svarstid' })
+      await expect(option).toBeFocused()
+      await test.step('leave the panel in both directions and dismiss it before its dialog', async () => {
+        await page.keyboard.press('Shift+Tab')
+        await expect(trigger).toBeFocused()
+        await page.keyboard.press('Tab')
+        await expect(option).toBeFocused()
+        await page.keyboard.press('Tab')
+        await expect(
+          dialog.getByRole('button', { name: 'Stäng' }),
+        ).toBeFocused()
+        await page.keyboard.press('Shift+Tab')
+        await expect(option).toBeFocused()
+        await page.keyboard.press('Space')
+        await page.keyboard.press('Escape')
+        await expect(trigger).toBeFocused()
+        await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+        await page.keyboard.press('Escape')
+        await expect(open).toBeFocused()
+        await expect(dialog).toHaveCount(0)
+      })
+      await test.step('open a panel without options before and after clearing a stale selection', async () => {
+        await open.press('Enter')
+        await dialog
+          .getByRole('button', { name: 'Dölj alternativ' })
+          .press('Enter')
+        await trigger.press('Space')
+        await expect(
+          dialog.getByRole('button', { name: 'Rensa' }),
+        ).toBeFocused()
+        await page.keyboard.press('Enter')
+        await expect(trigger).toBeFocused()
+        await trigger.press('Enter')
+        await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+        await expect(trigger).toBeFocused()
+        await page.keyboard.press('Escape')
+        await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      })
+    }
   })
 
   test('REQ-03a: text filters keep focus while confirming composed text', async ({

@@ -1129,7 +1129,8 @@ filterknappen. Nästa Escape ska stänga dialogen.
 Öppna dialogen igen och välj **Dölj alternativ**. Öppna filtret med
 blanksteg. När bara grupprubriken återstår ska Rensa ha fokus. Tryck på
 Enter för att rensa. Öppna filtret igen. Nu ska panelen vara öppen med fokus
-kvar på filterknappen. Samma fokusordning gäller för en tom lista utan grupper.
+kvar på filterknappen. Ladda om testsidan, avmarkera **Gruppera alternativ**
+och upprepa dialogtestet. Fokus ska följa samma ordning när listan är tom.
 
 **Integrationstest för kolumnfilter:**
 [library.spec.ts](../../tests/integration/requirements/library.spec.ts),

@@ -7,6 +7,7 @@ import sv from '@/messages/sv.json'
 
 function SelectionFilterDialog() {
   const [open, setOpen] = useState(false)
+  const [grouped, setGrouped] = useState(true)
   const [showOptions, setShowOptions] = useState(true)
   const [value, setValue] = useState<number[]>([])
   const group = { id: 1, name: 'Prestanda', parent: null }
@@ -14,6 +15,14 @@ function SelectionFilterDialog() {
 
   return (
     <>
+      <label>
+        <input
+          checked={grouped}
+          onChange={event => setGrouped(event.target.checked)}
+          type="checkbox"
+        />
+        Gruppera alternativ
+      </label>
       <button onClick={() => setOpen(true)} type="button">
         Öppna dialog
       </button>
@@ -29,10 +38,13 @@ function SelectionFilterDialog() {
         <MultiSelectFilterPopover
           developerModeValue="quality characteristic"
           getLabel={entry => entry.name}
-          getParentId={entry => entry.parent}
+          getParentId={grouped ? entry => entry.parent : undefined}
           label="Kvalitetsegenskap"
           onChange={setValue}
-          options={showOptions ? [group, option] : [group]}
+          options={[
+            ...(grouped ? [group] : []),
+            ...(showOptions ? [option] : []),
+          ]}
           value={value}
         />
       </FormModal>
