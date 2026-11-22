@@ -11,6 +11,92 @@ vi.mock('next-intl', () => ({ useTranslations: () => (key: string) => key }))
 describe('requirement table filter popovers', () => {
   beforeEach(() => vi.clearAllMocks())
 
+  describe.each(['flat', 'grouped'] as const)(
+    '%s selection filter',
+    variant => {
+      const group = { id: 1, name: 'Performance', parent: null }
+      const options = [
+        { id: 2, name: 'Latency', parent: 1 },
+        { id: 3, name: 'Throughput', parent: 1 },
+        { id: 4, name: 'Capacity', parent: 1 },
+      ]
+
+      function renderFilter(value: number[], selectable = true) {
+        const choices = selectable ? options : []
+        const onChange = vi.fn()
+        render(
+          <MultiSelectFilterPopover
+            developerModeValue="quality"
+            getLabel={option => option.name}
+            getParentId={
+              variant === 'grouped' ? option => option.parent : undefined
+            }
+            label="Quality"
+            onChange={onChange}
+            options={variant === 'grouped' ? [group, ...choices] : choices}
+            value={value}
+          />,
+        )
+        return {
+          onChange,
+          trigger: screen.getByRole('button', { name: 'filterBy' }),
+        }
+      }
+
+      it('opens on the first checked checkbox in display order', async () => {
+        const user = userEvent.setup()
+        const { onChange, trigger } = renderFilter([4, 3])
+        trigger.focus()
+        await user.keyboard('{Enter}')
+        expect(
+          screen.getByRole('checkbox', { name: 'Throughput', checked: true }),
+        ).toHaveFocus()
+        expect(onChange).not.toHaveBeenCalled()
+      })
+
+      it('opens on the first selectable checkbox when none is checked', async () => {
+        const user = userEvent.setup()
+        const { onChange, trigger } = renderFilter([])
+        trigger.focus()
+        await user.keyboard(' ')
+        expect(
+          screen.getByRole('checkbox', { name: 'Latency', checked: false }),
+        ).toHaveFocus()
+        expect(onChange).not.toHaveBeenCalled()
+      })
+
+      it.each([
+        { destination: 'Clear', value: [9] },
+        { destination: 'the trigger', value: [] },
+      ])(
+        'opens on $destination without selectable options',
+        async ({ value }) => {
+          const user = userEvent.setup()
+          const { onChange, trigger } = renderFilter(value, false)
+          trigger.focus()
+          await user.keyboard('{Enter}')
+          expect(trigger).toHaveAttribute('aria-expanded', 'true')
+          const target = value.length
+            ? screen.getByRole('button', { name: 'clear' })
+            : trigger
+          expect(target).toHaveFocus()
+          expect(onChange).not.toHaveBeenCalled()
+          await user.keyboard('{Escape}')
+          expect(trigger).toHaveAttribute('aria-expanded', 'false')
+          expect(trigger).toHaveFocus()
+        },
+      )
+
+      it('keeps focus on the trigger when opened with a pointer', async () => {
+        const user = userEvent.setup()
+        const { trigger } = renderFilter([3])
+        await user.click(trigger)
+        expect(trigger).toHaveAttribute('aria-expanded', 'true')
+        expect(trigger).toHaveFocus()
+      })
+    },
+  )
+
   it('opens search inside its modal and gives the first Escape to the filter', () => {
     const onDialogKey = vi.fn()
     const { rerender } = render(

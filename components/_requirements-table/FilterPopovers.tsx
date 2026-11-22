@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl'
 import {
   type CSSProperties,
   type ReactNode,
-  type RefObject,
   useCallback,
   useEffect,
   useRef,
@@ -35,7 +34,7 @@ interface FilterPopoverProps extends FilterLabelProps {
   active: boolean
   activeCount?: number
   children: (close: () => void) => ReactNode
-  initialFocusRef?: RefObject<HTMLInputElement | null>
+  focusOnOpen: (panel: HTMLDivElement, keyboard: boolean) => void
   variant: FilterVariant
 }
 
@@ -44,7 +43,7 @@ function FilterPopover({
   activeCount,
   children,
   developerModeValue,
-  initialFocusRef,
+  focusOnOpen,
   label,
   variant,
 }: FilterPopoverProps) {
@@ -53,6 +52,7 @@ function FilterPopover({
   const wrapperRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const openedWithKeyboard = useRef(false)
   const [position, setPosition] = useState<FilterPosition | null>(null)
   const close = useCallback(() => {
     setPosition(null)
@@ -66,7 +66,8 @@ function FilterPopover({
     openFilterByOwner.get(owner)?.()
     const dismiss = () => setPosition(null)
     openFilterByOwner.set(owner, dismiss)
-    initialFocusRef?.current?.focus()
+    if (panelRef.current)
+      focusOnOpen(panelRef.current, openedWithKeyboard.current)
     function onMouseDown(event: MouseEvent) {
       const target = event.target as Node
       if (
@@ -88,7 +89,7 @@ function FilterPopover({
       document.removeEventListener('mousedown', onMouseDown)
       stopListening()
     }
-  }, [position, close, initialFocusRef])
+  }, [position, close, focusOnOpen])
 
   return (
     <div className="relative inline-flex" ref={wrapperRef}>
@@ -107,6 +108,8 @@ function FilterPopover({
             setPosition(null)
             return
           }
+          // Native button activation from the keyboard produces a click with zero detail.
+          openedWithKeyboard.current = event.detail === 0
           const anchor = event.currentTarget.getBoundingClientRect()
           const below = window.innerHeight - anchor.bottom - 16
           const above = anchor.top - 16
@@ -177,6 +180,7 @@ export function SearchFilterPopover({
   const tt = useTranslations('requirementsTable')
   const [local, setLocal] = useState(activeValue)
   const inputRef = useRef<HTMLInputElement>(null)
+  const focusInput = useCallback(() => inputRef.current?.focus(), [])
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const clearPendingCommit = useCallback(() => {
@@ -201,7 +205,7 @@ export function SearchFilterPopover({
     <FilterPopover
       active={!!activeValue}
       developerModeValue={developerModeValue}
-      initialFocusRef={inputRef}
+      focusOnOpen={focusInput}
       label={label}
       variant="text"
     >
@@ -264,6 +268,17 @@ interface SelectionFilterProps<Option extends { id: number }>
   value: number[]
 }
 
+const selectableCheckbox = 'input[type="checkbox"]:enabled'
+
+function focusSelectionOnOpen(panel: HTMLDivElement, keyboard: boolean) {
+  if (!keyboard) return
+  const target =
+    panel.querySelector<HTMLInputElement>(`${selectableCheckbox}:checked`) ??
+    panel.querySelector<HTMLInputElement>(selectableCheckbox) ??
+    panel.querySelector<HTMLButtonElement>(':scope > button:enabled')
+  target?.focus()
+}
+
 export default function MultiSelectFilterPopover<
   Option extends { id: number },
 >({
@@ -282,9 +297,8 @@ export default function MultiSelectFilterPopover<
   } | null>(null)
   useClientLayoutEffect(() => {
     if (!clearedPanel) return
-    const first = clearedPanel.panel?.querySelector<HTMLInputElement>(
-      'input[type="checkbox"]',
-    )
+    const first =
+      clearedPanel.panel?.querySelector<HTMLInputElement>(selectableCheckbox)
     if (first) first.focus()
     else clearedPanel.close()
     setClearedPanel(null)
@@ -317,6 +331,7 @@ export default function MultiSelectFilterPopover<
       active={value.length > 0}
       activeCount={value.length}
       developerModeValue={developerModeValue}
+      focusOnOpen={focusSelectionOnOpen}
       label={label}
       variant={getParentId ? 'grouped' : 'flat'}
     >
