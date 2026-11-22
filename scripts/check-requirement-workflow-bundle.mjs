@@ -10,13 +10,18 @@ import {
 } from './lib/client-bundle-budget.mjs'
 
 export const REQUIREMENT_WORKFLOW_FEATURE_IDS = [
+  'share-menu',
   'ai-authoring',
   'import-review',
 ]
 
+// Production baseline: up to 1,797 gzip bytes across both routes, plus 5%.
+const SHARE_MENU_GZIP_MAX_BYTES = 1_887
+
 const FEATURE_IMPORT_TO_ID = new Map([
-  ['AiRequirementGenerator', 'ai-authoring'],
-  ['RequirementsImportDialog', 'import-review'],
+  ['./RequirementShareMenu', 'share-menu'],
+  ['@/components/AiRequirementGenerator', 'ai-authoring'],
+  ['@/components/RequirementsImportDialog', 'import-review'],
 ])
 
 const ROUTES = [
@@ -41,6 +46,7 @@ export const REQUIREMENT_WORKFLOW_GZIP_MAX_BYTES = {
   'requirements-library': {
     // 2026-07-14 production baseline: 280,092 gzip bytes plus 5% headroom.
     entry: 294_097,
+    'share-menu': SHARE_MENU_GZIP_MAX_BYTES,
     // 2026-09-29 production baseline: 292,752 gzip bytes plus 5% headroom.
     // The AI request prompt module bundles messages/{sv,en}.json, so new
     // message texts grow this chunk.
@@ -51,6 +57,7 @@ export const REQUIREMENT_WORKFLOW_GZIP_MAX_BYTES = {
   'requirements-specification-detail': {
     // 2026-11-12 dependency update baseline: 352,656 gzip bytes plus 5% headroom.
     entry: 370_289,
+    'share-menu': SHARE_MENU_GZIP_MAX_BYTES,
     // 2026-09-29 production baseline: 293,461 gzip bytes plus 5% headroom.
     'ai-authoring': 308_134,
     // 2026-09-27 production baseline: 135,639 gzip bytes plus 5% headroom.
@@ -61,7 +68,7 @@ export const REQUIREMENT_WORKFLOW_GZIP_MAX_BYTES = {
 export function extractLazyRequirementWorkflowFeatureIds(source) {
   return Array.from(
     source.matchAll(
-      /import\('@\/components\/(AiRequirementGenerator|RequirementsImportDialog)'\)/gu,
+      /import\('(\.\/RequirementShareMenu|@\/components\/(?:AiRequirementGenerator|RequirementsImportDialog))'\)/gu,
     ),
     match => FEATURE_IMPORT_TO_ID.get(match[1]),
   )
@@ -85,10 +92,11 @@ export function evaluateRequirementWorkflowRoute({
   routeId,
   staticDirectory,
 }) {
+  const expectedFeatureIds = REQUIREMENT_WORKFLOW_FEATURE_IDS
   assertExpectedFeatureOrder(importedFeatureIds)
-  if (lazyChunkGroups.length !== REQUIREMENT_WORKFLOW_FEATURE_IDS.length) {
+  if (lazyChunkGroups.length !== expectedFeatureIds.length) {
     throw new Error(
-      `Expected 2 compiled lazy requirement-workflow chunk sets for ${routeId}, found ${lazyChunkGroups.length}.`,
+      `Expected ${expectedFeatureIds.length} compiled lazy requirement-workflow chunk sets for ${routeId}, found ${lazyChunkGroups.length}.`,
     )
   }
 
@@ -170,9 +178,10 @@ export function requirementWorkflowBudgetFailures(
 
 function readImportedFeatureIds(projectRoot) {
   const launcherSources = [
-    join(projectRoot, 'components', 'LazyAiRequirementGenerator.tsx'),
-    join(projectRoot, 'components', 'LazyRequirementsImportDialog.tsx'),
-  ].map(path => readFileSync(path, 'utf8'))
+    'app/[locale]/requirements/[id]/_detail/RequirementActionRail.tsx',
+    'components/LazyAiRequirementGenerator.tsx',
+    'components/LazyRequirementsImportDialog.tsx',
+  ].map(path => readFileSync(join(projectRoot, path), 'utf8'))
   return extractLazyRequirementWorkflowFeatureIds(launcherSources.join('\n'))
 }
 
