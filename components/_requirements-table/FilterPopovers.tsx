@@ -53,6 +53,7 @@ function FilterPopover({
   const wrapperRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const focusSelectionOnOpen = useRef(false)
   const [position, setPosition] = useState<FilterPosition | null>(null)
   const close = useCallback(() => {
     setPosition(null)
@@ -66,7 +67,17 @@ function FilterPopover({
     openFilterByOwner.get(owner)?.()
     const dismiss = () => setPosition(null)
     openFilterByOwner.set(owner, dismiss)
-    initialFocusRef?.current?.focus()
+    if (focusSelectionOnOpen.current) {
+      const panel = panelRef.current
+      const checkbox = 'input[type="checkbox"]:enabled'
+      const target =
+        panel?.querySelector<HTMLInputElement>(`${checkbox}:checked`) ??
+        panel?.querySelector<HTMLInputElement>(checkbox) ??
+        panel?.querySelector<HTMLButtonElement>('button:enabled')
+      target?.focus()
+    } else {
+      initialFocusRef?.current?.focus()
+    }
     function onMouseDown(event: MouseEvent) {
       const target = event.target as Node
       if (
@@ -107,6 +118,9 @@ function FilterPopover({
             setPosition(null)
             return
           }
+          // Native button activation from the keyboard produces a click with zero detail.
+          focusSelectionOnOpen.current =
+            variant !== 'text' && event.detail === 0
           const anchor = event.currentTarget.getBoundingClientRect()
           const below = window.innerHeight - anchor.bottom - 16
           const above = anchor.top - 16

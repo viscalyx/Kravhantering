@@ -1102,6 +1102,37 @@ fokus flyttas tillbaka till filterknappen med Skift+Tabb före ett musklick.
 Det arkiverade kravet kan hittas via sin historiska kravpaketskoppling när
 arkiverad status väljs uttryckligen.
 
+**Kolumnfilter med tangentbord:**
+
+1. Visa kolumnen Kvalitetsegenskap i kravbibliotekets kolumnväljare. Utgå
+   från tomma filter för Kravområde och Kvalitetsegenskap.
+2. Fokusera filterknappen för Kravområde och tryck på Enter. Den första
+   kryssrutan ska få fokus. Gå till nästa ruta med Tabb, markera den med
+   blanksteg och stäng med Escape. Fokus ska återgå till filterknappen.
+3. Öppna igen. Den markerade rutan ska ha fokus. Markera även en ruta
+   högre upp i listan. Stäng och öppna igen. Båda valen ska vara kvar och
+   den översta markerade rutan ska ha fokus, även när Rensa visas.
+4. Upprepa med blanksteg på filterknappen för Kvalitetsegenskap.
+   Grupprubrikerna ska hoppas över. Prova Tabb från sista rutan och
+   Skift+Tabb från panelens första kontroll. Fokus ska kunna lämna panelen.
+5. Öppna kravunderlag 8 och använd blanksteg på filterknappen för Kravområde
+   i **Krav i underlaget**. Gå bakåt med Skift+Tabb från första rutan och
+   tryck på Escape. Panelen ska stängas och dess filterknapp ska få fokus.
+
+Om listan saknar valbara rutor ska panelen öppnas med fokus på Rensa om ett
+tidigare val finns kvar, annars på filterknappen. Detta gäller även när bara
+grupprubriker visas. I en dialog ska Tabb och Skift+Tabb stanna inom dialogen.
+Första Escape ska stänga filtret och återföra fokus till filterknappen.
+Nästa Escape ska stänga dialogen.
+
+**Integrationstest för kolumnfilter:**
+[library.spec.ts](../../tests/integration/requirements/library.spec.ts),
+testfallet “REQ-03: keyboard opening focuses a filter option in the library”,
+och
+[requirement-detail.spec.ts](../../tests/integration/specifications/requirement-detail.spec.ts),
+testfallet “REQ-03: keyboard opening focuses a filter option in the
+specification table”.
+
 ### REQ-03a: bekräfta tecken i textfilter
 
 **Syfte:** Kontrollera att textfiltren behåller fokus när Enter bekräftar

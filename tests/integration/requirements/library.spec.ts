@@ -778,6 +778,50 @@ test.describe('Requirements library', () => {
     })
   })
 
+  test('REQ-03: keyboard opening focuses a filter option in the library', async ({
+    page,
+  }) => {
+    await page.goto('/sv/requirements')
+    await expect(
+      page.getByRole('button', { name: 'Filtrera kravpaket' }),
+    ).toBeEnabled()
+    await page.locator('[data-column-picker-trigger="true"]').click()
+    await page
+      .locator('[data-column-picker-option="qualityCharacteristic"] input')
+      .check()
+    await page.keyboard.press('Escape')
+
+    for (const [label, variant, key] of [
+      ['Kravområde', 'flat', 'Enter'],
+      ['Kvalitetsegenskap', 'grouped', 'Space'],
+    ] as const) {
+      await test.step(`open and revisit the ${label} filter`, async () => {
+        const trigger = page.getByRole('button', {
+          name: `Filtrera efter ${label}`,
+        })
+        const panel = page.locator(`[data-filter-variant="${variant}"]`)
+        const options = panel.getByRole('checkbox')
+        await trigger.press(key)
+        await expect(options.first()).toBeFocused()
+        await page.keyboard.press('Tab')
+        const second = options.nth(1)
+        await expect(second).toBeFocused()
+        await page.keyboard.press('Space')
+        await expect(second).toBeChecked()
+        await page.keyboard.press('Escape')
+        await expect(trigger).toBeFocused()
+        await trigger.press(key)
+        await expect(second).toBeFocused()
+        await expect(
+          panel.getByRole('checkbox', { checked: true }),
+        ).toHaveCount(1)
+        await page.keyboard.press('Escape')
+        await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+        await expect(trigger).toBeFocused()
+      })
+    }
+  })
+
   test('REQ-03a: text filters keep focus while confirming composed text', async ({
     page,
   }) => {
