@@ -6,6 +6,26 @@ const viewports = [
   { ...DESKTOP_VIEWPORT, name: 'desktop' },
 ]
 
+test('DEVTOOLS-01: copies the area prefix from a co-author action', async ({
+  page,
+}) => {
+  await page.goto('/sv/requirement-areas')
+  const button = page.getByRole('button', {
+    name: 'Hantera medförfattare för Drift',
+    exact: true,
+  })
+  await button.focus()
+  await page.keyboard.press('Control+Alt+Shift+H')
+  await expect(page.getByTestId('developer-mode-badge')).toBeVisible()
+  await button.hover()
+  const chip = page.locator('[data-developer-mode-overlay-chip="true"]')
+  await expect(chip).toContainText('table action: manage co-authors for DRF')
+  await chip.click()
+  await expect(
+    page.locator('[data-developer-mode-toast="true"]'),
+  ).toContainText('areas > table action: manage co-authors for DRF')
+})
+
 async function gotoRequirementsWhenReady(page: Page) {
   await page.goto('/sv/requirements')
   await expect(

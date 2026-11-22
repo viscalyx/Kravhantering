@@ -797,7 +797,7 @@ kravområdesägare.
 1. Kontrollera att listan visar kravområdesägarens namn och HSA-id samt
    medförfattarnas namn utan deras HSA-id eller e-postadress.
 1. Gör en liten tillåten ändring i kravområdets metadata.
-1. Öppna radåtgärden `Hantera medförfattare` och verifiera att
+1. Välj ”Hantera medförfattare för” följt av kravområdets namn. Verifiera att
    dialogen visar ett tilläggsfält överst, laddningsläge vid hämtning och en
    sparad tabell med kravområdesmedförfattare.
 1. Lägg till ett tillfälligt HSA-id som kravområdesmedförfattare, kontrollera
@@ -4030,9 +4030,10 @@ delegate area access”.
 2. Läs skärmläsarens knapplista. Hitta ”Hantera medförfattare för Drift” och
    ”Hantera medförfattare för Säkerhet”. Håll pekaren över respektive knapp
    och kontrollera att verktygstipset är identiskt med knappnamnet.
-3. Öppna och stäng varje dialog i tur och ordning. Kontrollera i webbläsarens
-   nätverkspanel att dialogen hämtar medförfattare för Drift (områdes-ID 9)
-   respektive Säkerhet (områdes-ID 2).
+3. Öppna och stäng varje dialog i tur och ordning. Kontrollera i
+   nätverkspanelen att hämtningen lyckas för Drift (områdes-ID 9) respektive
+   Säkerhet (områdes-ID 2). Drift ska sakna sparade medförfattare och
+   tabellen för Säkerhet ska innehålla `SE5560000001-kalle2`.
 4. Upprepa steg 2 och 3 på `/en/requirement-areas` med knappnamnen
    ”Manage co-authors for Drift” och ”Manage co-authors for Säkerhet”.
 5. Kontrollera laddningsläget i dialogen, lägg till en medförfattare och ta
@@ -4585,7 +4586,15 @@ försöket kan slutföras.
 **Steg:** Aktivera Developer Mode, hovra över en annoterad kontroll och kopiera
 referensen. Upprepa kontrollen på en annoterad kolumnrubrik.
 
+Öppna även `/sv/requirement-areas` som `ada.admin` på en dator. Kopiera
+referensen för ”Hantera medförfattare för Drift”.
+
 **Förväntat resultat:** Referensen kopieras och en bekräftelse visas.
+Referensen för Drift innehåller `areas > table action: manage co-authors for DRF`.
+
+**Integrationstest:**
+[overlay.spec.ts](../../tests/integration/developer-mode/overlay.spec.ts),
+testfallet “DEVTOOLS-01: copies the area prefix from a co-author action”.
 
 ### MCP-01: MCP HTTP kräver godkänd tjänsttoken
 
