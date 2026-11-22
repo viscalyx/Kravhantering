@@ -1,37 +1,78 @@
-# Manuella testfall för {{område}}
+# Manual tests for {{area}}
 
-{{Beskriv vilka arbetsflöden testfallen omfattar.}}
-Anteckna commit, webbläsare och godkänt eller underkänt resultat vid körning.
+{{Describe the workflows covered. State what to record after a run, such as
+the revision, environment, and result.}}
 
-## Konfigurerade användare
+## Test users
 
-{{Ange testanvändare, roller, tillgång till hushållet och hur de loggar in.}}
+{{List the accounts or roles, access required, and how to sign in.}}
 
-## Allmän förberedelse
+## Shared preparation
 
-1. {{Ange testmiljö, testdata och nödvändiga förberedelser.}}
-2. {{Beskriv återställning mellan körningar och vad som ska behållas.}}
+1. {{Set up the test environment, fixtures, and initial state.}}
+2. {{Explain how to reset between runs and what to preserve.}}
 
-## {{Delområde}}
+## {{Subarea}}
 
-### {{OMRÅDE-01}}: {{arbetsflöde och förväntat utfall}}
+### {{CASE-ID}}: {{workflow and expected outcome}}
 
-**Syfte:** {{Beskriv beteendet som testfallet ska verifiera.}}
+**Purpose:** {{State the behavior to verify.}}
 
-**Användare:** {{Ange användare och roller från förberedelsen.}}
+**Users:** {{Identify the roles needed for this case.}}
 
-**Förutsättningar:** {{Ange testfallets utgångsläge och särskilda testdata.}}
+**Prerequisites:** {{State the initial conditions and case-specific data.}}
 
-**Integrationstest:**
-[{{filnamn}}.spec.ts](../../tests/integration/{{filnamn}}.spec.ts),
-testfallet “{{OMRÅDE-01}}: {{exakt scenariotitel}}”.
+**Separate preparation:** {{If needed, provide the command or instructions,
+inputs, expected setup, and reset steps.}}
 
-**Steg:**
+{{Choose either the counterpart or human observation branch. Keep required
+details visible. Use the project's mapping format. Keep the matching
+comment block only if the project uses this `manual-mapping` format.}}
 
-1. {{Beskriv en handling genom det publika användargränssnittet.}}
-2. {{Beskriv nästa handling och vad användaren ska kontrollera.}}
+**Automated counterpart:** [{{spec name}}]({{relative-spec-path}}),
+{{stable case ID or exact test selector}}.
 
-**Förväntat resultat:**
+<!--
+```manual-mapping
+{
+  "counterpart": {
+    "runner": "{{configured runner}}",
+    "suite": "{{configured suite}}",
+    "spec": "{{repository-relative spec path}}",
+    "caseId": "{{CASE-ID}}"
+  },
+  "reference": "{{selected configuration and justified variants}}",
+  "outcomes": ["{{observable result the test protects}}"]
+}
+```
+-->
 
-- {{Ange observerbart resultat för respektive steg.}}
-- {{Ange slutligt tillstånd och relevanta åtkomstgränser.}}
+**Requires human observation:** {{State what a person must observe or do
+and which equipment, client, or setup they need.}}
+
+<!--
+```manual-mapping
+{
+  "humanObservation": {
+    "kind": "{{observation category allowed by the validator}}",
+    "observation": "{{specific observation or action}}"
+  },
+  "reference": "{{selected configuration and justified variants}}",
+  "outcomes": ["{{observable result to verify}}"]
+}
+```
+-->
+
+**Supporting evidence:** {{If relevant, identify each related automated or
+provider check and the distinct outcome it verifies. Add it to the project's
+mapping metadata when supported.}}
+
+**Steps:**
+
+1. {{Describe an action through the public interface.}}
+2. {{Describe the next action and what to check.}}
+
+**Expected results:**
+
+- {{Describe the observable outcome of each relevant action.}}
+- {{State the final condition and relevant access boundaries.}}
