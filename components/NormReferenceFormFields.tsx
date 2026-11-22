@@ -38,6 +38,12 @@ const TYPE_SUGGESTION_KEYS = [
 
 const richTags = { strong: (chunks: ReactNode) => <strong>{chunks}</strong> }
 
+const identifierInputHints = {
+  autoCapitalize: 'none',
+  autoCorrect: 'off',
+  spellCheck: false,
+}
+
 const fieldClass =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
 
@@ -101,6 +107,7 @@ export default function NormReferenceFormFields({
             ? `${idPrefix}-norm-reference-id-helper`
             : undefined
         }
+        {...identifierInputHints}
         className={fieldClass}
         id={`${idPrefix}-id`}
         onChange={e => onSetField('normReferenceId', e.target.value)}
@@ -179,6 +186,7 @@ export default function NormReferenceFormFields({
       </div>
       {helpPanel('referenceHelp', 'reference')}
       <input
+        {...identifierInputHints}
         className={fieldClass}
         id={`${idPrefix}-reference`}
         onChange={e => onSetField('reference', e.target.value)}
@@ -199,6 +207,7 @@ export default function NormReferenceFormFields({
       </div>
       {helpPanel('versionHelp', 'version')}
       <input
+        {...identifierInputHints}
         className={fieldClass}
         id={`${idPrefix}-version`}
         onChange={e => onSetField('version', e.target.value)}

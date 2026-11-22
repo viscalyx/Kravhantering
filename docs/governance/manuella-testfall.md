@@ -51,6 +51,7 @@ hämtning i flera sidor verifierar inte ensamma rapportens fullständiga innehå
   - [Språkbyte med öppet krav](#req-02-språkbyte-behåller-användbar-lista)
   - [Behåll text vid nekad inklistring](#req-17e-behåll-text-vid-nekad-inklistring)
   - [Hämta stödfiler igen](#req-17f-hämta-stödfiler-igen)
+  - [Bevara identifierare vid kravimport](#req-17g-bevara-identifierare-när-en-föreslagen-normreferens-skapas)
   - [Bekräfta tecken i textfilter](#req-03a-bekräfta-tecken-i-textfilter)
 - [Skapa krav och livscykel](#skapa-krav-och-livscykel)
 - [Samarbete i kravdetalj](#samarbete-i-kravdetalj)
@@ -1759,6 +1760,25 @@ båda knapparna i sektionen är inaktiverade tills hämtningen är klar. Däreft
 knapparna att använda igen. Filerna heter `kravimport.schema.json` och
 `kravimport-instruktion.md`.
 
+### REQ-17g: bevara identifierare när en föreslagen normreferens skapas
+
+**Integrationstest:**
+[import.spec.ts](../../tests/integration/requirements/import.spec.ts),
+testfallet ”REQ-17g: preserves identifiers when creating an imported norm
+reference”.
+
+**Steg:** Logga in som `ada.admin`. Förhandsgranska en kravimportfil där ett
+krav använder en föreslagen normreferens som ännu saknas i normbiblioteket.
+Öppna `Föreslagna normreferenser` och välj `Skapa normreferens` för förslaget.
+Byt de förifyllda värdena till ett unikt Normreferens-ID med stora och små
+bokstäver, till exempel `nOrM-42_a.B`, referensen `ISO/IEC 27001:2022` och
+versionen `v2.1-RC.a`. Spara och kontrollera posten i Normbibliotek. Radera
+testposten efter kontrollen.
+
+**Förväntat resultat:** Skapandedialogen stängs och förslaget länkas till den
+nya normreferensen. Normreferens-ID, referens och version har exakt samma
+bokstäver och skiljetecken som vid inmatningen.
+
 ### REQ-18: exportera kravbiblioteket till CSV
 
 **Integrationstest:**
@@ -2176,8 +2196,10 @@ rad; raden ska stanna i `Redan valda` tills dialogen stängs.
 Kontrollera räknarens text med noll, ett och två markerade objekt.
 
 Skapa ett nytt paket med namn och syfte samt en normreferens med obligatoriska
-fält från respektive väljdialog. Kontrollera ansvarssammanfattningen för
-paketet. Avbryt först den översta dialogen och kontrollera fokus och sökning.
+fält från respektive väljdialog. Använd en unik formell referens, till exempel
+`SFS 2026:12345`, och lämna Normreferens-ID och Version tomma. Kontrollera
+ansvarssammanfattningen för paketet. Avbryt först den översta dialogen och
+kontrollera fokus och sökning.
 Skriv ett namn och välj Avbryt. Gå runt i bekräftelsen med Tab och Skift+Tab.
 Kontrollera med skärmläsare att sidans innehåll och underliggande dialoger
 inte går att nå. Neka kasseringen med Escape och kontrollera att namnet finns
@@ -2192,9 +2214,10 @@ och spara med `Listvy`.
 
 **Förväntat resultat:** Endast `Välj` tillämpar urvalet. Sökning bevarar
 markeringar och rader byter inte grupp medan dialogen är öppen. Nya objekt
-sparas direkt och finns kvar även när urvalet avbryts. Avbryt och Escape
-återför fokus till rätt öppningsknapp. Kravets sparmål och associationer
-bevaras vid redigering.
+sparas direkt och finns kvar även när urvalet avbryts. Normreferensen behåller
+sin formella referens, får ett genererat ID och sparas med tom version.
+Avbryt och Escape återför fokus till rätt öppningsknapp. Kravets sparmål och
+associationer bevaras vid redigering.
 
 ### LIFE-01C: använd kravformulärets väljare med tangentbord
 
@@ -3852,14 +3875,34 @@ fel.
 
 ### ADMIN-06B: normbibliotekets uppgifter och radåtgärder
 
+**Integrationstest:**
+[norm-reference-list.spec.ts](../../tests/integration/admin/norm-reference-list.spec.ts),
+med scenarierna ”ADMIN-06B: create, edit, archive, reactivate and delete the
+selected norm”, ”ADMIN-06B: complete norm information, desktop layout and
+narrow-screen access (sv)” och ”ADMIN-06B: complete norm information, desktop
+layout and narrow-screen access (en)”.
+
 **Steg:** Öppna Normbibliotek på svenska och engelska. Läs en normreferens
 med långt namn och lång utfärdare, en med lång obruten referens och en utan
 version eller klickbar URI. Kontrollera både aktiva och arkiverade normer
 samt 0, 1, 14 och 209 kopplade krav. Filtrera till en norm och till ett värde
 utan träffar, och rensa filtret. Använd Tab för att nå extern länk och
 radåtgärder. Öppna redigering även i ett smalt fönster och stäng med Escape.
-Skapa en tillfällig norm, redigera dess namn, avbryt först arkivering och
-bekräfta sedan. Återaktivera och radera normen med bekräftelse.
+Skapa en tillfällig norm. Skriv `nOrM-42_a.B` i Normreferens-ID och
+`v2.1-RC.a` i Version. Klistra in `ISO/IEC 27001:2022` i Referens. Spara och
+öppna redigeringen. Jämför alla tre värden med det du angav. Ändra benämningen,
+lägg till `-b.C` i ID:t, byt referens till `ISO/IEC 27001:2022/Amd 1:2024` och
+ange `3rd edition` som version. Spara och öppna redigeringen igen för att
+kontrollera alla tre identifierarna. Stäng redigeringen, avbryt först
+arkivering och bekräfta sedan. Återaktivera och radera normen med bekräftelse.
+
+**Kontroll med skärmtangentbord:** Upprepa inmatningen på en fysisk mobil med
+varje webbläsare och tangentbord som ingår i testet. Aktivera automatisk stor
+bokstav, autokorrigering och stavningskontroll där inställningarna finns. Skriv
+och klistra in vart och ett av de tre värdena i både skapande och redigering.
+Jämför med hur tangentbordet hjälper till när du skriver löptext i Benämning
+och Utfärdare. Anteckna operativsystem och version, webbläsare och version,
+tangentbord, språk, inställningar och observerat resultat för varje fält.
 
 **Förväntat resultat:** Benämning och utfärdare är kompletta. Identifiering
 visar Normreferens-ID, referens, version och typ som separat märkta uppgifter.
@@ -3868,7 +3911,12 @@ Extern länk hör till rätt benämning, öppnas i ny flik och visar tangentbord
 Redigera, arkivera/återaktivera och radera kan nås med mus och tangentbord.
 Bekräftelser och ändringar gäller rätt norm. Filtrering och tomt sökresultat
 fungerar. Innehåll och åtgärder går att nå genom tabellens rullning i smala
-fönster. Skapaåtgärden är åtkomlig.
+fönster. Skapaåtgärden är åtkomlig. De tre identifierarna behåller stora och
+små bokstäver och skiljetecken vid inmatning, inklistring och när posten
+öppnas igen. Versionen kan innehålla utgåvetext. Webbläsare och tangentbord som
+följer fältens inställningar använder ingen korrigering eller automatisk stor
+bokstav för identifierarna. Textstödet i övriga fält följer enhetens vanliga
+inställningar.
 
 ### ADMIN-07: åtgärdslogg filtrerar och exporterar CSV
 
