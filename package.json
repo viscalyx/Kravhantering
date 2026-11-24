@@ -184,7 +184,7 @@
     "framer-motion": "^14.14.0",
     "iron-session": "^9.1.0",
     "jose": "^6.2.17",
-    "lucide-react": "^1.74.0",
+    "lucide-react": "^1.77.0",
     "mssql": "^12.7.14",
     "next": "^16.4.6",
     "next-intl": "^4.15.1",
