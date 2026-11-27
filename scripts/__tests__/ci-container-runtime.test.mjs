@@ -19,6 +19,8 @@ const CLASSIFIER_PATH = path.resolve(
   process.cwd(),
   'scripts/containers/classify-ci-runtime-evidence.mjs',
 )
+const UBI_RUNTIME_TAG =
+  'registry.access.redhat.com/ubi10/nodejs-24-minimal:latest'
 const temporaryDirectories = []
 
 function createRuntimeToolchain({ prefix, profile }) {
@@ -78,7 +80,11 @@ function createRuntimeToolchain({ prefix, profile }) {
       `    printf '{"host":{"conmon":{"path":"%s"},"ociRuntime":{"path":"%s"}}}\\n' "$selected_conmon" "\${CI_FAKE_CRUN_PATH:-${crunPath}}"`,
       '    ;;',
       `  run) exit "\${CI_FAKE_RUN_STATUS:-0}" ;;`,
-      '  image) [[ "$2" == rm && "${!#}" == "$(cat "$CI_FAKE_CACHED_IMAGE")" ]] && rm -f -- "$CI_FAKE_CACHED_IMAGE" ;;',
+      '  image)',
+      `    if [[ "$2" == rm && "\${!#}" == "$(cat "$CI_FAKE_CACHED_IMAGE")" ]]; then`,
+      '      rm -f -- "$CI_FAKE_CACHED_IMAGE"',
+      '    fi',
+      '    ;;',
       `  system) [[ "$2 $3" == "reset --force" ]] && exit "\${CI_FAKE_RESET_STATUS:-0}" ;;`,
       'esac',
       '',
@@ -225,6 +231,30 @@ function createToolchainFixture({ toolchain = 'package' } = {}) {
 
 function runRuntimeScript(args, fixture, env = {}) {
   return childProcess.spawnSync('bash', [SCRIPT_PATH, ...args], {
+    encoding: 'utf8',
+    env: { ...fixture.env, ...env },
+  })
+}
+
+function runPreflight(fixture, selectedReference, env = {}) {
+  const script = path.join(
+    fixture.root,
+    'scripts/containers/ci-container-runtime.sh',
+  )
+  const registry = path.join(
+    fixture.root,
+    '.github/dependency-maintenance.json',
+  )
+  fs.mkdirSync(path.dirname(script), { recursive: true })
+  fs.copyFileSync(SCRIPT_PATH, script)
+  fs.mkdirSync(path.dirname(registry), { recursive: true })
+  fs.writeFileSync(
+    registry,
+    JSON.stringify({
+      units: [{ id: 'ubi-node-runtime', selectedReference }],
+    }),
+  )
+  return childProcess.spawnSync('bash', [script, 'preflight'], {
     encoding: 'utf8',
     env: { ...fixture.env, ...env },
   })
@@ -467,11 +497,10 @@ describe('CI container runtime', () => {
     status => {
       const fixture = createToolchainFixture()
       const cachedImage = path.join(fixture.root, 'cached-image')
-      const appDockerfile = fs.readFileSync('containers/app/Dockerfile', 'utf8')
-      const [, image] = /^ARG UBI_RUNTIME_IMAGE=(\S+)$/mu.exec(appDockerfile)
+      const image = `${UBI_RUNTIME_TAG}@sha256:${'a'.repeat(64)}`
       fs.writeFileSync(cachedImage, image)
 
-      const result = runRuntimeScript(['preflight'], fixture, {
+      const result = runPreflight(fixture, image, {
         CI_FAKE_CACHED_IMAGE: cachedImage,
         CI_FAKE_RUN_STATUS: String(status),
         GITHUB_RUN_ATTEMPT: '2',
@@ -494,34 +523,7 @@ describe('CI container runtime', () => {
 
   it('rejects a runtime reference without a digest before invoking Podman', () => {
     const fixture = createToolchainFixture()
-    const script = path.join(
-      fixture.root,
-      'scripts/containers/ci-container-runtime.sh',
-    )
-    const registry = path.join(
-      fixture.root,
-      '.github/dependency-maintenance.json',
-    )
-    fs.mkdirSync(path.dirname(script), { recursive: true })
-    fs.copyFileSync(SCRIPT_PATH, script)
-    fs.mkdirSync(path.dirname(registry), { recursive: true })
-    fs.writeFileSync(
-      registry,
-      JSON.stringify({
-        units: [
-          {
-            id: 'ubi-node-runtime',
-            selectedReference:
-              'registry.access.redhat.com/ubi10/nodejs-24-minimal:latest',
-          },
-        ],
-      }),
-    )
-
-    const result = childProcess.spawnSync('bash', [script, 'preflight'], {
-      encoding: 'utf8',
-      env: fixture.env,
-    })
+    const result = runPreflight(fixture, UBI_RUNTIME_TAG)
 
     expect(result.status).not.toBe(0)
     expect(result.stderr).toContain('digest-pinned')
