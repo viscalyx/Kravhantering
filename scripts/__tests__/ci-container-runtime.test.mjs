@@ -78,6 +78,7 @@ function createRuntimeToolchain({ prefix, profile }) {
       `    printf '{"host":{"conmon":{"path":"%s"},"ociRuntime":{"path":"%s"}}}\\n' "$selected_conmon" "\${CI_FAKE_CRUN_PATH:-${crunPath}}"`,
       '    ;;',
       `  run) exit "\${CI_FAKE_RUN_STATUS:-0}" ;;`,
+      '  image) [[ "$2" == rm && "${!#}" == "$(cat "$CI_FAKE_CACHED_IMAGE")" ]] && rm -f -- "$CI_FAKE_CACHED_IMAGE" ;;',
       `  system) [[ "$2 $3" == "reset --force" ]] && exit "\${CI_FAKE_RESET_STATUS:-0}" ;;`,
       'esac',
       '',
@@ -461,32 +462,70 @@ describe('CI container runtime', () => {
     )
   })
 
-  it('cleans its pinned journald preflight resources after failure', () => {
-    const fixture = createToolchainFixture()
+  it.each([0, 126])(
+    'cleans the probe container and preserves the cached UBI runtime when Podman exits %i',
+    status => {
+      const fixture = createToolchainFixture()
+      const cachedImage = path.join(fixture.root, 'cached-image')
+      const appDockerfile = fs.readFileSync('containers/app/Dockerfile', 'utf8')
+      const [, image] = /^ARG UBI_RUNTIME_IMAGE=(\S+)$/mu.exec(appDockerfile)
+      fs.writeFileSync(cachedImage, image)
 
-    const result = runRuntimeScript(['preflight'], fixture, {
-      CI_FAKE_RUN_STATUS: '126',
-      GITHUB_RUN_ATTEMPT: '2',
-      GITHUB_RUN_ID: '123',
+      const result = runRuntimeScript(['preflight'], fixture, {
+        CI_FAKE_CACHED_IMAGE: cachedImage,
+        CI_FAKE_RUN_STATUS: String(status),
+        GITHUB_RUN_ATTEMPT: '2',
+        GITHUB_RUN_ID: '123',
+      })
+
+      expect(result.status, result.stderr).toBe(status)
+      const commands = fs
+        .readFileSync(fixture.commandLog, 'utf8')
+        .trim()
+        .split('\n')
+      const name = 'kravhantering-runtime-preflight-123-2'
+      expect(commands).toContain(
+        `run --pull=always --name ${name} --log-driver=journald ${image} /bin/true`,
+      )
+      expect(commands.at(-1)).toBe(`rm --force ${name}`)
+      expect(fs.readFileSync(cachedImage, 'utf8')).toBe(image)
+    },
+  )
+
+  it('rejects a runtime reference without a digest before invoking Podman', () => {
+    const fixture = createToolchainFixture()
+    const script = path.join(
+      fixture.root,
+      'scripts/containers/ci-container-runtime.sh',
+    )
+    const registry = path.join(
+      fixture.root,
+      '.github/dependency-maintenance.json',
+    )
+    fs.mkdirSync(path.dirname(script), { recursive: true })
+    fs.copyFileSync(SCRIPT_PATH, script)
+    fs.mkdirSync(path.dirname(registry), { recursive: true })
+    fs.writeFileSync(
+      registry,
+      JSON.stringify({
+        units: [
+          {
+            id: 'ubi-node-runtime',
+            selectedReference:
+              'registry.access.redhat.com/ubi10/nodejs-24-minimal:latest',
+          },
+        ],
+      }),
+    )
+
+    const result = childProcess.spawnSync('bash', [script, 'preflight'], {
+      encoding: 'utf8',
+      env: fixture.env,
     })
 
     expect(result.status).not.toBe(0)
-    const commands = fs.readFileSync(fixture.commandLog, 'utf8')
-    expect(commands).toContain(
-      'run --pull=always --name kravhantering-runtime-preflight-123-2 --log-driver=journald',
-    )
-    expect(commands).toContain(
-      'rm --force kravhantering-runtime-preflight-123-2',
-    )
-    expect(
-      commands
-        .split('\n')
-        .filter(
-          command =>
-            command === 'rm --force kravhantering-runtime-preflight-123-2',
-        ),
-    ).toHaveLength(2)
-    expect(commands).toContain('image rm --force')
+    expect(result.stderr).toContain('digest-pinned')
+    expect(fs.existsSync(fixture.commandLog)).toBe(false)
   })
 
   it('collects the safe runtime evidence contract without environment values', () => {
