@@ -26,7 +26,6 @@ COMMAND_TIMEOUT_SECONDS="${CI_RUNTIME_COMMAND_TIMEOUT_SECONDS:-30}"
 CONTAINERS_CONF="${CI_RUNTIME_CONTAINERS_CONF:-/etc/containers/containers.conf}"
 RUNNER_RUNTIME_DROP_IN="${CI_RUNTIME_RUNNER_RUNTIME_DROP_IN:-/etc/containers/containers.conf.d/00-fix-runtime.conf}"
 EVIDENCE_DIR="${CI_RUNTIME_EVIDENCE_DIR:-}"
-PREFLIGHT_IMAGE='docker.io/library/alpine@sha256:eafc1edb577d2e9b458664a15f23ea1c370214193226069eb22921169fc7e43f'
 
 fail() {
   printf 'ci-container-runtime: %s\n' "$*" >&2
@@ -250,16 +249,20 @@ bootstrap_toolchain() {
 }
 
 runtime_preflight() {
-  local name status
+  local name status image
+  image="$(jq -er '.units[] | select(.id == "ubi-node-runtime").selectedReference' \
+    "$(dirname -- "${BASH_SOURCE[0]}")/../../.github/dependency-maintenance.json")" ||
+    fail 'cannot read the ubi-node-runtime selectedReference'
+  [[ "$image" =~ ^[^[:space:]@]+@sha256:[a-f0-9]{64}$ ]] ||
+    fail 'ubi-node-runtime selectedReference must be digest-pinned'
   name="kravhantering-runtime-preflight-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
   cleanup_preflight() {
     "$PODMAN_BIN" rm --force "$name" >/dev/null 2>&1 || true
-    "$PODMAN_BIN" image rm --force "$PREFLIGHT_IMAGE" >/dev/null 2>&1 || true
   }
   trap cleanup_preflight EXIT
   cleanup_preflight
   if "$PODMAN_BIN" run --pull=always --name "$name" --log-driver=journald \
-    "$PREFLIGHT_IMAGE" /bin/true; then
+    "$image" /bin/true; then
     :
   else
     status="$?"
