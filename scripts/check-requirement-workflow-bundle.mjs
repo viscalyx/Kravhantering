@@ -44,8 +44,8 @@ const ROUTES = [
 
 export const REQUIREMENT_WORKFLOW_GZIP_MAX_BYTES = {
   'requirements-library': {
-    // 2026-07-14 production baseline: 280,092 gzip bytes plus 5% headroom.
-    entry: 294_097,
+    // 2026-11-27 dependency update baseline: 298,397 gzip bytes plus 5% headroom.
+    entry: 313_317,
     'share-menu': SHARE_MENU_GZIP_MAX_BYTES,
     // 2026-09-29 production baseline: 292,752 gzip bytes plus 5% headroom.
     // The AI request prompt module bundles messages/{sv,en}.json, so new
