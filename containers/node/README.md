@@ -22,7 +22,7 @@ base. The devcontainer and vendor nginx, SQL Server, Keycloak, and Kong images
 have independently maintained bases.
 
 Maintain the shared UBI base through the
-[dependency workflow](../../docs/development/dependency-workflow.md#ubi-node-builder-and-runtime-maintenance).
+[dependency workflow](../../docs/development/dependency-workflow.md#shared-ubi-node-image-maintenance).
 Base tags are always paired with their selected immutable digest.
 
 ## Build and execution prerequisites

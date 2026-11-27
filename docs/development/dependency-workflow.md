@@ -190,7 +190,7 @@ The HSA topology helper uses the same minimal base. Dependency maintenance
 discovers direct references and ARG defaults. Each input must have exactly
 one maintenance owner and match its selected identity.
 
-## UBI Node Builder and Runtime Maintenance
+## Shared UBI Node Image Maintenance
 
 The `ubi-node-runtime` unit selects the public UBI 10 Node.js 24 minimal image
 for build and runtime stages. Its `selectedReference` in
