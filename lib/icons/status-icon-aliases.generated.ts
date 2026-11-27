@@ -236,6 +236,7 @@ export {
   PowerCircle,
   PowerSquare,
   Printer3D,
+  RectangleLandscapePlay,
   Rotate3D,
   Rows,
   Scale3D,
