@@ -152,12 +152,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends zsh
-          mapfile -t fixture_images < <(
-            sed -n 's/^FROM \(ubuntu:[^ ]*@sha256:[a-f0-9]\{64\}\)$/\1/p' \
-              scripts/containers/production-smoke-debug.Containerfile
-          )
-          test "${#fixture_images[@]}" -eq 1
-          docker pull "${fixture_images[0]}"
+          npm run test:azure-codex-policy:prepare
         if: contains(fromJSON(needs.select.outputs.owners), 'unit')
 
       - name: Run tests and combined coverage
