@@ -30,9 +30,9 @@ Run the component contract with:
 npm --prefix containers/hsa-person-lookup-adapter test
 ```
 
-The dependency stage uses the digest-pinned public UBI 10 Node.js 24 builder;
-the runtime uses the matching minimal role. Builds require no Red Hat account
-or subscription. Builder npm follows this directory's `packageManager` and
+The dependency and runtime stages use the same digest-pinned public UBI 10
+Node.js 24 minimal base. Builds require no Red Hat account or subscription.
+The dependency stage follows this directory's npm `packageManager` and
 lockfile. The shared `containers/node/ubi-compat.sh` adaptation preserves the
 `1000:1000` identity and removes the runtime npm CLI and development-only Nodemon.
 The Dockerfile explicitly resets inherited S2I defaults and keeps

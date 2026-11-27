@@ -17,8 +17,8 @@ provide evidence; this skill creates and maintains the remediation issues.
 1. Read the input and bind its evidence to the exact repository, source commit,
    image digest, complete report, SBOM, and scanner database. For a PR, compare
    the failing commit with its current head and obtain current evidence when
-   they differ. Follow the canonical gate's evidence layout and policy in
-   `docs/development/trusted-container-publishing.md`.
+   they differ. Use the repository's vulnerability-gate workflow and policy
+   configuration to locate its evidence and determine which findings block it.
 2. Identify the affected package names and ecosystem. A job failure without
    package findings needs its own diagnosis; establish findings before opening
    remediation issues. Process each affected package separately, including all
@@ -40,12 +40,9 @@ workaround, fix criteria, and evidence. Inspect the current unmodified upstream
 image and available packages using those criteria. Resolve and pull the current
 upstream candidate; rebuilding the saved image digest keeps the same base.
 
-If the original image now contains the actual fix, update the selected image
-and every synchronized consumer through the
-[image-maintenance workflow](../../../docs/development/dependency-workflow.md#ubi-node-builder-and-runtime-maintenance)
-for UBI, or the owning workflow for another image family. Remove the temporary
-update, source patch, removal rule, or approved exception that the original fix
-makes unnecessary.
+If the original image now contains the actual fix, apply the base update as
+described in **Install a fix** below. Remove the temporary update, source patch,
+removal rule, or approved exception that the original fix makes unnecessary.
 Rebuild and verify before using `Closes #<package-issue>` in the cleanup PR.
 The initial workaround PR uses `Relates to`; a passing workaround does not
 complete the tracking issue. Continue below if the original fix is absent.
@@ -56,11 +53,13 @@ Finish each path with either verified remediation or recorded evidence of why
 it cannot solve the case. Continue to the next path only on the latter result.
 
 1. **Install a fix.** Verify a compatible fixed package or base from an
-   authoritative source. Use RPM-aware comparisons for RPMs. For UBI runtime
-   packages, inspect both the selected base and the shared security-update
-   helper; follow `containers/node/README.md`. Synchronize the owning
-   maintenance role, consumers, and locks for a base change. A package-list
-   entry passes this step only when a rebuild installs the real fix.
+   authoritative source. Use RPM-aware comparisons for RPMs. Inspect both the
+   selected base and any build-time package update steps for inherited packages.
+   For a base change, use the repository's image-maintenance configuration to
+   identify the owning entry and its consumers. Update the immutable base pin,
+   consuming Dockerfiles and build arguments, and affected toolchain locks
+   together. Verify locked package versions against the replacement image.
+   A package-list entry passes this step only when a rebuild installs the fix.
 2. **Patch from source.** Obtain authenticated, pinned vendor or upstream
    sources and the actual fixes. Record source and patch hashes, signature
    verification, builder identity, recipe, output identity, notices, and

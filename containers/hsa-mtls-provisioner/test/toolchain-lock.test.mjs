@@ -64,7 +64,7 @@ function validInput() {
 }
 
 describe('HSA provisioner toolchain lock', () => {
-  it('keeps the committed base identity aligned with the runtime maintenance lane', () => {
+  it('keeps the committed base identity aligned with the shared UBI selection', () => {
     const committedLock = JSON.parse(
       readFileSync(new URL('../toolchain.lock.json', import.meta.url), 'utf8'),
     )

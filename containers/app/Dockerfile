@@ -1,9 +1,8 @@
 # syntax=docker/dockerfile:1.7
 
-ARG UBI_BUILDER_IMAGE=registry.access.redhat.com/ubi10/nodejs-24:latest@sha256:6cd9a91dbfbdba836beb153f2ed6ce46b418487d47b3cd5343511d4fa23a1ac4
-ARG UBI_RUNTIME_IMAGE=registry.access.redhat.com/ubi10/nodejs-24-minimal:latest@sha256:8320fe31733c95aef8da1b86e38b21aa67b590af81391f37049a2b04fd190f15
+ARG UBI_NODE_IMAGE=registry.access.redhat.com/ubi10/nodejs-24-minimal:latest@sha256:8320fe31733c95aef8da1b86e38b21aa67b590af81391f37049a2b04fd190f15
 
-FROM ${UBI_BUILDER_IMAGE} AS dependencies
+FROM ${UBI_NODE_IMAGE} AS dependencies
 
 USER 0:0
 ENTRYPOINT []
@@ -50,7 +49,7 @@ ENV NODE_ENV=production
 COPY . .
 RUN npm run build
 
-FROM ${UBI_BUILDER_IMAGE} AS db-job-dependencies
+FROM ${UBI_NODE_IMAGE} AS db-job-dependencies
 
 USER 0:0
 ENTRYPOINT []
@@ -86,7 +85,7 @@ NODE
 npm ci --omit=dev --omit=optional --ignore-scripts --no-audit --no-fund
 EOF
 
-FROM ${UBI_RUNTIME_IMAGE} AS app-runtime
+FROM ${UBI_NODE_IMAGE} AS app-runtime
 
 # Final-image identity; base component provenance and notices remain inherited.
 LABEL name="kravhantering/app-runtime" \
@@ -132,7 +131,7 @@ USER 1000:1000
 EXPOSE 3000
 CMD ["node", "start-runtime.mjs"]
 
-FROM ${UBI_RUNTIME_IMAGE} AS db-job
+FROM ${UBI_NODE_IMAGE} AS db-job
 
 # Final-image identity; base component provenance and notices remain inherited.
 LABEL name="kravhantering/db-job" \
@@ -190,7 +189,7 @@ USER 1000:1000
 ENTRYPOINT ["node", "scripts/db-sqlserver-admin.mjs"]
 CMD ["health"]
 
-FROM ${UBI_RUNTIME_IMAGE} AS demo-seed
+FROM ${UBI_NODE_IMAGE} AS demo-seed
 
 # Final-image identity; base component provenance and notices remain inherited.
 LABEL name="kravhantering/demo-seed" \
