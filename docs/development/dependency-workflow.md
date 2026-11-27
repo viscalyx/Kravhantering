@@ -186,28 +186,25 @@ new digest under the current tag creates a coordinated drift issue.
 The HSA support Dockerfiles are shared by development and release builds. Their
 Node base references retain the production tag-and-digest identity in both
 contexts so local HSA support uses the same build inputs as release artifacts.
-The HSA topology helper uses the same UBI builder and minimal-runtime roles.
-The drift detectors discover direct references and ARG defaults; each input
-must have exactly one maintenance owner and match its role's selected identity.
+The HSA topology helper uses the same minimal base. Dependency maintenance
+discovers direct references and ARG defaults. Each input must have exactly
+one maintenance owner and match its selected identity.
 
 ## UBI Node Builder and Runtime Maintenance
 
-The `ubi-node-builder` and `ubi-node-runtime` units independently select public
-UBI 10 Node.js 24 inputs. Each unit's `selectedReference` in
-`.github/dependency-maintenance.json` is its immutable build selection.
+The `ubi-node-runtime` unit selects the public UBI 10 Node.js 24 minimal image
+for build and runtime stages. Its `selectedReference` in
+`.github/dependency-maintenance.json` is the immutable build selection.
 
-Update only the role named by the drift issue. Update its `selectedReference`
-and every discovered direct `FROM` reference and image ARG default together.
-For the runtime role, also synchronize the provisioner's
-`containers/hsa-mtls-provisioner/toolchain.lock.json`. Inspect the selected
+Update the `selectedReference`, the Dockerfile references and ARG defaults,
+and the provisioner's `containers/hsa-mtls-provisioner/toolchain.lock.json`
+together. Inspect the selected
 image's exact Node version and RPM headers before changing locked values.
 Then prune the shared helper's security package list as described in
 [runtime security packages](../../containers/node/README.md#runtime-security-packages).
-The provisioner tests verify that its base identity matches the runtime lane.
-The coverage check rejects ambiguous ownership, unresolved ARG references,
-and a role reference that differs from its selected digest. Vendor images keep
-their independent maintenance lanes. UBI inputs do not use the vendor
-`image.lock.json` format.
+Dependency maintenance rejects ambiguous ownership, unresolved ARG references,
+and Dockerfile or provisioner lock references that differ from the selection.
+Vendor images keep their independent maintenance lanes and lock format.
 
 The weekly Dependency Drift workflow and its manual unit choices query
 `registry.access.redhat.com` anonymously. Numeric UBI 10 version/revision tags

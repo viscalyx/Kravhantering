@@ -30,12 +30,10 @@ index.
 
 ## Application UBI Inputs
 
-The application dependency, application build, and transient-cleanup compiler
-stages use the public UBI 10 Node.js 24 builder. The application runtime uses
-the public UBI 10 Node.js 24 minimal image. Both roles have independent immutable
-pins in `containers/app/Dockerfile`, maintained by the `ubi-node-builder` and
-`ubi-node-runtime` dependency lanes. Public builds require no Red Hat account,
-subscription, credentials, or private package source.
+The application dependency, application build, transient-cleanup compiler
+and runtime stages use the same public UBI 10 Node.js 24 minimal pin.
+The `ubi-node-runtime` dependency lane owns the selection. Public builds
+require no Red Hat account, subscription, credentials, or private package source.
 
 See [shared UBI runtime packaging](../../containers/node/README.md) for the
 complete image scope, build network access, and retained license files. Build
@@ -55,12 +53,12 @@ They do not replace the exact-candidate SBOM, policy, or production smoke gates.
 
 ## Database Job UBI Inputs
 
-The database dependency stage uses the same public UBI builder pin and npm
+The database dependency stage uses the same public UBI minimal pin and npm
 policy. It installs only the locked `mssql`, `reflect-metadata`, and `typeorm`
 subset with development and optional packages omitted and install scripts
 disabled. The separate demo image reuses this dependency stage.
 
-The production `db-job` uses the minimal runtime pin and shared compatibility
+The production `db-job` uses the same pin and shared compatibility
 adaptation. Demo-only seed and clear commands remain restricted to the separate
 demo image.
 
@@ -400,9 +398,8 @@ before changing any issue. A failure leaves existing detector-owned issues
 untouched and fails the workflow.
 
 Follow the [dependency workflow](dependency-workflow.md) for maintenance
-units, synchronized image references, and verification. UBI builder and runtime
-updates must include all consumers of the selected role, including the local
-HSA topology helper.
+units, synchronized image references, and verification. UBI minimal updates
+must include all build and runtime consumers, including the HSA topology helper.
 
 Detector-created issues carry `automation:dependency-drift`, `dependencies`,
 and `ready-for-agent`. A stable hidden marker owns deduplication. A successful

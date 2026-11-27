@@ -570,7 +570,7 @@ function readLockCurrent(config, root) {
 }
 
 function readUbiCurrent(unit, root) {
-  const current = readUbiSelectedReference(unit)
+  const current = readUbiSelectedReference(unit, root)
   for (const input of discoverDockerfileInputs(root).filter(
     input => input.image === unit.image,
   )) {

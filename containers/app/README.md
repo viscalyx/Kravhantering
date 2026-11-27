@@ -72,9 +72,9 @@ is excluded from standard production image locks, configuration templates,
 deployment flows, and disconnected deployment bundles. Obtain it explicitly
 for the disposable environment; do not substitute it for `db-job`.
 
-The UBI builder and minimal runtime are independent maintenance roles, pinned
-by tag and digest in the Dockerfile's ARG defaults. Update each role through
-the dependency maintenance workflow and rebuild every target that consumes it.
+Build and runtime stages use the same UBI Node.js minimal image, pinned by tag
+and digest in the Dockerfile. Update the pin through the dependency maintenance
+workflow and rebuild every target.
 The Dockerfile clears inherited S2I startup behavior and retains direct Node
 commands; neither the database nor demo runtime needs npm at startup.
 

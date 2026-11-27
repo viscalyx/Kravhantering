@@ -30,9 +30,9 @@ const DEPENDABOT_KIND_ECOSYSTEMS = {
   'npm-package': 'npm',
 }
 export const UBI_NODE_IMAGES = {
-  'ubi-node-builder': 'registry.access.redhat.com/ubi10/nodejs-24',
   'ubi-node-runtime': 'registry.access.redhat.com/ubi10/nodejs-24-minimal',
 }
+const HSA_PROVISIONER_PATH = 'containers/hsa-mtls-provisioner'
 
 export function parseUbiNodeTag(tag) {
   if (tag === 'latest') return { major: 10, minor: -1, revision: 0, tag }
@@ -48,7 +48,7 @@ export function parseUbiNodeTag(tag) {
   }
 }
 
-export function readUbiSelectedReference(unit) {
+export function readUbiSelectedReference(unit, root) {
   const image = UBI_NODE_IMAGES[unit.detector]
   const reference = String(unit.selectedReference ?? '')
   const match = reference.match(
@@ -64,6 +64,18 @@ export function readUbiSelectedReference(unit) {
     throw new Error(
       `UBI unit "${unit.id}" must select its public Node 24 repository with a supported tag and sha256 digest.`,
     )
+  }
+  if (
+    Array.isArray(unit.paths) &&
+    unit.paths.includes(`${HSA_PROVISIONER_PATH}/Dockerfile`)
+  ) {
+    const lockPath = `${HSA_PROVISIONER_PATH}/toolchain.lock.json`
+    const { baseImage, baseTag, baseDigest } = readJson(root, lockPath)
+    if (`${baseImage}:${baseTag}@${baseDigest}` !== reference) {
+      throw new Error(
+        `Toolchain lock "${lockPath}" is not synchronized with "${unit.id}" selectedReference.`,
+      )
+    }
   }
   return {
     imageId: null,
@@ -512,7 +524,7 @@ function validateRegistryShape(root, registry) {
       }
       if (UBI_NODE_IMAGES[unit.detector]) {
         try {
-          readUbiSelectedReference(unit)
+          readUbiSelectedReference(unit, root)
         } catch (error) {
           errors.push(error.message)
         }

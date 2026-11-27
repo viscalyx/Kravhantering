@@ -138,7 +138,7 @@ afterEach(() => {
 
 describe('dependency drift selection', () => {
   it('selects supported UBI 10 revisions while retaining Node 24 and digest refresh channels', () => {
-    const config = IMAGE_CONFIGS['ubi-node-builder']
+    const config = IMAGE_CONFIGS['ubi-node-runtime']
     const tags = [
       'latest',
       '10.1',
@@ -481,16 +481,16 @@ describe('drift detection', () => {
       }),
     )
     await expect(
-      resolveImageIdentity(IMAGE_CONFIGS['ubi-node-builder'], 'latest'),
+      resolveImageIdentity(IMAGE_CONFIGS['ubi-node-runtime'], 'latest'),
     ).rejects.toThrow(message)
   })
 
   it('detects supported numeric UBI revision updates from synchronized ARG inputs', async () => {
     const root = temporaryDirectory()
-    const image = 'registry.access.redhat.com/ubi10/nodejs-24'
+    const image = 'registry.access.redhat.com/ubi10/nodejs-24-minimal'
     const unit = {
-      id: 'ubi-node-builder',
-      detector: 'ubi-node-builder',
+      id: 'ubi-node-runtime',
+      detector: 'ubi-node-runtime',
       image,
       paths: ['containers/app/Dockerfile'],
       selectedReference: `${image}:10.1@${digest('a')}`,
@@ -504,7 +504,7 @@ describe('drift detection', () => {
     const replies = [
       new Response(JSON.stringify({ tags: ['latest', '10.1', null] }), {
         headers: {
-          link: '</v2/ubi10/nodejs-24/tags/list?last=10.1>; rel="next"',
+          link: '</v2/ubi10/nodejs-24-minimal/tags/list?last=10.1>; rel="next"',
         },
       }),
       new Response(
@@ -533,17 +533,23 @@ describe('drift detection', () => {
     await expect(detectImageDrift(unit, root)).rejects.toThrow('unowned')
   })
 
-  it('detects independent UBI role digest drift anonymously before adoption', async () => {
+  it('checks the shared UBI digest with a single anonymous registry lookup', async () => {
     const root = temporaryDirectory()
-    const units = ['builder', 'runtime'].map(role => ({
-      id: `ubi-node-${role}`,
-      detector: `ubi-node-${role}`,
+    const image = 'registry.access.redhat.com/ubi10/nodejs-24-minimal'
+    const unit = {
+      id: 'ubi-node-runtime',
+      detector: 'ubi-node-runtime',
       kind: 'dockerfile-image',
-      image: `registry.access.redhat.com/ubi10/nodejs-24${role === 'runtime' ? '-minimal' : ''}`,
-      selectedReference: `registry.access.redhat.com/ubi10/nodejs-24${role === 'runtime' ? '-minimal' : ''}:latest@${digest('a')}`,
+      image,
+      selectedReference: `${image}:latest@${digest('a')}`,
       paths: ['containers/app/Dockerfile'],
       skill: 'resolve-dependency-drift',
-    }))
+    }
+    write(
+      root,
+      unit.paths[0],
+      `ARG BASE=${unit.selectedReference}\nFROM $BASE AS build\nFROM $BASE AS runtime\n`,
+    )
     const requests = []
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options) => {
       requests.push({
@@ -557,32 +563,20 @@ describe('drift detection', () => {
           }),
         )
       return new Response(JSON.stringify({ config: { digest: digest('c') } }), {
-        headers: {
-          'docker-content-digest': String(url).includes('minimal')
-            ? digest('a')
-            : digest('b'),
-        },
+        headers: { 'docker-content-digest': digest('b') },
       })
     })
-    const results = await detectUnits(units, root)
-    expect(results.map(result => [result.unit, result.drift])).toEqual([
-      ['ubi-node-builder', true],
-      ['ubi-node-runtime', false],
-    ])
-    expect(results[0].available).toEqual({
-      tag: 'latest',
-      manifestDigest: digest('b'),
-      imageId: digest('c'),
+    const [result] = await detectUnits([unit], root)
+    expect(result).toMatchObject({
+      unit: 'ubi-node-runtime',
+      drift: true,
+      available: {
+        tag: 'latest',
+        manifestDigest: digest('b'),
+        imageId: digest('c'),
+      },
     })
     expect(requests).toEqual([
-      {
-        url: 'https://registry.access.redhat.com/v2/ubi10/nodejs-24/tags/list?n=1000',
-        authorization: undefined,
-      },
-      {
-        url: 'https://registry.access.redhat.com/v2/ubi10/nodejs-24/manifests/latest',
-        authorization: undefined,
-      },
       {
         url: 'https://registry.access.redhat.com/v2/ubi10/nodejs-24-minimal/tags/list?n=1000',
         authorization: undefined,
@@ -592,6 +586,35 @@ describe('drift detection', () => {
         authorization: undefined,
       },
     ])
+  })
+
+  it('rejects a mismatched provisioner base lock before checking the registry', async () => {
+    const root = temporaryDirectory()
+    const image = 'registry.access.redhat.com/ubi10/nodejs-24-minimal'
+    const dockerfile = 'containers/hsa-mtls-provisioner/Dockerfile'
+    const lockPath = 'containers/hsa-mtls-provisioner/toolchain.lock.json'
+    const unit = {
+      id: 'ubi-node-runtime',
+      detector: 'ubi-node-runtime',
+      image,
+      paths: [dockerfile],
+      selectedReference: `${image}:latest@${digest('a')}`,
+    }
+    write(root, dockerfile, `FROM ${unit.selectedReference}\n`)
+    write(
+      root,
+      lockPath,
+      JSON.stringify({
+        baseImage: image,
+        baseTag: 'latest',
+        baseDigest: digest('b'),
+      }),
+    )
+    const listTags = vi.fn()
+    await expect(detectImageDrift(unit, root, { listTags })).rejects.toThrow(
+      lockPath,
+    )
+    expect(listTags).not.toHaveBeenCalled()
   })
 
   it('detects same-tag manifest drift for the devcontainer base image', async () => {
@@ -1015,62 +1038,47 @@ describe('drift detection', () => {
 })
 
 describe('issue contract', () => {
-  it('reconciles UBI roles independently with target deduplication and fresh issues after closure or expiry', () => {
+  it('applies deferrals and supersession to a republished UBI digest', () => {
     const now = new Date('2026-09-11T12:00:00Z')
-    const builder = {
-      ...drift('ubi-node-builder'),
+    const ubi = {
+      ...drift('ubi-node-runtime'),
       paths: [
         '.github/dependency-maintenance.json',
         'containers/app/Dockerfile',
       ],
     }
-    builder.current.tag = 'latest'
-    builder.available.tag = 'latest'
-    const runtime = { ...builder, unit: 'ubi-node-runtime' }
-    const issues = [
-      detectorIssue(builder, 1),
-      detectorIssue(builder, 2),
-      detectorIssue(runtime, 3, 'CLOSED'),
-    ]
-    const actions = planIssueActions([builder, runtime], issues, {}, now)
-    expect(
-      actions.map(({ type, unit, issue }) => ({ type, unit, issue })),
-    ).toEqual([
-      { type: 'close', unit: 'ubi-node-builder', issue: 2 },
-      { type: 'create', unit: 'ubi-node-runtime', issue: undefined },
-    ])
-    expect(actions[1].body).toContain('`resolve-dependency-drift`')
-    expect(actions[1].body).toContain('`containers/app/Dockerfile`')
+    ubi.current.tag = 'latest'
+    ubi.available.tag = 'latest'
+    const issue = detectorIssue(ubi, 1)
     const registry = {
       deferrals: [
         {
-          unit: builder.unit,
+          unit: ubi.unit,
           available: 'latest',
           expiresOn: '2026-09-12',
           rationale: 'Reviewed compatibility investigation',
         },
       ],
     }
-    expect(
-      planIssueActions([builder], [issues[0]], registry, now)[0],
-    ).toMatchObject({ type: 'close', reason: 'not planned' })
+    expect(planIssueActions([ubi], [issue], registry, now)[0]).toMatchObject({
+      type: 'close',
+      reason: 'not planned',
+    })
     expect(
       planIssueActions(
-        [builder],
-        [{ ...issues[0], state: 'CLOSED' }],
+        [ubi],
+        [{ ...issue, state: 'CLOSED' }],
         registry,
         new Date('2026-09-13T12:00:00Z'),
       )[0],
-    ).toMatchObject({ type: 'create', unit: builder.unit })
+    ).toMatchObject({ type: 'create', unit: ubi.unit })
     const newTarget = {
-      ...builder,
-      available: { ...builder.available, manifestDigest: digest('f') },
+      ...ubi,
+      available: { ...ubi.available, manifestDigest: digest('f') },
     }
-    expect(
-      planIssueActions([newTarget], [issues[0]], {}, now)[0],
-    ).toMatchObject({
+    expect(planIssueActions([newTarget], [issue], {}, now)[0]).toMatchObject({
       type: 'create',
-      supersedes: [{ issue: 1, url: issues[0].url }],
+      supersedes: [{ issue: 1, url: issue.url }],
     })
   })
 
