@@ -221,10 +221,9 @@ npm run test:hsa-mock
 
 ## Release Test Support
 
-The dependency stage uses the public UBI 10 Node.js 24 builder and the runtime
-uses its minimal counterpart, each pinned by digest in the Dockerfile. The
-runtime shares the repository UBI compatibility adaptation and runs directly
-as UID/GID `1000:1000`, with a read-only root and its role-specific certificate
+The dependency and runtime stages use the same digest-pinned public UBI 10
+Node.js 24 minimal base. The runtime uses the shared UBI adaptation and runs as
+UID/GID `1000:1000`, with a read-only root and its role-specific certificate
 bundle mounted read-only. It generates no runtime certificates. Building needs
 no Red Hat account or subscription; npm dependencies retain the locked graph
 and repository npm version policy.

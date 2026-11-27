@@ -9,8 +9,9 @@ import {
   DEVCONTAINER_BASE_TAG_PATTERN,
   discoverDockerfileInputs,
   parseUbiNodeTag,
-  readUbiSelectedReference,
+  readUbiSelection,
   UBI_NODE_IMAGES,
+  ubiProvisionerToolchainLockPath,
   validateDependencyMaintenance,
 } from '../../scripts/dependency-maintenance.mjs'
 import { packageManagerVersion } from '../../scripts/install-repository-npm.mjs'
@@ -570,7 +571,7 @@ function readLockCurrent(config, root) {
 }
 
 function readUbiCurrent(unit, root) {
-  const current = readUbiSelectedReference(unit)
+  const current = readUbiSelection(unit, root)
   for (const input of discoverDockerfileInputs(root).filter(
     input => input.image === unit.image,
   )) {
@@ -596,11 +597,17 @@ export async function detectImageDrift(
   const listTags = dependencies.listTags ?? config.listTags
   const resolveIdentity =
     dependencies.resolveImageIdentity ?? resolveImageIdentity
-  const current = UBI_NODE_IMAGES[config.name]
+  const isUbi = Boolean(UBI_NODE_IMAGES[unit.detector])
+  const current = isUbi
     ? readUbiCurrent(unit, root)
     : config.name === 'node'
       ? readNodeCurrent({ ...config, paths: unit.paths ?? [] }, root)
       : readLockCurrent(config, root)
+  const lockPath = isUbi ? ubiProvisionerToolchainLockPath(unit) : undefined
+  const paths = isUbi
+    ? ['.github/dependency-maintenance.json', ...unit.paths]
+    : undefined
+  if (lockPath) paths.push(lockPath)
   const tags = await listTags()
   const sameLaneVersion = selectAvailableVersion(config, tags, current.tag, {
     sameLaneOnly: true,
@@ -617,9 +624,7 @@ export async function detectImageDrift(
       drift: true,
       skill: unit.skill,
       unit: unit.id,
-      ...(UBI_NODE_IMAGES[unit.detector]
-        ? { paths: ['.github/dependency-maintenance.json', ...unit.paths] }
-        : {}),
+      ...(paths ? { paths } : {}),
     }
   }
 
@@ -637,9 +642,7 @@ export async function detectImageDrift(
     drift: imageStatesDiffer(current, available),
     skill: unit.skill,
     unit: unit.id,
-    ...(UBI_NODE_IMAGES[unit.detector]
-      ? { paths: ['.github/dependency-maintenance.json', ...unit.paths] }
-      : {}),
+    ...(paths ? { paths } : {}),
   }
 }
 

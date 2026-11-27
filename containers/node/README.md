@@ -7,7 +7,8 @@ declares its workload packages, commands and final user, then runs
 
 ## Image scope
 
-The UBI 10 Node.js 24 minimal runtime is used by:
+The digest-pinned UBI 10 Node.js 24 minimal base serves the build and runtime
+stages for:
 
 - `app-runtime`, `db-job`, and `demo-seed` in
   [`containers/app/Dockerfile`](../app/Dockerfile).
@@ -16,13 +17,12 @@ The UBI 10 Node.js 24 minimal runtime is used by:
 - [`hsa-mtls-provisioner`](../hsa-mtls-provisioner/README.md).
 - The local [`hsa-mtls-topology`](../hsa-mtls-topology/Dockerfile) test helper.
 
-The app, database, demo, mock, adapter, and topology helper build stages use
-the separate UBI Node.js builder role. The provisioner installs its locked RPM
-toolchain directly into the minimal runtime. The devcontainer and vendor nginx,
-SQL Server, Keycloak, and Kong images retain their independently maintained bases.
+The provisioner installs its locked RPM toolchain directly into the minimal
+base. The devcontainer and vendor nginx, SQL Server, Keycloak, and Kong images
+have independently maintained bases.
 
-Maintain the two UBI roles through the
-[dependency workflow](../../docs/development/dependency-workflow.md#ubi-node-builder-and-runtime-maintenance).
+Maintain the shared UBI base through the
+[dependency workflow](../../docs/development/dependency-workflow.md#shared-ubi-node-image-maintenance).
 Base tags are always paired with their selected immutable digest.
 
 ## Build and execution prerequisites

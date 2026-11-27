@@ -57,6 +57,7 @@ function fixture() {
   const files = new Set([
     '.github/dependency-maintenance.json',
     '.github/dependabot.yml',
+    'containers/hsa-mtls-provisioner/toolchain.lock.json',
     '.devcontainer/devcontainer.json',
     '.devcontainer/elevated/devcontainer.json',
     'scripts/azure-dev/templates/bootstrap-host.sh',
@@ -105,6 +106,10 @@ describe('dependency maintenance discovery', () => {
       'containers/hsa-mtls-provisioner',
       'containers/hsa-person-lookup-adapter',
     ])
+    const registry = JSON.parse(
+      fs.readFileSync('.github/dependency-maintenance.json', 'utf8'),
+    )
+    const ubi = registry.units.find(unit => unit.id === 'ubi-node-runtime')
     expect(discoverDockerfileInputs(process.cwd())).toEqual(
       expect.arrayContaining([
         {
@@ -114,34 +119,17 @@ describe('dependency maintenance discovery', () => {
             /^mcr\.microsoft\.com\/devcontainers\/base:[^@\s]+$/u,
           ),
         },
-        {
-          image: 'registry.access.redhat.com/ubi10/nodejs-24',
-          path: 'containers/app/Dockerfile',
-          reference: expect.stringMatching(
-            /^registry\.access\.redhat\.com\/ubi10\/nodejs-24:latest@sha256:[a-f0-9]{64}$/u,
-          ),
-        },
-        {
+        ...[
+          'containers/app/Dockerfile',
+          'containers/hsa-directory-mock/Dockerfile',
+          'containers/hsa-mtls-provisioner/Dockerfile',
+          'containers/hsa-mtls-topology/Dockerfile',
+          'containers/hsa-person-lookup-adapter/Dockerfile',
+        ].map(path => ({
           image: 'registry.access.redhat.com/ubi10/nodejs-24-minimal',
-          path: 'containers/app/Dockerfile',
-          reference: expect.stringMatching(
-            /^registry\.access\.redhat\.com\/ubi10\/nodejs-24-minimal:latest@sha256:[a-f0-9]{64}$/u,
-          ),
-        },
-        {
-          image: 'registry.access.redhat.com/ubi10/nodejs-24',
-          path: 'containers/hsa-mtls-topology/Dockerfile',
-          reference: expect.stringMatching(
-            /^registry\.access\.redhat\.com\/ubi10\/nodejs-24:latest@sha256:[a-f0-9]{64}$/u,
-          ),
-        },
-        {
-          image: 'registry.access.redhat.com/ubi10/nodejs-24-minimal',
-          path: 'containers/hsa-mtls-topology/Dockerfile',
-          reference: expect.stringMatching(
-            /^registry\.access\.redhat\.com\/ubi10\/nodejs-24-minimal:latest@sha256:[a-f0-9]{64}$/u,
-          ),
-        },
+          path,
+          reference: ubi.selectedReference,
+        })),
       ]),
     )
     expect(discoverImageLocks(process.cwd())).toHaveLength(5)
@@ -300,15 +288,15 @@ describe('dependency maintenance policy', () => {
           'utf8',
         ),
       )
-      const unit = registry.units.find(unit => unit.id === 'ubi-node-builder')
+      const unit = registry.units.find(unit => unit.id === 'ubi-node-runtime')
       unit.selectedReference = `${unit.image}:${tag}${tag === 'latest' ? '' : `@${digest('a')}`}`
       expect(validateDependencyMaintenance(root, registry)).toContain(
-        'UBI unit "ubi-node-builder" must select its public Node 24 repository with a supported tag and sha256 digest.',
+        'UBI unit "ubi-node-runtime" must select its public Node 24 repository with a supported tag and sha256 digest.',
       )
     },
   )
 
-  it('rejects missing, duplicate, or unowned UBI role inputs', () => {
+  it('rejects missing, duplicate, or unowned UBI inputs', () => {
     const root = fixture()
     const registry = JSON.parse(
       fs.readFileSync(
@@ -316,43 +304,39 @@ describe('dependency maintenance policy', () => {
         'utf8',
       ),
     )
-    const builder = registry.units.find(unit => unit.id === 'ubi-node-builder')
-    write(
-      root,
-      'containers/app/Dockerfile',
-      `FROM ${builder.selectedReference}\n`,
+    const ubi = registry.units.find(unit => unit.id === 'ubi-node-runtime')
+    write(root, 'containers/app/Dockerfile', `FROM ${ubi.selectedReference}\n`)
+    expect(
+      validateDependencyMaintenance(root, {
+        ...registry,
+        units: registry.units.filter(unit => unit !== ubi),
+      }),
+    ).toContain(
+      `Docker input "containers/app/Dockerfile" (${ubi.image}) routes to 0 maintenance lanes.`,
     )
     expect(
       validateDependencyMaintenance(root, {
         ...registry,
-        units: registry.units.filter(unit => unit !== builder),
+        units: [...registry.units, { ...ubi, id: 'duplicate-ubi' }],
       }),
     ).toContain(
-      `Docker input "containers/app/Dockerfile" (${builder.image}) routes to 0 maintenance lanes.`,
-    )
-    expect(
-      validateDependencyMaintenance(root, {
-        ...registry,
-        units: [...registry.units, { ...builder, id: 'duplicate-builder' }],
-      }),
-    ).toContain(
-      `Docker input "containers/app/Dockerfile" (${builder.image}) routes to 2 maintenance lanes.`,
+      `Docker input "containers/app/Dockerfile" (${ubi.image}) routes to 2 maintenance lanes.`,
     )
     write(
       root,
       'containers/new-service/Dockerfile',
-      `FROM ${builder.selectedReference}\n`,
+      `FROM ${ubi.selectedReference}\n`,
     )
     expect(validateDependencyMaintenance(root)).toContain(
-      `Docker input "containers/new-service/Dockerfile" (${builder.image}) routes to 0 maintenance lanes.`,
+      `Docker input "containers/new-service/Dockerfile" (${ubi.image}) routes to 0 maintenance lanes.`,
     )
-    builder.paths = []
+    ubi.paths = []
     expect(validateDependencyMaintenance(root, registry)).toContain(
-      'UBI unit "ubi-node-builder" must declare unique synchronized Dockerfile paths.',
+      'UBI unit "ubi-node-runtime" must declare unique synchronized Dockerfile paths.',
     )
   })
 
-  it('owns immutable UBI roles before and during incremental adoption', () => {
+  it('routes builder and runtime stages through the same immutable UBI selection', () => {
     const root = fixture()
     const registry = JSON.parse(
       fs.readFileSync(
@@ -360,24 +344,22 @@ describe('dependency maintenance policy', () => {
         'utf8',
       ),
     )
-    const builder = registry.units.find(unit => unit.id === 'ubi-node-builder')
-    const runtime = registry.units.find(unit => unit.id === 'ubi-node-runtime')
-    expect(builder?.selectedReference).toMatch(
-      /nodejs-24:latest@sha256:[a-f0-9]{64}$/u,
-    )
-    expect(runtime?.selectedReference).toMatch(
-      /nodejs-24-minimal:latest@sha256:[a-f0-9]{64}$/u,
-    )
+    const unit = registry.units.find(unit => unit.id === 'ubi-node-runtime')
+    expect(
+      registry.units.filter(unit =>
+        unit.image?.startsWith('registry.access.redhat.com/ubi10/nodejs-24'),
+      ),
+    ).toEqual([unit])
     write(
       root,
       'containers/app/Dockerfile',
-      `ARG BUILDER=${builder.selectedReference}\nARG RUNTIME=${runtime.selectedReference}\nFROM $BUILDER AS build\nFROM $RUNTIME AS runtime\n`,
+      `ARG BASE=${unit.selectedReference}\nFROM $BASE AS build\nFROM $BASE AS runtime\n`,
     )
     expect(validateDependencyMaintenance(root)).toEqual([])
     write(
       root,
       'containers/app/Dockerfile',
-      `FROM ${builder.selectedReference} AS build\nFROM ${runtime.selectedReference.replace(/sha256:[a-f0-9]{64}/u, digest('a'))} AS runtime\n`,
+      `FROM ${unit.selectedReference} AS build\nFROM ${unit.selectedReference.replace(/sha256:[a-f0-9]{64}/u, digest('a'))} AS runtime\n`,
     )
     expect(validateDependencyMaintenance(root)).toContain(
       'Docker input "containers/app/Dockerfile" is not synchronized with "ubi-node-runtime" selectedReference.',
@@ -709,7 +691,7 @@ FROM \${BASE_IMAGE}
       rootManifestPath,
       `${JSON.stringify(rootManifest, null, 2)}\n`,
     )
-    const nodeUnit = registry.units.find(unit => unit.id === 'ubi-node-builder')
+    const nodeUnit = registry.units.find(unit => unit.id === 'ubi-node-runtime')
     nodeUnit.detector = 'future-node'
     nodeUnit.runtimeReferencePolicy = 'floating'
     nodeUnit.skill = 'future-skill'
@@ -751,9 +733,9 @@ FROM \${BASE_IMAGE}
         'Maintenance unit id "npm-root" is missing or duplicated.',
         'Maintenance unit "missing-docker" has unsupported lane.',
         'Issue unit "missing-lock" must name a remediation skill.',
-        'Issue unit "ubi-node-builder" has unsupported detector "future-node".',
+        'Issue unit "ubi-node-runtime" has unsupported detector "future-node".',
         'Release toolchain unit "lychee-toolchain" must declare its repository and synchronized paths.',
-        'Maintenance unit "ubi-node-builder" uses the retired runtime reference policy.',
+        'Maintenance unit "ubi-node-runtime" uses the retired runtime reference policy.',
         'Issue unit "missing-lock" has unsupported detector "undefined".',
         'Registered npm project "containers/missing" is not active.',
         'Registered Dockerfile "containers/missing/Dockerfile" is not active.',
