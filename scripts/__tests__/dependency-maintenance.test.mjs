@@ -106,6 +106,10 @@ describe('dependency maintenance discovery', () => {
       'containers/hsa-mtls-provisioner',
       'containers/hsa-person-lookup-adapter',
     ])
+    const registry = JSON.parse(
+      fs.readFileSync('.github/dependency-maintenance.json', 'utf8'),
+    )
+    const ubi = registry.units.find(unit => unit.id === 'ubi-node-runtime')
     expect(discoverDockerfileInputs(process.cwd())).toEqual(
       expect.arrayContaining([
         {
@@ -115,34 +119,17 @@ describe('dependency maintenance discovery', () => {
             /^mcr\.microsoft\.com\/devcontainers\/base:[^@\s]+$/u,
           ),
         },
-        {
+        ...[
+          'containers/app/Dockerfile',
+          'containers/hsa-directory-mock/Dockerfile',
+          'containers/hsa-mtls-provisioner/Dockerfile',
+          'containers/hsa-mtls-topology/Dockerfile',
+          'containers/hsa-person-lookup-adapter/Dockerfile',
+        ].map(path => ({
           image: 'registry.access.redhat.com/ubi10/nodejs-24-minimal',
-          path: 'containers/hsa-directory-mock/Dockerfile',
-          reference: expect.stringMatching(
-            /^registry\.access\.redhat\.com\/ubi10\/nodejs-24-minimal:latest@sha256:[a-f0-9]{64}$/u,
-          ),
-        },
-        {
-          image: 'registry.access.redhat.com/ubi10/nodejs-24-minimal',
-          path: 'containers/app/Dockerfile',
-          reference: expect.stringMatching(
-            /^registry\.access\.redhat\.com\/ubi10\/nodejs-24-minimal:latest@sha256:[a-f0-9]{64}$/u,
-          ),
-        },
-        {
-          image: 'registry.access.redhat.com/ubi10/nodejs-24-minimal',
-          path: 'containers/hsa-person-lookup-adapter/Dockerfile',
-          reference: expect.stringMatching(
-            /^registry\.access\.redhat\.com\/ubi10\/nodejs-24-minimal:latest@sha256:[a-f0-9]{64}$/u,
-          ),
-        },
-        {
-          image: 'registry.access.redhat.com/ubi10/nodejs-24-minimal',
-          path: 'containers/hsa-mtls-topology/Dockerfile',
-          reference: expect.stringMatching(
-            /^registry\.access\.redhat\.com\/ubi10\/nodejs-24-minimal:latest@sha256:[a-f0-9]{64}$/u,
-          ),
-        },
+          path,
+          reference: ubi.selectedReference,
+        })),
       ]),
     )
     expect(discoverImageLocks(process.cwd())).toHaveLength(5)
@@ -363,9 +350,6 @@ describe('dependency maintenance policy', () => {
         unit.image?.startsWith('registry.access.redhat.com/ubi10/nodejs-24'),
       ),
     ).toEqual([unit])
-    expect(unit.selectedReference).toMatch(
-      /nodejs-24-minimal:latest@sha256:[a-f0-9]{64}$/u,
-    )
     write(
       root,
       'containers/app/Dockerfile',

@@ -387,10 +387,10 @@ attempt, so normal GitHub failed-run status and notifications remain the alert.
 ## Dependency Drift Detection
 
 `.github/workflows/dependency-drift.yml` checks the npm and Lychee toolchains,
-devcontainer base, independent UBI Node builder and runtime roles, nginx,
-SQL Server, Keycloak, and Kong weekly from
-`main`. A manual run can select one maintenance unit or all units. Image scans
-follow each lane's supported-tag and immutable-identity policy; a selected UBI
+devcontainer base, shared UBI Node.js minimal base, nginx, SQL Server, Keycloak,
+and Kong weekly from `main`. A manual run can select one maintenance unit or
+all units. Image scans follow each lane's supported-tag and immutable-identity
+policy; a selected UBI
 `latest` channel reports digest drift within that channel.
 
 The workflow completes registry validation and all selected remote detection

@@ -39,8 +39,8 @@ The app build stage sets `NEXT_PUBLIC_SITE_URL` to
 developer `.env` file. Pass `--build-arg NEXT_PUBLIC_SITE_URL=<origin>` when
 building a deployable image for another origin.
 
-`app-runtime` is the long-running Next.js image. Its build stages use the
-public UBI 10 Node.js 24 builder and its final stage uses the minimal runtime.
+`app-runtime` is the long-running Next.js image. Its build and final stages
+use the public UBI 10 Node.js 24 minimal base.
 See [shared UBI runtime packaging](../node/README.md) for CPU requirements,
 build network access, and license files. It is based on
 `output: "standalone"` and only copies `.next/standalone`, `.next/static`, and

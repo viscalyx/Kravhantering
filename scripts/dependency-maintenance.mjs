@@ -48,7 +48,16 @@ export function parseUbiNodeTag(tag) {
   }
 }
 
-export function readUbiSelectedReference(unit, root) {
+export function ubiProvisionerToolchainLockPath(unit) {
+  if (
+    Array.isArray(unit.paths) &&
+    unit.paths.includes(`${HSA_PROVISIONER_PATH}/Dockerfile`)
+  ) {
+    return `${HSA_PROVISIONER_PATH}/toolchain.lock.json`
+  }
+}
+
+export function readUbiSelection(unit, root) {
   const image = UBI_NODE_IMAGES[unit.detector]
   const reference = String(unit.selectedReference ?? '')
   const match = reference.match(
@@ -65,11 +74,8 @@ export function readUbiSelectedReference(unit, root) {
       `UBI unit "${unit.id}" must select its public Node 24 repository with a supported tag and sha256 digest.`,
     )
   }
-  if (
-    Array.isArray(unit.paths) &&
-    unit.paths.includes(`${HSA_PROVISIONER_PATH}/Dockerfile`)
-  ) {
-    const lockPath = `${HSA_PROVISIONER_PATH}/toolchain.lock.json`
+  const lockPath = ubiProvisionerToolchainLockPath(unit)
+  if (lockPath) {
     const { baseImage, baseTag, baseDigest } = readJson(root, lockPath)
     if (`${baseImage}:${baseTag}@${baseDigest}` !== reference) {
       throw new Error(
@@ -524,7 +530,7 @@ function validateRegistryShape(root, registry) {
       }
       if (UBI_NODE_IMAGES[unit.detector]) {
         try {
-          readUbiSelectedReference(unit, root)
+          readUbiSelection(unit, root)
         } catch (error) {
           errors.push(error.message)
         }

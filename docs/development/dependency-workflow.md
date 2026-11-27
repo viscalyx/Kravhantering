@@ -198,8 +198,8 @@ for build and runtime stages. Its `selectedReference` in
 
 Update the `selectedReference`, the Dockerfile references and ARG defaults,
 and the provisioner's `containers/hsa-mtls-provisioner/toolchain.lock.json`
-together. Inspect the selected
-image's exact Node version and RPM headers before changing locked values.
+together. Inspect the selected image's exact Node version and RPM headers
+before changing locked values.
 Then prune the shared helper's security package list as described in
 [runtime security packages](../../containers/node/README.md#runtime-security-packages).
 Dependency maintenance rejects ambiguous ownership, unresolved ARG references,

@@ -536,19 +536,31 @@ describe('drift detection', () => {
   it('checks the shared UBI digest with a single anonymous registry lookup', async () => {
     const root = temporaryDirectory()
     const image = 'registry.access.redhat.com/ubi10/nodejs-24-minimal'
+    const provisioner = 'containers/hsa-mtls-provisioner/Dockerfile'
+    const lockPath = 'containers/hsa-mtls-provisioner/toolchain.lock.json'
     const unit = {
       id: 'ubi-node-runtime',
       detector: 'ubi-node-runtime',
       kind: 'dockerfile-image',
       image,
       selectedReference: `${image}:latest@${digest('a')}`,
-      paths: ['containers/app/Dockerfile'],
+      paths: ['containers/app/Dockerfile', provisioner],
       skill: 'resolve-dependency-drift',
     }
     write(
       root,
       unit.paths[0],
       `ARG BASE=${unit.selectedReference}\nFROM $BASE AS build\nFROM $BASE AS runtime\n`,
+    )
+    write(root, provisioner, `FROM ${unit.selectedReference}\n`)
+    write(
+      root,
+      lockPath,
+      JSON.stringify({
+        baseImage: image,
+        baseTag: 'latest',
+        baseDigest: digest('a'),
+      }),
     )
     const requests = []
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options) => {
@@ -570,6 +582,7 @@ describe('drift detection', () => {
     expect(result).toMatchObject({
       unit: 'ubi-node-runtime',
       drift: true,
+      paths: ['.github/dependency-maintenance.json', ...unit.paths, lockPath],
       available: {
         tag: 'latest',
         manifestDigest: digest('b'),
