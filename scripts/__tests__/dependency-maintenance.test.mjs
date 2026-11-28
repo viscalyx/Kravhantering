@@ -88,7 +88,9 @@ afterEach(() => {
 
 describe('dependency maintenance discovery', () => {
   it('normalizes registry names and ignores variables', () => {
-    expect(normalizeImageRepository('node:24')).toBe('docker.io/library/node')
+    expect(normalizeImageRepository('alpine:3.22.1')).toBe(
+      'docker.io/library/alpine',
+    )
     expect(normalizeImageRepository('kong/kong-gateway:3')).toBe(
       'docker.io/kong/kong-gateway',
     )
@@ -147,7 +149,7 @@ describe('dependency maintenance discovery', () => {
     const root = temporaryDirectory()
     write(root, 'package.json', '{}')
     write(root, '.worktrees/feature/package.json', '{}')
-    write(root, '.worktrees/feature/Dockerfile', 'FROM node:24\n')
+    write(root, '.worktrees/feature/Dockerfile', 'FROM alpine:3.22.1\n')
 
     expect(discoverPackageProjects(root)).toEqual(['.'])
     expect(discoverDockerfileInputs(root)).toEqual([])
@@ -179,7 +181,7 @@ describe('dependency maintenance discovery', () => {
       'containers/example/Dockerfile',
       [
         '# comment',
-        'FROM --platform=linux/amd64 node:24 AS build',
+        'FROM --platform=linux/amd64 alpine:3.22.1 AS build',
         'FROM build AS packaged',
         'FROM scratch',
         '',
@@ -201,9 +203,9 @@ describe('dependency maintenance discovery', () => {
     )
     expect(discoverDockerfileInputs(root)).toEqual([
       {
-        image: 'docker.io/library/node',
+        image: 'docker.io/library/alpine',
         path: 'containers/example/Dockerfile',
-        reference: 'node:24',
+        reference: 'alpine:3.22.1',
       },
     ])
     expect(discoverRuntimeImageInputs(root)).toEqual([])
@@ -215,7 +217,7 @@ describe('dependency maintenance discovery', () => {
       root,
       'containers/example/Dockerfile',
       [
-        'ARG BUILD_IMAGE=node:24',
+        'ARG BUILD_IMAGE=alpine:3.22.1',
         `FROM \${BUILD_IMAGE} AS build`,
         'ARG RUNTIME_IMAGE',
         `FROM \${RUNTIME_IMAGE}`,
@@ -227,9 +229,9 @@ describe('dependency maintenance discovery', () => {
 
     expect(discoverDockerfileInputs(root)).toEqual([
       {
-        image: 'docker.io/library/node',
+        image: 'docker.io/library/alpine',
         path: 'containers/example/Dockerfile',
-        reference: 'node:24',
+        reference: 'alpine:3.22.1',
       },
       {
         image: null,
@@ -256,7 +258,7 @@ updates:
   - package-ecosystem: "docker"
     directory: "/image"
     ignore:
-      - dependency-name: node
+      - dependency-name: nginx
 `)
     expect(entries).toEqual([
       {
@@ -271,7 +273,7 @@ updates:
         ecosystem: 'docker',
         hasGroups: false,
         hasIgnore: true,
-        ignoredDependencies: ['node'],
+        ignoredDependencies: ['nginx'],
       },
     ])
   })

@@ -18,11 +18,9 @@ import {
   parseKongTag,
   parseLycheeVersion,
   parseNginxTag,
-  parseNodeTag,
   parseSqlServerTag,
   planIssueActions,
   readLycheeCurrent,
-  readNodeCurrent,
   renderIssueBody,
   resolveImageIdentity,
   selectAvailableVersion,
@@ -161,7 +159,9 @@ describe('dependency drift selection', () => {
     expect(parseArgs([], { DEPENDENCY_DRIFT_UNIT: 'npm' })).toEqual({
       unit: 'npm',
     })
-    expect(parseArgs(['--unit', 'node'], {})).toEqual({ unit: 'node' })
+    expect(parseArgs(['--unit', 'ubi-node-builder'], {})).toEqual({
+      unit: 'ubi-node-builder',
+    })
     expect(parseArgs(['--unit', 'lychee'], {})).toEqual({ unit: 'lychee' })
     expect(() => parseArgs(['--unit'], {})).toThrow('Missing value')
     expect(() => parseArgs(['--unknown'], {})).toThrow('Unexpected argument')
@@ -175,8 +175,6 @@ describe('dependency drift selection', () => {
     })
     expect(parseDevcontainerBaseTag('ubuntu-24.04')).toBeNull()
     expect(parseDevcontainerBaseTag('2-ubuntu-24.04')).toBeNull()
-    expect(parseNodeTag('24-trixie-slim')).toMatchObject({ major: 24 })
-    expect(parseNodeTag('25-trixie-slim')).toBeNull()
     expect(parseNginxTag('1.29.4-alpine3.24')).toMatchObject({ minor: 29 })
     expect(parseSqlServerTag('2025-CU7-ubuntu-24.04')).toMatchObject({ cu: 7 })
     expect(parseKeycloakTag('26.7.0-1')).toMatchObject({ revision: 1 })
@@ -364,7 +362,7 @@ describe('drift detection', () => {
     },
   )
 
-  it('keeps the Docker Official Node platform identity when an index is published', async () => {
+  it('keeps the nginx platform identity when an index is published', async () => {
     const replies = [
       new Response(
         JSON.stringify({
@@ -383,28 +381,8 @@ describe('drift detection', () => {
       replies.shift(),
     )
     expect(
-      await resolveImageIdentity(IMAGE_CONFIGS.node, '24-trixie-slim'),
+      await resolveImageIdentity(IMAGE_CONFIGS.nginx, '1.31.8-alpine3.24'),
     ).toEqual({ manifestDigest: digest('b'), imageId: digest('c') })
-  })
-
-  it.each([
-    'FROM node:24-trixie-slim\n',
-    `FROM node:25-trixie-slim@${digest('a')}\n`,
-  ])('requires supported immutable Node inputs', source => {
-    const root = temporaryDirectory()
-    write(root, 'Dockerfile', source)
-    expect(() =>
-      readNodeCurrent({ ...IMAGE_CONFIGS.node, paths: ['Dockerfile'] }, root),
-    ).toThrow('must pin a supported tag and digest')
-    expect(() =>
-      readNodeCurrent({ ...IMAGE_CONFIGS.node, paths: [] }, root),
-    ).toThrow('not owned')
-  })
-
-  it('fails when no Docker Official Node input remains for an active detector', () => {
-    expect(() =>
-      readNodeCurrent(IMAGE_CONFIGS.node, temporaryDirectory()),
-    ).toThrow('No production Node')
   })
 
   it('resolves the public UBI index identity and AMD64 image through an anonymous challenge', async () => {
@@ -669,94 +647,6 @@ describe('drift detection', () => {
       drift: true,
       unit: 'devcontainer-base',
     })
-  })
-
-  it('requires every production Node Dockerfile to use one identity', () => {
-    const root = temporaryDirectory()
-    for (const dockerfilePath of IMAGE_CONFIGS.node.paths) {
-      write(
-        root,
-        dockerfilePath,
-        `FROM node:24-trixie-slim@${digest('a')} AS runtime\n`,
-      )
-    }
-
-    expect(readNodeCurrent(IMAGE_CONFIGS.node, root)).toEqual({
-      imageId: null,
-      manifestDigest: digest('a'),
-      tag: '24-trixie-slim',
-    })
-
-    write(
-      root,
-      IMAGE_CONFIGS.node.paths[2],
-      `FROM node:24-trixie-slim@${digest('b')} AS runtime\n`,
-    )
-    expect(() => readNodeCurrent(IMAGE_CONFIGS.node, root)).toThrow(
-      'not aligned',
-    )
-  })
-
-  it('detects a same-tag manifest refresh for production Node', async () => {
-    const root = temporaryDirectory()
-    for (const dockerfilePath of IMAGE_CONFIGS.node.paths) {
-      write(
-        root,
-        dockerfilePath,
-        `FROM node:24-trixie-slim@${digest('a')} AS runtime\n`,
-      )
-    }
-    const result = await detectImageDrift(
-      {
-        detector: 'node',
-        id: 'production-node',
-        paths: IMAGE_CONFIGS.node.paths,
-        skill: 'resolve-dependency-drift',
-      },
-      root,
-      {
-        listTags: async () => ['24-trixie-slim'],
-        resolveImageIdentity: async () => ({
-          imageId: digest('c'),
-          manifestDigest: digest('b'),
-        }),
-      },
-    )
-
-    expect(result.drift).toBe(true)
-    expect(result.available.manifestDigest).toBe(digest('b'))
-  })
-
-  it('keeps remaining Node references discoverable through ARGs during incremental adoption', async () => {
-    const root = temporaryDirectory()
-    const paths = ['containers/hsa-mtls-topology/Dockerfile']
-    write(
-      root,
-      paths[0],
-      `ARG NODE_IMAGE=node:24-trixie-slim@${digest('a')}\nFROM $NODE_IMAGE AS runtime\n`,
-    )
-    const result = await detectImageDrift(
-      {
-        detector: 'node',
-        id: 'production-node',
-        paths,
-        skill: 'resolve-dependency-drift',
-      },
-      root,
-      {
-        listTags: async () => ['24-trixie-slim'],
-        resolveImageIdentity: async () => ({
-          imageId: digest('c'),
-          manifestDigest: digest('b'),
-        }),
-      },
-    )
-    expect(result.current).toEqual({
-      imageId: null,
-      manifestDigest: digest('a'),
-      tag: '24-trixie-slim',
-    })
-    expect(result.drift).toBe(true)
   })
 
   it('reports same-lane image maintenance before a newer major', async () => {

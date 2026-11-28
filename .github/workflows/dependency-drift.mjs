@@ -87,22 +87,6 @@ export const IMAGE_CONFIGS = {
     registryRepository: 'devcontainers/base',
     versionSortValue: version => [version.major, version.minor, version.patch],
   },
-  node: {
-    image: 'docker.io/library/node',
-    listTags: listNodeLtsTags,
-    name: 'node',
-    parseTag: parseNodeTag,
-    paths: [
-      'containers/app/Dockerfile',
-      'containers/hsa-directory-mock/Dockerfile',
-      'containers/hsa-person-lookup-adapter/Dockerfile',
-      'containers/hsa-mtls-provisioner/Dockerfile',
-      'containers/hsa-mtls-topology/Dockerfile',
-    ],
-    registryHost: 'registry-1.docker.io',
-    registryRepository: 'library/node',
-    versionSortValue: version => [version.major],
-  },
   nginx: {
     image: 'docker.io/library/nginx',
     listTags: () => fetchRegistryTags('registry-1.docker.io', 'library/nginx'),
@@ -209,14 +193,6 @@ export function parseArgs(argv, env) {
     index += 1
   }
   return options
-}
-
-export function parseNodeTag(tag) {
-  const match = tag.match(/^(?<major>[1-9]\d*)-trixie-slim$/u)
-  if (!match?.groups) return null
-  const major = Number(match.groups.major)
-  if (major % 2 !== 0) return null
-  return { major, tag }
 }
 
 export function parseDevcontainerBaseTag(tag) {
@@ -396,20 +372,6 @@ async function fetchRegistryTags(host, repository) {
   return tags
 }
 
-async function listNodeLtsTags() {
-  const releases = await fetchJson('https://nodejs.org/dist/index.json')
-  const majors = new Set()
-  for (const release of releases) {
-    const match = String(release.version ?? '').match(/^v(?<major>\d+)\./u)
-    const major = Number(match?.groups?.major)
-    if (release.lts && major % 2 === 0) majors.add(major)
-  }
-  if (majors.size === 0) {
-    throw new Error('Node.js release index returned no even LTS releases.')
-  }
-  return [...majors].map(major => `${major}-trixie-slim`)
-}
-
 function normalizeDigest(value, context) {
   const digest = readNonEmpty(value)
   if (!digest || !DIGEST_PATTERN.test(digest)) {
@@ -523,38 +485,6 @@ function imageStatesDiffer(current, available) {
   )
 }
 
-export function readNodeCurrent(config, root = process.cwd()) {
-  const states = []
-  for (const input of discoverDockerfileInputs(root).filter(
-    input => input.image === config.image,
-  )) {
-    if (!config.paths.includes(input.path)) {
-      throw new Error(
-        `Production Node input "${input.path}" is not owned by its maintenance unit.`,
-      )
-    }
-    const match = input.reference.match(
-      /:(?<tag>[^@\s]+)@(?<digest>sha256:[a-f0-9]{64})$/u,
-    )
-    if (!match?.groups || !parseNodeTag(match.groups.tag)) {
-      throw new Error(
-        `Production Node input "${input.path}" must pin a supported tag and digest.`,
-      )
-    }
-    states.push({ manifestDigest: match.groups.digest, tag: match.groups.tag })
-  }
-  if (states.length === 0) {
-    throw new Error('No production Node base image references were found.')
-  }
-  const unique = new Set(
-    states.map(state => `${state.tag}@${state.manifestDigest}`),
-  )
-  if (unique.size !== 1) {
-    throw new Error('Production Node base image references are not aligned.')
-  }
-  return { ...states[0], imageId: null }
-}
-
 function readLockCurrent(config, root) {
   const current = readJson(path.join(root, config.lockPath))
   if (current.image !== config.image) {
@@ -600,9 +530,7 @@ export async function detectImageDrift(
   const isUbi = Boolean(UBI_NODE_IMAGES[unit.detector])
   const current = isUbi
     ? readUbiCurrent(unit, root)
-    : config.name === 'node'
-      ? readNodeCurrent({ ...config, paths: unit.paths ?? [] }, root)
-      : readLockCurrent(config, root)
+    : readLockCurrent(config, root)
   const lockPath = isUbi ? ubiProvisionerToolchainLockPath(unit) : undefined
   const paths = isUbi
     ? ['.github/dependency-maintenance.json', ...unit.paths]
