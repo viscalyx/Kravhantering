@@ -1,9 +1,10 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   buildEnvLocalContent,
+  main,
   parseArgs,
   parseOverride,
   writeEnvLocalFiles,
@@ -92,6 +93,22 @@ describe('container local env writer', () => {
     ])
   })
 
+  it('writes fresh environment files under the output root and preserves checkout files', () => {
+    const cwd = makeProject()
+    const outputRoot = path.join(cwd, 'smoke')
+    const appEnv = 'containers/app/.env.app.local'
+    fs.writeFileSync(path.join(cwd, appEnv), 'COMMON=existing\n')
+
+    writeEnvLocalFiles({ container: 'all', cwd, outputRoot })
+
+    expect(fs.readFileSync(path.join(cwd, appEnv), 'utf8')).toBe(
+      'COMMON=existing\n',
+    )
+    expect(fs.readFileSync(path.join(outputRoot, appEnv), 'utf8')).toContain(
+      'COMMON=value\n',
+    )
+  })
+
   it('keeps committed app OIDC scopes quoted but emits Podman-safe local scopes', () => {
     const exampleContent = fs.readFileSync(
       path.join(process.cwd(), 'containers/app/.env.app.example'),
@@ -111,6 +128,41 @@ describe('container local env writer', () => {
       'AUTH_OIDC_SCOPES="openid profile email"',
     )
   })
+
+  it('keeps CLI writes in the checkout when the debugger output root is absent', async () => {
+    const cwd = makeProject()
+    const consoleObj = { log: vi.fn(), error: vi.fn() }
+
+    expect(await main(['app'], { cwd, consoleObj })).toBe(0)
+    expect(consoleObj.log).toHaveBeenCalledWith(
+      'Wrote containers/app/.env.app.local',
+    )
+    expect(
+      fs.readFileSync(path.join(cwd, 'containers/app/.env.app.local'), 'utf8'),
+    ).toContain('COMMON=value\n')
+  })
+
+  it.each([
+    [[], 'Usage:'],
+    [['missing'], 'Unknown container'],
+    [['app', '--set'], 'Missing value for --set'],
+    [['app', '--unknown'], 'Unexpected argument'],
+    [['app', '--set', 'KEY'], 'Use KEY=VALUE'],
+  ])(
+    'reports invalid CLI arguments %j without writing files',
+    async (args, diagnostic) => {
+      const cwd = makeProject()
+      const consoleObj = { log: vi.fn(), error: vi.fn() }
+
+      expect(await main(args, { cwd, consoleObj })).toBe(1)
+      expect(consoleObj.error).toHaveBeenCalledWith(
+        expect.stringContaining(diagnostic),
+      )
+      expect(
+        fs.existsSync(path.join(cwd, 'containers/app/.env.app.local')),
+      ).toBe(false)
+    },
+  )
 
   it('keeps runtime overrides scoped to a single container', () => {
     const cwd = makeProject()

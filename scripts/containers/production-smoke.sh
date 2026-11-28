@@ -240,27 +240,28 @@ render_smoke_resource_limits() {
 render_runtime_configuration() {
   local app_client_secret cookie_password keycloak_admin_password
   local mcp_client_secret
+  local env_root="${PRODUCTION_SMOKE_ENV_ROOT:-.}"
   app_client_secret="$(openssl rand -hex 32)"
   cookie_password="$(openssl rand -hex 32)"
   keycloak_admin_password="$(openssl rand -hex 32)"
   mcp_client_secret="$(openssl rand -hex 32)"
   CONFIG_TEMP_DIR="$(mktemp -d)"
-  cp containers/app/.env.app.local "$CONFIG_TEMP_DIR/app.env"
+  cp "$env_root/containers/app/.env.app.local" "$CONFIG_TEMP_DIR/app.env"
   configure_smoke_app_env \
     "$CONFIG_TEMP_DIR/app.env" "$app_client_secret" "$cookie_password"
-  cp containers/db-job/.env.db-job.local "$CONFIG_TEMP_DIR/db-job.env"
+  cp "$env_root/containers/db-job/.env.db-job.local" "$CONFIG_TEMP_DIR/db-job.env"
   sed -i \
     -e 's#^DB_TRUST_SERVER_CERTIFICATE=.*#DB_TRUST_SERVER_CERTIFICATE=false#' \
     "$CONFIG_TEMP_DIR/db-job.env"
   printf '%s\n' \
     'NODE_EXTRA_CA_CERTS=/run/kravhantering/sqlserver-ca.crt' \
     >>"$CONFIG_TEMP_DIR/db-job.env"
-  cp containers/keycloak/.env.keycloak.local "$CONFIG_TEMP_DIR/keycloak.env"
+  cp "$env_root/containers/keycloak/.env.keycloak.local" "$CONFIG_TEMP_DIR/keycloak.env"
   sed -i \
     -e 's#^KEYCLOAK_ADMIN=.*#KEYCLOAK_ADMIN=kravhantering-smoke-admin#' \
     -e "s#^KEYCLOAK_ADMIN_PASSWORD=.*#KEYCLOAK_ADMIN_PASSWORD=$keycloak_admin_password#" \
     "$CONFIG_TEMP_DIR/keycloak.env"
-  cp containers/sqlserver/.env.sqlserver.local "$CONFIG_TEMP_DIR/sqlserver.env"
+  cp "$env_root/containers/sqlserver/.env.sqlserver.local" "$CONFIG_TEMP_DIR/sqlserver.env"
 
   cp "$INSTALL_ROOT/current/keycloak/realm-kravhantering-production.template.json" \
     "$CONFIG_TEMP_DIR/realm.json"
