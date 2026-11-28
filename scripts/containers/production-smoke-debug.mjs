@@ -4,18 +4,22 @@ import childProcess from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { DEFAULT_TLS_DIR } from './generate-tls.mjs'
 import { prepareProductionSmokeBundle } from './prepare-production-smoke-bundle.mjs'
 import {
   buildSmokeEnvironment,
   DEBUG_CONTAINER_LABEL,
   DEBUG_CONTAINER_LABEL_VALUE,
   DEBUG_CONTAINER_NAME,
+  debugBaseImageReference,
+  describeControllerDelegation,
   parseDebugArgs,
   parseOciImageMetadata,
   selectOciManifest,
   selectRunArtifacts,
   validateDownloadedArtifactCache,
 } from './production-smoke-debug-contract.mjs'
+import { writeEnvLocalFiles } from './write-env-local.mjs'
 
 const USAGE = `Usage:
   npm run container:production-smoke:debug -- run --run-id <github-run-id> [--repo <owner/repository>]
@@ -26,6 +30,7 @@ const USAGE = `Usage:
 const DEBUG_IMAGE = 'kravhantering-production-smoke-debug:ubuntu-24.04'
 const DEBUG_CACHE_ROOT = path.resolve('tmp', 'production-smoke-debug', '.cache')
 const CONTAINERFILE = 'scripts/containers/production-smoke-debug.Containerfile'
+const BASE_IMAGE_LOCK = 'containers/devcontainer-base/image.lock.json'
 const OCI_ARCHIVES = {
   'app-runtime': 'app-runtime.oci.tar',
   'db-job': 'db-job.oci.tar',
@@ -63,20 +68,6 @@ function commandPath(command) {
     capture: true,
     input: 'command -v "$1"\n',
   }).stdout.trim()
-}
-
-function prepareLocalEnvironmentFiles() {
-  const files = {
-    app: 'containers/app/.env.app.local',
-    'db-job': 'containers/db-job/.env.db-job.local',
-    keycloak: 'containers/keycloak/.env.keycloak.local',
-    sqlserver: 'containers/sqlserver/.env.sqlserver.local',
-  }
-  for (const [container, filePath] of Object.entries(files)) {
-    if (!fs.existsSync(filePath)) {
-      run('node', ['scripts/containers/write-env-local.mjs', container])
-    }
-  }
 }
 
 function containerExists() {
@@ -257,7 +248,7 @@ function dockerExec(args, options = {}) {
       DEBUG_CONTAINER_NAME,
       ...args,
     ],
-    { allowFailure: options.allowFailure },
+    { allowFailure: options.allowFailure, capture: options.capture },
   )
 }
 
@@ -265,22 +256,31 @@ export function waitForSystemd(options = {}) {
   const runCommand = options.runCommand ?? run
   const waitAfterFailure =
     options.waitAfterFailure ?? (() => run('sleep', ['1'], { capture: true }))
+  // An exec during early boot can race systemd's cgroup setup. Observe logind
+  // completing startup on the console before executing anything in the host.
+  let logindStarted = false
   for (let attempt = 0; attempt < 60; attempt += 1) {
-    const result = runCommand(
-      'docker',
-      [
-        'exec',
-        DEBUG_CONTAINER_NAME,
-        'systemctl',
-        'is-system-running',
-        '--wait',
-      ],
-      { allowFailure: true, capture: true },
-    )
-    if (['running', 'degraded'].includes(result.stdout.trim())) return
+    if (!logindStarted) {
+      const logs = runCommand('docker', ['logs', DEBUG_CONTAINER_NAME], {
+        capture: true,
+      })
+      logindStarted = logs.stdout.includes('Started systemd-logind.service')
+    }
+    if (logindStarted) {
+      const result = runCommand(
+        'docker',
+        ['exec', DEBUG_CONTAINER_NAME, 'systemctl', 'is-system-running'],
+        { allowFailure: true, capture: true },
+      )
+      if (['running', 'degraded'].includes(result.stdout.trim())) return
+    }
     waitAfterFailure()
   }
-  throw new Error('The Ubuntu debug host did not start systemd.')
+  throw new Error(
+    logindStarted
+      ? 'The Ubuntu debug host did not reach a running or degraded systemd state.'
+      : 'The Ubuntu debug host did not start systemd-logind.service.',
+  )
 }
 
 function createDebugHost(runId) {
@@ -289,10 +289,17 @@ function createDebugHost(runId) {
       `${DEBUG_CONTAINER_NAME} already exists; use the debug down command first.`,
     )
   }
+  const baseImage = debugBaseImageReference(
+    JSON.parse(fs.readFileSync(BASE_IMAGE_LOCK, 'utf8')),
+  )
+  // Create the nested mount point as the caller before Docker mounts tmpfs.
+  fs.mkdirSync(DEFAULT_TLS_DIR, { recursive: true })
   run('docker', [
     'build',
     '--file',
     CONTAINERFILE,
+    '--build-arg',
+    `BASE_IMAGE=${baseImage}`,
     '--tag',
     DEBUG_IMAGE,
     'scripts/containers',
@@ -300,6 +307,13 @@ function createDebugHost(runId) {
   run('docker', [
     'run',
     '--detach',
+    '--tty',
+    '--log-driver',
+    'local',
+    '--env',
+    'SYSTEMD_SHOW_STATUS=yes',
+    '--env',
+    'SYSTEMD_COLORS=0',
     '--name',
     DEBUG_CONTAINER_NAME,
     '--hostname',
@@ -310,6 +324,8 @@ function createDebugHost(runId) {
     '/run',
     '--tmpfs',
     '/run/lock',
+    '--tmpfs',
+    `/workspace/${DEFAULT_TLS_DIR}`,
     '--add-host',
     'kravhantering.test:127.0.0.1',
     '--label',
@@ -348,11 +364,32 @@ function createDebugHost(runId) {
   dockerExec(['npm', '--version'])
 }
 
-function collectEvidence(environment) {
+function collectEvidence(environment, options = {}) {
   dockerExec(['scripts/containers/production-smoke.sh', 'evidence'], {
-    allowFailure: true,
     environment,
+    allowFailure: options.allowFailure,
   })
+}
+
+function installDebugArchive({ archivePath, environment }) {
+  const result = dockerExec(
+    ['scripts/containers/production-smoke.sh', 'up', '--archive', archivePath],
+    { allowFailure: true, environment },
+  )
+  if (result.status === 0) return
+
+  const controllers = dockerExec(
+    [
+      'sh',
+      '-ec',
+      'uid=$(id -u kravhantering); cat "/sys/fs/cgroup/user.slice/user-$uid.slice/user@$uid.service/cgroup.controllers"',
+    ],
+    { allowFailure: true, capture: true },
+  )
+  const detail = describeControllerDelegation(controllers)
+  throw new Error(
+    `Production archive installation exited with status ${result.status}. ${detail}`.trimEnd(),
+  )
 }
 
 function runDebug(values) {
@@ -364,15 +401,13 @@ function runDebug(values) {
     )
   }
   const downloads = downloadRunArtifacts(values)
-  prepareLocalEnvironmentFiles()
-  run('node', [
-    'scripts/containers/generate-tls.mjs',
-    '--output-dir',
-    'tmp/container-tls',
-  ])
   const inputs = prepareInputs(downloads, values.runId)
+  const envRoot = path.join(downloads.root, 'environment')
+  writeEnvLocalFiles({ container: 'all', force: true, outputRoot: envRoot })
+  inputs.environment.PRODUCTION_SMOKE_ENV_ROOT = envRoot
   createDebugHost(values.runId)
   try {
+    dockerExec(['node', 'scripts/containers/generate-tls.mjs'])
     dockerExec([
       'node',
       'node_modules/@playwright/test/cli.js',
@@ -385,23 +420,15 @@ function runDebug(values) {
       'install',
       'chromium',
     ])
-    dockerExec(
-      [
-        'scripts/containers/production-smoke.sh',
-        'up',
-        '--archive',
-        inputs.archivePath,
-      ],
-      { environment: inputs.environment },
-    )
+    installDebugArchive(inputs)
     dockerExec(['scripts/containers/production-smoke.sh', 'verify'], {
       environment: inputs.environment,
     })
-    collectEvidence(inputs.environment)
   } catch (error) {
-    collectEvidence(inputs.environment)
+    collectEvidence(inputs.environment, { allowFailure: true })
     throw error
   }
+  collectEvidence(inputs.environment)
   console.log(`Production smoke passed for GitHub run ${values.runId}.`)
   console.log(`Debug host remains available: ${USAGE.split('\n')[2].trim()}`)
 }

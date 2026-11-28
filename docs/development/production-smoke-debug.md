@@ -43,9 +43,8 @@ checked out. The current wrapper requires the checkout at `/workspace`: it
 mounts that directory inside the debug host and passes absolute host paths for
 the archive, images, and evidence without translating them.
 
-The wrapper creates missing `containers/*/.env.*.local` files and regenerates
-the certificates in `tmp/container-tls/`. Use a checkout whose TLS files are
-not in use by development services.
+The wrapper generates run-specific environment files from the repository
+templates and creates TLS certificates inside the debug host.
 
 ```bash
 npm run container:production-smoke:debug -- run --run-id <github-run-id>
@@ -59,16 +58,15 @@ the selected run. It combines those artifacts with the currently checked-out
 deployment scripts and Quadlet templates. This makes it useful for proving a
 fix without rebuilding the candidate application images.
 
-It then:
-
-1. builds and starts a privileged Ubuntu 24.04 systemd debug host;
-2. installs the repository-pinned Playwright Chromium build and its Ubuntu
-   runtime libraries inside that disposable host;
-3. installs the production archive with the existing `production-smoke.sh`
-   entry point;
-4. calls its canonical `verify` command to trust the generated CA, run the real
-   thin core Playwright journey with zero retries; and
-5. writes redacted evidence below
+1. The debugger builds a privileged Ubuntu 24.04 host from the digest in the
+   [shared devcontainer base lock](../../containers/devcontainer-base/image.lock.json)
+   and waits for `systemd-logind` before entering it.
+2. It installs the repository-pinned Playwright Chromium build and its Ubuntu
+   runtime libraries inside the debug host.
+3. It installs the production archive through `production-smoke.sh`.
+4. It uses the `verify` command to trust the generated CA and run the core
+   Playwright journey with zero retries.
+5. It writes redacted evidence below
    `tmp/production-smoke-debug/<run-id>/evidence/`.
 
 The debug host remains running after both success and failure so its state is
@@ -81,6 +79,10 @@ and HSA overlay qualification belong to trusted release. See
 [CI integration ownership](ci-integration-ownership.md).
 
 ## Inspect a failure
+
+If the installer reports missing delegated cgroup controllers, inspect the
+retained host before retrying. The service user's systemd manager requires
+the `cpu`, `memory`, and `pids` controllers.
 
 Open a shell in the retained host:
 

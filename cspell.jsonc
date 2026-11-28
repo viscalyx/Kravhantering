@@ -1747,6 +1747,7 @@
     "sshconfig",
     "subscriptionId",
     "systemd",
+    "logind",
     "tailnet",
     "Tailscale",
     "tenantId",

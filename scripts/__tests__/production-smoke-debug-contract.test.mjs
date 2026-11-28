@@ -3,6 +3,8 @@ import { waitForSystemd } from '../containers/production-smoke-debug.mjs'
 import {
   buildSmokeEnvironment,
   DEFAULT_REPOSITORY,
+  debugBaseImageReference,
+  describeControllerDelegation,
   parseDebugArgs,
   parseOciImageMetadata,
   selectOciManifest,
@@ -136,29 +138,94 @@ describe('production smoke debug contract', () => {
     ).toThrow(`Downloaded run artifact is incomplete: ${requiredPaths[0]}`)
   })
 
-  it('paces unsuccessful systemd readiness probes', () => {
+  it('uses the image repository and manifest digest from the base lock', () => {
+    const lock = {
+      image: 'registry.example/devcontainers/base',
+      imageId: digest('a'),
+      manifestDigest: digest('b'),
+      tag: 'ubuntu-24.04',
+    }
+    expect(debugBaseImageReference(lock)).toBe(`${lock.image}@${digest('b')}`)
+    expect(
+      debugBaseImageReference({ ...lock, manifestDigest: digest('c') }),
+    ).toBe(`${lock.image}@${digest('c')}`)
+    expect(() =>
+      debugBaseImageReference({ ...lock, manifestDigest: 'latest' }),
+    ).toThrow('manifest digest must be a sha256 digest')
+    expect(() => debugBaseImageReference({ ...lock, image: '' })).toThrow(
+      'must declare an image repository',
+    )
+  })
+
+  it('waits for logind before probing systemd inside the debug host', () => {
     const runCommand = vi
       .fn()
-      .mockReturnValueOnce({ stdout: '' })
+      .mockReturnValueOnce({ stdout: 'Starting systemd-logind.service...' })
+      .mockReturnValueOnce({
+        stdout: 'Started systemd-logind.service - User Login Management.',
+      })
       .mockReturnValueOnce({ stdout: 'starting' })
       .mockReturnValueOnce({ stdout: 'degraded' })
     const waitAfterFailure = vi.fn()
 
     waitForSystemd({ runCommand, waitAfterFailure })
 
-    expect(runCommand).toHaveBeenCalledTimes(3)
+    expect(runCommand.mock.calls.map(([, args]) => args[0])).toEqual([
+      'logs',
+      'logs',
+      'exec',
+      'exec',
+    ])
     expect(waitAfterFailure).toHaveBeenCalledTimes(2)
+  })
 
-    const failingRunCommand = vi.fn(() => ({ stdout: 'failed' }))
-    const failingWait = vi.fn()
+  it('reports when logind never starts', () => {
+    const runCommand = vi.fn(() => ({
+      stdout: 'Starting systemd-logind.service...',
+    }))
+    const waitAfterFailure = vi.fn()
+    expect(() => waitForSystemd({ runCommand, waitAfterFailure })).toThrow(
+      'did not start systemd-logind.service',
+    )
+    expect(runCommand.mock.calls.every(([, args]) => args[0] === 'logs')).toBe(
+      true,
+    )
+  })
+
+  it('reports when systemd never reaches a running state after logind starts', () => {
+    const runCommand = vi.fn((_, args) => ({
+      stdout:
+        args[0] === 'logs'
+          ? 'Started systemd-logind.service - User Login Management.'
+          : 'starting',
+    }))
     expect(() =>
       waitForSystemd({
-        runCommand: failingRunCommand,
-        waitAfterFailure: failingWait,
+        runCommand,
+        waitAfterFailure: vi.fn(),
       }),
-    ).toThrow('did not start systemd')
-    expect(failingRunCommand).toHaveBeenCalledTimes(60)
-    expect(failingWait).toHaveBeenCalledTimes(60)
+    ).toThrow('did not reach a running or degraded systemd state')
+  })
+
+  it('identifies every required controller absent from the service cgroup', () => {
+    expect(
+      describeControllerDelegation({ status: 0, stdout: 'cpu memory pids\n' }),
+    ).toBe('')
+    expect(
+      describeControllerDelegation({
+        status: 0,
+        stdout: 'cpuset cpu memory\n',
+      }),
+    ).toBe('Missing service user cgroup controllers: pids.')
+    expect(describeControllerDelegation({ status: 0, stdout: '' })).toBe(
+      'Missing service user cgroup controllers: cpu, memory, pids.',
+    )
+  })
+
+  it('reports when delegation cannot be read', () => {
+    expect(describeControllerDelegation({ status: 1, stdout: '' })).toBe(
+      'Could not read the service user cgroup controllers. Required controllers: cpu, memory, pids.',
+    )
   })
 
   it('reads one runnable OCI image identity', () => {

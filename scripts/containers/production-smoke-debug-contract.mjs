@@ -90,6 +90,37 @@ function assertDigest(value, context) {
   return value
 }
 
+export function debugBaseImageReference(lock) {
+  const { image, manifestDigest } = lock
+  if (
+    typeof image !== 'string' ||
+    !image.includes('/') ||
+    /[\s@]/u.test(image)
+  ) {
+    throw new Error(
+      'The devcontainer-base lock must declare an image repository.',
+    )
+  }
+  const digest = assertDigest(
+    manifestDigest,
+    'devcontainer-base manifest digest',
+  )
+  return `${image}@${digest}`
+}
+
+export function describeControllerDelegation({ status, stdout }) {
+  // Keep these requirements aligned with the Quadlet installer's host check.
+  const required = ['cpu', 'memory', 'pids']
+  if (status !== 0) {
+    return `Could not read the service user cgroup controllers. Required controllers: ${required.join(', ')}.`
+  }
+  const available = new Set(stdout.trim().split(/\s+/u))
+  const missing = required.filter(controller => !available.has(controller))
+  return missing.length
+    ? `Missing service user cgroup controllers: ${missing.join(', ')}.`
+    : ''
+}
+
 export function selectOciManifest(index) {
   const manifests = index?.manifests ?? []
   const runnable = manifests.filter(descriptor => {

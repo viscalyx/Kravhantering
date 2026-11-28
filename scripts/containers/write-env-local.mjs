@@ -134,6 +134,7 @@ function selectedConfigs(container) {
 
 export function planEnvLocalWrites(options) {
   const cwd = options.cwd ?? process.cwd()
+  const outputRoot = options.outputRoot ?? cwd
   const fsImpl = options.fsImpl ?? fs
   const force = options.force ?? false
   const overrides = options.overrides ?? new Map()
@@ -144,7 +145,7 @@ export function planEnvLocalWrites(options) {
 
   return selectedConfigs(options.container).map(([container, config]) => {
     const examplePath = path.resolve(cwd, config.examplePath)
-    const localPath = path.resolve(cwd, config.localPath)
+    const localPath = path.resolve(outputRoot, config.localPath)
 
     if (!force && fsImpl.existsSync(localPath)) {
       throw new Error(
