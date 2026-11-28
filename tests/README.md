@@ -12,6 +12,19 @@ See `package.json` for the full list of test-related scripts.
 - Start here: [unit/test-helpers.ts](unit/test-helpers.ts)
 - Run with: `npm run test`
 
+### Azure Codex session-policy tests
+
+Install Zsh on the host and make Docker available. Prepare the fixture and run
+the focused suite from the repository root.
+
+```sh
+npm run test:azure-codex-policy:prepare
+npm run test -- tests/unit/azure-dev-codex-session-policy.test.ts
+```
+
+The fixture reuses the maintained UBI Node.js 24 Minimal digest. The preparation
+step installs `useradd` and `runuser` before the network-disabled test runs.
+
 ## Integration tests
 
 - Location: `tests/integration`

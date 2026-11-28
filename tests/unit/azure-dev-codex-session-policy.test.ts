@@ -11,6 +11,7 @@ import {
 import { tmpdir, userInfo } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { policyFixtureImage } from './fixtures/azure-codex-session-policy-image.mjs'
 
 const policyPath = path.join(
   process.cwd(),
@@ -35,16 +36,6 @@ const dockerPolicyPath =
       )
     : policyPath
 const temporaryDirectories: string[] = []
-const rootPolicyFixtureImage = readFileSync(
-  path.join(
-    process.cwd(),
-    'scripts/containers/production-smoke-debug.Containerfile',
-  ),
-  'utf8',
-).match(/^FROM (ubuntu:[^\s]+@sha256:[a-f0-9]{64})$/m)?.[1]
-if (!rootPolicyFixtureImage) {
-  throw new Error('Pinned Ubuntu policy-fixture image reference is missing')
-}
 const candidateZshExpression = '$' + '{MANAGED_ZSHRC:-$' + '{ZDOTDIR}/.zshrc}'
 
 function fixture(
@@ -357,12 +348,12 @@ done
 `
     const imageAvailability = spawnSync(
       'docker',
-      ['image', 'inspect', rootPolicyFixtureImage],
+      ['image', 'inspect', policyFixtureImage],
       { encoding: 'utf8' },
     )
     expect(
       imageAvailability.status,
-      `Provision the pinned policy fixture first: docker pull '${rootPolicyFixtureImage}'`,
+      'Provision the policy fixture first: npm run test:azure-codex-policy:prepare',
     ).toBe(0)
     const result = spawnSync(
       'docker',
@@ -371,11 +362,13 @@ done
         '--rm',
         '--network=none',
         '--pull=never',
+        '--user',
+        '0:0',
         '--tmpfs',
         '/case:rw,exec,nosuid,nodev,size=32m',
         '--mount',
         `type=bind,source=${dockerPolicyPath},target=/policy.sh,readonly`,
-        rootPolicyFixtureImage,
+        policyFixtureImage,
         'bash',
         '-c',
         fixtureScript,
